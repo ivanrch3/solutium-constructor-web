@@ -2,6 +2,7 @@ import React from 'react';
 import { HelpCircle } from 'lucide-react';
 import { Typography } from '../ui/Typography';
 import { ModuleWrapper } from '../ui/ModuleWrapper';
+import { usePageLayout } from '../../context/PageLayoutContext';
 
 interface FaqModuleProps {
   data: any;
@@ -9,6 +10,8 @@ interface FaqModuleProps {
 }
 
 export const FaqModule = ({ data, onUpdate }: FaqModuleProps) => {
+  const { previewDevice } = usePageLayout();
+  const is_mobile_simulated = previewDevice === 'mobile';
   const items = data?.items || [
     { q: '¿Cómo funciona la sincronización con Solutium?', a: 'Es automática. Una vez conectas tu cuenta, todos tus productos y leads se sincronizan en tiempo real.' },
     { q: '¿Puedo usar mi propio dominio?', a: 'Sí, en el plan Pro y superiores puedes conectar cualquier dominio que ya poseas.' },
@@ -41,11 +44,11 @@ export const FaqModule = ({ data, onUpdate }: FaqModuleProps) => {
       theme={data?.theme}
       background={data?.background}
     >
-      <div className="max-w-3xl mx-auto">
-        <div className="text-center mb-12">
+      <div className={`${is_mobile_simulated ? 'max-w-full' : 'max-w-3xl'} mx-auto`}>
+        <div className={`text-center ${is_mobile_simulated ? 'mb-8' : 'mb-12'}`}>
           <Typography
             variant="h2"
-            className="text-3xl font-bold mb-4"
+            className={`${is_mobile_simulated ? 'text-2xl' : 'text-3xl'} font-bold mb-4`}
             editable={!!onUpdate}
             onUpdate={(text) => handleTextUpdate('title', text)}
           >
@@ -53,7 +56,7 @@ export const FaqModule = ({ data, onUpdate }: FaqModuleProps) => {
           </Typography>
           <Typography
             variant="p"
-            className="opacity-60"
+            className={`${is_mobile_simulated ? 'text-sm' : 'text-base'} opacity-60`}
             editable={!!onUpdate}
             onUpdate={(text) => handleTextUpdate('subtitle', text)}
           >
@@ -62,12 +65,12 @@ export const FaqModule = ({ data, onUpdate }: FaqModuleProps) => {
         </div>
         <div className="space-y-4">
           {items.map((item: any, i: number) => (
-            <div key={i} className="bg-current/5 p-6 rounded-2xl border border-current/10">
+            <div key={i} className={`${is_mobile_simulated ? 'p-4' : 'p-6'} bg-current/5 rounded-2xl border border-current/10`}>
               <div className="flex items-start gap-3 mb-2">
                 <HelpCircle className="w-5 h-5 text-primary mt-1 shrink-0" />
                 <Typography
                   variant="h4"
-                  className="font-bold"
+                  className={`${is_mobile_simulated ? 'text-base' : 'text-lg'} font-bold`}
                   editable={!!onUpdate}
                   onUpdate={(text) => handleTextUpdate(`items.${i}.q`, text)}
                 >
@@ -76,7 +79,7 @@ export const FaqModule = ({ data, onUpdate }: FaqModuleProps) => {
               </div>
               <Typography
                 variant="p"
-                className="text-sm opacity-60 leading-relaxed pl-8"
+                className={`${is_mobile_simulated ? 'text-xs pl-0 mt-2' : 'text-sm pl-8'} opacity-60 leading-relaxed`}
                 editable={!!onUpdate}
                 onUpdate={(text) => handleTextUpdate(`items.${i}.a`, text)}
               >

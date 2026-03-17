@@ -2,6 +2,7 @@ import React from 'react';
 import { ShieldCheck } from 'lucide-react';
 import { Typography } from '../ui/Typography';
 import { ModuleWrapper } from '../ui/ModuleWrapper';
+import { usePageLayout } from '../../context/PageLayoutContext';
 
 interface TrustBarModuleProps {
   data: any;
@@ -9,6 +10,8 @@ interface TrustBarModuleProps {
 }
 
 export const TrustBarModule = ({ data, onUpdate }: TrustBarModuleProps) => {
+  const { previewDevice } = usePageLayout();
+  const is_mobile_simulated = previewDevice === 'mobile';
   const logos = data?.logos || [
     { name: 'Empresa 1', url: 'https://placehold.co/200x80?text=LOGO+1' },
     { name: 'Empresa 2', url: 'https://placehold.co/200x80?text=LOGO+2' },
@@ -17,7 +20,7 @@ export const TrustBarModule = ({ data, onUpdate }: TrustBarModuleProps) => {
     { name: 'Empresa 5', url: 'https://placehold.co/200x80?text=LOGO+5' }
   ];
 
-  const isGrayscale = data?.grayscale !== false;
+  const is_grayscale = data?.grayscale !== false;
   const opacity = data?.opacity || 50;
 
   const handleTextUpdate = (path: string, value: string) => {
@@ -46,7 +49,7 @@ export const TrustBarModule = ({ data, onUpdate }: TrustBarModuleProps) => {
       className="rounded-2xl border border-current/10"
       noPadding
     >
-      <div className="py-12 px-8">
+      <div className={`${is_mobile_simulated ? 'py-8 px-4' : 'py-12 px-8'}`}>
         <Typography
           variant="p"
           className="text-center text-xs font-bold opacity-40 uppercase tracking-[0.2em] mb-8"
@@ -55,13 +58,13 @@ export const TrustBarModule = ({ data, onUpdate }: TrustBarModuleProps) => {
         >
           {data?.title || 'Empresas que confían en nosotros'}
         </Typography>
-        <div className="flex flex-wrap items-center justify-center gap-8 md:gap-16">
+        <div className={`flex flex-wrap items-center justify-center ${is_mobile_simulated ? 'gap-6' : 'gap-8 md:gap-16'}`}>
           {logos.map((logo: any, i: number) => (
             <div 
               key={i} 
               className={`flex items-center gap-2 transition-all duration-500 hover:grayscale-0 hover:opacity-100`}
               style={{ 
-                filter: isGrayscale ? 'grayscale(100%)' : 'none',
+                filter: is_grayscale ? 'grayscale(100%)' : 'none',
                 opacity: opacity / 100
               }}
             >
@@ -69,15 +72,15 @@ export const TrustBarModule = ({ data, onUpdate }: TrustBarModuleProps) => {
                 <img 
                   src={logo.url} 
                   alt={logo.name || `Partner ${i}`} 
-                  className="h-8 md:h-10 w-auto object-contain invert-0 dark:invert"
+                  className={`${is_mobile_simulated ? 'h-6' : 'h-8 md:h-10'} w-auto object-contain invert-0 dark:invert`}
                   referrerPolicy="no-referrer"
                 />
               ) : (
                 <div className="flex items-center gap-2">
-                  <ShieldCheck className="w-6 h-6" />
+                  <ShieldCheck className={`${is_mobile_simulated ? 'w-5 h-5' : 'w-6 h-6'}`} />
                   <Typography
                     variant="span"
-                    className="font-black text-xl tracking-tighter italic"
+                    className={`font-black ${is_mobile_simulated ? 'text-lg' : 'text-xl'} tracking-tighter italic`}
                     editable={!!onUpdate}
                     onUpdate={(text) => handleTextUpdate(`logos.${i}.name`, text)}
                   >

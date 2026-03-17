@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { X, Type, MousePointer2, Layout, ChevronDown, ChevronRight, Settings2, Share2, Sparkles } from 'lucide-react';
+import { X, Type, MousePointer2, Layout, ChevronDown, ChevronRight, Settings2, Share2, Sparkles, Package } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { getModuleSchema } from '../modules/schema';
 import { getModuleDefinition } from '../modules/registry';
@@ -9,6 +9,7 @@ import { StructureManager } from './ui/StructureManager';
 import { SocialNetworksManager } from './ui/SocialNetworksManager';
 import { AdvancedManager } from './ui/AdvancedManager';
 import { HeaderManager } from './ui/HeaderManager';
+import { ProductManager } from './ui/ProductManager';
 import { SolutiumContext } from '../context/SatelliteContext';
 
 interface PropertyInspectorProps {
@@ -35,13 +36,14 @@ export const PropertyInspector = ({
   const [expandedSectionsByModule, setExpandedSectionsByModule] = useState<Record<string, Record<string, boolean>>>({});
 
   const satellite = useContext(SolutiumContext);
-  const projectSocials = satellite?.payload?.projectData?.socials;
+  const projectSocials = satellite?.payload?.project_data?.socials;
 
   const moduleId = selectedModule?.id || 'default';
   const expandedSections = expandedSectionsByModule[moduleId] || {
     text: false,
     buttons: false,
-    structure: false
+    structure: false,
+    products: true
   };
 
   const schema = selectedModule ? getModuleSchema(selectedModule.type) : null;
@@ -106,6 +108,7 @@ export const PropertyInspector = ({
           structure: section === 'structure' ? !isCurrentlyOpen : false,
           socials: section === 'socials' ? !isCurrentlyOpen : false,
           advanced: section === 'advanced' ? !isCurrentlyOpen : false,
+          products: section === 'products' ? !isCurrentlyOpen : false,
         }
       };
     });
@@ -114,9 +117,9 @@ export const PropertyInspector = ({
   const ModuleIcon = selectedModule ? (getModuleDefinition(selectedModule.type)?.icon || Settings2) : Settings2;
 
   return (
-    <div className="flex flex-col min-h-0 pointer-events-auto">
+    <div className="flex flex-col min-h-0 pointer-events-auto flex-1">
       {/* Header */}
-      <div className={`h-12 border-b border-text/10 flex items-center ${layersExpanded ? 'justify-between px-4' : 'justify-center'} bg-surface/50 backdrop-blur-sm z-20`}>
+      <div className={`h-12 border-b border-text/10 flex items-center ${layersExpanded ? 'justify-between px-4' : 'justify-center'} bg-surface/50 backdrop-blur-sm z-20 flex-shrink-0`}>
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 bg-[#FF0080] rounded-lg flex items-center justify-center text-white shadow-lg shadow-[#FF0080]/20 flex-shrink-0">
             <ModuleIcon className="w-4 h-4" />
@@ -130,7 +133,7 @@ export const PropertyInspector = ({
       </div>
 
       {/* Sections Container */}
-      <div className={`${layersExpanded ? 'px-6 py-6 space-y-8' : 'py-6 flex flex-col items-center'}`}>
+      <div className={`flex-1 overflow-y-auto custom-scrollbar ${layersExpanded ? 'px-6 py-6 space-y-8' : 'py-6 flex flex-col items-center'}`}>
         {selectedModule ? (
           layersExpanded ? (
             <>
@@ -233,6 +236,35 @@ export const PropertyInspector = ({
                   </div>
                 )}
               </div>
+
+              {/* PRODUCTS SECTION */}
+              {selectedModule.type === 'product-showcase' && (
+                <div className="space-y-4 pt-4 border-t border-text/5">
+                  <button 
+                    onClick={() => toggleSection('products')}
+                    className="w-full flex items-center justify-between group"
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className="p-1.5 bg-primary/10 rounded-lg text-primary">
+                        <Package className="w-3 h-3" />
+                      </div>
+                      <span className="text-[10px] font-black text-text/60 uppercase tracking-widest group-hover:text-primary transition-colors">
+                        Selección de Productos
+                      </span>
+                    </div>
+                    {expandedSections.products ? <ChevronDown className="w-3 h-3 text-text/30" /> : <ChevronRight className="w-3 h-3 text-text/30" />}
+                  </button>
+                  
+                  {expandedSections.products && (
+                    <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                      <ProductManager 
+                        data={selectedModule.data || {}}
+                        onUpdate={(newData) => onUpdate(selectedModule.id, newData)}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* SOCIAL NETWORKS SECTION */}
               {selectedModule.type === 'top-bar' && (

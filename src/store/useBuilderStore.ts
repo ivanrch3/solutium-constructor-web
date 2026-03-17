@@ -5,22 +5,22 @@ import { getModuleDefinition } from '../modules/registry';
 interface BuilderStore {
   // State
   projects: Project[];
-  activeProjectId: string | null;
-  activeAssetId: string | null;
+  active_project_id: string | null;
+  active_asset_id: string | null;
   modules: Module[];
-  isDirty: boolean;
-  isSaving: boolean;
-  lastSaved: Date | null;
-  selectedModuleId: string | null;
-  editingModuleId: string | null;
-  assetSettings: AssetSettings;
-  selectedProductIds: string[];
-  autoSaveInterval: number;
+  is_dirty: boolean;
+  is_saving: boolean;
+  last_saved: Date | null;
+  selected_module_id: string | null;
+  editing_module_id: string | null;
+  asset_settings: AssetSettings;
+  selected_product_ids: string[];
+  auto_save_interval: number;
   
   // Actions
   setProjects: (projects: Project[]) => void;
-  setActiveProject: (projectId: string) => void;
-  setActiveAsset: (assetId: string) => void;
+  setActiveProject: (project_id: string) => void;
+  setActiveAsset: (asset_id: string) => void;
   setModules: (modules: Module[]) => void;
   setAutoSaveInterval: (interval: number) => void;
   
@@ -28,7 +28,7 @@ interface BuilderStore {
   addModule: (type: string) => void;
   removeModule: (id: string) => void;
   updateModule: (id: string, data: any) => void;
-  reorderModules: (newModules: Module[]) => void;
+  reorderModules: (new_modules: Module[]) => void;
   
   // Selection Actions
   selectModule: (id: string | null) => void;
@@ -37,56 +37,57 @@ interface BuilderStore {
   // Settings Actions
   updateAssetSettings: (settings: Partial<AssetSettings>) => void;
   updateAssetName: (name: string) => void;
-  updateSelectedProducts: (productIds: string[]) => void;
+  update_selected_products: (product_ids: string[]) => void;
   
   // Save Actions
-  setDirty: (isDirty: boolean) => void;
-  setSaving: (isSaving: boolean) => void;
+  setDirty: (is_dirty: boolean) => void;
+  setSaving: (is_saving: boolean) => void;
   setLastSaved: (date: Date) => void;
 }
 
 export const useBuilderStore = create<BuilderStore>((set, get) => ({
   projects: [],
-  activeProjectId: null,
-  activeAssetId: null,
+  active_project_id: null,
+  active_asset_id: null,
   modules: [],
-  isDirty: false,
-  isSaving: false,
-  lastSaved: null,
-  selectedModuleId: null,
-  editingModuleId: null,
-  assetSettings: {
+  is_dirty: false,
+  is_saving: false,
+  last_saved: null,
+  selected_module_id: null,
+  editing_module_id: null,
+  asset_settings: {
     domain: '',
-    seoTitle: '',
-    seoDescription: '',
+    seo_title: '',
+    seo_description: '',
     tags: [],
-    pageLayout: 'seamless'
+    page_layout: 'seamless'
   },
-  selectedProductIds: [],
-  autoSaveInterval: 60000, // 1 minute default
+  selected_product_ids: [],
+  auto_save_interval: 60000, // 1 minute default
 
   setProjects: (projects) => set({ projects }),
   
-  setActiveProject: (projectId) => set({ activeProjectId: projectId }),
+  setActiveProject: (project_id) => set({ active_project_id: project_id }),
   
-  setActiveAsset: (assetId) => {
-    const { projects, activeProjectId } = get();
-    const project = projects.find(p => p.id === activeProjectId);
-    const asset = project?.assets?.find(a => a.id === assetId);
+  setActiveAsset: (asset_id) => {
+    const { projects, active_project_id } = get();
+    const project = projects.find(p => p.id === active_project_id);
+    const asset = project?.assets?.find(a => a.id === asset_id);
     
     set({ 
-      activeAssetId: assetId,
+      active_asset_id: asset_id,
       modules: asset?.modules || [],
-      assetSettings: asset?.settings || { domain: '', seoTitle: '', seoDescription: '', pageLayout: 'seamless' },
-      isDirty: false,
-      selectedModuleId: null,
-      editingModuleId: null
+      asset_settings: asset?.settings || { domain: '', seo_title: '', seo_description: '', page_layout: 'seamless' },
+      selected_product_ids: asset?.selected_product_ids || [],
+      is_dirty: false,
+      selected_module_id: null,
+      editing_module_id: null
     });
   },
 
   setModules: (modules) => set({ modules }),
 
-  setAutoSaveInterval: (interval) => set({ autoSaveInterval: interval }),
+  setAutoSaveInterval: (interval) => set({ auto_save_interval: interval }),
 
   addModule: (type) => {
     const def = getModuleDefinition(type);
@@ -101,18 +102,18 @@ export const useBuilderStore = create<BuilderStore>((set, get) => ({
     
     set((state) => ({
       modules: [...state.modules, newModule],
-      isDirty: true,
-      selectedModuleId: newModule.id,
-      editingModuleId: newModule.id
+      is_dirty: true,
+      selected_module_id: newModule.id,
+      editing_module_id: newModule.id
     }));
   },
 
   removeModule: (id) => {
     set((state) => ({
       modules: state.modules.filter(m => m.id !== id),
-      isDirty: true,
-      selectedModuleId: state.selectedModuleId === id ? null : state.selectedModuleId,
-      editingModuleId: state.editingModuleId === id ? null : state.editingModuleId
+      is_dirty: true,
+      selected_module_id: state.selected_module_id === id ? null : state.selected_module_id,
+      editing_module_id: state.editing_module_id === id ? null : state.editing_module_id
     }));
   },
 
@@ -121,46 +122,46 @@ export const useBuilderStore = create<BuilderStore>((set, get) => ({
       modules: state.modules.map(m => 
         m.id === id ? { ...m, data: { ...m.data, ...data } } : m
       ),
-      isDirty: true
+      is_dirty: true
     }));
   },
 
-  reorderModules: (newModules) => {
-    set({ modules: newModules, isDirty: true });
+  reorderModules: (new_modules) => {
+    set({ modules: new_modules, is_dirty: true });
   },
 
-  selectModule: (id) => set({ selectedModuleId: id }),
+  selectModule: (id) => set({ selected_module_id: id }),
   
-  editModule: (id) => set({ editingModuleId: id }),
+  editModule: (id) => set({ editing_module_id: id }),
 
   updateAssetSettings: (settings) => {
     set((state) => ({
-      assetSettings: { ...state.assetSettings, ...settings },
-      isDirty: true
+      asset_settings: { ...state.asset_settings, ...settings },
+      is_dirty: true
     }));
   },
 
   updateAssetName: (name) => {
-    const { projects, activeProjectId, activeAssetId } = get();
+    const { projects, active_project_id, active_asset_id } = get();
     const updatedProjects = projects.map(p => {
-      if (p.id === activeProjectId) {
+      if (p.id === active_project_id) {
         return {
           ...p,
           assets: p.assets.map(a => 
-            a.id === activeAssetId ? { ...a, name } : a
+            a.id === active_asset_id ? { ...a, name } : a
           )
         };
       }
       return p;
     });
-    set({ projects: updatedProjects, isDirty: true });
+    set({ projects: updatedProjects, is_dirty: true });
   },
 
-  updateSelectedProducts: (productIds) => {
-    set({ selectedProductIds: productIds, isDirty: true });
+  update_selected_products: (product_ids) => {
+    set({ selected_product_ids: product_ids, is_dirty: true });
   },
 
-  setDirty: (isDirty) => set({ isDirty }),
-  setSaving: (isSaving) => set({ isSaving }),
-  setLastSaved: (date) => set({ lastSaved: date })
+  setDirty: (is_dirty) => set({ is_dirty }),
+  setSaving: (is_saving) => set({ is_saving }),
+  setLastSaved: (date) => set({ last_saved: date })
 }));

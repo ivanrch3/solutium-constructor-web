@@ -1,6 +1,7 @@
 import React from 'react';
 import { Typography } from '../ui/Typography';
 import { ModuleWrapper } from '../ui/ModuleWrapper';
+import { usePageLayout } from '../../context/PageLayoutContext';
 
 interface StatsModuleProps {
   data: any;
@@ -8,6 +9,8 @@ interface StatsModuleProps {
 }
 
 export const StatsModule = ({ data, onUpdate }: StatsModuleProps) => {
+  const { previewDevice } = usePageLayout();
+  const is_mobile_simulated = previewDevice === 'mobile';
   const stats = data?.stats || [
     { val: '15k+', label: 'Usuarios' },
     { val: '40m', label: 'Ventas' },
@@ -40,13 +43,13 @@ export const StatsModule = ({ data, onUpdate }: StatsModuleProps) => {
     <ModuleWrapper 
       theme={data?.theme || 'dark'}
       background={data?.background}
-      className="bg-primary text-white"
+      className={data?.theme === 'light' ? 'bg-surface text-text' : 'bg-primary text-white'}
     >
       {data?.title && (
-        <div className="text-center mb-12">
+        <div className={`text-center ${is_mobile_simulated ? 'mb-8' : 'mb-12'}`}>
           <Typography
             variant="h2"
-            className="text-3xl font-black mb-4 text-white"
+            className={`${is_mobile_simulated ? 'text-2xl' : 'text-3xl'} font-black mb-4 text-white`}
             editable={!!onUpdate}
             onUpdate={(text) => handleTextUpdate('title', text)}
           >
@@ -54,12 +57,12 @@ export const StatsModule = ({ data, onUpdate }: StatsModuleProps) => {
           </Typography>
         </div>
       )}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+      <div className={`grid ${is_mobile_simulated ? 'grid-cols-1 gap-10' : 'grid-cols-2 md:grid-cols-4 gap-8'} text-center`}>
         {stats.map((stat: any, i: number) => (
           <div key={i}>
             <Typography
               variant="p"
-              className="text-4xl md:text-5xl font-black mb-2"
+              className={`${is_mobile_simulated ? 'text-4xl' : 'text-4xl md:text-5xl'} font-black mb-2`}
               editable={!!onUpdate}
               onUpdate={(text) => handleTextUpdate(`stats.${i}.val`, text)}
             >

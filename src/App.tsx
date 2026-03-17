@@ -14,7 +14,10 @@ import {
   Rocket,
   Package,
   Settings,
-  Menu
+  Menu,
+  Smartphone,
+  Tablet,
+  Monitor
 } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
 import { Sidebar } from './components/Sidebar';
@@ -129,17 +132,17 @@ function App() {
 
   const {
     projects,
-    activeProjectId,
-    activeAssetId,
+    active_project_id,
+    active_asset_id,
     modules,
-    isDirty,
-    isSaving,
-    lastSaved,
-    selectedModuleId,
-    editingModuleId,
-    assetSettings,
-    selectedProductIds,
-    autoSaveInterval,
+    is_dirty,
+    is_saving,
+    last_saved,
+    selected_module_id,
+    editing_module_id,
+    asset_settings,
+    selected_product_ids,
+    auto_save_interval,
     setProjects,
     setActiveProject,
     setActiveAsset,
@@ -153,7 +156,7 @@ function App() {
     editModule,
     updateAssetSettings,
     updateAssetName,
-    updateSelectedProducts,
+    update_selected_products,
     setDirty,
     setSaving,
     setLastSaved
@@ -163,24 +166,26 @@ function App() {
   const [activeTab, setActiveTab] = useState('builder');
   const [activeSettingsTab, setActiveSettingsTab] = useState<'general' | 'products' | 'domain'>('general');
   const [isPreviewMode, setIsPreviewMode] = useState(false);
+  const [previewDevice, setPreviewDevice] = useState<'mobile' | 'tablet' | 'desktop'>('desktop');
   const [showPicker, setShowPicker] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [publishStatus, setPublishStatus] = useState<'idle' | 'publishing' | 'success' | 'error'>('idle');
   const [hasInitializedProducts, setHasInitializedProducts] = useState(false);
   const [showSaveMessage, setShowSaveMessage] = useState(false);
+  const [lastSaveStatus, setLastSaveStatus] = useState<'borrador' | 'guardado'>('borrador');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [is_mobile_menu_open, set_is_mobile_menu_open] = useState(false);
   const [showWelcome, setShowWelcome] = useState(true);
   const [welcomeMode, setWelcomeMode] = useState<'project' | 'asset'>('asset');
-  const [isImagePickerOpen, setIsImagePickerOpen] = useState(false);
+  const [is_image_picker_open, set_is_image_picker_open] = useState(false);
   const [imagePickerCallback, setImagePickerCallback] = useState<((url: string) => void) | null>(null);
   const [moduleToDelete, setModuleToDelete] = useState<string | null>(null);
   // Initialize panels as pinned by default, resize handler will collapse on mobile
   const [isSidebarPinned, setIsSidebarPinned] = useState(true);
   const [isLayersHovered, setIsLayersHovered] = useState(false);
 
-  const activeProject = projects.find(p => p.id === (activeProjectId || config?.projectId)) || projects[0];
-  const activeAsset = activeProject?.assets?.find((a: any) => a.id === activeAssetId) || activeProject?.assets?.[0];
+  const active_project = projects.find(p => p.id === (active_project_id || config?.project_id)) || projects[0];
+  const active_asset = active_project?.assets?.find((a: any) => a.id === active_asset_id) || active_project?.assets?.[0];
 
   // Handle window resize to auto-collapse panels on mobile
   useEffect(() => {
@@ -201,51 +206,136 @@ function App() {
 
   // Load initial data if available
   useEffect(() => {
+    if (!config) return;
+
     if (projects.length === 0) {
-      let initialProjects = config?.projects || [];
+      // 1. Try to get projects from config.projects_data
+      let initialProjects = config.projects_data || [];
       
-      if (initialProjects.length === 0) {
-        initialProjects = [{
-          id: config?.projectId || 'dev-project-1',
-          name: config?.projectData?.name || 'Proyecto Local',
-          assets: []
-        }];
-      } else {
+      // 2. If we have projects, ensure they have the correct structure
+      if (initialProjects.length > 0) {
         initialProjects = initialProjects.map((p: any) => ({
           ...p,
-          name: config?.projectData?.name || 'Proyecto Local', // Hardcoded for testing phase
+          name: p.name || config.project_data?.name || 'Proyecto Local',
           assets: p.assets?.map((a: any) => ({
             ...a,
-            modules: a.modules || []
+            modules: a.modules || a.data?.modules || [],
+            settings: a.settings || a.data?.settings || { domain: '', seo_title: '', seo_description: '', page_layout: 'seamless' },
+            selected_product_ids: a.selected_product_ids || a.data?.selected_product_ids || []
           })) || []
         }));
+      } else {
+        // 3. Fallback to a default project if none found
+        initialProjects = [{
+          id: config.project_id || 'dev-project-1',
+          name: config.project_data?.name || 'Proyecto Local',
+          assets: []
+        }];
       }
-      
+
+      // 4. Handle top-level assets array if present in config
+      const topLevelAssets = (config as any).assets || [];
+      if (Array.isArray(topLevelAssets) && topLevelAssets.length > 0) {
+        topLevelAssets.forEach((asset: any) => {
+          const pId = asset.project_id || config.project_id || initialProjects[0].id;
+          initialProjects = initialProjects.map((p: any) => {
+            if (p.id === pId) {
+              const assetExists = p.assets.some((a: any) => a.id === asset.id);
+              if (!assetExists) {
+                return {
+                  ...p,
+                  assets: [...p.assets, {
+                    ...asset,
+                    modules: asset.modules || asset.data?.modules || [],
+                    settings: asset.settings || asset.data?.settings || { domain: '', seo_title: '', seo_description: '', page_layout: 'seamless' },
+                    selected_product_ids: asset.selected_product_ids || asset.data?.selected_product_ids || []
+                  }]
+                };
+              }
+            }
+            return p;
+          });
+        });
+      }
+
+      // 5. Handle current_asset if provided by mother app
+      if (config.current_asset) {
+        const asset = config.current_asset;
+        const pId = asset.project_id || config.project_id || initialProjects[0].id;
+        
+        let projectFound = false;
+        initialProjects = initialProjects.map((p: any) => {
+          if (p.id === pId) {
+            projectFound = true;
+            const assetExists = p.assets.some((a: any) => a.id === asset.id);
+            if (!assetExists) {
+              return {
+                ...p,
+                assets: [...p.assets, {
+                  ...asset,
+                  modules: asset.modules || asset.data?.modules || [],
+                  settings: asset.settings || asset.data?.settings || { domain: '', seo_title: '', seo_description: '', page_layout: 'seamless' },
+                  selected_product_ids: asset.selected_product_ids || asset.data?.selected_product_ids || []
+                }]
+              };
+            }
+          }
+          return p;
+        });
+
+        // If the asset belongs to a project not in the list, add it
+        if (!projectFound) {
+          initialProjects.push({
+            id: pId,
+            name: config.project_data?.name || 'Proyecto Externo',
+            assets: [{
+              ...asset,
+              modules: asset.modules || asset.data?.modules || [],
+              settings: asset.settings || asset.data?.settings || { domain: '', seo_title: '', seo_description: '', page_layout: 'seamless' },
+              selected_product_ids: asset.selected_product_ids || asset.data?.selected_product_ids || []
+            }]
+          });
+        }
+      }
+
       setProjects(initialProjects);
       
-      if (initialProjects[0]?.assets?.[0]?.modules?.length > 0 && modules.length === 0) {
-        setModules(initialProjects[0].assets[0].modules);
-        if (!activeProjectId) setActiveProject(initialProjects[0].id);
-        if (!activeAssetId) setActiveAsset(initialProjects[0].assets[0].id);
+      // 6. Auto-select first project and asset if none active
+      const firstProject = initialProjects[0];
+      if (firstProject) {
+        if (!active_project_id) setActiveProject(firstProject.id);
+        
+        const firstAsset = firstProject.assets?.[0];
+        if (firstAsset && !active_asset_id) {
+          setActiveAsset(firstAsset.id);
+          if (firstAsset.modules?.length > 0 && modules.length === 0) {
+            setModules(firstAsset.modules);
+          }
+        }
       }
     }
     
-    if (config?.productsData?.products && !hasInitializedProducts) {
-      updateSelectedProducts(config.productsData.products.map((p: any) => p.id.toString()));
+    if (config?.products_data && !hasInitializedProducts) {
+      update_selected_products(config.products_data.map((p: any) => p.id.toString()));
       setHasInitializedProducts(true);
     }
     
     // Initialize asset settings from config if they exist
-    if (activeAsset?.settings && !assetSettings.domain && !assetSettings.seoTitle) {
+    if (active_asset?.settings && !asset_settings.domain && !asset_settings.seo_title) {
       updateAssetSettings({
-        domain: activeAsset.settings.domain || '',
-        seoTitle: activeAsset.settings.seoTitle || '',
-        seoDescription: activeAsset.settings.seoDescription || ''
+        domain: active_asset.settings.domain || '',
+        seo_title: active_asset.settings.seo_title || '',
+        seo_description: active_asset.settings.seo_description || ''
       });
     }
-  }, [config, hasInitializedProducts, activeAsset]);
+  }, [config, hasInitializedProducts, active_asset]);
 
-  const handleSave = useCallback((status: 'borrador' | 'guardado' = 'borrador') => {
+  const handleSave = useCallback(async (status: 'borrador' | 'guardado' = 'borrador') => {
+    if (is_saving) return;
+    
+    setSaving(true);
+    setLastSaveStatus(status);
+    
     // 1. Recopila los datos de tu diseño (módulos, textos, etc.)
     const siteData = {
       modules: modules, // Tu estado con los módulos actuales
@@ -264,54 +354,60 @@ function App() {
     const message = {
       type: 'SOLUTIUM_SAVE',
       payload: {
-        projectId: config?.projectId,
-        appId: 'constructor-web',
+        project_id: config?.project_id,
+        asset_id: active_asset_id,
+        app_id: 'web-constructor',
         data: siteData,
         metadata: {
           status: status,
-          name: config?.projectData?.name,
-          thumbnail: "url_de_captura_opcional"
+          name: active_asset?.name || config?.project_data?.name,
+          tags: asset_settings.tags || [],
+          thumbnail: "https://solutium.app/logos-de-apps/solutium-constructor-web-isotipo.png"
         }
       }
     };
 
-    let sent = false;
-    if (window.opener) {
-      window.opener.postMessage(message, TARGET_ORIGIN);
-      sent = true;
-    }
-    
-    if (window.parent && window.parent !== window) {
-      window.parent.postMessage(message, TARGET_ORIGIN);
-      sent = true;
-    }
+    try {
+      let sent = false;
+      if (window.opener) {
+        window.opener.postMessage(message, TARGET_ORIGIN);
+        sent = true;
+      }
+      
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage(message, TARGET_ORIGIN);
+        sent = true;
+      }
 
-    if (sent) {
-      // alert("¡Cambios enviados a Solutium con éxito!");
-      setDirty(false);
-      setLastSaved(new Date());
-    } else {
-      console.error("No se pudo enviar el mensaje: no se encontró ventana padre ni opener.");
-      // alert("Error: No se detectó la App Madre conectada.");
+      if (sent) {
+        setDirty(false);
+        setLastSaved(new Date());
+      } else {
+        console.error("No se pudo enviar el mensaje: no se encontró ventana padre ni opener.");
+      }
+    } catch (error) {
+      console.error("Error al guardar:", error);
+    } finally {
+      setSaving(false);
     }
-  }, [modules, config, setDirty, setLastSaved]);
+  }, [modules, config, is_saving, setSaving, setDirty, setLastSaved, active_asset, active_asset_id, asset_settings]);
 
   // Auto-save logic
   useEffect(() => {
-    if (!isDirty || isSaving) return;
+    if (!is_dirty || is_saving) return;
 
     const timer = setTimeout(() => {
       handleSave('borrador');
-    }, autoSaveInterval);
+    }, auto_save_interval);
 
     return () => clearTimeout(timer);
-  }, [isDirty, isSaving, modules, selectedProductIds, assetSettings, handleSave, autoSaveInterval]);
+  }, [is_dirty, is_saving, modules, selected_product_ids, asset_settings, handleSave, auto_save_interval]);
 
   const handleAddModule = (type: string) => {
     addModule(type);
     setWelcomeMode('asset');
     setShowPicker(false);
-    setIsMobileMenuOpen(false);
+    set_is_mobile_menu_open(false);
     
     // Scroll to the new module (which is added at the end)
     setTimeout(() => {
@@ -337,7 +433,7 @@ function App() {
   const handleImageSelect = (imageUrl: string) => {
     if (imagePickerCallback) {
       imagePickerCallback(imageUrl);
-      setIsImagePickerOpen(false);
+      set_is_image_picker_open(false);
       setImagePickerCallback(null);
     }
   };
@@ -350,8 +446,8 @@ function App() {
 
     setIsGenerating(true);
     
-    const projId = targetProjectId || activeProjectId;
-    const assId = targetAssetId || activeAssetId;
+    const projId = targetProjectId || active_project_id;
+    const assId = targetAssetId || active_asset_id;
     const pList = currentProjectsList || projects;
 
     const saveGeneratedModules = (generated: any[]) => {
@@ -387,7 +483,7 @@ function App() {
       const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
       const model = "gemini-3-flash-preview";
       
-      const businessName = customName || activeProject?.name || config?.projectData?.name || 'Proyecto Local';
+      const businessName = customName || active_project?.name || config?.project_data?.name || 'Proyecto Local';
       const pageName = assetName || 'Inicio';
       const businessContext = pageDescription ? `El negocio se dedica a: "${pageDescription}".` : '';
       
@@ -447,7 +543,7 @@ function App() {
     } catch (error) {
       console.error("Error generating AI content:", error);
       // Fallback to mock data if AI fails
-      const businessName = customName || activeProject?.name || config?.projectData?.name || 'Proyecto Local';
+      const businessName = customName || active_project?.name || config?.project_data?.name || 'Proyecto Local';
       const pageName = assetName || 'Inicio';
       const aiModules = [
         { id: 'ai-top', type: 'top-bar', data: { message: '¡Bienvenidos a ' + businessName + '!' } },
@@ -471,23 +567,23 @@ function App() {
     // Save data with 'published' status
     saveData({ 
       modules, 
-      selectedProductIds, 
-      settings: assetSettings,
-      assetId: activeAssetId,
-      projectId: activeProjectId,
+      selected_product_ids, 
+      settings: asset_settings,
+      asset_id: active_asset_id,
+      project_id: active_project_id,
       version: 'published-' + Date.now(),
       projects: projects
     }, {
       status: 'published',
       tags: ['Landing Page', 'Publicado'],
-      author: config?.userProfile?.name || 'Usuario',
-      updatedAt: Date.now()
+      author: config?.user_profile?.full_name || 'Usuario',
+      updated_at: Date.now()
     });
 
     await new Promise(resolve => setTimeout(resolve, 2500));
     
     // Simulate validation: check if domain is configured (mock check)
-    const hasDomain = config?.projectId !== 'dev-project-1'; 
+    const hasDomain = config?.project_id !== 'dev-project-1'; 
     
     if (hasDomain) {
       setPublishStatus('success');
@@ -516,19 +612,19 @@ function App() {
       document.documentElement.style.setProperty('--color-secondary-rgb', hexToRgb(palette.secondary));
     }
     
-    let currentProjectId = activeProjectId || config?.projectId || projects[0]?.id || 'dev-project-1';
+    let currentProjectId = active_project_id || config?.project_id || projects[0]?.id || 'dev-project-1';
     let currentProjectsList = [...projects];
 
     // Ensure project exists in list
     if (!currentProjectsList.find(p => p.id === currentProjectId)) {
       currentProjectsList.push({
         id: currentProjectId,
-        name: config?.projectData?.name || 'Proyecto Local',
+        name: config?.project_data?.name || 'Proyecto Local',
         assets: []
       });
     }
 
-    const finalProjectName = config?.projectData?.name || 'Proyecto Local';
+    const finalProjectName = config?.project_data?.name || 'Proyecto Local';
     const finalAssetName = pageName;
     const newAssetId = 'asset-' + Math.random().toString(36).substr(2, 5);
 
@@ -539,8 +635,8 @@ function App() {
       modules: [],
       settings: {
         domain: '',
-        seoTitle: finalAssetName + ' | ' + finalProjectName,
-        seoDescription: pageDescription || `Bienvenido a ${finalAssetName}`
+        seo_title: finalAssetName + ' | ' + finalProjectName,
+        seo_description: pageDescription || `Bienvenido a ${finalAssetName}`
       }
     };
 
@@ -650,7 +746,7 @@ function App() {
   };
 
   const handleCreateNewAssetClick = () => {
-    if (isDirty) {
+    if (is_dirty) {
       if (!window.confirm('Tienes cambios sin guardar en el proyecto actual. ¿Estás seguro de que quieres crear una nueva página y perder los cambios no guardados?')) {
         return;
       }
@@ -673,22 +769,22 @@ function App() {
     }
   };
 
-  const handleSelectAsset = (assetId: string, projectId: string) => {
-    if (isDirty) {
+  const handleSelectAsset = (asset_id: string, project_id: string) => {
+    if (is_dirty) {
       if (!window.confirm('Tienes cambios sin guardar en el activo actual. ¿Estás seguro de que quieres cambiar de página y perder los cambios no guardados?')) {
         return;
       }
     }
     
-    if (projectId !== activeProjectId) {
-      setActiveProject(projectId);
+    if (project_id !== active_project_id) {
+      setActiveProject(project_id);
     }
     
-    setActiveAsset(assetId);
+    setActiveAsset(asset_id);
   };
 
   const handleSelectModule = (id: string | null, source: 'canvas' | 'structure' = 'canvas') => {
-    const isAlreadySelected = id === selectedModuleId;
+    const isAlreadySelected = id === selected_module_id;
     
     // If clicking from structure and it's already selected, we still want to trigger the panel switch
     // so we don't return early here if we want the "collapse structure" behavior to work
@@ -734,7 +830,7 @@ function App() {
   };
 
   if (!isReady) {
-    return <LoadingView projectName={config?.projectData?.name} onSimulateConnection={simulateConnection} />;
+    return <LoadingView projectName={config?.project_data?.name} onSimulateConnection={simulateConnection} />;
   }
 
   if (showWelcome) {
@@ -743,19 +839,56 @@ function App() {
         onSelectOption={handleWelcomeOption} 
         onSelectProject={handleSelectProject}
         projects={projects}
-        title={config?.projectData?.name || 'Proyecto'}
-        brandColors={config?.projectData?.colors}
+        title={config?.project_data?.name || 'Proyecto'}
+        brandColors={config?.project_data?.colors}
       />
     );
   }
 
   return (
     <div className={`h-screen flex font-sans relative ${isPreviewMode ? 'overflow-x-hidden' : ''} ${
-      assetSettings.pageLayout === 'seamless' ? 'bg-surface' : 'bg-background'
+      asset_settings.page_layout === 'seamless' ? 'bg-surface' : 'bg-background'
     }`}>
-      {/* Exit Preview Button */}
+      {/* Exit Preview Button & Device Switcher */}
       {isPreviewMode && (
-        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100]">
+        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100] flex flex-col items-center gap-4">
+          {/* Device Switcher */}
+          <div className="flex items-center gap-1 p-1.5 bg-text/90 backdrop-blur-md rounded-2xl shadow-2xl border border-white/10">
+            <button
+              onClick={() => setPreviewDevice('mobile')}
+              className={`p-2.5 rounded-xl transition-all ${
+                previewDevice === 'mobile' 
+                  ? 'bg-primary text-white shadow-lg' 
+                  : 'text-white/40 hover:text-white/70 hover:bg-white/5'
+              }`}
+              title="Vista Móvil"
+            >
+              <Smartphone className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => setPreviewDevice('tablet')}
+              className={`p-2.5 rounded-xl transition-all ${
+                previewDevice === 'tablet' 
+                  ? 'bg-primary text-white shadow-lg' 
+                  : 'text-white/40 hover:text-white/70 hover:bg-white/5'
+              }`}
+              title="Vista Tablet"
+            >
+              <Tablet className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => setPreviewDevice('desktop')}
+              className={`p-2.5 rounded-xl transition-all ${
+                previewDevice === 'desktop' 
+                  ? 'bg-primary text-white shadow-lg' 
+                  : 'text-white/40 hover:text-white/70 hover:bg-white/5'
+              }`}
+              title="Vista Escritorio"
+            >
+              <Monitor className="w-5 h-5" />
+            </button>
+          </div>
+
           <button 
             onClick={() => setIsPreviewMode(false)}
             className="flex items-center gap-2 px-6 py-3 bg-[#FF0080] text-white font-bold rounded-2xl shadow-2xl hover:opacity-90 transition-all group"
@@ -768,12 +901,12 @@ function App() {
 
       {/* Mobile Overlay */}
       <AnimatePresence>
-        {isMobileMenuOpen && !isPreviewMode && (
+        {is_mobile_menu_open && !isPreviewMode && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={() => setIsMobileMenuOpen(false)}
+            onClick={() => set_is_mobile_menu_open(false)}
             className="fixed inset-0 bg-text/40 backdrop-blur-sm z-40 lg:hidden"
           />
         )}
@@ -782,14 +915,14 @@ function App() {
       <div className={`
         fixed inset-y-0 left-0 z-[90] lg:relative lg:z-[90] transition-transform duration-300 transform
         ${isPreviewMode ? '-translate-x-full lg:hidden' : ''}
-        ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+        ${is_mobile_menu_open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
         <Sidebar 
           config={config} 
           activeTab={activeTab} 
           setActiveTab={(tab) => {
             setActiveTab(tab);
-            setIsMobileMenuOpen(false);
+            set_is_mobile_menu_open(false);
           }} 
           isCollapsed={isSidebarCollapsed}
           onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
@@ -797,13 +930,14 @@ function App() {
           onGoHome={() => setShowWelcome(true)}
           onGenerateAI={() => handleGenerateAI()}
           projects={projects}
-          activeProjectId={activeProjectId || config?.projectId || (projects[0]?.id)}
+          active_project_id={active_project_id || config?.project_id || (projects[0]?.id)}
           onSelectProject={handleSelectProject}
-          activeAssetId={activeAssetId}
+          active_asset_id={active_asset_id}
           onSelectAsset={handleSelectAsset}
           onCreateAsset={handleCreateNewAssetClick}
           showSaveMessage={showSaveMessage}
-          assetSettings={assetSettings}
+          lastSaveStatus={lastSaveStatus}
+          asset_settings={asset_settings}
           onUpdateSettings={updateAssetSettings}
         />
       </div>
@@ -816,15 +950,15 @@ function App() {
           onRemove={handleRemoveModule}
           onSelect={handleSelectModule}
           onEdit={handleEditModule}
-          selectedModuleId={selectedModuleId}
-          editingModuleId={editingModuleId}
+          selected_module_id={selected_module_id}
+          editing_module_id={editing_module_id}
           sidebarCollapsed={isSidebarCollapsed}
           isPinned={isSidebarPinned}
           onTogglePin={() => setIsSidebarPinned(!isSidebarPinned)}
           updateModule={updateModule}
           onOpenImagePicker={(callback) => {
             setImagePickerCallback(() => callback);
-            setIsImagePickerOpen(true);
+            set_is_image_picker_open(true);
           }}
         />
       )}
@@ -832,12 +966,22 @@ function App() {
       <main className="flex-1 flex flex-col h-screen overflow-hidden">
         {/* Content Area */}
         <div className={`flex-1 overflow-y-auto custom-scrollbar transition-all duration-500 ${
-          isPreviewMode || assetSettings.pageLayout === 'seamless' 
+          isPreviewMode || asset_settings.page_layout === 'seamless' 
             ? 'p-0 bg-surface' 
             : 'p-4 md:p-8 lg:p-10 bg-background'
         }`}>
-          <AnimatePresence>
-            {publishStatus === 'success' && (
+          <div className={`transition-all duration-500 mx-auto ${
+            isPreviewMode && previewDevice === 'mobile' ? 'max-w-[375px] my-12 border-[12px] border-text/90 rounded-[3rem] shadow-2xl h-[760px] bg-white overflow-y-auto custom-scrollbar relative' :
+            isPreviewMode && previewDevice === 'tablet' ? 'max-w-[768px] my-12 border-[12px] border-text/90 rounded-[2.5rem] shadow-2xl h-[1024px] bg-white overflow-y-auto custom-scrollbar relative' :
+            'w-full'
+          }`}>
+            {isPreviewMode && previewDevice !== 'desktop' && (
+              <div className="sticky top-0 left-0 right-0 h-6 bg-text/90 z-[50] flex items-center justify-center">
+                <div className="w-20 h-1.5 bg-white/20 rounded-full" />
+              </div>
+            )}
+            <AnimatePresence>
+              {publishStatus === 'success' && (
               <motion.div 
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -873,14 +1017,17 @@ function App() {
           </AnimatePresence>
 
           {activeTab === 'builder' && (
-            <PageLayoutProvider pageLayout={assetSettings.pageLayout || 'seamless'}>
+            <PageLayoutProvider 
+              page_layout={asset_settings.page_layout || 'seamless'}
+              previewDevice={isPreviewMode ? previewDevice : 'desktop'}
+            >
               <BuilderView
                 isPreviewMode={isPreviewMode}
                 setIsPreviewMode={setIsPreviewMode}
-                setIsMobileMenuOpen={setIsMobileMenuOpen}
+                set_is_mobile_menu_open={set_is_mobile_menu_open}
                 handleSave={() => handleSave('guardado')}
-                isSaving={isSaving}
-                isDirty={isDirty}
+                is_saving={is_saving}
+                is_dirty={is_dirty}
                 handlePublish={handlePublish}
                 publishStatus={publishStatus}
                 modules={modules}
@@ -889,29 +1036,31 @@ function App() {
                 updateModule={updateModule}
                 handleSelectModule={handleSelectModule}
                 handleEditModule={handleEditModule}
-                selectedModuleId={selectedModuleId}
+                selected_module_id={selected_module_id}
                 setImagePickerCallback={setImagePickerCallback}
-                setIsImagePickerOpen={setIsImagePickerOpen}
+                set_is_image_picker_open={set_is_image_picker_open}
                 config={config}
-                selectedProductIds={selectedProductIds}
-                pageLayout={assetSettings.pageLayout || 'seamless'}
+                selected_product_ids={selected_product_ids}
+                page_layout={asset_settings.page_layout || 'seamless'}
               />
             </PageLayoutProvider>
           )}
 
           {activeTab === 'settings' && (
             <SettingsView
-              activeProject={activeProject}
-              activeAsset={activeAsset}
+              active_project={active_project}
+              active_asset={active_asset}
               config={config}
-              assetSettings={assetSettings}
-              selectedProductIds={selectedProductIds}
+              asset_settings={asset_settings}
+              selected_product_ids={selected_product_ids}
               updateAssetSettings={updateAssetSettings}
               updateAssetName={updateAssetName}
-              updateSelectedProducts={updateSelectedProducts}
+              update_selected_products={update_selected_products}
               setActiveTab={setActiveTab}
               handleSave={() => handleSave('guardado')}
-              autoSaveInterval={autoSaveInterval}
+              is_saving={is_saving}
+              is_dirty={is_dirty}
+              auto_save_interval={auto_save_interval}
               setAutoSaveInterval={setAutoSaveInterval}
             />
           )}
@@ -919,6 +1068,7 @@ function App() {
           {activeTab === 'data-audit' && (
             <DataAuditView config={config} />
           )}
+          </div>
         </div>
       </main>
 
@@ -1004,8 +1154,8 @@ function App() {
 
       {/* Image Picker Modal */}
       <ImagePicker 
-        isOpen={isImagePickerOpen}
-        onClose={() => setIsImagePickerOpen(false)}
+        is_open={is_image_picker_open}
+        onClose={() => set_is_image_picker_open(false)}
         onSelect={handleImageSelect}
       />
     </div>

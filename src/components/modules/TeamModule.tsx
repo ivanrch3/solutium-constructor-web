@@ -1,6 +1,7 @@
 import React from 'react';
 import { Typography } from '../ui/Typography';
 import { ModuleWrapper } from '../ui/ModuleWrapper';
+import { usePageLayout } from '../../context/PageLayoutContext';
 
 interface TeamModuleProps {
   data: any;
@@ -8,6 +9,8 @@ interface TeamModuleProps {
 }
 
 export const TeamModule = ({ data, onUpdate }: TeamModuleProps) => {
+  const { previewDevice } = usePageLayout();
+  const is_mobile_simulated = previewDevice === 'mobile';
   const items = data?.items || [
     { name: 'Nombre Apellido', role: 'Cargo / Especialidad', image: '' },
     { name: 'Nombre Apellido', role: 'Cargo / Especialidad', image: '' },
@@ -45,10 +48,10 @@ export const TeamModule = ({ data, onUpdate }: TeamModuleProps) => {
       background={data?.background}
       className="rounded-2xl border border-current/10"
     >
-      <div className="text-center mb-16">
+      <div className={`text-center ${is_mobile_simulated ? 'mb-10' : 'mb-16'}`}>
         <Typography
           variant="h2"
-          className="text-3xl font-bold mb-4"
+          className={`${is_mobile_simulated ? 'text-2xl' : 'text-3xl'} font-bold mb-4`}
           editable={!!onUpdate}
           onUpdate={(text) => handleTextUpdate('title', text)}
         >
@@ -63,10 +66,10 @@ export const TeamModule = ({ data, onUpdate }: TeamModuleProps) => {
           {data?.subtitle || 'Profesionales apasionados por la tecnología y el diseño.'}
         </Typography>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8">
+      <div className={`grid ${is_mobile_simulated ? 'grid-cols-1 gap-10' : 'grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8'}`}>
         {items.map((item: any, i: number) => (
           <div key={i} className="text-center group">
-            <div className="aspect-square bg-current/5 rounded-3xl mb-4 overflow-hidden grayscale group-hover:grayscale-0 transition-all duration-500">
+            <div className={`aspect-square bg-current/5 ${is_mobile_simulated ? 'rounded-2xl' : 'rounded-3xl'} mb-4 overflow-hidden grayscale group-hover:grayscale-0 transition-all duration-500`}>
               <img src={item.image || `https://picsum.photos/seed/team${i}/400/400`} alt={item.name || "Team Member"} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
             </div>
             <Typography

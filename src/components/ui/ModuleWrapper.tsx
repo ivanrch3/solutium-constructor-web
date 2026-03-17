@@ -77,7 +77,7 @@ export const ModuleWrapper = ({
     opacity: overlayOpacity
   };
 
-  const paddingClass = noPadding ? '' : isBento ? 'py-16 px-6 md:px-8' : isSnap || isSplit ? 'py-20 px-6 md:px-10' : 'py-24 px-6 md:px-10';
+  const paddingClass = noPadding ? '' : isBento ? 'py-12 md:py-16 px-6 md:px-8' : isSnap || isSplit ? 'py-16 md:py-20 px-6 md:px-10' : 'py-12 md:py-24 px-6 md:px-10';
 
   return (
     <ScrollAnimation 

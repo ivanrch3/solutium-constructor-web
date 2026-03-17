@@ -15,13 +15,14 @@ interface SidebarProps {
   onGoHome: () => void;
   onGenerateAI: () => void;
   projects: any[];
-  activeProjectId: string | null;
+  active_project_id: string | null;
   onSelectProject: (id: string) => void;
-  activeAssetId: string | null;
-  onSelectAsset: (assetId: string, projectId: string) => void;
+  active_asset_id: string | null;
+  onSelectAsset: (asset_id: string, project_id: string) => void;
   onCreateAsset: () => void;
   showSaveMessage: boolean;
-  assetSettings: AssetSettings;
+  lastSaveStatus: 'borrador' | 'guardado';
+  asset_settings: AssetSettings;
   onUpdateSettings: (settings: Partial<AssetSettings>) => void;
 }
 
@@ -35,38 +36,39 @@ export const Sidebar = ({
   onGoHome, 
   onGenerateAI,
   projects,
-  activeProjectId,
+  active_project_id,
   onSelectProject,
-  activeAssetId,
+  active_asset_id,
   onSelectAsset,
   onCreateAsset,
   showSaveMessage,
-  assetSettings,
+  lastSaveStatus,
+  asset_settings,
   onUpdateSettings
 }: SidebarProps) => {
   const [isBuilderExpanded, setIsBuilderExpanded] = useState(true);
   const [isDesignExpanded, setIsDesignExpanded] = useState(false);
   const [isProjectMenuOpen, setIsProjectMenuOpen] = useState(false);
-  const [expandedProjectId, setExpandedProjectId] = useState<string | null>(activeProjectId);
+  const [expanded_project_id, setExpandedProjectId] = useState<string | null>(active_project_id);
 
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
 
   // Update expanded project when active project changes
   useEffect(() => {
-    if (activeProjectId) {
-      setExpandedProjectId(activeProjectId);
+    if (active_project_id) {
+      setExpandedProjectId(active_project_id);
     }
-  }, [activeProjectId]);
+  }, [active_project_id]);
 
-  const activeProject = projects.find(p => p.id === activeProjectId) || projects[0];
-  const activeAsset = activeProject?.assets?.find((a: any) => a.id === activeAssetId) || activeProject?.assets?.[0];
+  const active_project = projects.find(p => p.id === active_project_id) || projects[0];
+  const active_asset = active_project?.assets?.find((a: any) => a.id === active_asset_id) || active_project?.assets?.[0];
 
-  const handleProjectClick = (projectId: string) => {
-    setExpandedProjectId(expandedProjectId === projectId ? null : projectId);
+  const handleProjectClick = (project_id: string) => {
+    setExpandedProjectId(expanded_project_id === project_id ? null : project_id);
   };
 
-  const handleAssetSelect = (projectId: string, assetId: string) => {
-    onSelectAsset(assetId, projectId);
+  const handleAssetSelect = (project_id: string, asset_id: string) => {
+    onSelectAsset(asset_id, project_id);
     setIsProjectMenuOpen(false);
   };
 
@@ -158,15 +160,15 @@ export const Sidebar = ({
               {designOptions.slice(0, 7).map((option) => (
                 <button
                   key={option.id}
-                  onClick={() => onUpdateSettings({ pageLayout: option.id })}
+                  onClick={() => onUpdateSettings({ page_layout: option.id })}
                   className={`w-full flex flex-col items-start text-left px-4 py-3 rounded-xl transition-all ${
-                    assetSettings.pageLayout === option.id
+                    asset_settings.page_layout === option.id
                       ? 'bg-primary text-white shadow-md'
                       : 'text-text/60 hover:bg-background hover:text-text/80'
                   }`}
                 >
                   <span className="text-sm font-bold text-left">{option.label}</span>
-                  <span className={`text-[10px] text-left leading-tight mt-1 ${assetSettings.pageLayout === option.id ? 'text-white/70' : 'text-text/40'}`}>
+                  <span className={`text-[10px] text-left leading-tight mt-1 ${asset_settings.page_layout === option.id ? 'text-white/70' : 'text-text/40'}`}>
                     {option.description}
                   </span>
                 </button>
@@ -285,7 +287,7 @@ export const Sidebar = ({
             onClick={onGenerateAI}
             title={isCollapsed ? 'Generar con IA' : ''}
             style={{
-              background: `linear-gradient(135deg, ${config?.projectData?.colors?.[0] || '#3B82F6'}, ${config?.projectData?.colors?.[1] || '#1E293B'})`
+              background: `linear-gradient(135deg, ${config?.project_data?.colors?.[0] || '#3B82F6'}, ${config?.project_data?.colors?.[1] || '#1E293B'})`
             }}
             className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'justify-center gap-3 px-4'} py-3 rounded-xl text-white hover:opacity-90 transition-all group/ai shadow-md`}
           >
@@ -306,11 +308,11 @@ export const Sidebar = ({
                   className="w-full flex flex-col items-start gap-0.5 p-3 bg-background border border-text/10 rounded-xl hover:border-primary/30 hover:bg-surface transition-all group/btn shadow-sm"
                 >
                   <span className="text-sm font-black text-text truncate w-full text-left">
-                    {activeAsset?.name || 'Seleccionar activo'}
+                    {active_asset?.name || 'Seleccionar activo'}
                   </span>
                   <div className="flex items-center justify-between w-full mt-0.5">
                     <span className="text-[10px] font-medium text-text/40 tracking-tight text-left">
-                      Proyecto: <span className="text-text/60">{activeProject?.name}</span>
+                      Proyecto: <span className="text-text/60">{active_project?.name}</span>
                     </span>
                     <ChevronDown className={`w-3 h-3 text-text/30 transition-transform ${isProjectMenuOpen ? 'rotate-180' : ''}`} />
                   </div>
@@ -327,33 +329,33 @@ export const Sidebar = ({
                             <button
                               onClick={() => handleProjectClick(project.id)}
                               className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all ${
-                                expandedProjectId === project.id 
+                                expanded_project_id === project.id 
                                   ? 'bg-primary/5 text-primary' 
                                   : 'text-text/60 hover:bg-background'
                               }`}
                             >
                               <div className="flex items-center gap-2">
-                                <div className={`w-1.5 h-1.5 rounded-full ${project.id === activeProject.id ? 'bg-primary' : 'bg-text/30'}`} />
+                                <div className={`w-1.5 h-1.5 rounded-full ${project.id === active_project.id ? 'bg-primary' : 'bg-text/30'}`} />
                                 <span className="truncate">{project.name}</span>
                               </div>
-                              <ChevronDown className={`w-3 h-3 transition-transform ${expandedProjectId === project.id ? 'rotate-180' : ''}`} />
+                              <ChevronDown className={`w-3 h-3 transition-transform ${expanded_project_id === project.id ? 'rotate-180' : ''}`} />
                             </button>
 
                             {/* Assets Accordion Content */}
-                            {expandedProjectId === project.id && (
+                            {expanded_project_id === project.id && (
                               <div className="pl-6 pr-2 py-1 space-y-1 animate-in slide-in-from-top-1 duration-200">
                                 {project.assets?.map((asset: any) => (
                                   <button
                                     key={asset.id}
                                     onClick={() => handleAssetSelect(project.id, asset.id)}
                                     className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-[11px] font-bold transition-all ${
-                                      activeAssetId === asset.id && project.id === activeProject.id
+                                      active_asset_id === asset.id && project.id === active_project.id
                                         ? 'bg-primary text-white' 
                                         : 'text-text/60 hover:bg-primary/5 hover:text-primary'
                                     }`}
                                   >
                                     <span>{asset.name}</span>
-                                    {activeAssetId === asset.id && project.id === activeProject.id && <Rocket className="w-3 h-3" />}
+                                    {active_asset_id === asset.id && project.id === active_project.id && <Rocket className="w-3 h-3" />}
                                   </button>
                                 ))}
                                 
@@ -383,9 +385,11 @@ export const Sidebar = ({
         )}
         
         <div className={`fixed bottom-6 left-6 z-[100] transition-all duration-500 transform ${showSaveMessage ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}>
-          <div className="bg-emerald-500 text-white px-4 py-2 rounded-xl shadow-2xl shadow-emerald-500/20 flex items-center gap-2 border border-emerald-400/20">
+          <div className={`${lastSaveStatus === 'guardado' ? 'bg-emerald-500 shadow-emerald-500/20' : 'bg-amber-500 shadow-amber-500/20'} text-white px-4 py-2 rounded-xl shadow-2xl flex items-center gap-2 border border-white/20`}>
             <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
-            <span className="text-xs font-black uppercase tracking-widest">Página guardada</span>
+            <span className="text-xs font-black uppercase tracking-widest">
+              {lastSaveStatus === 'guardado' ? 'Página guardada' : 'Borrador guardado'}
+            </span>
           </div>
         </div>
       </div>

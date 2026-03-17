@@ -8,10 +8,10 @@ export type PageLayout = 'windows' | 'seamless' | 'layered' | 'bento' | 'snap' |
 
 export interface AssetSettings {
   domain: string;
-  seoTitle: string;
-  seoDescription: string;
+  seo_title: string;
+  seo_description: string;
   tags?: string[];
-  pageLayout?: PageLayout;
+  page_layout?: PageLayout;
 }
 
 export interface Asset {
@@ -19,6 +19,7 @@ export interface Asset {
   name: string;
   modules: Module[];
   settings?: AssetSettings;
+  selected_product_ids?: string[];
 }
 
 export interface Project {
@@ -29,14 +30,14 @@ export interface Project {
 
 export interface BuilderState {
   projects: Project[];
-  activeProjectId: string | null;
-  activeAssetId: string | null;
+  active_project_id: string | null;
+  active_asset_id: string | null;
   modules: Module[];
-  isDirty: boolean;
-  isSaving: boolean;
-  lastSaved: Date | null;
-  selectedModuleId: string | null;
-  editingModuleId: string | null;
-  assetSettings: AssetSettings;
-  selectedProductIds: string[];
+  is_dirty: boolean;
+  is_saving: boolean;
+  last_saved: Date | null;
+  selected_module_id: string | null;
+  editing_module_id: string | null;
+  asset_settings: AssetSettings;
+  selected_product_ids: string[];
 }

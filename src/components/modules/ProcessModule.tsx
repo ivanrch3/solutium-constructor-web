@@ -1,6 +1,7 @@
 import React from 'react';
 import { Typography } from '../ui/Typography';
 import { ModuleWrapper } from '../ui/ModuleWrapper';
+import { usePageLayout } from '../../context/PageLayoutContext';
 
 interface ProcessModuleProps {
   data: any;
@@ -8,6 +9,8 @@ interface ProcessModuleProps {
 }
 
 export const ProcessModule = ({ data, onUpdate }: ProcessModuleProps) => {
+  const { previewDevice } = usePageLayout();
+  const is_mobile_simulated = previewDevice === 'mobile';
   const steps = data?.steps || [
     { step: '01', title: 'Regístrate', desc: 'Crea tu cuenta en segundos y accede al panel.' },
     { step: '02', title: 'Configura', desc: 'Personaliza tus preferencias y sincroniza tus datos.' },
@@ -40,10 +43,10 @@ export const ProcessModule = ({ data, onUpdate }: ProcessModuleProps) => {
       theme={data?.theme || 'dark'}
       background={data?.background}
     >
-      <div className="text-center max-w-3xl mx-auto mb-16">
+      <div className={`text-center max-w-3xl mx-auto ${is_mobile_simulated ? 'mb-10' : 'mb-16'}`}>
         <Typography
           variant="h2"
-          className="text-4xl font-black mb-4"
+          className={`${is_mobile_simulated ? 'text-3xl' : 'text-4xl'} font-black mb-4`}
           editable={!!onUpdate}
           onUpdate={(text) => handleTextUpdate('title', text)}
         >
@@ -58,11 +61,13 @@ export const ProcessModule = ({ data, onUpdate }: ProcessModuleProps) => {
           {data?.subtitle || 'Un proceso simple y transparente diseñado para tu comodidad.'}
         </Typography>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-12 relative">
-        <div className="hidden md:block absolute top-12 left-1/4 right-1/4 h-px bg-gradient-to-r from-transparent via-current/20 to-transparent" />
+      <div className={`grid ${is_mobile_simulated ? 'grid-cols-1 gap-10' : 'md:grid-cols-3 gap-12'} relative`}>
+        {!is_mobile_simulated && (
+          <div className="hidden md:block absolute top-12 left-1/4 right-1/4 h-px bg-gradient-to-r from-transparent via-current/20 to-transparent" />
+        )}
         {steps.map((item: any, i: number) => (
           <div key={i} className="relative text-center group">
-            <div className="w-24 h-24 bg-current/5 rounded-[2rem] flex items-center justify-center text-3xl font-black text-primary mb-8 mx-auto border border-current/10 group-hover:bg-primary group-hover:text-white transition-all duration-500">
+            <div className={`${is_mobile_simulated ? 'w-20 h-20 text-2xl' : 'w-24 h-24 text-3xl'} bg-current/5 rounded-[2rem] flex items-center justify-center font-black text-primary mb-6 md:mb-8 mx-auto border border-current/10 group-hover:bg-primary group-hover:text-white transition-all duration-500`}>
               <Typography
                 variant="span"
                 editable={!!onUpdate}

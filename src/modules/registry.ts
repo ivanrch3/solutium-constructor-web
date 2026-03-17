@@ -6,7 +6,6 @@ import {
   Type as TypeIcon, 
   List, 
   CheckCircle, 
-  DollarSign, 
   Users, 
   HelpCircle, 
   Mail, 
@@ -67,21 +66,21 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
       message_style: { align: 'center', size: 'small', weight: '600' },
       icon: 'Megaphone',
       link: { text: 'Comprar ahora', url: '#', target: '_self' },
-      showSocial: true,
+      show_social: true,
       theme: 'dark',
-      smartMode: true,
-      backgroundColor: '',
-      textColor: '',
+      smart_mode: true,
+      background_color: '',
+      text_color: '',
       padding: 'normal',
-      isSticky: false,
-      isDismissible: true,
+      is_sticky: false,
+      is_dismissible: true,
       visibility: 'all'
     },
     schema: [
       { name: 'message', label: 'Mensaje Principal', type: 'text', category: 'content' },
       ...TYPOGRAPHY_PROPS('message', 'Estilo del Mensaje'),
       { 
-        name: 'advancedMode', 
+        name: 'advanced_mode', 
         label: 'Modo Avanzado', 
         type: 'select', 
         category: 'content',
@@ -124,8 +123,8 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
         ]
       },
       BUTTON_GROUP_PROPS('link', 'Botón de Acción (Opcional)'),
-      { name: 'backgroundColor', label: 'Color de Fondo', type: 'color', category: 'design' },
-      { name: 'textColor', label: 'Color de Texto / Iconos', type: 'color', category: 'design' },
+      { name: 'background_color', label: 'Color de Fondo', type: 'color', category: 'design' },
+      { name: 'text_color', label: 'Color de Texto / Iconos', type: 'color', category: 'design' },
       { 
         name: 'padding', 
         label: 'Grosor (Padding)', 
@@ -148,10 +147,10 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
           { label: 'Píldora Flotante', value: 'pill' }
         ]
       },
-      { name: 'isSticky', label: 'Fijar al hacer scroll (Sticky)', type: 'boolean', category: 'design' },
-      { name: 'isDismissible', label: 'Permitir cerrar ("X")', type: 'boolean', category: 'design' },
+      { name: 'is_sticky', label: 'Fijar al hacer scroll (Sticky)', type: 'boolean', category: 'design' },
+      { name: 'is_dismissible', label: 'Permitir cerrar ("X")', type: 'boolean', category: 'design' },
       { 
-        name: 'smartMode', 
+        name: 'smart_mode', 
         label: 'Modo Inteligente', 
         type: 'boolean', 
         category: 'design' 
@@ -167,7 +166,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
           { label: 'Solo Móvil', value: 'mobile' }
         ]
       },
-      { name: 'showSocial', label: 'Mostrar Redes Sociales', type: 'boolean', category: 'content' },
+      { name: 'show_social', label: 'Mostrar Redes Sociales', type: 'boolean', category: 'content' },
       { name: 'email', label: 'Correo (Opcional)', type: 'text', category: 'content' },
       { name: 'phone', label: 'Teléfono (Opcional)', type: 'text', category: 'content' }
     ]
@@ -179,36 +178,36 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     description: 'Menú principal con logo, enlaces y botón CTA',
     category: 'navigation',
     defaultData: {
-      logoText: 'SOLUTIUM',
-      logoText_style: { size: 'span', weight: '900', align: 'left' },
+      logo_text: 'SOLUTIUM',
+      logo_text_style: { size: 'span', weight: '900', align: 'left' },
       layout: 'logo-left',
-      scrollMode: 'static',
-      bgType: 'glass',
-      hoverEffect: 'underline',
+      scroll_mode: 'static',
+      bg_type: 'glass',
+      hover_effect: 'underline',
       height: 80,
-      showProgressBar: false,
-      showActiveIndicator: true,
-      menuItems: [
+      show_progress_bar: false,
+      show_active_indicator: true,
+      menu_items: [
         { label: 'Inicio', link: '#' },
         { label: 'Servicios', link: '#features' },
         { label: 'Contacto', link: '#contact' }
       ],
-      showCTA: true,
-      ctaText: 'Empezar',
-      showSecondaryCTA: false,
-      secondaryCtaText: 'Saber más',
-      showSearch: false,
-      showLanguage: false,
-      showSocials: false,
+      show_cta: true,
+      cta_text: 'Empezar',
+      show_secondary_cta: false,
+      secondary_cta_text: 'Saber más',
+      show_search: false,
+      show_language: false,
+      show_socials: false,
       theme: 'light',
-      smartMode: true
+      smart_mode: true
     },
     schema: [
-      { name: 'logoText', label: 'Texto del Logo', type: 'text' },
-      ...TYPOGRAPHY_PROPS('logoText', 'Estilo del Logo'),
-      { name: 'logoImage', label: 'Imagen del Logo', type: 'image' },
+      { name: 'logo_text', label: 'Texto del Logo', type: 'text' },
+      ...TYPOGRAPHY_PROPS('logo_text', 'Estilo del Logo'),
+      { name: 'logo_image', label: 'Imagen del Logo', type: 'image' },
       { 
-        name: 'smartMode', 
+        name: 'smart_mode', 
         label: 'Modo Inteligente', 
         type: 'boolean' 
       },
@@ -232,7 +231,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
         ]
       },
       { 
-        name: 'scrollMode', 
+        name: 'scroll_mode', 
         label: 'Modo de Scroll', 
         type: 'select',
         options: [
@@ -242,7 +241,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
         ]
       },
       { 
-        name: 'bgType', 
+        name: 'bg_type', 
         label: 'Tipo de Fondo', 
         type: 'select',
         options: [
@@ -252,7 +251,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
         ]
       },
       { 
-        name: 'hoverEffect', 
+        name: 'hover_effect', 
         label: 'Efecto Hover', 
         type: 'select',
         options: [
@@ -262,10 +261,10 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
         ]
       },
       { name: 'height', label: 'Altura (px)', type: 'range', min: 60, max: 120, step: 1 },
-      { name: 'showProgressBar', label: 'Barra de Progreso', type: 'boolean' },
-      { name: 'showActiveIndicator', label: 'Indicador Activo', type: 'boolean' },
+      { name: 'show_progress_bar', label: 'Barra de Progreso', type: 'boolean' },
+      { name: 'show_active_indicator', label: 'Indicador Activo', type: 'boolean' },
       { 
-        name: 'menuItems', 
+        name: 'menu_items', 
         label: 'Enlaces del Menú', 
         type: 'array',
         itemSchema: [
@@ -273,13 +272,13 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
           { name: 'link', label: 'Enlace', type: 'text' }
         ]
       },
-      { name: 'showCTA', label: 'Mostrar Botón Primario', type: 'boolean' },
-      { name: 'ctaText', label: 'Texto Botón Primario', type: 'text' },
-      { name: 'showSecondaryCTA', label: 'Mostrar Botón Secundario', type: 'boolean' },
-      { name: 'secondaryCtaText', label: 'Texto Botón Secundario', type: 'text' },
-      { name: 'showSearch', label: 'Mostrar Buscador', type: 'boolean' },
-      { name: 'showLanguage', label: 'Mostrar Idioma', type: 'boolean' },
-      { name: 'showSocials', label: 'Mostrar Redes Sociales', type: 'boolean' }
+      { name: 'show_cta', label: 'Mostrar Botón Primario', type: 'boolean' },
+      { name: 'cta_text', label: 'Texto Botón Primario', type: 'text' },
+      { name: 'show_secondary_cta', label: 'Mostrar Botón Secundario', type: 'boolean' },
+      { name: 'secondary_cta_text', label: 'Texto Botón Secundario', type: 'text' },
+      { name: 'show_search', label: 'Mostrar Buscador', type: 'boolean' },
+      { name: 'show_language', label: 'Mostrar Idioma', type: 'boolean' },
+      { name: 'show_socials', label: 'Mostrar Redes Sociales', type: 'boolean' }
     ]
   },
   {
@@ -291,21 +290,21 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     defaultData: {
       title: 'Construye el *Futuro* de tu Negocio',
       subtitle: 'La plataforma todo-en-uno para gestionar, vender y crecer con Solutium.',
-      primaryButton: { text: 'Empezar ahora', url: '#', target: '_self' },
-      secondaryButton: { text: 'Ver Demo', url: '#', target: '_self' },
+      primary_button: { text: 'Empezar ahora', url: '#', target: '_self' },
+      secondary_button: { text: 'Ver Demo', url: '#', target: '_self' },
       layout: 'layout-1',
       theme: 'dark',
-      smartMode: true,
-      background: { overlayOpacity: 0.7 },
-      title_style: { size: 'h1', weight: '900', align: 'center', highlightType: 'gradient' },
-      subtitle_style: { size: 'p', weight: '400', align: 'center', highlightType: 'none' }
+      smart_mode: true,
+      background: { overlay_opacity: 0.7 },
+      title_style: { size: 'h1', weight: '900', align: 'center', highlight_type: 'gradient' },
+      subtitle_style: { size: 'p', weight: '400', align: 'center', highlight_type: 'none' }
     },
     schema: [
       // Content Tab
       { name: 'title', label: 'Título Principal', type: 'text', category: 'content' },
       { name: 'subtitle', label: 'Subtítulo', type: 'textarea', category: 'content' },
-      BUTTON_GROUP_PROPS('primaryButton', 'Botón Primario'),
-      BUTTON_GROUP_PROPS('secondaryButton', 'Botón Secundario'),
+      BUTTON_GROUP_PROPS('primary_button', 'Botón Primario'),
+      BUTTON_GROUP_PROPS('secondary_button', 'Botón Secundario'),
       
       // Design Tab
       ...DESIGN_PROPS.map(p => ({ ...p, category: 'design' as const })),
@@ -322,51 +321,51 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     defaultData: {
       title: 'Nuestros Servicios',
       subtitle: 'Descubre cómo podemos ayudarte a alcanzar tus objetivos.',
-      layoutType: 'grid',
+      layout_type: 'grid',
       columns: 3,
       alignment: 'center',
       gap: 32,
       theme: 'light',
-      smartMode: true,
-      cardStyle: {
+      smart_mode: true,
+      card_style: {
         border: true,
         shadow: 'sm',
         glass: false,
-        borderRadius: 'xl'
+        border_radius: 'xl'
       },
       features: [
         { 
           title: 'Rápido', 
           description: 'Optimizado para la mejor velocidad.', 
           icon: 'Zap',
-          mediaType: 'icon',
-          iconStyle: { shape: 'circle', type: 'solid' },
+          media_type: 'icon',
+          icon_style: { shape: 'circle', type: 'solid' },
           badge: 'Popular'
         },
         { 
           title: 'Seguro', 
           description: 'Protección de datos de nivel empresarial.', 
           icon: 'Shield',
-          mediaType: 'icon',
-          iconStyle: { shape: 'circle', type: 'solid' }
+          media_type: 'icon',
+          icon_style: { shape: 'circle', type: 'solid' }
         },
         { 
           title: 'Escalable', 
           description: 'Crece junto con tu negocio.', 
           icon: 'TrendingUp',
-          mediaType: 'icon',
-          iconStyle: { shape: 'circle', type: 'solid' }
+          media_type: 'icon',
+          icon_style: { shape: 'circle', type: 'solid' }
         }
       ],
-      showIcons: true,
-      showDescriptions: true,
-      sectionButton: { text: '', url: '', target: '_self' }
+      show_icons: true,
+      show_descriptions: true,
+      section_button: { text: '', url: '', target: '_self' }
     },
     schema: [
       { name: 'title', label: 'Título de Sección', type: 'text', category: 'content' },
       { name: 'subtitle', label: 'Subtítulo de Sección', type: 'textarea', category: 'content' },
       { 
-        name: 'layoutType', 
+        name: 'layout_type', 
         label: 'Tipo de Diseño', 
         type: 'select', 
         category: 'design',
@@ -391,7 +390,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
       },
       { name: 'gap', label: 'Espaciado (px)', type: 'range', min: 0, max: 100, step: 4, category: 'design' },
       {
-        name: 'cardStyle',
+        name: 'card_style',
         label: 'Estilo de Tarjeta',
         type: 'object',
         category: 'design',
@@ -410,7 +409,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
           },
           { name: 'glass', label: 'Efecto Cristal (Glass)', type: 'boolean' },
           { 
-            name: 'borderRadius', 
+            name: 'border_radius', 
             label: 'Redondeo', 
             type: 'select',
             options: [
@@ -432,7 +431,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
           { name: 'title', label: 'Título', type: 'text' },
           { name: 'description', label: 'Descripción', type: 'textarea' },
           { 
-            name: 'mediaType', 
+            name: 'media_type', 
             label: 'Tipo de Multimedia', 
             type: 'select',
             options: [
@@ -443,7 +442,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
           { name: 'icon', label: 'Nombre del Icono (Lucide)', type: 'text' },
           { name: 'image', label: 'Imagen', type: 'image' },
           {
-            name: 'iconStyle',
+            name: 'icon_style',
             label: 'Estilo de Icono',
             type: 'object',
             itemSchema: [
@@ -472,9 +471,9 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
           BUTTON_GROUP_PROPS('link', 'Enlace / Botón')
         ]
       },
-      BUTTON_GROUP_PROPS('sectionButton', 'Botón de Sección (Final)'),
-      { name: 'showIcons', label: 'Mostrar Multimedia', type: 'boolean', category: 'content' },
-      { name: 'showDescriptions', label: 'Mostrar Descripciones', type: 'boolean', category: 'content' },
+      BUTTON_GROUP_PROPS('section_button', 'Botón de Sección (Final)'),
+      { name: 'show_icons', label: 'Mostrar Multimedia', type: 'boolean', category: 'content' },
+      { name: 'show_descriptions', label: 'Mostrar Descripciones', type: 'boolean', category: 'content' },
       ...DESIGN_PROPS.map(p => ({ ...p, category: 'design' as const }))
     ]
   },
@@ -488,13 +487,13 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
       title: 'Productos Destacados',
       subtitle: 'Echa un vistazo a nuestras últimas novedades.',
       layout: 'grid',
-      smartMode: true
+      smart_mode: true
     },
     schema: [
       { name: 'title', label: 'Título', type: 'text' },
       { name: 'subtitle', label: 'Subtítulo', type: 'textarea' },
       { 
-        name: 'smartMode', 
+        name: 'smart_mode', 
         label: 'Modo Inteligente', 
         type: 'boolean' 
       },
@@ -518,17 +517,17 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     defaultData: {
       title: 'Lo que dicen nuestros clientes',
       subtitle: 'Historias de éxito de personas como tú.',
-      layoutType: 'grid',
+      layout_type: 'grid',
       columns: 3,
       alignment: 'center',
       gap: 32,
       theme: 'light',
-      smartMode: true,
-      cardStyle: {
+      smart_mode: true,
+      card_style: {
         border: true,
         shadow: 'sm',
         glass: false,
-        borderRadius: 'xl',
+        border_radius: 'xl',
         style: 'classic'
       },
       testimonials: [
@@ -563,17 +562,17 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
           source: 'none'
         }
       ],
-      showRating: true,
-      showRole: true,
-      showCompany: true,
-      showAvatar: true,
-      sectionButton: { text: '', url: '', target: '_self' }
+      show_rating: true,
+      show_role: true,
+      show_company: true,
+      show_avatar: true,
+      section_button: { text: '', url: '', target: '_self' }
     },
     schema: [
       { name: 'title', label: 'Título de Sección', type: 'text', category: 'content' },
       { name: 'subtitle', label: 'Subtítulo de Sección', type: 'textarea', category: 'content' },
       { 
-        name: 'layoutType', 
+        name: 'layout_type', 
         label: 'Tipo de Diseño', 
         type: 'select', 
         category: 'design',
@@ -598,7 +597,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
       },
       { name: 'gap', label: 'Espaciado (px)', type: 'range', min: 0, max: 100, step: 4, category: 'design' },
       {
-        name: 'cardStyle',
+        name: 'card_style',
         label: 'Estilo de Tarjeta',
         type: 'object',
         category: 'design',
@@ -627,7 +626,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
           },
           { name: 'glass', label: 'Efecto Cristal (Glass)', type: 'boolean' },
           { 
-            name: 'borderRadius', 
+            name: 'border_radius', 
             label: 'Redondeo', 
             type: 'select',
             options: [
@@ -665,45 +664,45 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
           }
         ]
       },
-      BUTTON_GROUP_PROPS('sectionButton', 'Botón de Sección (Final)'),
-      { name: 'showRating', label: 'Mostrar Estrellas', type: 'boolean', category: 'content' },
-      { name: 'showAvatar', label: 'Mostrar Fotos', type: 'boolean', category: 'content' },
-      { name: 'showRole', label: 'Mostrar Cargo', type: 'boolean', category: 'content' },
-      { name: 'showCompany', label: 'Mostrar Empresa', type: 'boolean', category: 'content' },
+      BUTTON_GROUP_PROPS('section_button', 'Botón de Sección (Final)'),
+      { name: 'show_rating', label: 'Mostrar Estrellas', type: 'boolean', category: 'content' },
+      { name: 'show_avatar', label: 'Mostrar Fotos', type: 'boolean', category: 'content' },
+      { name: 'show_role', label: 'Mostrar Cargo', type: 'boolean', category: 'content' },
+      { name: 'show_company', label: 'Mostrar Empresa', type: 'boolean', category: 'content' },
       ...DESIGN_PROPS.map(p => ({ ...p, category: 'design' as const }))
     ]
   },
   {
     id: 'pricing',
     label: 'Planes',
-    icon: DollarSign,
+    icon: CreditCard,
     description: 'Tablas comparativas de planes y precios',
     category: 'sales',
     defaultData: {
       title: 'Planes Flexibles',
       subtitle: 'Elige el plan que mejor se adapte a tus necesidades.',
-      billingCycle: 'monthly',
-      smartMode: true,
+      billing_cycle: 'monthly',
+      smart_mode: true,
       plans: [
         { 
           name: 'Básico', 
-          monthlyPrice: '$19', 
-          annualPrice: '$15',
+          monthly_price: '$19', 
+          annual_price: '$15',
           description: 'Ideal para proyectos personales y freelancers.',
           features: [{ text: '1 Proyecto' }, { text: 'Soporte Email' }, { text: 'Actualizaciones básicas' }] 
         },
         { 
           name: 'Pro', 
-          monthlyPrice: '$49', 
-          annualPrice: '$39',
+          monthly_price: '$49', 
+          annual_price: '$39',
           description: 'Para negocios en crecimiento que necesitan más potencia.',
           features: [{ text: 'Proyectos Ilimitados' }, { text: 'Soporte 24/7' }, { text: 'Dominio Personalizado' }, { text: 'Analíticas Avanzadas' }], 
           popular: true 
         },
         { 
           name: 'Enterprise', 
-          monthlyPrice: '$99', 
-          annualPrice: '$79',
+          monthly_price: '$99', 
+          annual_price: '$79',
           description: 'Soluciones a medida para grandes organizaciones.',
           features: [{ text: 'Todo lo de Pro' }, { text: 'Gestor de cuenta dedicado' }, { text: 'SLA garantizado' }, { text: 'Seguridad avanzada' }] 
         }
@@ -713,7 +712,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
       { name: 'title', label: 'Título', type: 'text', category: 'content' },
       { name: 'subtitle', label: 'Subtítulo', type: 'textarea', category: 'content' },
       { 
-        name: 'billingCycle', 
+        name: 'billing_cycle', 
         label: 'Ciclo de Facturación', 
         type: 'toggle-group',
         category: 'content',
@@ -730,8 +729,8 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
         itemSchema: [
           { name: 'name', label: 'Nombre del Plan', type: 'text' },
           { name: 'description', label: 'Descripción corta', type: 'text' },
-          { name: 'monthlyPrice', label: 'Precio Mensual', type: 'text' },
-          { name: 'annualPrice', label: 'Precio Anual (por mes)', type: 'text' },
+          { name: 'monthly_price', label: 'Precio Mensual', type: 'text' },
+          { name: 'annual_price', label: 'Precio Anual (por mes)', type: 'text' },
           { name: 'popular', label: 'Destacado', type: 'boolean' },
           { 
             name: 'features', 
@@ -755,23 +754,23 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     defaultData: {
       title: '¿Tienes alguna duda?',
       subtitle: 'Estamos aquí para ayudarte. Envíanos un mensaje y te responderemos lo antes posible.',
-      layoutType: 'split', // split, center, map-immersive, sidebar
+      layout_type: 'split', // split, center, map-immersive, sidebar
       theme: 'light',
-      smartMode: true,
+      smart_mode: true,
       email: 'contacto@ejemplo.com',
       phone: '+1 234 567 890',
       address: 'Calle Principal 123, Madrid',
-      showMap: true,
-      mapUrl: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3037.365346083684!2d-3.706058684603912!3d40.41670467936526!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0xd42287d6da32a33%3A0x1d752f992d918152!2sPuerta%20del%20Sol!5e0!3m2!1ses!2ses!4v1647948345678!5m2!1ses!2ses',
-      formTitle: 'Envíanos un mensaje',
-      showNameField: true,
-      showEmailField: true,
-      showPhoneField: false,
-      showSubjectField: false,
-      showMessageField: true,
-      buttonText: 'Enviar Mensaje',
-      successMessage: '¡Gracias! Hemos recibido tu mensaje.',
-      socialLinks: [
+      show_map: true,
+      map_url: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3037.365346083684!2d-3.706058684603912!3d40.41670467936526!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0xd42287d6da32a33%3A0x1d752f992d918152!2sPuerta%20del%20Sol!5e0!3m2!1ses!2ses!4v1647948345678!5m2!1ses!2ses',
+      form_title: 'Envíanos un mensaje',
+      show_name_field: true,
+      show_email_field: true,
+      show_phone_field: false,
+      show_subject_field: false,
+      show_message_field: true,
+      button_text: 'Enviar Mensaje',
+      success_message: '¡Gracias! Hemos recibido tu mensaje.',
+      social_links: [
         { platform: 'linkedin', url: '#' },
         { platform: 'twitter', url: '#' },
         { platform: 'instagram', url: '#' }
@@ -781,7 +780,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
       { name: 'title', label: 'Título Principal', type: 'text', category: 'content' },
       { name: 'subtitle', label: 'Subtítulo', type: 'textarea', category: 'content' },
       { 
-        name: 'layoutType', 
+        name: 'layout_type', 
         label: 'Tipo de Diseño', 
         type: 'select', 
         category: 'design',
@@ -796,20 +795,20 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
       { name: 'phone', label: 'Teléfono', type: 'text', category: 'content' },
       { name: 'address', label: 'Dirección Física', type: 'text', category: 'content' },
       
-      { name: 'showMap', label: 'Mostrar Mapa', type: 'boolean', category: 'content' },
-      { name: 'mapUrl', label: 'URL del Mapa (Embed)', type: 'text', category: 'content' },
+      { name: 'show_map', label: 'Mostrar Mapa', type: 'boolean', category: 'content' },
+      { name: 'map_url', label: 'URL del Mapa (Embed)', type: 'text', category: 'content' },
       
-      { name: 'formTitle', label: 'Título del Formulario', type: 'text', category: 'content' },
-      { name: 'showNameField', label: 'Campo Nombre', type: 'boolean', category: 'content' },
-      { name: 'showEmailField', label: 'Campo Email', type: 'boolean', category: 'content' },
-      { name: 'showPhoneField', label: 'Campo Teléfono', type: 'boolean', category: 'content' },
-      { name: 'showSubjectField', label: 'Campo Asunto', type: 'boolean', category: 'content' },
-      { name: 'showMessageField', label: 'Campo Mensaje', type: 'boolean', category: 'content' },
-      { name: 'buttonText', label: 'Texto del Botón', type: 'text', category: 'content' },
-      { name: 'successMessage', label: 'Mensaje de Éxito', type: 'text', category: 'content' },
+      { name: 'form_title', label: 'Título del Formulario', type: 'text', category: 'content' },
+      { name: 'show_name_field', label: 'Campo Nombre', type: 'boolean', category: 'content' },
+      { name: 'show_email_field', label: 'Campo Email', type: 'boolean', category: 'content' },
+      { name: 'show_phone_field', label: 'Campo Teléfono', type: 'boolean', category: 'content' },
+      { name: 'show_subject_field', label: 'Campo Asunto', type: 'boolean', category: 'content' },
+      { name: 'show_message_field', label: 'Campo Mensaje', type: 'boolean', category: 'content' },
+      { name: 'button_text', label: 'Texto del Botón', type: 'text', category: 'content' },
+      { name: 'success_message', label: 'Mensaje de Éxito', type: 'text', category: 'content' },
       
       { 
-        name: 'socialLinks', 
+        name: 'social_links', 
         label: 'Redes Sociales', 
         type: 'array', 
         category: 'content',
@@ -850,7 +849,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
       ],
       grayscale: true,
       opacity: 50,
-      smartMode: true
+      smart_mode: true
     },
     schema: [
       { name: 'title', label: 'Título', type: 'text', category: 'content' },
@@ -880,7 +879,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
       title: 'Más de 10 años impulsando el éxito digital',
       description: 'Nacimos con una misión clara: democratizar el acceso a la mejor tecnología para negocios de todos los tamaños. Hoy, somos líderes en soluciones inteligentes para el mercado hispano.',
       image: 'https://picsum.photos/seed/about/800/800',
-      smartMode: true,
+      smart_mode: true,
       stat1: { value: '99%', label: 'Satisfacción' },
       stat2: { value: '24/7', label: 'Soporte Real' }
     },
@@ -921,7 +920,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     defaultData: {
       title: '¿Cómo funciona?',
       subtitle: 'Un proceso simple y transparente diseñado para tu comodidad.',
-      smartMode: true,
+      smart_mode: true,
       steps: [
         { step: '01', title: 'Regístrate', desc: 'Crea tu cuenta en segundos y accede al panel.' },
         { step: '02', title: 'Configura', desc: 'Personaliza tus preferencias y sincroniza tus datos.' },
@@ -953,7 +952,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     category: 'social-proof',
     defaultData: {
       title: 'Nuestros números',
-      smartMode: true,
+      smart_mode: true,
       stats: [
         { val: '15k+', label: 'Usuarios' },
         { val: '40m', label: 'Ventas' },
@@ -979,18 +978,18 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
   {
     id: 'gallery',
     label: 'Galería',
-    icon: ImageIcon,
-    description: 'Cuadrícula visual de tus mejores trabajos',
+    icon: Image,
+    description: 'Muestra imágenes en un formato atractivo',
     category: 'main-content',
     defaultData: {
       title: 'Galería Visual',
       subtitle: 'Explora nuestro trabajo a través de imágenes.',
-      layoutType: 'grid',
+      layout_type: 'grid',
       columns: 4,
       gap: 16,
       theme: 'light',
-      smartMode: true,
-      aspectRatio: 'square',
+      smart_mode: true,
+      aspect_ratio: 'square',
       images: [
         { url: 'https://picsum.photos/seed/gallery1/800/800', title: 'Proyecto Alpha', category: 'Diseño' },
         { url: 'https://picsum.photos/seed/gallery2/800/800', title: 'Branding Beta', category: 'Branding' },
@@ -999,20 +998,20 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
         { url: 'https://picsum.photos/seed/gallery5/800/800', title: 'Photo Epsilon', category: 'Foto' },
         { url: 'https://picsum.photos/seed/gallery6/800/800', title: 'Art Zeta', category: 'Arte' }
       ],
-      showFilters: true,
-      showOverlay: true,
-      overlayStyle: 'hover', // hover, always
-      hoverEffect: 'zoom', // zoom, grayscale, tilt, none
-      borderRadius: 'xl',
-      showViewAllButton: true,
-      viewAllButtonText: 'Ver Todo',
-      viewAllButtonUrl: '#'
+      show_filters: true,
+      show_overlay: true,
+      overlay_style: 'hover', // hover, always
+      hover_effect: 'zoom', // zoom, grayscale, tilt, none
+      border_radius: 'xl',
+      show_view_all_button: true,
+      view_all_button_text: 'Ver Todo',
+      view_all_button_url: '#'
     },
     schema: [
       { name: 'title', label: 'Título', type: 'text', category: 'content' },
       { name: 'subtitle', label: 'Subtítulo', type: 'textarea', category: 'content' },
       { 
-        name: 'layoutType', 
+        name: 'layout_type', 
         label: 'Tipo de Diseño', 
         type: 'select', 
         category: 'design',
@@ -1026,7 +1025,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
       { name: 'columns', label: 'Columnas (Escritorio)', type: 'range', min: 1, max: 6, step: 1, category: 'design' },
       { name: 'gap', label: 'Espaciado (px)', type: 'range', min: 0, max: 64, step: 4, category: 'design' },
       { 
-        name: 'aspectRatio', 
+        name: 'aspect_ratio', 
         label: 'Relación de Aspecto', 
         type: 'select', 
         category: 'design',
@@ -1038,7 +1037,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
         ]
       },
       { 
-        name: 'borderRadius', 
+        name: 'border_radius', 
         label: 'Redondeo', 
         type: 'select', 
         category: 'design',
@@ -1050,7 +1049,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
         ]
       },
       { 
-        name: 'hoverEffect', 
+        name: 'hover_effect', 
         label: 'Efecto Hover', 
         type: 'select', 
         category: 'design',
@@ -1061,8 +1060,8 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
           { label: 'Tilt 3D', value: 'tilt' }
         ]
       },
-      { name: 'showOverlay', label: 'Mostrar Info al Pasar Mouse', type: 'boolean', category: 'content' },
-      { name: 'showFilters', label: 'Mostrar Filtros de Categoría', type: 'boolean', category: 'content' },
+      { name: 'show_overlay', label: 'Mostrar Info al Pasar Mouse', type: 'boolean', category: 'content' },
+      { name: 'show_filters', label: 'Mostrar Filtros de Categoría', type: 'boolean', category: 'content' },
       
       { 
         name: 'images', 
@@ -1076,10 +1075,9 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
           { name: 'link', label: 'Enlace (Opcional)', type: 'text' }
         ]
       },
-
-      { name: 'showViewAllButton', label: 'Mostrar Botón "Ver Todo"', type: 'boolean', category: 'content' },
-      { name: 'viewAllButtonText', label: 'Texto Botón Ver Todo', type: 'text', category: 'content' },
-      { name: 'viewAllButtonUrl', label: 'URL Botón Ver Todo', type: 'text', category: 'content' },
+      { name: 'show_view_all_button', label: 'Mostrar Botón "Ver Todo"', type: 'boolean', category: 'content' },
+      { name: 'view_all_button_text', label: 'Texto Botón Ver Todo', type: 'text', category: 'content' },
+      { name: 'view_all_button_url', label: 'URL Botón Ver Todo', type: 'text', category: 'content' },
       
       ...DESIGN_PROPS.map(p => ({ ...p, category: 'design' as const }))
     ]
@@ -1093,33 +1091,33 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     defaultData: {
       title: 'Mira nuestra presentación',
       subtitle: 'Descubre cómo Solutium puede transformar tu negocio en 2 minutos.',
-      layoutType: 'classic', // classic, hero, split, popup
+      layout_type: 'classic', // classic, hero, split, popup
       theme: 'dark',
-      smartMode: true,
-      videoType: 'youtube', // youtube, vimeo, custom
-      videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
-      posterImage: 'https://picsum.photos/seed/video-poster/1280/720',
+      smart_mode: true,
+      video_type: 'youtube', // youtube, vimeo, custom
+      video_url: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+      poster_image: 'https://picsum.photos/seed/video-poster/1280/720',
       autoplay: false,
       muted: false,
       loop: false,
-      showControls: true,
-      showOverlay: true,
-      overlayTitle: 'Video Promocional',
-      showPlayButton: true,
-      playButtonStyle: 'solid', // solid, outline, glass
-      maskShape: 'none', // none, rounded, circle, blob
-      showTranscription: false,
-      transcriptionText: 'Aquí va la transcripción del video...',
-      showCTA: false,
-      ctaText: 'Empezar Ahora',
-      ctaUrl: '#'
+      show_controls: true,
+      show_overlay: true,
+      overlay_title: 'Video Promocional',
+      show_play_button: true,
+      play_button_style: 'solid', // solid, outline, glass
+      mask_shape: 'none', // none, rounded, circle, blob
+      show_transcription: false,
+      transcription_text: 'Aquí va la transcripción del video...',
+      show_cta: false,
+      cta_text: 'Empezar Ahora',
+      cta_url: '#'
     },
     schema: [
       { name: 'title', label: 'Título', type: 'text', category: 'content' },
       { name: 'subtitle', label: 'Subtítulo', type: 'textarea', category: 'content' },
       
       { 
-        name: 'layoutType', 
+        name: 'layout_type', 
         label: 'Tipo de Diseño', 
         type: 'select', 
         category: 'design',
@@ -1132,7 +1130,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
       },
       
       { 
-        name: 'videoType', 
+        name: 'video_type', 
         label: 'Fuente de Video', 
         type: 'select', 
         category: 'content',
@@ -1142,17 +1140,17 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
           { label: 'Archivo Directo (.mp4)', value: 'custom' }
         ]
       },
-      { name: 'videoUrl', label: 'URL del Video', type: 'text', category: 'content' },
-      { name: 'posterImage', label: 'Imagen de Portada (Poster)', type: 'image', category: 'content' },
+      { name: 'video_url', label: 'URL del Video', type: 'text', category: 'content' },
+      { name: 'poster_image', label: 'Imagen de Portada (Poster)', type: 'image', category: 'content' },
       
       { name: 'autoplay', label: 'Autoplay (Silenciado)', type: 'boolean', category: 'content' },
       { name: 'muted', label: 'Silenciar por defecto', type: 'boolean', category: 'content' },
       { name: 'loop', label: 'Repetir en bucle', type: 'boolean', category: 'content' },
-      { name: 'showControls', label: 'Mostrar Controles', type: 'boolean', category: 'content' },
+      { name: 'show_controls', label: 'Mostrar Controles', type: 'boolean', category: 'content' },
       
-      { name: 'showPlayButton', label: 'Mostrar Botón Play', type: 'boolean', category: 'design' },
+      { name: 'show_play_button', label: 'Mostrar Botón Play', type: 'boolean', category: 'design' },
       { 
-        name: 'playButtonStyle', 
+        name: 'play_button_style', 
         label: 'Estilo Botón Play', 
         type: 'select', 
         category: 'design',
@@ -1164,7 +1162,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
       },
       
       { 
-        name: 'maskShape', 
+        name: 'mask_shape', 
         label: 'Forma de Máscara', 
         type: 'select', 
         category: 'design',
@@ -1176,12 +1174,12 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
         ]
       },
       
-      { name: 'showTranscription', label: 'Mostrar Transcripción', type: 'boolean', category: 'content' },
-      { name: 'transcriptionText', label: 'Texto Transcripción', type: 'textarea', category: 'content' },
+      { name: 'show_transcription', label: 'Mostrar Transcripción', type: 'boolean', category: 'content' },
+      { name: 'transcription_text', label: 'Texto Transcripción', type: 'textarea', category: 'content' },
       
-      { name: 'showCTA', label: 'Mostrar Botón Final', type: 'boolean', category: 'content' },
-      { name: 'ctaText', label: 'Texto Botón', type: 'text', category: 'content' },
-      { name: 'ctaUrl', label: 'URL Botón', type: 'text', category: 'content' },
+      { name: 'show_cta', label: 'Mostrar Botón Final', type: 'boolean', category: 'content' },
+      { name: 'cta_text', label: 'Texto Botón', type: 'text', category: 'content' },
+      { name: 'cta_url', label: 'URL Botón', type: 'text', category: 'content' },
       
       ...DESIGN_PROPS.map(p => ({ ...p, category: 'design' as const }))
     ]
@@ -1195,24 +1193,24 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     defaultData: {
       title: 'Únete a nuestra Newsletter',
       subtitle: 'Recibe consejos semanales sobre crecimiento digital y ofertas exclusivas directamente en tu bandeja de entrada.',
-      layoutType: 'center', // center, split, slim, popup
+      layout_type: 'center', // center, split, slim, popup
       theme: 'dark',
-      smartMode: true,
-      backgroundImage: '',
-      showNameField: false,
-      emailPlaceholder: 'tu@email.com',
-      namePlaceholder: 'Tu nombre',
-      buttonText: 'Suscribirme',
-      successMessage: '¡Gracias por suscribirte! Revisa tu correo.',
+      smart_mode: true,
+      background_image: '',
+      show_name_field: false,
+      email_placeholder: 'tu@email.com',
+      name_placeholder: 'Tu nombre',
+      button_text: 'Suscribirme',
+      success_message: '¡Gracias por suscribirte! Revisa tu correo.',
       disclaimer: 'Prometemos no enviar spam. Puedes darte de baja en cualquier momento.',
-      showDisclaimer: true
+      show_disclaimer: true
     },
     schema: [
       { name: 'title', label: 'Título', type: 'text', category: 'content' },
       { name: 'subtitle', label: 'Subtítulo', type: 'textarea', category: 'content' },
       
       { 
-        name: 'layoutType', 
+        name: 'layout_type', 
         label: 'Tipo de Diseño', 
         type: 'select', 
         category: 'design',
@@ -1224,15 +1222,15 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
         ]
       },
       
-      { name: 'backgroundImage', label: 'Imagen de Fondo', type: 'image', category: 'design' },
+      { name: 'background_image', label: 'Imagen de Fondo', type: 'image', category: 'design' },
       
-      { name: 'showNameField', label: 'Pedir Nombre', type: 'boolean', category: 'content' },
-      { name: 'emailPlaceholder', label: 'Placeholder Email', type: 'text', category: 'content' },
-      { name: 'namePlaceholder', label: 'Placeholder Nombre', type: 'text', category: 'content' },
-      { name: 'buttonText', label: 'Texto Botón', type: 'text', category: 'content' },
-      { name: 'successMessage', label: 'Mensaje de Éxito', type: 'text', category: 'content' },
+      { name: 'show_name_field', label: 'Pedir Nombre', type: 'boolean', category: 'content' },
+      { name: 'email_placeholder', label: 'Placeholder Email', type: 'text', category: 'content' },
+      { name: 'name_placeholder', label: 'Placeholder Nombre', type: 'text', category: 'content' },
+      { name: 'button_text', label: 'Texto Botón', type: 'text', category: 'content' },
+      { name: 'success_message', label: 'Mensaje de Éxito', type: 'text', category: 'content' },
       
-      { name: 'showDisclaimer', label: 'Mostrar Disclaimer', type: 'boolean', category: 'content' },
+      { name: 'show_disclaimer', label: 'Mostrar Disclaimer', type: 'boolean', category: 'content' },
       { name: 'disclaimer', label: 'Texto Disclaimer', type: 'text', category: 'content' },
       
       ...DESIGN_PROPS.map(p => ({ ...p, category: 'design' as const }))
@@ -1247,32 +1245,32 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     defaultData: {
       title: '¿Listo para dar el siguiente paso?',
       subtitle: 'Empieza hoy mismo y transforma tu presencia digital con nuestra plataforma.',
-      layoutType: 'center',
+      layout_type: 'center',
       theme: 'dark',
-      smartMode: true,
-      primaryButton: { text: 'Comenzar Ahora', url: '#', target: '_self' },
-      secondaryButton: { text: 'Saber más', url: '#', target: '_self' },
-      showSecondaryButton: true,
-      showAppBadges: false,
-      showNewsletter: false,
-      microCopy: 'No requiere tarjeta de crédito. 14 días de prueba.',
-      showMicroCopy: true,
-      showChecklist: false,
+      smart_mode: true,
+      primary_button: { text: 'Comenzar Ahora', url: '#', target: '_self' },
+      secondary_button: { text: 'Saber más', url: '#', target: '_self' },
+      show_secondary_button: true,
+      show_app_badges: false,
+      show_newsletter: false,
+      micro_copy: 'No requiere tarjeta de crédito. 14 días de prueba.',
+      show_micro_copy: true,
+      show_checklist: false,
       checklist: [
         { text: 'Configuración instantánea' },
         { text: 'Soporte 24/7' },
         { text: 'Cancelación en cualquier momento' }
       ],
-      backgroundImage: '',
-      backgroundStyle: 'solid', // solid, gradient, mesh, image
-      mockupImage: '',
-      showMockup: false
+      background_image: '',
+      background_style: 'solid', // solid, gradient, mesh, image
+      mockup_image: '',
+      show_mockup: false
     },
     schema: [
       { name: 'title', label: 'Título Principal', type: 'text', category: 'content' },
       { name: 'subtitle', label: 'Subtítulo', type: 'textarea', category: 'content' },
       { 
-        name: 'layoutType', 
+        name: 'layout_type', 
         label: 'Tipo de Diseño', 
         type: 'select', 
         category: 'design',
@@ -1285,7 +1283,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
         ]
       },
       {
-        name: 'backgroundStyle',
+        name: 'background_style',
         label: 'Estilo de Fondo',
         type: 'select',
         category: 'design',
@@ -1296,19 +1294,19 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
           { label: 'Imagen', value: 'image' }
         ]
       },
-      { name: 'backgroundImage', label: 'Imagen de Fondo', type: 'image', category: 'design' },
+      { name: 'background_image', label: 'Imagen de Fondo', type: 'image', category: 'design' },
       
-      BUTTON_GROUP_PROPS('primaryButton', 'Botón Primario'),
-      { name: 'showSecondaryButton', label: 'Mostrar Botón Secundario', type: 'boolean', category: 'content' },
-      BUTTON_GROUP_PROPS('secondaryButton', 'Botón Secundario'),
+      BUTTON_GROUP_PROPS('primary_button', 'Botón Primario'),
+      { name: 'show_secondary_button', label: 'Mostrar Botón Secundario', type: 'boolean', category: 'content' },
+      BUTTON_GROUP_PROPS('secondary_button', 'Botón Secundario'),
       
-      { name: 'showAppBadges', label: 'Mostrar Badges de App Store', type: 'boolean', category: 'content' },
-      { name: 'showNewsletter', label: 'Mostrar Captura de Email', type: 'boolean', category: 'content' },
+      { name: 'show_app_badges', label: 'Mostrar Badges de App Store', type: 'boolean', category: 'content' },
+      { name: 'show_newsletter', label: 'Mostrar Captura de Email', type: 'boolean', category: 'content' },
       
-      { name: 'showMicroCopy', label: 'Mostrar Texto de Confianza', type: 'boolean', category: 'content' },
-      { name: 'microCopy', label: 'Texto de Confianza (Micro-copy)', type: 'text', category: 'content' },
+      { name: 'show_micro_copy', label: 'Mostrar Texto de Confianza', type: 'boolean', category: 'content' },
+      { name: 'micro_copy', label: 'Texto de Confianza (Micro-copy)', type: 'text', category: 'content' },
       
-      { name: 'showChecklist', label: 'Mostrar Checklist', type: 'boolean', category: 'content' },
+      { name: 'show_checklist', label: 'Mostrar Checklist', type: 'boolean', category: 'content' },
       {
         name: 'checklist',
         label: 'Puntos de Checklist',
@@ -1319,8 +1317,8 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
         ]
       },
       
-      { name: 'showMockup', label: 'Mostrar Mockup de Producto', type: 'boolean', category: 'design' },
-      { name: 'mockupImage', label: 'Imagen del Mockup', type: 'image', category: 'design' },
+      { name: 'show_mockup', label: 'Mostrar Mockup de Producto', type: 'boolean', category: 'design' },
+      { name: 'mockup_image', label: 'Imagen del Mockup', type: 'image', category: 'design' },
       
       ...DESIGN_PROPS.map(p => ({ ...p, category: 'design' as const }))
     ]
@@ -1334,7 +1332,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     defaultData: {
       title: 'Nuestro Equipo',
       subtitle: 'Profesionales apasionados por la tecnología y el diseño.',
-      smartMode: true,
+      smart_mode: true,
       items: [
         { name: 'Ana Silva', role: 'CEO & Fundadora' },
         { name: 'Carlos Ruiz', role: 'Director Técnico' },
@@ -1346,7 +1344,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
       { name: 'title', label: 'Título', type: 'text' },
       { name: 'subtitle', label: 'Subtítulo', type: 'textarea' },
       { 
-        name: 'smartMode', 
+        name: 'smart_mode', 
         label: 'Modo Inteligente', 
         type: 'boolean' 
       },
@@ -1371,7 +1369,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     defaultData: {
       title: 'Preguntas Frecuentes',
       subtitle: 'Todo lo que necesitas saber sobre nuestro servicio.',
-      smartMode: true,
+      smart_mode: true,
       items: [
         { q: '¿Cómo funciona la sincronización con Solutium?', a: 'Es automática. Una vez conectas tu cuenta, todos tus productos y leads se sincronizan en tiempo real.' },
         { q: '¿Puedo usar mi propio dominio?', a: 'Sí, en el plan Pro y superiores puedes conectar cualquier dominio que ya poseas.' },
@@ -1382,7 +1380,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
       { name: 'title', label: 'Título', type: 'text' },
       { name: 'subtitle', label: 'Subtítulo', type: 'textarea' },
       { 
-        name: 'smartMode', 
+        name: 'smart_mode', 
         label: 'Modo Inteligente', 
         type: 'boolean' 
       },
@@ -1404,15 +1402,15 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     description: 'Sección final con enlaces legales y redes sociales',
     category: 'navigation',
     defaultData: {
-      layoutType: 'columns', // columns, simple, centered, minimal
+      layout_type: 'columns', // columns, simple, centered, minimal
       theme: 'dark',
-      smartMode: true,
-      logoText: 'SOLUTIUM',
-      logoImage: '',
+      smart_mode: true,
+      logo_text: 'SOLUTIUM',
+      logo_image: '',
       description: 'Construyendo el futuro de la web. Soluciones inteligentes para negocios modernos.',
       copyright: '© 2024 Solutium. Todos los derechos reservados.',
-      showSocialLinks: true,
-      socialLinks: [
+      show_social_links: true,
+      social_links: [
         { platform: 'linkedin', url: '#' },
         { platform: 'twitter', url: '#' },
         { platform: 'instagram', url: '#' }
@@ -1443,10 +1441,10 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
           ]
         }
       ],
-      showNewsletter: true,
-      newsletterTitle: 'Suscríbete',
-      newsletterText: 'Recibe las últimas noticias y actualizaciones.',
-      bottomLinks: [
+      show_newsletter: true,
+      newsletter_title: 'Suscríbete',
+      newsletter_text: 'Recibe las últimas noticias y actualizaciones.',
+      bottom_links: [
         { text: 'Privacidad', url: '#' },
         { text: 'Términos', url: '#' },
         { text: 'Cookies', url: '#' }
@@ -1454,7 +1452,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     },
     schema: [
       { 
-        name: 'layoutType', 
+        name: 'layout_type', 
         label: 'Tipo de Diseño', 
         type: 'select', 
         category: 'design',
@@ -1465,8 +1463,8 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
           { label: 'Minimalista', value: 'minimal' }
         ]
       },
-      { name: 'logoText', label: 'Texto del Logo', type: 'text', category: 'content' },
-      { name: 'logoImage', label: 'Imagen del Logo', type: 'image', category: 'design' },
+      { name: 'logo_text', label: 'Texto del Logo', type: 'text', category: 'content' },
+      { name: 'logo_image', label: 'Imagen del Logo', type: 'image', category: 'design' },
       { name: 'description', label: 'Descripción', type: 'textarea', category: 'content' },
       
       { 
@@ -1488,9 +1486,9 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
         ]
       },
       
-      { name: 'showSocialLinks', label: 'Mostrar Redes Sociales', type: 'boolean', category: 'content' },
+      { name: 'show_social_links', label: 'Mostrar Redes Sociales', type: 'boolean', category: 'content' },
       { 
-        name: 'socialLinks', 
+        name: 'social_links', 
         label: 'Redes Sociales', 
         type: 'array', 
         category: 'content',
@@ -1512,13 +1510,13 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
         ]
       },
       
-      { name: 'showNewsletter', label: 'Mostrar Newsletter', type: 'boolean', category: 'content' },
-      { name: 'newsletterTitle', label: 'Título Newsletter', type: 'text', category: 'content' },
-      { name: 'newsletterText', label: 'Texto Newsletter', type: 'textarea', category: 'content' },
+      { name: 'show_newsletter', label: 'Mostrar Newsletter', type: 'boolean', category: 'content' },
+      { name: 'newsletter_title', label: 'Título Newsletter', type: 'text', category: 'content' },
+      { name: 'newsletter_text', label: 'Texto Newsletter', type: 'textarea', category: 'content' },
       
       { name: 'copyright', label: 'Texto de Copyright', type: 'text', category: 'content' },
       { 
-        name: 'bottomLinks', 
+        name: 'bottom_links', 
         label: 'Enlaces Legales', 
         type: 'array', 
         category: 'content',
@@ -1538,27 +1536,27 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     description: 'Separadores y espacios para organizar el contenido',
     category: 'navigation',
     defaultData: {
-      spacerType: 'smart',
-      smartMode: true,
+      spacer_type: 'smart',
+      smart_mode: true,
       height: 40,
-      lineStyle: 'solid',
-      lineWidth: 100,
-      lineColor: '#e2e8f0',
-      lineThickness: 1,
-      iconName: 'Star',
-      labelText: 'SECCIÓN',
-      shaperType: 'wave',
-      patternType: 'dots',
-      backgroundColor: 'transparent'
+      line_style: 'solid',
+      line_width: 100,
+      line_color: '#e2e8f0',
+      line_thickness: 1,
+      icon_name: 'Star',
+      label_text: 'SECCIÓN',
+      shaper_type: 'wave',
+      pattern_type: 'dots',
+      background_color: 'transparent'
     },
     schema: [
       {
-        name: 'smartMode',
+        name: 'smart_mode',
         label: 'Modo Inteligente',
         type: 'boolean'
       },
       {
-        name: 'spacerType',
+        name: 'spacer_type',
         label: 'Tipo de Espaciador',
         type: 'select',
         options: [
@@ -1572,17 +1570,17 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
         ]
       },
       // Common
-      { name: 'backgroundColor', label: 'Color de Fondo del Bloque', type: 'color' },
+      { name: 'background_color', label: 'Color de Fondo del Bloque', type: 'color' },
       
       // Smart Spacer
       { name: 'height', label: 'Altura (px)', type: 'range', min: 0, max: 200, step: 1 },
       
       // Line / Icon / Label common
-      { name: 'lineWidth', label: 'Ancho (%)', type: 'range', min: 10, max: 100, step: 1 },
-      { name: 'lineThickness', label: 'Grosor (px)', type: 'range', min: 1, max: 10, step: 1 },
-      { name: 'lineColor', label: 'Color de Línea/Elemento', type: 'color' },
+      { name: 'line_width', label: 'Ancho (%)', type: 'range', min: 10, max: 100, step: 1 },
+      { name: 'line_thickness', label: 'Grosor (px)', type: 'range', min: 1, max: 10, step: 1 },
+      { name: 'line_color', label: 'Color de Línea/Elemento', type: 'color' },
       { 
-        name: 'lineStyle', 
+        name: 'line_style', 
         label: 'Estilo de Línea', 
         type: 'select',
         options: [
@@ -1593,14 +1591,14 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
       },
       
       // Icon specific
-      { name: 'iconName', label: 'Nombre del Icono (ej: Star, Heart, Zap)', type: 'text' },
+      { name: 'icon_name', label: 'Nombre del Icono (ej: Star, Heart, Zap)', type: 'text' },
       
       // Label specific
-      { name: 'labelText', label: 'Texto del Divisor', type: 'text' },
+      { name: 'label_text', label: 'Texto del Divisor', type: 'text' },
       
       // Shaper specific
       { 
-        name: 'shaperType', 
+        name: 'shaper_type', 
         label: 'Tipo de Forma', 
         type: 'select',
         options: [
@@ -1612,7 +1610,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
       
       // Pattern specific
       { 
-        name: 'patternType', 
+        name: 'pattern_type', 
         label: 'Tipo de Patrón', 
         type: 'select',
         options: [

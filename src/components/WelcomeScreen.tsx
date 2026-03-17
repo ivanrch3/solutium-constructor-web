@@ -138,7 +138,7 @@ export const WelcomeScreen = ({
             <div className="mt-8">
               <h2 className="text-lg font-bold text-text mb-4">Activos existentes</h2>
               {(() => {
-                const allAssets = projects.flatMap(p => (p.assets || []).map(a => ({ ...a, projectId: p.id })));
+                const allAssets = projects.flatMap(p => (p.assets || []).map(a => ({ ...a, project_id: p.id })));
                 if (allAssets.length === 0) {
                   return (
                     <div className="p-8 rounded-2xl border border-dashed border-text/20 text-center text-text/60">
@@ -155,7 +155,7 @@ export const WelcomeScreen = ({
                       >
                         <span className="font-medium text-text">{asset.name}</span>
                         <button
-                          onClick={() => onSelectProject(asset.projectId)}
+                          onClick={() => onSelectProject(asset.project_id)}
                           className="px-4 py-2 bg-surface border border-text/10 rounded-lg hover:bg-primary hover:text-white transition-all font-bold text-sm"
                         >
                           Seleccionar

@@ -2,6 +2,7 @@ import React from 'react';
 import { Facebook, Twitter, Instagram, Linkedin, Youtube, Github, Send } from 'lucide-react';
 import { ModuleWrapper } from '../ui/ModuleWrapper';
 import { Typography } from '../ui/Typography';
+import { usePageLayout } from '../../context/PageLayoutContext';
 
 interface FooterModuleProps {
   data: any;
@@ -9,12 +10,14 @@ interface FooterModuleProps {
 }
 
 export const FooterModule = ({ data, onUpdate }: FooterModuleProps) => {
-  const layoutType = data?.layoutType || 'columns';
-  const showSocialLinks = data?.showSocialLinks !== false;
-  const showNewsletter = data?.showNewsletter !== false;
-  const socialLinks = data?.socialLinks || [];
+  const { previewDevice } = usePageLayout();
+  const is_mobile_simulated = previewDevice === 'mobile';
+  const layout_type = data?.layout_type || 'columns';
+  const show_social_links = data?.show_social_links !== false;
+  const show_newsletter = data?.show_newsletter !== false;
+  const social_links = data?.social_links || [];
   const columns = data?.columns || [];
-  const bottomLinks = data?.bottomLinks || [];
+  const bottom_links = data?.bottom_links || [];
 
   const handleTextUpdate = (path: string, value: string) => {
     if (onUpdate) {
@@ -48,10 +51,10 @@ export const FooterModule = ({ data, onUpdate }: FooterModuleProps) => {
   };
 
   const renderSocialLinks = () => {
-    if (!showSocialLinks || socialLinks.length === 0) return null;
+    if (!show_social_links || social_links.length === 0) return null;
     return (
-      <div className={`flex gap-4 ${layoutType === 'centered' ? 'justify-center' : ''}`}>
-        {socialLinks.map((link: any, idx: number) => (
+      <div className={`flex gap-4 ${layout_type === 'centered' ? 'justify-center' : ''}`}>
+        {social_links.map((link: any, idx: number) => (
           <a 
             key={idx}
             href={link.url}
@@ -66,40 +69,40 @@ export const FooterModule = ({ data, onUpdate }: FooterModuleProps) => {
 
   const renderLogo = () => (
     <div className="mb-6">
-      {data?.logoImage ? (
-        <img src={data.logoImage} alt="Logo" className="h-10 w-auto object-contain" referrerPolicy="no-referrer" />
+      {data?.logo_image ? (
+        <img src={data.logo_image} alt="Logo" className="h-10 w-auto object-contain" referrerPolicy="no-referrer" />
       ) : (
         <Typography
           variant="span"
           className="text-2xl font-black tracking-tighter block"
           editable={!!onUpdate}
-          onUpdate={(text) => handleTextUpdate('logoText', text)}
+          onUpdate={(text) => handleTextUpdate('logo_text', text)}
         >
-          {data?.logoText || 'SOLUTIUM'}
+          {data?.logo_text || 'SOLUTIUM'}
         </Typography>
       )}
     </div>
   );
 
   const renderNewsletter = () => {
-    if (!showNewsletter) return null;
+    if (!show_newsletter) return null;
     return (
       <div className="bg-current/5 p-6 rounded-2xl border border-current/10">
         <Typography
           variant="h4"
           className="font-bold mb-2"
           editable={!!onUpdate}
-          onUpdate={(text) => handleTextUpdate('newsletterTitle', text)}
+          onUpdate={(text) => handleTextUpdate('newsletter_title', text)}
         >
-          {data?.newsletterTitle || 'Suscríbete'}
+          {data?.newsletter_title || 'Suscríbete'}
         </Typography>
         <Typography
           variant="p"
           className="text-sm opacity-60 mb-4"
           editable={!!onUpdate}
-          onUpdate={(text) => handleTextUpdate('newsletterText', text)}
+          onUpdate={(text) => handleTextUpdate('newsletter_text', text)}
         >
-          {data?.newsletterText || 'Recibe las últimas noticias.'}
+          {data?.newsletter_text || 'Recibe las últimas noticias.'}
         </Typography>
         <form className="flex gap-2" onSubmit={(e) => e.preventDefault()}>
           <input 
@@ -116,7 +119,7 @@ export const FooterModule = ({ data, onUpdate }: FooterModuleProps) => {
   };
 
   const renderBottomBar = () => (
-    <div className={`mt-16 pt-8 border-t border-current/10 flex flex-col md:flex-row items-center justify-between gap-4 text-sm opacity-60 ${layoutType === 'centered' ? 'flex-col text-center' : ''}`}>
+    <div className={`mt-16 pt-8 border-t border-current/10 flex flex-col ${is_mobile_simulated ? '' : 'md:flex-row'} items-center justify-between gap-4 text-sm opacity-60 ${layout_type === 'centered' || is_mobile_simulated ? 'flex-col text-center' : ''}`}>
       <Typography
         variant="span"
         editable={!!onUpdate}
@@ -124,9 +127,9 @@ export const FooterModule = ({ data, onUpdate }: FooterModuleProps) => {
       >
         {data?.copyright || '© 2024 Solutium. Todos los derechos reservados.'}
       </Typography>
-      {bottomLinks.length > 0 && (
-        <div className="flex flex-wrap justify-center gap-6">
-          {bottomLinks.map((link: any, idx: number) => (
+      {social_links.length > 0 && (
+        <div className={`flex flex-wrap justify-center gap-4 md:gap-6`}>
+          {bottom_links.map((link: any, idx: number) => (
             <a key={idx} href={link.url} className="hover:text-primary transition-colors">
               {link.text}
             </a>
@@ -137,7 +140,7 @@ export const FooterModule = ({ data, onUpdate }: FooterModuleProps) => {
   );
 
   const renderContent = () => {
-    switch (layoutType) {
+    switch (layout_type) {
       case 'centered':
         return (
           <div className="text-center max-w-4xl mx-auto">
@@ -198,20 +201,20 @@ export const FooterModule = ({ data, onUpdate }: FooterModuleProps) => {
 
       case 'minimal':
         return (
-          <div className="flex flex-col md:flex-row items-center justify-between gap-8">
-            <div className="flex items-center gap-8">
+          <div className={`flex flex-col ${is_mobile_simulated ? '' : 'md:flex-row'} items-center justify-between gap-8`}>
+            <div className={`flex items-center ${is_mobile_simulated ? 'flex-col' : 'gap-8'}`}>
               {renderLogo()}
-              <div className="hidden md:block h-6 w-px bg-current/10"></div>
+              {!is_mobile_simulated && <div className="hidden md:block h-6 w-px bg-current/10"></div>}
               <Typography
                 variant="p"
-                className="text-sm opacity-60 max-w-xs hidden md:block"
+                className={`text-sm opacity-60 max-w-xs ${is_mobile_simulated ? 'text-center mb-4' : 'hidden md:block'}`}
                 editable={!!onUpdate}
                 onUpdate={(text) => handleTextUpdate('description', text)}
               >
                 {data?.description}
               </Typography>
             </div>
-            <div className="flex items-center gap-8">
+            <div className={`flex flex-col ${is_mobile_simulated ? 'items-center' : 'md:flex-row md:items-center'} gap-6 md:gap-8`}>
               {renderSocialLinks()}
               <Typography
                 variant="span"
@@ -227,8 +230,8 @@ export const FooterModule = ({ data, onUpdate }: FooterModuleProps) => {
 
       case 'simple':
         return (
-          <div className="grid md:grid-cols-2 gap-12 items-start">
-            <div>
+          <div className={`grid ${is_mobile_simulated ? 'grid-cols-1' : 'md:grid-cols-2'} gap-12 items-start`}>
+            <div className={is_mobile_simulated ? 'text-center flex flex-col items-center' : ''}>
               {renderLogo()}
               <Typography
                 variant="p"
@@ -240,7 +243,7 @@ export const FooterModule = ({ data, onUpdate }: FooterModuleProps) => {
               </Typography>
               {renderSocialLinks()}
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-8">
+            <div className={`grid grid-cols-2 ${is_mobile_simulated ? 'gap-6' : 'sm:grid-cols-3 gap-8'}`}>
               {columns.map((col: any, idx: number) => (
                 <div key={idx}>
                   <Typography
@@ -283,8 +286,8 @@ export const FooterModule = ({ data, onUpdate }: FooterModuleProps) => {
       default:
         return (
           <>
-            <div className="grid lg:grid-cols-12 gap-12">
-              <div className="lg:col-span-4">
+            <div className={`grid ${is_mobile_simulated ? 'grid-cols-1' : 'lg:grid-cols-12'} gap-12`}>
+              <div className={is_mobile_simulated ? 'text-center flex flex-col items-center' : 'lg:col-span-4'}>
                 {renderLogo()}
                 <Typography
                   variant="p"
@@ -297,7 +300,7 @@ export const FooterModule = ({ data, onUpdate }: FooterModuleProps) => {
                 {renderSocialLinks()}
               </div>
               
-              <div className="lg:col-span-5 grid grid-cols-2 sm:grid-cols-3 gap-8">
+              <div className={`${is_mobile_simulated ? 'grid-cols-2' : 'lg:col-span-5 grid grid-cols-2 sm:grid-cols-3'} gap-8`}>
                 {columns.map((col: any, idx: number) => (
                   <div key={idx}>
                     <Typography
@@ -331,7 +334,7 @@ export const FooterModule = ({ data, onUpdate }: FooterModuleProps) => {
                 ))}
               </div>
 
-              <div className="lg:col-span-3">
+              <div className={is_mobile_simulated ? 'w-full' : 'lg:col-span-3'}>
                 {renderNewsletter()}
               </div>
             </div>
@@ -345,7 +348,7 @@ export const FooterModule = ({ data, onUpdate }: FooterModuleProps) => {
     <ModuleWrapper 
       theme={data?.theme}
       background={data?.background}
-      className={layoutType === 'minimal' ? 'py-12' : ''}
+      className={layout_type === 'minimal' ? 'py-12' : ''}
     >
       {renderContent()}
     </ModuleWrapper>

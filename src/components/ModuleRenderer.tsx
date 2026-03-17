@@ -52,7 +52,7 @@ interface ModuleRendererProps {
   onEdit: (moduleId: string) => void;
   isSelected?: boolean;
   config: SolutiumPayload | null;
-  selectedProductIds: string[];
+  selected_product_ids: string[];
   isPreview?: boolean;
 }
 
@@ -66,11 +66,11 @@ export const ModuleRenderer = ({
   onEdit,
   isSelected, 
   config, 
-  selectedProductIds,
+  selected_product_ids,
   isPreview = false
 }: ModuleRendererProps) => {
-  const { pageLayout } = usePageLayout();
-  const isSeamless = pageLayout === 'seamless';
+  const { page_layout } = usePageLayout();
+  const isSeamless = page_layout === 'seamless';
 
   // Calculate effective theme based on Smart Mode
   const getEffectiveTheme = () => {
@@ -141,7 +141,7 @@ export const ModuleRenderer = ({
       case 'features':
         return <FeaturesModule data={moduleData} />;
       case 'product-showcase':
-        return <ProductShowcaseModule data={moduleData} config={config} selectedProductIds={selectedProductIds} />;
+        return <ProductShowcaseModule data={moduleData} config={config} selected_product_ids={selected_product_ids} />;
       case 'testimonials':
         return <TestimonialsModule data={moduleData} />;
       case 'pricing':

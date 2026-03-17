@@ -2,20 +2,23 @@ import React from 'react';
 import { Star, CheckCircle2, Quote, Linkedin, Twitter, MessageSquare } from 'lucide-react';
 import { ModuleWrapper } from '../ui/ModuleWrapper';
 import { Typography } from '../ui/Typography';
+import { usePageLayout } from '../../context/PageLayoutContext';
 
 export const TestimonialsModule = ({ data, onUpdate }: { data: any, onUpdate?: (data: any) => void }) => {
+  const { previewDevice } = usePageLayout();
+  const is_mobile_simulated = previewDevice === 'mobile';
   const [activeSpotlight, setActiveSpotlight] = React.useState(0);
-  const layoutType = data?.layoutType || 'grid';
+  const layout_type = data?.layout_type || 'grid';
   const columns = data?.columns || 3;
   const alignment = data?.alignment || 'center';
   const gap = data?.gap !== undefined ? data.gap : 32;
-  const cardStyle = data?.cardStyle || { border: true, shadow: 'sm', borderRadius: 'xl', style: 'classic' };
+  const card_style = data?.card_style || { border: true, shadow: 'sm', border_radius: 'xl', style: 'classic' };
   const testimonials = data?.testimonials || [];
   
-  const showRating = data?.showRating !== false;
-  const showAvatar = data?.showAvatar !== false;
-  const showRole = data?.showRole !== false;
-  const showCompany = data?.showCompany !== false;
+  const show_rating = data?.show_rating !== false;
+  const show_avatar = data?.show_avatar !== false;
+  const show_role = data?.show_role !== false;
+  const show_company = data?.show_company !== false;
 
   const handleTextUpdate = (path: string, value: string) => {
     if (onUpdate) {
@@ -42,17 +45,17 @@ export const TestimonialsModule = ({ data, onUpdate }: { data: any, onUpdate?: (
     const classes = ['h-full transition-all duration-300 group flex flex-col relative'];
     
     // Base Style
-    if (cardStyle.style === 'bubble') {
+    if (card_style.style === 'bubble') {
       classes.push('bg-surface p-8 rounded-2xl relative mb-4');
-      if (cardStyle.border) classes.push('border border-text/10');
-    } else if (cardStyle.style === 'flat') {
+      if (card_style.border) classes.push('border border-text/10');
+    } else if (card_style.style === 'flat') {
       classes.push('bg-transparent p-0');
     } else {
       // Classic
-      if (cardStyle.glass) classes.push('bg-surface/50 backdrop-blur-md');
+      if (card_style.glass) classes.push('bg-surface/50 backdrop-blur-md');
       else classes.push('bg-surface');
       
-      if (cardStyle.border) classes.push('border border-text/10 hover:border-primary/30');
+      if (card_style.border) classes.push('border border-text/10 hover:border-primary/30');
       
       const shadowMap: Record<string, string> = {
         none: '',
@@ -60,7 +63,7 @@ export const TestimonialsModule = ({ data, onUpdate }: { data: any, onUpdate?: (
         md: 'shadow-md hover:shadow-2xl hover:shadow-primary/10',
         lg: 'shadow-xl hover:shadow-3xl hover:shadow-primary/20'
       };
-      classes.push(shadowMap[cardStyle.shadow || 'none']);
+      classes.push(shadowMap[card_style.shadow || 'none']);
 
       const radiusMap: Record<string, string> = {
         none: 'rounded-none',
@@ -68,7 +71,7 @@ export const TestimonialsModule = ({ data, onUpdate }: { data: any, onUpdate?: (
         xl: 'rounded-[2rem]',
         '3xl': 'rounded-[3rem]'
       };
-      classes.push(radiusMap[cardStyle.borderRadius || 'xl']);
+      classes.push(radiusMap[card_style.border_radius || 'xl']);
       
       classes.push('p-8');
     }
@@ -80,7 +83,7 @@ export const TestimonialsModule = ({ data, onUpdate }: { data: any, onUpdate?: (
   };
 
   const renderRating = (rating: number) => {
-    if (!showRating) return null;
+    if (!show_rating) return null;
     return (
       <div className="flex gap-1 text-amber-400 mb-4">
         {[...Array(5)].map((_, i) => (
@@ -104,11 +107,11 @@ export const TestimonialsModule = ({ data, onUpdate }: { data: any, onUpdate?: (
 
   const renderTestimonial = (test: any, idx: number) => (
     <div key={idx} className={getCardClasses()}>
-      {cardStyle.style === 'bubble' && (
+      {card_style.style === 'bubble' && (
         <div className={`absolute -bottom-3 ${alignment === 'center' ? 'left-1/2 -translate-x-1/2' : 'left-8'} w-6 h-6 bg-surface border-b border-r border-text/10 rotate-45 transform`} />
       )}
       
-      {cardStyle.style !== 'minimal' && (
+      {card_style.style !== 'minimal' && (
         <Quote className={`w-8 h-8 text-primary/20 mb-4 ${alignment === 'center' ? 'mx-auto' : ''}`} />
       )}
 
@@ -123,8 +126,8 @@ export const TestimonialsModule = ({ data, onUpdate }: { data: any, onUpdate?: (
         {`"${test.content}"`}
       </Typography>
 
-      <div className={`flex items-center gap-4 mt-auto ${cardStyle.style === 'bubble' ? 'pt-4' : ''}`}>
-        {showAvatar && test.avatar && (
+      <div className={`flex items-center gap-4 mt-auto ${card_style.style === 'bubble' ? 'pt-4' : ''}`}>
+        {show_avatar && test.avatar && (
           <div className="relative">
             <img 
               src={test.avatar} 
@@ -140,7 +143,7 @@ export const TestimonialsModule = ({ data, onUpdate }: { data: any, onUpdate?: (
           </div>
         )}
         
-        <div className={alignment === 'center' && !showAvatar ? 'w-full' : ''}>
+        <div className={alignment === 'center' && !show_avatar ? 'w-full' : ''}>
           <div className="flex items-center gap-2 justify-center">
             <Typography
               variant="h4"
@@ -155,9 +158,9 @@ export const TestimonialsModule = ({ data, onUpdate }: { data: any, onUpdate?: (
             )}
           </div>
           
-          {(showRole || showCompany) && (
+          {(show_role || show_company) && (
             <div className="text-xs opacity-60 flex gap-1 justify-center">
-              {showRole && (
+              {show_role && (
                 <Typography
                   variant="span"
                   editable={!!onUpdate}
@@ -166,8 +169,8 @@ export const TestimonialsModule = ({ data, onUpdate }: { data: any, onUpdate?: (
                   {test.role}
                 </Typography>
               )}
-              {showRole && showCompany && <span>•</span>}
-              {showCompany && (
+              {show_role && show_company && <span>•</span>}
+              {show_company && (
                 <Typography
                   variant="span"
                   editable={!!onUpdate}
@@ -209,17 +212,17 @@ export const TestimonialsModule = ({ data, onUpdate }: { data: any, onUpdate?: (
   );
 
   const renderContent = () => {
-    const gridCols = {
+    const gridCols = is_mobile_simulated ? 'grid-cols-1' : {
       1: 'grid-cols-1',
       2: 'grid-cols-1 md:grid-cols-2',
       3: 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3',
       4: 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4'
     }[columns as 1|2|3|4] || 'grid-cols-1 md:grid-cols-3';
 
-    switch (layoutType) {
+    switch (layout_type) {
       case 'masonry':
         return (
-          <div className={`columns-1 md:columns-2 lg:columns-3 gap-8 space-y-8`}>
+          <div className={`columns-1 ${is_mobile_simulated ? '' : 'md:columns-2 lg:columns-3'} gap-8 space-y-8`}>
             {testimonials.map((test: any, idx: number) => (
               <div key={idx} className="break-inside-avoid">
                 {renderTestimonial(test, idx)}
@@ -232,7 +235,7 @@ export const TestimonialsModule = ({ data, onUpdate }: { data: any, onUpdate?: (
         return (
           <div className="flex gap-6 overflow-x-auto pb-12 snap-x no-scrollbar px-4 -mx-4">
             {testimonials.map((test: any, idx: number) => (
-              <div key={idx} className="min-w-[300px] md:min-w-[400px] snap-center">
+              <div key={idx} className={`${is_mobile_simulated ? 'min-w-[280px]' : 'min-w-[300px] md:min-w-[400px]'} snap-center`}>
                 {renderTestimonial(test, idx)}
               </div>
             ))}
@@ -244,11 +247,11 @@ export const TestimonialsModule = ({ data, onUpdate }: { data: any, onUpdate?: (
         if (!spotlight) return null;
         return (
           <div className="max-w-4xl mx-auto text-center">
-            <Quote className="w-16 h-16 text-primary/20 mx-auto mb-8" />
-            <div className="min-h-[200px] flex items-center justify-center">
+            <Quote className={`${is_mobile_simulated ? 'w-10 h-10' : 'w-16 h-16'} text-primary/20 mx-auto mb-8`} />
+            <div className={`${is_mobile_simulated ? 'min-h-[150px]' : 'min-h-[200px]'} flex items-center justify-center`}>
                <Typography
                 variant="h3"
-                className="text-3xl md:text-5xl font-bold leading-tight mb-12 animate-in fade-in zoom-in duration-500"
+                className={`${is_mobile_simulated ? 'text-xl' : 'text-3xl md:text-5xl'} font-bold leading-tight mb-12 animate-in fade-in zoom-in duration-500`}
                 editable={!!onUpdate}
                 onUpdate={(text) => handleTextUpdate(`testimonials.${activeSpotlight}.content`, text)}
               >
@@ -257,16 +260,16 @@ export const TestimonialsModule = ({ data, onUpdate }: { data: any, onUpdate?: (
             </div>
            
             <div className="flex flex-col items-center gap-4">
-              {showAvatar && spotlight.avatar && (
+              {show_avatar && spotlight.avatar && (
                 <img 
                   src={spotlight.avatar} 
                   alt={spotlight.name} 
-                  className="w-20 h-20 rounded-full object-cover border-4 border-surface shadow-xl"
+                  className={`${is_mobile_simulated ? 'w-16 h-16' : 'w-20 h-20'} rounded-full object-cover border-4 border-surface shadow-xl`}
                   referrerPolicy="no-referrer"
                 />
               )}
               <div>
-                <div className="font-bold text-xl flex items-center gap-2 justify-center">
+                <div className={`${is_mobile_simulated ? 'text-lg' : 'text-xl'} font-bold flex items-center gap-2 justify-center`}>
                   <Typography
                     variant="span"
                     editable={!!onUpdate}
@@ -276,9 +279,9 @@ export const TestimonialsModule = ({ data, onUpdate }: { data: any, onUpdate?: (
                   </Typography>
                   {spotlight.verified && <CheckCircle2 className="w-5 h-5 text-emerald-500" />}
                 </div>
-                {(showRole || showCompany) && (
-                  <div className="opacity-60 flex gap-1 justify-center">
-                    {showRole && (
+                {(show_role || show_company) && (
+                  <div className="opacity-60 flex gap-1 justify-center text-sm">
+                    {show_role && (
                       <Typography
                         variant="span"
                         editable={!!onUpdate}
@@ -287,8 +290,8 @@ export const TestimonialsModule = ({ data, onUpdate }: { data: any, onUpdate?: (
                         {spotlight.role}
                       </Typography>
                     )}
-                    {showRole && showCompany && <span>@</span>}
-                    {showCompany && (
+                    {show_role && show_company && <span>@</span>}
+                    {show_company && (
                       <Typography
                         variant="span"
                         editable={!!onUpdate}
@@ -318,24 +321,24 @@ export const TestimonialsModule = ({ data, onUpdate }: { data: any, onUpdate?: (
 
       case 'minimal':
         return (
-          <div className={`grid ${gridCols} gap-12 divide-y md:divide-y-0 md:divide-x divide-text/10`}>
+          <div className={`grid ${gridCols} gap-12 ${is_mobile_simulated ? 'divide-y' : 'divide-y md:divide-y-0 md:divide-x'} divide-text/10`}>
             {testimonials.map((test: any, idx: number) => (
-              <div key={idx} className="px-6 first:pl-0 last:pr-0">
-                {showRating && (
+              <div key={idx} className={`${is_mobile_simulated ? 'py-8 first:pt-0 last:pb-0' : 'px-6 first:pl-0 last:pr-0'}`}>
+                {show_rating && (
                   <div className="flex gap-1 text-primary mb-4">
                     {[...Array(5)].map((_, i) => <Star key={i} className={`w-4 h-4 ${i < (test.rating || 5) ? 'fill-current' : 'text-text/20'}`} />)}
                   </div>
                 )}
                 <Typography
                   variant="p"
-                  className="text-lg font-medium mb-6"
+                  className={`${is_mobile_simulated ? 'text-base' : 'text-lg'} font-medium mb-6`}
                   editable={!!onUpdate}
                   onUpdate={(text) => handleTextUpdate(`testimonials.${idx}.content`, text)}
                 >
                   {`"${test.content}"`}
                 </Typography>
                 <div className="flex items-center gap-3">
-                  {showAvatar && test.avatar && (
+                  {show_avatar && test.avatar && (
                     <img src={test.avatar} className="w-10 h-10 rounded-full" alt={test.name} referrerPolicy="no-referrer" />
                   )}
                   <div>
@@ -347,11 +350,11 @@ export const TestimonialsModule = ({ data, onUpdate }: { data: any, onUpdate?: (
                     >
                       {test.name}
                     </Typography>
-                    {(showRole || showCompany) && (
+                    {(show_role || show_company) && (
                       <div className="text-xs opacity-60 flex gap-1">
-                        {showRole && <span>{test.role}</span>}
-                        {showRole && showCompany && <span>•</span>}
-                        {showCompany && <span>{test.company}</span>}
+                        {show_role && <span>{test.role}</span>}
+                        {show_role && show_company && <span>•</span>}
+                        {show_company && <span>{test.company}</span>}
                       </div>
                     )}
                   </div>
@@ -378,14 +381,14 @@ export const TestimonialsModule = ({ data, onUpdate }: { data: any, onUpdate?: (
       {renderHeader()}
       {renderContent()}
       
-      {data?.sectionButton?.text && (
+      {data?.section_button?.text && (
         <div className={`mt-20 flex ${alignment === 'center' ? 'justify-center' : 'justify-start'}`}>
           <a 
-            href={data.sectionButton.url || '#'} 
-            target={data.sectionButton.target || '_self'}
+            href={data.section_button.url || '#'} 
+            target={data.section_button.target || '_self'}
             className="px-10 py-5 bg-primary text-white font-bold rounded-2xl shadow-xl shadow-primary/20 hover:bg-primary/90 transition-all hover:scale-105 active:scale-95"
           >
-            {data.sectionButton.text}
+            {data.section_button.text}
           </a>
         </div>
       )}

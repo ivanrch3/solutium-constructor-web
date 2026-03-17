@@ -21,12 +21,12 @@ interface PexelsPhoto {
 }
 
 interface ImagePickerProps {
-  isOpen: boolean;
+  is_open: boolean;
   onClose: () => void;
   onSelect: (imageUrl: string) => void;
 }
 
-export const ImagePicker = ({ isOpen, onClose, onSelect }: ImagePickerProps) => {
+export const ImagePicker = ({ is_open, onClose, onSelect }: ImagePickerProps) => {
   const [query, setQuery] = useState('');
   const [images, setImages] = useState<PexelsPhoto[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -64,10 +64,10 @@ export const ImagePicker = ({ isOpen, onClose, onSelect }: ImagePickerProps) => 
   };
 
   useEffect(() => {
-    if (isOpen && images.length === 0) {
+    if (is_open && images.length === 0) {
       searchImages('business'); // Default search
     }
-  }, [isOpen]);
+  }, [is_open]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,7 +76,7 @@ export const ImagePicker = ({ isOpen, onClose, onSelect }: ImagePickerProps) => 
 
   return (
     <AnimatePresence>
-      {isOpen && (
+      {is_open && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
           <motion.div
             initial={{ opacity: 0 }}

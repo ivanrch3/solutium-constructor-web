@@ -21,7 +21,7 @@ interface LayersPanelProps {
   onRemove: (id: string) => void;
   onSelect: (id: string) => void;
   onEdit: (id: string) => void;
-  selectedModuleId: string | null;
+  selected_module_id: string | null;
   isPinned: boolean;
   onTogglePin: () => void;
   sidebarCollapsed: boolean;
@@ -30,7 +30,7 @@ interface LayersPanelProps {
   layersExpanded: boolean;
 }
 
-const LayerItem = ({ module, selectedModuleId, onSelect, onRemove, onUpdate, layersExpanded }: { module: any, selectedModuleId: string | null, onSelect: (id: string) => void, onRemove: (id: string) => void, onUpdate: (id: string, data: any) => void, layersExpanded: boolean, key?: any }) => {
+const LayerItem = ({ module, selected_module_id, onSelect, onRemove, onUpdate, layersExpanded }: { module: any, selected_module_id: string | null, onSelect: (id: string) => void, onRemove: (id: string) => void, onUpdate: (id: string, data: any) => void, layersExpanded: boolean, key?: any }) => {
   const dragControls = useDragControls();
   const Icon = getModuleDefinition(module.type)?.icon || Layout;
   const isHidden = module.data?.isHidden;
@@ -43,7 +43,7 @@ const LayerItem = ({ module, selectedModuleId, onSelect, onRemove, onUpdate, lay
       className={`
         group flex items-center transition-all
         ${layersExpanded ? 'gap-3 p-3 rounded-xl w-full' : 'justify-center p-2 rounded-lg w-12 h-12'}
-        ${selectedModuleId === module.id ? 'bg-primary/5 border-primary/20 shadow-sm' : 'hover:bg-background border-transparent'}
+        ${selected_module_id === module.id ? 'bg-primary/5 border-primary/20 shadow-sm' : 'hover:bg-background border-transparent'}
         border
       `}
       onClick={() => onSelect(module.id)}
@@ -58,7 +58,7 @@ const LayerItem = ({ module, selectedModuleId, onSelect, onRemove, onUpdate, lay
           </div>
         ) : null}
         <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors ${
-          selectedModuleId === module.id ? 'bg-primary text-white' : 'bg-background text-text/40'
+          selected_module_id === module.id ? 'bg-primary text-white' : 'bg-background text-text/40'
         }`}>
           <Icon className="w-4 h-4" />
         </div>
@@ -72,7 +72,7 @@ const LayerItem = ({ module, selectedModuleId, onSelect, onRemove, onUpdate, lay
       </div>
 
       {layersExpanded && (
-        <div className={`flex items-center gap-1 transition-opacity ${selectedModuleId === module.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+        <div className={`flex items-center gap-1 transition-opacity ${selected_module_id === module.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
           <button 
             onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => {
@@ -126,7 +126,7 @@ export const LayersPanel = ({
   onRemove, 
   onSelect, 
   onEdit, 
-  selectedModuleId,
+  selected_module_id,
   isPinned,
   onTogglePin,
   sidebarCollapsed,
@@ -135,7 +135,7 @@ export const LayersPanel = ({
   layersExpanded
 }: LayersPanelProps) => {
   return (
-    <div className="flex flex-col overflow-hidden pointer-events-auto">
+    <div className="flex flex-col min-h-0 pointer-events-auto border-b border-text/5">
       {/* Header */}
       <div className={`h-12 flex items-center ${layersExpanded ? 'justify-between px-4' : 'justify-center'} border-b border-text/5 flex-shrink-0 bg-surface/50 backdrop-blur-sm`}>
         <div className="flex items-center gap-2">
@@ -170,7 +170,7 @@ export const LayersPanel = ({
       </div>
 
       {/* Modules List */}
-      <div className={`custom-scrollbar ${layersExpanded ? 'p-4' : 'py-4 flex flex-col items-center'}`}>
+      <div className={`flex-1 overflow-y-auto custom-scrollbar ${layersExpanded ? 'p-4' : 'py-4 flex flex-col items-center'}`}>
           {modules.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-text/30 py-10">
               <Layout className="w-8 h-8 mb-2" />
@@ -182,7 +182,7 @@ export const LayersPanel = ({
                 <LayerItem 
                   key={module.id} 
                   module={module} 
-                  selectedModuleId={selectedModuleId} 
+                  selected_module_id={selected_module_id} 
                   onSelect={(id) => {
                     onSelect(id);
                   }}

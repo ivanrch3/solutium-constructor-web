@@ -17,35 +17,36 @@ export const TopBarModule = ({ data, isPreview, onUpdate }: { data: any, isPrevi
   const [currentCarouselIndex, setCurrentCarouselIndex] = useState(0);
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
   const satellite = useContext(SolutiumContext);
+  const { previewDevice, pageLayout } = usePageLayout();
+  const is_mobile_simulated = previewDevice === 'mobile';
 
-  const advancedMode = data?.advancedMode || 'none';
+  const advanced_mode = data?.advanced_mode || 'none';
   const timerData = data?.timer || { days: 0, hours: 0, minutes: 0, seconds: 0 };
   const carouselData = data?.carousel || ['Mensaje 1'];
-  const { pageLayout } = usePageLayout();
   const isSeamless = pageLayout === 'seamless';
-
+ 
   useEffect(() => {
-    if (advancedMode === 'carousel' && carouselData.length > 1) {
+    if (advanced_mode === 'carousel' && carouselData.length > 1) {
       const interval = setInterval(() => {
         setCurrentCarouselIndex((prev) => (prev + 1) % carouselData.length);
       }, 3000);
       return () => clearInterval(interval);
     }
-  }, [advancedMode, carouselData.length]);
-
+  }, [advanced_mode, carouselData.length]);
+ 
   useEffect(() => {
-    if (advancedMode === 'timer') {
+    if (advanced_mode === 'timer') {
       // Calculate target date based on timerData initially
       const target = new Date();
       target.setDate(target.getDate() + (timerData.days || 0));
       target.setHours(target.getHours() + (timerData.hours || 0));
       target.setMinutes(target.getMinutes() + (timerData.minutes || 0));
       target.setSeconds(target.getSeconds() + (timerData.seconds || 0));
-
+ 
       const interval = setInterval(() => {
         const now = new Date();
         const difference = target.getTime() - now.getTime();
-
+ 
         if (difference <= 0) {
           clearInterval(interval);
           setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
@@ -58,7 +59,7 @@ export const TopBarModule = ({ data, isPreview, onUpdate }: { data: any, isPrevi
           });
         }
       }, 1000);
-
+ 
       // Initial set
       setTimeLeft({
         days: timerData.days || 0,
@@ -66,10 +67,10 @@ export const TopBarModule = ({ data, isPreview, onUpdate }: { data: any, isPrevi
         minutes: timerData.minutes || 0,
         seconds: timerData.seconds || 0
       });
-
+ 
       return () => clearInterval(interval);
     }
-  }, [advancedMode, timerData.days, timerData.hours, timerData.minutes, timerData.seconds]);
+  }, [advanced_mode, timerData.days, timerData.hours, timerData.minutes, timerData.seconds]);
 
   const handleTextUpdate = (path: string, value: string) => {
     if (onUpdate) {
@@ -102,38 +103,38 @@ export const TopBarModule = ({ data, isPreview, onUpdate }: { data: any, isPrevi
 
   const visibilityClass = {
     all: 'flex',
-    desktop: 'hidden md:flex',
-    mobile: 'flex md:hidden'
+    desktop: is_mobile_simulated ? 'hidden' : 'hidden md:flex',
+    mobile: is_mobile_simulated ? 'flex' : 'flex md:hidden'
   }[data?.visibility || 'all'];
 
   const shapeClass = isSeamless ? 'w-full rounded-none' : {
     'bottom-rounded': 'w-full rounded-b-[2.5rem]',
     'top-rounded': 'w-full rounded-t-[2.5rem]',
-    'pill': 'w-[calc(100%-2rem)] rounded-full mx-auto mt-2',
+    'pill': is_mobile_simulated ? 'w-[calc(100%-1rem)] rounded-full mx-auto mt-2' : 'w-[calc(100%-2rem)] rounded-full mx-auto mt-2',
     'square': 'w-full rounded-none',
     'slightly-rounded': 'w-[calc(100%-1rem)] rounded-lg mx-auto mt-2'
   }[data?.shape || 'bottom-rounded'];
 
-  const currentTheme = data?.theme || 'dark';
-  const themeBg = currentTheme === 'dark' ? 'rgb(var(--color-primary-rgb))' : '#ffffff';
-  const themeText = currentTheme === 'dark' ? '#ffffff' : 'rgb(var(--color-primary-rgb))';
-  const bgColor = data?.backgroundColor || themeBg;
-  const textColor = data?.textColor || themeText;
+  const current_theme = data?.theme || 'dark';
+  const themeBg = current_theme === 'dark' ? 'rgb(var(--color-primary-rgb))' : '#ffffff';
+  const themeText = current_theme === 'dark' ? '#ffffff' : 'rgb(var(--color-primary-rgb))';
+  const bg_color = data?.background_color || themeBg;
+  const text_color = data?.text_color || themeText;
 
-  const socials = data?.socials || { useProjectSocials: true };
-  const isUsingProject = socials.useProjectSocials !== false;
-  const projectSocials = satellite?.payload?.projectData?.socials || {};
-  const currentSocials = isUsingProject ? projectSocials : socials;
+  const socials = data?.socials || { use_project_socials: true };
+  const is_using_project = socials.use_project_socials !== false;
+  const project_socials = satellite?.payload?.projectData?.socials || {};
+  const current_socials = is_using_project ? project_socials : socials;
 
   return (
     <div 
-      className={`${paddingClass} px-6 ${shapeClass} flex-col sm:flex-row items-center justify-between gap-2 text-[11px] font-medium transition-colors ${visibilityClass}`}
+      className={`${paddingClass} px-6 ${shapeClass} flex-col ${is_mobile_simulated ? 'flex' : 'sm:flex-row'} items-center justify-between gap-2 text-[11px] font-medium transition-colors ${visibilityClass}`}
       style={{ 
-        backgroundColor: bgColor,
-        color: textColor
+        backgroundColor: bg_color,
+        color: text_color
       }}
     >
-      <div className="flex items-center gap-4">
+      <div className={`flex items-center gap-4 ${is_mobile_simulated ? 'order-2' : ''}`}>
         {data?.email && (
           <div className="flex items-center gap-1.5 opacity-80 hover:opacity-100 transition-opacity">
             <Mail className="w-3 h-3" />
@@ -160,9 +161,9 @@ export const TopBarModule = ({ data, isPreview, onUpdate }: { data: any, isPrevi
         )}
       </div>
       
-      <div className="flex items-center justify-center gap-3 flex-1">
-        {advancedMode === 'carousel' ? (
-          <div className="flex items-center justify-center gap-2 overflow-hidden relative h-6 w-full max-w-md">
+      <div className={`flex items-center justify-center gap-3 flex-1 ${is_mobile_simulated ? 'order-1' : ''}`}>
+        {advanced_mode === 'carousel' ? (
+          <div className={`flex items-center justify-center gap-2 overflow-hidden relative h-6 w-full ${is_mobile_simulated ? 'max-w-[200px]' : 'max-w-md'}`}>
             {carouselData.map((msg: string, idx: number) => (
               <div
                 key={idx}
@@ -203,7 +204,7 @@ export const TopBarModule = ({ data, isPreview, onUpdate }: { data: any, isPrevi
                 </Typography>
               </span>
             )}
-            {advancedMode === 'timer' && (
+            {advanced_mode === 'timer' && (
               <div className="flex items-center gap-1 ml-2 font-mono bg-black/10 px-2 py-1 rounded-md">
                 <span className="font-bold">{String(timeLeft.days).padStart(2, '0')}</span>d :
                 <span className="font-bold ml-1">{String(timeLeft.hours).padStart(2, '0')}</span>h :
@@ -232,36 +233,36 @@ export const TopBarModule = ({ data, isPreview, onUpdate }: { data: any, isPrevi
         )}
       </div>
 
-      <div className="flex items-center gap-4">
-        {data?.showSocial !== false && (
+      <div className={`flex items-center gap-4 ${is_mobile_simulated ? 'order-3' : ''}`}>
+        {data?.show_social !== false && (
           <div className="flex items-center gap-3">
-            {currentSocials.facebook && (
-              <a href={currentSocials.facebook} target="_blank" rel="noopener noreferrer" className="opacity-60 hover:opacity-100 transition-all">
+            {current_socials.facebook && (
+              <a href={current_socials.facebook} target="_blank" rel="noopener noreferrer" className="opacity-60 hover:opacity-100 transition-all">
                 <Facebook className="w-3 h-3" />
               </a>
             )}
-            {currentSocials.twitter && (
-              <a href={currentSocials.twitter} target="_blank" rel="noopener noreferrer" className="opacity-60 hover:opacity-100 transition-all">
+            {current_socials.twitter && (
+              <a href={current_socials.twitter} target="_blank" rel="noopener noreferrer" className="opacity-60 hover:opacity-100 transition-all">
                 <Twitter className="w-3 h-3" />
               </a>
             )}
-            {currentSocials.instagram && (
-              <a href={currentSocials.instagram} target="_blank" rel="noopener noreferrer" className="opacity-60 hover:opacity-100 transition-all">
+            {current_socials.instagram && (
+              <a href={current_socials.instagram} target="_blank" rel="noopener noreferrer" className="opacity-60 hover:opacity-100 transition-all">
                 <Instagram className="w-3 h-3" />
               </a>
             )}
-            {currentSocials.linkedin && (
-              <a href={currentSocials.linkedin} target="_blank" rel="noopener noreferrer" className="opacity-60 hover:opacity-100 transition-all">
+            {current_socials.linkedin && (
+              <a href={current_socials.linkedin} target="_blank" rel="noopener noreferrer" className="opacity-60 hover:opacity-100 transition-all">
                 <Linkedin className="w-3 h-3" />
               </a>
             )}
-            {currentSocials.youtube && (
-              <a href={currentSocials.youtube} target="_blank" rel="noopener noreferrer" className="opacity-60 hover:opacity-100 transition-all">
+            {current_socials.youtube && (
+              <a href={current_socials.youtube} target="_blank" rel="noopener noreferrer" className="opacity-60 hover:opacity-100 transition-all">
                 <Youtube className="w-3 h-3" />
               </a>
             )}
-            {/* Fallback if no socials are defined anywhere but showSocial is true */}
-            {!currentSocials.facebook && !currentSocials.twitter && !currentSocials.instagram && !currentSocials.linkedin && !currentSocials.youtube && (
+            {/* Fallback if no socials are defined anywhere but show_social is true */}
+            {!current_socials.facebook && !current_socials.twitter && !current_socials.instagram && !current_socials.linkedin && !current_socials.youtube && (
               <>
                 <Facebook className="w-3 h-3 opacity-60 hover:opacity-100 cursor-pointer transition-all" />
                 <Twitter className="w-3 h-3 opacity-60 hover:opacity-100 cursor-pointer transition-all" />
@@ -272,7 +273,7 @@ export const TopBarModule = ({ data, isPreview, onUpdate }: { data: any, isPrevi
           </div>
         )}
         
-        {data?.isDismissible !== false && (
+        {data?.is_dismissible !== false && (
           <button 
             onClick={() => setIsVisible(false)}
             className="p-1 hover:bg-white/20 rounded-full transition-colors"

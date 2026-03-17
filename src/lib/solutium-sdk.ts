@@ -7,26 +7,44 @@ import { useEffect, useState, useMemo, useRef } from 'react';
 import { initSupabase } from './supabase';
 
 export interface SolutiumPayload {
-    userId: string;
-    projectId: string;
+    user_id: string;
+    project_id: string;
     role: string;
     timestamp: number;
     scopes: string[];
     
     // S.I.P. v2 Core Fields
-    userProfile: {
-        name: string;
-        email: string;
-        avatar?: string;
+    user_profile: {
+        id: string;
+        full_name?: string;
+        email?: string;
+        avatar_url?: string;
+        role?: string;
+        language?: string;
+        phone?: string;
+        ui_style?: string;
+        active_theme?: string;
+        font_family?: string;
+        base_size?: string;
+        border_radius?: string;
+        theme_preference?: string;
+        colored_sidebar_icons?: boolean;
+        subscription_plan?: string;
+        onboarding_completed?: boolean;
+        email_it_id?: string;
+        updated_at?: string;
+        has_completed_tour?: boolean;
+        business_name?: string;
+        schema_version?: string;
     };
-    projectData: {
+    project_data: {
         name: string;
         colors: string[]; // [Primary, Secondary, Accent, Background, Surface, Text]
-        logoUrl?: string;
-        fontFamily?: string;
-        baseSize?: string;
-        borderRadius?: string;
-        themePreset?: string;
+        logo_url?: string;
+        font_family?: string;
+        base_size?: string;
+        border_radius?: string;
+        theme_preset?: string;
         socials?: {
             facebook?: string;
             twitter?: string;
@@ -35,47 +53,173 @@ export interface SolutiumPayload {
             youtube?: string;
         };
     };
-    crmData: {
-        apiUrl: string;
-        authToken: string;
-        customers?: any[];
-        leads?: any[];
-    };
-    productsData: {
-        apiUrl: string;
-        authToken: string;
-        products?: any[];
-        categories?: any[];
-    };
-    supabaseData?: {
+    customers_data?: Array<{
+        id: string;
+        project_id?: string;
+        name: string;
+        email?: string;
+        phone?: string;
+        company?: string;
+        role?: string;
+        status?: string;
+        source?: string;
+        source_app_id?: string;
+        business_id?: string;
+        visibility?: string;
+        assigned_business_ids?: any;
+        last_activity?: string;
+        notes?: string;
+        app_data?: any;
+        created_at?: string;
+        updated_at?: string;
+        schema_version?: string;
+        profile_photo_url?: string;
+        company_logo_url?: string;
+    }>;
+    products_data?: Array<{
+        id: string;
+        project_id?: string;
+        name: string;
+        description?: string;
+        unit_cost?: number;
+        type?: string;
+        sku?: string;
+        status?: string;
+        business_id?: string;
+        app_data?: any;
+        created_at?: string;
+        updated_at?: string;
+        schema_version?: string;
+        photo_url?: string;
+    }>;
+    supabase_data?: {
         url: string;
-        anonKey: string;
+        anon_key: string;
     };
-    currentAsset?: {
+    current_asset?: {
         id: string;
         name: string;
         type: string;
         data?: any;
     };
-    teamMembers?: {
-        name: string;
-        role: string;
-        email: string;
-        avatar?: string;
-    }[];
-    activeProjects?: {
+    team_members_data?: Array<{
         id: string;
         name: string;
-        description?: string;
-        status: string;
-        updatedAt: number;
-    }[];
-    calendarConfig?: {
+        email: string;
+        role: string;
+        avatar_url?: string;
+        status?: string;
+        project_id?: string;
+        profile_id?: string;
+        assigned_at?: string;
+        user_id?: string;
+        schema_version?: string;
+    }>;
+    projects_data?: Array<{
+        id: string;
+        owner_id?: string;
+        name: string;
+        industry?: string;
+        whatsapp?: string;
+        email?: string;
+        address?: string;
+        website?: string;
+        socials?: any;
+        brand_colors?: string[];
+        logo_url?: string;
+        ui_style?: string;
+        active_theme?: string;
+        image_mappings?: any;
+        is_master?: boolean;
+        created_at?: string;
+        updated_at?: string;
+        schema_version?: string;
+        assets?: any[];
+    }>;
+    calendar_config?: {
         timezone: string;
-        workingDays: number[];
-        openingTime: string;
-        closingTime: string;
+        working_days: number[];
+        opening_time: string;
+        closing_time: string;
     };
+    apps_data?: Array<{
+        id: string;
+        name: string;
+        url: string;
+        description?: string;
+        category?: string;
+        logo_url?: string;
+        iso_url?: string;
+        icon?: string;
+        status?: string;
+        lifecycle_status?: string;
+        requires_pro?: boolean;
+        is_active?: boolean;
+        is_coming_soon?: boolean;
+        is_new?: boolean;
+        is_featured?: boolean;
+        is_custom?: boolean;
+        owner_id?: string;
+        created_at?: string;
+        schema_version?: string;
+    }>;
+    project_apps_data?: Array<{
+        project_id: string;
+        app_id: string;
+        settings?: any;
+        installed_at?: string;
+        schema_version?: string;
+    }>;
+    integrations_data?: Array<{
+        id: string;
+        user_id: string;
+        provider: string;
+        access_token: string;
+        refresh_token?: string;
+        expires_at?: string;
+        metadata?: any;
+        created_at?: string;
+        updated_at?: string;
+        schema_version?: string;
+    }>;
+    assets_data?: Array<{
+        id: string;
+        project_id?: string;
+        name: string;
+        type?: string;
+        url?: string;
+        origin_app?: string;
+        author?: string;
+        status?: string;
+        tags?: any;
+        metadata?: any;
+        created_at?: string;
+        updated_at?: string;
+        schema_version?: string;
+    }>;
+    profiles_data?: Array<{
+        id: string;
+        full_name?: string;
+        email?: string;
+        avatar_url?: string;
+        role?: string;
+        language?: string;
+        phone?: string;
+        ui_style?: string;
+        active_theme?: string;
+        font_family?: string;
+        base_size?: string;
+        border_radius?: string;
+        theme_preference?: string;
+        colored_sidebar_icons?: boolean;
+        subscription_plan?: string;
+        onboarding_completed?: boolean;
+        email_it_id?: string;
+        updated_at?: string;
+        has_completed_tour?: boolean;
+        business_name?: string;
+        schema_version?: string;
+    }>;
     
     // Legacy/Extra fields
     projects?: any[];
@@ -106,8 +250,8 @@ export const useSolutium = () => {
 
     // Aplicar tema inicial si existe configuración
     useEffect(() => {
-        if (initialConfig?.projectData) {
-            applyTheme(initialConfig.projectData);
+        if (initialConfig?.project_data) {
+            applyTheme(initialConfig.project_data);
         }
     }, [initialConfig]);
 
@@ -125,21 +269,26 @@ export const useSolutium = () => {
                 console.log("📦 [Satélite] Recibiendo payload pesado:", event.data.payload);
                 
                 const payload = event.data.payload as SolutiumPayload;
+                console.log("DEBUG: Full Payload Received:", payload);
                 
                 // Apply Theme & Supabase
-                if (payload.projectData) applyTheme(payload.projectData);
-                if (payload.supabaseData?.url && payload.supabaseData?.anonKey) {
-                    initSupabase(payload.supabaseData.url, payload.supabaseData.anonKey);
+                if (payload.project_data) applyTheme(payload.project_data);
+                if (payload.supabase_data?.url && payload.supabase_data?.anon_key) {
+                    initSupabase(payload.supabase_data.url, payload.supabase_data.anon_key);
                 }
 
-             // Merge to avoid overwriting heavy data (crmData, productsData) with light data from URL token
+             // Merge to avoid overwriting heavy data (crm_data, products_data) with light data from URL token
                 setConfig(prev => {
                     if (prev) {
                         return {
                             ...prev,
                             ...payload,
-                            crmData: payload.crmData || prev.crmData,
-                            productsData: payload.productsData || prev.productsData
+                            customers_data: payload.customers_data || prev.customers_data,
+                            products_data: payload.products_data || prev.products_data,
+                            assets_data: payload.assets_data || prev.assets_data,
+                            profiles_data: payload.profiles_data || prev.profiles_data,
+                            team_members_data: payload.team_members_data || prev.team_members_data,
+                            projects_data: payload.projects_data || prev.projects_data
                         };
                     }
                     return payload;
@@ -170,8 +319,8 @@ export const useSolutium = () => {
         return () => window.removeEventListener('message', handleMessage);
     }, [initialConfig]);
 
-    const saveData = (data: any, metadata?: { status?: string, tags?: string[], author?: string, updatedAt?: number }) => {
-        if (!config?.projectId) {
+    const saveData = (data: any, metadata?: { status?: string, tags?: string[], author?: string, updated_at?: number }) => {
+        if (!config?.project_id) {
             console.error('[Solutium SDK] Cannot save: No Project ID configured.');
             return;
         }
@@ -179,15 +328,15 @@ export const useSolutium = () => {
         const message = {
             type: 'SOLUTIUM_SAVE',
             payload: {
-                projectId: config.projectId,
-                appId: 'web-constructor',
+                project_id: config.project_id,
+                app_id: 'web-constructor',
                 timestamp: Date.now(),
                 data: data,
                 metadata: {
                     status: metadata?.status || 'draft',
                     tags: metadata?.tags || [],
-                    author: metadata?.author || config.userProfile.name,
-                    updatedAt: metadata?.updatedAt || Date.now()
+                    author: metadata?.author || config.user_profile?.full_name || 'Usuario',
+                    updated_at: metadata?.updated_at || Date.now()
                 }
             }
         };
@@ -202,21 +351,21 @@ export const useSolutium = () => {
     return { config, isReady: !loading, saveData, error };
 };
 
-const applyTheme = (projectData: SolutiumPayload['projectData']) => {
+const applyTheme = (project_data: SolutiumPayload['project_data']) => {
     const root = document.documentElement;
     
-    if (projectData.colors && Array.isArray(projectData.colors)) {
-        if (projectData.colors[0]) root.style.setProperty('--color-primary-rgb', hexToRgb(projectData.colors[0]));
-        if (projectData.colors[1]) root.style.setProperty('--color-secondary-rgb', hexToRgb(projectData.colors[1]));
-        if (projectData.colors[2]) root.style.setProperty('--color-accent-rgb', hexToRgb(projectData.colors[2]));
-        if (projectData.colors[3]) root.style.setProperty('--color-background-rgb', hexToRgb(projectData.colors[3]));
-        if (projectData.colors[4]) root.style.setProperty('--color-surface-rgb', hexToRgb(projectData.colors[4]));
-        if (projectData.colors[5]) root.style.setProperty('--color-text-rgb', hexToRgb(projectData.colors[5]));
+    if (project_data.colors && Array.isArray(project_data.colors)) {
+        if (project_data.colors[0]) root.style.setProperty('--color-primary-rgb', hexToRgb(project_data.colors[0]));
+        if (project_data.colors[1]) root.style.setProperty('--color-secondary-rgb', hexToRgb(project_data.colors[1]));
+        if (project_data.colors[2]) root.style.setProperty('--color-accent-rgb', hexToRgb(project_data.colors[2]));
+        if (project_data.colors[3]) root.style.setProperty('--color-background-rgb', hexToRgb(project_data.colors[3]));
+        if (project_data.colors[4]) root.style.setProperty('--color-surface-rgb', hexToRgb(project_data.colors[4]));
+        if (project_data.colors[5]) root.style.setProperty('--color-text-rgb', hexToRgb(project_data.colors[5]));
     }
 
-    if (projectData.fontFamily) root.style.setProperty('--font-family', projectData.fontFamily);
-    if (projectData.borderRadius) root.style.setProperty('--border-radius', projectData.borderRadius);
-    if (projectData.baseSize) root.style.setProperty('--base-size', projectData.baseSize);
+    if (project_data.font_family) root.style.setProperty('--font-family', project_data.font_family);
+    if (project_data.border_radius) root.style.setProperty('--border-radius', project_data.border_radius);
+    if (project_data.base_size) root.style.setProperty('--base-size', project_data.base_size);
 };
 
 const hexToRgb = (hex: string) => {

@@ -10,7 +10,7 @@ interface SidebarPanelWrapperProps {
   onRemove: (id: string) => void;
   onSelect: (id: string, source: 'canvas' | 'structure') => void;
   onEdit: (id: string | null) => void;
-  selectedModuleId: string | null;
+  selected_module_id: string | null;
   editingModuleId: string | null;
   sidebarCollapsed: boolean;
   isPinned: boolean;
@@ -25,7 +25,7 @@ export const SidebarPanelWrapper: React.FC<SidebarPanelWrapperProps> = ({
   onRemove,
   onSelect,
   onEdit,
-  selectedModuleId,
+  selected_module_id,
   editingModuleId,
   sidebarCollapsed,
   isPinned,
@@ -70,35 +70,39 @@ export const SidebarPanelWrapper: React.FC<SidebarPanelWrapperProps> = ({
       bottom: isPinned ? undefined : (windowWidth <= 768 ? '16px' : '0px')
     }}
     >
-      <div className="flex flex-col flex-1 overflow-y-auto custom-scrollbar">
-        <LayersPanel 
-          modules={modules}
-          onReorder={onReorder}
-          onRemove={onRemove}
-          onSelect={handleSelectFromStructure}
-          onEdit={onEdit}
-          onUpdate={updateModule}
-          selectedModuleId={selectedModuleId}
-          isPinned={isPinned}
-          onTogglePin={onTogglePin}
-          sidebarCollapsed={sidebarCollapsed}
-          onHover={() => {}}
-          layersExpanded={isSidebarExpanded}
-        />
+      <div className="flex flex-col flex-1 min-h-0">
+        <div className="flex-[0_1_auto] max-h-[40%] flex flex-col min-h-0">
+          <LayersPanel 
+            modules={modules}
+            onReorder={onReorder}
+            onRemove={onRemove}
+            onSelect={handleSelectFromStructure}
+            onEdit={onEdit}
+            onUpdate={updateModule}
+            selected_module_id={selected_module_id}
+            isPinned={isPinned}
+            onTogglePin={onTogglePin}
+            sidebarCollapsed={sidebarCollapsed}
+            onHover={() => {}}
+            layersExpanded={isSidebarExpanded}
+          />
+        </div>
         
-        <PropertyInspector 
-          selectedModule={modules.find(m => m.id === editingModuleId) || null}
-          onUpdate={updateModule}
-          onClose={() => onEdit(null)}
-          onOpenImagePicker={onOpenImagePicker}
-          sidebarCollapsed={sidebarCollapsed}
-          layersExpanded={isSidebarExpanded}
-          isPinned={isPinned}
-          onTogglePin={onTogglePin}
-        />
+        <div className="flex-1 flex flex-col min-h-0">
+          <PropertyInspector 
+            selectedModule={modules.find(m => m.id === editingModuleId) || null}
+            onUpdate={updateModule}
+            onClose={() => onEdit(null)}
+            onOpenImagePicker={onOpenImagePicker}
+            sidebarCollapsed={sidebarCollapsed}
+            layersExpanded={isSidebarExpanded}
+            isPinned={isPinned}
+            onTogglePin={onTogglePin}
+          />
+        </div>
         
         {/* Spacer to push panels up and create empty space at the bottom */}
-        <div className="flex-1 min-h-[100px]" />
+        <div className="h-20 flex-shrink-0" />
       </div>
     </div>
   );

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { usePageLayout } from '../../context/PageLayoutContext';
 
 interface TypographyProps {
   variant?: 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' | 'p' | 'small' | 'span';
@@ -7,9 +8,9 @@ interface TypographyProps {
   underline?: boolean;
   strike?: boolean;
   align?: 'left' | 'center' | 'right';
-  highlightType?: 'none' | 'solid' | 'gradient';
-  highlightColor1?: string;
-  highlightColor2?: string;
+  highlight_type?: 'none' | 'solid' | 'gradient';
+  highlight_color_1?: string;
+  highlight_color_2?: string;
   children: string;
   className?: string;
   style?: React.CSSProperties;
@@ -24,15 +25,17 @@ export const Typography = ({
   underline,
   strike,
   align = 'left',
-  highlightType = 'none',
-  highlightColor1,
-  highlightColor2,
+  highlight_type = 'none',
+  highlight_color_1,
+  highlight_color_2,
   children,
   className = '',
   style,
   editable = false,
   onUpdate
 }: TypographyProps) => {
+  const { previewDevice } = usePageLayout();
+  const is_mobile_simulated = previewDevice === 'mobile';
   const [isEditing, setIsEditing] = useState(false);
   const [localText, setLocalText] = useState(children);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -72,14 +75,14 @@ export const Typography = ({
   };
 
   const baseClasses: Record<string, string> = {
-    h1: 'text-5xl md:text-7xl leading-tight',
-    h2: 'text-4xl md:text-5xl leading-tight',
-    h3: 'text-2xl md:text-3xl leading-tight',
-    h4: 'text-xl md:text-2xl leading-tight',
-    h5: 'text-lg md:text-xl leading-tight',
-    h6: 'text-base md:text-lg leading-tight',
-    p: 'text-base md:text-lg leading-relaxed',
-    small: 'text-xs md:text-sm leading-normal',
+    h1: is_mobile_simulated ? 'text-4xl leading-tight' : 'text-4xl md:text-7xl leading-tight',
+    h2: is_mobile_simulated ? 'text-3xl leading-tight' : 'text-3xl md:text-5xl leading-tight',
+    h3: is_mobile_simulated ? 'text-xl leading-tight' : 'text-xl md:text-3xl leading-tight',
+    h4: is_mobile_simulated ? 'text-lg leading-tight' : 'text-lg md:text-2xl leading-tight',
+    h5: is_mobile_simulated ? 'text-base leading-tight' : 'text-base md:text-xl leading-tight',
+    h6: is_mobile_simulated ? 'text-sm leading-tight' : 'text-sm md:text-lg leading-tight',
+    p: is_mobile_simulated ? 'text-base leading-relaxed' : 'text-base md:text-lg leading-relaxed',
+    small: is_mobile_simulated ? 'text-xs leading-normal' : 'text-xs md:text-sm leading-normal',
     span: 'leading-normal'
   };
 
@@ -121,17 +124,17 @@ export const Typography = ({
         let styles: React.CSSProperties = {};
         let spanClasses = '';
 
-        if (highlightType === 'solid') {
-          if (highlightColor1) {
-            styles.color = highlightColor1;
+        if (highlight_type === 'solid') {
+          if (highlight_color_1) {
+            styles.color = highlight_color_1;
           } else {
             styles.color = 'var(--color-primary)';
           }
-        } else if (highlightType === 'gradient') {
-          if (highlightColor1 || highlightColor2) {
+        } else if (highlight_type === 'gradient') {
+          if (highlight_color_1 || highlight_color_2) {
             spanClasses = 'bg-clip-text text-transparent bg-gradient-to-r';
-            const c1 = highlightColor1 || 'var(--color-primary)';
-            const c2 = highlightColor2 || 'var(--color-accent)';
+            const c1 = highlight_color_1 || 'var(--color-primary)';
+            const c2 = highlight_color_2 || 'var(--color-accent)';
             styles.backgroundImage = `linear-gradient(to right, ${c1}, ${c2})`;
           } else {
             spanClasses = 'bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent';

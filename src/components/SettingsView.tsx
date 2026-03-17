@@ -3,32 +3,36 @@ import { Settings, Globe, CheckCircle, Clock, Tag, Edit3 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface SettingsViewProps {
-  activeProject: any;
-  activeAsset: any;
+  active_project: any;
+  active_asset: any;
   config: any;
-  assetSettings: any;
-  selectedProductIds: string[];
+  asset_settings: any;
+  selected_product_ids: string[];
   updateAssetSettings: (settings: any) => void;
   updateAssetName: (name: string) => void;
-  updateSelectedProducts: (ids: string[]) => void;
+  update_selected_products: (ids: string[]) => void;
   setActiveTab: (tab: string) => void;
   handleSave: () => void;
-  autoSaveInterval: number;
+  is_saving: boolean;
+  is_dirty: boolean;
+  auto_save_interval: number;
   setAutoSaveInterval: (interval: number) => void;
 }
 
 export const SettingsView: React.FC<SettingsViewProps> = ({
-  activeProject,
-  activeAsset,
+  active_project,
+  active_asset,
   config,
-  assetSettings,
-  selectedProductIds,
+  asset_settings,
+  selected_product_ids,
   updateAssetSettings,
   updateAssetName,
-  updateSelectedProducts,
+  update_selected_products,
   setActiveTab,
   handleSave,
-  autoSaveInterval,
+  is_saving,
+  is_dirty,
+  auto_save_interval,
   setAutoSaveInterval
 }) => {
   const [activeSettingsTab, setActiveSettingsTab] = useState<'general' | 'domain'>('general');
@@ -36,7 +40,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
   const handleAddTag = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && tagInput.trim()) {
-      const currentTags = assetSettings.tags || [];
+      const currentTags = asset_settings.tags || [];
       if (!currentTags.includes(tagInput.trim())) {
         updateAssetSettings({ tags: [...currentTags, tagInput.trim()] });
       }
@@ -45,7 +49,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   };
 
   const removeTag = (tagToRemove: string) => {
-    const currentTags = assetSettings.tags || [];
+    const currentTags = asset_settings.tags || [];
     updateAssetSettings({ tags: currentTags.filter((t: string) => t !== tagToRemove) });
   };
 
@@ -57,7 +61,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <Settings className="w-3 h-3" />
             Ajustes del Activo
           </div>
-          <h3 className="text-3xl font-black text-text mb-1">{activeAsset?.name || 'Configuración'}</h3>
+          <h3 className="text-3xl font-black text-text mb-1">{active_asset?.name || 'Configuración'}</h3>
           <p className="text-text/60">Configura las opciones específicas para este activo del proyecto.</p>
         </div>
       </div>
@@ -105,7 +109,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   <label className="block text-xs font-bold text-text/40 uppercase tracking-wider mb-2">Nombre del Activo</label>
                   <input 
                     type="text" 
-                    value={activeAsset?.name || ''} 
+                    value={active_asset?.name || ''} 
                     onChange={(e) => updateAssetName(e.target.value)}
                     placeholder="Nombre del activo..."
                     className="w-full px-4 py-3 bg-background border border-text/10 rounded-xl text-text focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
@@ -114,14 +118,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <div>
                   <label className="block text-xs font-bold text-text/40 uppercase tracking-wider mb-2">Tipo de Activo</label>
                   <div className="px-4 py-3 bg-background border border-text/10 rounded-xl text-text/60 capitalize">
-                    {(activeAsset as any)?.type || 'N/A'}
+                    {(active_asset as any)?.type || 'N/A'}
                   </div>
                 </div>
                 
                 <div className="md:col-span-2">
                   <label className="block text-xs font-bold text-text/40 uppercase tracking-wider mb-2">Etiquetas (Tags)</label>
                   <div className="flex flex-wrap gap-2 mb-3">
-                    {(assetSettings.tags || []).map((tag: string) => (
+                    {(asset_settings.tags || []).map((tag: string) => (
                       <span key={tag} className="flex items-center gap-1 px-3 py-1 bg-primary/10 text-primary text-xs font-bold rounded-full">
                         {tag}
                         <button onClick={() => removeTag(tag)} className="hover:text-primary/70">×</button>
@@ -166,7 +170,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     key={option.value}
                     onClick={() => setAutoSaveInterval(option.value)}
                     className={`px-4 py-3 rounded-xl text-sm font-bold transition-all border ${
-                      autoSaveInterval === option.value
+                      auto_save_interval === option.value
                         ? 'bg-primary text-white border-primary shadow-lg shadow-primary/20'
                         : 'bg-surface border-text/10 text-text/60 hover:border-primary/30 hover:text-primary'
                     }`}
@@ -203,7 +207,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     <input 
                       type="text" 
                       placeholder="ejemplo.com"
-                      value={assetSettings.domain}
+                      value={asset_settings.domain}
                       onChange={(e) => {
                         updateAssetSettings({ domain: e.target.value });
                       }}
@@ -211,9 +215,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     />
                     <button 
                       onClick={handleSave}
-                      className="px-6 py-3 bg-primary text-white font-bold rounded-xl hover:bg-primary/90 transition-all"
+                      disabled={is_saving || !is_dirty}
+                      className="px-6 py-3 bg-primary text-white font-bold rounded-xl hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      Conectar
+                      {is_saving ? 'Guardando...' : 'Guardar Cambios'}
                     </button>
                   </div>
                   <p className="mt-4 text-xs text-text/40">
@@ -229,9 +234,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                       <input 
                         type="text" 
                         placeholder="Mi Increíble Tienda"
-                        value={assetSettings.seoTitle}
+                        value={asset_settings.seo_title}
                         onChange={(e) => {
-                          updateAssetSettings({ seoTitle: e.target.value });
+                          updateAssetSettings({ seo_title: e.target.value });
                         }}
                         className="w-full px-4 py-3 bg-surface border border-text/10 rounded-xl text-text/70 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
                       />
@@ -241,9 +246,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                       <textarea 
                         rows={3}
                         placeholder="Describe brevemente tu negocio para los buscadores..."
-                        value={assetSettings.seoDescription}
+                        value={asset_settings.seo_description}
                         onChange={(e) => {
-                          updateAssetSettings({ seoDescription: e.target.value });
+                          updateAssetSettings({ seo_description: e.target.value });
                         }}
                         className="w-full px-4 py-3 bg-surface border border-text/10 rounded-xl text-text/70 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all resize-none"
                       />

@@ -44,7 +44,7 @@ export const TYPOGRAPHY_PROPS = (prefix: string, label: string): FieldSchema[] =
         ]
       },
       { 
-        name: 'highlightType', 
+        name: 'highlight_type', 
         label: 'Efecto de Resalte (*texto*)', 
         type: 'select', 
         options: [
@@ -54,8 +54,8 @@ export const TYPOGRAPHY_PROPS = (prefix: string, label: string): FieldSchema[] =
           { label: 'Personalizado', value: 'custom' }
         ]
       },
-      { name: 'highlightColor1', label: 'Color Personalizado 1', type: 'color' },
-      { name: 'highlightColor2', label: 'Color Personalizado 2', type: 'color' }
+      { name: 'highlight_color_1', label: 'Color Personalizado 1', type: 'color' },
+      { name: 'highlight_color_2', label: 'Color Personalizado 2', type: 'color' }
     ]
   }
 ];
@@ -96,7 +96,7 @@ export const DESIGN_PROPS: FieldSchema[] = [
     ]
   },
   {
-    name: 'smartMode',
+    name: 'smart_mode',
     label: 'Modo Inteligente',
     type: 'boolean',
     category: 'design'
@@ -143,7 +143,7 @@ export const DESIGN_PROPS: FieldSchema[] = [
         ]
       },
       { 
-        name: 'overlayOpacity', 
+        name: 'overlay_opacity', 
         label: 'Opacidad Superposición', 
         type: 'range',
         min: 0,

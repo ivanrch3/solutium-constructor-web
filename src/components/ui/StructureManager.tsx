@@ -68,9 +68,9 @@ export const StructureManager = ({ data, onUpdate, onOpenImagePicker, moduleType
               ].map((opt) => (
                 <button
                   key={opt.value}
-                  onClick={() => onUpdate({ layout: opt.value })}
+                  onClick={() => onUpdate({ layoutType: opt.value })}
                   className={`py-2.5 px-3 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all text-center ${
-                    (data.layout || 'layout-1') === opt.value 
+                    (data.layoutType || 'layout-1') === opt.value 
                       ? 'bg-surface text-primary shadow-sm ring-1 ring-primary/20' 
                       : 'text-text/40 hover:text-text/60 hover:bg-text/5'
                   }`}
@@ -151,7 +151,7 @@ export const StructureManager = ({ data, onUpdate, onOpenImagePicker, moduleType
       {/* Background Settings */}
       <div className="space-y-4 pt-6 border-t border-text/5">
         <label className="text-[10px] font-bold text-text/40 uppercase tracking-widest flex items-center gap-2">
-          <ImageIcon className="w-3 h-3" /> {(data.layout === 'layout-2' || data.layout === 'layout-7') ? 'Imagen Principal' : 'Imagen de Fondo'}
+          <ImageIcon className="w-3 h-3" /> {(data.layoutType === 'layout-2' || data.layoutType === 'layout-7') ? 'Imagen Principal' : 'Imagen de Fondo'}
         </label>
         
         <div 

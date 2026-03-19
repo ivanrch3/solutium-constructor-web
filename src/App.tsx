@@ -1,28 +1,17 @@
 import { useSolutiumContext } from './context/SatelliteContext';
 import { 
-  Loader2, 
-  Save, 
   Plus, 
-  Sparkles, 
-  Globe, 
   Eye, 
   CheckCircle, 
   AlertCircle, 
-  ArrowRight,
-  Layout,
-  Code,
-  Rocket,
-  Package,
-  Settings,
-  Menu,
-  Smartphone,
-  Tablet,
-  Monitor
+  Smartphone, 
+  Tablet, 
+  Monitor,
+  Sparkles
 } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { ModulePicker } from './components/ModulePicker';
-import { ModuleRenderer } from './components/ModuleRenderer';
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { ImagePicker } from './components/ImagePicker';
 import { SidebarPanelWrapper } from './components/SidebarPanelWrapper';
@@ -31,118 +20,29 @@ import { SettingsView } from './components/SettingsView';
 import { BuilderView } from './components/BuilderView';
 import { DataAuditView } from './components/DataAuditView';
 import { motion, AnimatePresence } from 'motion/react';
-import { GoogleGenAI, Type } from "@google/genai";
 import { PageLayoutProvider } from './context/PageLayoutContext';
 
 import { useBuilderStore } from './store/useBuilderStore';
 import { getModuleDefinition } from './modules/registry';
-
-// Curated Pexels images by category to ensure high quality and relevance without API key
-const PEXELS_IMAGES = {
-  food: [
-    'https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-    'https://images.pexels.com/photos/262978/pexels-photo-262978.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-    'https://images.pexels.com/photos/1267320/pexels-photo-1267320.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-    'https://images.pexels.com/photos/958545/pexels-photo-958545.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2'
-  ],
-  health: [
-    'https://images.pexels.com/photos/40568/medical-appointment-doctor-healthcare-40568.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-    'https://images.pexels.com/photos/305566/pexels-photo-305566.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-    'https://images.pexels.com/photos/2280568/pexels-photo-2280568.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-    'https://images.pexels.com/photos/7089623/pexels-photo-7089623.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2'
-  ],
-  tech: [
-    'https://images.pexels.com/photos/1181244/pexels-photo-1181244.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-    'https://images.pexels.com/photos/3183150/pexels-photo-3183150.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-    'https://images.pexels.com/photos/3861969/pexels-photo-3861969.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-    'https://images.pexels.com/photos/1181467/pexels-photo-1181467.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2'
-  ],
-  finance: [
-    'https://images.pexels.com/photos/3184291/pexels-photo-3184291.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-    'https://images.pexels.com/photos/5668473/pexels-photo-5668473.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-    'https://images.pexels.com/photos/4476376/pexels-photo-4476376.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-    'https://images.pexels.com/photos/6863202/pexels-photo-6863202.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2'
-  ],
-  sports: [
-    'https://images.pexels.com/photos/841130/pexels-photo-841130.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-    'https://images.pexels.com/photos/4164761/pexels-photo-4164761.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-    'https://images.pexels.com/photos/1552242/pexels-photo-1552242.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-    'https://images.pexels.com/photos/2247179/pexels-photo-2247179.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2'
-  ],
-  architecture: [
-    'https://images.pexels.com/photos/323780/pexels-photo-323780.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-    'https://images.pexels.com/photos/1571460/pexels-photo-1571460.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-    'https://images.pexels.com/photos/276724/pexels-photo-276724.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-    'https://images.pexels.com/photos/2121121/pexels-photo-2121121.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2'
-  ],
-  fashion: [
-    'https://images.pexels.com/photos/994517/pexels-photo-994517.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-    'https://images.pexels.com/photos/298863/pexels-photo-298863.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-    'https://images.pexels.com/photos/135620/pexels-photo-135620.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2'
-  ],
-  education: [
-    'https://images.pexels.com/photos/5212345/pexels-photo-5212345.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-    'https://images.pexels.com/photos/159844/cellular-education-classroom-159844.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-    'https://images.pexels.com/photos/256417/pexels-photo-256417.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2'
-  ],
-  travel: [
-    'https://images.pexels.com/photos/1268855/pexels-photo-1268855.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-    'https://images.pexels.com/photos/1371360/pexels-photo-1371360.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-    'https://images.pexels.com/photos/2161449/pexels-photo-2161449.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2'
-  ],
-  general: [
-    'https://images.pexels.com/photos/3183197/pexels-photo-3183197.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-    'https://images.pexels.com/photos/3182812/pexels-photo-3182812.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-    'https://images.pexels.com/photos/3184418/pexels-photo-3184418.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2'
-  ]
-};
-
-// Helper to get business image
-const getBusinessImage = (type: string) => {
-  const t = type.toLowerCase();
-  let category: keyof typeof PEXELS_IMAGES = 'general';
-
-  if (t.includes('comida') || t.includes('restaurante') || t.includes('chef') || t.includes('gastronomía')) {
-    category = 'food';
-  } else if (t.includes('salud') || t.includes('clínica') || t.includes('doctor') || t.includes('dental') || t.includes('medicina')) {
-    category = 'health';
-  } else if (t.includes('tecnología') || t.includes('software') || t.includes('app') || t.includes('digital') || t.includes('web')) {
-    category = 'tech';
-  } else if (t.includes('finanzas') || t.includes('abogado') || t.includes('legal') || t.includes('banco') || t.includes('contabilidad')) {
-    category = 'finance';
-  } else if (t.includes('deporte') || t.includes('gym') || t.includes('fitness') || t.includes('entrenador')) {
-    category = 'sports';
-  } else if (t.includes('arquitectura') || t.includes('construcción') || t.includes('diseño') || t.includes('inmobiliaria')) {
-    category = 'architecture';
-  } else if (t.includes('moda') || t.includes('ropa') || t.includes('tienda')) {
-    category = 'fashion';
-  } else if (t.includes('educación') || t.includes('escuela') || t.includes('curso')) {
-    category = 'education';
-  } else if (t.includes('viaje') || t.includes('turismo') || t.includes('hotel')) {
-    category = 'travel';
-  }
-
-  // Pick a random image from the selected category
-  const images = PEXELS_IMAGES[category];
-  return images[Math.floor(Math.random() * images.length)];
-};
+import { getBusinessImage } from './lib/images';
+import { useAiGenerator } from './hooks/useAiGenerator';
 
 function App() {
   const { payload: config, isReady, saveData, simulateConnection } = useSolutiumContext();
 
   const {
     projects,
-    active_project_id,
-    active_asset_id,
+    activeProjectId,
+    activeAssetId,
     modules,
-    is_dirty,
-    is_saving,
-    last_saved,
-    selected_module_id,
-    editing_module_id,
-    asset_settings,
-    selected_product_ids,
-    auto_save_interval,
+    isDirty,
+    isSaving,
+    lastSaved,
+    selectedModuleId,
+    editingModuleId,
+    assetSettings,
+    selectedProductIds,
+    autoSaveInterval,
     setProjects,
     setActiveProject,
     setActiveAsset,
@@ -156,7 +56,9 @@ function App() {
     editModule,
     updateAssetSettings,
     updateAssetName,
-    update_selected_products,
+    updateSelectedProducts,
+    setBusinessContext,
+    businessContext,
     setDirty,
     setSaving,
     setLastSaved
@@ -168,24 +70,24 @@ function App() {
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   const [previewDevice, setPreviewDevice] = useState<'mobile' | 'tablet' | 'desktop'>('desktop');
   const [showPicker, setShowPicker] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
+  const { isGenerating, handleGenerateAi } = useAiGenerator();
   const [publishStatus, setPublishStatus] = useState<'idle' | 'publishing' | 'success' | 'error'>('idle');
   const [hasInitializedProducts, setHasInitializedProducts] = useState(false);
   const [showSaveMessage, setShowSaveMessage] = useState(false);
   const [lastSaveStatus, setLastSaveStatus] = useState<'borrador' | 'guardado'>('borrador');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [is_mobile_menu_open, set_is_mobile_menu_open] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showWelcome, setShowWelcome] = useState(true);
   const [welcomeMode, setWelcomeMode] = useState<'project' | 'asset'>('asset');
-  const [is_image_picker_open, set_is_image_picker_open] = useState(false);
+  const [isImagePickerOpen, setIsImagePickerOpen] = useState(false);
   const [imagePickerCallback, setImagePickerCallback] = useState<((url: string) => void) | null>(null);
   const [moduleToDelete, setModuleToDelete] = useState<string | null>(null);
   // Initialize panels as pinned by default, resize handler will collapse on mobile
   const [isSidebarPinned, setIsSidebarPinned] = useState(true);
   const [isLayersHovered, setIsLayersHovered] = useState(false);
 
-  const active_project = projects.find(p => p.id === (active_project_id || config?.project_id)) || projects[0];
-  const active_asset = active_project?.assets?.find((a: any) => a.id === active_asset_id) || active_project?.assets?.[0];
+  const activeProject = projects.find(p => p.id === (activeProjectId || config?.projectId)) || projects[0];
+  const activeAsset = activeProject?.assets?.find((a: any) => a.id === activeAssetId) || activeProject?.assets?.[0];
 
   // Handle window resize to auto-collapse panels on mobile
   useEffect(() => {
@@ -209,35 +111,35 @@ function App() {
     if (!config) return;
 
     if (projects.length === 0) {
-      // 1. Try to get projects from config.projects_data
-      let initialProjects = config.projects_data || [];
+      // 1. Try to get projects from config.projectsData
+      let initialProjects = config.projectsData || [];
       
       // 2. If we have projects, ensure they have the correct structure
       if (initialProjects.length > 0) {
         initialProjects = initialProjects.map((p: any) => ({
           ...p,
-          name: p.name || config.project_data?.name || 'Proyecto Local',
+          name: p.name || config.projectData?.name || 'Proyecto Local',
           assets: p.assets?.map((a: any) => ({
             ...a,
             modules: a.modules || a.data?.modules || [],
-            settings: a.settings || a.data?.settings || { domain: '', seo_title: '', seo_description: '', page_layout: 'seamless' },
-            selected_product_ids: a.selected_product_ids || a.data?.selected_product_ids || []
+            settings: a.settings || a.data?.settings || { domain: '', seoTitle: '', seoDescription: '', pageLayout: 'seamless' },
+            selectedProductIds: a.selectedProductIds || a.data?.selectedProductIds || []
           })) || []
         }));
       } else {
         // 3. Fallback to a default project if none found
         initialProjects = [{
-          id: config.project_id || 'dev-project-1',
-          name: config.project_data?.name || 'Proyecto Local',
+          id: config.projectId || 'dev-project-1',
+          name: config.projectData?.name || 'Proyecto Local',
           assets: []
         }];
       }
-
+ 
       // 4. Handle top-level assets array if present in config
-      const topLevelAssets = (config as any).assets || [];
+      const topLevelAssets = (config as any).assetsData || (config as any).assets || [];
       if (Array.isArray(topLevelAssets) && topLevelAssets.length > 0) {
         topLevelAssets.forEach((asset: any) => {
-          const pId = asset.project_id || config.project_id || initialProjects[0].id;
+          const pId = asset.projectId || config.projectId || initialProjects[0].id;
           initialProjects = initialProjects.map((p: any) => {
             if (p.id === pId) {
               const assetExists = p.assets.some((a: any) => a.id === asset.id);
@@ -247,8 +149,8 @@ function App() {
                   assets: [...p.assets, {
                     ...asset,
                     modules: asset.modules || asset.data?.modules || [],
-                    settings: asset.settings || asset.data?.settings || { domain: '', seo_title: '', seo_description: '', page_layout: 'seamless' },
-                    selected_product_ids: asset.selected_product_ids || asset.data?.selected_product_ids || []
+                    settings: asset.settings || asset.data?.settings || { domain: '', seoTitle: '', seoDescription: '', pageLayout: 'seamless' },
+                    selectedProductIds: asset.selectedProductIds || asset.data?.selectedProductIds || []
                   }]
                 };
               }
@@ -257,11 +159,11 @@ function App() {
           });
         });
       }
-
-      // 5. Handle current_asset if provided by mother app
-      if (config.current_asset) {
-        const asset = config.current_asset;
-        const pId = asset.project_id || config.project_id || initialProjects[0].id;
+ 
+      // 5. Handle currentAsset if provided by mother app
+      if (config.currentAsset) {
+        const asset = config.currentAsset;
+        const pId = asset.projectId || config.projectId || initialProjects[0].id;
         
         let projectFound = false;
         initialProjects = initialProjects.map((p: any) => {
@@ -274,140 +176,130 @@ function App() {
                 assets: [...p.assets, {
                   ...asset,
                   modules: asset.modules || asset.data?.modules || [],
-                  settings: asset.settings || asset.data?.settings || { domain: '', seo_title: '', seo_description: '', page_layout: 'seamless' },
-                  selected_product_ids: asset.selected_product_ids || asset.data?.selected_product_ids || []
+                  settings: asset.settings || asset.data?.settings || { domain: '', seoTitle: '', seoDescription: '', pageLayout: 'seamless' },
+                  selectedProductIds: asset.selectedProductIds || asset.data?.selectedProductIds || []
                 }]
+              };
+            } else {
+              // Update existing asset with full data from currentAsset
+              return {
+                ...p,
+                assets: p.assets.map((a: any) => {
+                  if (a.id === asset.id) {
+                    return {
+                      ...a,
+                      ...asset,
+                      modules: asset.modules || asset.data?.modules || a.modules || [],
+                      settings: asset.settings || asset.data?.settings || a.settings || { domain: '', seoTitle: '', seoDescription: '', pageLayout: 'seamless' },
+                      selectedProductIds: asset.selectedProductIds || asset.data?.selectedProductIds || a.selectedProductIds || []
+                    };
+                  }
+                  return a;
+                })
               };
             }
           }
           return p;
         });
-
+ 
         // If the asset belongs to a project not in the list, add it
         if (!projectFound) {
           initialProjects.push({
             id: pId,
-            name: config.project_data?.name || 'Proyecto Externo',
+            name: config.projectData?.name || 'Proyecto Externo',
             assets: [{
               ...asset,
               modules: asset.modules || asset.data?.modules || [],
-              settings: asset.settings || asset.data?.settings || { domain: '', seo_title: '', seo_description: '', page_layout: 'seamless' },
-              selected_product_ids: asset.selected_product_ids || asset.data?.selected_product_ids || []
+              settings: asset.settings || asset.data?.settings || { domain: '', seoTitle: '', seoDescription: '', pageLayout: 'seamless' },
+              selectedProductIds: asset.selectedProductIds || asset.data?.selectedProductIds || []
             }]
           });
         }
       }
-
+ 
       setProjects(initialProjects);
       
-      // 6. Auto-select first project and asset if none active
-      const firstProject = initialProjects[0];
-      if (firstProject) {
-        if (!active_project_id) setActiveProject(firstProject.id);
+      // 6. Auto-select project and asset if none active
+      const targetProjectId = config.currentAsset?.projectId || config.projectId || initialProjects[0]?.id;
+      const targetProject = initialProjects.find((p: any) => p.id === targetProjectId) || initialProjects[0];
+      
+      if (targetProject) {
+        if (!activeProjectId) setActiveProject(targetProject.id);
         
-        const firstAsset = firstProject.assets?.[0];
-        if (firstAsset && !active_asset_id) {
-          setActiveAsset(firstAsset.id);
-          if (firstAsset.modules?.length > 0 && modules.length === 0) {
-            setModules(firstAsset.modules);
+        const targetAssetId = config.currentAsset?.id || targetProject.assets?.[0]?.id;
+        const targetAsset = targetProject.assets?.find((a: any) => a.id === targetAssetId) || targetProject.assets?.[0];
+        
+        if (targetAsset && !activeAssetId) {
+          setActiveAsset(targetAsset.id);
+          if (targetAsset.modules?.length > 0 && modules.length === 0) {
+            setModules(targetAsset.modules);
           }
         }
       }
     }
     
-    if (config?.products_data && !hasInitializedProducts) {
-      update_selected_products(config.products_data.map((p: any) => p.id.toString()));
+    if (config?.productsData && !hasInitializedProducts) {
+      updateSelectedProducts(config.productsData.map((p: any) => p.id.toString()));
       setHasInitializedProducts(true);
     }
     
     // Initialize asset settings from config if they exist
-    if (active_asset?.settings && !asset_settings.domain && !asset_settings.seo_title) {
+    if (activeAsset?.settings && !assetSettings.domain && !assetSettings.seoTitle) {
       updateAssetSettings({
-        domain: active_asset.settings.domain || '',
-        seo_title: active_asset.settings.seo_title || '',
-        seo_description: active_asset.settings.seo_description || ''
+        domain: activeAsset.settings.domain || '',
+        seoTitle: activeAsset.settings.seoTitle || '',
+        seoDescription: activeAsset.settings.seoDescription || ''
       });
     }
-  }, [config, hasInitializedProducts, active_asset]);
+  }, [config, hasInitializedProducts, activeAsset]);
 
   const handleSave = useCallback(async (status: 'borrador' | 'guardado' = 'borrador') => {
-    if (is_saving) return;
+    if (isSaving || !activeAssetId) return;
     
     setSaving(true);
     setLastSaveStatus(status);
     
-    // 1. Recopila los datos de tu diseño (módulos, textos, etc.)
-    const siteData = {
-      modules: modules, // Tu estado con los módulos actuales
-      lastUpdated: new Date().toISOString(),
+    const assetDataToSave = {
+      modules: modules,
+      settings: assetSettings,
+      selectedProductIds: selectedProductIds,
       version: "1.0.0"
     };
   
-    console.log(`Enviando datos (${status}) a la App Madre...`, siteData);
+    console.log(`Enviando datos (${status}) a la App Madre...`, assetDataToSave);
     
     setShowSaveMessage(true);
     setTimeout(() => setShowSaveMessage(false), 3000);
   
-    // 2. Enviar el mensaje a la App Madre (Solutium)
-    const TARGET_ORIGIN = '*'; // Usar wildcard para mayor flexibilidad
-    
-    const message = {
-      type: 'SOLUTIUM_SAVE',
-      payload: {
-        project_id: config?.project_id,
-        asset_id: active_asset_id,
-        app_id: 'web-constructor',
-        data: siteData,
-        metadata: {
-          status: status,
-          name: active_asset?.name || config?.project_data?.name,
-          tags: asset_settings.tags || [],
-          thumbnail: "https://solutium.app/logos-de-apps/solutium-constructor-web-isotipo.png"
-        }
-      }
-    };
+    saveData(activeAssetId, assetDataToSave, {
+      name: activeAsset?.name || config?.projectData?.name || 'Landing Page',
+      status: 'draft', // Always draft for save/autosave
+      tags: assetSettings.tags || [],
+      author: config?.userProfile?.fullName || 'Usuario',
+      updatedAt: Date.now()
+    });
 
-    try {
-      let sent = false;
-      if (window.opener) {
-        window.opener.postMessage(message, TARGET_ORIGIN);
-        sent = true;
-      }
-      
-      if (window.parent && window.parent !== window) {
-        window.parent.postMessage(message, TARGET_ORIGIN);
-        sent = true;
-      }
-
-      if (sent) {
-        setDirty(false);
-        setLastSaved(new Date());
-      } else {
-        console.error("No se pudo enviar el mensaje: no se encontró ventana padre ni opener.");
-      }
-    } catch (error) {
-      console.error("Error al guardar:", error);
-    } finally {
-      setSaving(false);
-    }
-  }, [modules, config, is_saving, setSaving, setDirty, setLastSaved, active_asset, active_asset_id, asset_settings]);
+    setDirty(false);
+    setLastSaved(new Date());
+    setSaving(false);
+  }, [modules, config, isSaving, setSaving, setDirty, setLastSaved, activeAssetId, activeAsset, assetSettings, selectedProductIds, saveData]);
 
   // Auto-save logic
   useEffect(() => {
-    if (!is_dirty || is_saving) return;
+    if (!isDirty || isSaving) return;
 
     const timer = setTimeout(() => {
       handleSave('borrador');
-    }, auto_save_interval);
+    }, autoSaveInterval);
 
     return () => clearTimeout(timer);
-  }, [is_dirty, is_saving, modules, selected_product_ids, asset_settings, handleSave, auto_save_interval]);
+  }, [isDirty, isSaving, modules, selectedProductIds, assetSettings, handleSave, autoSaveInterval]);
 
   const handleAddModule = (type: string) => {
     addModule(type);
     setWelcomeMode('asset');
     setShowPicker(false);
-    set_is_mobile_menu_open(false);
+    setIsMobileMenuOpen(false);
     
     // Scroll to the new module (which is added at the end)
     setTimeout(() => {
@@ -433,157 +325,54 @@ function App() {
   const handleImageSelect = (imageUrl: string) => {
     if (imagePickerCallback) {
       imagePickerCallback(imageUrl);
-      set_is_image_picker_open(false);
+      setIsImagePickerOpen(false);
       setImagePickerCallback(null);
     }
   };
 
-  const handleGenerateAI = async (customName?: string, targetProjectId?: string, targetAssetId?: string, currentProjectsList?: any[], assetName?: string, pageDescription?: string) => {
-    if (!process.env.GEMINI_API_KEY) {
-      console.error("GEMINI_API_KEY is missing");
-      return;
+  const onGenerateAi = async (
+    customName?: string, 
+    targetProjectId?: string, 
+    targetAssetId?: string, 
+    currentProjectsList?: any[], 
+    assetName?: string, 
+    context?: {
+      name: string;
+      sector: string;
+      description: string;
+      objective: string;
+      visualStyle: string;
     }
-
-    setIsGenerating(true);
-    
-    const projId = targetProjectId || active_project_id;
-    const assId = targetAssetId || active_asset_id;
-    const pList = currentProjectsList || projects;
-
-    const saveGeneratedModules = (generated: any[]) => {
-      // Ensure all generated modules have default data merged
-      const processedModules = generated.map(m => {
-        const def = getModuleDefinition(m.type);
-        return {
-          ...m,
-          data: { ...(def?.defaultData || {}), ...m.data }
-        };
-      });
-
-      setModules(processedModules);
-      setDirty(false);
-      const finalProjectsList = pList.map(p => {
-        if (p.id === projId) {
-          return {
-            ...p,
-            assets: p.assets.map((a: any) => {
-              if (a.id === assId) {
-                return { ...a, modules: processedModules };
-              }
-              return a;
-            })
-          };
-        }
-        return p;
-      });
-      setProjects(finalProjectsList);
-    };
-
-    try {
-      const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-      const model = "gemini-3-flash-preview";
-      
-      const businessName = customName || active_project?.name || config?.project_data?.name || 'Proyecto Local';
-      const pageName = assetName || 'Inicio';
-      const businessContext = pageDescription ? `El negocio se dedica a: "${pageDescription}".` : '';
-      
-      const prompt = `Genera una estructura de landing page profesional para la página "${pageName}" de un negocio llamado "${businessName}". 
-      ${businessContext}
-      El objetivo es crear una página atractiva y funcional que refleje la identidad de este tipo de negocio.
-      
-      Responde ÚNICAMENTE con un array JSON de objetos, donde cada objeto representa un módulo con el siguiente formato:
-      {
-        "id": "string único",
-        "type": "uno de: top-bar, header, hero, features, testimonials, pricing, product-showcase, team, faq, contact, footer",
-        "data": { ... datos específicos del módulo, con textos persuasivos adaptados al giro del negocio ... }
-      }
-      
-      Asegúrate de incluir contenido relevante y persuasivo en español. 
-      Incluye al menos 8 módulos (top-bar, header, hero, features, product-showcase, testimonials, contact, footer).
-      Para el módulo 'header', incluye 'logoText' y 'scrollMode': 'static'.
-      Para el módulo 'top-bar', incluye un mensaje de bienvenida o aviso.
-      Para el módulo 'footer', incluye 'logoText' y una breve descripción.`;
-
-      const response = await genAI.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json"
-        }
-      });
-
-      let generatedModules = JSON.parse(response.text || "[]");
-      
-      // Post-process to enforce specific requirements
-      if (generatedModules.length > 0) {
-        generatedModules = generatedModules.map((m: any) => {
-          if (m.type === 'hero') {
-            return {
-              ...m,
-              data: {
-                ...m.data,
-                title: `Bienvenidos a *${businessName}*`,
-                title_style: {
-                  ...m.data.title_style,
-                  highlightType: 'gradient'
-                },
-                layout: 'layout-2', // Split layout
-                background: {
-                  ...m.data.background,
-                  image: getBusinessImage(pageDescription || '')
-                }
-              }
-            };
-          }
-          return m;
-        });
-        
-        saveGeneratedModules(generatedModules);
-      }
-    } catch (error) {
-      console.error("Error generating AI content:", error);
-      // Fallback to mock data if AI fails
-      const businessName = customName || active_project?.name || config?.project_data?.name || 'Proyecto Local';
-      const pageName = assetName || 'Inicio';
-      const aiModules = [
-        { id: 'ai-top', type: 'top-bar', data: { message: '¡Bienvenidos a ' + businessName + '!' } },
-        { id: 'ai-0', type: 'header', data: { logoText: businessName, isSticky: true } },
-        { id: 'ai-1', type: 'hero', data: { title: businessName, subtitle: `Estás viendo la página: ${pageName}` } },
-        { id: 'ai-2', type: 'features', data: {} },
-        { id: 'ai-3', type: 'product-showcase', data: {} },
-        { id: 'ai-4', type: 'testimonials', data: {} },
-        { id: 'ai-5', type: 'contact', data: {} },
-        { id: 'ai-footer', type: 'footer', data: { logoText: businessName } },
-      ];
-      saveGeneratedModules(aiModules);
-    } finally {
-      setIsGenerating(false);
-    }
+  ) => {
+    const finalContext = context || businessContext;
+    const businessName = finalContext?.name || customName || activeProject?.name || config?.projectData?.name || 'Proyecto Local';
+    handleGenerateAi(businessName, targetProjectId, targetAssetId, currentProjectsList, assetName, finalContext || undefined);
   };
 
   const handlePublish = async () => {
+    if (!activeAssetId) return;
     setPublishStatus('publishing');
     
+    const assetDataToSave = {
+      modules: modules,
+      settings: assetSettings,
+      selectedProductIds: selectedProductIds,
+      version: 'published-' + Date.now()
+    };
+
     // Save data with 'published' status
-    saveData({ 
-      modules, 
-      selected_product_ids, 
-      settings: asset_settings,
-      asset_id: active_asset_id,
-      project_id: active_project_id,
-      version: 'published-' + Date.now(),
-      projects: projects
-    }, {
+    saveData(activeAssetId, assetDataToSave, {
+      name: activeAsset?.name || config?.projectData?.name || 'Landing Page',
       status: 'published',
       tags: ['Landing Page', 'Publicado'],
-      author: config?.user_profile?.full_name || 'Usuario',
-      updated_at: Date.now()
+      author: config?.userProfile?.fullName || 'Usuario',
+      updatedAt: Date.now()
     });
 
     await new Promise(resolve => setTimeout(resolve, 2500));
     
     // Simulate validation: check if domain is configured (mock check)
-    const hasDomain = config?.project_id !== 'dev-project-1'; 
+    const hasDomain = config?.projectId !== 'dev-project-1'; 
     
     if (hasDomain) {
       setPublishStatus('success');
@@ -594,7 +383,18 @@ function App() {
     setTimeout(() => setPublishStatus('idle'), 5000);
   };
 
-  const handleWelcomeOption = (option: 'ai' | 'template' | 'blank', pageName: string, pageDescription: string, palette?: { primary: string, secondary: string }) => {
+  const handleWelcomeOption = (
+    option: 'ai' | 'template' | 'blank', 
+    pageName: string, 
+    businessContext: {
+      name: string;
+      sector: string;
+      description: string;
+      objective: string;
+      visualStyle: string;
+    },
+    palette?: { primary: string, secondary: string }
+  ) => {
     setShowWelcome(false);
     
     // Apply palette if provided
@@ -612,19 +412,19 @@ function App() {
       document.documentElement.style.setProperty('--color-secondary-rgb', hexToRgb(palette.secondary));
     }
     
-    let currentProjectId = active_project_id || config?.project_id || projects[0]?.id || 'dev-project-1';
+    let currentProjectId = activeProjectId || config?.projectId || projects[0]?.id || 'dev-project-1';
     let currentProjectsList = [...projects];
 
     // Ensure project exists in list
     if (!currentProjectsList.find(p => p.id === currentProjectId)) {
       currentProjectsList.push({
         id: currentProjectId,
-        name: config?.project_data?.name || 'Proyecto Local',
+        name: config?.projectData?.name || businessContext.name || 'Proyecto Local',
         assets: []
       });
     }
 
-    const finalProjectName = config?.project_data?.name || 'Proyecto Local';
+    const finalProjectName = config?.projectData?.name || businessContext.name || 'Proyecto Local';
     const finalAssetName = pageName;
     const newAssetId = 'asset-' + Math.random().toString(36).substr(2, 5);
 
@@ -633,10 +433,11 @@ function App() {
       id: newAssetId,
       name: finalAssetName,
       modules: [],
+      businessContext,
       settings: {
         domain: '',
-        seo_title: finalAssetName + ' | ' + finalProjectName,
-        seo_description: pageDescription || `Bienvenido a ${finalAssetName}`
+        seoTitle: finalAssetName + ' | ' + finalProjectName,
+        seoDescription: businessContext.description || `Bienvenido a ${finalAssetName}`
       }
     };
 
@@ -654,6 +455,7 @@ function App() {
     setProjects(currentProjectsList);
     setActiveProject(currentProjectId);
     setActiveAsset(newAssetId);
+    setBusinessContext(businessContext);
 
     const createModule = (type: string, customData: any = {}) => {
       const def = getModuleDefinition(type);
@@ -665,21 +467,21 @@ function App() {
     };
 
     if (option === 'ai') {
-      handleGenerateAI(finalProjectName, currentProjectId, newAssetId, currentProjectsList, finalAssetName, pageDescription);
+      onGenerateAi(finalProjectName, currentProjectId, newAssetId, currentProjectsList, finalAssetName, businessContext);
     } else if (option === 'blank') {
-      // Initialize with basic structure but customized text based on pageDescription
+      // Initialize with basic structure but customized text based on businessContext
       const initialModules = [
-        createModule('header', { logoText: finalProjectName, scrollMode: 'static', theme: 'dark' }),
+        createModule('header', { logoText: businessContext.name || finalProjectName, scrollMode: 'static', theme: 'dark' }),
         createModule('hero', { 
-          title: `Bienvenido a *${finalProjectName}*`, 
-          title_style: { highlightType: 'gradient' },
-          subtitle: "Nunca fue tan fácil crear su propia página web. Para comenzar, agregue cualquier módulo desde el Constructor a la izquierda",
-          layout: 'layout-2', // Split layout
+          title: `Bienvenido a *${businessContext.name || finalProjectName}*`, 
+          titleStyle: { highlightType: 'gradient' },
+          subtitle: businessContext.description || "Nunca fue tan fácil crear su propia página web. Para comenzar, agregue cualquier módulo desde el Constructor a la izquierda",
+          layoutType: 'layout-2', // Split layout
           primaryButton: null,
           secondaryButton: null,
           theme: 'light',
           background: {
-            image: 'https://images.unsplash.com/photo-1531427186611-ecfd6d936c79?q=80&w=2000&auto=format&fit=crop'
+            image: getBusinessImage(businessContext.description || '')
           }
         })
       ];
@@ -706,20 +508,20 @@ function App() {
       // Template option - for now, just use a default template but customized
       const initialModules = [
         createModule('top-bar', { message: '¡Oferta especial de lanzamiento!', theme: 'dark' }),
-        createModule('header', { logoText: finalProjectName, scrollMode: 'static', theme: 'dark' }),
+        createModule('header', { logoText: businessContext.name || finalProjectName, scrollMode: 'static', theme: 'dark' }),
         createModule('hero', { 
-          title: `Bienvenidos a *${finalProjectName}*`, 
-          title_style: { highlightType: 'gradient' },
-          subtitle: `Soluciones profesionales en ${pageDescription || 'tu sector'}.`,
-          layout: 'layout-2', // Split layout
+          title: `Bienvenidos a *${businessContext.name || finalProjectName}*`, 
+          titleStyle: { highlightType: 'gradient' },
+          subtitle: `Soluciones profesionales en ${businessContext.description || 'tu sector'}.`,
+          layoutType: 'layout-2', // Split layout
           theme: 'light',
           background: {
-            image: getBusinessImage(pageDescription || '')
+            image: getBusinessImage(businessContext.description || '')
           }
         }),
-        createModule('features', { title: '¿Por qué elegirnos?', subtitle: `Diseñamos soluciones de ${pageDescription || 'calidad'} que se adaptan a tus necesidades.` }),
+        createModule('features', { title: '¿Por qué elegirnos?', subtitle: `Diseñamos soluciones de ${businessContext.description || 'calidad'} que se adaptan a tus necesidades.` }),
         createModule('contact', { title: 'Contáctanos', subtitle: 'Estamos aquí para ayudarte.' }),
-        createModule('footer', { logoText: finalProjectName }),
+        createModule('footer', { logoText: businessContext.name || finalProjectName }),
       ];
       
       setModules(initialModules);
@@ -746,7 +548,7 @@ function App() {
   };
 
   const handleCreateNewAssetClick = () => {
-    if (is_dirty) {
+    if (isDirty) {
       if (!window.confirm('Tienes cambios sin guardar en el proyecto actual. ¿Estás seguro de que quieres crear una nueva página y perder los cambios no guardados?')) {
         return;
       }
@@ -769,22 +571,22 @@ function App() {
     }
   };
 
-  const handleSelectAsset = (asset_id: string, project_id: string) => {
-    if (is_dirty) {
+  const handleSelectAsset = (assetId: string, projectId: string) => {
+    if (isDirty) {
       if (!window.confirm('Tienes cambios sin guardar en el activo actual. ¿Estás seguro de que quieres cambiar de página y perder los cambios no guardados?')) {
         return;
       }
     }
     
-    if (project_id !== active_project_id) {
-      setActiveProject(project_id);
+    if (projectId !== activeProjectId) {
+      setActiveProject(projectId);
     }
     
-    setActiveAsset(asset_id);
+    setActiveAsset(assetId);
   };
 
   const handleSelectModule = (id: string | null, source: 'canvas' | 'structure' = 'canvas') => {
-    const isAlreadySelected = id === selected_module_id;
+    const isAlreadySelected = id === selectedModuleId;
     
     // If clicking from structure and it's already selected, we still want to trigger the panel switch
     // so we don't return early here if we want the "collapse structure" behavior to work
@@ -830,7 +632,7 @@ function App() {
   };
 
   if (!isReady) {
-    return <LoadingView projectName={config?.project_data?.name} onSimulateConnection={simulateConnection} />;
+    return <LoadingView projectName={config?.projectData?.name} onSimulateConnection={simulateConnection} />;
   }
 
   if (showWelcome) {
@@ -839,16 +641,74 @@ function App() {
         onSelectOption={handleWelcomeOption} 
         onSelectProject={handleSelectProject}
         projects={projects}
-        title={config?.project_data?.name || 'Proyecto'}
-        brandColors={config?.project_data?.colors}
+        title={config?.projectData?.name || 'Proyecto'}
+        brandColors={config?.projectData?.colors}
+        industry={activeProject?.industry}
       />
     );
   }
 
   return (
     <div className={`h-screen flex font-sans relative ${isPreviewMode ? 'overflow-x-hidden' : ''} ${
-      asset_settings.page_layout === 'seamless' ? 'bg-surface' : 'bg-background'
+      assetSettings.pageLayout === 'seamless' ? 'bg-surface' : 'bg-background'
     }`}>
+      {/* AI Generation Loading Overlay */}
+      <AnimatePresence>
+        {isGenerating && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[200] bg-background/80 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center"
+          >
+            <div className="relative w-24 h-24 mb-8">
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                className="absolute inset-0 border-4 border-primary/20 rounded-full"
+              />
+              <motion.div
+                animate={{ rotate: -360 }}
+                transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                className="absolute inset-4 border-4 border-accent/40 rounded-full border-t-transparent"
+              />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <Sparkles className="w-8 h-8 text-primary animate-pulse" />
+              </div>
+            </div>
+            
+            <motion.h2 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="text-2xl font-black text-text mb-2"
+            >
+              Diseñando tu sitio con IA
+            </motion.h2>
+            
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.4 }}
+              className="text-text/60 max-w-md"
+            >
+              Estamos creando la estructura, redactando los textos y seleccionando las mejores imágenes para tu negocio. Esto tomará solo unos segundos...
+            </motion.p>
+            
+            <div className="mt-8 flex gap-1">
+              {[0, 1, 2].map((i) => (
+                <motion.div
+                  key={i}
+                  animate={{ scale: [1, 1.5, 1], opacity: [0.3, 1, 0.3] }}
+                  transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }}
+                  className="w-2 h-2 bg-primary rounded-full"
+                />
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Exit Preview Button & Device Switcher */}
       {isPreviewMode && (
         <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100] flex flex-col items-center gap-4">
@@ -901,12 +761,12 @@ function App() {
 
       {/* Mobile Overlay */}
       <AnimatePresence>
-        {is_mobile_menu_open && !isPreviewMode && (
+        {isMobileMenuOpen && !isPreviewMode && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={() => set_is_mobile_menu_open(false)}
+            onClick={() => setIsMobileMenuOpen(false)}
             className="fixed inset-0 bg-text/40 backdrop-blur-sm z-40 lg:hidden"
           />
         )}
@@ -915,29 +775,29 @@ function App() {
       <div className={`
         fixed inset-y-0 left-0 z-[90] lg:relative lg:z-[90] transition-transform duration-300 transform
         ${isPreviewMode ? '-translate-x-full lg:hidden' : ''}
-        ${is_mobile_menu_open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+        ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
         <Sidebar 
           config={config} 
           activeTab={activeTab} 
           setActiveTab={(tab) => {
             setActiveTab(tab);
-            set_is_mobile_menu_open(false);
+            setIsMobileMenuOpen(false);
           }} 
           isCollapsed={isSidebarCollapsed}
           onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
           onAddModule={handleAddModule}
           onGoHome={() => setShowWelcome(true)}
-          onGenerateAI={() => handleGenerateAI()}
+          onGenerateAi={() => onGenerateAi()}
           projects={projects}
-          active_project_id={active_project_id || config?.project_id || (projects[0]?.id)}
+          activeProjectId={activeProjectId || config?.projectId || (projects[0]?.id)}
           onSelectProject={handleSelectProject}
-          active_asset_id={active_asset_id}
+          activeAssetId={activeAssetId}
           onSelectAsset={handleSelectAsset}
           onCreateAsset={handleCreateNewAssetClick}
           showSaveMessage={showSaveMessage}
           lastSaveStatus={lastSaveStatus}
-          asset_settings={asset_settings}
+          assetSettings={assetSettings}
           onUpdateSettings={updateAssetSettings}
         />
       </div>
@@ -946,19 +806,19 @@ function App() {
       {!isPreviewMode && activeTab === 'builder' && (
         <SidebarPanelWrapper
           modules={modules}
-          onReorder={reorderModules}
+          onReorder={handleReorderModules}
           onRemove={handleRemoveModule}
           onSelect={handleSelectModule}
           onEdit={handleEditModule}
-          selected_module_id={selected_module_id}
-          editing_module_id={editing_module_id}
-          sidebarCollapsed={isSidebarCollapsed}
+          selectedModuleId={selectedModuleId}
+          editingModuleId={editingModuleId}
+          isSidebarCollapsed={isSidebarCollapsed}
           isPinned={isSidebarPinned}
           onTogglePin={() => setIsSidebarPinned(!isSidebarPinned)}
           updateModule={updateModule}
           onOpenImagePicker={(callback) => {
             setImagePickerCallback(() => callback);
-            set_is_image_picker_open(true);
+            setIsImagePickerOpen(true);
           }}
         />
       )}
@@ -966,7 +826,7 @@ function App() {
       <main className="flex-1 flex flex-col h-screen overflow-hidden">
         {/* Content Area */}
         <div className={`flex-1 overflow-y-auto custom-scrollbar transition-all duration-500 ${
-          isPreviewMode || asset_settings.page_layout === 'seamless' 
+          isPreviewMode || assetSettings.pageLayout === 'seamless' 
             ? 'p-0 bg-surface' 
             : 'p-4 md:p-8 lg:p-10 bg-background'
         }`}>
@@ -1014,53 +874,53 @@ function App() {
                 </div>
               </motion.div>
             )}
-          </AnimatePresence>
+            </AnimatePresence>
 
           {activeTab === 'builder' && (
             <PageLayoutProvider 
-              page_layout={asset_settings.page_layout || 'seamless'}
+              pageLayout={assetSettings.pageLayout || 'seamless'}
               previewDevice={isPreviewMode ? previewDevice : 'desktop'}
             >
               <BuilderView
                 isPreviewMode={isPreviewMode}
                 setIsPreviewMode={setIsPreviewMode}
-                set_is_mobile_menu_open={set_is_mobile_menu_open}
-                handleSave={() => handleSave('guardado')}
-                is_saving={is_saving}
-                is_dirty={is_dirty}
-                handlePublish={handlePublish}
+                setIsMobileMenuOpen={setIsMobileMenuOpen}
+                onSave={() => handleSave('guardado')}
+                isSaving={isSaving}
+                isDirty={isDirty}
+                onPublish={handlePublish}
                 publishStatus={publishStatus}
                 modules={modules}
                 setShowPicker={setShowPicker}
-                removeModule={removeModule}
-                updateModule={updateModule}
-                handleSelectModule={handleSelectModule}
-                handleEditModule={handleEditModule}
-                selected_module_id={selected_module_id}
+                onRemoveModule={removeModule}
+                onUpdateModule={updateModule}
+                onSelectModule={handleSelectModule}
+                onEditModule={handleEditModule}
+                selectedModuleId={selectedModuleId}
                 setImagePickerCallback={setImagePickerCallback}
-                set_is_image_picker_open={set_is_image_picker_open}
+                setIsImagePickerOpen={setIsImagePickerOpen}
                 config={config}
-                selected_product_ids={selected_product_ids}
-                page_layout={asset_settings.page_layout || 'seamless'}
+                selectedProductIds={selectedProductIds}
+                pageLayout={assetSettings.pageLayout || 'seamless'}
               />
             </PageLayoutProvider>
           )}
 
           {activeTab === 'settings' && (
             <SettingsView
-              active_project={active_project}
-              active_asset={active_asset}
+              activeProject={activeProject}
+              activeAsset={activeAsset}
               config={config}
-              asset_settings={asset_settings}
-              selected_product_ids={selected_product_ids}
+              assetSettings={assetSettings}
+              selectedProductIds={selectedProductIds}
               updateAssetSettings={updateAssetSettings}
               updateAssetName={updateAssetName}
-              update_selected_products={update_selected_products}
+              updateSelectedProducts={updateSelectedProducts}
               setActiveTab={setActiveTab}
-              handleSave={() => handleSave('guardado')}
-              is_saving={is_saving}
-              is_dirty={is_dirty}
-              auto_save_interval={auto_save_interval}
+              onSave={() => handleSave('guardado')}
+              isSaving={isSaving}
+              isDirty={isDirty}
+              autoSaveInterval={autoSaveInterval}
               setAutoSaveInterval={setAutoSaveInterval}
             />
           )}
@@ -1154,8 +1014,8 @@ function App() {
 
       {/* Image Picker Modal */}
       <ImagePicker 
-        is_open={is_image_picker_open}
-        onClose={() => set_is_image_picker_open(false)}
+        isOpen={isImagePickerOpen}
+        onClose={() => setIsImagePickerOpen(false)}
         onSelect={handleImageSelect}
       />
     </div>

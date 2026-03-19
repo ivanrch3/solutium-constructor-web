@@ -36,14 +36,16 @@ export const PropertyInspector = ({
   const [expandedSectionsByModule, setExpandedSectionsByModule] = useState<Record<string, Record<string, boolean>>>({});
 
   const satellite = useContext(SolutiumContext);
-  const projectSocials = satellite?.payload?.project_data?.socials;
+  const projectSocials = satellite?.payload?.projectData?.socials;
 
   const moduleId = selectedModule?.id || 'default';
   const expandedSections = expandedSectionsByModule[moduleId] || {
-    text: false,
+    text: true,
     buttons: false,
     structure: false,
-    products: true
+    products: false,
+    socials: false,
+    advanced: false
   };
 
   const schema = selectedModule ? getModuleSchema(selectedModule.type) : null;
@@ -58,19 +60,38 @@ export const PropertyInspector = ({
       
       // Determine if the element is "disabled" (e.g. showCTA is false)
       let isDisabled = false;
-      if (isButton && selectedModule) {
-        // Common patterns for disabling buttons in modules
-        if (f.name === 'cta' && selectedModule.data.showCTA === false) isDisabled = true;
-        if (f.name === 'secondaryCta' && selectedModule.data.showSecondaryCTA === false) isDisabled = true;
-        if (f.name === 'button' && selectedModule.data.showButton === false) isDisabled = true;
-        // If the button text is empty in default data, it might be considered "optional"
-        // but the user wants it to appear even if disabled.
+      if (selectedModule) {
+        if (isButton) {
+          // Common patterns for disabling buttons in modules
+          if (f.name === 'cta' && selectedModule.data.showCTA === false) isDisabled = true;
+          if (f.name === 'secondaryCta' && selectedModule.data.showSecondaryCTA === false) isDisabled = true;
+          if (f.name === 'button' && selectedModule.data.showButton === false) isDisabled = true;
+        }
+
+        // Special case for Header logoText
+        if (selectedModule.type === 'header' && f.name === 'logoText') {
+          const logoType = selectedModule.data.logoType || 'inherited';
+          if (logoType !== 'none') {
+            isDisabled = true;
+          }
+        }
+
+        // Special case for Footer logoText
+        if (selectedModule.type === 'footer' && f.name === 'logoText') {
+          const projectLogo = satellite?.payload?.projectData?.logoUrl;
+          const logoSrc = selectedModule.data.logoImage || projectLogo;
+          if (logoSrc) {
+            isDisabled = true;
+          }
+        }
       }
+
+      const cleanLabel = f.label.replace('Editor de textos - ', '');
 
       if (f.type === 'object') {
         return {
           key: `${f.name}.text`,
-          label: f.label,
+          label: cleanLabel,
           defaultText: selectedModule.defaultData?.[f.name]?.text || '',
           isButton,
           isDisabled
@@ -78,10 +99,10 @@ export const PropertyInspector = ({
       }
       return {
         key: f.name,
-        label: f.label,
+        label: cleanLabel,
         defaultText: selectedModule.defaultData?.[f.name] || '',
         isButton: false,
-        isDisabled: false
+        isDisabled
       };
     }) || [];
 
@@ -159,7 +180,7 @@ export const PropertyInspector = ({
                         <Type className="w-3 h-3" />
                       </div>
                       <span className="text-[10px] font-black text-text/60 uppercase tracking-widest group-hover:text-primary transition-colors">
-                        Textos y Estilos
+                        Editor de textos
                       </span>
                     </div>
                     {expandedSections.text ? <ChevronDown className="w-3 h-3 text-text/30" /> : <ChevronRight className="w-3 h-3 text-text/30" />}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ColorPicker } from './ColorPicker';
 import { 
   Type, 
@@ -56,7 +56,21 @@ interface TypographyManagerProps {
 }
 
 export const TypographyManager = ({ module, data, onUpdate, textElements }: TypographyManagerProps) => {
-  const [selectedElement, setSelectedElement] = useState(textElements[0]?.key || '');
+  const [selectedElement, setSelectedElement] = useState(() => {
+    const firstEnabled = textElements.find(el => !el.isDisabled);
+    return firstEnabled?.key || textElements[0]?.key || '';
+  });
+
+  // Update selection if current element becomes disabled or if module changes
+  useEffect(() => {
+    const current = textElements.find(el => el.key === selectedElement);
+    if (!current || current.isDisabled) {
+      const firstEnabled = textElements.find(el => !el.isDisabled);
+      if (firstEnabled) {
+        setSelectedElement(firstEnabled.key);
+      }
+    }
+  }, [textElements, selectedElement]);
 
   // Helper to get nested value
   const getValue = (obj: any, path: string) => {
@@ -65,7 +79,7 @@ export const TypographyManager = ({ module, data, onUpdate, textElements }: Typo
 
   // The style key is usually the base name of the element
   const styleKey = selectedElement.split('.')[0];
-  const currentStyle = data[`${styleKey}_style`] || {};
+  const currentStyle = data[`${styleKey}Style`] || {};
   const currentText = getValue(data, selectedElement) || textElements.find(e => e.key === selectedElement)?.defaultText || '';
   const currentElement = textElements.find(e => e.key === selectedElement);
 
@@ -76,7 +90,7 @@ export const TypographyManager = ({ module, data, onUpdate, textElements }: Typo
 
   const updateStyle = (key: string, value: any) => {
     onUpdate({
-      [`${styleKey}_style`]: {
+      [`${styleKey}Style`]: {
         ...currentStyle,
         [key]: value
       }
@@ -85,7 +99,7 @@ export const TypographyManager = ({ module, data, onUpdate, textElements }: Typo
 
   const updateStyles = (updates: Record<string, any>) => {
     onUpdate({
-      [`${styleKey}_style`]: {
+      [`${styleKey}Style`]: {
         ...currentStyle,
         ...updates
       }

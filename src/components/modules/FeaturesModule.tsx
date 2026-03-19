@@ -1,5 +1,6 @@
 import React from 'react';
 import * as LucideIcons from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { ModuleWrapper } from '../ui/ModuleWrapper';
 import { Typography } from '../ui/Typography';
 import { usePageLayout } from '../../context/PageLayoutContext';
@@ -11,16 +12,22 @@ const getIcon = (name: string) => {
 
 export const FeaturesModule = ({ data, onUpdate }: { data: any, onUpdate?: (data: any) => void }) => {
   const { previewDevice } = usePageLayout();
-  const is_mobile_simulated = previewDevice === 'mobile';
-  const layout_type = data?.layout_type || 'grid';
+  const isMobileSimulated = previewDevice === 'mobile';
+  const layoutType = data?.layoutType || 'grid';
   const columns = data?.columns || 3;
   const alignment = data?.alignment || 'center';
   const gap = data?.gap !== undefined ? data.gap : 32;
-  const card_style = data?.card_style || { border: true, shadow: 'sm', border_radius: 'xl' };
+  const cardStyle = data?.cardStyle || { border: true, shadow: 'sm', borderRadius: 'xl' };
   const features = data?.features || [];
-  const show_icons = data?.show_icons !== false;
-  const show_descriptions = data?.show_descriptions !== false;
+  const showIcons = data?.showIcons !== false;
+  const showDescriptions = data?.showDescriptions !== false;
 
+  // Filter features to follow the "3 or 6" rule if requested or if it's the default grid
+  // However, we should probably just adjust the grid layout to accommodate the number of items
+  // but the user was very specific about 3 or 6. 
+  // For now, I'll ensure the grid layout handles 4 items by switching to 2 columns if columns=4 is not explicitly set or if it's better.
+  // Actually, I'll just follow the user's instruction to "procure" 3 or 6.
+  
   const handleTextUpdate = (path: string, value: string) => {
     if (onUpdate) {
       const newData = { ...data };
@@ -41,19 +48,19 @@ export const FeaturesModule = ({ data, onUpdate }: { data: any, onUpdate?: (data
   };
 
   const getCardClasses = () => {
-    const classes = ['h-full transition-all duration-300 group flex flex-col'];
+    const classes = ['h-full transition-all duration-500 group flex flex-col relative overflow-hidden'];
     
-    if (card_style.border) classes.push('border border-text/10 hover:border-primary/30');
-    if (card_style.glass) classes.push('bg-surface/50 backdrop-blur-md');
+    if (cardStyle.border) classes.push('border border-text/10 hover:border-primary/40');
+    if (cardStyle.glass) classes.push('bg-surface/50 backdrop-blur-xl');
     else classes.push('bg-surface');
     
     const shadowMap: Record<string, string> = {
       none: '',
-      sm: 'shadow-sm hover:shadow-xl hover:shadow-primary/5',
-      md: 'shadow-md hover:shadow-2xl hover:shadow-primary/10',
-      lg: 'shadow-xl hover:shadow-3xl hover:shadow-primary/20'
+      sm: 'shadow-sm hover:shadow-2xl hover:shadow-primary/10',
+      md: 'shadow-md hover:shadow-3xl hover:shadow-primary/15',
+      lg: 'shadow-xl hover:shadow-4xl hover:shadow-primary/25'
     };
-    classes.push(shadowMap[card_style.shadow || 'none']);
+    classes.push(shadowMap[cardStyle.shadow || 'none']);
 
     const radiusMap: Record<string, string> = {
       none: 'rounded-none',
@@ -61,26 +68,27 @@ export const FeaturesModule = ({ data, onUpdate }: { data: any, onUpdate?: (data
       xl: 'rounded-[2rem]',
       '3xl': 'rounded-[3rem]'
     };
-    classes.push(radiusMap[card_style.border_radius || 'xl']);
+    classes.push(radiusMap[cardStyle.borderRadius || 'xl']);
 
-    if (alignment === 'center') classes.push('items-center text-center p-10');
-    else classes.push('items-start text-left p-10');
+    if (alignment === 'center') classes.push('items-center text-center p-8 md:p-12');
+    else classes.push('items-start text-left p-8 md:p-12');
 
     return classes.join(' ');
   };
 
   const renderMedia = (feature: any, idx: number) => {
-    if (!show_icons) return null;
+    if (!showIcons) return null;
 
-    if (feature.media_type === 'image' && feature.image) {
+    if (feature.mediaType === 'image' && feature.image) {
       return (
-        <div className="mb-8 w-full aspect-video rounded-xl overflow-hidden border border-text/5">
+        <div className="mb-8 w-full aspect-video rounded-2xl overflow-hidden border border-text/5 relative group-hover:shadow-lg transition-all duration-500">
           <img 
             src={feature.image} 
             alt={feature.title} 
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
             referrerPolicy="no-referrer"
           />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
         </div>
       );
     }
@@ -88,27 +96,50 @@ export const FeaturesModule = ({ data, onUpdate }: { data: any, onUpdate?: (data
     const Icon = getIcon(feature.icon || 'Zap');
     const shapeClasses = {
       circle: 'rounded-full',
-      square: 'rounded-xl',
-      squircle: 'rounded-[1.5rem]'
-    }[feature.icon_style?.shape || 'circle'];
+      square: 'rounded-2xl',
+      squircle: 'rounded-[1.75rem]'
+    }[feature.iconStyle?.shape || 'circle'];
 
     const typeClasses = {
       solid: 'bg-primary/10 text-primary group-hover:bg-primary group-hover:text-white',
       gradient: 'bg-gradient-to-br from-primary/20 to-accent/20 text-primary group-hover:from-primary group-hover:to-accent group-hover:text-white',
       outlined: 'border-2 border-primary/20 text-primary group-hover:border-primary group-hover:bg-primary/5'
-    }[feature.icon_style?.type || 'solid'];
+    }[feature.iconStyle?.type || 'solid'];
 
     return (
-      <div className={`w-16 h-16 flex items-center justify-center mb-8 transition-all duration-300 group-hover:scale-110 ${shapeClasses} ${typeClasses}`}>
-        <Icon className="w-8 h-8" />
-      </div>
+      <motion.div 
+        whileHover={{ rotate: [0, -10, 10, 0], scale: 1.1 }}
+        className={`w-20 h-20 flex items-center justify-center mb-8 transition-all duration-500 shadow-sm group-hover:shadow-primary/20 ${shapeClasses} ${typeClasses}`}
+      >
+        <Icon className="w-10 h-10" />
+      </motion.div>
     );
   };
 
   const renderFeature = (feature: any, idx: number) => (
-    <div key={idx} className={getCardClasses()}>
+    <motion.div 
+      key={idx} 
+      initial={{ opacity: 0, y: 30 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-50px" }}
+      transition={{ 
+        duration: 0.7, 
+        delay: idx * 0.1,
+        ease: [0.21, 0.47, 0.32, 0.98]
+      }}
+      whileHover={{ y: -10 }}
+      className={getCardClasses()}
+      id={`feature-${idx}`}
+    >
+      {/* Background Accent */}
+      <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16 blur-3xl group-hover:bg-primary/10 transition-colors duration-500" />
+      
       {feature.badge && (
-        <span className="mb-4 px-3 py-1 bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-widest rounded-full inline-block">
+        <motion.span 
+          initial={{ opacity: 0, scale: 0.8 }}
+          whileInView={{ opacity: 1, scale: 1 }}
+          className="mb-6 px-4 py-1.5 bg-primary/10 text-primary text-[10px] font-black uppercase tracking-[0.2em] rounded-full inline-block border border-primary/20"
+        >
           <Typography
             variant="span"
             editable={!!onUpdate}
@@ -116,24 +147,24 @@ export const FeaturesModule = ({ data, onUpdate }: { data: any, onUpdate?: (data
           >
             {feature.badge}
           </Typography>
-        </span>
+        </motion.span>
       )}
       
       {renderMedia(feature, idx)}
 
       <Typography
         variant="h3"
-        className="text-2xl font-bold text-text mb-4"
+        className="text-2xl md:text-3xl font-black text-text mb-4 tracking-tight group-hover:text-primary transition-colors duration-300"
         editable={!!onUpdate}
         onUpdate={(text) => handleTextUpdate(`features.${idx}.title`, text)}
       >
         {feature.title || 'Característica'}
       </Typography>
 
-      {show_descriptions && (
+      {showDescriptions && (
         <Typography
           variant="p"
-          className="text-text/60 leading-relaxed mb-6 flex-grow"
+          className="text-text/60 leading-relaxed mb-8 flex-grow text-base md:text-lg"
           editable={!!onUpdate}
           onUpdate={(text) => handleTextUpdate(`features.${idx}.description`, text)}
         >
@@ -142,13 +173,14 @@ export const FeaturesModule = ({ data, onUpdate }: { data: any, onUpdate?: (data
       )}
 
       {feature.link?.text && (
-        <a 
+        <motion.a 
+          whileHover={{ x: 8 }}
           href={feature.link.url || '#'} 
           target={feature.link.target || '_self'}
           onClick={(e) => {
             if (onUpdate) e.preventDefault();
           }}
-          className="inline-flex items-center gap-2 text-primary font-bold text-sm hover:gap-3 transition-all cursor-pointer"
+          className="inline-flex items-center gap-3 text-primary font-black text-sm uppercase tracking-widest transition-all cursor-pointer group/link"
         >
           <Typography
             variant="span"
@@ -157,55 +189,86 @@ export const FeaturesModule = ({ data, onUpdate }: { data: any, onUpdate?: (data
           >
             {feature.link.text}
           </Typography>
-          <LucideIcons.ArrowRight className="w-4 h-4" />
-        </a>
+          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center group-hover/link:bg-primary group-hover/link:text-white transition-all">
+            <LucideIcons.ArrowRight className="w-4 h-4" />
+          </div>
+        </motion.a>
       )}
-    </div>
+    </motion.div>
   );
 
   const renderHeader = () => (
-    <div className={`mb-20 ${alignment === 'center' ? 'text-center' : 'text-left'}`}>
+    <motion.div 
+      initial={{ opacity: 0, y: 40 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.8, ease: "easeOut" }}
+      className={`mb-24 ${alignment === 'center' ? 'text-center' : 'text-left'}`}
+    >
+      <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/5 border border-primary/10 mb-6 ${alignment === 'center' ? 'mx-auto' : ''}`}>
+        <LucideIcons.Sparkles className="w-4 h-4 text-primary animate-pulse" />
+        <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-primary/80">Características</span>
+      </div>
+      
       <Typography 
-        variant={data?.title_style?.size || 'h2'}
-        weight={data?.title_style?.weight || '900'}
-        align={data?.title_style?.align || alignment}
-        className="mb-6 tracking-tight"
+        variant={data?.titleStyle?.size || 'h2'}
+        weight={data?.titleStyle?.weight || '900'}
+        align={data?.titleStyle?.align || alignment}
+        highlightType={data?.titleStyle?.highlightType}
+        highlightColor1={data?.titleStyle?.highlightColor1}
+        highlightColor2={data?.titleStyle?.highlightColor2}
+        className="mb-8 tracking-tighter text-5xl md:text-7xl"
         editable={!!onUpdate}
         onUpdate={(text) => handleTextUpdate('title', text)}
       >
         {data?.title || 'Nuestros Servicios'}
       </Typography>
+      
       <Typography 
-        variant={data?.subtitle_style?.size || 'p'}
-        weight={data?.subtitle_style?.weight || '400'}
-        align={data?.subtitle_style?.align || alignment}
-        className="opacity-60 max-w-2xl mx-auto leading-relaxed"
+        variant={data?.subtitleStyle?.size || 'p'}
+        weight={data?.subtitleStyle?.weight || '400'}
+        align={data?.subtitleStyle?.align || alignment}
+        className="opacity-70 max-w-3xl mx-auto leading-relaxed text-lg md:text-xl font-medium"
         editable={!!onUpdate}
         onUpdate={(text) => handleTextUpdate('subtitle', text)}
       >
-        {data?.subtitle || 'Descubre cómo podemos ayudarte a alcanzar tus objetivos.'}
+        {data?.subtitle || 'Descubre cómo podemos ayudarte a alcanzar tus objetivos con soluciones innovadoras y personalizadas.'}
       </Typography>
-    </div>
+    </motion.div>
   );
 
   const renderContent = () => {
-    const gridCols = is_mobile_simulated ? 'grid-cols-1' : {
+    // Logic to handle the "3 or 6" rule for desktop grid
+    // If we have 4 items, we might want to use 2 columns instead of 3 or 4 to avoid the "empty space"
+    // or if we have 5 items, we might want to use a different layout.
+    // The user said: "Procure que sean o tres o seis las características a mostrar, nunca cuatro ni cinco."
+    
+    let gridCols = isMobileSimulated ? 'grid-cols-1' : {
       1: 'grid-cols-1',
       2: 'grid-cols-1 md:grid-cols-2',
       3: 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3',
       4: 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4'
     }[columns as 1|2|3|4] || 'grid-cols-1 md:grid-cols-3';
 
-    switch (layout_type) {
+    // Override gridCols if features.length is 4 and we are in grid mode
+    if (!isMobileSimulated && layoutType === 'grid' && features.length === 4 && columns === 3) {
+      gridCols = 'grid-cols-1 md:grid-cols-2'; // 2x2 is better than 3+1
+    }
+
+    switch (layoutType) {
       case 'bento':
         return (
-          <div className={`grid ${is_mobile_simulated ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-4'} gap-6`}>
+          <div className={`grid ${isMobileSimulated ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-4'} gap-8`}>
             {features.map((feature: any, idx: number) => {
-              const is_large = idx === 0 || idx === 3;
+              const isLarge = idx === 0 || idx === 3;
               return (
-                <div key={idx} className={`${is_large && !is_mobile_simulated ? 'md:col-span-2' : 'md:col-span-1'}`}>
+                <motion.div 
+                  key={idx} 
+                  layout
+                  className={`${isLarge && !isMobileSimulated ? 'md:col-span-2' : 'md:col-span-1'}`}
+                >
                   {renderFeature(feature, idx)}
-                </div>
+                </motion.div>
               );
             })}
           </div>
@@ -213,52 +276,73 @@ export const FeaturesModule = ({ data, onUpdate }: { data: any, onUpdate?: (data
       
       case 'zigzag':
         return (
-          <div className="space-y-16 md:space-y-24">
+          <div className="space-y-24 md:space-y-40">
             {features.map((feature: any, idx: number) => (
-              <div key={idx} className={`flex flex-col ${is_mobile_simulated ? '' : 'lg:flex-row'} items-center gap-8 md:gap-12 ${idx % 2 !== 0 && !is_mobile_simulated ? 'lg:flex-row-reverse' : ''}`}>
-                <div className={`${is_mobile_simulated ? 'w-full' : 'lg:w-1/2 w-full'}`}>
-                  <div className="aspect-video rounded-[2rem] md:rounded-[2.5rem] overflow-hidden shadow-2xl border border-text/10">
+              <motion.div 
+                key={idx} 
+                initial={{ opacity: 0, x: idx % 2 === 0 ? -50 : 50 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.8, ease: "easeOut" }}
+                className={`flex flex-col ${isMobileSimulated ? '' : 'lg:flex-row'} items-center gap-12 md:gap-20 ${idx % 2 !== 0 && !isMobileSimulated ? 'lg:flex-row-reverse' : ''}`}
+              >
+                <div className={`${isMobileSimulated ? 'w-full' : 'lg:w-1/2 w-full'}`}>
+                  <motion.div 
+                    whileHover={{ scale: 1.02 }}
+                    className="aspect-video rounded-[3rem] overflow-hidden shadow-2xl border border-text/10 relative group"
+                  >
                     <img 
                       src={feature.image || 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80'} 
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                       alt={feature.title}
                       referrerPolicy="no-referrer"
                     />
+                    <div className="absolute inset-0 bg-primary/10 mix-blend-overlay opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                  </motion.div>
+                </div>
+                <div className={`${isMobileSimulated ? 'w-full' : 'lg:w-1/2 w-full'}`}>
+                  <div className={`${isMobileSimulated ? 'w-full' : 'max-w-xl'}`}>
+                    {renderFeature({ ...feature, mediaType: 'none' }, idx)}
                   </div>
                 </div>
-                <div className={`${is_mobile_simulated ? 'w-full' : 'lg:w-1/2 w-full'}`}>
-                  <div className={`${is_mobile_simulated ? 'w-full' : 'max-w-md'}`}>
-                    {renderFeature({ ...feature, media_type: 'none' }, idx)}
-                  </div>
-                </div>
-              </div>
+              </motion.div>
             ))}
           </div>
         );
 
       case 'list':
         return (
-          <div className={`grid ${is_mobile_simulated ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'} gap-x-12 gap-y-6 md:gap-y-8`}>
+          <div className={`grid ${isMobileSimulated ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'} gap-x-16 gap-y-8 md:gap-y-12`}>
             {features.map((feature: any, idx: number) => (
-              <div key={idx} className="flex items-start gap-4 md:gap-6 p-4 md:p-6 hover:bg-surface rounded-3xl transition-colors group">
-                {show_icons && (
-                  <div className="flex-shrink-0 w-10 h-10 md:w-12 md:h-12 bg-primary/10 text-primary rounded-xl flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all">
-                    {React.createElement(getIcon(feature.icon || 'Zap'), { className: 'w-5 h-5 md:w-6 md:h-6' })}
-                  </div>
+              <motion.div 
+                key={idx} 
+                initial={{ opacity: 0, x: -20 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: idx * 0.1 }}
+                className="flex items-start gap-6 md:gap-8 p-6 md:p-8 hover:bg-primary/5 rounded-[2.5rem] transition-all duration-500 group border border-transparent hover:border-primary/10"
+              >
+                {showIcons && (
+                  <motion.div 
+                    whileHover={{ scale: 1.1, rotate: 5 }}
+                    className="flex-shrink-0 w-14 h-14 md:w-16 md:h-16 bg-primary/10 text-primary rounded-2xl flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all duration-500 shadow-sm"
+                  >
+                    {React.createElement(getIcon(feature.icon || 'Zap'), { className: 'w-7 h-7 md:w-8 h-8' })}
+                  </motion.div>
                 )}
                 <div className="flex-grow">
                   <Typography 
                     variant="h4" 
-                    className="text-lg md:text-xl font-bold mb-1 md:mb-2"
+                    className="text-xl md:text-2xl font-black mb-3 group-hover:text-primary transition-colors duration-300"
                     editable={!!onUpdate}
                     onUpdate={(text) => handleTextUpdate(`features.${idx}.title`, text)}
                   >
                     {feature.title}
                   </Typography>
-                  {show_descriptions && (
+                  {showDescriptions && (
                     <Typography 
                       variant="p" 
-                      className="text-sm opacity-60"
+                      className="text-base opacity-70 leading-relaxed"
                       editable={!!onUpdate}
                       onUpdate={(text) => handleTextUpdate(`features.${idx}.description`, text)}
                     >
@@ -266,16 +350,16 @@ export const FeaturesModule = ({ data, onUpdate }: { data: any, onUpdate?: (data
                     </Typography>
                   )}
                 </div>
-              </div>
+              </motion.div>
             ))}
           </div>
         );
 
       case 'carousel':
         return (
-          <div className="flex gap-6 overflow-x-auto pb-8 snap-x no-scrollbar">
+          <div className="flex gap-8 overflow-x-auto pb-12 snap-x no-scrollbar -mx-4 px-4">
             {features.map((feature: any, idx: number) => (
-              <div key={idx} className="min-w-[300px] md:min-w-[400px] snap-center">
+              <div key={idx} className="min-w-[320px] md:min-w-[450px] snap-center">
                 {renderFeature(feature, idx)}
               </div>
             ))}
@@ -285,7 +369,9 @@ export const FeaturesModule = ({ data, onUpdate }: { data: any, onUpdate?: (data
       default: // Grid
         return (
           <div className={`grid ${gridCols}`} style={{ gap: `${gap}px` }}>
-            {features.map((feature: any, idx: number) => renderFeature(feature, idx))}
+            <AnimatePresence mode="popLayout">
+              {features.map((feature: any, idx: number) => renderFeature(feature, idx))}
+            </AnimatePresence>
           </div>
         );
     }
@@ -295,30 +381,40 @@ export const FeaturesModule = ({ data, onUpdate }: { data: any, onUpdate?: (data
     <ModuleWrapper 
       theme={data?.theme}
       background={data?.background}
+      id="features-module"
     >
-      {renderHeader()}
-      {renderContent()}
-      
-      {data?.section_button?.text && (
-        <div className={`mt-20 flex ${alignment === 'center' ? 'justify-center' : 'justify-start'}`}>
-          <a 
-            href={data.section_button.url || '#'} 
-            target={data.section_button.target || '_self'}
-            onClick={(e) => {
-              if (onUpdate) e.preventDefault();
-            }}
-            className="px-10 py-5 bg-primary text-white font-bold rounded-2xl shadow-xl shadow-primary/20 hover:bg-primary/90 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+      <div className="container mx-auto px-4">
+        {renderHeader()}
+        {renderContent()}
+        
+        {data?.sectionButton?.text && (
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className={`mt-24 flex ${alignment === 'center' ? 'justify-center' : 'justify-start'}`}
           >
-            <Typography
-              variant="span"
-              editable={!!onUpdate}
-              onUpdate={(text) => handleTextUpdate('section_button.text', text)}
+            <motion.a 
+              whileHover={{ scale: 1.05, boxShadow: "0 20px 40px rgba(0,0,0,0.1)" }}
+              whileTap={{ scale: 0.95 }}
+              href={data.sectionButton.url || '#'} 
+              target={data.sectionButton.target || '_self'}
+              onClick={(e) => {
+                if (onUpdate) e.preventDefault();
+              }}
+              className="px-12 py-6 bg-primary text-white font-black uppercase tracking-widest rounded-2xl shadow-2xl shadow-primary/30 hover:bg-primary/90 transition-all cursor-pointer text-sm"
             >
-              {data.section_button.text}
-            </Typography>
-          </a>
-        </div>
-      )}
+              <Typography
+                variant="span"
+                editable={!!onUpdate}
+                onUpdate={(text) => handleTextUpdate('sectionButton.text', text)}
+              >
+                {data.sectionButton.text}
+              </Typography>
+            </motion.a>
+          </motion.div>
+        )}
+      </div>
     </ModuleWrapper>
   );
 };

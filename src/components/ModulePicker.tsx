@@ -39,7 +39,7 @@ export const ModulePicker = ({ onAdd }: { onAdd: (moduleId: string) => void }) =
         const modules = groupedModules[category];
         if (!modules || modules.length === 0) return null;
 
-        const is_expanded = !!expandedCategories[category];
+        const isExpanded = !!expandedCategories[category];
 
         return (
           <div key={category} className="border border-text/5 rounded-2xl overflow-hidden bg-surface/30">
@@ -48,7 +48,7 @@ export const ModulePicker = ({ onAdd }: { onAdd: (moduleId: string) => void }) =
               onClick={() => toggleCategory(category)}
               className="flex items-center gap-4 w-full p-4 group text-left cursor-pointer hover:bg-primary/5 transition-colors"
             >
-              <div className={`p-1.5 rounded-lg bg-primary/10 text-primary transition-transform duration-300 ${is_expanded ? 'rotate-0' : '-rotate-90'}`}>
+              <div className={`p-1.5 rounded-lg bg-primary/10 text-primary transition-transform duration-300 ${isExpanded ? 'rotate-0' : '-rotate-90'}`}>
                 <ChevronDown className="w-4 h-4" />
               </div>
               <h2 className="text-xs font-black text-primary uppercase tracking-[0.2em] whitespace-nowrap">
@@ -57,7 +57,7 @@ export const ModulePicker = ({ onAdd }: { onAdd: (moduleId: string) => void }) =
               <div className="h-px w-full bg-primary/10" />
             </button>
             
-            {is_expanded && (
+            {isExpanded && (
               <div className="p-4 pt-0 border-t border-text/5">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mt-4">
                   {modules.map((module) => (

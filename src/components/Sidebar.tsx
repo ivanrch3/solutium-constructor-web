@@ -13,16 +13,16 @@ interface SidebarProps {
   onToggleCollapse: () => void;
   onAddModule: (type: string) => void;
   onGoHome: () => void;
-  onGenerateAI: () => void;
+  onGenerateAi: () => void;
   projects: any[];
-  active_project_id: string | null;
+  activeProjectId: string | null;
   onSelectProject: (id: string) => void;
-  active_asset_id: string | null;
-  onSelectAsset: (asset_id: string, project_id: string) => void;
+  activeAssetId: string | null;
+  onSelectAsset: (assetId: string, projectId: string) => void;
   onCreateAsset: () => void;
   showSaveMessage: boolean;
   lastSaveStatus: 'borrador' | 'guardado';
-  asset_settings: AssetSettings;
+  assetSettings: AssetSettings;
   onUpdateSettings: (settings: Partial<AssetSettings>) => void;
 }
 
@@ -34,41 +34,41 @@ export const Sidebar = ({
   onToggleCollapse, 
   onAddModule, 
   onGoHome, 
-  onGenerateAI,
+  onGenerateAi,
   projects,
-  active_project_id,
+  activeProjectId,
   onSelectProject,
-  active_asset_id,
+  activeAssetId,
   onSelectAsset,
   onCreateAsset,
   showSaveMessage,
   lastSaveStatus,
-  asset_settings,
+  assetSettings,
   onUpdateSettings
 }: SidebarProps) => {
   const [isBuilderExpanded, setIsBuilderExpanded] = useState(true);
   const [isDesignExpanded, setIsDesignExpanded] = useState(false);
   const [isProjectMenuOpen, setIsProjectMenuOpen] = useState(false);
-  const [expanded_project_id, setExpandedProjectId] = useState<string | null>(active_project_id);
+  const [expandedProjectId, setExpandedProjectId] = useState<string | null>(activeProjectId);
 
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
 
   // Update expanded project when active project changes
   useEffect(() => {
-    if (active_project_id) {
-      setExpandedProjectId(active_project_id);
+    if (activeProjectId) {
+      setExpandedProjectId(activeProjectId);
     }
-  }, [active_project_id]);
+  }, [activeProjectId]);
 
-  const active_project = projects.find(p => p.id === active_project_id) || projects[0];
-  const active_asset = active_project?.assets?.find((a: any) => a.id === active_asset_id) || active_project?.assets?.[0];
+  const activeProject = projects.find(p => p.id === activeProjectId) || projects[0];
+  const activeAsset = activeProject?.assets?.find((a: any) => a.id === activeAssetId) || activeProject?.assets?.[0];
 
-  const handleProjectClick = (project_id: string) => {
-    setExpandedProjectId(expanded_project_id === project_id ? null : project_id);
+  const handleProjectClick = (projectId: string) => {
+    setExpandedProjectId(expandedProjectId === projectId ? null : projectId);
   };
 
-  const handleAssetSelect = (project_id: string, asset_id: string) => {
-    onSelectAsset(asset_id, project_id);
+  const handleAssetSelect = (projectId: string, assetId: string) => {
+    onSelectAsset(assetId, projectId);
     setIsProjectMenuOpen(false);
   };
 
@@ -110,28 +110,30 @@ export const Sidebar = ({
  
         <div 
           onClick={onGoHome}
-          className={`flex items-center gap-2 mb-2 cursor-pointer hover:opacity-80 transition-opacity`}
+          className={`flex flex-col mb-2 cursor-pointer hover:opacity-80 transition-opacity`}
         >
           {isCollapsed ? (
-            <img 
-              src="https://solutium.app/logos-de-apps/solutium-constructor-web-isotipo.png" 
-              alt="Isotipo" 
-              className="w-12 h-12 object-contain"
-              referrerPolicy="no-referrer"
-            />
+            <div className="flex justify-center">
+              <img 
+                src="https://solutium.app/logos-de-apps/solutium-constructor-web-isotipo.png" 
+                alt="Isotipo" 
+                className="w-12 h-12 object-contain"
+                referrerPolicy="no-referrer"
+              />
+            </div>
           ) : (
-            <>
+            <div className="flex flex-col items-end pr-2">
               <img 
                 src="https://solutium.app/logos-de-apps/solutium-constructor-web-imagotipo.png" 
                 alt="Imagotipo" 
-                className="h-12 w-auto object-contain"
-                style={{ transform: 'scale(1.2)' }}
+                className="h-12 w-auto object-contain self-start ml-1"
+                style={{ transform: 'scale(1.2)', transformOrigin: 'left center' }}
                 referrerPolicy="no-referrer"
               />
-              <div className="ml-2 mt-2">
+              <div className="mt-1">
                 <VersionDisplay />
               </div>
-            </>
+            </div>
           )}
         </div>
       </div>
@@ -160,15 +162,15 @@ export const Sidebar = ({
               {designOptions.slice(0, 7).map((option) => (
                 <button
                   key={option.id}
-                  onClick={() => onUpdateSettings({ page_layout: option.id })}
+                  onClick={() => onUpdateSettings({ pageLayout: option.id })}
                   className={`w-full flex flex-col items-start text-left px-4 py-3 rounded-xl transition-all ${
-                    asset_settings.page_layout === option.id
+                    assetSettings.pageLayout === option.id
                       ? 'bg-primary text-white shadow-md'
                       : 'text-text/60 hover:bg-background hover:text-text/80'
                   }`}
                 >
                   <span className="text-sm font-bold text-left">{option.label}</span>
-                  <span className={`text-[10px] text-left leading-tight mt-1 ${asset_settings.page_layout === option.id ? 'text-white/70' : 'text-text/40'}`}>
+                  <span className={`text-[10px] text-left leading-tight mt-1 ${assetSettings.pageLayout === option.id ? 'text-white/70' : 'text-text/40'}`}>
                     {option.description}
                   </span>
                 </button>
@@ -284,10 +286,10 @@ export const Sidebar = ({
         {/* AI Generator Button - Moved to bottom */}
         <div className="px-2">
           <button
-            onClick={onGenerateAI}
+            onClick={onGenerateAi}
             title={isCollapsed ? 'Generar con IA' : ''}
             style={{
-              background: `linear-gradient(135deg, ${config?.project_data?.colors?.[0] || '#3B82F6'}, ${config?.project_data?.colors?.[1] || '#1E293B'})`
+              background: `linear-gradient(135deg, ${config?.projectData?.colors?.[0] || '#3B82F6'}, ${config?.projectData?.colors?.[1] || '#1E293B'})`
             }}
             className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'justify-center gap-3 px-4'} py-3 rounded-xl text-white hover:opacity-90 transition-all group/ai shadow-md`}
           >
@@ -308,13 +310,15 @@ export const Sidebar = ({
                   className="w-full flex flex-col items-start gap-0.5 p-3 bg-background border border-text/10 rounded-xl hover:border-primary/30 hover:bg-surface transition-all group/btn shadow-sm"
                 >
                   <span className="text-sm font-black text-text truncate w-full text-left">
-                    {active_asset?.name || 'Seleccionar activo'}
+                    {activeAsset?.name || 'Seleccionar activo'}
                   </span>
                   <div className="flex items-center justify-between w-full mt-0.5">
                     <span className="text-[10px] font-medium text-text/40 tracking-tight text-left">
-                      Proyecto: <span className="text-text/60">{active_project?.name}</span>
+                      Proyecto: <span className="text-text/60">{activeProject?.name}</span>
                     </span>
-                    <ChevronDown className={`w-3 h-3 text-text/30 transition-transform ${isProjectMenuOpen ? 'rotate-180' : ''}`} />
+                    <div className={`w-3 h-3 text-text/30 transition-transform ${isProjectMenuOpen ? 'rotate-180' : ''}`}>
+                      <ChevronDown className="w-full h-full" />
+                    </div>
                   </div>
                 </button>
 
@@ -329,33 +333,33 @@ export const Sidebar = ({
                             <button
                               onClick={() => handleProjectClick(project.id)}
                               className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all ${
-                                expanded_project_id === project.id 
+                                expandedProjectId === project.id 
                                   ? 'bg-primary/5 text-primary' 
                                   : 'text-text/60 hover:bg-background'
                               }`}
                             >
                               <div className="flex items-center gap-2">
-                                <div className={`w-1.5 h-1.5 rounded-full ${project.id === active_project.id ? 'bg-primary' : 'bg-text/30'}`} />
+                                <div className={`w-1.5 h-1.5 rounded-full ${project.id === activeProject.id ? 'bg-primary' : 'bg-text/30'}`} />
                                 <span className="truncate">{project.name}</span>
                               </div>
-                              <ChevronDown className={`w-3 h-3 transition-transform ${expanded_project_id === project.id ? 'rotate-180' : ''}`} />
+                              <ChevronDown className={`w-3 h-3 transition-transform ${expandedProjectId === project.id ? 'rotate-180' : ''}`} />
                             </button>
 
                             {/* Assets Accordion Content */}
-                            {expanded_project_id === project.id && (
+                            {expandedProjectId === project.id && (
                               <div className="pl-6 pr-2 py-1 space-y-1 animate-in slide-in-from-top-1 duration-200">
                                 {project.assets?.map((asset: any) => (
                                   <button
                                     key={asset.id}
                                     onClick={() => handleAssetSelect(project.id, asset.id)}
                                     className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-[11px] font-bold transition-all ${
-                                      active_asset_id === asset.id && project.id === active_project.id
+                                      activeAssetId === asset.id && project.id === activeProject.id
                                         ? 'bg-primary text-white' 
                                         : 'text-text/60 hover:bg-primary/5 hover:text-primary'
                                     }`}
                                   >
                                     <span>{asset.name}</span>
-                                    {active_asset_id === asset.id && project.id === active_project.id && <Rocket className="w-3 h-3" />}
+                                    {activeAssetId === asset.id && project.id === activeProject.id && <Rocket className="w-3 h-3" />}
                                   </button>
                                 ))}
                                 

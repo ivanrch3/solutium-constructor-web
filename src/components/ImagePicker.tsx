@@ -21,12 +21,12 @@ interface PexelsPhoto {
 }
 
 interface ImagePickerProps {
-  is_open: boolean;
+  isOpen: boolean;
   onClose: () => void;
   onSelect: (imageUrl: string) => void;
 }
 
-export const ImagePicker = ({ is_open, onClose, onSelect }: ImagePickerProps) => {
+export const ImagePicker = ({ isOpen, onClose, onSelect }: ImagePickerProps) => {
   const [query, setQuery] = useState('');
   const [images, setImages] = useState<PexelsPhoto[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -44,7 +44,7 @@ export const ImagePicker = ({ is_open, onClose, onSelect }: ImagePickerProps) =>
         throw new Error('Falta configurar VITE_PEXELS_API_KEY en las variables de entorno.');
       }
 
-      const response = await fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(searchQuery)}&per_page=20`, {
+      const response = await fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(searchQuery)}&perPage=20`, {
         headers: {
           'Authorization': apiKey
         }
@@ -64,10 +64,10 @@ export const ImagePicker = ({ is_open, onClose, onSelect }: ImagePickerProps) =>
   };
 
   useEffect(() => {
-    if (is_open && images.length === 0) {
+    if (isOpen && images.length === 0) {
       searchImages('business'); // Default search
     }
-  }, [is_open]);
+  }, [isOpen]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,7 +76,7 @@ export const ImagePicker = ({ is_open, onClose, onSelect }: ImagePickerProps) =>
 
   return (
     <AnimatePresence>
-      {is_open && (
+      {isOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
           <motion.div
             initial={{ opacity: 0 }}

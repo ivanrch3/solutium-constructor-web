@@ -1,6 +1,5 @@
 import React from 'react';
 import { 
-  Type, 
   Layout, 
   Image as ImageIcon, 
   Type as TypeIcon, 
@@ -36,10 +35,12 @@ export interface FieldSchema {
   type: 'text' | 'textarea' | 'color' | 'image' | 'boolean' | 'select' | 'array' | 'object' | 'range' | 'toggle-group';
   options?: { label: string; value: string; icon?: any; preview?: React.ReactNode }[]; // For select and toggle-group
   itemSchema?: FieldSchema[]; // For array and object
-  category?: 'content' | 'design'; // For tabs
+  category?: 'content' | 'design' | string; // For tabs
   min?: number; // For range
   max?: number; // For range
   step?: number; // For range
+  disabled?: boolean;
+  condition?: { field: string; operator: '===' | '!==' | 'includes' | 'not-includes'; value: any };
 }
 
 import { TYPOGRAPHY_PROPS, DESIGN_PROPS, BUTTON_GROUP_PROPS } from './shared-schemas';
@@ -63,24 +64,26 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     category: 'navigation',
     defaultData: {
       message: '¡Bienvenidos a nuestro sitio web!',
-      message_style: { align: 'center', size: 'small', weight: '600' },
+      messageStyle: { align: 'center', size: 'small', weight: '600' },
       icon: 'Megaphone',
       link: { text: 'Comprar ahora', url: '#', target: '_self' },
-      show_social: true,
+      showSocial: true,
       theme: 'dark',
-      smart_mode: true,
-      background_color: '',
-      text_color: '',
+      smartMode: true,
+      disableColorAlternation: false,
+      backgroundColor: '',
+      textColor: '',
       padding: 'normal',
-      is_sticky: false,
-      is_dismissible: true,
+      isSticky: false,
+      isDismissible: true,
       visibility: 'all'
     },
     schema: [
       { name: 'message', label: 'Mensaje Principal', type: 'text', category: 'content' },
       ...TYPOGRAPHY_PROPS('message', 'Estilo del Mensaje'),
+      
       { 
-        name: 'advanced_mode', 
+        name: 'advancedMode', 
         label: 'Modo Avanzado', 
         type: 'select', 
         category: 'content',
@@ -123,8 +126,8 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
         ]
       },
       BUTTON_GROUP_PROPS('link', 'Botón de Acción (Opcional)'),
-      { name: 'background_color', label: 'Color de Fondo', type: 'color', category: 'design' },
-      { name: 'text_color', label: 'Color de Texto / Iconos', type: 'color', category: 'design' },
+      { name: 'backgroundColor', label: 'Color de Fondo', type: 'color', category: 'design' },
+      { name: 'textColor', label: 'Color de Texto / Iconos', type: 'color', category: 'design' },
       { 
         name: 'padding', 
         label: 'Grosor (Padding)', 
@@ -147,10 +150,10 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
           { label: 'Píldora Flotante', value: 'pill' }
         ]
       },
-      { name: 'is_sticky', label: 'Fijar al hacer scroll (Sticky)', type: 'boolean', category: 'design' },
-      { name: 'is_dismissible', label: 'Permitir cerrar ("X")', type: 'boolean', category: 'design' },
+      { name: 'isSticky', label: 'Fijar al hacer scroll (Sticky)', type: 'boolean', category: 'design' },
+      { name: 'isDismissible', label: 'Permitir cerrar ("X")', type: 'boolean', category: 'design' },
       { 
-        name: 'smart_mode', 
+        name: 'smartMode', 
         label: 'Modo Inteligente', 
         type: 'boolean', 
         category: 'design' 
@@ -166,7 +169,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
           { label: 'Solo Móvil', value: 'mobile' }
         ]
       },
-      { name: 'show_social', label: 'Mostrar Redes Sociales', type: 'boolean', category: 'content' },
+      { name: 'showSocial', label: 'Mostrar Redes Sociales', type: 'boolean', category: 'content' },
       { name: 'email', label: 'Correo (Opcional)', type: 'text', category: 'content' },
       { name: 'phone', label: 'Teléfono (Opcional)', type: 'text', category: 'content' }
     ]
@@ -178,107 +181,102 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     description: 'Menú principal con logo, enlaces y botón CTA',
     category: 'navigation',
     defaultData: {
-      logo_text: 'SOLUTIUM',
-      logo_text_style: { size: 'span', weight: '900', align: 'left' },
-      layout: 'logo-left',
-      scroll_mode: 'static',
-      bg_type: 'glass',
-      hover_effect: 'underline',
-      height: 80,
-      show_progress_bar: false,
-      show_active_indicator: true,
-      menu_items: [
+      logoText: 'Constructor Web',
+      logoImage: 'https://solutium.app/logos-de-apps/solutium-constructor-web-imagotipo.png',
+      logoPosition: 'left',
+      scrollBehavior: 'sticky',
+      menuItems: [
         { label: 'Inicio', link: '#' },
         { label: 'Servicios', link: '#features' },
+        { label: 'Nosotros', link: '#about' },
         { label: 'Contacto', link: '#contact' }
       ],
-      show_cta: true,
-      cta_text: 'Empezar',
-      show_secondary_cta: false,
-      secondary_cta_text: 'Saber más',
-      show_search: false,
-      show_language: false,
-      show_socials: false,
+      showCta: true,
+      ctaText: 'Empezar',
+      showLanguage: true,
       theme: 'light',
-      smart_mode: true
+      logoType: 'inherited',
+      disableColorAlternation: false
     },
     schema: [
-      { name: 'logo_text', label: 'Texto del Logo', type: 'text' },
-      ...TYPOGRAPHY_PROPS('logo_text', 'Estilo del Logo'),
-      { name: 'logo_image', label: 'Imagen del Logo', type: 'image' },
+      // Editor de textos (Prioridad 1)
       { 
-        name: 'smart_mode', 
-        label: 'Modo Inteligente', 
-        type: 'boolean' 
+        name: 'logoText', 
+        label: 'Texto del logo', 
+        type: 'text', 
+        category: 'content' as const,
+        condition: { field: 'logoType', operator: '===', value: 'none' }
+      },
+      ...TYPOGRAPHY_PROPS('logoText', 'Estilo del texto del logo').map(p => ({ 
+        ...p, 
+        category: 'content' as const,
+        condition: { field: 'logoType', operator: '===', value: 'none' }
+      })),
+      { 
+        name: 'menuItems', 
+        label: 'Enlaces del Menú', 
+        type: 'array',
+        category: 'content' as const,
+        itemSchema: [
+          { name: 'label', label: 'Etiqueta', type: 'text' },
+          { name: 'link', label: 'Enlace', type: 'text' }
+        ]
+      },
+      { name: 'ctaText', label: 'Texto del botón', type: 'text', category: 'content' as const },
+
+      // Resto de propiedades
+      { 
+        name: 'logoType', 
+        label: 'Tipo de Logo', 
+        type: 'select',
+        category: 'design' as const,
+        options: [
+          { label: 'Logo de la aplicación (Heredado)', value: 'inherited' },
+          { label: 'Subir nuevo logo / URL', value: 'custom' },
+          { label: 'Sin logo (Solo texto)', value: 'none' }
+        ]
+      },
+      { name: 'logoImage', label: 'Imagen del Logo', type: 'image', category: 'content' as const },
+      { 
+        name: 'logoPosition', 
+        label: 'Ubicación del Logo', 
+        type: 'select',
+        category: 'design' as const,
+        options: [
+          { label: 'Izquierda', value: 'left' },
+          { label: 'Centro', value: 'center' },
+          { label: 'Derecha', value: 'right' }
+        ]
       },
       { 
         name: 'theme', 
         label: 'Tema', 
-        type: 'select',
+        type: 'toggle-group',
+        category: 'design' as const,
         options: [
           { label: 'Claro', value: 'light' },
           { label: 'Oscuro', value: 'dark' }
         ]
       },
       { 
-        name: 'layout', 
-        label: 'Disposición', 
-        type: 'select',
-        options: [
-          { label: 'Logo Izquierda', value: 'logo-left' },
-          { label: 'Logo Centro', value: 'logo-center' },
-          { label: 'Logo Derecha', value: 'logo-right' }
-        ]
+        name: 'disableColorAlternation', 
+        label: 'Desactivar alternancia automática de color', 
+        type: 'boolean',
+        category: 'design' as const
       },
       { 
-        name: 'scroll_mode', 
-        label: 'Modo de Scroll', 
+        name: 'scrollBehavior', 
+        label: 'Comportamiento al desplazar', 
         type: 'select',
+        category: 'design' as const,
         options: [
           { label: 'Estático', value: 'static' },
           { label: 'Fijo (Sticky)', value: 'sticky' },
-          { label: 'Inteligente', value: 'smart-hide' }
+          { label: 'Inteligente (Smart Hide)', value: 'smart-hide' }
         ]
       },
-      { 
-        name: 'bg_type', 
-        label: 'Tipo de Fondo', 
-        type: 'select',
-        options: [
-          { label: 'Sólido', value: 'solid' },
-          { label: 'Transparente Inteligente', value: 'transparent' },
-          { label: 'Cristal (Glass)', value: 'glass' }
-        ]
-      },
-      { 
-        name: 'hover_effect', 
-        label: 'Efecto Hover', 
-        type: 'select',
-        options: [
-          { label: 'Línea', value: 'underline' },
-          { label: 'Cápsula', value: 'capsule' },
-          { label: 'Solo Color', value: 'color' }
-        ]
-      },
-      { name: 'height', label: 'Altura (px)', type: 'range', min: 60, max: 120, step: 1 },
-      { name: 'show_progress_bar', label: 'Barra de Progreso', type: 'boolean' },
-      { name: 'show_active_indicator', label: 'Indicador Activo', type: 'boolean' },
-      { 
-        name: 'menu_items', 
-        label: 'Enlaces del Menú', 
-        type: 'array',
-        itemSchema: [
-          { name: 'label', label: 'Etiqueta', type: 'text' },
-          { name: 'link', label: 'Enlace', type: 'text' }
-        ]
-      },
-      { name: 'show_cta', label: 'Mostrar Botón Primario', type: 'boolean' },
-      { name: 'cta_text', label: 'Texto Botón Primario', type: 'text' },
-      { name: 'show_secondary_cta', label: 'Mostrar Botón Secundario', type: 'boolean' },
-      { name: 'secondary_cta_text', label: 'Texto Botón Secundario', type: 'text' },
-      { name: 'show_search', label: 'Mostrar Buscador', type: 'boolean' },
-      { name: 'show_language', label: 'Mostrar Idioma', type: 'boolean' },
-      { name: 'show_socials', label: 'Mostrar Redes Sociales', type: 'boolean' }
+      { name: 'showCta', label: 'Mostrar Botón de Acción', type: 'boolean', category: 'content' as const },
+      { name: 'showLanguage', label: 'Mostrar Selector de Idioma', type: 'boolean', category: 'content' as const }
     ]
   },
   {
@@ -290,26 +288,28 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     defaultData: {
       title: 'Construye el *Futuro* de tu Negocio',
       subtitle: 'La plataforma todo-en-uno para gestionar, vender y crecer con Solutium.',
-      primary_button: { text: 'Empezar ahora', url: '#', target: '_self' },
-      secondary_button: { text: 'Ver Demo', url: '#', target: '_self' },
-      layout: 'layout-1',
+      primaryButton: { text: 'Empezar ahora', url: '#', target: '_self' },
+      secondaryButton: { text: 'Ver Demo', url: '#', target: '_self' },
+      layoutType: 'layout-1',
       theme: 'dark',
-      smart_mode: true,
-      background: { overlay_opacity: 0.7 },
-      title_style: { size: 'h1', weight: '900', align: 'center', highlight_type: 'gradient' },
-      subtitle_style: { size: 'p', weight: '400', align: 'center', highlight_type: 'none' }
+      disableColorAlternation: false,
+      background: { overlayOpacity: 0.7 },
+      titleStyle: { size: 'h1', weight: '900', align: 'center', highlightType: 'gradient' },
+      subtitleStyle: { size: 'p', weight: '400', align: 'center', highlightType: 'none' }
     },
     schema: [
-      // Content Tab
-      { name: 'title', label: 'Título Principal', type: 'text', category: 'content' },
+      // Editor de textos (Prioridad 1)
+      { name: 'title', label: 'Título', type: 'text', category: 'content' },
+      ...TYPOGRAPHY_PROPS('title', 'Estilo del título').map(p => ({ ...p, category: 'content' })),
       { name: 'subtitle', label: 'Subtítulo', type: 'textarea', category: 'content' },
-      BUTTON_GROUP_PROPS('primary_button', 'Botón Primario'),
-      BUTTON_GROUP_PROPS('secondary_button', 'Botón Secundario'),
+      ...TYPOGRAPHY_PROPS('subtitle', 'Estilo del subtítulo').map(p => ({ ...p, category: 'content' })),
+
+      // Botones y otros contenidos
+      BUTTON_GROUP_PROPS('primaryButton', 'Botón Primario'),
+      BUTTON_GROUP_PROPS('secondaryButton', 'Botón Secundario'),
       
-      // Design Tab
-      ...DESIGN_PROPS.map(p => ({ ...p, category: 'design' as const })),
-      ...TYPOGRAPHY_PROPS('title', 'Título').map(p => ({ ...p, category: 'design' as const })),
-      ...TYPOGRAPHY_PROPS('subtitle', 'Subtítulo').map(p => ({ ...p, category: 'design' as const }))
+      // Diseño y Configuración
+      ...DESIGN_PROPS.map(p => ({ ...p, category: 'design' as const }))
     ]
   },
   {
@@ -321,51 +321,57 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     defaultData: {
       title: 'Nuestros Servicios',
       subtitle: 'Descubre cómo podemos ayudarte a alcanzar tus objetivos.',
-      layout_type: 'grid',
+      titleStyle: { size: 'h2', weight: '700', align: 'center' },
+      subtitleStyle: { size: 'p', weight: '400', align: 'center' },
+      layoutType: 'grid',
       columns: 3,
       alignment: 'center',
       gap: 32,
       theme: 'light',
-      smart_mode: true,
-      card_style: {
+      disableColorAlternation: false,
+      cardStyle: {
         border: true,
         shadow: 'sm',
         glass: false,
-        border_radius: 'xl'
+        borderRadius: 'xl'
       },
       features: [
         { 
           title: 'Rápido', 
           description: 'Optimizado para la mejor velocidad.', 
           icon: 'Zap',
-          media_type: 'icon',
-          icon_style: { shape: 'circle', type: 'solid' },
+          mediaType: 'icon',
+          iconStyle: { shape: 'circle', type: 'solid' },
           badge: 'Popular'
         },
         { 
           title: 'Seguro', 
           description: 'Protección de datos de nivel empresarial.', 
           icon: 'Shield',
-          media_type: 'icon',
-          icon_style: { shape: 'circle', type: 'solid' }
+          mediaType: 'icon',
+          iconStyle: { shape: 'circle', type: 'solid' }
         },
         { 
           title: 'Escalable', 
           description: 'Crece junto con tu negocio.', 
           icon: 'TrendingUp',
-          media_type: 'icon',
-          icon_style: { shape: 'circle', type: 'solid' }
+          mediaType: 'icon',
+          iconStyle: { shape: 'circle', type: 'solid' }
         }
       ],
-      show_icons: true,
-      show_descriptions: true,
-      section_button: { text: '', url: '', target: '_self' }
+      showIcons: true,
+      showDescriptions: true,
+      sectionButton: { text: '', url: '', target: '_self' }
     },
     schema: [
+      // Editor de textos (Prioridad 1)
       { name: 'title', label: 'Título de Sección', type: 'text', category: 'content' },
+      ...TYPOGRAPHY_PROPS('title', 'Estilo del título').map(p => ({ ...p, category: 'content' })),
       { name: 'subtitle', label: 'Subtítulo de Sección', type: 'textarea', category: 'content' },
+      ...TYPOGRAPHY_PROPS('subtitle', 'Estilo del subtítulo').map(p => ({ ...p, category: 'content' })),
+
       { 
-        name: 'layout_type', 
+        name: 'layoutType', 
         label: 'Tipo de Diseño', 
         type: 'select', 
         category: 'design',
@@ -390,7 +396,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
       },
       { name: 'gap', label: 'Espaciado (px)', type: 'range', min: 0, max: 100, step: 4, category: 'design' },
       {
-        name: 'card_style',
+        name: 'cardStyle',
         label: 'Estilo de Tarjeta',
         type: 'object',
         category: 'design',
@@ -409,7 +415,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
           },
           { name: 'glass', label: 'Efecto Cristal (Glass)', type: 'boolean' },
           { 
-            name: 'border_radius', 
+            name: 'borderRadius', 
             label: 'Redondeo', 
             type: 'select',
             options: [
@@ -431,7 +437,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
           { name: 'title', label: 'Título', type: 'text' },
           { name: 'description', label: 'Descripción', type: 'textarea' },
           { 
-            name: 'media_type', 
+            name: 'mediaType', 
             label: 'Tipo de Multimedia', 
             type: 'select',
             options: [
@@ -442,7 +448,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
           { name: 'icon', label: 'Nombre del Icono (Lucide)', type: 'text' },
           { name: 'image', label: 'Imagen', type: 'image' },
           {
-            name: 'icon_style',
+            name: 'iconStyle',
             label: 'Estilo de Icono',
             type: 'object',
             itemSchema: [
@@ -471,9 +477,9 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
           BUTTON_GROUP_PROPS('link', 'Enlace / Botón')
         ]
       },
-      BUTTON_GROUP_PROPS('section_button', 'Botón de Sección (Final)'),
-      { name: 'show_icons', label: 'Mostrar Multimedia', type: 'boolean', category: 'content' },
-      { name: 'show_descriptions', label: 'Mostrar Descripciones', type: 'boolean', category: 'content' },
+      BUTTON_GROUP_PROPS('sectionButton', 'Botón de Sección (Final)'),
+      { name: 'showIcons', label: 'Mostrar Multimedia', type: 'boolean', category: 'content' },
+      { name: 'showDescriptions', label: 'Mostrar Descripciones', type: 'boolean', category: 'content' },
       ...DESIGN_PROPS.map(p => ({ ...p, category: 'design' as const }))
     ]
   },
@@ -486,26 +492,33 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     defaultData: {
       title: 'Productos Destacados',
       subtitle: 'Echa un vistazo a nuestras últimas novedades.',
-      layout: 'grid',
-      smart_mode: true
+      layoutType: 'grid',
+      smartMode: true,
+      disableColorAlternation: false
     },
     schema: [
-      { name: 'title', label: 'Título', type: 'text' },
-      { name: 'subtitle', label: 'Subtítulo', type: 'textarea' },
+      { name: 'title', label: 'Título', type: 'text', category: 'content' },
+      { name: 'subtitle', label: 'Subtítulo', type: 'textarea', category: 'content' },
+      ...TYPOGRAPHY_PROPS('title', 'Estilo Título'),
+      ...TYPOGRAPHY_PROPS('subtitle', 'Estilo Subtítulo'),
+      
       { 
-        name: 'smart_mode', 
+        name: 'smartMode', 
         label: 'Modo Inteligente', 
-        type: 'boolean' 
+        type: 'boolean',
+        category: 'design'
       },
       { 
-        name: 'layout', 
+        name: 'layoutType', 
         label: 'Diseño', 
         type: 'select',
+        category: 'design',
         options: [
           { label: 'Cuadrícula (Grid)', value: 'grid' },
           { label: 'Lista', value: 'list' }
         ]
-      }
+      },
+      ...DESIGN_PROPS.map(p => ({ ...p, category: 'design' as const }))
     ]
   },
   {
@@ -517,17 +530,20 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     defaultData: {
       title: 'Lo que dicen nuestros clientes',
       subtitle: 'Historias de éxito de personas como tú.',
-      layout_type: 'grid',
+      titleStyle: { size: 'h2', weight: '700', align: 'center' },
+      subtitleStyle: { size: 'p', weight: '400', align: 'center' },
+      layoutType: 'grid',
       columns: 3,
       alignment: 'center',
       gap: 32,
       theme: 'light',
-      smart_mode: true,
-      card_style: {
+      disableColorAlternation: false,
+      smartMode: true,
+      cardStyle: {
         border: true,
         shadow: 'sm',
         glass: false,
-        border_radius: 'xl',
+        borderRadius: 'xl',
         style: 'classic'
       },
       testimonials: [
@@ -562,17 +578,20 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
           source: 'none'
         }
       ],
-      show_rating: true,
-      show_role: true,
-      show_company: true,
-      show_avatar: true,
-      section_button: { text: '', url: '', target: '_self' }
+      showRating: true,
+      showRole: true,
+      showCompany: true,
+      showAvatar: true,
+      sectionButton: { text: '', url: '', target: '_self' }
     },
     schema: [
-      { name: 'title', label: 'Título de Sección', type: 'text', category: 'content' },
-      { name: 'subtitle', label: 'Subtítulo de Sección', type: 'textarea', category: 'content' },
+      { name: 'title', label: 'Título', type: 'text', category: 'content' },
+      { name: 'subtitle', label: 'Subtítulo', type: 'textarea', category: 'content' },
+      ...TYPOGRAPHY_PROPS('title', 'Estilo Título'),
+      ...TYPOGRAPHY_PROPS('subtitle', 'Estilo Subtítulo'),
+      
       { 
-        name: 'layout_type', 
+        name: 'layoutType', 
         label: 'Tipo de Diseño', 
         type: 'select', 
         category: 'design',
@@ -597,7 +616,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
       },
       { name: 'gap', label: 'Espaciado (px)', type: 'range', min: 0, max: 100, step: 4, category: 'design' },
       {
-        name: 'card_style',
+        name: 'cardStyle',
         label: 'Estilo de Tarjeta',
         type: 'object',
         category: 'design',
@@ -626,7 +645,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
           },
           { name: 'glass', label: 'Efecto Cristal (Glass)', type: 'boolean' },
           { 
-            name: 'border_radius', 
+            name: 'borderRadius', 
             label: 'Redondeo', 
             type: 'select',
             options: [
@@ -664,11 +683,11 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
           }
         ]
       },
-      BUTTON_GROUP_PROPS('section_button', 'Botón de Sección (Final)'),
-      { name: 'show_rating', label: 'Mostrar Estrellas', type: 'boolean', category: 'content' },
-      { name: 'show_avatar', label: 'Mostrar Fotos', type: 'boolean', category: 'content' },
-      { name: 'show_role', label: 'Mostrar Cargo', type: 'boolean', category: 'content' },
-      { name: 'show_company', label: 'Mostrar Empresa', type: 'boolean', category: 'content' },
+      BUTTON_GROUP_PROPS('sectionButton', 'Botón de Sección (Final)'),
+      { name: 'showRating', label: 'Mostrar Estrellas', type: 'boolean', category: 'content' },
+      { name: 'showAvatar', label: 'Mostrar Fotos', type: 'boolean', category: 'content' },
+      { name: 'showRole', label: 'Mostrar Cargo', type: 'boolean', category: 'content' },
+      { name: 'showCompany', label: 'Mostrar Empresa', type: 'boolean', category: 'content' },
       ...DESIGN_PROPS.map(p => ({ ...p, category: 'design' as const }))
     ]
   },
@@ -681,38 +700,43 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     defaultData: {
       title: 'Planes Flexibles',
       subtitle: 'Elige el plan que mejor se adapte a tus necesidades.',
-      billing_cycle: 'monthly',
-      smart_mode: true,
+      billingCycle: 'monthly',
+      smartMode: true,
+      disableColorAlternation: false,
       plans: [
         { 
           name: 'Básico', 
-          monthly_price: '$19', 
-          annual_price: '$15',
+          monthlyPrice: '$19', 
+          annualPrice: '$15',
           description: 'Ideal para proyectos personales y freelancers.',
           features: [{ text: '1 Proyecto' }, { text: 'Soporte Email' }, { text: 'Actualizaciones básicas' }] 
         },
         { 
           name: 'Pro', 
-          monthly_price: '$49', 
-          annual_price: '$39',
+          monthlyPrice: '$49', 
+          annualPrice: '$39',
           description: 'Para negocios en crecimiento que necesitan más potencia.',
           features: [{ text: 'Proyectos Ilimitados' }, { text: 'Soporte 24/7' }, { text: 'Dominio Personalizado' }, { text: 'Analíticas Avanzadas' }], 
           popular: true 
         },
         { 
           name: 'Enterprise', 
-          monthly_price: '$99', 
-          annual_price: '$79',
+          monthlyPrice: '$99', 
+          annualPrice: '$79',
           description: 'Soluciones a medida para grandes organizaciones.',
           features: [{ text: 'Todo lo de Pro' }, { text: 'Gestor de cuenta dedicado' }, { text: 'SLA garantizado' }, { text: 'Seguridad avanzada' }] 
         }
       ]
     },
     schema: [
+      // Editor de textos (Prioridad 1)
       { name: 'title', label: 'Título', type: 'text', category: 'content' },
+      ...TYPOGRAPHY_PROPS('title', 'Estilo Título').map(p => ({ ...p, category: 'content' })),
       { name: 'subtitle', label: 'Subtítulo', type: 'textarea', category: 'content' },
+      ...TYPOGRAPHY_PROPS('subtitle', 'Estilo Subtítulo').map(p => ({ ...p, category: 'content' })),
+
       { 
-        name: 'billing_cycle', 
+        name: 'billingCycle', 
         label: 'Ciclo de Facturación', 
         type: 'toggle-group',
         category: 'content',
@@ -729,8 +753,8 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
         itemSchema: [
           { name: 'name', label: 'Nombre del Plan', type: 'text' },
           { name: 'description', label: 'Descripción corta', type: 'text' },
-          { name: 'monthly_price', label: 'Precio Mensual', type: 'text' },
-          { name: 'annual_price', label: 'Precio Anual (por mes)', type: 'text' },
+          { name: 'monthlyPrice', label: 'Precio Mensual', type: 'text' },
+          { name: 'annualPrice', label: 'Precio Anual (por mes)', type: 'text' },
           { name: 'popular', label: 'Destacado', type: 'boolean' },
           { 
             name: 'features', 
@@ -754,33 +778,39 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     defaultData: {
       title: '¿Tienes alguna duda?',
       subtitle: 'Estamos aquí para ayudarte. Envíanos un mensaje y te responderemos lo antes posible.',
-      layout_type: 'split', // split, center, map-immersive, sidebar
+      titleStyle: { size: 'h2', weight: '700', align: 'center' },
+      subtitleStyle: { size: 'p', weight: '400', align: 'center' },
+      layoutType: 'split', // split, center, map-immersive, sidebar
       theme: 'light',
-      smart_mode: true,
+      disableColorAlternation: false,
       email: 'contacto@ejemplo.com',
       phone: '+1 234 567 890',
       address: 'Calle Principal 123, Madrid',
-      show_map: true,
-      map_url: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3037.365346083684!2d-3.706058684603912!3d40.41670467936526!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0xd42287d6da32a33%3A0x1d752f992d918152!2sPuerta%20del%20Sol!5e0!3m2!1ses!2ses!4v1647948345678!5m2!1ses!2ses',
-      form_title: 'Envíanos un mensaje',
-      show_name_field: true,
-      show_email_field: true,
-      show_phone_field: false,
-      show_subject_field: false,
-      show_message_field: true,
-      button_text: 'Enviar Mensaje',
-      success_message: '¡Gracias! Hemos recibido tu mensaje.',
-      social_links: [
+      showMap: true,
+      mapUrl: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3037.365346083684!2d-3.706058684603912!3d40.41670467936526!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0xd42287d6da32a33%3A0x1d752f992d918152!2sPuerta%20del%20Sol!5e0!3m2!1ses!2ses!4v1647948345678!5m2!1ses!2ses',
+      formTitle: 'Envíanos un mensaje',
+      showNameField: true,
+      showEmailField: true,
+      showPhoneField: false,
+      showSubjectField: false,
+      showMessageField: true,
+      buttonText: 'Enviar Mensaje',
+      successMessage: '¡Gracias! Hemos recibido tu mensaje.',
+      socialLinks: [
         { platform: 'linkedin', url: '#' },
         { platform: 'twitter', url: '#' },
         { platform: 'instagram', url: '#' }
       ]
     },
     schema: [
+      // Editor de textos (Prioridad 1)
       { name: 'title', label: 'Título Principal', type: 'text', category: 'content' },
+      ...TYPOGRAPHY_PROPS('title', 'Estilo Título').map(p => ({ ...p, category: 'content' })),
       { name: 'subtitle', label: 'Subtítulo', type: 'textarea', category: 'content' },
+      ...TYPOGRAPHY_PROPS('subtitle', 'Estilo Subtítulo').map(p => ({ ...p, category: 'content' })),
+
       { 
-        name: 'layout_type', 
+        name: 'layoutType', 
         label: 'Tipo de Diseño', 
         type: 'select', 
         category: 'design',
@@ -795,20 +825,20 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
       { name: 'phone', label: 'Teléfono', type: 'text', category: 'content' },
       { name: 'address', label: 'Dirección Física', type: 'text', category: 'content' },
       
-      { name: 'show_map', label: 'Mostrar Mapa', type: 'boolean', category: 'content' },
-      { name: 'map_url', label: 'URL del Mapa (Embed)', type: 'text', category: 'content' },
+      { name: 'showMap', label: 'Mostrar Mapa', type: 'boolean', category: 'content' },
+      { name: 'mapUrl', label: 'URL del Mapa (Embed)', type: 'text', category: 'content' },
       
-      { name: 'form_title', label: 'Título del Formulario', type: 'text', category: 'content' },
-      { name: 'show_name_field', label: 'Campo Nombre', type: 'boolean', category: 'content' },
-      { name: 'show_email_field', label: 'Campo Email', type: 'boolean', category: 'content' },
-      { name: 'show_phone_field', label: 'Campo Teléfono', type: 'boolean', category: 'content' },
-      { name: 'show_subject_field', label: 'Campo Asunto', type: 'boolean', category: 'content' },
-      { name: 'show_message_field', label: 'Campo Mensaje', type: 'boolean', category: 'content' },
-      { name: 'button_text', label: 'Texto del Botón', type: 'text', category: 'content' },
-      { name: 'success_message', label: 'Mensaje de Éxito', type: 'text', category: 'content' },
+      { name: 'formTitle', label: 'Título del Formulario', type: 'text', category: 'content' },
+      { name: 'showNameField', label: 'Campo Nombre', type: 'boolean', category: 'content' },
+      { name: 'showEmailField', label: 'Campo Email', type: 'boolean', category: 'content' },
+      { name: 'showPhoneField', label: 'Campo Teléfono', type: 'boolean', category: 'content' },
+      { name: 'showSubjectField', label: 'Campo Asunto', type: 'boolean', category: 'content' },
+      { name: 'showMessageField', label: 'Campo Mensaje', type: 'boolean', category: 'content' },
+      { name: 'buttonText', label: 'Texto del Botón', type: 'text', category: 'content' },
+      { name: 'successMessage', label: 'Mensaje de Éxito', type: 'text', category: 'content' },
       
       { 
-        name: 'social_links', 
+        name: 'socialLinks', 
         label: 'Redes Sociales', 
         type: 'array', 
         category: 'content',
@@ -840,6 +870,8 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     category: 'social-proof',
     defaultData: {
       title: 'Empresas que confían en nosotros',
+      smartMode: true,
+      disableColorAlternation: false,
       logos: [
         { name: 'Empresa 1', url: 'https://placehold.co/200x80?text=LOGO+1' },
         { name: 'Empresa 2', url: 'https://placehold.co/200x80?text=LOGO+2' },
@@ -848,11 +880,13 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
         { name: 'Empresa 5', url: 'https://placehold.co/200x80?text=LOGO+5' }
       ],
       grayscale: true,
-      opacity: 50,
-      smart_mode: true
+      opacity: 50
     },
     schema: [
+      // Editor de textos (Prioridad 1)
       { name: 'title', label: 'Título', type: 'text', category: 'content' },
+      ...TYPOGRAPHY_PROPS('title', 'Estilo Título').map(p => ({ ...p, category: 'content' })),
+
       { 
         name: 'logos', 
         label: 'Logos de Clientes', 
@@ -879,14 +913,19 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
       title: 'Más de 10 años impulsando el éxito digital',
       description: 'Nacimos con una misión clara: democratizar el acceso a la mejor tecnología para negocios de todos los tamaños. Hoy, somos líderes en soluciones inteligentes para el mercado hispano.',
       image: 'https://picsum.photos/seed/about/800/800',
-      smart_mode: true,
+      smartMode: true,
+      disableColorAlternation: false,
       stat1: { value: '99%', label: 'Satisfacción' },
       stat2: { value: '24/7', label: 'Soporte Real' }
     },
     schema: [
+      // Editor de textos (Prioridad 1)
       { name: 'badge', label: 'Etiqueta (Badge)', type: 'text', category: 'content' },
       { name: 'title', label: 'Título', type: 'text', category: 'content' },
+      ...TYPOGRAPHY_PROPS('title', 'Estilo Título').map(p => ({ ...p, category: 'content' })),
       { name: 'description', label: 'Descripción', type: 'textarea', category: 'content' },
+      ...TYPOGRAPHY_PROPS('description', 'Estilo Descripción').map(p => ({ ...p, category: 'content' })),
+
       { name: 'image', label: 'Imagen Principal', type: 'image', category: 'content' },
       {
         name: 'stat1',
@@ -920,7 +959,8 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     defaultData: {
       title: '¿Cómo funciona?',
       subtitle: 'Un proceso simple y transparente diseñado para tu comodidad.',
-      smart_mode: true,
+      smartMode: true,
+      disableColorAlternation: false,
       steps: [
         { step: '01', title: 'Regístrate', desc: 'Crea tu cuenta en segundos y accede al panel.' },
         { step: '02', title: 'Configura', desc: 'Personaliza tus preferencias y sincroniza tus datos.' },
@@ -928,11 +968,15 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
       ]
     },
     schema: [
+      // Editor de textos (Prioridad 1)
       { name: 'title', label: 'Título', type: 'text', category: 'content' },
+      ...TYPOGRAPHY_PROPS('title', 'Estilo Título').map(p => ({ ...p, category: 'content' })),
       { name: 'subtitle', label: 'Subtítulo', type: 'textarea', category: 'content' },
+      ...TYPOGRAPHY_PROPS('subtitle', 'Estilo Subtítulo').map(p => ({ ...p, category: 'content' })),
+
       {
-        name: 'steps',
-        label: 'Pasos del Proceso',
+        name: 'steps', 
+        label: 'Pasos del Proceso', 
         type: 'array',
         category: 'content',
         itemSchema: [
@@ -952,7 +996,9 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     category: 'social-proof',
     defaultData: {
       title: 'Nuestros números',
-      smart_mode: true,
+      smartMode: true,
+      disableColorAlternation: false,
+      titleStyle: { size: 'h2', weight: '700', align: 'center' },
       stats: [
         { val: '15k+', label: 'Usuarios' },
         { val: '40m', label: 'Ventas' },
@@ -961,7 +1007,10 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
       ]
     },
     schema: [
+      // Editor de textos (Prioridad 1)
       { name: 'title', label: 'Título (Opcional)', type: 'text', category: 'content' },
+      ...TYPOGRAPHY_PROPS('title', 'Estilo Título').map(p => ({ ...p, category: 'content' })),
+
       {
         name: 'stats',
         label: 'Métricas',
@@ -978,18 +1027,20 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
   {
     id: 'gallery',
     label: 'Galería',
-    icon: Image,
+    icon: ImageIcon,
     description: 'Muestra imágenes en un formato atractivo',
     category: 'main-content',
     defaultData: {
       title: 'Galería Visual',
       subtitle: 'Explora nuestro trabajo a través de imágenes.',
-      layout_type: 'grid',
+      titleStyle: { size: 'h2', weight: '700', align: 'center' },
+      subtitleStyle: { size: 'p', weight: '400', align: 'center' },
+      layoutType: 'grid',
       columns: 4,
       gap: 16,
       theme: 'light',
-      smart_mode: true,
-      aspect_ratio: 'square',
+      disableColorAlternation: false,
+      aspectRatio: 'square',
       images: [
         { url: 'https://picsum.photos/seed/gallery1/800/800', title: 'Proyecto Alpha', category: 'Diseño' },
         { url: 'https://picsum.photos/seed/gallery2/800/800', title: 'Branding Beta', category: 'Branding' },
@@ -998,20 +1049,24 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
         { url: 'https://picsum.photos/seed/gallery5/800/800', title: 'Photo Epsilon', category: 'Foto' },
         { url: 'https://picsum.photos/seed/gallery6/800/800', title: 'Art Zeta', category: 'Arte' }
       ],
-      show_filters: true,
-      show_overlay: true,
-      overlay_style: 'hover', // hover, always
-      hover_effect: 'zoom', // zoom, grayscale, tilt, none
-      border_radius: 'xl',
-      show_view_all_button: true,
-      view_all_button_text: 'Ver Todo',
-      view_all_button_url: '#'
+      showFilters: true,
+      showOverlay: true,
+      overlayStyle: 'hover', // hover, always
+      hoverEffect: 'zoom', // zoom, grayscale, tilt, none
+      borderRadius: 'xl',
+      showViewAllButton: true,
+      viewAllButtonText: 'Ver Todo',
+      viewAllButtonUrl: '#'
     },
     schema: [
+      // Editor de textos (Prioridad 1)
       { name: 'title', label: 'Título', type: 'text', category: 'content' },
+      ...TYPOGRAPHY_PROPS('title', 'Estilo Título').map(p => ({ ...p, category: 'content' })),
       { name: 'subtitle', label: 'Subtítulo', type: 'textarea', category: 'content' },
+      ...TYPOGRAPHY_PROPS('subtitle', 'Estilo Subtítulo').map(p => ({ ...p, category: 'content' })),
+
       { 
-        name: 'layout_type', 
+        name: 'layoutType', 
         label: 'Tipo de Diseño', 
         type: 'select', 
         category: 'design',
@@ -1025,7 +1080,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
       { name: 'columns', label: 'Columnas (Escritorio)', type: 'range', min: 1, max: 6, step: 1, category: 'design' },
       { name: 'gap', label: 'Espaciado (px)', type: 'range', min: 0, max: 64, step: 4, category: 'design' },
       { 
-        name: 'aspect_ratio', 
+        name: 'aspectRatio', 
         label: 'Relación de Aspecto', 
         type: 'select', 
         category: 'design',
@@ -1037,7 +1092,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
         ]
       },
       { 
-        name: 'border_radius', 
+        name: 'borderRadius', 
         label: 'Redondeo', 
         type: 'select', 
         category: 'design',
@@ -1049,7 +1104,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
         ]
       },
       { 
-        name: 'hover_effect', 
+        name: 'hoverEffect', 
         label: 'Efecto Hover', 
         type: 'select', 
         category: 'design',
@@ -1060,8 +1115,8 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
           { label: 'Tilt 3D', value: 'tilt' }
         ]
       },
-      { name: 'show_overlay', label: 'Mostrar Info al Pasar Mouse', type: 'boolean', category: 'content' },
-      { name: 'show_filters', label: 'Mostrar Filtros de Categoría', type: 'boolean', category: 'content' },
+      { name: 'showOverlay', label: 'Mostrar Info al Pasar Mouse', type: 'boolean', category: 'content' },
+      { name: 'showFilters', label: 'Mostrar Filtros de Categoría', type: 'boolean', category: 'content' },
       
       { 
         name: 'images', 
@@ -1075,9 +1130,9 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
           { name: 'link', label: 'Enlace (Opcional)', type: 'text' }
         ]
       },
-      { name: 'show_view_all_button', label: 'Mostrar Botón "Ver Todo"', type: 'boolean', category: 'content' },
-      { name: 'view_all_button_text', label: 'Texto Botón Ver Todo', type: 'text', category: 'content' },
-      { name: 'view_all_button_url', label: 'URL Botón Ver Todo', type: 'text', category: 'content' },
+      { name: 'showViewAllButton', label: 'Mostrar Botón "Ver Todo"', type: 'boolean', category: 'content' },
+      { name: 'viewAllButtonText', label: 'Texto del botón Ver Todo', type: 'text', category: 'content' },
+      { name: 'viewAllButtonUrl', label: 'URL Botón Ver Todo', type: 'text', category: 'content' },
       
       ...DESIGN_PROPS.map(p => ({ ...p, category: 'design' as const }))
     ]
@@ -1091,33 +1146,38 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     defaultData: {
       title: 'Mira nuestra presentación',
       subtitle: 'Descubre cómo Solutium puede transformar tu negocio en 2 minutos.',
-      layout_type: 'classic', // classic, hero, split, popup
+      titleStyle: { size: 'h2', weight: '700', align: 'center' },
+      subtitleStyle: { size: 'p', weight: '400', align: 'center' },
+      layoutType: 'classic', // classic, hero, split, popup
       theme: 'dark',
-      smart_mode: true,
-      video_type: 'youtube', // youtube, vimeo, custom
-      video_url: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
-      poster_image: 'https://picsum.photos/seed/video-poster/1280/720',
+      disableColorAlternation: false,
+      videoType: 'youtube', // youtube, vimeo, custom
+      videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+      posterImage: 'https://picsum.photos/seed/video-poster/1280/720',
       autoplay: false,
       muted: false,
       loop: false,
-      show_controls: true,
-      show_overlay: true,
-      overlay_title: 'Video Promocional',
-      show_play_button: true,
-      play_button_style: 'solid', // solid, outline, glass
-      mask_shape: 'none', // none, rounded, circle, blob
-      show_transcription: false,
-      transcription_text: 'Aquí va la transcripción del video...',
-      show_cta: false,
-      cta_text: 'Empezar Ahora',
-      cta_url: '#'
+      showControls: true,
+      showOverlay: true,
+      overlayTitle: 'Video Promocional',
+      showPlayButton: true,
+      playButtonStyle: 'solid', // solid, outline, glass
+      maskShape: 'none', // none, rounded, circle, blob
+      showTranscription: false,
+      transcriptionText: 'Aquí va la transcripción del video...',
+      showCta: false,
+      ctaText: 'Empezar Ahora',
+      ctaUrl: '#'
     },
     schema: [
+      // Editor de textos (Prioridad 1)
       { name: 'title', label: 'Título', type: 'text', category: 'content' },
+      ...TYPOGRAPHY_PROPS('title', 'Estilo Título').map(p => ({ ...p, category: 'content' })),
       { name: 'subtitle', label: 'Subtítulo', type: 'textarea', category: 'content' },
-      
+      ...TYPOGRAPHY_PROPS('subtitle', 'Estilo Subtítulo').map(p => ({ ...p, category: 'content' })),
+
       { 
-        name: 'layout_type', 
+        name: 'layoutType', 
         label: 'Tipo de Diseño', 
         type: 'select', 
         category: 'design',
@@ -1130,7 +1190,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
       },
       
       { 
-        name: 'video_type', 
+        name: 'videoType', 
         label: 'Fuente de Video', 
         type: 'select', 
         category: 'content',
@@ -1140,17 +1200,17 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
           { label: 'Archivo Directo (.mp4)', value: 'custom' }
         ]
       },
-      { name: 'video_url', label: 'URL del Video', type: 'text', category: 'content' },
-      { name: 'poster_image', label: 'Imagen de Portada (Poster)', type: 'image', category: 'content' },
+      { name: 'videoUrl', label: 'URL del Video', type: 'text', category: 'content' },
+      { name: 'posterImage', label: 'Imagen de Portada (Poster)', type: 'image', category: 'content' },
       
       { name: 'autoplay', label: 'Autoplay (Silenciado)', type: 'boolean', category: 'content' },
       { name: 'muted', label: 'Silenciar por defecto', type: 'boolean', category: 'content' },
       { name: 'loop', label: 'Repetir en bucle', type: 'boolean', category: 'content' },
-      { name: 'show_controls', label: 'Mostrar Controles', type: 'boolean', category: 'content' },
+      { name: 'showControls', label: 'Mostrar Controles', type: 'boolean', category: 'content' },
       
-      { name: 'show_play_button', label: 'Mostrar Botón Play', type: 'boolean', category: 'design' },
+      { name: 'showPlayButton', label: 'Mostrar Botón Play', type: 'boolean', category: 'design' },
       { 
-        name: 'play_button_style', 
+        name: 'playButtonStyle', 
         label: 'Estilo Botón Play', 
         type: 'select', 
         category: 'design',
@@ -1162,7 +1222,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
       },
       
       { 
-        name: 'mask_shape', 
+        name: 'maskShape', 
         label: 'Forma de Máscara', 
         type: 'select', 
         category: 'design',
@@ -1174,12 +1234,12 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
         ]
       },
       
-      { name: 'show_transcription', label: 'Mostrar Transcripción', type: 'boolean', category: 'content' },
-      { name: 'transcription_text', label: 'Texto Transcripción', type: 'textarea', category: 'content' },
+      { name: 'showTranscription', label: 'Mostrar Transcripción', type: 'boolean', category: 'content' },
+      { name: 'transcriptionText', label: 'Texto Transcripción', type: 'textarea', category: 'content' },
       
-      { name: 'show_cta', label: 'Mostrar Botón Final', type: 'boolean', category: 'content' },
-      { name: 'cta_text', label: 'Texto Botón', type: 'text', category: 'content' },
-      { name: 'cta_url', label: 'URL Botón', type: 'text', category: 'content' },
+      { name: 'showCta', label: 'Mostrar Botón Final', type: 'boolean', category: 'content' },
+      { name: 'ctaText', label: 'Texto Botón', type: 'text', category: 'content' },
+      { name: 'ctaUrl', label: 'URL Botón', type: 'text', category: 'content' },
       
       ...DESIGN_PROPS.map(p => ({ ...p, category: 'design' as const }))
     ]
@@ -1193,24 +1253,29 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     defaultData: {
       title: 'Únete a nuestra Newsletter',
       subtitle: 'Recibe consejos semanales sobre crecimiento digital y ofertas exclusivas directamente en tu bandeja de entrada.',
-      layout_type: 'center', // center, split, slim, popup
+      titleStyle: { size: 'h2', weight: '700', align: 'center' },
+      subtitleStyle: { size: 'p', weight: '400', align: 'center' },
+      layoutType: 'center', // center, split, slim, popup
       theme: 'dark',
-      smart_mode: true,
-      background_image: '',
-      show_name_field: false,
-      email_placeholder: 'tu@email.com',
-      name_placeholder: 'Tu nombre',
-      button_text: 'Suscribirme',
-      success_message: '¡Gracias por suscribirte! Revisa tu correo.',
+      disableColorAlternation: false,
+      backgroundImage: '',
+      showNameField: false,
+      emailPlaceholder: 'tu@email.com',
+      namePlaceholder: 'Tu nombre',
+      buttonText: 'Suscribirme',
+      successMessage: '¡Gracias por suscribirte! Revisa tu correo.',
       disclaimer: 'Prometemos no enviar spam. Puedes darte de baja en cualquier momento.',
-      show_disclaimer: true
+      showDisclaimer: true
     },
     schema: [
+      // Editor de textos (Prioridad 1)
       { name: 'title', label: 'Título', type: 'text', category: 'content' },
+      ...TYPOGRAPHY_PROPS('title', 'Estilo Título').map(p => ({ ...p, category: 'content' })),
       { name: 'subtitle', label: 'Subtítulo', type: 'textarea', category: 'content' },
-      
+      ...TYPOGRAPHY_PROPS('subtitle', 'Estilo Subtítulo').map(p => ({ ...p, category: 'content' })),
+
       { 
-        name: 'layout_type', 
+        name: 'layoutType', 
         label: 'Tipo de Diseño', 
         type: 'select', 
         category: 'design',
@@ -1222,15 +1287,15 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
         ]
       },
       
-      { name: 'background_image', label: 'Imagen de Fondo', type: 'image', category: 'design' },
+      { name: 'backgroundImage', label: 'Imagen de Fondo', type: 'image', category: 'design' },
       
-      { name: 'show_name_field', label: 'Pedir Nombre', type: 'boolean', category: 'content' },
-      { name: 'email_placeholder', label: 'Placeholder Email', type: 'text', category: 'content' },
-      { name: 'name_placeholder', label: 'Placeholder Nombre', type: 'text', category: 'content' },
-      { name: 'button_text', label: 'Texto Botón', type: 'text', category: 'content' },
-      { name: 'success_message', label: 'Mensaje de Éxito', type: 'text', category: 'content' },
+      { name: 'showNameField', label: 'Pedir Nombre', type: 'boolean', category: 'content' },
+      { name: 'emailPlaceholder', label: 'Placeholder Email', type: 'text', category: 'content' },
+      { name: 'namePlaceholder', label: 'Placeholder Nombre', type: 'text', category: 'content' },
+      { name: 'buttonText', label: 'Texto Botón', type: 'text', category: 'content' },
+      { name: 'successMessage', label: 'Mensaje de Éxito', type: 'text', category: 'content' },
       
-      { name: 'show_disclaimer', label: 'Mostrar Disclaimer', type: 'boolean', category: 'content' },
+      { name: 'showDisclaimer', label: 'Mostrar Disclaimer', type: 'boolean', category: 'content' },
       { name: 'disclaimer', label: 'Texto Disclaimer', type: 'text', category: 'content' },
       
       ...DESIGN_PROPS.map(p => ({ ...p, category: 'design' as const }))
@@ -1245,32 +1310,38 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     defaultData: {
       title: '¿Listo para dar el siguiente paso?',
       subtitle: 'Empieza hoy mismo y transforma tu presencia digital con nuestra plataforma.',
-      layout_type: 'center',
+      titleStyle: { size: 'h2', weight: '700', align: 'center' },
+      subtitleStyle: { size: 'p', weight: '400', align: 'center' },
+      layoutType: 'center',
       theme: 'dark',
-      smart_mode: true,
-      primary_button: { text: 'Comenzar Ahora', url: '#', target: '_self' },
-      secondary_button: { text: 'Saber más', url: '#', target: '_self' },
-      show_secondary_button: true,
-      show_app_badges: false,
-      show_newsletter: false,
-      micro_copy: 'No requiere tarjeta de crédito. 14 días de prueba.',
-      show_micro_copy: true,
-      show_checklist: false,
+      disableColorAlternation: false,
+      primaryButton: { text: 'Comenzar Ahora', url: '#', target: '_self' },
+      secondaryButton: { text: 'Saber más', url: '#', target: '_self' },
+      showSecondaryButton: true,
+      showAppBadges: false,
+      showNewsletter: false,
+      microCopy: 'No requiere tarjeta de crédito. 14 días de prueba.',
+      showMicroCopy: true,
+      showChecklist: false,
       checklist: [
         { text: 'Configuración instantánea' },
         { text: 'Soporte 24/7' },
         { text: 'Cancelación en cualquier momento' }
       ],
-      background_image: '',
-      background_style: 'solid', // solid, gradient, mesh, image
-      mockup_image: '',
-      show_mockup: false
+      backgroundImage: '',
+      backgroundStyle: 'solid', // solid, gradient, mesh, image
+      mockupImage: '',
+      showMockup: false
     },
     schema: [
+      // Editor de textos (Prioridad 1)
       { name: 'title', label: 'Título Principal', type: 'text', category: 'content' },
+      ...TYPOGRAPHY_PROPS('title', 'Estilo Título').map(p => ({ ...p, category: 'content' })),
       { name: 'subtitle', label: 'Subtítulo', type: 'textarea', category: 'content' },
+      ...TYPOGRAPHY_PROPS('subtitle', 'Estilo Subtítulo').map(p => ({ ...p, category: 'content' })),
+
       { 
-        name: 'layout_type', 
+        name: 'layoutType', 
         label: 'Tipo de Diseño', 
         type: 'select', 
         category: 'design',
@@ -1283,7 +1354,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
         ]
       },
       {
-        name: 'background_style',
+        name: 'backgroundStyle',
         label: 'Estilo de Fondo',
         type: 'select',
         category: 'design',
@@ -1294,19 +1365,19 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
           { label: 'Imagen', value: 'image' }
         ]
       },
-      { name: 'background_image', label: 'Imagen de Fondo', type: 'image', category: 'design' },
+      { name: 'backgroundImage', label: 'Imagen de Fondo', type: 'image', category: 'design' },
       
-      BUTTON_GROUP_PROPS('primary_button', 'Botón Primario'),
-      { name: 'show_secondary_button', label: 'Mostrar Botón Secundario', type: 'boolean', category: 'content' },
-      BUTTON_GROUP_PROPS('secondary_button', 'Botón Secundario'),
+      BUTTON_GROUP_PROPS('primaryButton', 'Botón Primario'),
+      { name: 'showSecondaryButton', label: 'Mostrar Botón Secundario', type: 'boolean', category: 'content' },
+      BUTTON_GROUP_PROPS('secondaryButton', 'Botón Secundario'),
       
-      { name: 'show_app_badges', label: 'Mostrar Badges de App Store', type: 'boolean', category: 'content' },
-      { name: 'show_newsletter', label: 'Mostrar Captura de Email', type: 'boolean', category: 'content' },
+      { name: 'showAppBadges', label: 'Mostrar Badges de App Store', type: 'boolean', category: 'content' },
+      { name: 'showNewsletter', label: 'Mostrar Captura de Email', type: 'boolean', category: 'content' },
       
-      { name: 'show_micro_copy', label: 'Mostrar Texto de Confianza', type: 'boolean', category: 'content' },
-      { name: 'micro_copy', label: 'Texto de Confianza (Micro-copy)', type: 'text', category: 'content' },
+      { name: 'showMicroCopy', label: 'Mostrar Texto de Confianza', type: 'boolean', category: 'content' },
+      { name: 'microCopy', label: 'Texto de Confianza (Micro-copy)', type: 'text', category: 'content' },
       
-      { name: 'show_checklist', label: 'Mostrar Checklist', type: 'boolean', category: 'content' },
+      { name: 'showChecklist', label: 'Mostrar Checklist', type: 'boolean', category: 'content' },
       {
         name: 'checklist',
         label: 'Puntos de Checklist',
@@ -1317,8 +1388,8 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
         ]
       },
       
-      { name: 'show_mockup', label: 'Mostrar Mockup de Producto', type: 'boolean', category: 'design' },
-      { name: 'mockup_image', label: 'Imagen del Mockup', type: 'image', category: 'design' },
+      { name: 'showMockup', label: 'Mostrar Mockup de Producto', type: 'boolean', category: 'design' },
+      { name: 'mockupImage', label: 'Imagen del Mockup', type: 'image', category: 'design' },
       
       ...DESIGN_PROPS.map(p => ({ ...p, category: 'design' as const }))
     ]
@@ -1332,7 +1403,8 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     defaultData: {
       title: 'Nuestro Equipo',
       subtitle: 'Profesionales apasionados por la tecnología y el diseño.',
-      smart_mode: true,
+      smartMode: true,
+      disableColorAlternation: false,
       items: [
         { name: 'Ana Silva', role: 'CEO & Fundadora' },
         { name: 'Carlos Ruiz', role: 'Director Técnico' },
@@ -1341,23 +1413,29 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
       ]
     },
     schema: [
-      { name: 'title', label: 'Título', type: 'text' },
-      { name: 'subtitle', label: 'Subtítulo', type: 'textarea' },
+      { name: 'title', label: 'Título', type: 'text', category: 'content' },
+      { name: 'subtitle', label: 'Subtítulo', type: 'textarea', category: 'content' },
+      ...TYPOGRAPHY_PROPS('title', 'Estilo Título'),
+      ...TYPOGRAPHY_PROPS('subtitle', 'Estilo Subtítulo'),
+      
       { 
-        name: 'smart_mode', 
+        name: 'smartMode', 
         label: 'Modo Inteligente', 
-        type: 'boolean' 
+        type: 'boolean',
+        category: 'design'
       },
       { 
         name: 'items', 
         label: 'Miembros', 
         type: 'array',
+        category: 'content',
         itemSchema: [
           { name: 'name', label: 'Nombre', type: 'text' },
           { name: 'role', label: 'Cargo', type: 'text' },
           { name: 'image', label: 'Foto', type: 'image' }
         ]
-      }
+      },
+      ...DESIGN_PROPS.map(p => ({ ...p, category: 'design' as const }))
     ]
   },
   {
@@ -1369,7 +1447,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     defaultData: {
       title: 'Preguntas Frecuentes',
       subtitle: 'Todo lo que necesitas saber sobre nuestro servicio.',
-      smart_mode: true,
+      smartMode: true,
       items: [
         { q: '¿Cómo funciona la sincronización con Solutium?', a: 'Es automática. Una vez conectas tu cuenta, todos tus productos y leads se sincronizan en tiempo real.' },
         { q: '¿Puedo usar mi propio dominio?', a: 'Sí, en el plan Pro y superiores puedes conectar cualquier dominio que ya poseas.' },
@@ -1377,22 +1455,28 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
       ]
     },
     schema: [
-      { name: 'title', label: 'Título', type: 'text' },
-      { name: 'subtitle', label: 'Subtítulo', type: 'textarea' },
+      { name: 'title', label: 'Título', type: 'text', category: 'content' },
+      { name: 'subtitle', label: 'Subtítulo', type: 'textarea', category: 'content' },
+      ...TYPOGRAPHY_PROPS('title', 'Estilo Título'),
+      ...TYPOGRAPHY_PROPS('subtitle', 'Estilo Subtítulo'),
+      
       { 
-        name: 'smart_mode', 
+        name: 'smartMode', 
         label: 'Modo Inteligente', 
-        type: 'boolean' 
+        type: 'boolean',
+        category: 'design'
       },
       { 
         name: 'items', 
         label: 'Preguntas', 
         type: 'array',
+        category: 'content',
         itemSchema: [
           { name: 'q', label: 'Pregunta', type: 'text' },
           { name: 'a', label: 'Respuesta', type: 'textarea' }
         ]
-      }
+      },
+      ...DESIGN_PROPS.map(p => ({ ...p, category: 'design' as const }))
     ]
   },
   {
@@ -1402,15 +1486,16 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     description: 'Sección final con enlaces legales y redes sociales',
     category: 'navigation',
     defaultData: {
-      layout_type: 'columns', // columns, simple, centered, minimal
+      layoutType: 'columns', // columns, simple, centered, minimal
       theme: 'dark',
-      smart_mode: true,
-      logo_text: 'SOLUTIUM',
-      logo_image: '',
+      smartMode: true,
+      disableColorAlternation: false,
+      logoText: 'Constructor Web',
+      logoImage: 'https://solutium.app/logos-de-apps/solutium-constructor-web-imagotipo.png',
       description: 'Construyendo el futuro de la web. Soluciones inteligentes para negocios modernos.',
-      copyright: '© 2024 Solutium. Todos los derechos reservados.',
-      show_social_links: true,
-      social_links: [
+      copyright: '© 2024 Constructor Web. Todos los derechos reservados.',
+      showSocialLinks: true,
+      socialLinks: [
         { platform: 'linkedin', url: '#' },
         { platform: 'twitter', url: '#' },
         { platform: 'instagram', url: '#' }
@@ -1441,18 +1526,24 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
           ]
         }
       ],
-      show_newsletter: true,
-      newsletter_title: 'Suscríbete',
-      newsletter_text: 'Recibe las últimas noticias y actualizaciones.',
-      bottom_links: [
+      showNewsletter: true,
+      newsletterTitle: 'Suscríbete',
+      newsletterText: 'Recibe las últimas noticias y actualizaciones.',
+      bottomLinks: [
         { text: 'Privacidad', url: '#' },
         { text: 'Términos', url: '#' },
         { text: 'Cookies', url: '#' }
       ]
     },
     schema: [
+      { name: 'logoText', label: 'Texto del logo', type: 'text', category: 'content' },
+      { name: 'description', label: 'Descripción', type: 'textarea', category: 'content' },
+      { name: 'copyright', label: 'Copyright', type: 'text', category: 'content' },
+      ...TYPOGRAPHY_PROPS('logo', 'Estilo del texto del logo'),
+      ...TYPOGRAPHY_PROPS('description', 'Estilo de la descripción'),
+      
       { 
-        name: 'layout_type', 
+        name: 'layoutType', 
         label: 'Tipo de Diseño', 
         type: 'select', 
         category: 'design',
@@ -1463,9 +1554,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
           { label: 'Minimalista', value: 'minimal' }
         ]
       },
-      { name: 'logo_text', label: 'Texto del Logo', type: 'text', category: 'content' },
-      { name: 'logo_image', label: 'Imagen del Logo', type: 'image', category: 'design' },
-      { name: 'description', label: 'Descripción', type: 'textarea', category: 'content' },
+      { name: 'logoImage', label: 'Imagen del Logo', type: 'image', category: 'design' },
       
       { 
         name: 'columns', 
@@ -1486,9 +1575,9 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
         ]
       },
       
-      { name: 'show_social_links', label: 'Mostrar Redes Sociales', type: 'boolean', category: 'content' },
+      { name: 'showSocialLinks', label: 'Mostrar Redes Sociales', type: 'boolean', category: 'content' },
       { 
-        name: 'social_links', 
+        name: 'socialLinks', 
         label: 'Redes Sociales', 
         type: 'array', 
         category: 'content',
@@ -1510,13 +1599,12 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
         ]
       },
       
-      { name: 'show_newsletter', label: 'Mostrar Newsletter', type: 'boolean', category: 'content' },
-      { name: 'newsletter_title', label: 'Título Newsletter', type: 'text', category: 'content' },
-      { name: 'newsletter_text', label: 'Texto Newsletter', type: 'textarea', category: 'content' },
+      { name: 'showNewsletter', label: 'Mostrar Newsletter', type: 'boolean', category: 'content' },
+      { name: 'newsletterTitle', label: 'Título Newsletter', type: 'text', category: 'content' },
+      { name: 'newsletterText', label: 'Texto Newsletter', type: 'textarea', category: 'content' },
       
-      { name: 'copyright', label: 'Texto de Copyright', type: 'text', category: 'content' },
       { 
-        name: 'bottom_links', 
+        name: 'bottomLinks', 
         label: 'Enlaces Legales', 
         type: 'array', 
         category: 'content',
@@ -1536,29 +1624,32 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     description: 'Separadores y espacios para organizar el contenido',
     category: 'navigation',
     defaultData: {
-      spacer_type: 'smart',
-      smart_mode: true,
+      spacerType: 'smart',
+      smartMode: true,
+      disableColorAlternation: false,
       height: 40,
-      line_style: 'solid',
-      line_width: 100,
-      line_color: '#e2e8f0',
-      line_thickness: 1,
-      icon_name: 'Star',
-      label_text: 'SECCIÓN',
-      shaper_type: 'wave',
-      pattern_type: 'dots',
-      background_color: 'transparent'
+      lineStyle: 'solid',
+      lineWidth: 100,
+      lineColor: '#e2e8f0',
+      lineThickness: 1,
+      iconName: 'Star',
+      labelText: 'SECCIÓN',
+      shaperType: 'wave',
+      patternType: 'dots',
+      backgroundColor: 'transparent'
     },
     schema: [
       {
-        name: 'smart_mode',
+        name: 'smartMode',
         label: 'Modo Inteligente',
-        type: 'boolean'
+        type: 'boolean',
+        category: 'design'
       },
       {
-        name: 'spacer_type',
+        name: 'spacerType',
         label: 'Tipo de Espaciador',
         type: 'select',
+        category: 'design',
         options: [
           { label: 'Espaciador Inteligente', value: 'smart' },
           { label: 'Divisor Minimalista', value: 'line' },
@@ -1570,19 +1661,20 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
         ]
       },
       // Common
-      { name: 'background_color', label: 'Color de Fondo del Bloque', type: 'color' },
+      { name: 'backgroundColor', label: 'Color de Fondo del Bloque', type: 'color', category: 'design' },
       
       // Smart Spacer
-      { name: 'height', label: 'Altura (px)', type: 'range', min: 0, max: 200, step: 1 },
+      { name: 'height', label: 'Altura (px)', type: 'range', min: 0, max: 200, step: 1, category: 'design' },
       
       // Line / Icon / Label common
-      { name: 'line_width', label: 'Ancho (%)', type: 'range', min: 10, max: 100, step: 1 },
-      { name: 'line_thickness', label: 'Grosor (px)', type: 'range', min: 1, max: 10, step: 1 },
-      { name: 'line_color', label: 'Color de Línea/Elemento', type: 'color' },
+      { name: 'lineWidth', label: 'Ancho (%)', type: 'range', min: 10, max: 100, step: 1, category: 'design' },
+      { name: 'lineThickness', label: 'Grosor (px)', type: 'range', min: 1, max: 10, step: 1, category: 'design' },
+      { name: 'lineColor', label: 'Color de Línea/Elemento', type: 'color', category: 'design' },
       { 
-        name: 'line_style', 
+        name: 'lineStyle', 
         label: 'Estilo de Línea', 
         type: 'select',
+        category: 'design',
         options: [
           { label: 'Sólida', value: 'solid' },
           { label: 'Discontinua', value: 'dashed' },
@@ -1591,16 +1683,17 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
       },
       
       // Icon specific
-      { name: 'icon_name', label: 'Nombre del Icono (ej: Star, Heart, Zap)', type: 'text' },
+      { name: 'iconName', label: 'Nombre del Icono (ej: Star, Heart, Zap)', type: 'text', category: 'content' },
       
       // Label specific
-      { name: 'label_text', label: 'Texto del Divisor', type: 'text' },
+      { name: 'labelText', label: 'Texto del Divisor', type: 'text', category: 'content' },
       
       // Shaper specific
       { 
-        name: 'shaper_type', 
+        name: 'shaperType', 
         label: 'Tipo de Forma', 
         type: 'select',
+        category: 'design',
         options: [
           { label: 'Onda', value: 'wave' },
           { label: 'Curva', value: 'curve' },
@@ -1610,14 +1703,17 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
       
       // Pattern specific
       { 
-        name: 'pattern_type', 
+        name: 'patternType', 
         label: 'Tipo de Patrón', 
         type: 'select',
+        category: 'design',
         options: [
           { label: 'Puntos', value: 'dots' },
           { label: 'Líneas', value: 'stripes' }
         ]
-      }
+      },
+      
+      ...DESIGN_PROPS.map(p => ({ ...p, category: 'design' as const }))
     ]
   }
 ];

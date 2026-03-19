@@ -20,6 +20,7 @@ interface ScrollAnimationProps {
   style?: React.CSSProperties;
   viewport?: { once?: boolean; amount?: number };
   tag?: 'div' | 'section' | 'article' | 'main' | 'header' | 'footer';
+  id?: string;
 }
 
 const variants: Record<AnimationType, Variants> = {
@@ -65,17 +66,19 @@ export const ScrollAnimation = ({
   className = '',
   style = {},
   viewport = { once: true, amount: 0.3 },
-  tag = 'div'
+  tag = 'div',
+  id
 }: ScrollAnimationProps) => {
   const Component = motion[tag] as any;
   const StaticComponent = tag;
 
   if (animation === 'none') {
-    return <StaticComponent className={className} style={style}>{children}</StaticComponent>;
+    return <StaticComponent id={id} className={className} style={style}>{children}</StaticComponent>;
   }
 
   return (
     <Component
+      id={id}
       initial="hidden"
       whileInView="visible"
       viewport={viewport}

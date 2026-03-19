@@ -5,30 +5,38 @@ import { getModuleDefinition } from '../modules/registry';
 interface BuilderStore {
   // State
   projects: Project[];
-  active_project_id: string | null;
-  active_asset_id: string | null;
+  activeProjectId: string | null;
+  activeAssetId: string | null;
   modules: Module[];
-  is_dirty: boolean;
-  is_saving: boolean;
-  last_saved: Date | null;
-  selected_module_id: string | null;
-  editing_module_id: string | null;
-  asset_settings: AssetSettings;
-  selected_product_ids: string[];
-  auto_save_interval: number;
+  isDirty: boolean;
+  isSaving: boolean;
+  lastSaved: Date | null;
+  selectedModuleId: string | null;
+  editingModuleId: string | null;
+  assetSettings: AssetSettings;
+  selectedProductIds: string[];
+  autoSaveInterval: number;
+  businessContext: {
+    name: string;
+    sector: string;
+    description: string;
+    objective: string;
+    visualStyle: string;
+  } | null;
   
   // Actions
   setProjects: (projects: Project[]) => void;
-  setActiveProject: (project_id: string) => void;
-  setActiveAsset: (asset_id: string) => void;
+  setActiveProject: (projectId: string) => void;
+  setActiveAsset: (assetId: string) => void;
   setModules: (modules: Module[]) => void;
   setAutoSaveInterval: (interval: number) => void;
+  setBusinessContext: (context: BuilderStore['businessContext']) => void;
   
   // Module Actions
   addModule: (type: string) => void;
   removeModule: (id: string) => void;
   updateModule: (id: string, data: any) => void;
-  reorderModules: (new_modules: Module[]) => void;
+  reorderModules: (newModules: Module[]) => void;
   
   // Selection Actions
   selectModule: (id: string | null) => void;
@@ -37,57 +45,61 @@ interface BuilderStore {
   // Settings Actions
   updateAssetSettings: (settings: Partial<AssetSettings>) => void;
   updateAssetName: (name: string) => void;
-  update_selected_products: (product_ids: string[]) => void;
+  updateSelectedProducts: (productIds: string[]) => void;
   
   // Save Actions
-  setDirty: (is_dirty: boolean) => void;
-  setSaving: (is_saving: boolean) => void;
+  setDirty: (isDirty: boolean) => void;
+  setSaving: (isSaving: boolean) => void;
   setLastSaved: (date: Date) => void;
 }
 
 export const useBuilderStore = create<BuilderStore>((set, get) => ({
   projects: [],
-  active_project_id: null,
-  active_asset_id: null,
+  activeProjectId: null,
+  activeAssetId: null,
   modules: [],
-  is_dirty: false,
-  is_saving: false,
-  last_saved: null,
-  selected_module_id: null,
-  editing_module_id: null,
-  asset_settings: {
+  isDirty: false,
+  isSaving: false,
+  lastSaved: null,
+  selectedModuleId: null,
+  editingModuleId: null,
+  assetSettings: {
     domain: '',
-    seo_title: '',
-    seo_description: '',
+    seoTitle: '',
+    seoDescription: '',
     tags: [],
-    page_layout: 'seamless'
+    pageLayout: 'seamless'
   },
-  selected_product_ids: [],
-  auto_save_interval: 60000, // 1 minute default
+  selectedProductIds: [],
+  autoSaveInterval: 60000, // 1 minute default
+  businessContext: null,
 
   setProjects: (projects) => set({ projects }),
   
-  setActiveProject: (project_id) => set({ active_project_id: project_id }),
+  setActiveProject: (projectId) => set({ activeProjectId: projectId }),
   
-  setActiveAsset: (asset_id) => {
-    const { projects, active_project_id } = get();
-    const project = projects.find(p => p.id === active_project_id);
-    const asset = project?.assets?.find(a => a.id === asset_id);
+  setActiveAsset: (assetId) => {
+    const { projects, activeProjectId } = get();
+    const project = projects.find(p => p.id === activeProjectId);
+    const asset = project?.assets?.find(a => a.id === assetId);
     
     set({ 
-      active_asset_id: asset_id,
+      activeAssetId: assetId,
       modules: asset?.modules || [],
-      asset_settings: asset?.settings || { domain: '', seo_title: '', seo_description: '', page_layout: 'seamless' },
-      selected_product_ids: asset?.selected_product_ids || [],
-      is_dirty: false,
-      selected_module_id: null,
-      editing_module_id: null
+      assetSettings: asset?.settings || { domain: '', seoTitle: '', seoDescription: '', pageLayout: 'seamless' },
+      selectedProductIds: asset?.selectedProductIds || [],
+      isDirty: false,
+      selectedModuleId: null,
+      editingModuleId: null,
+      businessContext: asset?.businessContext || null
     });
   },
 
   setModules: (modules) => set({ modules }),
 
-  setAutoSaveInterval: (interval) => set({ auto_save_interval: interval }),
+  setAutoSaveInterval: (interval) => set({ autoSaveInterval: interval }),
+
+  setBusinessContext: (context) => set({ businessContext: context }),
 
   addModule: (type) => {
     const def = getModuleDefinition(type);
@@ -102,18 +114,18 @@ export const useBuilderStore = create<BuilderStore>((set, get) => ({
     
     set((state) => ({
       modules: [...state.modules, newModule],
-      is_dirty: true,
-      selected_module_id: newModule.id,
-      editing_module_id: newModule.id
+      isDirty: !!state.activeAssetId,
+      selectedModuleId: newModule.id,
+      editingModuleId: newModule.id
     }));
   },
 
   removeModule: (id) => {
     set((state) => ({
       modules: state.modules.filter(m => m.id !== id),
-      is_dirty: true,
-      selected_module_id: state.selected_module_id === id ? null : state.selected_module_id,
-      editing_module_id: state.editing_module_id === id ? null : state.editing_module_id
+      isDirty: !!state.activeAssetId,
+      selectedModuleId: state.selectedModuleId === id ? null : state.selectedModuleId,
+      editingModuleId: state.editingModuleId === id ? null : state.editingModuleId
     }));
   },
 
@@ -122,46 +134,48 @@ export const useBuilderStore = create<BuilderStore>((set, get) => ({
       modules: state.modules.map(m => 
         m.id === id ? { ...m, data: { ...m.data, ...data } } : m
       ),
-      is_dirty: true
+      isDirty: !!state.activeAssetId
     }));
   },
 
-  reorderModules: (new_modules) => {
-    set({ modules: new_modules, is_dirty: true });
+  reorderModules: (newModules) => {
+    const { activeAssetId } = get();
+    set({ modules: newModules, isDirty: !!activeAssetId });
   },
 
-  selectModule: (id) => set({ selected_module_id: id }),
+  selectModule: (id) => set({ selectedModuleId: id }),
   
-  editModule: (id) => set({ editing_module_id: id }),
+  editModule: (id) => set({ editingModuleId: id }),
 
   updateAssetSettings: (settings) => {
     set((state) => ({
-      asset_settings: { ...state.asset_settings, ...settings },
-      is_dirty: true
+      assetSettings: { ...state.assetSettings, ...settings },
+      isDirty: !!state.activeAssetId
     }));
   },
 
   updateAssetName: (name) => {
-    const { projects, active_project_id, active_asset_id } = get();
+    const { projects, activeProjectId, activeAssetId } = get();
     const updatedProjects = projects.map(p => {
-      if (p.id === active_project_id) {
+      if (p.id === activeProjectId) {
         return {
           ...p,
           assets: p.assets.map(a => 
-            a.id === active_asset_id ? { ...a, name } : a
+            a.id === activeAssetId ? { ...a, name } : a
           )
         };
       }
       return p;
     });
-    set({ projects: updatedProjects, is_dirty: true });
+    set({ projects: updatedProjects, isDirty: !!activeAssetId });
   },
 
-  update_selected_products: (product_ids) => {
-    set({ selected_product_ids: product_ids, is_dirty: true });
+  updateSelectedProducts: (productIds) => {
+    const { activeAssetId } = get();
+    set({ selectedProductIds: productIds, isDirty: !!activeAssetId });
   },
 
-  setDirty: (is_dirty) => set({ is_dirty }),
-  setSaving: (is_saving) => set({ is_saving }),
-  setLastSaved: (date) => set({ last_saved: date })
+  setDirty: (isDirty) => set({ isDirty }),
+  setSaving: (isSaving) => set({ isSaving }),
+  setLastSaved: (date) => set({ lastSaved: date })
 }));

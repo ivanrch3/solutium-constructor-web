@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { Play, Pause, Volume2, VolumeX, Maximize, X, FileText } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Play, Pause, Volume2, VolumeX, Maximize, X, FileText, Sparkles, ArrowRight } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { ModuleWrapper } from '../ui/ModuleWrapper';
 import { Typography } from '../ui/Typography';
 import { usePageLayout } from '../../context/PageLayoutContext';
@@ -9,23 +10,43 @@ interface VideoModuleProps {
   onUpdate?: (data: any) => void;
 }
 
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.15,
+      delayChildren: 0.2
+    }
+  }
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 30 },
+  visible: { 
+    opacity: 1, 
+    y: 0,
+    transition: { duration: 0.6, ease: [0.215, 0.61, 0.355, 1] }
+  }
+};
+
 export const VideoModule = ({ data, onUpdate }: VideoModuleProps) => {
   const { previewDevice } = usePageLayout();
-  const is_mobile_simulated = previewDevice === 'mobile';
+  const isMobileSimulated = previewDevice === 'mobile';
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(data?.muted || false);
-  const [show_transcription, setShowTranscription] = useState(false);
+  const [showTranscription, setShowTranscription] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const layout_type = data?.layout_type || 'classic';
-  const video_type = data?.video_type || 'youtube';
-  const video_url = data?.video_url || '';
-  const poster_image = data?.poster_image || '';
-  const show_controls = data?.show_controls !== false;
-  const show_overlay = data?.show_overlay !== false;
-  const show_play_button = data?.show_play_button !== false;
-  const play_button_style = data?.play_button_style || 'solid';
-  const mask_shape = data?.mask_shape || 'none';
+  const layoutType = data?.layoutType || 'classic';
+  const videoType = data?.videoType || 'youtube';
+  const videoUrl = data?.videoUrl || '';
+  const posterImage = data?.posterImage || '';
+  const showControls = data?.showControls !== false;
+  const showOverlay = data?.showOverlay !== false;
+  const showPlayButton = data?.showPlayButton !== false;
+  const playButtonStyle = data?.playButtonStyle || 'solid';
+  const maskShape = data?.maskShape || 'none';
 
   const handleTextUpdate = (path: string, value: string) => {
     if (onUpdate) {
@@ -46,11 +67,11 @@ export const VideoModule = ({ data, onUpdate }: VideoModuleProps) => {
     }
   };
 
-  const get_embed_url = (url: string, type: string) => {
+  const getEmbedUrl = (url: string, type: string) => {
     if (!url) return '';
     if (type === 'youtube') {
       const videoId = url.includes('v=') ? url.split('v=')[1] : url.split('/').pop();
-      return `https://www.youtube.com/embed/${videoId}?autoplay=${isPlaying ? 1 : 0}&mute=${isMuted ? 1 : 0}&controls=${show_controls ? 1 : 0}&loop=${data?.loop ? 1 : 0}`;
+      return `https://www.youtube.com/embed/${videoId}?autoplay=${isPlaying ? 1 : 0}&mute=${isMuted ? 1 : 0}&controls=${showControls ? 1 : 0}&loop=${data?.loop ? 1 : 0}`;
     }
     if (type === 'vimeo') {
       const videoId = url.split('/').pop();
@@ -59,8 +80,8 @@ export const VideoModule = ({ data, onUpdate }: VideoModuleProps) => {
     return url;
   };
 
-  const get_mask_class = () => {
-    switch (mask_shape) {
+  const getMaskClass = () => {
+    switch (maskShape) {
       case 'circle': return 'rounded-full aspect-square';
       case 'rounded': return 'rounded-[3rem]';
       case 'blob': return 'rounded-[40%_60%_70%_30%_/_40%_50%_60%_50%]';
@@ -69,25 +90,25 @@ export const VideoModule = ({ data, onUpdate }: VideoModuleProps) => {
     }
   };
 
-  const get_play_button_class = () => {
-    const base = `w-16 h-16 ${is_mobile_simulated ? '' : 'md:w-24 md:h-24'} rounded-full flex items-center justify-center transition-all duration-300 group-hover:scale-110`;
-    switch (play_button_style) {
+  const getPlayButtonClass = () => {
+    const base = `w-16 h-16 ${isMobileSimulated ? '' : 'md:w-28 md:h-28'} rounded-full flex items-center justify-center transition-all duration-500 group-hover:scale-110 relative overflow-hidden`;
+    switch (playButtonStyle) {
       case 'outline': return `${base} border-2 border-white text-white hover:bg-white hover:text-primary`;
-      case 'glass': return `${base} bg-white/20 backdrop-blur-md text-white border border-white/30 hover:bg-white/30`;
+      case 'glass': return `${base} bg-white/10 backdrop-blur-xl text-white border border-white/20 hover:bg-white/20`;
       case 'solid':
       default: return `${base} bg-primary text-white shadow-2xl shadow-primary/40`;
     }
   };
 
   const renderVideoPlayer = (isModal = false) => {
-    const embed_url = get_embed_url(video_url, video_type);
+    const embedUrl = getEmbedUrl(videoUrl, videoType);
 
-    if (!isPlaying && !isModal && poster_image) {
+    if (!isPlaying && !isModal && posterImage) {
       return (
         <div 
-          className={`relative w-full h-full bg-black cursor-pointer group overflow-hidden ${get_mask_class()}`}
+          className={`relative w-full h-full bg-black cursor-pointer group overflow-hidden ${getMaskClass()}`}
           onClick={() => {
-            if (layout_type === 'popup') {
+            if (layoutType === 'popup') {
               setIsModalOpen(true);
             } else {
               setIsPlaying(true);
@@ -95,30 +116,53 @@ export const VideoModule = ({ data, onUpdate }: VideoModuleProps) => {
           }}
         >
           <img 
-            src={poster_image} 
+            src={posterImage} 
             alt="Video Poster" 
-            className="w-full h-full object-cover opacity-80 group-hover:scale-105 transition-transform duration-700"
+            className="w-full h-full object-cover opacity-70 group-hover:scale-110 transition-transform duration-1000 ease-out"
             referrerPolicy="no-referrer"
           />
           
-          {show_play_button && (
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20" />
+
+          {showPlayButton && (
             <div className="absolute inset-0 flex items-center justify-center z-10">
-              <div className={get_play_button_class()}>
-                <Play className={`${is_mobile_simulated ? 'w-6 h-6' : 'w-8 h-8 md:w-10 md:h-10'} ml-1`} fill="currentColor" />
+              <motion.div 
+                className={getPlayButtonClass()}
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+              >
+                <div className="absolute inset-0 bg-white/20 animate-pulse" />
+                <Play className={`${isMobileSimulated ? 'w-6 h-6' : 'w-10 h-10 md:w-12 md:h-12'} ml-1 relative z-10`} fill="currentColor" />
+              </motion.div>
+              
+              {/* Ripple Effect */}
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="w-24 h-24 md:w-40 md:h-40 rounded-full border border-white/20 animate-ping opacity-20" />
+                <div className="absolute w-32 h-32 md:w-56 md:h-56 rounded-full border border-white/10 animate-ping opacity-10 [animation-delay:0.5s]" />
               </div>
             </div>
           )}
 
-          {show_overlay && (
-            <div className={`absolute bottom-0 left-0 right-0 ${is_mobile_simulated ? 'p-4' : 'p-8'} bg-gradient-to-t from-black/80 to-transparent`}>
-              <Typography
-                variant="h4"
-                className={`text-white font-bold ${is_mobile_simulated ? 'text-lg' : 'text-xl'} mb-2`}
-                editable={!!onUpdate}
-                onUpdate={(text) => handleTextUpdate('overlay_title', text)}
+          {showOverlay && (
+            <div className={`absolute bottom-0 left-0 right-0 ${isMobileSimulated ? 'p-6' : 'p-10'} bg-gradient-to-t from-black/90 to-transparent`}>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
               >
-                {data?.overlay_title || 'Video Promocional'}
-              </Typography>
+                <Typography
+                  variant="h4"
+                  className={`text-white font-black ${isMobileSimulated ? 'text-xl' : 'text-2xl'} mb-2 tracking-tight`}
+                  editable={!!onUpdate}
+                  onUpdate={(text) => handleTextUpdate('overlayTitle', text)}
+                >
+                  {data?.overlayTitle || 'Video Promocional'}
+                </Typography>
+                <div className="flex items-center gap-2 text-white/60 text-xs font-bold uppercase tracking-widest">
+                  <Sparkles className="w-3 h-3 text-primary" />
+                  <span>Click para reproducir</span>
+                </div>
+              </motion.div>
             </div>
           )}
         </div>
@@ -126,19 +170,19 @@ export const VideoModule = ({ data, onUpdate }: VideoModuleProps) => {
     }
 
     return (
-      <div className={`relative w-full h-full bg-black overflow-hidden ${!isModal ? get_mask_class() : 'rounded-xl'}`}>
-        {video_type === 'custom' ? (
+      <div className={`relative w-full h-full bg-black overflow-hidden ${!isModal ? getMaskClass() : 'rounded-2xl shadow-2xl'}`}>
+        {videoType === 'custom' ? (
           <video
-            src={video_url}
+            src={videoUrl}
             className="w-full h-full object-cover"
-            controls={show_controls}
+            controls={showControls}
             autoPlay={isPlaying || isModal}
             muted={isMuted}
             loop={data?.loop}
           />
         ) : (
           <iframe
-            src={embed_url}
+            src={embedUrl}
             className="w-full h-full"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowFullScreen
@@ -149,17 +193,28 @@ export const VideoModule = ({ data, onUpdate }: VideoModuleProps) => {
   };
 
   const renderContent = () => {
-    if (layout_type === 'hero') {
+    if (layoutType === 'hero') {
       return (
-        <div className={`relative ${is_mobile_simulated ? 'h-[50vh]' : 'h-[80vh]'} w-full overflow-hidden`}>
+        <div className={`relative ${isMobileSimulated ? 'h-[60vh]' : 'h-[90vh]'} w-full overflow-hidden -mx-4 md:-mx-8 lg:-mx-12`}>
           <div className="absolute inset-0">
             {renderVideoPlayer()}
           </div>
-          <div className="absolute inset-0 bg-black/40 pointer-events-none flex items-center justify-center text-center p-6 md:p-8">
-            <div className="max-w-4xl pointer-events-auto">
+          <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/20 to-black/80 pointer-events-none flex items-center justify-center text-center p-6 md:p-12">
+            <motion.div 
+              className="max-w-5xl pointer-events-auto"
+              variants={containerVariants}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true }}
+            >
+              <motion.div variants={itemVariants} className="flex items-center justify-center gap-2 mb-6">
+                <div className="w-12 h-[1px] bg-primary" />
+                <span className="text-primary font-black tracking-[0.4em] uppercase text-[10px]">Presentación</span>
+                <div className="w-12 h-[1px] bg-primary" />
+              </motion.div>
               <Typography
                 variant="h1"
-                className={`${is_mobile_simulated ? 'text-4xl' : 'text-5xl md:text-7xl'} font-black text-white mb-6 tracking-tight`}
+                className={`${isMobileSimulated ? 'text-4xl' : 'text-6xl md:text-8xl'} font-black text-white mb-8 tracking-tighter leading-[0.85]`}
                 editable={!!onUpdate}
                 onUpdate={(text) => handleTextUpdate('title', text)}
               >
@@ -167,42 +222,56 @@ export const VideoModule = ({ data, onUpdate }: VideoModuleProps) => {
               </Typography>
               <Typography
                 variant="p"
-                className={`${is_mobile_simulated ? 'text-lg' : 'text-xl md:text-2xl'} text-white/90 mb-10 leading-relaxed`}
+                className={`${isMobileSimulated ? 'text-lg' : 'text-xl md:text-3xl'} text-white/80 mb-12 leading-tight font-medium max-w-3xl mx-auto`}
                 editable={!!onUpdate}
                 onUpdate={(text) => handleTextUpdate('subtitle', text)}
               >
                 {data?.subtitle || 'Descubre cómo transformamos negocios.'}
               </Typography>
-              {data?.show_cta && (
-                <a 
-                  href={data?.cta_url || '#'}
+              {data?.showCta && (
+                <motion.a 
+                  variants={itemVariants}
+                  href={data?.ctaUrl || '#'}
                   onClick={(e) => {
                     if (onUpdate) e.preventDefault();
                   }}
-                  className="inline-flex items-center px-8 py-4 bg-primary text-white font-bold rounded-xl hover:bg-primary/90 transition-all shadow-lg hover:scale-105 cursor-pointer"
+                  className="inline-flex items-center gap-3 px-10 py-5 bg-primary text-white font-black uppercase tracking-widest text-xs rounded-full hover:bg-primary/90 transition-all shadow-2xl shadow-primary/40 hover:scale-105 cursor-pointer"
+                  whileHover={{ y: -5 }}
+                  whileTap={{ scale: 0.95 }}
                 >
                   <Typography
                     variant="span"
                     editable={!!onUpdate}
-                    onUpdate={(text) => handleTextUpdate('cta_text', text)}
+                    onUpdate={(text) => handleTextUpdate('ctaText', text)}
                   >
-                    {data?.cta_text || 'Empezar Ahora'}
+                    {data?.ctaText || 'Empezar Ahora'}
                   </Typography>
-                </a>
+                  <ArrowRight className="w-4 h-4" />
+                </motion.a>
               )}
-            </div>
+            </motion.div>
           </div>
         </div>
       );
     }
 
-    if (layout_type === 'split') {
+    if (layoutType === 'split') {
       return (
-        <div className={`grid ${is_mobile_simulated ? 'grid-cols-1' : 'lg:grid-cols-2'} gap-12 items-center`}>
-          <div className={is_mobile_simulated ? 'text-center' : ''}>
+        <motion.div 
+          className={`grid ${isMobileSimulated ? 'grid-cols-1' : 'lg:grid-cols-2'} gap-16 lg:gap-24 items-center`}
+          variants={containerVariants}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true }}
+        >
+          <div className={isMobileSimulated ? 'text-center' : ''}>
+            <motion.div variants={itemVariants} className="flex items-center gap-2 mb-6 justify-center lg:justify-start">
+              <div className="w-8 h-[1px] bg-primary" />
+              <span className="text-primary font-black tracking-[0.3em] uppercase text-[10px]">Video</span>
+            </motion.div>
             <Typography
               variant="h2"
-              className={`${is_mobile_simulated ? 'text-3xl' : 'text-4xl md:text-5xl'} font-black text-text mb-6 tracking-tight`}
+              className={`${isMobileSimulated ? 'text-4xl' : 'text-5xl md:text-6xl'} font-black text-text mb-8 tracking-tight leading-[0.9]`}
               editable={!!onUpdate}
               onUpdate={(text) => handleTextUpdate('title', text)}
             >
@@ -210,68 +279,100 @@ export const VideoModule = ({ data, onUpdate }: VideoModuleProps) => {
             </Typography>
             <Typography
               variant="p"
-              className={`${is_mobile_simulated ? 'text-lg' : 'text-xl'} text-text/60 mb-8 leading-relaxed`}
+              className={`${isMobileSimulated ? 'text-lg' : 'text-xl'} text-text/60 mb-10 leading-relaxed font-medium`}
               editable={!!onUpdate}
               onUpdate={(text) => handleTextUpdate('subtitle', text)}
             >
               {data?.subtitle || 'Descubre cómo transformamos negocios.'}
             </Typography>
             
-            {data?.show_transcription && (
-              <div className="mb-8">
+            {data?.showTranscription && (
+              <motion.div variants={itemVariants} className="mb-10">
                 <button 
-                  onClick={() => setShowTranscription(!show_transcription)}
-                  className={`flex items-center gap-2 text-primary font-bold hover:underline mb-4 ${is_mobile_simulated ? 'mx-auto' : ''}`}
+                  onClick={() => setShowTranscription(!showTranscription)}
+                  className={`flex items-center gap-3 text-text font-black uppercase tracking-widest text-[10px] hover:text-primary transition-colors mb-4 ${isMobileSimulated ? 'mx-auto' : ''}`}
                 >
-                  <FileText className="w-4 h-4" />
-                  {show_transcription ? 'Ocultar Transcripción' : 'Ver Transcripción'}
-                </button>
-                {show_transcription && (
-                  <div className="p-6 bg-surface border border-text/10 rounded-xl text-text/70 text-sm leading-relaxed animate-in fade-in slide-in-from-top-2">
-                    <Typography
-                      variant="p"
-                      editable={!!onUpdate}
-                      onUpdate={(text) => handleTextUpdate('transcription_text', text)}
-                    >
-                      {data?.transcription_text || 'Aquí va la transcripción del video...'}
-                    </Typography>
+                  <div className="w-8 h-8 rounded-full bg-surface border border-text/10 flex items-center justify-center">
+                    <FileText className="w-4 h-4" />
                   </div>
-                )}
-              </div>
+                  {showTranscription ? 'Ocultar Transcripción' : 'Ver Transcripción'}
+                </button>
+                <AnimatePresence>
+                  {showTranscription && (
+                    <motion.div 
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="p-8 bg-surface/50 backdrop-blur-sm border border-text/5 rounded-2xl text-text/70 text-sm leading-relaxed font-medium">
+                        <Typography
+                          variant="p"
+                          editable={!!onUpdate}
+                          onUpdate={(text) => handleTextUpdate('transcriptionText', text)}
+                        >
+                          {data?.transcriptionText || 'Aquí va la transcripción del video...'}
+                        </Typography>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
             )}
 
-            {data?.show_cta && (
-              <a 
-                href={data?.cta_url || '#'}
+            {data?.showCta && (
+              <motion.a 
+                variants={itemVariants}
+                href={data?.ctaUrl || '#'}
                 onClick={(e) => {
                   if (onUpdate) e.preventDefault();
                 }}
-                className="inline-flex items-center px-8 py-4 bg-primary text-white font-bold rounded-xl hover:bg-primary/90 transition-all shadow-lg cursor-pointer"
+                className="inline-flex items-center gap-3 px-10 py-5 bg-primary text-white font-black uppercase tracking-widest text-xs rounded-full hover:bg-primary/90 transition-all shadow-2xl shadow-primary/40 cursor-pointer"
+                whileHover={{ y: -5 }}
+                whileTap={{ scale: 0.95 }}
               >
                 <Typography
                   variant="span"
                   editable={!!onUpdate}
-                  onUpdate={(text) => handleTextUpdate('cta_text', text)}
+                  onUpdate={(text) => handleTextUpdate('ctaText', text)}
                 >
-                  {data?.cta_text || 'Empezar Ahora'}
+                  {data?.ctaText || 'Empezar Ahora'}
                 </Typography>
-              </a>
+                <ArrowRight className="w-4 h-4" />
+              </motion.a>
             )}
           </div>
-          <div className={`aspect-video shadow-2xl ${is_mobile_simulated ? 'rounded-2xl' : 'rounded-[2rem]'}`}>
-            {renderVideoPlayer()}
-          </div>
-        </div>
+          <motion.div 
+            variants={itemVariants}
+            className={`aspect-video shadow-2xl ${isMobileSimulated ? 'rounded-2xl' : 'rounded-[2.5rem]'} relative group`}
+          >
+            <div className="absolute -inset-4 bg-primary/5 rounded-[3rem] blur-2xl group-hover:bg-primary/10 transition-colors duration-500" />
+            <div className="relative h-full w-full">
+              {renderVideoPlayer()}
+            </div>
+          </motion.div>
+        </motion.div>
       );
     }
 
     // Classic & Popup
     return (
-      <div className="max-w-5xl mx-auto text-center">
-        <div className={is_mobile_simulated ? 'mb-8' : 'mb-12'}>
+      <motion.div 
+        className="max-w-6xl mx-auto text-center"
+        variants={containerVariants}
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true }}
+      >
+        <div className={isMobileSimulated ? 'mb-12' : 'mb-20'}>
+          <motion.div variants={itemVariants} className="flex items-center justify-center gap-2 mb-6">
+            <div className="w-8 h-[1px] bg-primary" />
+            <span className="text-primary font-black tracking-[0.3em] uppercase text-[10px]">Video</span>
+            <div className="w-8 h-[1px] bg-primary" />
+          </motion.div>
           <Typography
             variant="h2"
-            className={`${is_mobile_simulated ? 'text-3xl' : 'text-4xl md:text-5xl'} font-black text-text mb-4 tracking-tight`}
+            className={`${isMobileSimulated ? 'text-4xl' : 'text-5xl md:text-7xl'} font-black text-text mb-6 tracking-tight leading-[0.9]`}
             editable={!!onUpdate}
             onUpdate={(text) => handleTextUpdate('title', text)}
           >
@@ -279,7 +380,7 @@ export const VideoModule = ({ data, onUpdate }: VideoModuleProps) => {
           </Typography>
           <Typography
             variant="p"
-            className={`${is_mobile_simulated ? 'text-lg' : 'text-xl'} text-text/60 max-w-2xl mx-auto`}
+            className={`${isMobileSimulated ? 'text-lg' : 'text-xl md:text-2xl'} text-text/60 max-w-3xl mx-auto font-medium`}
             editable={!!onUpdate}
             onUpdate={(text) => handleTextUpdate('subtitle', text)}
           >
@@ -287,53 +388,73 @@ export const VideoModule = ({ data, onUpdate }: VideoModuleProps) => {
           </Typography>
         </div>
 
-        <div className={`aspect-video shadow-2xl mx-auto ${layout_type === 'popup' ? 'max-w-3xl' : 'w-full'}`}>
-          {renderVideoPlayer()}
-        </div>
-
-        {data?.show_transcription && (
-          <div className="mt-8 text-left max-w-3xl mx-auto">
-            <button 
-              onClick={() => setShowTranscription(!show_transcription)}
-              className="flex items-center gap-2 text-primary font-bold hover:underline mb-4 mx-auto"
-            >
-              <FileText className="w-4 h-4" />
-              {show_transcription ? 'Ocultar Transcripción' : 'Ver Transcripción'}
-            </button>
-            {show_transcription && (
-              <div className="p-6 bg-surface border border-text/10 rounded-xl text-text/70 text-sm leading-relaxed animate-in fade-in slide-in-from-top-2">
-                <Typography
-                  variant="p"
-                  editable={!!onUpdate}
-                  onUpdate={(text) => handleTextUpdate('transcription_text', text)}
-                >
-                  {data?.transcription_text || 'Aquí va la transcripción del video...'}
-                </Typography>
-              </div>
-            )}
+        <motion.div 
+          variants={itemVariants}
+          className={`aspect-video shadow-2xl mx-auto ${layoutType === 'popup' ? 'max-w-4xl' : 'w-full'} relative group`}
+        >
+          <div className="absolute -inset-6 bg-primary/5 rounded-[3rem] blur-3xl group-hover:bg-primary/10 transition-colors duration-700" />
+          <div className="relative h-full w-full">
+            {renderVideoPlayer()}
           </div>
+        </motion.div>
+
+        {data?.showTranscription && (
+          <motion.div variants={itemVariants} className="mt-12 text-left max-w-4xl mx-auto">
+            <button 
+              onClick={() => setShowTranscription(!showTranscription)}
+              className="flex items-center gap-3 text-text font-black uppercase tracking-widest text-[10px] hover:text-primary transition-colors mb-4 mx-auto"
+            >
+              <div className="w-8 h-8 rounded-full bg-surface border border-text/10 flex items-center justify-center">
+                <FileText className="w-4 h-4" />
+              </div>
+              {showTranscription ? 'Ocultar Transcripción' : 'Ver Transcripción'}
+            </button>
+            <AnimatePresence>
+              {showTranscription && (
+                <motion.div 
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="overflow-hidden"
+                >
+                  <div className="p-10 bg-surface/50 backdrop-blur-sm border border-text/5 rounded-3xl text-text/70 text-base leading-relaxed font-medium">
+                    <Typography
+                      variant="p"
+                      editable={!!onUpdate}
+                      onUpdate={(text) => handleTextUpdate('transcriptionText', text)}
+                    >
+                      {data?.transcriptionText || 'Aquí va la transcripción del video...'}
+                    </Typography>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
         )}
 
-        {data?.show_cta && (
-          <div className={is_mobile_simulated ? 'mt-8' : 'mt-12'}>
-            <a 
-              href={data?.cta_url || '#'}
+        {data?.showCta && (
+          <motion.div variants={itemVariants} className={isMobileSimulated ? 'mt-12' : 'mt-20'}>
+            <motion.a 
+              href={data?.ctaUrl || '#'}
               onClick={(e) => {
                 if (onUpdate) e.preventDefault();
               }}
-              className="inline-flex items-center px-8 py-4 bg-primary text-white font-bold rounded-xl hover:bg-primary/90 transition-all shadow-lg hover:scale-105 cursor-pointer"
+              className="inline-flex items-center gap-3 px-12 py-6 bg-primary text-white font-black uppercase tracking-widest text-xs rounded-full hover:bg-primary/90 transition-all shadow-2xl shadow-primary/40 hover:scale-105 cursor-pointer"
+              whileHover={{ y: -5 }}
+              whileTap={{ scale: 0.95 }}
             >
               <Typography
                 variant="span"
                 editable={!!onUpdate}
-                onUpdate={(text) => handleTextUpdate('cta_text', text)}
+                onUpdate={(text) => handleTextUpdate('ctaText', text)}
               >
-                {data?.cta_text || 'Empezar Ahora'}
+                {data?.ctaText || 'Empezar Ahora'}
               </Typography>
-            </a>
-          </div>
+              <ArrowRight className="w-4 h-4" />
+            </motion.a>
+          </motion.div>
         )}
-      </div>
+      </motion.div>
     );
   };
 
@@ -345,19 +466,36 @@ export const VideoModule = ({ data, onUpdate }: VideoModuleProps) => {
       {renderContent()}
 
       {/* Modal for Popup Layout */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 md:p-8 animate-in fade-in duration-300">
-          <button 
-            onClick={() => setIsModalOpen(false)}
-            className="absolute top-6 right-6 text-white/50 hover:text-white transition-colors"
+      <AnimatePresence>
+        {isModalOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl flex items-center justify-center p-4 md:p-12"
           >
-            <X className="w-8 h-8" />
-          </button>
-          <div className="w-full max-w-6xl aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl">
-            {renderVideoPlayer(true)}
-          </div>
-        </div>
-      )}
+            <motion.button 
+              initial={{ opacity: 0, scale: 0.5 }}
+              animate={{ opacity: 1, scale: 1 }}
+              onClick={() => setIsModalOpen(false)}
+              className="absolute top-8 right-8 w-14 h-14 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-colors z-[110]"
+              whileHover={{ rotate: 90 }}
+            >
+              <X className="w-8 h-8" />
+            </motion.button>
+            
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="w-full max-w-7xl aspect-video bg-black rounded-3xl overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.5)] border border-white/10"
+            >
+              {renderVideoPlayer(true)}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </ModuleWrapper>
   );
 };

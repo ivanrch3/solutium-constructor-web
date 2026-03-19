@@ -1,5 +1,6 @@
 import React from 'react';
-import { ShieldCheck } from 'lucide-react';
+import { ShieldCheck, Star, Award, Sparkles } from 'lucide-react';
+import { motion } from 'motion/react';
 import { Typography } from '../ui/Typography';
 import { ModuleWrapper } from '../ui/ModuleWrapper';
 import { usePageLayout } from '../../context/PageLayoutContext';
@@ -11,17 +12,20 @@ interface TrustBarModuleProps {
 
 export const TrustBarModule = ({ data, onUpdate }: TrustBarModuleProps) => {
   const { previewDevice } = usePageLayout();
-  const is_mobile_simulated = previewDevice === 'mobile';
+  const isMobileSimulated = previewDevice === 'mobile';
+  
+  const layoutType = data?.layoutType || 'marquee'; // marquee, grid, minimal
   const logos = data?.logos || [
-    { name: 'Empresa 1', url: 'https://placehold.co/200x80?text=LOGO+1' },
-    { name: 'Empresa 2', url: 'https://placehold.co/200x80?text=LOGO+2' },
-    { name: 'Empresa 3', url: 'https://placehold.co/200x80?text=LOGO+3' },
-    { name: 'Empresa 4', url: 'https://placehold.co/200x80?text=LOGO+4' },
-    { name: 'Empresa 5', url: 'https://placehold.co/200x80?text=LOGO+5' }
+    { name: 'Solutium', url: '' },
+    { name: 'TechFlow', url: '' },
+    { name: 'Innovate', url: '' },
+    { name: 'GlobalSys', url: '' },
+    { name: 'NextGen', url: '' },
+    { name: 'CloudScale', url: '' }
   ];
 
-  const is_grayscale = data?.grayscale !== false;
-  const opacity = data?.opacity || 50;
+  const isGrayscale = data?.grayscale !== false;
+  const showBadges = data?.showBadges || false;
 
   const handleTextUpdate = (path: string, value: string) => {
     if (onUpdate) {
@@ -42,55 +46,110 @@ export const TrustBarModule = ({ data, onUpdate }: TrustBarModuleProps) => {
     }
   };
 
+  const renderLogo = (logo: any, i: number) => (
+    <motion.div 
+      key={i} 
+      whileHover={{ scale: 1.05, y: -2 }}
+      className={`flex items-center gap-3 px-8 py-4 bg-current/[0.02] rounded-2xl border border-current/5 transition-all duration-300 group hover:bg-current/[0.04] hover:border-primary/20`}
+    >
+      {logo.url ? (
+        <img 
+          src={logo.url} 
+          alt={logo.name} 
+          className={`h-8 md:h-10 w-auto object-contain transition-all duration-500 ${isGrayscale ? 'grayscale group-hover:grayscale-0' : ''}`}
+          referrerPolicy="no-referrer"
+        />
+      ) : (
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-primary/10 rounded-lg group-hover:bg-primary group-hover:text-white transition-colors duration-300">
+            <ShieldCheck className="w-5 h-5" />
+          </div>
+          <Typography
+            variant="span"
+            className="font-black text-lg md:text-xl tracking-tighter italic opacity-60 group-hover:opacity-100 transition-opacity"
+            editable={!!onUpdate}
+            onUpdate={(text) => handleTextUpdate(`logos.${i}.name`, text)}
+          >
+            {logo.name}
+          </Typography>
+        </div>
+      )}
+    </motion.div>
+  );
+
+  const marqueeVariants = {
+    animate: {
+      x: [0, -1000],
+      transition: {
+        x: {
+          repeat: Infinity,
+          repeatType: "loop",
+          duration: 25,
+          ease: "linear",
+        },
+      },
+    },
+  };
+
   return (
     <ModuleWrapper 
       theme={data?.theme}
       background={data?.background}
-      className="rounded-2xl border border-current/10"
       noPadding
     >
-      <div className={`${is_mobile_simulated ? 'py-8 px-4' : 'py-12 px-8'}`}>
-        <Typography
-          variant="p"
-          className="text-center text-xs font-bold opacity-40 uppercase tracking-[0.2em] mb-8"
-          editable={!!onUpdate}
-          onUpdate={(text) => handleTextUpdate('title', text)}
-        >
-          {data?.title || 'Empresas que confían en nosotros'}
-        </Typography>
-        <div className={`flex flex-wrap items-center justify-center ${is_mobile_simulated ? 'gap-6' : 'gap-8 md:gap-16'}`}>
-          {logos.map((logo: any, i: number) => (
-            <div 
-              key={i} 
-              className={`flex items-center gap-2 transition-all duration-500 hover:grayscale-0 hover:opacity-100`}
-              style={{ 
-                filter: is_grayscale ? 'grayscale(100%)' : 'none',
-                opacity: opacity / 100
-              }}
-            >
-              {logo.url ? (
-                <img 
-                  src={logo.url} 
-                  alt={logo.name || `Partner ${i}`} 
-                  className={`${is_mobile_simulated ? 'h-6' : 'h-8 md:h-10'} w-auto object-contain invert-0 dark:invert`}
-                  referrerPolicy="no-referrer"
-                />
-              ) : (
-                <div className="flex items-center gap-2">
-                  <ShieldCheck className={`${is_mobile_simulated ? 'w-5 h-5' : 'w-6 h-6'}`} />
-                  <Typography
-                    variant="span"
-                    className={`font-black ${is_mobile_simulated ? 'text-lg' : 'text-xl'} tracking-tighter italic`}
-                    editable={!!onUpdate}
-                    onUpdate={(text) => handleTextUpdate(`logos.${i}.name`, text)}
-                  >
-                    {logo.name || `BRAND ${i + 1}`}
-                  </Typography>
-                </div>
-              )}
+      <div className={`py-16 overflow-hidden`}>
+        <div className="max-w-7xl mx-auto px-6 mb-12">
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="flex flex-col md:flex-row items-center justify-center gap-4 text-center"
+          >
+            <div className="flex items-center gap-2 px-4 py-2 bg-primary/5 rounded-full border border-primary/10">
+              <Sparkles className="w-4 h-4 text-primary" />
+              <Typography
+                variant="span"
+                className="text-[10px] font-black uppercase tracking-[0.2em] text-primary"
+                editable={!!onUpdate}
+                onUpdate={(text) => handleTextUpdate('title', text)}
+              >
+                {data?.title || 'Empresas que confían en nosotros'}
+              </Typography>
             </div>
-          ))}
+            {showBadges && (
+              <div className="flex items-center gap-6 opacity-40">
+                <div className="flex items-center gap-2">
+                  <Star className="w-4 h-4 fill-current" />
+                  <span className="text-[10px] font-black uppercase tracking-widest">4.9/5 Rating</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Award className="w-4 h-4" />
+                  <span className="text-[10px] font-black uppercase tracking-widest">Top Rated 2024</span>
+                </div>
+              </div>
+            )}
+          </motion.div>
         </div>
+
+        {layoutType === 'marquee' ? (
+          <div className="relative">
+            {/* Gradient Fades */}
+            <div className="absolute inset-y-0 left-0 w-32 bg-gradient-to-r from-background to-transparent z-10" />
+            <div className="absolute inset-y-0 right-0 w-32 bg-gradient-to-l from-background to-transparent z-10" />
+            
+            <motion.div 
+              variants={marqueeVariants}
+              animate="animate"
+              className="flex gap-8 whitespace-nowrap"
+            >
+              {[...logos, ...logos, ...logos].map((logo, i) => renderLogo(logo, i))}
+            </motion.div>
+          </div>
+        ) : (
+          <div className={`max-w-7xl mx-auto px-6 grid ${isMobileSimulated ? 'grid-cols-2 gap-4' : 'grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6'}`}>
+            {logos.map((logo, i) => renderLogo(logo, i))}
+          </div>
+        )}
       </div>
     </ModuleWrapper>
   );

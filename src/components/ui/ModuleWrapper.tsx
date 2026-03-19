@@ -19,6 +19,7 @@ interface ModuleWrapperProps {
   style?: React.CSSProperties;
   noPadding?: boolean;
   index?: number;
+  id?: string;
 }
 
 export const ModuleWrapper = ({
@@ -31,7 +32,8 @@ export const ModuleWrapper = ({
   className = '',
   style = {},
   noPadding = false,
-  index: manualIndex
+  index: manualIndex,
+  id
 }: ModuleWrapperProps) => {
   const { pageLayout: contextPageLayout } = usePageLayout();
   const { index: contextIndex } = useModuleContext();
@@ -83,6 +85,7 @@ export const ModuleWrapper = ({
     <ScrollAnimation 
       animation={animation} 
       tag="section"
+      id={id}
       className={`relative ${paddingClass} overflow-hidden transition-all duration-500 ${themeClasses} ${layoutClasses} ${className}`}
       style={{ ...backgroundStyles, ...style }}
     >

@@ -29,35 +29,35 @@ interface DataAuditViewProps {
 
 export const DataAuditView: React.FC<DataAuditViewProps> = ({ config }) => {
   const [activeTab, setActiveTab] = useState('profile');
-  const [customers_data_state, setCustomersDataState] = useState<any[]>(config?.customers_data || []);
-  const [products_data_state, setProductsDataState] = useState<any[]>(config?.products_data || []);
-  const [assets_data_state, setAssetsDataState] = useState<any[]>(config?.assets_data || []);
-  const [profiles_data_state, setProfilesDataState] = useState<any[]>(config?.profiles_data || []);
-  const [team_members_data_state, setTeamMembersDataState] = useState<any[]>(config?.team_members_data || []);
-  const [projects_data_state, setProjectsDataState] = useState<any[]>(config?.projects_data || []);
-  const [integrations_data_state, setIntegrationsDataState] = useState<any[]>(config?.integrations_data || []);
+  const [customersDataState, setCustomersDataState] = useState<any[]>(config?.customersData || []);
+  const [productsDataState, setProductsDataState] = useState<any[]>(config?.productsData || []);
+  const [assetsDataState, setAssetsDataState] = useState<any[]>(config?.assetsData || []);
+  const [profilesDataState, setProfilesDataState] = useState<any[]>(config?.profilesData || []);
+  const [teamMembersDataState, setTeamMembersDataState] = useState<any[]>(config?.teamMembersData || []);
+  const [projectsDataState, setProjectsDataState] = useState<any[]>(config?.projectsData || []);
+  const [integrationsDataState, setIntegrationsDataState] = useState<any[]>(config?.integrationsData || []);
   const [inspectedRow, setInspectedRow] = useState<any | null>(null);
 
   useEffect(() => {
-    if (config?.customers_data) setCustomersDataState(config.customers_data);
-    if (config?.products_data) setProductsDataState(config.products_data);
-    if (config?.assets_data) setAssetsDataState(config.assets_data);
-    if (config?.profiles_data) setProfilesDataState(config.profiles_data);
-    if (config?.team_members_data) setTeamMembersDataState(config.team_members_data);
-    if (config?.projects_data) setProjectsDataState(config.projects_data);
-    if (config?.integrations_data) setIntegrationsDataState(config.integrations_data);
+    if (config?.customersData) setCustomersDataState(config.customersData);
+    if (config?.productsData) setProductsDataState(config.productsData);
+    if (config?.assetsData) setAssetsDataState(config.assetsData);
+    if (config?.profilesData) setProfilesDataState(config.profilesData);
+    if (config?.teamMembersData) setTeamMembersDataState(config.teamMembersData);
+    if (config?.projectsData) setProjectsDataState(config.projectsData);
+    if (config?.integrationsData) setIntegrationsDataState(config.integrationsData);
   }, [config]);
 
   const environment = config?.environment || 'production';
 
   const tabs = useMemo(() => {
     return [
-      { id: 'profiles', label: 'Perfil', icon: User, scope: 'profile', show: !!config?.profiles_data },
-      { id: 'projects', label: 'Proyecto', icon: Briefcase, scope: 'project', show: !!config?.projects_data },
+      { id: 'profiles', label: 'Perfil', icon: User, scope: 'profile', show: !!config?.profilesData },
+      { id: 'projects', label: 'Proyecto', icon: Briefcase, scope: 'project', show: !!config?.projectsData },
       { id: 'team', label: 'Equipo', icon: Users, scope: 'team', show: true },
       { id: 'customers', label: 'Clientes', icon: Users2, scope: 'crm', show: true },
       { id: 'products', label: 'Productos', icon: Package, scope: 'products', show: true },
-      { id: 'integrations', label: 'Integraciones', icon: Link2, scope: 'integrations', show: !!config?.integrations_data },
+      { id: 'integrations', label: 'Integraciones', icon: Link2, scope: 'integrations', show: !!config?.integrationsData },
       { id: 'assets', label: 'Activos', icon: Box, scope: 'assets', show: true },
     ].filter(tab => tab.show);
   }, [config]);
@@ -146,7 +146,7 @@ export const DataAuditView: React.FC<DataAuditViewProps> = ({ config }) => {
 
     switch (activeTab) {
       case 'profile':
-        if (!config?.user_profile) return renderEmptyState('Sin datos disponibles', User);
+        if (!config?.userProfile) return renderEmptyState('Sin datos disponibles', User);
         return (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="bg-surface p-6 rounded-2xl border border-text/5 shadow-sm">
@@ -156,25 +156,25 @@ export const DataAuditView: React.FC<DataAuditViewProps> = ({ config }) => {
               <div className="space-y-4">
                 <div>
                   <label className="text-[10px] font-bold text-text/30 uppercase tracking-tighter">Nombre Completo</label>
-                  <p className="text-lg font-bold text-text">{config.user_profile?.full_name || 'N/A'}</p>
+                  <p className="text-lg font-bold text-text">{config.userProfile?.fullName || 'N/A'}</p>
                 </div>
                 <div>
                   <label className="text-[10px] font-bold text-text/30 uppercase tracking-tighter">Correo Electrónico</label>
-                  <p className="text-text/80">{config.user_profile?.email || 'N/A'}</p>
+                  <p className="text-text/80">{config.userProfile?.email || 'N/A'}</p>
                 </div>
-                {config.user_profile?.avatar_url && (
+                {config.userProfile?.avatarUrl && (
                   <div>
                     <label className="text-[10px] font-bold text-text/30 uppercase tracking-tighter">Avatar URL</label>
-                    <p className="text-xs text-primary truncate">{config.user_profile.avatar_url}</p>
+                    <p className="text-xs text-primary truncate">{config.userProfile.avatarUrl}</p>
                   </div>
                 )}
                 <div>
                   <label className="text-[10px] font-bold text-text/30 uppercase tracking-tighter">Rol</label>
-                  <p className="text-text/80">{config.user_profile?.role || 'N/A'}</p>
+                  <p className="text-text/80">{config.userProfile?.role || 'N/A'}</p>
                 </div>
                 <div>
                   <label className="text-[10px] font-bold text-text/30 uppercase tracking-tighter">Empresa</label>
-                  <p className="text-text/80">{config.user_profile?.business_name || 'N/A'}</p>
+                  <p className="text-text/80">{config.userProfile?.businessName || 'N/A'}</p>
                 </div>
               </div>
             </div>
@@ -182,42 +182,52 @@ export const DataAuditView: React.FC<DataAuditViewProps> = ({ config }) => {
               <h4 className="text-sm font-bold text-text/40 uppercase tracking-widest mb-4 flex items-center gap-2">
                 <FileJson className="w-4 h-4" /> Raw Payload
               </h4>
-              {renderJson(config.user_profile)}
+              {renderJson(config.userProfile)}
             </div>
           </div>
         );
 
       case 'profiles':
-        const profiles = profiles_data_state || {};
+        const profiles = profilesDataState || {};
         if (Object.keys(profiles).length === 0) return renderEmptyState('Sin perfiles sincronizados', Users2);
         return (
           <div className="space-y-6">
             <div className="bg-surface p-6 rounded-2xl border border-text/5 shadow-sm">
               <h4 className="text-sm font-bold text-text/40 uppercase tracking-widest mb-4 flex items-center gap-2">
-                <FileJson className="w-4 h-4" /> Perfil (Raw Data)
+                <User className="w-4 h-4" /> Perfil de Usuario
               </h4>
-              {renderJson(profiles)}
+              <div className="space-y-4">
+                {Object.entries(profiles).map(([key, value]) => (
+                  <div key={key}>
+                    <label className="text-[10px] font-bold text-text/30 uppercase tracking-tighter">{key.replace('_', ' ')}</label>
+                    <p className="text-text/80">{String(value)}</p>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         );
 
       case 'projects':
-        const projects = projects_data_state || {};
-        if (Object.keys(projects).length === 0) return renderEmptyState('Sin datos disponibles', Briefcase);
+        const projects = Array.isArray(projectsDataState) ? projectsDataState : [];
+        if (projects.length === 0) return renderEmptyState('Sin datos disponibles', Briefcase);
         return (
           <div className="space-y-6">
-            <div className="bg-surface p-6 rounded-2xl border border-text/5 shadow-sm">
-              <h4 className="text-sm font-bold text-text/40 uppercase tracking-widest mb-4 flex items-center gap-2">
-                <Briefcase className="w-4 h-4" /> Proyecto (Raw Data)
-              </h4>
-              {renderJson(projects)}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {projects.map((proj: any, idx: number) => (
+                <div key={idx} className="bg-surface p-5 rounded-2xl border border-text/5 shadow-sm">
+                  <h5 className="font-bold text-text mb-1">{proj.name || 'Proyecto'}</h5>
+                  <p className="text-[10px] text-text/60 mb-1">{proj.industry || 'Industria no especificada'}</p>
+                  <p className="text-xs text-text/40 truncate">{proj.website || proj.email || 'Sin contacto'}</p>
+                </div>
+              ))}
             </div>
           </div>
         );
 
       case 'team':
-        const team_members = config?.team_members;
-        if (!team_members || team_members.length === 0) {
+        const teamMembers = config?.teamMembers;
+        if (!teamMembers || teamMembers.length === 0) {
           return renderEmptyState('Sin datos disponibles', Users);
         }
         return (
@@ -226,7 +236,7 @@ export const DataAuditView: React.FC<DataAuditViewProps> = ({ config }) => {
               <Users className="w-4 h-4" /> Equipo de Trabajo
             </h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {team_members.map((member: any, idx: number) => (
+              {teamMembers.map((member: any, idx: number) => (
                 <div key={idx} className="bg-surface p-4 rounded-2xl border border-text/5 shadow-sm flex items-center gap-4 relative overflow-hidden">
                   {member.status && (
                     <div className={`absolute top-0 right-0 px-2 py-0.5 text-[8px] font-black uppercase ${member.status === 'active' ? 'bg-emerald-500 text-white' : 'bg-text/10 text-text/40'}`}>
@@ -234,8 +244,8 @@ export const DataAuditView: React.FC<DataAuditViewProps> = ({ config }) => {
                     </div>
                   )}
                   <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center text-primary font-bold overflow-hidden border border-text/5">
-                    {member.avatar_url ? (
-                      <img src={member.avatar_url} alt={member.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                    {member.avatarUrl ? (
+                      <img src={member.avatarUrl} alt={member.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                     ) : (
                       member.name?.charAt(0) || '?'
                     )}
@@ -245,8 +255,8 @@ export const DataAuditView: React.FC<DataAuditViewProps> = ({ config }) => {
                     <p className="text-xs text-text/40">{member.role || 'Sin rol'}</p>
                     <p className="text-[10px] text-text/60 mt-1">{member.email || 'Sin email'}</p>
                     <div className="flex items-center justify-between mt-2">
-                      {member.assigned_at && (
-                        <p className="text-[8px] text-text/30 uppercase tracking-tighter">Asignado: {new Date(member.assigned_at).toLocaleDateString()}</p>
+                      {member.assignedAt && (
+                        <p className="text-[8px] text-text/30 uppercase tracking-tighter">Asignado: {new Date(member.assignedAt).toLocaleDateString()}</p>
                       )}
                       <button 
                         onClick={() => setInspectedRow(member)}
@@ -263,14 +273,14 @@ export const DataAuditView: React.FC<DataAuditViewProps> = ({ config }) => {
         );
 
       case 'customers':
-        console.log('DEBUG Customers Data:', customers_data_state);
-        const customers_data = Array.isArray(customers_data_state) ? customers_data_state : [];
+        console.log('DEBUG Customers Data:', customersDataState);
+        const customersData = Array.isArray(customersDataState) ? customersDataState : [];
         
         // --- HERRAMIENTA DE DIAGNÓSTICO ---
-        console.log('DIAGNÓSTICO UI: ¿Qué recibe el componente de clientes?', { customers_data });
+        console.log('DIAGNÓSTICO UI: ¿Qué recibe el componente de clientes?', { customersData });
         // -----------------------------------
         
-        if (customers_data.length === 0) {
+        if (customersData.length === 0) {
           return renderEmptyState('Sin datos disponibles', Users2);
         }
 
@@ -283,7 +293,7 @@ export const DataAuditView: React.FC<DataAuditViewProps> = ({ config }) => {
                   <Users2 className="w-4 h-4" /> Clientes Sincronizados
                 </h4>
                 <span className="text-[10px] font-mono bg-text/5 px-2 py-1 rounded text-text/40">
-                  {customers_data.length} Registros
+                  {customersData.length} Registros
                 </span>
               </div>
               
@@ -300,22 +310,12 @@ export const DataAuditView: React.FC<DataAuditViewProps> = ({ config }) => {
                     </tr>
                   </thead>
                   <tbody>
-                    {customers_data.map((customer: any, idx: number) => (
+                    {customersData.map((customer: any, idx: number) => (
                       <tr key={idx} className="border-b border-text/5 hover:bg-text/5 transition-colors group">
                         <td className="py-4 px-4">
-                          <div className="flex items-center gap-3">
-                            {(customer.profile_photo_url || customer.company_logo_url) && (
-                              <img 
-                                src={customer.profile_photo_url || customer.company_logo_url} 
-                                alt={customer.name} 
-                                className="w-8 h-8 rounded-full object-cover" 
-                                referrerPolicy="no-referrer"
-                              />
-                            )}
-                            <div className="flex flex-col">
-                              <span className="text-sm font-bold text-text group-hover:text-primary transition-colors">{customer?.name}</span>
-                              <span className="text-[10px] text-text/30 font-mono">{customer?.id}</span>
-                            </div>
+                          <div className="flex flex-col">
+                            <span className="text-sm font-bold text-text group-hover:text-primary transition-colors">{customer?.name}</span>
+                            <span className="text-[10px] text-text/30 font-mono">{customer?.id}</span>
                           </div>
                         </td>
                         <td className="py-4 px-4">
@@ -353,7 +353,7 @@ export const DataAuditView: React.FC<DataAuditViewProps> = ({ config }) => {
                           </div>
                         </td>
                         <td className="py-4 px-4">
-                          <span className="text-[10px] font-mono text-text/20">{customer?.schema_version || '1.0'}</span>
+                          <span className="text-[10px] font-mono text-text/20">{customer?.schemaVersion || '1.0'}</span>
                         </td>
                         <td className="py-4 px-4 text-right">
                           <button 
@@ -375,14 +375,14 @@ export const DataAuditView: React.FC<DataAuditViewProps> = ({ config }) => {
               <h4 className="text-sm font-bold text-text/40 uppercase tracking-widest mb-4 flex items-center gap-2">
                 <FileJson className="w-4 h-4" /> Customers Raw Data
               </h4>
-              {renderJson(customers_data)}
+              {renderJson(customersData)}
             </div>
           </div>
         );
 
       case 'products':
-        console.log('DEBUG Products Data:', products_data_state);
-        const products = products_data_state || [];
+        console.log('DEBUG Products Data:', productsDataState);
+        const products = productsDataState || [];
         if (products.length > 0) {
             console.log('DEBUG First Product Structure:', products[0]);
         }
@@ -401,20 +401,15 @@ export const DataAuditView: React.FC<DataAuditViewProps> = ({ config }) => {
                     </div>
                   )}
                   <div className="aspect-square bg-background rounded-xl mb-3 overflow-hidden border border-text/5 flex items-center justify-center">
-                    {(product.photo_url || product.app_data?.imageUrl) ? (
-                      <img 
-                        src={product.photo_url || product.app_data.imageUrl} 
-                        alt={product.name} 
-                        className="w-full h-full object-cover" 
-                        referrerPolicy="no-referrer" 
-                      />
+                    {product.appData?.imageUrl ? (
+                      <img src={product.appData.imageUrl} alt={product.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                     ) : (
                       <Package className="w-8 h-8 text-text/10" />
                     )}
                   </div>
                   <h5 className="font-bold text-text text-sm truncate">{product.name || 'N/A'}</h5>
                   <div className="flex items-center justify-between mt-1">
-                    <p className="text-primary font-bold">${product.unit_cost || 0}</p>
+                    <p className="text-primary font-bold">${product.unitCost || 0}</p>
                     {product.sku && <span className="text-[8px] font-mono text-text/30">SKU: {product.sku}</span>}
                   </div>
                   <p className="text-[10px] text-text/40 mt-2 line-clamp-2">{product.description || 'Sin descripción'}</p>
@@ -442,8 +437,8 @@ export const DataAuditView: React.FC<DataAuditViewProps> = ({ config }) => {
         );
 
       case 'calendar':
-        const calendar_config = config?.calendar_config;
-        if (!calendar_config) return renderEmptyState('Sin datos disponibles', Calendar);
+        const calendarConfig = config?.calendarConfig;
+        if (!calendarConfig) return renderEmptyState('Sin datos disponibles', Calendar);
         return (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="bg-surface p-6 rounded-2xl border border-text/5 shadow-sm">
@@ -453,13 +448,13 @@ export const DataAuditView: React.FC<DataAuditViewProps> = ({ config }) => {
               <div className="space-y-4">
                 <div>
                   <label className="text-[10px] font-bold text-text/30 uppercase tracking-tighter">Zona Horaria</label>
-                  <p className="text-text/80">{calendar_config.timezone || 'UTC'}</p>
+                  <p className="text-text/80">{calendarConfig.timezone || 'UTC'}</p>
                 </div>
                 <div>
                   <label className="text-[10px] font-bold text-text/30 uppercase tracking-tighter">Días Laborales</label>
                   <div className="flex gap-1 mt-1">
                     {['L', 'M', 'X', 'J', 'V', 'S', 'D'].map((day, i) => (
-                      <div key={i} className={`w-7 h-7 rounded flex items-center justify-center text-[10px] font-bold ${calendar_config.working_days?.includes(i+1) ? 'bg-primary text-white' : 'bg-text/5 text-text/30'}`}>
+                      <div key={i} className={`w-7 h-7 rounded flex items-center justify-center text-[10px] font-bold ${calendarConfig.workingDays?.includes(i+1) ? 'bg-primary text-white' : 'bg-text/5 text-text/30'}`}>
                         {day}
                       </div>
                     ))}
@@ -473,28 +468,28 @@ export const DataAuditView: React.FC<DataAuditViewProps> = ({ config }) => {
               </h4>
               <div className="flex items-center justify-between p-3 bg-background rounded-xl border border-text/5">
                 <span className="text-xs font-bold text-text/60">Apertura</span>
-                <span className="text-sm font-mono font-bold text-primary">{calendar_config.opening_time || '09:00'}</span>
+                <span className="text-sm font-mono font-bold text-primary">{calendarConfig.openingTime || '09:00'}</span>
               </div>
               <div className="flex items-center justify-between p-3 bg-background rounded-xl border border-text/5 mt-2">
                 <span className="text-xs font-bold text-text/60">Cierre</span>
-                <span className="text-sm font-mono font-bold text-primary">{calendar_config.closing_time || '18:00'}</span>
+                <span className="text-sm font-mono font-bold text-primary">{calendarConfig.closingTime || '18:00'}</span>
               </div>
             </div>
           </div>
         );
 
       case 'assets':
-        const assets = assets_data_state || [];
-        const current_asset = config?.current_asset;
+        const assets = assetsDataState || [];
+        const currentAsset = config?.currentAsset;
         
-        if (assets.length === 0 && !current_asset) {
+        if (assets.length === 0 && !currentAsset) {
           return renderEmptyState('Sin datos disponibles', Box);
         }
 
         return (
           <div className="space-y-8">
             {/* Activo Actual (Contexto de edición) */}
-            {current_asset && (
+            {currentAsset && (
               <div className="bg-primary/5 p-6 rounded-3xl border border-primary/20 shadow-sm">
                 <div className="flex items-center justify-between mb-6">
                   <h4 className="text-sm font-bold text-primary uppercase tracking-widest flex items-center gap-2">
@@ -506,20 +501,20 @@ export const DataAuditView: React.FC<DataAuditViewProps> = ({ config }) => {
                   <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="text-[10px] font-bold text-primary/40 uppercase tracking-tighter">Nombre</label>
-                      <p className="text-lg font-bold text-text">{current_asset.name}</p>
+                      <p className="text-lg font-bold text-text">{currentAsset.name}</p>
                     </div>
                     <div>
                       <label className="text-[10px] font-bold text-primary/40 uppercase tracking-tighter">Tipo</label>
-                      <p className="text-sm font-bold text-text">{current_asset.type}</p>
+                      <p className="text-sm font-bold text-text">{currentAsset.type}</p>
                     </div>
                     <div className="sm:col-span-2">
                       <label className="text-[10px] font-bold text-primary/40 uppercase tracking-tighter">UUID</label>
-                      <p className="text-xs font-mono text-text/60 break-all">{current_asset.id}</p>
+                      <p className="text-xs font-mono text-text/60 break-all">{currentAsset.id}</p>
                     </div>
                   </div>
                   <div className="bg-surface/50 p-4 rounded-2xl border border-primary/10">
                     <label className="text-[10px] font-bold text-primary/40 uppercase tracking-tighter mb-2 block">Metadata Contextual</label>
-                    {renderJson(current_asset.data || {})}
+                    {renderJson(currentAsset.data || {})}
                   </div>
                 </div>
               </div>
@@ -552,7 +547,7 @@ export const DataAuditView: React.FC<DataAuditViewProps> = ({ config }) => {
                           }`}>
                             {asset.status || 'N/A'}
                           </span>
-                          {asset.schema_version && <span className="text-[8px] font-mono text-text/20">v{asset.schema_version}</span>}
+                          {asset.schemaVersion && <span className="text-[8px] font-mono text-text/20">v{asset.schemaVersion}</span>}
                         </div>
                       </div>
 
@@ -580,7 +575,7 @@ export const DataAuditView: React.FC<DataAuditViewProps> = ({ config }) => {
 
                       <div className="pt-4 border-t border-text/5 flex items-center justify-between">
                         <span className="text-[9px] text-text/30 flex items-center gap-1">
-                          <Clock className="w-3 h-3" /> {asset.created_at ? new Date(asset.created_at).toLocaleDateString() : 'N/A'}
+                          <Clock className="w-3 h-3" /> {asset.createdAt ? new Date(asset.createdAt).toLocaleDateString() : 'N/A'}
                         </span>
                         <button 
                           onClick={() => setInspectedRow(asset)}
@@ -609,10 +604,10 @@ export const DataAuditView: React.FC<DataAuditViewProps> = ({ config }) => {
         );
 
       case 'apps':
-        const apps_data = config?.apps_data;
-        const project_apps_data = config?.project_apps_data || [];
+        const appsData = config?.appsData;
+        const projectAppsData = config?.projectAppsData || [];
         
-        if (!apps_data || apps_data.length === 0) {
+        if (!appsData || appsData.length === 0) {
           return renderEmptyState('Sin datos de aplicaciones disponibles', LayoutGrid);
         }
         return (
@@ -622,34 +617,34 @@ export const DataAuditView: React.FC<DataAuditViewProps> = ({ config }) => {
                 <LayoutGrid className="w-4 h-4" /> Ecosistema de Aplicaciones
               </h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {apps_data.map((app, idx) => {
-                  const installation = project_apps_data.find(pa => pa.app_id === app.id);
+                {appsData.map((app, idx) => {
+                  const installation = projectAppsData.find(pa => pa.appId === app.id);
                   const isInstalled = !!installation;
 
                   return (
                     <div key={idx} className={`bg-surface p-6 rounded-2xl border transition-all group ${isInstalled ? 'border-primary/20 shadow-md shadow-primary/5' : 'border-text/5 shadow-sm hover:border-primary/30'}`}>
                       <div className="flex items-center justify-between mb-4">
                         <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
-                          {app.logo_url ? (
-                            <img src={app.logo_url} alt={app.name} className="w-8 h-8 object-contain" referrerPolicy="no-referrer" />
+                          {app.logoUrl ? (
+                            <img src={app.logoUrl} alt={app.name} className="w-8 h-8 object-contain" referrerPolicy="no-referrer" />
                           ) : (
                             <LayoutGrid className="w-6 h-6 text-primary" />
                           )}
                         </div>
                         <div className="flex flex-col items-end gap-1">
                           {isInstalled && <span className="text-[8px] font-black bg-primary text-white px-1.5 py-0.5 rounded-full uppercase">Instalada</span>}
-                          {app.is_new && <span className="text-[8px] font-black bg-emerald-500 text-white px-1.5 py-0.5 rounded-full uppercase">Nuevo</span>}
-                          {app.requires_pro && <span className="text-[8px] font-black bg-amber-500 text-white px-1.5 py-0.5 rounded-full uppercase">Pro</span>}
+                          {app.isNew && <span className="text-[8px] font-black bg-emerald-500 text-white px-1.5 py-0.5 rounded-full uppercase">Nuevo</span>}
+                          {app.requiresPro && <span className="text-[8px] font-black bg-amber-500 text-white px-1.5 py-0.5 rounded-full uppercase">Pro</span>}
                         </div>
                       </div>
                       <h5 className="font-bold text-text mb-1 flex items-center gap-2">
                         {app.name}
-                        {app.is_featured && <CheckCircle2 className="w-3 h-3 text-primary" />}
+                        {app.isFeatured && <CheckCircle2 className="w-3 h-3 text-primary" />}
                       </h5>
                       <p className="text-[10px] text-text/40 mb-3 line-clamp-2">{app.description || 'Sin descripción disponible'}</p>
                       
-                      {isInstalled && installation.installed_at && (
-                        <p className="text-[9px] text-text/30 mb-3 italic">Instalada el {new Date(installation.installed_at).toLocaleDateString()}</p>
+                      {isInstalled && installation.installedAt && (
+                        <p className="text-[9px] text-text/30 mb-3 italic">Instalada el {new Date(installation.installedAt).toLocaleDateString()}</p>
                       )}
 
                       <div className="flex items-center justify-between pt-4 border-t border-text/5">
@@ -677,20 +672,20 @@ export const DataAuditView: React.FC<DataAuditViewProps> = ({ config }) => {
               </div>
             </div>
 
-            {project_apps_data.length > 0 && (
+            {projectAppsData.length > 0 && (
               <div className="bg-surface p-6 rounded-2xl border border-text/5 shadow-sm">
                 <h4 className="text-sm font-bold text-text/40 uppercase tracking-widest mb-4 flex items-center gap-2">
-                  <FileJson className="w-4 h-4" /> Relaciones de Instalación (project_apps)
+                  <FileJson className="w-4 h-4" /> Relaciones de Instalación (projectApps)
                 </h4>
-                {renderJson(project_apps_data)}
+                {renderJson(projectAppsData)}
               </div>
             )}
           </div>
         );
       
       case 'integrations':
-        const integrations_data = config?.integrations_data;
-        if (!integrations_data || integrations_data.length === 0) {
+        const integrationsData = config?.integrationsData;
+        if (!integrationsData || integrationsData.length === 0) {
           return renderEmptyState('Sin integraciones configuradas', Link2);
         }
         return (
@@ -700,7 +695,7 @@ export const DataAuditView: React.FC<DataAuditViewProps> = ({ config }) => {
                 <Link2 className="w-4 h-4" /> Integraciones de Usuario
               </h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {integrations_data.map((integration, idx) => (
+                {integrationsData.map((integration, idx) => (
                   <div key={idx} className="bg-surface p-6 rounded-2xl border border-text/5 shadow-sm hover:border-primary/30 transition-all">
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-3">
@@ -728,16 +723,16 @@ export const DataAuditView: React.FC<DataAuditViewProps> = ({ config }) => {
                         <label className="text-[8px] font-bold text-text/30 uppercase">Access Token</label>
                         <div className="flex items-center gap-2 mt-0.5">
                           <code className="text-[10px] bg-text/5 px-2 py-1 rounded text-text/60 truncate flex-1">
-                            {integration.access_token?.slice(0, 20)}...
+                            {integration.accessToken?.slice(0, 20)}...
                           </code>
                           <Lock className="w-3 h-3 text-text/20" />
                         </div>
                       </div>
                       
-                      {integration.expires_at && (
+                      {integration.expiresAt && (
                         <div>
                           <label className="text-[8px] font-bold text-text/30 uppercase">Expira el</label>
-                          <p className="text-[10px] text-text/60">{new Date(integration.expires_at).toLocaleString()}</p>
+                          <p className="text-[10px] text-text/60">{new Date(integration.expiresAt).toLocaleString()}</p>
                         </div>
                       )}
 
@@ -752,7 +747,7 @@ export const DataAuditView: React.FC<DataAuditViewProps> = ({ config }) => {
                     </div>
 
                     <div className="mt-4 pt-4 border-t border-text/5 flex items-center justify-between">
-                      <span className="text-[9px] text-text/30">Sincronizado: {integration.updated_at ? new Date(integration.updated_at).toLocaleDateString() : 'N/A'}</span>
+                      <span className="text-[9px] text-text/30">Sincronizado: {integration.updatedAt ? new Date(integration.updatedAt).toLocaleDateString() : 'N/A'}</span>
                       <button className="text-[10px] font-bold text-primary hover:underline">Gestionar</button>
                     </div>
                   </div>
@@ -764,7 +759,7 @@ export const DataAuditView: React.FC<DataAuditViewProps> = ({ config }) => {
               <h4 className="text-sm font-bold text-text/40 uppercase tracking-widest mb-4 flex items-center gap-2">
                 <FileJson className="w-4 h-4" /> Raw Integrations Data
               </h4>
-              {renderJson(integrations_data)}
+              {renderJson(integrationsData)}
             </div>
           </div>
         );

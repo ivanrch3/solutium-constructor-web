@@ -1,23 +1,53 @@
 import React, { useState, useEffect } from 'react';
-import { Menu, Search, Globe, Share2, X, ChevronDown } from 'lucide-react';
+import { Menu, Search, Globe, Share2, X, ChevronDown, ArrowRight, Sparkles } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Typography } from '../ui/Typography';
 import { getModuleDefinition } from '../../modules/registry';
 import { usePageLayout } from '../../context/PageLayoutContext';
+import { useSolutiumContext } from '../../context/SatelliteContext';
 
-export const HeaderModule = ({ data, modules = [], isPreview, onCTA, onUpdate }: { data: any, modules?: any[], isPreview?: boolean, onCTA: (e: React.MouseEvent) => void, onUpdate?: (data: any) => void }) => {
+interface HeaderModuleProps {
+  data: any;
+  modules?: any[];
+  isPreview?: boolean;
+  onCTA: (e: React.MouseEvent) => void;
+  onUpdate?: (data: any) => void;
+}
+
+const navVariants = {
+  hidden: { opacity: 0, y: -10 },
+  visible: (i: number) => ({
+    opacity: 1,
+    y: 0,
+    transition: {
+      delay: 0.1 + i * 0.05,
+      duration: 0.5,
+      ease: [0.215, 0.61, 0.355, 1]
+    }
+  })
+};
+
+export const HeaderModule = ({ data, modules = [], isPreview, onCTA, onUpdate }: HeaderModuleProps) => {
+  const { payload } = useSolutiumContext();
   const { previewDevice } = usePageLayout();
-  const is_mobile_simulated = previewDevice === 'mobile';
+  const isMobileSimulated = previewDevice === 'mobile';
   const [isScrolled, setIsScrolled] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
   const [scrollProgress, setScrollProgress] = useState(0);
-  const [is_mobile_menu_open, set_is_mobile_menu_open] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isLanguageOpen, setIsLanguageOpen] = useState(false);
   const [activeSection, setActiveSection] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
-  const layout_type = data?.layout_type || 'logo-left';
-  const scroll_mode = data?.scroll_mode || (data?.is_sticky ? 'sticky' : 'static');
-  const bg_type = data?.bg_type || 'glass';
-  const hover_effect = data?.hover_effect || 'underline';
+  const projectLogo = payload?.projectData?.logoUrl;
+  const projectBusinessName = payload?.projectData?.name || payload?.userProfile?.businessName;
+
+  const layoutType = data?.layoutType || 'logo-left';
+  const scrollMode = data?.scrollMode || (data?.isSticky ? 'sticky' : 'static');
+  const bgType = data?.bgType || 'glass';
+  const hoverEffect = data?.hoverEffect || 'underline';
   const height = data?.height || 80;
   const theme = data?.theme || 'light';
 
@@ -35,7 +65,7 @@ export const HeaderModule = ({ data, modules = [], isPreview, onCTA, onUpdate }:
       setIsScrolled(currentScrollY > 20);
 
       // Smart hide logic
-      if (scroll_mode === 'smart-hide') {
+      if (scrollMode === 'smart-hide') {
         if (currentScrollY > lastScrollY && currentScrollY > height) {
           setIsVisible(false);
         } else {
@@ -47,29 +77,32 @@ export const HeaderModule = ({ data, modules = [], isPreview, onCTA, onUpdate }:
 
       // Reading progress
       const winScroll = document.body.scrollTop || document.documentElement.scrollTop;
-      const height_doc = document.documentElement.scrollHeight - document.documentElement.clientHeight;
-      const scrolled = (winScroll / height_doc) * 100;
+      const heightDoc = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+      const scrolled = (winScroll / heightDoc) * 100;
       setScrollProgress(scrolled);
 
       setLastScrollY(currentScrollY);
 
       // Active section detection
       const sectionIds = menuItems.map((item: any) => item.link?.startsWith('#') ? item.link.substring(1) : null).filter(Boolean);
+      let found = false;
       for (const id of sectionIds) {
         const element = document.getElementById(id) || document.getElementById(`module-${id}`);
         if (element) {
           const rect = element.getBoundingClientRect();
-          if (rect.top >= 0 && rect.top <= 300) {
+          if (rect.top <= 150 && rect.bottom >= 150) {
             setActiveSection(id);
+            found = true;
             break;
           }
         }
       }
+      if (!found && currentScrollY < 100) setActiveSection(null);
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
-  }, [lastScrollY, scroll_mode, height]);
+  }, [lastScrollY, scrollMode, height]);
 
   const handleTextUpdate = (path: string, value: string) => {
     if (onUpdate) {
@@ -87,10 +120,10 @@ export const HeaderModule = ({ data, modules = [], isPreview, onCTA, onUpdate }:
 
   // Generate menu items from modules if available
   const generatedMenuItems = modules
-    .filter(m => !['top-bar', 'header', 'footer', 'spacer'].includes(m.type) && !m.data?.hidden_in_menu)
+    .filter(m => !['top-bar', 'header', 'footer', 'spacer'].includes(m.type) && !m.data?.hiddenInMenu)
     .map(m => {
       const moduleDef = getModuleDefinition(m.type);
-      let label = m.data?.nav_label || moduleDef?.label || m.data?.title || m.data?.heading || m.type;
+      let label = m.data?.navLabel || moduleDef?.label || m.data?.title || m.data?.heading || m.type;
       
       if ((label === m.data?.title || label === m.data?.heading) && label.length > 20) {
         label = moduleDef?.label || m.type;
@@ -103,67 +136,96 @@ export const HeaderModule = ({ data, modules = [], isPreview, onCTA, onUpdate }:
       };
     });
 
-  const menuItems = generatedMenuItems.length > 0 ? generatedMenuItems : (data?.menu_items || [
+  const menuItems = generatedMenuItems.length > 0 ? generatedMenuItems : (data?.menuItems || [
     { label: 'Inicio', link: '#' },
     { label: 'Características', link: '#' },
     { label: 'Precios', link: '#' }
   ]);
 
   const getBgClass = () => {
-    if (bg_type === 'transparent') {
-      return isScrolled ? `${themeBgClass} border-b ${themeBorderClass} shadow-sm` : 'bg-transparent border-transparent';
+    if (bgType === 'transparent') {
+      return isScrolled ? `${themeBgClass} border-b ${themeBorderClass} shadow-xl shadow-black/5` : 'bg-transparent border-transparent';
     }
-    if (bg_type === 'glass') {
+    if (bgType === 'glass') {
       return isDark 
-        ? 'bg-[#0f172a]/80 backdrop-blur-md border-b border-white/10'
-        : 'bg-surface/80 backdrop-blur-md border-b border-text/10';
+        ? 'bg-[#0f172a]/80 backdrop-blur-xl border-b border-white/10'
+        : 'bg-surface/80 backdrop-blur-xl border-b border-text/10';
     }
     return `${themeBgClass} border-b ${themeBorderClass}`;
   };
 
-  const getHoverClass = (is_active: boolean) => {
-    const base = "relative text-sm font-medium transition-all duration-300 ";
-    const activeColor = is_active ? "text-primary" : `${themeTextMutedClass} hover:text-primary`;
+  const getHoverClass = (isActive: boolean) => {
+    const base = "relative text-[11px] font-black uppercase tracking-[0.2em] transition-all duration-300 ";
+    const activeColor = isActive ? "text-primary" : `${themeTextMutedClass} hover:text-primary`;
     
-    if (hover_effect === 'underline') {
-      return base + activeColor + " after:content-[''] after:absolute after:bottom-[-4px] after:left-0 after:w-full after:h-[2px] after:bg-primary after:transition-transform after:duration-300 " + (is_active ? "after:scale-x-100" : "after:scale-x-0 hover:after:scale-x-100");
+    if (hoverEffect === 'underline') {
+      return base + activeColor + " after:content-[''] after:absolute after:bottom-[-4px] after:left-0 after:w-full after:h-[2px] after:bg-primary after:transition-transform after:duration-500 after:ease-out " + (isActive ? "after:scale-x-100" : "after:scale-x-0 hover:after:scale-x-100");
     }
-    if (hover_effect === 'capsule') {
-      return base + (is_active ? "bg-primary/10 text-primary px-4 py-2 rounded-full" : `${themeTextMutedClass} hover:bg-text/5 px-4 py-2 rounded-full`);
+    if (hoverEffect === 'capsule') {
+      return base + (isActive ? "bg-primary/10 text-primary px-5 py-2.5 rounded-full" : `${themeTextMutedClass} hover:bg-text/5 px-5 py-2.5 rounded-full`);
     }
     return base + activeColor;
   };
 
-  const renderLogo = () => (
-    <div className="flex items-center gap-2 flex-shrink-0">
-      {data?.logo_image ? (
-        <img 
-          src={data.logo_image} 
-          alt="Logo" 
-          className="h-8 w-auto object-contain"
-          referrerPolicy="no-referrer"
-        />
-      ) : (
-        <Typography
-          variant={data?.logo_text_style?.size || "span"}
-          weight={data?.logo_text_style?.weight || "900"}
-          className={`text-xl font-black ${themeTextClass} tracking-tighter ${data?.logo_text_style?.align === 'center' ? 'text-center' : ''}`}
-          editable={!!onUpdate}
-          onUpdate={(text) => handleTextUpdate('logo_text', text)}
-        >
-          {data?.logo_text || 'SOLUTIUM'}
-        </Typography>
-      )}
-    </div>
-  );
+  const renderLogo = () => {
+    const logoType = data?.logoType || 'inherited';
+    let logoSrc = '';
+    
+    if (logoType === 'inherited') {
+      logoSrc = projectLogo;
+    } else if (logoType === 'custom') {
+      logoSrc = data?.logoImage;
+    }
+
+    const logoText = data?.logoText || projectBusinessName || 'Constructor Web';
+
+    return (
+      <a 
+        href="#top" 
+        onClick={(e) => {
+          e.preventDefault();
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
+        className="flex items-center gap-3 flex-shrink-0 hover:opacity-80 transition-all duration-300 group"
+      >
+        {logoType !== 'none' && logoSrc ? (
+          <motion.img 
+            src={logoSrc} 
+            alt="Logo" 
+            className="h-10 w-auto object-contain"
+            referrerPolicy="no-referrer"
+            whileHover={{ scale: 1.05 }}
+          />
+        ) : (
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white font-black text-xl shadow-lg shadow-primary/20 group-hover:rotate-12 transition-transform">
+              {logoText.charAt(0)}
+            </div>
+            <Typography
+              variant="span"
+              className={`text-xl font-black ${themeTextClass} tracking-tighter`}
+              editable={!!onUpdate && logoType === 'none'}
+              onUpdate={(text) => handleTextUpdate('logoText', text)}
+            >
+              {logoText}
+            </Typography>
+          </div>
+        )}
+      </a>
+    );
+  };
 
   const renderNav = () => (
-    <nav className={`${is_mobile_simulated ? 'hidden' : 'hidden md:flex'} items-center gap-8 ${layout_type === 'logo-center' ? 'flex-1 justify-center' : ''}`}>
+    <nav className={`${isMobileSimulated ? 'hidden' : 'hidden md:flex'} items-center gap-10 ${layoutType === 'logo-center' ? 'flex-1 justify-center' : ''}`}>
       {menuItems.map((link: any, idx: number) => {
-        const is_active = activeSection === link.id || activeSection === link.link?.substring(1);
+        const isActive = activeSection === link.id || activeSection === link.link?.substring(1);
         return (
-          <button 
+          <motion.button 
             key={idx}
+            custom={idx}
+            variants={navVariants}
+            initial="hidden"
+            animate="visible"
             onClick={(e) => {
               if (!isPreview) return;
               e.preventDefault();
@@ -173,88 +235,127 @@ export const HeaderModule = ({ data, modules = [], isPreview, onCTA, onUpdate }:
                 element.scrollIntoView({ behavior: 'smooth' });
               }
             }}
-            className={getHoverClass(is_active)}
+            className={getHoverClass(isActive)}
           >
             {link.label}
-          </button>
+          </motion.button>
         );
       })}
     </nav>
   );
 
   const renderActions = () => (
-    <div className="flex items-center gap-4 flex-shrink-0">
-      {data?.show_search && (
-        <button className={`p-2 ${themeTextMutedClass} hover:text-primary transition-colors hidden lg:block`}>
+    <div className="flex items-center gap-6 flex-shrink-0">
+      {data?.showSearch && (
+        <motion.button 
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={() => setIsSearchOpen(true)}
+          className={`p-2 ${themeTextMutedClass} hover:text-primary transition-colors hidden lg:block`}
+        >
           <Search className="w-5 h-5" />
-        </button>
-      )}
-      {data?.show_language && (
-        <button className={`flex items-center gap-1 p-2 ${themeTextMutedClass} hover:text-primary transition-colors hidden lg:block`}>
-          <Globe className="w-4 h-4" />
-          <span className="text-xs font-bold uppercase">ES</span>
-          <ChevronDown className="w-3 h-3" />
-        </button>
+        </motion.button>
       )}
       
-      <div className="hidden sm:flex items-center gap-3">
+      <div className="hidden sm:flex items-center gap-4">
         {/* Primary CTA */}
-        {data?.show_cta !== false && (
-          <button 
+        {data?.showCta !== false && (
+          <motion.button 
+            whileHover={{ scale: 1.05, y: -2 }}
+            whileTap={{ scale: 0.95 }}
             onClick={onCTA}
-            className="px-6 py-2.5 bg-primary text-white text-sm font-bold rounded-xl hover:bg-primary/90 transition-all shadow-lg shadow-primary/20"
+            className="px-8 py-3 bg-primary text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-full hover:bg-primary/90 transition-all shadow-xl shadow-primary/20 flex items-center gap-2"
           >
             <Typography
               variant="span"
               editable={!!onUpdate}
-              onUpdate={(text) => handleTextUpdate('cta_text', text)}
+              onUpdate={(text) => handleTextUpdate('ctaText', text)}
             >
-              {data?.cta_text || 'Empezar'}
+              {data?.ctaText || 'Empezar'}
             </Typography>
-          </button>
+            <ArrowRight className="w-3 h-3" />
+          </motion.button>
         )}
         {/* Secondary CTA */}
-        {data?.show_secondary_cta && (
-          <button 
-            className={`px-6 py-2.5 ${isDark ? 'bg-white/10 border-white/20 text-white' : 'bg-surface border border-text/10 text-text/80'} text-sm font-bold rounded-xl hover:opacity-80 transition-all`}
+        {data?.showSecondaryCta && (
+          <motion.button 
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className={`px-8 py-3 ${isDark ? 'bg-white/10 border-white/20 text-white' : 'bg-surface border border-text/10 text-text/80'} text-[10px] font-black uppercase tracking-[0.2em] rounded-full hover:opacity-80 transition-all backdrop-blur-md`}
           >
             <Typography
               variant="span"
               editable={!!onUpdate}
-              onUpdate={(text) => handleTextUpdate('secondary_cta_text', text)}
+              onUpdate={(text) => handleTextUpdate('secondaryCtaText', text)}
             >
-              {data?.secondary_cta_text || 'Saber más'}
+              {data?.secondaryCtaText || 'Saber más'}
             </Typography>
-          </button>
+          </motion.button>
         )}
       </div>
 
-      <button 
-        onClick={() => set_is_mobile_menu_open(!is_mobile_menu_open)}
-        className={`${is_mobile_simulated ? 'block' : 'md:hidden'} p-2 ${themeTextMutedClass} hover:bg-primary/10 rounded-lg`}
+      <motion.button 
+        whileTap={{ scale: 0.9 }}
+        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+        className={`${isMobileSimulated ? 'block' : 'md:hidden'} p-2.5 ${themeTextMutedClass} hover:bg-primary/10 rounded-xl transition-colors`}
       >
-        {is_mobile_menu_open ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-      </button>
+        {isMobileMenuOpen ? <X className="w-7 h-7" /> : <Menu className="w-7 h-7" />}
+      </motion.button>
+
+      {data?.showLanguage && (
+        <div className="relative">
+          <motion.button 
+            whileHover={{ scale: 1.05 }}
+            onClick={() => setIsLanguageOpen(!isLanguageOpen)}
+            className={`flex items-center gap-1.5 p-2 ${themeTextMutedClass} hover:text-primary transition-colors`}
+          >
+            <Globe className="w-4 h-4" />
+            <span className="text-[10px] font-black uppercase tracking-widest">ES</span>
+            <ChevronDown className={`w-3 h-3 transition-transform duration-500 ${isLanguageOpen ? 'rotate-180' : ''}`} />
+          </motion.button>
+          
+          <AnimatePresence>
+            {isLanguageOpen && (
+              <motion.div 
+                initial={{ opacity: 0, y: 15, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 15, scale: 0.95 }}
+                className={`absolute top-full right-0 mt-3 w-40 py-3 ${themeBgClass} border ${themeBorderClass} rounded-2xl shadow-2xl z-50 backdrop-blur-xl`}
+              >
+                {['ES', 'EN'].map((lang) => (
+                  <button 
+                    key={lang}
+                    onClick={() => setIsLanguageOpen(false)}
+                    className={`w-full text-left px-5 py-2.5 text-[10px] font-black uppercase tracking-widest ${themeTextClass} hover:bg-primary/10 hover:text-primary transition-all`}
+                  >
+                    {lang === 'ES' ? 'Español' : 'English'}
+                  </button>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      )}
     </div>
   );
 
   return (
     <header 
       className={`
-        w-full transition-all duration-500 z-[40]
-        ${scroll_mode === 'sticky' || scroll_mode === 'smart-hide' ? 'sticky top-0' : 'relative'}
+        w-full transition-all duration-700 z-[40]
+        ${scrollMode === 'sticky' || scrollMode === 'smart-hide' ? 'sticky top-0' : 'relative'}
         ${isVisible ? 'translate-y-0' : '-translate-y-full'}
         ${getBgClass()}
       `}
       style={{ height: `${height}px` }}
     >
       {/* Reading Progress Bar */}
-      {data?.show_progress_bar && (
-        <div className="absolute bottom-0 left-0 h-[2px] bg-primary transition-all duration-100" style={{ width: `${scrollProgress}%` }} />
+      {data?.showProgressBar && (
+        <div className="absolute bottom-0 left-0 h-[3px] bg-primary transition-all duration-300 ease-out z-50" style={{ width: `${scrollProgress}%` }} />
       )}
 
-      <div className="max-w-7xl mx-auto h-full px-6 flex items-center justify-between gap-8">
-        {layout_type === 'logo-left' && (
+      <div className="max-w-7xl mx-auto h-full px-6 md:px-10 flex items-center justify-between gap-10">
+        {layoutType === 'logo-left' && (
           <>
             {renderLogo()}
             {renderNav()}
@@ -262,7 +363,7 @@ export const HeaderModule = ({ data, modules = [], isPreview, onCTA, onUpdate }:
           </>
         )}
 
-        {layout_type === 'logo-center' && (
+        {layoutType === 'logo-center' && (
           <>
             <div className="flex-1 hidden md:block" />
             {renderLogo()}
@@ -271,7 +372,7 @@ export const HeaderModule = ({ data, modules = [], isPreview, onCTA, onUpdate }:
           </>
         )}
 
-        {layout_type === 'logo-right' && (
+        {layoutType === 'logo-right' && (
           <>
             {renderNav()}
             <div className="flex-1" />
@@ -282,53 +383,147 @@ export const HeaderModule = ({ data, modules = [], isPreview, onCTA, onUpdate }:
       </div>
 
       {/* Mobile Menu */}
-      {is_mobile_menu_open && (
-        <div 
-          className={`fixed inset-0 ${themeBgClass} z-40 ${is_mobile_simulated ? 'block' : 'md:hidden'} animate-in fade-in slide-in-from-top-5 duration-300`}
-          style={{ top: `${height}px` }}
-        >
-          <nav className="flex flex-col p-8 gap-6">
-            {menuItems.map((link: any, idx: number) => (
-              <button 
-                key={idx}
-                onClick={() => {
-                  set_is_mobile_menu_open(false);
-                  if (!isPreview) return;
-                  const targetId = link.link?.startsWith('#') ? link.link.substring(1) : link.link;
-                  const element = document.getElementById(targetId) || document.getElementById(`module-${targetId}`);
-                  if (element) element.scrollIntoView({ behavior: 'smooth' });
-                }}
-                className={`text-2xl font-bold ${themeTextClass} text-left border-b ${themeBorderClass} pb-4`}
-              >
-                {link.label}
-              </button>
-            ))}
-            <div className="pt-8 flex flex-col gap-4">
-              <button className="w-full py-4 bg-primary text-white font-bold rounded-2xl shadow-xl shadow-primary/20">
-                <Typography
-                  variant="span"
-                  editable={!!onUpdate}
-                  onUpdate={(text) => handleTextUpdate('cta_text', text)}
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <>
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="fixed inset-0 bg-black/60 backdrop-blur-md z-[45]"
+            />
+            
+            <motion.div 
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+              className={`fixed top-0 right-0 w-[85%] max-w-sm h-full ${themeBgClass} z-[50] shadow-[0_0_50px_rgba(0,0,0,0.3)] flex flex-col border-l ${themeBorderClass}`}
+            >
+              <div className="p-8 flex items-center justify-between border-b border-text/5">
+                {renderLogo()}
+                <motion.button 
+                  whileTap={{ scale: 0.9 }}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className={`p-3 ${themeTextMutedClass} hover:bg-primary/10 rounded-2xl transition-colors`}
                 >
-                  {data?.cta_text || 'Empezar'}
-                </Typography>
-              </button>
-              {data?.show_secondary_cta && (
-                <button className={`w-full py-4 ${isDark ? 'bg-white/10 border-white/20 text-white' : 'bg-surface border border-text/10 text-text'} font-bold rounded-2xl`}>
-                  <Typography
-                    variant="span"
-                    editable={!!onUpdate}
-                    onUpdate={(text) => handleTextUpdate('secondary_cta_text', text)}
+                  <X className="w-7 h-7" />
+                </motion.button>
+              </div>
+              
+              <nav className="flex flex-col p-10 gap-8 overflow-y-auto flex-1">
+                {menuItems.map((link: any, idx: number) => (
+                  <motion.button 
+                    key={idx}
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.1 + idx * 0.05 }}
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      if (!isPreview) return;
+                      const targetId = link.link?.startsWith('#') ? link.link.substring(1) : link.link;
+                      const element = document.getElementById(targetId) || document.getElementById(`module-${targetId}`);
+                      if (element) element.scrollIntoView({ behavior: 'smooth' });
+                    }}
+                    className={`text-3xl font-black ${themeTextClass} text-left tracking-tighter hover:text-primary transition-colors`}
                   >
-                    {data?.secondary_cta_text || 'Saber más'}
-                  </Typography>
-                </button>
-              )}
+                    {link.label}
+                  </motion.button>
+                ))}
+                
+                <div className="mt-auto pt-10 flex flex-col gap-5">
+                  <motion.button 
+                    whileTap={{ scale: 0.98 }}
+                    onClick={onCTA}
+                    className="w-full py-5 bg-primary text-white font-black uppercase tracking-widest text-xs rounded-3xl shadow-2xl shadow-primary/30 flex items-center justify-center gap-3"
+                  >
+                    <Typography
+                      variant="span"
+                      editable={!!onUpdate}
+                      onUpdate={(text) => handleTextUpdate('ctaText', text)}
+                    >
+                      {data?.ctaText || 'Empezar'}
+                    </Typography>
+                    <ArrowRight className="w-4 h-4" />
+                  </motion.button>
+                  {data?.showSecondaryCta && (
+                    <motion.button 
+                      whileTap={{ scale: 0.98 }}
+                      className={`w-full py-5 ${isDark ? 'bg-white/10 border-white/20 text-white' : 'bg-surface border border-text/10 text-text'} font-black uppercase tracking-widest text-xs rounded-3xl backdrop-blur-md`}
+                    >
+                      <Typography
+                        variant="span"
+                        editable={!!onUpdate}
+                        onUpdate={(text) => handleTextUpdate('secondaryCtaText', text)}
+                      >
+                        {data?.secondaryCtaText || 'Saber más'}
+                      </Typography>
+                    </motion.button>
+                  )}
+                </div>
+              </nav>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Search Overlay */}
+      <AnimatePresence>
+        {isSearchOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/95 backdrop-blur-2xl z-[60] flex items-center justify-center p-8"
+          >
+            <motion.button 
+              initial={{ opacity: 0, scale: 0.5 }}
+              animate={{ opacity: 1, scale: 1 }}
+              onClick={() => setIsSearchOpen(false)}
+              className="absolute top-10 right-10 p-4 text-white/40 hover:text-white transition-colors"
+              whileHover={{ rotate: 90 }}
+            >
+              <X className="w-10 h-10" />
+            </motion.button>
+            
+            <div className="w-full max-w-4xl">
+              <motion.div 
+                className="relative"
+                initial={{ y: 30, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.2 }}
+              >
+                <Search className="absolute left-8 top-1/2 -translate-y-1/2 w-10 h-10 text-primary" />
+                <input 
+                  autoFocus
+                  type="text"
+                  placeholder="¿Qué estás buscando?"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-white/5 border-2 border-white/10 rounded-[2.5rem] py-10 pl-24 pr-10 text-4xl text-white placeholder:text-white/10 focus:border-primary outline-none transition-all shadow-2xl"
+                />
+              </motion.div>
+              <motion.div 
+                className="mt-10 flex flex-wrap justify-center gap-4"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.4 }}
+              >
+                <span className="text-white/30 text-sm font-bold uppercase tracking-widest mr-2">Sugerencias:</span>
+                {['Servicios', 'Precios', 'Contacto', 'Blog'].map(tag => (
+                  <button key={tag} className="px-5 py-2 rounded-full bg-white/5 text-white/60 text-xs font-bold hover:bg-primary hover:text-white transition-all">
+                    {tag}
+                  </button>
+                ))}
+              </motion.div>
+              <p className="mt-12 text-white/20 text-center text-sm font-black uppercase tracking-[0.3em]">Presiona ESC para cerrar</p>
             </div>
-          </nav>
-        </div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </header>
   );
 };
+
 

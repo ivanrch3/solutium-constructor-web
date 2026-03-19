@@ -8,17 +8,17 @@ interface ColorPickerProps {
 }
 
 export const ColorPicker = ({ color, onChange, label }: ColorPickerProps) => {
-  const [is_open, set_is_open] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   const popoverRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (popoverRef.current && !popoverRef.current.contains(event.target as Node)) {
-        set_is_open(false);
+        setIsOpen(false);
       }
     };
 
-    if (is_open) {
+    if (isOpen) {
       document.addEventListener('mousedown', handleClickOutside);
     } else {
       document.removeEventListener('mousedown', handleClickOutside);
@@ -27,7 +27,7 @@ export const ColorPicker = ({ color, onChange, label }: ColorPickerProps) => {
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [is_open]);
+  }, [isOpen]);
 
   // Ensure color is a valid hex for the picker, default to black if empty
   const safeColor = color && color.startsWith('#') ? color : '#000000';
@@ -38,7 +38,7 @@ export const ColorPicker = ({ color, onChange, label }: ColorPickerProps) => {
       <div className="flex items-center gap-2">
         <button
           type="button"
-          onClick={() => set_is_open(!is_open)}
+          onClick={() => setIsOpen(!isOpen)}
           className="w-8 h-8 rounded-md border border-text/20 shadow-sm transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary/50"
           style={{ backgroundColor: safeColor }}
           aria-label="Elegir color"
@@ -52,7 +52,7 @@ export const ColorPicker = ({ color, onChange, label }: ColorPickerProps) => {
         />
       </div>
 
-      {is_open && (
+      {isOpen && (
         <div className="absolute z-50 top-full left-0 mt-2 p-3 bg-surface border border-text/10 rounded-xl shadow-2xl animate-in fade-in zoom-in-95 duration-200">
           <HexColorPicker color={safeColor} onChange={onChange} />
           
@@ -66,7 +66,7 @@ export const ColorPicker = ({ color, onChange, label }: ColorPickerProps) => {
                 style={{ backgroundColor: swatch }}
                 onClick={() => {
                   onChange(swatch);
-                  set_is_open(false);
+                  setIsOpen(false);
                 }}
                 aria-label={`Seleccionar color ${swatch}`}
               />

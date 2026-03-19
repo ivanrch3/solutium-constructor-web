@@ -10,9 +10,9 @@ interface SidebarPanelWrapperProps {
   onRemove: (id: string) => void;
   onSelect: (id: string, source: 'canvas' | 'structure') => void;
   onEdit: (id: string | null) => void;
-  selected_module_id: string | null;
+  selectedModuleId: string | null;
   editingModuleId: string | null;
-  sidebarCollapsed: boolean;
+  isSidebarCollapsed: boolean;
   isPinned: boolean;
   onTogglePin: () => void;
   updateModule: (id: string, data: any) => void;
@@ -25,9 +25,9 @@ export const SidebarPanelWrapper: React.FC<SidebarPanelWrapperProps> = ({
   onRemove,
   onSelect,
   onEdit,
-  selected_module_id,
+  selectedModuleId,
   editingModuleId,
-  sidebarCollapsed,
+  isSidebarCollapsed,
   isPinned,
   onTogglePin,
   updateModule,
@@ -65,7 +65,7 @@ export const SidebarPanelWrapper: React.FC<SidebarPanelWrapperProps> = ({
     }`}
     style={{
       width: isSidebarExpanded ? (windowWidth <= 768 ? 'calc(100vw - 32px)' : '320px') : '64px',
-      left: isPinned ? undefined : (windowWidth <= 768 ? '16px' : (sidebarCollapsed ? '80px' : '256px')),
+      left: isPinned ? undefined : (windowWidth <= 768 ? '16px' : (isSidebarCollapsed ? '80px' : '256px')),
       top: isPinned ? undefined : (windowWidth <= 768 ? '80px' : '0px'),
       bottom: isPinned ? undefined : (windowWidth <= 768 ? '16px' : '0px')
     }}
@@ -79,10 +79,10 @@ export const SidebarPanelWrapper: React.FC<SidebarPanelWrapperProps> = ({
             onSelect={handleSelectFromStructure}
             onEdit={onEdit}
             onUpdate={updateModule}
-            selected_module_id={selected_module_id}
+            selectedModuleId={selectedModuleId}
             isPinned={isPinned}
             onTogglePin={onTogglePin}
-            sidebarCollapsed={sidebarCollapsed}
+            sidebarCollapsed={isSidebarCollapsed}
             onHover={() => {}}
             layersExpanded={isSidebarExpanded}
           />
@@ -94,7 +94,7 @@ export const SidebarPanelWrapper: React.FC<SidebarPanelWrapperProps> = ({
             onUpdate={updateModule}
             onClose={() => onEdit(null)}
             onOpenImagePicker={onOpenImagePicker}
-            sidebarCollapsed={sidebarCollapsed}
+            sidebarCollapsed={isSidebarCollapsed}
             layersExpanded={isSidebarExpanded}
             isPinned={isPinned}
             onTogglePin={onTogglePin}

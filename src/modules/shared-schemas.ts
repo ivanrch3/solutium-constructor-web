@@ -2,8 +2,8 @@ import { FieldSchema } from './registry';
 
 export const TYPOGRAPHY_PROPS = (prefix: string, label: string): FieldSchema[] => [
   {
-    name: `${prefix}_style`,
-    label: `${label} - Estilo`,
+    name: `${prefix}Style`,
+    label: label,
     type: 'object',
     itemSchema: [
       { 
@@ -44,7 +44,7 @@ export const TYPOGRAPHY_PROPS = (prefix: string, label: string): FieldSchema[] =
         ]
       },
       { 
-        name: 'highlight_type', 
+        name: 'highlightType', 
         label: 'Efecto de Resalte (*texto*)', 
         type: 'select', 
         options: [
@@ -54,8 +54,8 @@ export const TYPOGRAPHY_PROPS = (prefix: string, label: string): FieldSchema[] =
           { label: 'Personalizado', value: 'custom' }
         ]
       },
-      { name: 'highlight_color_1', label: 'Color Personalizado 1', type: 'color' },
-      { name: 'highlight_color_2', label: 'Color Personalizado 2', type: 'color' }
+      { name: 'highlightColor1', label: 'Color Personalizado 1', type: 'color' },
+      { name: 'highlightColor2', label: 'Color Personalizado 2', type: 'color' }
     ]
   }
 ];
@@ -66,7 +66,7 @@ export const BUTTON_GROUP_PROPS = (name: string, label: string): FieldSchema => 
   type: 'object',
   category: 'content',
   itemSchema: [
-    { name: 'text', label: 'Texto del Botón', type: 'text' },
+    { name: 'text', label: 'Texto del botón', type: 'text' },
     { name: 'url', label: 'URL / Enlace', type: 'text' },
     { 
       name: 'target', 
@@ -82,7 +82,7 @@ export const BUTTON_GROUP_PROPS = (name: string, label: string): FieldSchema => 
 
 export const DESIGN_PROPS: FieldSchema[] = [
   {
-    name: 'layout',
+    name: 'layoutType',
     label: 'Disposición (Layout)',
     type: 'toggle-group',
     options: [
@@ -96,7 +96,7 @@ export const DESIGN_PROPS: FieldSchema[] = [
     ]
   },
   {
-    name: 'smart_mode',
+    name: 'smartMode',
     label: 'Modo Inteligente',
     type: 'boolean',
     category: 'design'
@@ -109,6 +109,12 @@ export const DESIGN_PROPS: FieldSchema[] = [
       { label: 'Claro', value: 'light' },
       { label: 'Oscuro', value: 'dark' }
     ]
+  },
+  {
+    name: 'disableColorAlternation',
+    label: 'Desactivar alternancia automática de color',
+    type: 'boolean',
+    category: 'design'
   },
   {
     name: 'animation',
@@ -143,7 +149,7 @@ export const DESIGN_PROPS: FieldSchema[] = [
         ]
       },
       { 
-        name: 'overlay_opacity', 
+        name: 'overlayOpacity', 
         label: 'Opacidad Superposición', 
         type: 'range',
         min: 0,

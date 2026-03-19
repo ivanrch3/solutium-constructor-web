@@ -28,7 +28,7 @@ interface HeaderManagerProps {
 }
 
 export const HeaderManager = ({ data, onUpdate, onOpenImagePicker, textElements, module }: HeaderManagerProps) => {
-  const [expandedSection, setExpandedSection] = React.useState<string | null>('structure');
+  const [expandedSection, setExpandedSection] = React.useState<string | null>(null);
 
   const updateData = (newData: any) => {
     onUpdate({ ...data, ...newData });
@@ -56,8 +56,37 @@ export const HeaderManager = ({ data, onUpdate, onOpenImagePicker, textElements,
 
   return (
     <div className="space-y-6">
-      {/* 1. Estructura y Comportamiento */}
+      {/* 1. Editor de Textos */}
       <div className="space-y-4">
+        <button 
+          onClick={() => toggleSection('text')}
+          className="w-full flex items-center justify-between group"
+        >
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 bg-primary/10 rounded-lg text-primary">
+              <Type className="w-3 h-3" />
+            </div>
+            <span className="text-[10px] font-black text-text/60 uppercase tracking-widest group-hover:text-primary transition-colors">
+              Editor de Textos
+            </span>
+          </div>
+          {expandedSection === 'text' ? <ChevronDown className="w-3 h-3 text-text/30" /> : <ChevronRight className="w-3 h-3 text-text/30" />}
+        </button>
+
+        {expandedSection === 'text' && (
+          <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+            <TypographyManager 
+              module={module}
+              data={data}
+              onUpdate={onUpdate}
+              textElements={textElements}
+            />
+          </div>
+        )}
+      </div>
+
+      {/* 2. Estructura y Comportamiento */}
+      <div className="space-y-4 pt-4 border-t border-text/5">
         <button 
           onClick={() => toggleSection('structure')}
           className="w-full flex items-center justify-between group"
@@ -75,6 +104,59 @@ export const HeaderManager = ({ data, onUpdate, onOpenImagePicker, textElements,
 
         {expandedSection === 'structure' && (
           <div className="space-y-6 p-4 bg-background/30 rounded-2xl border border-text/5 animate-in fade-in slide-in-from-top-2 duration-300">
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold text-text/40 uppercase tracking-widest">Tipo de Logo</label>
+              <div className="grid grid-cols-1 gap-2">
+                {[
+                  { id: 'inherited', label: 'Logo de la aplicación (Heredado)' },
+                  { id: 'custom', label: 'Subir nuevo logo / URL' },
+                  { id: 'none', label: 'Sin logo (Solo texto)' }
+                ].map((opt) => (
+                  <button
+                    key={opt.id}
+                    onClick={() => updateData({ logoType: opt.id })}
+                    className={`py-2 px-3 text-[10px] font-bold uppercase tracking-wider rounded-lg border text-left transition-all ${
+                      (data.logoType || 'inherited') === opt.id
+                        ? 'bg-primary/5 border-primary text-primary'
+                        : 'bg-background border-text/10 text-text/60 hover:border-text/20'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {data.logoType === 'custom' && (
+              <div className="space-y-2 pt-2">
+                <label className="text-[10px] font-bold text-text/40 uppercase tracking-widest">Imagen del Logo Personalizado</label>
+                <div className="flex items-center gap-3 p-3 bg-background rounded-xl border border-text/5">
+                  <div className="w-12 h-12 rounded-lg bg-text/5 flex items-center justify-center overflow-hidden border border-text/5">
+                    {data.logoImage ? (
+                      <img src={data.logoImage} alt="Logo" className="w-full h-full object-contain" />
+                    ) : (
+                      <Layout className="w-5 h-5 text-text/20" />
+                    )}
+                  </div>
+                  <div className="flex-1 space-y-2">
+                    <button 
+                      onClick={() => onOpenImagePicker((url) => updateData({ logoImage: url }))}
+                      className="w-full py-1.5 px-3 bg-primary text-white text-[10px] font-bold uppercase tracking-wider rounded-lg hover:bg-primary/90 transition-colors"
+                    >
+                      Cambiar Imagen
+                    </button>
+                    <input 
+                      type="text" 
+                      placeholder="O pega una URL..."
+                      value={data.logoImage || ''}
+                      onChange={(e) => updateData({ logoImage: e.target.value })}
+                      className="w-full bg-transparent text-[10px] font-medium text-text/60 outline-none border-b border-text/10 focus:border-primary transition-colors"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="space-y-2">
               <label className="text-[10px] font-bold text-text/40 uppercase tracking-widest">Tema del Menú</label>
               <div className="grid grid-cols-2 gap-2">
@@ -107,9 +189,9 @@ export const HeaderManager = ({ data, onUpdate, onOpenImagePicker, textElements,
                 ].map((opt) => (
                   <button
                     key={opt.id}
-                    onClick={() => updateData({ layout: opt.id })}
+                    onClick={() => updateData({ layoutType: opt.id })}
                     className={`py-2 px-1 text-[10px] font-bold uppercase tracking-wider rounded-lg border transition-all ${
-                      (data.layout || 'logo-left') === opt.id
+                      (data.layoutType || 'logo-left') === opt.id
                         ? 'bg-primary/5 border-primary text-primary'
                         : 'bg-background border-text/10 text-text/60 hover:border-text/20'
                     }`}
@@ -179,7 +261,7 @@ export const HeaderManager = ({ data, onUpdate, onOpenImagePicker, textElements,
         )}
       </div>
 
-      {/* 2. Estilo y Apariencia */}
+      {/* 3. Estilo y Apariencia */}
       <div className="space-y-4 pt-4 border-t border-text/5">
         <button 
           onClick={() => toggleSection('style')}
@@ -260,7 +342,7 @@ export const HeaderManager = ({ data, onUpdate, onOpenImagePicker, textElements,
         )}
       </div>
 
-      {/* 3. Navegación y Botones */}
+      {/* 4. Navegación y Botones */}
       <div className="space-y-4 pt-4 border-t border-text/5">
         <button 
           onClick={() => toggleSection('content')}
@@ -360,35 +442,6 @@ export const HeaderManager = ({ data, onUpdate, onOpenImagePicker, textElements,
                 ))}
               </div>
             </div>
-          </div>
-        )}
-      </div>
-
-      {/* 4. Editor de Textos */}
-      <div className="space-y-4 pt-4 border-t border-text/5">
-        <button 
-          onClick={() => toggleSection('text')}
-          className="w-full flex items-center justify-between group"
-        >
-          <div className="flex items-center gap-2">
-            <div className="p-1.5 bg-primary/10 rounded-lg text-primary">
-              <Type className="w-3 h-3" />
-            </div>
-            <span className="text-[10px] font-black text-text/60 uppercase tracking-widest group-hover:text-primary transition-colors">
-              Editor de Textos
-            </span>
-          </div>
-          {expandedSection === 'text' ? <ChevronDown className="w-3 h-3 text-text/30" /> : <ChevronRight className="w-3 h-3 text-text/30" />}
-        </button>
-
-        {expandedSection === 'text' && (
-          <div className="animate-in fade-in slide-in-from-top-2 duration-300">
-            <TypographyManager 
-              module={module}
-              data={data}
-              onUpdate={onUpdate}
-              textElements={textElements}
-            />
           </div>
         )}
       </div>

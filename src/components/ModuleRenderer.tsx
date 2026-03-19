@@ -52,7 +52,7 @@ interface ModuleRendererProps {
   onEdit: (moduleId: string) => void;
   isSelected?: boolean;
   config: SolutiumPayload | null;
-  selected_product_ids: string[];
+  selectedProductIds: string[];
   isPreview?: boolean;
 }
 
@@ -66,41 +66,39 @@ export const ModuleRenderer = ({
   onEdit,
   isSelected, 
   config, 
-  selected_product_ids,
+  selectedProductIds,
   isPreview = false
 }: ModuleRendererProps) => {
-  const { page_layout } = usePageLayout();
-  const isSeamless = page_layout === 'seamless';
+  const { pageLayout } = usePageLayout();
+  const isSeamless = pageLayout === 'seamless';
 
-  // Calculate effective theme based on Smart Mode
+  // Calculate effective theme based on automatic alternation and continuity control
   const getEffectiveTheme = () => {
-    // If smartMode is explicitly disabled, use the stored theme
-    if (module.data?.smartMode === false) {
-      return module.data?.theme || 'light';
-    }
-
-    // Smart Mode logic: alternate based on previous module
     const index = modules.findIndex(m => m.id === module.id);
     if (index === -1) return module.data?.theme || 'light';
 
-    // To avoid complex recursion, we calculate the sequence from the start
-    let currentTheme = 'light'; // Default start
+    let currentTheme = 'light'; // Default baseline
     
     for (let i = 0; i <= index; i++) {
       const m = modules[i];
       const isFirst = i === 0;
-      
-      if (m.data?.smartMode !== false) {
-        if (isFirst) {
-          // First module in smart mode can take its own theme as starting point
-          currentTheme = m.data?.theme || 'light';
-        } else {
-          // Subsequent smart modules alternate
-          currentTheme = currentTheme === 'light' ? 'dark' : 'light';
-        }
+      const explicitTheme = m.data?.theme;
+      const disableAlternation = m.data?.disableColorAlternation;
+
+      if (isFirst) {
+        currentTheme = explicitTheme || 'light';
       } else {
-        // Manual mode module sets the new baseline
-        currentTheme = m.data?.theme || 'light';
+        if (explicitTheme) {
+          // If a theme is explicitly chosen, it becomes the new baseline
+          currentTheme = explicitTheme;
+        } else {
+          // If no theme is chosen, we decide based on alternation setting
+          if (!disableAlternation) {
+            // Default: alternate
+            currentTheme = currentTheme === 'light' ? 'dark' : 'light';
+          }
+          // If disableAlternation is true, currentTheme remains the same as previous
+        }
       }
     }
     
@@ -141,7 +139,7 @@ export const ModuleRenderer = ({
       case 'features':
         return <FeaturesModule data={moduleData} />;
       case 'product-showcase':
-        return <ProductShowcaseModule data={moduleData} config={config} selected_product_ids={selected_product_ids} />;
+        return <ProductShowcaseModule data={moduleData} config={config} selectedProductIds={selectedProductIds} />;
       case 'testimonials':
         return <TestimonialsModule data={moduleData} />;
       case 'pricing':

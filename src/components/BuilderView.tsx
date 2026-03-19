@@ -8,54 +8,54 @@ import { PageLayout } from '../types';
 interface BuilderViewProps {
   isPreviewMode: boolean;
   setIsPreviewMode: (mode: boolean) => void;
-  set_is_mobile_menu_open: (open: boolean) => void;
-  handleSave: () => void;
-  is_saving: boolean;
-  is_dirty: boolean;
-  handlePublish: () => void;
+  setIsMobileMenuOpen: (open: boolean) => void;
+  onSave: () => void;
+  isSaving: boolean;
+  isDirty: boolean;
+  onPublish: () => void;
   publishStatus: 'idle' | 'publishing' | 'success' | 'error';
   modules: any[];
   setShowPicker: (show: boolean) => void;
-  removeModule: (id: string) => void;
-  updateModule: (id: string, data: any) => void;
-  handleSelectModule: (id: string) => void;
-  handleEditModule: (id: string) => void;
-  selected_module_id: string | null;
+  onRemoveModule: (id: string) => void;
+  onUpdateModule: (id: string, data: any) => void;
+  onSelectModule: (id: string) => void;
+  onEditModule: (id: string) => void;
+  selectedModuleId: string | null;
   setImagePickerCallback: (callback: any) => void;
-  set_is_image_picker_open: (open: boolean) => void;
+  setIsImagePickerOpen: (open: boolean) => void;
   config: any;
-  selected_product_ids: string[];
-  page_layout?: PageLayout;
+  selectedProductIds: string[];
+  pageLayout?: PageLayout;
 }
 
 export const BuilderView: React.FC<BuilderViewProps> = ({
   isPreviewMode,
   setIsPreviewMode,
-  set_is_mobile_menu_open,
-  handleSave,
-  is_saving,
-  is_dirty,
-  handlePublish,
+  setIsMobileMenuOpen,
+  onSave,
+  isSaving,
+  isDirty,
+  onPublish,
   publishStatus,
   modules,
   setShowPicker,
-  removeModule,
-  updateModule,
-  handleSelectModule,
-  handleEditModule,
-  selected_module_id,
+  onRemoveModule,
+  onUpdateModule,
+  onSelectModule,
+  onEditModule,
+  selectedModuleId,
   setImagePickerCallback,
-  set_is_image_picker_open,
+  setIsImagePickerOpen,
   config,
-  selected_product_ids,
-  page_layout = 'seamless'
+  selectedProductIds,
+  pageLayout = 'seamless'
 }) => {
-  const isSeamless = page_layout === 'seamless';
-  const isSymmetric = page_layout === 'symmetric';
-  const isLayered = page_layout === 'layered';
-  const isBento = page_layout === 'bento';
-  const isSnap = page_layout === 'snap';
-  const isSplit = page_layout === 'split';
+  const isSeamless = pageLayout === 'seamless';
+  const isSymmetric = pageLayout === 'symmetric';
+  const isLayered = pageLayout === 'layered';
+  const isBento = pageLayout === 'bento';
+  const isSnap = pageLayout === 'snap';
+  const isSplit = pageLayout === 'split';
 
   const layoutWidthClass = isSeamless || isSnap || isSplit ? 'w-full' : isSymmetric ? 'max-w-7xl mx-auto' : isLayered ? 'max-w-6xl mx-auto px-4 md:px-0' : isBento ? 'max-w-7xl mx-auto px-4' : 'max-w-5xl mx-auto';
 
@@ -65,7 +65,7 @@ export const BuilderView: React.FC<BuilderViewProps> = ({
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <div className="flex items-center gap-4">
             <button 
-              onClick={() => set_is_mobile_menu_open(true)}
+              onClick={() => setIsMobileMenuOpen(true)}
               className="lg:hidden p-2 text-text/60 hover:bg-background rounded-lg"
             >
               <Menu className="w-6 h-6" />
@@ -84,13 +84,13 @@ export const BuilderView: React.FC<BuilderViewProps> = ({
               <span>Vista Previa</span>
             </button>
             <button 
-              onClick={handleSave}
-              disabled={is_saving || !is_dirty}
+              onClick={onSave}
+              disabled={isSaving || !isDirty}
               className="flex items-center gap-2 px-5 py-2.5 bg-surface border border-text/10 text-text/80 font-bold text-sm rounded-xl hover:bg-background hover:border-text/20 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed relative"
             >
-              {is_saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               <span>Guardar</span>
-              {is_dirty && !is_saving && (
+              {isDirty && !isSaving && (
                 <span className="absolute -top-1 -right-1 w-3 h-3 bg-amber-500 border-2 border-white rounded-full animate-pulse" title="Cambios sin guardar" />
               )}
             </button>
@@ -135,13 +135,29 @@ export const BuilderView: React.FC<BuilderViewProps> = ({
                   return null;
                 }
                 const isStickyNav = (module.type === 'top-bar' && module.data?.isSticky !== false) || 
-                                    (module.type === 'header' && (module.data?.scrollMode === 'sticky' || module.data?.scrollMode === 'smart-hide'));
+                                     (module.type === 'header' && (module.data?.scrollMode === 'sticky' || module.data?.scrollMode === 'smart-hide'));
                 
-                // Aplicar temas: Usar el tema definido en el módulo, o el valor por defecto solicitado
-                const themeClass = module.data?.theme === 'dark' ? 'theme-dark' : 
-                                   module.data?.theme === 'light' ? 'theme-light' : 
-                                   (module.type === 'header' || module.type === 'top-bar' ? 'theme-dark' : 
-                                    module.type === 'hero' ? 'theme-light' : '');
+                // Lógica de temas con alternancia automática y control de continuidad
+                let effectiveTheme = 'light';
+                const moduleIndex = index;
+                
+                for (let i = 0; i <= moduleIndex; i++) {
+                  const m = modules[i];
+                  const explicitTheme = m.data?.theme;
+                  const disableAlternation = m.data?.disableColorAlternation;
+
+                  if (i === 0) {
+                    effectiveTheme = explicitTheme || 'light';
+                  } else {
+                    if (explicitTheme) {
+                      effectiveTheme = explicitTheme;
+                    } else if (!disableAlternation) {
+                      effectiveTheme = effectiveTheme === 'light' ? 'dark' : 'light';
+                    }
+                  }
+                }
+
+                const themeClass = effectiveTheme === 'dark' ? 'theme-dark' : 'theme-light';
 
                 // Bento Grid column spans
                 let bentoClass = '';
@@ -176,17 +192,17 @@ export const BuilderView: React.FC<BuilderViewProps> = ({
                       <ModuleRenderer 
                         module={module} 
                         modules={modules}
-                        onRemove={removeModule} 
-                        onUpdate={updateModule}
-                        onSelect={(id) => !isPreviewMode && handleSelectModule(id)}
-                        onEdit={(id) => !isPreviewMode && handleEditModule(id)}
-                        isSelected={selected_module_id === module.id && !isPreviewMode}
+                        onRemove={onRemoveModule} 
+                        onUpdate={onUpdateModule}
+                        onSelect={(id) => !isPreviewMode && onSelectModule(id)}
+                        onEdit={(id) => !isPreviewMode && onEditModule(id)}
+                        isSelected={selectedModuleId === module.id && !isPreviewMode}
                         onOpenImagePicker={(callback) => {
                           setImagePickerCallback(() => callback);
-                          set_is_image_picker_open(true);
+                          setIsImagePickerOpen(true);
                         }}
                         config={config}
-                        selected_product_ids={selected_product_ids}
+                        selectedProductIds={selectedProductIds}
                         isPreview={isPreviewMode}
                       />
                     </ModuleProvider>

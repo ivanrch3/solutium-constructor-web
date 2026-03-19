@@ -1,7 +1,46 @@
-import React from 'react';
+import React, { useEffect, useState, useRef } from 'react';
+import * as LucideIcons from 'lucide-react';
+import { motion, useInView, useSpring, useTransform } from 'motion/react';
 import { Typography } from '../ui/Typography';
 import { ModuleWrapper } from '../ui/ModuleWrapper';
 import { usePageLayout } from '../../context/PageLayoutContext';
+
+const getIcon = (name: string) => {
+  const Icon = (LucideIcons as any)[name];
+  return Icon;
+};
+
+const Counter = ({ value, className }: { value: string, className?: string }) => {
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true, margin: "-100px" });
+  
+  // Extract number and suffix (e.g., "15k+" -> 15, "k+")
+  const numberMatch = value.match(/(\d+)/);
+  const numberValue = numberMatch ? parseInt(numberMatch[0], 10) : 0;
+  const suffix = value.replace(numberMatch ? numberMatch[0] : '', '');
+
+  const spring = useSpring(0, {
+    mass: 1,
+    stiffness: 100,
+    damping: 30,
+  });
+
+  const displayValue = useTransform(spring, (current) => 
+    `${Math.floor(current)}${suffix}`
+  );
+
+  useEffect(() => {
+    if (isInView) {
+      spring.set(numberValue);
+    }
+  }, [isInView, numberValue, spring]);
+
+  return (
+    <motion.span ref={ref} className={className}>
+      {displayValue}
+    </motion.span>
+  );
+};
 
 interface StatsModuleProps {
   data: any;
@@ -10,12 +49,12 @@ interface StatsModuleProps {
 
 export const StatsModule = ({ data, onUpdate }: StatsModuleProps) => {
   const { previewDevice } = usePageLayout();
-  const is_mobile_simulated = previewDevice === 'mobile';
+  const isMobileSimulated = previewDevice === 'mobile';
   const stats = data?.stats || [
-    { val: '15k+', label: 'Usuarios' },
-    { val: '40m', label: 'Ventas' },
-    { val: '120', label: 'Países' },
-    { val: '24/7', label: 'Soporte' }
+    { value: '15k+', label: 'Usuarios', iconName: 'Users' },
+    { value: '40m', label: 'Ventas', iconName: 'TrendingUp' },
+    { value: '120', label: 'Países', iconName: 'Globe' },
+    { value: '24/7', label: 'Soporte', iconName: 'Headphones' }
   ];
 
   const handleTextUpdate = (path: string, value: string) => {
@@ -39,45 +78,115 @@ export const StatsModule = ({ data, onUpdate }: StatsModuleProps) => {
     }
   };
 
+  const isLight = data?.theme === 'light';
+
   return (
     <ModuleWrapper 
       theme={data?.theme || 'dark'}
       background={data?.background}
-      className={data?.theme === 'light' ? 'bg-surface text-text' : 'bg-primary text-white'}
+      className={`relative overflow-hidden ${isLight ? 'bg-surface' : 'bg-primary'}`}
     >
-      {data?.title && (
-        <div className={`text-center ${is_mobile_simulated ? 'mb-8' : 'mb-12'}`}>
-          <Typography
-            variant="h2"
-            className={`${is_mobile_simulated ? 'text-2xl' : 'text-3xl'} font-black mb-4 text-white`}
-            editable={!!onUpdate}
-            onUpdate={(text) => handleTextUpdate('title', text)}
-          >
-            {data.title}
-          </Typography>
-        </div>
-      )}
-      <div className={`grid ${is_mobile_simulated ? 'grid-cols-1 gap-10' : 'grid-cols-2 md:grid-cols-4 gap-8'} text-center`}>
-        {stats.map((stat: any, i: number) => (
-          <div key={i}>
-            <Typography
-              variant="p"
-              className={`${is_mobile_simulated ? 'text-4xl' : 'text-4xl md:text-5xl'} font-black mb-2`}
-              editable={!!onUpdate}
-              onUpdate={(text) => handleTextUpdate(`stats.${i}.val`, text)}
-            >
-              {stat.val}
-            </Typography>
-            <Typography
-              variant="p"
-              className="text-white/80 text-xs font-bold uppercase tracking-widest"
-              editable={!!onUpdate}
-              onUpdate={(text) => handleTextUpdate(`stats.${i}.label`, text)}
-            >
-              {stat.label}
-            </Typography>
+      {/* Background Decorative Elements */}
+      {!isLight && (
+        <>
+          <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
+            <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-white rounded-full blur-[120px]" />
+            <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-accent rounded-full blur-[120px]" />
           </div>
-        ))}
+        </>
+      )}
+
+      <div className="container mx-auto px-4 relative z-10">
+        {data?.title && (
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className={`text-center ${isMobileSimulated ? 'mb-12' : 'mb-20'}`}
+          >
+            <Typography
+              variant="h2"
+              className={`${isMobileSimulated ? 'text-3xl' : 'text-5xl'} font-black mb-4 tracking-tighter ${isLight ? 'text-text' : 'text-white'}`}
+              editable={!!onUpdate}
+              onUpdate={(text) => handleTextUpdate('title', text)}
+            >
+              {data.title}
+            </Typography>
+            {data?.subtitle && (
+              <Typography
+                variant="p"
+                className={`max-w-2xl mx-auto text-lg opacity-70 ${isLight ? 'text-text' : 'text-white'}`}
+                editable={!!onUpdate}
+                onUpdate={(text) => handleTextUpdate('subtitle', text)}
+              >
+                {data.subtitle}
+              </Typography>
+            )}
+          </motion.div>
+        )}
+
+        <div className={`grid ${isMobileSimulated ? 'grid-cols-1 gap-12' : 'grid-cols-2 md:grid-cols-4 gap-12'} text-center`}>
+          {stats.map((stat: any, i: number) => {
+            const Icon = stat.iconName ? getIcon(stat.iconName) : null;
+            return (
+              <motion.div 
+                key={i}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, delay: i * 0.1, ease: "easeOut" }}
+                whileHover={{ y: -5 }}
+                className="flex flex-col items-center group"
+              >
+                {Icon && (
+                  <motion.div 
+                    whileHover={{ scale: 1.1, rotate: 5 }}
+                    className={`mb-6 p-5 rounded-[2rem] transition-all duration-500 shadow-lg ${isLight ? 'bg-primary/10 text-primary shadow-primary/5' : 'bg-white/10 text-white shadow-black/20'}`}
+                  >
+                    <Icon className="w-8 h-8" />
+                  </motion.div>
+                )}
+                
+                <div className="relative">
+                  <Typography
+                    variant="p"
+                    className={`${isMobileSimulated ? 'text-5xl' : 'text-6xl md:text-7xl'} font-black mb-3 tracking-tighter ${isLight ? 'text-primary' : 'text-white'} flex items-center justify-center`}
+                  >
+                    <Counter 
+                      value={stat.value || stat.val || '0'} 
+                      className="inline-block"
+                    />
+                  </Typography>
+                  
+                  {/* Subtle glow effect for numbers */}
+                  {!isLight && (
+                    <div className="absolute inset-0 bg-white/20 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                  )}
+                </div>
+
+                <Typography
+                  variant="p"
+                  className={`${isLight ? 'text-text/60' : 'text-white/70'} text-xs md:text-sm font-black uppercase tracking-[0.3em] mb-2`}
+                  editable={!!onUpdate}
+                  onUpdate={(text) => handleTextUpdate(`stats.${i}.label`, text)}
+                >
+                  {stat.label || 'Métrica'}
+                </Typography>
+                
+                {stat.description && (
+                  <Typography
+                    variant="p"
+                    className={`text-xs opacity-50 max-w-[200px] ${isLight ? 'text-text' : 'text-white'}`}
+                    editable={!!onUpdate}
+                    onUpdate={(text) => handleTextUpdate(`stats.${i}.description`, text)}
+                  >
+                    {stat.description}
+                  </Typography>
+                )}
+              </motion.div>
+            );
+          })}
+        </div>
       </div>
     </ModuleWrapper>
   );

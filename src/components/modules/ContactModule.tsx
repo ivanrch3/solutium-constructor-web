@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Mail, MapPin, Phone, Send, Linkedin, Twitter, Instagram, Facebook, Youtube, CheckCircle2 } from 'lucide-react';
+import { Mail, MapPin, Phone, Send, Linkedin, Twitter, Instagram, Facebook, Youtube, CheckCircle2, Sparkles, MessageSquare, Clock, ArrowRight } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { ModuleWrapper } from '../ui/ModuleWrapper';
 import { Typography } from '../ui/Typography';
 import { usePageLayout } from '../../context/PageLayoutContext';
@@ -11,13 +12,22 @@ interface ContactModuleProps {
 
 export const ContactModule = ({ data, onUpdate }: ContactModuleProps) => {
   const { previewDevice } = usePageLayout();
-  const is_mobile_simulated = previewDevice === 'mobile';
+  const isMobileSimulated = previewDevice === 'mobile';
   const [formState, setFormState] = useState<'idle' | 'submitting' | 'success'>('idle');
 
-  const layout_type = data?.layout_type || 'split';
-  const show_map = data?.show_map !== false;
-  const map_url = data?.map_url || '';
-  const social_links = data?.social_links || [];
+  const layoutType = data?.layoutType || 'split'; // split, center, map-immersive, sidebar
+  const showMap = data?.showMap !== false;
+  const mapUrl = data?.mapUrl || '';
+  const socialLinks = data?.socialLinks || [
+    { platform: 'linkedin', url: '#' },
+    { platform: 'twitter', url: '#' },
+    { platform: 'instagram', url: '#' }
+  ];
+  const businessHours = data?.businessHours || [
+    { days: 'Lunes - Viernes', hours: '9:00 AM - 6:00 PM' },
+    { days: 'Sábado', hours: '10:00 AM - 2:00 PM' },
+    { days: 'Domingo', hours: 'Cerrado' }
+  ];
 
   const handleTextUpdate = (path: string, value: string) => {
     if (onUpdate) {
@@ -46,362 +56,258 @@ export const ContactModule = ({ data, onUpdate }: ContactModuleProps) => {
     }, 1500);
   };
 
-  const renderSocialIcon = (platform: string) => {
-    switch (platform) {
-      case 'linkedin': return <Linkedin className="w-5 h-5" />;
-      case 'twitter': return <Twitter className="w-5 h-5" />;
-      case 'instagram': return <Instagram className="w-5 h-5" />;
-      case 'facebook': return <Facebook className="w-5 h-5" />;
-      case 'youtube': return <Youtube className="w-5 h-5" />;
-      default: return null;
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: { 
+      opacity: 1,
+      transition: { staggerChildren: 0.1 }
     }
   };
 
-  const renderContactInfo = () => (
-    <div className="space-y-8">
-      {data?.email && (
-        <div className={`flex ${is_mobile_simulated ? 'flex-col text-center' : 'items-center'} gap-6 p-6 bg-surface rounded-2xl border border-text/10 hover:border-primary/30 transition-colors group`}>
-          <div className={`w-14 h-14 bg-primary/10 text-primary rounded-xl flex items-center justify-center group-hover:scale-110 group-hover:bg-primary group-hover:text-white transition-all duration-300 ${is_mobile_simulated ? 'mx-auto' : ''}`}>
-            <Mail className="w-6 h-6" />
-          </div>
-          <div>
-            <p className="text-xs font-bold text-text/40 uppercase tracking-widest mb-1">Email</p>
-            <Typography
-              variant="p"
-              className="text-lg font-bold text-text"
-              editable={!!onUpdate}
-              onUpdate={(text) => handleTextUpdate('email', text)}
-            >
-              {data.email}
-            </Typography>
-          </div>
-        </div>
-      )}
-      
-      {data?.phone && (
-        <div className={`flex ${is_mobile_simulated ? 'flex-col text-center' : 'items-center'} gap-6 p-6 bg-surface rounded-2xl border border-text/10 hover:border-primary/30 transition-colors group`}>
-          <div className={`w-14 h-14 bg-primary/10 text-primary rounded-xl flex items-center justify-center group-hover:scale-110 group-hover:bg-primary group-hover:text-white transition-all duration-300 ${is_mobile_simulated ? 'mx-auto' : ''}`}>
-            <Phone className="w-6 h-6" />
-          </div>
-          <div>
-            <p className="text-xs font-bold text-text/40 uppercase tracking-widest mb-1">Teléfono</p>
-            <Typography
-              variant="p"
-              className="text-lg font-bold text-text"
-              editable={!!onUpdate}
-              onUpdate={(text) => handleTextUpdate('phone', text)}
-            >
-              {data.phone}
-            </Typography>
-          </div>
-        </div>
-      )}
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { 
+      opacity: 1, 
+      y: 0,
+      transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] }
+    }
+  };
 
-      {data?.address && (
-        <div className={`flex ${is_mobile_simulated ? 'flex-col text-center' : 'items-center'} gap-6 p-6 bg-surface rounded-2xl border border-text/10 hover:border-primary/30 transition-colors group`}>
-          <div className={`w-14 h-14 bg-primary/10 text-primary rounded-xl flex items-center justify-center group-hover:scale-110 group-hover:bg-primary group-hover:text-white transition-all duration-300 ${is_mobile_simulated ? 'mx-auto' : ''}`}>
-            <MapPin className="w-6 h-6" />
-          </div>
-          <div>
-            <p className="text-xs font-bold text-text/40 uppercase tracking-widest mb-1">Ubicación</p>
-            <Typography
-              variant="p"
-              className="text-lg font-bold text-text"
-              editable={!!onUpdate}
-              onUpdate={(text) => handleTextUpdate('address', text)}
-            >
-              {data.address}
-            </Typography>
-          </div>
-        </div>
-      )}
+  const renderSocialIcon = (platform: string) => {
+    const icons: any = {
+      linkedin: <Linkedin className="w-5 h-5" />,
+      twitter: <Twitter className="w-5 h-5" />,
+      instagram: <Instagram className="w-5 h-5" />,
+      facebook: <Facebook className="w-5 h-5" />,
+      youtube: <Youtube className="w-5 h-5" />
+    };
+    return icons[platform] || null;
+  };
 
-      {social_links.length > 0 && (
-        <div className="flex gap-4 pt-4">
-          {social_links.map((link: any, idx: number) => (
-            <a 
-              key={idx}
-              href={link.url}
-              className="w-10 h-10 rounded-full bg-surface border border-text/10 flex items-center justify-center text-text/60 hover:text-primary hover:border-primary hover:scale-110 transition-all"
-            >
-              {renderSocialIcon(link.platform)}
-            </a>
-          ))}
-        </div>
-      )}
-    </div>
+  const renderContactCard = (icon: any, label: string, value: string, path: string, delay: number = 0) => (
+    <motion.div 
+      variants={itemVariants}
+      whileHover={{ y: -5, scale: 1.02 }}
+      className={`flex items-center gap-6 p-6 bg-current/[0.03] rounded-[2rem] border border-current/5 hover:border-primary/30 hover:bg-current/[0.05] transition-all duration-300 group`}
+    >
+      <div className="w-14 h-14 bg-primary/10 text-primary rounded-2xl flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all duration-500 shadow-lg group-hover:shadow-primary/30">
+        {icon}
+      </div>
+      <div>
+        <p className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-1">{label}</p>
+        <Typography
+          variant="p"
+          className="text-lg font-black tracking-tight text-current"
+          editable={!!onUpdate}
+          onUpdate={(text) => handleTextUpdate(path, text)}
+        >
+          {value}
+        </Typography>
+      </div>
+    </motion.div>
   );
 
   const renderForm = () => (
-    <div className={`bg-surface p-6 md:p-10 rounded-[2rem] border border-text/10 shadow-xl shadow-text/5 ${layout_type === 'map-immersive' && !is_mobile_simulated ? 'backdrop-blur-md bg-surface/90' : ''}`}>
+    <motion.div 
+      variants={itemVariants}
+      className={`bg-current/[0.02] p-8 md:p-12 rounded-[3rem] border border-current/5 shadow-2xl backdrop-blur-md relative overflow-hidden`}
+    >
+      <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -mr-32 -mt-32" />
+      
       <Typography
         variant="h3"
-        className="text-xl md:text-2xl font-bold mb-6"
+        className="text-2xl md:text-3xl font-black tracking-tighter mb-8 relative z-10"
         editable={!!onUpdate}
-        onUpdate={(text) => handleTextUpdate('form_title', text)}
+        onUpdate={(text) => handleTextUpdate('formTitle', text)}
       >
-        {data?.form_title || 'Envíanos un mensaje'}
+        {data?.formTitle || 'Envíanos un mensaje'}
       </Typography>
 
-      {formState === 'success' ? (
-        <div className="flex flex-col items-center justify-center py-8 md:py-12 text-center animate-in fade-in zoom-in duration-300">
-          <div className="w-12 h-12 md:w-16 md:h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-4">
-            <CheckCircle2 className="w-6 h-6 md:w-8 md:h-8" />
-          </div>
-          <h4 className="text-lg md:text-xl font-bold text-emerald-800 mb-2">¡Mensaje Enviado!</h4>
-          <p className="text-sm md:text-base text-emerald-600/80">{data?.success_message || 'Gracias por contactarnos.'}</p>
-          <button 
-            onClick={() => setFormState('idle')}
-            className="mt-6 text-sm font-bold text-emerald-700 hover:underline"
+      <AnimatePresence mode="wait">
+        {formState === 'success' ? (
+          <motion.div 
+            key="success"
+            className="flex flex-col items-center justify-center py-12 text-center relative z-10"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
           >
-            Enviar otro mensaje
-          </button>
-        </div>
-      ) : (
-        <form className="space-y-4" onSubmit={handleSubmit}>
-          {data?.show_name_field !== false && (
-            <div>
-              <label className="block text-[10px] md:text-xs font-bold text-text/60 uppercase mb-2">Nombre</label>
-              <input required type="text" className="w-full px-4 py-3 bg-background border border-text/10 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-sm" placeholder="Tu nombre" />
+            <div className="w-20 h-20 bg-emerald-500 text-white rounded-[2rem] flex items-center justify-center mb-6 shadow-2xl shadow-emerald-500/30">
+              <CheckCircle2 className="w-10 h-10" />
             </div>
-          )}
-          
-          <div className={`grid ${is_mobile_simulated ? 'grid-cols-1' : 'md:grid-cols-2'} gap-4`}>
-            {data?.show_email_field !== false && (
-              <div>
-                <label className="block text-[10px] md:text-xs font-bold text-text/60 uppercase mb-2">Email</label>
-                <input required type="email" className="w-full px-4 py-3 bg-background border border-text/10 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-sm" placeholder="tu@email.com" />
-              </div>
-            )}
-            {data?.show_phone_field && (
-              <div>
-                <label className="block text-[10px] md:text-xs font-bold text-text/60 uppercase mb-2">Teléfono</label>
-                <input type="tel" className="w-full px-4 py-3 bg-background border border-text/10 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-sm" placeholder="+1 234..." />
-              </div>
-            )}
-          </div>
-
-          {data?.show_subject_field && (
-            <div>
-              <label className="block text-[10px] md:text-xs font-bold text-text/60 uppercase mb-2">Asunto</label>
-              <input type="text" className="w-full px-4 py-3 bg-background border border-text/10 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-sm" placeholder="Motivo de contacto" />
-            </div>
-          )}
-
-          {data?.show_message_field !== false && (
-            <div>
-              <label className="block text-[10px] md:text-xs font-bold text-text/60 uppercase mb-2">Mensaje</label>
-              <textarea required rows={4} className="w-full px-4 py-3 bg-background border border-text/10 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all resize-none text-sm" placeholder="¿En qué podemos ayudarte?"></textarea>
-            </div>
-          )}
-
-          <button 
-            disabled={formState === 'submitting'}
-            className="w-full py-4 bg-primary text-white font-bold rounded-xl hover:bg-primary/90 transition-all shadow-lg hover:shadow-xl hover:-translate-y-1 active:translate-y-0 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm"
+            <Typography variant="h4" className="text-2xl font-black tracking-tight mb-3">¡Mensaje Enviado!</Typography>
+            <Typography variant="p" className="text-lg opacity-60 font-medium max-w-xs mx-auto">
+              {data?.successMessage || 'Gracias por contactarnos. Te responderemos en menos de 24 horas.'}
+            </Typography>
+            <motion.button 
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setFormState('idle')}
+              className="mt-10 px-8 py-4 bg-primary/10 text-primary font-black text-xs uppercase tracking-widest rounded-xl hover:bg-primary hover:text-white transition-all"
+            >
+              Enviar otro mensaje
+            </motion.button>
+          </motion.div>
+        ) : (
+          <motion.form 
+            key="form"
+            className="space-y-6 relative z-10" 
+            onSubmit={handleSubmit}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
           >
-            {formState === 'submitting' ? (
-              <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-            ) : (
-              <>
-                {data?.button_text || 'Enviar Mensaje'} <Send className="w-4 h-4" />
-              </>
-            )}
-          </button>
-        </form>
-      )}
-    </div>
-  );
-
-  const renderMap = () => {
-    if (!show_map || !map_url) return null;
-    return (
-      <div className={`w-full h-full min-h-[400px] rounded-[2rem] overflow-hidden shadow-inner border border-text/10 bg-surface relative z-0`}>
-        <iframe 
-          src={map_url} 
-          width="100%" 
-          height="100%" 
-          style={{ border: 0 }} 
-          allowFullScreen 
-          loading="lazy" 
-          referrerPolicy="no-referrer-when-downgrade"
-          className="grayscale hover:grayscale-0 transition-all duration-700"
-        />
-      </div>
-    );
-  };
-
-  const renderContent = () => {
-    switch (layout_type) {
-      case 'center':
-        return (
-          <div className="max-w-4xl mx-auto text-center">
-            <div className="mb-12">
-              <Typography
-                variant="h2"
-                className={`${is_mobile_simulated ? 'text-3xl' : 'text-4xl md:text-5xl'} font-black mb-4`}
-                editable={!!onUpdate}
-                onUpdate={(text) => handleTextUpdate('title', text)}
-              >
-                {data?.title || 'Contáctanos'}
-              </Typography>
-              <Typography
-                variant="p"
-                className={`${is_mobile_simulated ? 'text-lg' : 'text-xl'} opacity-60 max-w-2xl mx-auto`}
-                editable={!!onUpdate}
-                onUpdate={(text) => handleTextUpdate('subtitle', text)}
-              >
-                {data?.subtitle || 'Estamos aquí para ayudarte.'}
-              </Typography>
-            </div>
-            
-            <div className={`grid ${is_mobile_simulated ? 'grid-cols-1' : 'md:grid-cols-2'} gap-12 text-left mb-16`}>
-               <div className="space-y-8">
-                  {renderContactInfo()}
-               </div>
-               <div>
-                  {renderForm()}
-               </div>
-            </div>
-
-            {show_map && (
-              <div className={`${is_mobile_simulated ? 'h-[300px]' : 'h-[400px]'} w-full rounded-[2rem] overflow-hidden shadow-xl border border-text/10`}>
-                {renderMap()}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="group">
+                <label className="block text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-3 ml-1">Nombre Completo</label>
+                <input required type="text" className="w-full px-6 py-4 bg-current/[0.03] border border-current/10 rounded-2xl focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all text-sm font-medium group-hover:bg-current/[0.05]" placeholder="Tu nombre" />
               </div>
-            )}
-          </div>
-        );
+              <div className="group">
+                <label className="block text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-3 ml-1">Correo Electrónico</label>
+                <input required type="email" className="w-full px-6 py-4 bg-current/[0.03] border border-current/10 rounded-2xl focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all text-sm font-medium group-hover:bg-current/[0.05]" placeholder="tu@email.com" />
+              </div>
+            </div>
 
-      case 'map-immersive':
-        return (
-          <div className={`relative ${is_mobile_simulated ? 'min-h-[900px]' : 'min-h-[700px]'} rounded-[3rem] overflow-hidden group`}>
-            <div className="absolute inset-0 z-0">
-              {show_map && map_url ? (
-                <iframe 
-                  src={map_url} 
-                  width="100%" 
-                  height="100%" 
-                  style={{ border: 0 }} 
-                  allowFullScreen 
-                  loading="lazy" 
-                  referrerPolicy="no-referrer-when-downgrade"
-                  className="grayscale group-hover:grayscale-0 transition-all duration-700 w-full h-full object-cover"
-                />
+            <div className="group">
+              <label className="block text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-3 ml-1">Asunto</label>
+              <input type="text" className="w-full px-6 py-4 bg-current/[0.03] border border-current/10 rounded-2xl focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all text-sm font-medium group-hover:bg-current/[0.05]" placeholder="¿En qué podemos ayudarte?" />
+            </div>
+
+            <div className="group">
+              <label className="block text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-3 ml-1">Mensaje</label>
+              <textarea required rows={5} className="w-full px-6 py-4 bg-current/[0.03] border border-current/10 rounded-2xl focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all resize-none text-sm font-medium group-hover:bg-current/[0.05]" placeholder="Escribe tu mensaje aquí..."></textarea>
+            </div>
+
+            <motion.button 
+              disabled={formState === 'submitting'}
+              whileHover={{ scale: 1.02, y: -2 }}
+              whileTap={{ scale: 0.98 }}
+              className="w-full py-5 bg-primary text-white font-black text-sm uppercase tracking-[0.2em] rounded-2xl hover:bg-primary/90 transition-all shadow-2xl shadow-primary/20 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-3"
+            >
+              {formState === 'submitting' ? (
+                <span className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
-                <div className="w-full h-full bg-surface flex items-center justify-center text-text/20 font-bold text-2xl">
-                  Mapa no configurado
-                </div>
+                <>
+                  <span>{data?.buttonText || 'Enviar Mensaje'}</span>
+                  <Send className="w-4 h-4" />
+                </>
               )}
-              <div className={`absolute inset-0 ${is_mobile_simulated ? 'bg-background/80' : 'bg-gradient-to-r from-background/90 via-background/50 to-transparent'} pointer-events-none`} />
-            </div>
-            
-            <div className={`relative z-10 grid ${is_mobile_simulated ? 'grid-cols-1' : 'md:grid-cols-2 lg:grid-cols-12'} gap-8 p-6 md:p-16 h-full items-center`}>
-              <div className={`${is_mobile_simulated ? 'w-full' : 'lg:col-span-5'} space-y-8`}>
-                <div className="bg-surface/80 backdrop-blur-md p-6 md:p-8 rounded-[2rem] border border-text/10 shadow-2xl">
-                  <Typography
-                    variant="h2"
-                    className={`${is_mobile_simulated ? 'text-3xl' : 'text-4xl'} font-black mb-4`}
-                    editable={!!onUpdate}
-                    onUpdate={(text) => handleTextUpdate('title', text)}
-                  >
-                    {data?.title || 'Contáctanos'}
-                  </Typography>
-                  <Typography
-                    variant="p"
-                    className={`${is_mobile_simulated ? 'text-base' : 'text-lg'} opacity-60 mb-8`}
-                    editable={!!onUpdate}
-                    onUpdate={(text) => handleTextUpdate('subtitle', text)}
-                  >
-                    {data?.subtitle || 'Envíanos un mensaje y te responderemos pronto.'}
-                  </Typography>
-                  {renderContactInfo()}
-                </div>
-              </div>
-              <div className={`${is_mobile_simulated ? 'w-full' : 'lg:col-span-5 lg:col-start-8'}`}>
-                 {renderForm()}
-              </div>
-            </div>
-          </div>
-        );
-
-      case 'sidebar':
-        return (
-          <div className={`grid ${is_mobile_simulated ? 'grid-cols-1' : 'lg:grid-cols-12'} gap-12`}>
-            <div className={`${is_mobile_simulated ? 'w-full' : 'lg:col-span-4'} space-y-8 h-full flex flex-col`}>
-              <div>
-                <Typography
-                  variant="h2"
-                  className={`${is_mobile_simulated ? 'text-3xl' : 'text-4xl'} font-black mb-4`}
-                  editable={!!onUpdate}
-                  onUpdate={(text) => handleTextUpdate('title', text)}
-                >
-                  {data?.title || 'Información de Contacto'}
-                </Typography>
-                <Typography
-                  variant="p"
-                  className={`${is_mobile_simulated ? 'text-base' : 'text-lg'} opacity-60`}
-                  editable={!!onUpdate}
-                  onUpdate={(text) => handleTextUpdate('subtitle', text)}
-                >
-                  {data?.subtitle || 'Estamos disponibles para atenderte.'}
-                </Typography>
-              </div>
-              <div className="flex-grow">
-                {renderContactInfo()}
-              </div>
-              {show_map && (
-                <div className={`${is_mobile_simulated ? 'h-48' : 'h-64'} w-full rounded-2xl overflow-hidden border border-text/10 shadow-lg`}>
-                  {renderMap()}
-                </div>
-              )}
-            </div>
-            <div className={`${is_mobile_simulated ? 'w-full' : 'lg:col-span-8'}`}>
-              {renderForm()}
-            </div>
-          </div>
-        );
-
-      case 'split':
-      default:
-        return (
-          <div className={`grid ${is_mobile_simulated ? 'grid-cols-1' : 'lg:grid-cols-2'} gap-12 md:gap-16 items-start`}>
-            <div className={is_mobile_simulated ? 'text-center' : ''}>
-              <Typography
-                variant="h2"
-                className={`${is_mobile_simulated ? 'text-3xl' : 'text-4xl md:text-5xl'} font-black mb-6 tracking-tight`}
-                editable={!!onUpdate}
-                onUpdate={(text) => handleTextUpdate('title', text)}
-              >
-                {data?.title || '¿Tienes alguna duda?'}
-              </Typography>
-              <Typography
-                variant="p"
-                className={`${is_mobile_simulated ? 'text-lg' : 'text-xl'} opacity-60 mb-8 md:mb-12 leading-relaxed`}
-                editable={!!onUpdate}
-                onUpdate={(text) => handleTextUpdate('subtitle', text)}
-              >
-                {data?.subtitle || 'Estamos aquí para ayudarte.'}
-              </Typography>
-              {renderContactInfo()}
-            </div>
-            <div className="space-y-8">
-              {renderForm()}
-              {show_map && (
-                <div className={`${is_mobile_simulated ? 'h-[300px]' : 'h-[400px]'} w-full rounded-[2rem] overflow-hidden shadow-xl border border-text/10`}>
-                  {renderMap()}
-                </div>
-              )}
-            </div>
-          </div>
-        );
-    }
-  };
+            </motion.button>
+          </motion.form>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
 
   return (
     <ModuleWrapper 
       theme={data?.theme}
       background={data?.background}
     >
-      {renderContent()}
+      <div className={`${isMobileSimulated ? 'max-w-full' : 'max-w-7xl'} mx-auto px-6`}>
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className={`text-center ${isMobileSimulated ? 'mb-16' : 'mb-24'}`}
+        >
+          <div className="flex items-center justify-center gap-3 mb-6">
+            <div className="p-2 bg-primary/10 rounded-xl">
+              <Sparkles className="w-5 h-5 text-primary animate-pulse" />
+            </div>
+            <span className="text-primary font-black tracking-[0.3em] uppercase text-[10px]">Contacto</span>
+          </div>
+          <Typography
+            variant="h2"
+            className={`${isMobileSimulated ? 'text-4xl' : 'text-5xl md:text-7xl'} font-black tracking-tighter mb-6 leading-none`}
+            editable={!!onUpdate}
+            onUpdate={(text) => handleTextUpdate('title', text)}
+          >
+            {data?.title || 'Hablemos de tu Proyecto'}
+          </Typography>
+          <Typography
+            variant="p"
+            className={`${isMobileSimulated ? 'text-lg' : 'text-xl md:text-2xl'} opacity-60 max-w-3xl mx-auto font-medium tracking-tight`}
+            editable={!!onUpdate}
+            onUpdate={(text) => handleTextUpdate('subtitle', text)}
+          >
+            {data?.subtitle || 'Estamos listos para convertir tus ideas en realidades digitales impactantes.'}
+          </Typography>
+        </motion.div>
+
+        <motion.div 
+          variants={containerVariants}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true }}
+          className={`grid ${isMobileSimulated ? 'grid-cols-1 gap-16' : 'lg:grid-cols-2 gap-24'} items-start`}
+        >
+          <div className="space-y-12">
+            <div className="grid grid-cols-1 gap-6">
+              {renderContactCard(<Mail className="w-6 h-6" />, 'Email', data?.email || 'hola@solutium.com', 'email')}
+              {renderContactCard(<Phone className="w-6 h-6" />, 'Teléfono', data?.phone || '+34 900 000 000', 'phone')}
+              {renderContactCard(<MapPin className="w-6 h-6" />, 'Ubicación', data?.address || 'Madrid, España', 'address')}
+            </div>
+
+            <motion.div variants={itemVariants} className="p-8 bg-current/[0.02] rounded-[2.5rem] border border-current/5">
+              <div className="flex items-center gap-4 mb-8">
+                <div className="p-3 bg-primary/10 text-primary rounded-2xl">
+                  <Clock className="w-6 h-6" />
+                </div>
+                <Typography variant="h4" className="text-xl font-black tracking-tight">Horario de Atención</Typography>
+              </div>
+              <div className="space-y-4">
+                {businessHours.map((h: any, idx: number) => (
+                  <div key={idx} className="flex justify-between items-center border-b border-current/5 pb-4 last:border-0 last:pb-0">
+                    <span className="text-sm font-bold uppercase tracking-widest opacity-40">{h.days}</span>
+                    <span className="text-sm font-black text-current">{h.hours}</span>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+
+            <motion.div variants={itemVariants} className="flex items-center gap-4">
+              <Typography variant="span" className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40 mr-4">Síguenos</Typography>
+              <div className="flex gap-3">
+                {socialLinks.map((link: any, idx: number) => (
+                  <motion.a 
+                    key={idx}
+                    href={link.url}
+                    whileHover={{ y: -3, scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    className="w-12 h-12 rounded-2xl bg-current/[0.03] border border-current/10 flex items-center justify-center text-current/60 hover:text-primary hover:border-primary hover:bg-primary/5 transition-all"
+                  >
+                    {renderSocialIcon(link.platform)}
+                  </motion.a>
+                ))}
+              </div>
+            </motion.div>
+          </div>
+
+          <div className="space-y-12">
+            {renderForm()}
+            
+            {showMap && mapUrl && (
+              <motion.div 
+                variants={itemVariants}
+                className={`h-[400px] w-full rounded-[3rem] overflow-hidden shadow-2xl border border-current/10 relative group`}
+              >
+                <iframe 
+                  src={mapUrl} 
+                  width="100%" 
+                  height="100%" 
+                  style={{ border: 0 }} 
+                  allowFullScreen 
+                  loading="lazy" 
+                  referrerPolicy="no-referrer-when-downgrade"
+                  className="grayscale group-hover:grayscale-0 transition-all duration-1000"
+                />
+                <div className="absolute inset-0 pointer-events-none border-[12px] border-white/10 rounded-[3rem]" />
+              </motion.div>
+            )}
+          </div>
+        </motion.div>
+      </div>
     </ModuleWrapper>
   );
 };

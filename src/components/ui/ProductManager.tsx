@@ -10,17 +10,17 @@ interface ProductManagerProps {
 
 export const ProductManager: React.FC<ProductManagerProps> = ({ data, onUpdate }) => {
   const { payload: config } = useSolutiumContext();
-  const { selected_product_ids, update_selected_products } = useBuilderStore();
+  const { selectedProductIds, updateSelectedProducts } = useBuilderStore();
   
   // Get products from config (mother app)
-  const products = config?.products_data || [];
+  const products = config?.productsData || [];
 
   const toggleProduct = (productId: string) => {
     const idStr = productId.toString();
-    const newSelection = selected_product_ids.includes(idStr)
-      ? selected_product_ids.filter(id => id !== idStr)
-      : [...selected_product_ids, idStr];
-    update_selected_products(newSelection);
+    const newSelection = selectedProductIds.includes(idStr)
+      ? selectedProductIds.filter(id => id !== idStr)
+      : [...selectedProductIds, idStr];
+    updateSelectedProducts(newSelection);
   };
 
   if (products.length === 0) {
@@ -35,7 +35,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ data, onUpdate }
     <div className="space-y-4">
       <div className="grid grid-cols-1 gap-2">
         {products.map((product: any) => {
-          const isSelected = selected_product_ids.includes(product.id.toString());
+          const isSelected = selectedProductIds.includes(product.id.toString());
           return (
             <button
               key={product.id}
@@ -56,9 +56,9 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ data, onUpdate }
                   <p className={`text-xs font-bold ${isSelected ? 'text-primary' : 'text-text'}`}>
                     {product.name}
                   </p>
-                  {product.unit_cost && (
+                  {product.unitCost && (
                     <p className="text-[10px] text-text/40">
-                      ${product.unit_cost}
+                      ${product.unitCost}
                     </p>
                   )}
                 </div>

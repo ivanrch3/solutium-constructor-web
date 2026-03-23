@@ -74,11 +74,12 @@ export const HeroModule = ({ data, onUpdate, onCTA }: { data: any, onUpdate?: (d
           highlightType={data?.titleStyle?.highlightType}
           highlightColor1={data?.titleStyle?.highlightColor1}
           highlightColor2={data?.titleStyle?.highlightColor2}
-          className="mb-6 md:mb-8 tracking-tighter text-6xl md:text-8xl lg:text-9xl leading-[0.9]"
+          animatedText={data?.titleStyle?.animatedText}
+          className="mb-6 md:mb-8 tracking-tighter text-5xl md:text-7xl leading-[1.1]"
           editable={!!onUpdate}
           onUpdate={(text) => handleTextUpdate('title', text)}
         >
-          {data?.title || 'Construye el Futuro de tu Negocio'}
+          {data?.title || 'Bienvenido al constructor web'}
         </Typography>
       </motion.div>
       
@@ -94,7 +95,7 @@ export const HeroModule = ({ data, onUpdate, onCTA }: { data: any, onUpdate?: (d
           editable={!!onUpdate}
           onUpdate={(text) => handleTextUpdate('subtitle', text)}
         >
-          {data?.subtitle || 'La plataforma todo-en-uno para gestionar, vender y crecer con Solutium.'}
+          {data?.subtitle || 'Empieza a construir tu página agregando módulos desde el constructor a la izquierda.'}
         </Typography>
       </motion.div>
 
@@ -272,11 +273,11 @@ export const HeroModule = ({ data, onUpdate, onCTA }: { data: any, onUpdate?: (d
                 variant={data?.titleStyle?.size || 'h2'}
                 weight={data?.titleStyle?.weight || '900'}
                 align="left"
-                className="mb-0 tracking-tighter text-6xl md:text-8xl"
+                className="mb-0 tracking-tighter text-4xl md:text-6xl leading-[1.1]"
                 editable={!!onUpdate}
                 onUpdate={(text) => handleTextUpdate('title', text)}
               >
-                {data?.title || 'Construye el Futuro de tu Negocio'}
+                {data?.title || 'Bienvenido al constructor web'}
               </Typography>
             </motion.div>
             <motion.div 
@@ -294,7 +295,7 @@ export const HeroModule = ({ data, onUpdate, onCTA }: { data: any, onUpdate?: (d
                 editable={!!onUpdate}
                 onUpdate={(text) => handleTextUpdate('subtitle', text)}
               >
-                {data?.subtitle || 'La plataforma todo-en-uno para gestionar, vender y crecer con Solutium.'}
+                {data?.subtitle || 'Empieza a construir tu página agregando módulos desde el constructor a la izquierda.'}
               </Typography>
             </motion.div>
             <motion.div 

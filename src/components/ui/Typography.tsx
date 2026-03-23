@@ -11,7 +11,8 @@ interface TypographyProps {
   highlightType?: 'none' | 'solid' | 'gradient';
   highlightColor1?: string;
   highlightColor2?: string;
-  children: string;
+  animatedText?: boolean;
+  children: React.ReactNode;
   className?: string;
   style?: React.CSSProperties;
   editable?: boolean; // Kept for backwards compatibility with modules passing it
@@ -28,6 +29,7 @@ export const Typography = ({
   highlightType = 'none',
   highlightColor1,
   highlightColor2,
+  animatedText,
   children,
   className = '',
   style,
@@ -64,7 +66,7 @@ export const Typography = ({
   const handleBlur = () => {
     setIsEditing(false);
     if (localText !== children && onUpdate) {
-      onUpdate(localText);
+      onUpdate(localText as string);
     }
   };
 
@@ -75,7 +77,7 @@ export const Typography = ({
   };
 
   const baseClasses: Record<string, string> = {
-    h1: isMobileSimulated ? 'text-4xl leading-tight' : 'text-4xl md:text-7xl leading-tight',
+    h1: isMobileSimulated ? 'text-5xl leading-tight' : 'text-5xl md:text-7xl leading-tight',
     h2: isMobileSimulated ? 'text-3xl leading-tight' : 'text-3xl md:text-5xl leading-tight',
     h3: isMobileSimulated ? 'text-xl leading-tight' : 'text-xl md:text-3xl leading-tight',
     h4: isMobileSimulated ? 'text-lg leading-tight' : 'text-lg md:text-2xl leading-tight',
@@ -114,8 +116,11 @@ export const Typography = ({
   const Tag = variant.startsWith('h') ? variant : (variant === 'small' ? 'small' : (variant === 'span' ? 'span' : 'p'));
 
   // Logic to parse *asterisks* and <span> tags
-  const renderContent = (text: string) => {
-    if (!text) return null;
+  const renderContent = (rawText: any) => {
+    if (rawText === null || rawText === undefined) return null;
+    if (typeof rawText !== 'string') return rawText;
+    
+    const text = rawText;
     
     // First, handle <span> tags if they exist (AI sometimes generates them)
     // We'll use a simple regex to find <span> tags with classes or styles
@@ -210,7 +215,7 @@ export const Typography = ({
     return (
       <textarea
         ref={inputRef}
-        value={localText}
+        value={typeof localText === 'string' ? localText : ''}
         onChange={handleChange}
         onBlur={handleBlur}
         className={`${classes} bg-transparent outline-none border-b-2 border-primary resize-none w-full overflow-hidden`}
@@ -226,7 +231,13 @@ export const Typography = ({
       style={style}
       onClick={handleInteraction}
     >
-      {renderContent(children)}
+      {animatedText ? (
+        <span className="inline-block overflow-hidden whitespace-nowrap border-r-4 border-primary pr-1 animate-[typing_3.5s_steps(40,end),blink-caret_.75s_step-end_infinite]">
+          {renderContent(children)}
+        </span>
+      ) : (
+        renderContent(children)
+      )}
     </Tag>
   );
 };

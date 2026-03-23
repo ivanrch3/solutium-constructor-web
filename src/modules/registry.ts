@@ -41,6 +41,8 @@ export interface FieldSchema {
   step?: number; // For range
   disabled?: boolean;
   condition?: { field: string; operator: '===' | '!==' | 'includes' | 'not-includes'; value: any };
+  isPremium?: boolean; // If true, the entire field is premium
+  premiumOptions?: string[]; // Array of option values that are premium
 }
 
 import { TYPOGRAPHY_PROPS, DESIGN_PROPS, BUTTON_GROUP_PROPS } from './shared-schemas';
@@ -87,6 +89,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
         label: 'Modo Avanzado', 
         type: 'select', 
         category: 'content',
+        isPremium: true,
         options: [
           { label: 'Estático (Normal)', value: 'none' },
           { label: 'Carrusel de Mensajes', value: 'carousel' },
@@ -144,25 +147,30 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
         label: 'Forma de la Barra', 
         type: 'select', 
         category: 'design',
+        isPremium: true,
+        premiumOptions: ['pill', 'bottom-rounded'],
         options: [
           { label: 'Rectangular (Full)', value: 'square' },
           { label: 'Redondeada Abajo', value: 'bottom-rounded' },
           { label: 'Píldora Flotante', value: 'pill' }
         ]
       },
-      { name: 'isSticky', label: 'Fijar al hacer scroll (Sticky)', type: 'boolean', category: 'design' },
+      { name: 'isSticky', label: 'Fijar al hacer scroll (Sticky)', type: 'boolean', category: 'design', isPremium: true },
       { name: 'isDismissible', label: 'Permitir cerrar ("X")', type: 'boolean', category: 'design' },
       { 
         name: 'smartMode', 
         label: 'Modo Inteligente', 
         type: 'boolean', 
-        category: 'design' 
+        category: 'design',
+        isPremium: true
       },
       { 
         name: 'visibility', 
         label: 'Visibilidad por Dispositivo', 
         type: 'select', 
         category: 'design',
+        isPremium: true,
+        premiumOptions: ['desktop', 'mobile'],
         options: [
           { label: 'Todos los dispositivos', value: 'all' },
           { label: 'Solo Escritorio', value: 'desktop' },
@@ -191,6 +199,11 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
         { label: 'Nosotros', link: '#about' },
         { label: 'Contacto', link: '#contact' }
       ],
+      linkStyle: { size: 'p', weight: '500', align: 'left', highlightType: 'none' },
+      hoverEffect: 'color',
+      glassmorphism: true,
+      transparentAtTop: false,
+      socialLinks: [],
       showCta: true,
       ctaText: 'Empezar',
       showLanguage: true,
@@ -205,11 +218,11 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
         label: 'Texto del logo', 
         type: 'text', 
         category: 'content' as const,
-        condition: { field: 'logoType', operator: '===', value: 'none' }
+        condition: { field: 'logoType', operator: '===' as const, value: 'none' }
       },
-      ...TYPOGRAPHY_PROPS('logoText', 'Estilo del texto del logo').map(p => ({ 
+      ...TYPOGRAPHY_PROPS('logoText', 'Estilo del texto del logo').map((p): FieldSchema => ({ 
         ...p, 
-        category: 'content' as const,
+        category: 'content',
         condition: { field: 'logoType', operator: '===', value: 'none' }
       })),
       { 
@@ -222,6 +235,31 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
           { name: 'link', label: 'Enlace', type: 'text' }
         ]
       },
+      ...TYPOGRAPHY_PROPS('link', 'Estilo de los enlaces').map((p): FieldSchema => ({ 
+        ...p, 
+        category: 'design',
+        isPremium: true
+      })),
+      {
+        name: 'hoverEffect',
+        label: 'Efecto al pasar el cursor (Hover)',
+        type: 'select',
+        category: 'design' as const,
+        isPremium: true,
+        options: [
+          { label: 'Solo Color', value: 'color' },
+          { label: 'Subrayado', value: 'underline' },
+          { label: 'Fondo Pastilla', value: 'pill' },
+          { label: 'Ninguno', value: 'none' }
+        ]
+      },
+      {
+        name: 'socials',
+        label: 'Redes Sociales',
+        type: 'object',
+        category: 'content' as const,
+        isPremium: true
+      },
       { name: 'ctaText', label: 'Texto del botón', type: 'text', category: 'content' as const },
 
       // Resto de propiedades
@@ -230,13 +268,14 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
         label: 'Tipo de Logo', 
         type: 'select',
         category: 'design' as const,
+        premiumOptions: ['custom'],
         options: [
           { label: 'Logo de la aplicación (Heredado)', value: 'inherited' },
           { label: 'Subir nuevo logo / URL', value: 'custom' },
           { label: 'Sin logo (Solo texto)', value: 'none' }
         ]
       },
-      { name: 'logoImage', label: 'Imagen del Logo', type: 'image', category: 'content' as const },
+      { name: 'logoImage', label: 'Imagen del Logo', type: 'image', category: 'content' as const, condition: { field: 'logoType', operator: '===', value: 'custom' } },
       { 
         name: 'logoPosition', 
         label: 'Ubicación del Logo', 
@@ -265,10 +304,25 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
         category: 'design' as const
       },
       { 
+        name: 'glassmorphism', 
+        label: 'Efecto Cristal (Glassmorphism)', 
+        type: 'boolean',
+        category: 'design' as const,
+        isPremium: true
+      },
+      { 
+        name: 'transparentAtTop', 
+        label: 'Transparente al inicio', 
+        type: 'boolean',
+        category: 'design' as const,
+        isPremium: true
+      },
+      { 
         name: 'scrollBehavior', 
         label: 'Comportamiento al desplazar', 
         type: 'select',
         category: 'design' as const,
+        premiumOptions: ['smart-hide'],
         options: [
           { label: 'Estático', value: 'static' },
           { label: 'Fijo (Sticky)', value: 'sticky' },
@@ -276,7 +330,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
         ]
       },
       { name: 'showCta', label: 'Mostrar Botón de Acción', type: 'boolean', category: 'content' as const },
-      { name: 'showLanguage', label: 'Mostrar Selector de Idioma', type: 'boolean', category: 'content' as const }
+      { name: 'showLanguage', label: 'Mostrar Selector de Idioma', type: 'boolean', category: 'content' as const, isPremium: true }
     ]
   },
   {
@@ -286,8 +340,8 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     description: 'Sección principal con título impactante y CTA',
     category: 'main-content',
     defaultData: {
-      title: 'Construye el *Futuro* de tu Negocio',
-      subtitle: 'La plataforma todo-en-uno para gestionar, vender y crecer con Solutium.',
+      title: 'Bienvenido al constructor web',
+      subtitle: 'Empieza a construir tu página agregando módulos desde el constructor a la izquierda.',
       primaryButton: { text: 'Empezar ahora', url: '#', target: '_self' },
       secondaryButton: { text: 'Ver Demo', url: '#', target: '_self' },
       layoutType: 'layout-1',
@@ -306,7 +360,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
 
       // Botones y otros contenidos
       BUTTON_GROUP_PROPS('primaryButton', 'Botón Primario'),
-      BUTTON_GROUP_PROPS('secondaryButton', 'Botón Secundario'),
+      BUTTON_GROUP_PROPS('secondaryButton', 'Botón Secundario', true),
       
       // Diseño y Configuración
       ...DESIGN_PROPS.map(p => ({ ...p, category: 'design' as const }))
@@ -381,7 +435,8 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
           { label: 'Zig-Zag (Alternado)', value: 'zigzag' },
           { label: 'Lista Minimalista', value: 'list' },
           { label: 'Carrusel', value: 'carousel' }
-        ]
+        ],
+        premiumOptions: ['bento', 'zigzag', 'carousel']
       },
       { name: 'columns', label: 'Columnas (Escritorio)', type: 'range', min: 1, max: 4, step: 1, category: 'design' },
       { 
@@ -411,9 +466,10 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
               { label: 'Suave', value: 'sm' },
               { label: 'Media', value: 'md' },
               { label: 'Profunda', value: 'lg' }
-            ]
+            ],
+            premiumOptions: ['lg']
           },
-          { name: 'glass', label: 'Efecto Cristal (Glass)', type: 'boolean' },
+          { name: 'glass', label: 'Efecto Cristal (Glass)', type: 'boolean', isPremium: true },
           { 
             name: 'borderRadius', 
             label: 'Redondeo', 
@@ -423,7 +479,8 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
               { label: 'Pequeño', value: 'md' },
               { label: 'Grande', value: 'xl' },
               { label: 'Extra Grande', value: '3xl' }
-            ]
+            ],
+            premiumOptions: ['3xl']
           }
         ]
       },
@@ -443,7 +500,8 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
             options: [
               { label: 'Icono', value: 'icon' },
               { label: 'Imagen', value: 'image' }
-            ]
+            ],
+            premiumOptions: ['image']
           },
           { name: 'icon', label: 'Nombre del Icono (Lucide)', type: 'text' },
           { name: 'image', label: 'Imagen', type: 'image' },
@@ -470,7 +528,8 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
                   { label: 'Sólido', value: 'solid' },
                   { label: 'Degradado', value: 'gradient' },
                   { label: 'Contorno', value: 'outlined' }
-                ]
+                ],
+                premiumOptions: ['gradient']
               }
             ]
           },
@@ -516,7 +575,8 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
         options: [
           { label: 'Cuadrícula (Grid)', value: 'grid' },
           { label: 'Lista', value: 'list' }
-        ]
+        ],
+        premiumOptions: ['list']
       },
       ...DESIGN_PROPS.map(p => ({ ...p, category: 'design' as const }))
     ]
@@ -601,7 +661,8 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
           { label: 'Carrusel Infinito', value: 'carousel' },
           { label: 'Destacado (Spotlight)', value: 'spotlight' },
           { label: 'Minimalista', value: 'minimal' }
-        ]
+        ],
+        premiumOptions: ['masonry', 'carousel', 'spotlight']
       },
       { name: 'columns', label: 'Columnas (Escritorio)', type: 'range', min: 1, max: 4, step: 1, category: 'design' },
       { 
@@ -629,7 +690,8 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
               { label: 'Clásica', value: 'classic' },
               { label: 'Burbuja de Chat', value: 'bubble' },
               { label: 'Plana (Sin Borde)', value: 'flat' }
-            ]
+            ],
+            premiumOptions: ['bubble']
           },
           { name: 'border', label: 'Borde', type: 'boolean' },
           { 
@@ -641,9 +703,10 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
               { label: 'Suave', value: 'sm' },
               { label: 'Media', value: 'md' },
               { label: 'Profunda', value: 'lg' }
-            ]
+            ],
+            premiumOptions: ['lg']
           },
-          { name: 'glass', label: 'Efecto Cristal (Glass)', type: 'boolean' },
+          { name: 'glass', label: 'Efecto Cristal (Glass)', type: 'boolean', isPremium: true },
           { 
             name: 'borderRadius', 
             label: 'Redondeo', 
@@ -653,7 +716,8 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
               { label: 'Pequeño', value: 'md' },
               { label: 'Grande', value: 'xl' },
               { label: 'Extra Grande', value: '3xl' }
-            ]
+            ],
+            premiumOptions: ['3xl']
           }
         ]
       },

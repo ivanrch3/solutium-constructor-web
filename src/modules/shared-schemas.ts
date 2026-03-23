@@ -60,11 +60,12 @@ export const TYPOGRAPHY_PROPS = (prefix: string, label: string): FieldSchema[] =
   }
 ];
 
-export const BUTTON_GROUP_PROPS = (name: string, label: string): FieldSchema => ({
+export const BUTTON_GROUP_PROPS = (name: string, label: string, isPremium?: boolean): FieldSchema => ({
   name,
   label,
   type: 'object',
   category: 'content',
+  isPremium,
   itemSchema: [
     { name: 'text', label: 'Texto del botón', type: 'text' },
     { name: 'url', label: 'URL / Enlace', type: 'text' },

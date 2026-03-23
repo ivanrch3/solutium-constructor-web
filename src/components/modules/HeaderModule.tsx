@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Menu, Search, Globe, Share2, X, ChevronDown, ArrowRight, Sparkles } from 'lucide-react';
+import { Menu, Search, Globe, Share2, X, ChevronDown, ArrowRight, Sparkles, Facebook, Twitter, Instagram, Linkedin, Youtube } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Typography } from '../ui/Typography';
 import { getModuleDefinition } from '../../modules/registry';
@@ -56,6 +56,24 @@ export const HeaderModule = ({ data, modules = [], isPreview, onCTA, onUpdate }:
   const themeTextMutedClass = isDark ? 'text-white/60' : 'text-text/60';
   const themeBgClass = isDark ? 'bg-[#0f172a]' : 'bg-surface';
   const themeBorderClass = isDark ? 'border-white/10' : 'border-text/10';
+
+  const socials = data?.socials || { useProjectSocials: true };
+  const isUsingProject = socials.useProjectSocials !== false;
+  const projectSocials = payload?.projectData?.socials || {};
+  const currentSocials = isUsingProject ? projectSocials : socials;
+
+  const hasSocials = data?.showSocials && Object.keys(currentSocials).some(k => k !== 'useProjectSocials' && currentSocials[k]);
+
+  const getSocialIcon = (platform: string) => {
+    switch (platform.toLowerCase()) {
+      case 'facebook': return Facebook;
+      case 'twitter': return Twitter;
+      case 'instagram': return Instagram;
+      case 'linkedin': return Linkedin;
+      case 'youtube': return Youtube;
+      default: return Globe;
+    }
+  };
 
   useEffect(() => {
     const handleScroll = () => {
@@ -143,25 +161,30 @@ export const HeaderModule = ({ data, modules = [], isPreview, onCTA, onUpdate }:
   ]);
 
   const getBgClass = () => {
-    if (bgType === 'transparent') {
-      return isScrolled ? `${themeBgClass} border-b ${themeBorderClass} shadow-xl shadow-black/5` : 'bg-transparent border-transparent';
+    const isGlass = data?.glassmorphism !== false;
+    const isTransparentAtTop = data?.transparentAtTop === true;
+
+    if (isTransparentAtTop && !isScrolled) {
+      return 'bg-transparent border-transparent';
     }
-    if (bgType === 'glass') {
+
+    if (isGlass) {
       return isDark 
-        ? 'bg-[#0f172a]/80 backdrop-blur-xl border-b border-white/10'
-        : 'bg-surface/80 backdrop-blur-xl border-b border-text/10';
+        ? 'bg-[#0f172a]/80 backdrop-blur-xl border-b border-white/10 shadow-xl shadow-black/5'
+        : 'bg-surface/80 backdrop-blur-xl border-b border-text/10 shadow-xl shadow-black/5';
     }
-    return `${themeBgClass} border-b ${themeBorderClass}`;
+    
+    return `${themeBgClass} border-b ${themeBorderClass} shadow-xl shadow-black/5`;
   };
 
   const getHoverClass = (isActive: boolean) => {
-    const base = "relative text-[11px] font-black uppercase tracking-[0.2em] transition-all duration-300 ";
+    const base = "relative transition-all duration-300 ";
     const activeColor = isActive ? "text-primary" : `${themeTextMutedClass} hover:text-primary`;
     
     if (hoverEffect === 'underline') {
       return base + activeColor + " after:content-[''] after:absolute after:bottom-[-4px] after:left-0 after:w-full after:h-[2px] after:bg-primary after:transition-transform after:duration-500 after:ease-out " + (isActive ? "after:scale-x-100" : "after:scale-x-0 hover:after:scale-x-100");
     }
-    if (hoverEffect === 'capsule') {
+    if (hoverEffect === 'pill') {
       return base + (isActive ? "bg-primary/10 text-primary px-5 py-2.5 rounded-full" : `${themeTextMutedClass} hover:bg-text/5 px-5 py-2.5 rounded-full`);
     }
     return base + activeColor;
@@ -237,7 +260,13 @@ export const HeaderModule = ({ data, modules = [], isPreview, onCTA, onUpdate }:
             }}
             className={getHoverClass(isActive)}
           >
-            {link.label}
+            <Typography
+              variant="span"
+              style={data?.linkStyle}
+              className="whitespace-nowrap"
+            >
+              {link.label}
+            </Typography>
           </motion.button>
         );
       })}
@@ -246,6 +275,26 @@ export const HeaderModule = ({ data, modules = [], isPreview, onCTA, onUpdate }:
 
   const renderActions = () => (
     <div className="flex items-center gap-6 flex-shrink-0">
+      {hasSocials && (
+        <div className="hidden lg:flex items-center gap-3 mr-2">
+          {Object.entries(currentSocials).map(([platform, url]) => {
+            if (platform === 'useProjectSocials' || !url) return null;
+            const Icon = getSocialIcon(platform);
+            return (
+              <a 
+                key={platform} 
+                href={url as string} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className={`p-1.5 ${themeTextMutedClass} hover:text-primary transition-colors`}
+              >
+                <Icon className="w-4 h-4" />
+              </a>
+            );
+          })}
+        </div>
+      )}
+
       {data?.showSearch && (
         <motion.button 
           whileHover={{ scale: 1.1 }}
@@ -460,6 +509,27 @@ export const HeaderModule = ({ data, modules = [], isPreview, onCTA, onUpdate }:
                         {data?.secondaryCtaText || 'Saber más'}
                       </Typography>
                     </motion.button>
+                  )}
+
+                  {/* Social Links Mobile */}
+                  {hasSocials && (
+                    <div className="flex items-center justify-center gap-4 pt-6 border-t border-text/10">
+                      {Object.entries(currentSocials).map(([platform, url]) => {
+                        if (platform === 'useProjectSocials' || !url) return null;
+                        const Icon = getSocialIcon(platform);
+                        return (
+                          <a 
+                            key={platform}
+                            href={url as string}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={`p-3 rounded-full transition-colors ${themeTextMutedClass} hover:${themeTextClass} hover:bg-black/5 dark:hover:bg-white/10`}
+                          >
+                            <Icon className="w-5 h-5" />
+                          </a>
+                        );
+                      })}
+                    </div>
                   )}
                 </div>
               </nav>

@@ -1,12 +1,14 @@
 import React from 'react';
 import { Clock, List, X, Plus, Trash2 } from 'lucide-react';
+import { PremiumBadge } from './PremiumBadge';
 
 interface AdvancedManagerProps {
   data: any;
   onUpdate: (data: any) => void;
+  isPremiumUser?: boolean;
 }
 
-export const AdvancedManager = ({ data, onUpdate }: AdvancedManagerProps) => {
+export const AdvancedManager = ({ data, onUpdate, isPremiumUser = false }: AdvancedManagerProps) => {
   const mode = data.advancedMode || 'none'; // 'none', 'timer', 'carousel'
   const timerData = data.timer || { days: 0, hours: 0, minutes: 0, seconds: 0 };
   const carouselData = data.carousel || ['Mensaje 1'];
@@ -44,7 +46,7 @@ export const AdvancedManager = ({ data, onUpdate }: AdvancedManagerProps) => {
   return (
     <div className="space-y-6">
       {/* Mode Selector */}
-      <div className="flex bg-background p-1 rounded-xl border border-text/10">
+      <div className="flex bg-background p-1 rounded-xl border border-text/10 relative">
         <button
           onClick={() => setMode('none')}
           className={`flex-1 flex items-center justify-center gap-2 py-2 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all ${
@@ -57,24 +59,36 @@ export const AdvancedManager = ({ data, onUpdate }: AdvancedManagerProps) => {
           Ninguno
         </button>
         <button
-          onClick={() => setMode('timer')}
-          className={`flex-1 flex items-center justify-center gap-2 py-2 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all ${
+          onClick={() => {
+            if (!isPremiumUser) return;
+            setMode('timer');
+          }}
+          className={`flex-1 flex items-center justify-center gap-2 py-2 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all relative ${
             mode === 'timer' 
               ? 'bg-surface text-primary shadow-sm' 
+              : !isPremiumUser
+              ? 'text-text/30 cursor-not-allowed'
               : 'text-text/40 hover:text-text/60'
           }`}
         >
+          {!isPremiumUser && <PremiumBadge />}
           <Clock className="w-3 h-3" />
           Temporizador
         </button>
         <button
-          onClick={() => setMode('carousel')}
-          className={`flex-1 flex items-center justify-center gap-2 py-2 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all ${
+          onClick={() => {
+            if (!isPremiumUser) return;
+            setMode('carousel');
+          }}
+          className={`flex-1 flex items-center justify-center gap-2 py-2 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all relative ${
             mode === 'carousel' 
               ? 'bg-surface text-primary shadow-sm' 
+              : !isPremiumUser
+              ? 'text-text/30 cursor-not-allowed'
               : 'text-text/40 hover:text-text/60'
           }`}
         >
+          {!isPremiumUser && <PremiumBadge />}
           <List className="w-3 h-3" />
           Carrusel
         </button>

@@ -2,13 +2,16 @@ import React, { useState } from 'react';
 import { MousePointer2, Link as LinkIcon, ExternalLink, ChevronDown, Type, Palette } from 'lucide-react';
 import { ColorPicker } from './ColorPicker';
 
+import { PremiumBadge } from './PremiumBadge';
+
 interface ButtonManagerProps {
   data: any;
   onUpdate: (data: any) => void;
-  buttonElements: { key: string; label: string }[];
+  buttonElements: { key: string; label: string; isPremium?: boolean }[];
+  isPremiumUser?: boolean;
 }
 
-export const ButtonManager = ({ data, onUpdate, buttonElements }: ButtonManagerProps) => {
+export const ButtonManager = ({ data, onUpdate, buttonElements, isPremiumUser = false }: ButtonManagerProps) => {
   const [selectedButton, setSelectedButton] = useState(buttonElements[0]?.key || '');
 
   if (buttonElements.length === 0) return null;
@@ -37,6 +40,10 @@ export const ButtonManager = ({ data, onUpdate, buttonElements }: ButtonManagerP
 
   const defaultColor = currentButtonData.color || getThemeColorHex('--color-primary-rgb', '#3B82F6');
 
+  const currentButtonElement = buttonElements.find(el => el.key === selectedButton);
+  const isPremiumButton = currentButtonElement?.isPremium;
+  const isDisabled = isPremiumButton && !isPremiumUser;
+
   return (
     <div className="space-y-6">
       {/* Button Selector (Only show if there are multiple buttons) */}
@@ -53,7 +60,7 @@ export const ButtonManager = ({ data, onUpdate, buttonElements }: ButtonManagerP
             >
               {buttonElements.map((el) => (
                 <option key={el.key} value={el.key}>
-                  {el.label}
+                  {el.label} {el.isPremium && !isPremiumUser ? '(PRO)' : ''}
                 </option>
               ))}
             </select>
@@ -69,7 +76,12 @@ export const ButtonManager = ({ data, onUpdate, buttonElements }: ButtonManagerP
       )}
 
       {/* Button Settings */}
-      <div className="space-y-4">
+      <div className={`space-y-4 ${isDisabled ? 'opacity-40 pointer-events-none relative' : ''}`}>
+        {isDisabled && (
+          <div className="absolute -top-4 right-0 z-10">
+            <PremiumBadge />
+          </div>
+        )}
         <div className="space-y-2">
           <label className="text-[10px] font-bold text-text/40 uppercase tracking-widest flex items-center gap-2">
             <LinkIcon className="w-3 h-3" /> URL / Enlace

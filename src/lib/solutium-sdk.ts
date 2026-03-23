@@ -7,253 +7,238 @@ import { useEffect, useState, useMemo, useRef } from 'react';
 import { initSupabase } from './supabase';
 
 export interface SolutiumPayload {
-    userId: string;
-    projectId: string;
+  userId: string;
+  projectId: string;
+  role: string;
+  timestamp: number;
+  scopes: string[];
+  environment: string;
+
+  // 1. Perfil de Usuario (Extendido)
+  profilesData?: {
+    id: string;
+    fullName: string;
+    email: string;
+    phone?: string;
+    avatarUrl?: string;
+    language: string;
     role: string;
-    timestamp: number;
-    scopes: string[];
-    
-    // S.I.P. v2 Core Fields
-    userProfile: {
-        id: string;
-        fullName?: string;
-        email?: string;
-        avatarUrl?: string;
-        role?: string;
-        language?: string;
-        phone?: string;
-        uiStyle?: string;
-        activeTheme?: string;
-        fontFamily?: string;
-        baseSize?: string;
-        borderRadius?: string;
-        themePreference?: string;
-        coloredSidebarIcons?: boolean;
-        subscriptionPlan?: string;
-        onboardingCompleted?: boolean;
-        emailItId?: string;
-        updatedAt?: string;
-        hasCompletedTour?: boolean;
-        businessName?: string;
-        schemaVersion?: string;
-    };
-    projectData: {
-        name: string;
-        colors: string[]; // [Primary, Secondary, Accent, Background, Surface, Text]
-        logoUrl?: string;
-        fontFamily?: string;
-        baseSize?: string;
-        borderRadius?: string;
-        themePreset?: string;
-        socials?: {
-            facebook?: string;
-            twitter?: string;
-            instagram?: string;
-            linkedin?: string;
-            youtube?: string;
-        };
-    };
-    customersData?: Array<{
-        id: string;
-        projectId?: string;
-        name: string;
-        email?: string;
-        phone?: string;
-        company?: string;
-        role?: string;
-        status?: string;
-        source?: string;
-        sourceAppId?: string;
-        businessId?: string;
-        visibility?: string;
-        assignedBusinessIds?: any;
-        lastActivity?: string;
-        notes?: string;
-        appData?: any;
-        createdAt?: string;
-        updatedAt?: string;
-        schemaVersion?: string;
-        profilePhotoUrl?: string;
-        companyLogoUrl?: string;
-    }>;
-    productsData?: Array<{
-        id: string;
-        projectId?: string;
-        name: string;
-        description?: string;
-        unitCost?: number;
-        type?: string;
-        sku?: string;
-        status?: string;
-        businessId?: string;
-        appData?: any;
-        createdAt?: string;
-        updatedAt?: string;
-        schemaVersion?: string;
-        photoUrl?: string;
-    }>;
-    supabaseData?: {
-        url: string;
-        anonKey: string;
-    };
-    currentAsset?: {
-        id: string;
-        name: string;
-        type: string;
-        data?: any;
-    };
-    teamMembersData?: Array<{
-        id: string;
-        name: string;
-        email: string;
-        role: string;
-        avatarUrl?: string;
-        status?: string;
-        projectId?: string;
-        profileId?: string;
-        assignedAt?: string;
-        userId?: string;
-        schemaVersion?: string;
-    }>;
-    projectsData?: Array<{
-        id: string;
-        ownerId?: string;
-        name: string;
-        industry?: string;
-        whatsapp?: string;
-        email?: string;
-        address?: string;
-        website?: string;
-        socials?: any;
-        brandColors?: string[];
-        logoUrl?: string;
-        uiStyle?: string;
-        activeTheme?: string;
-        imageMappings?: any;
-        isMaster?: boolean;
-        createdAt?: string;
-        updatedAt?: string;
-        schemaVersion?: string;
-        assets?: any[];
-    }>;
-    calendarConfig?: {
-        timezone: string;
-        workingDays: number[];
-        openingTime: string;
-        closingTime: string;
-    };
-    appsData?: Array<{
-        id: string;
-        name: string;
-        url: string;
-        description?: string;
-        category?: string;
-        logoUrl?: string;
-        isoUrl?: string;
-        icon?: string;
-        status?: string;
-        lifecycleStatus?: string;
-        requiresPro?: boolean;
-        isActive?: boolean;
-        isComingSoon?: boolean;
-        isNew?: boolean;
-        isFeatured?: boolean;
-        isCustom?: boolean;
-        ownerId?: string;
-        createdAt?: string;
-        schemaVersion?: string;
-    }>;
-    projectAppsData?: Array<{
-        projectId: string;
-        appId: string;
-        settings?: any;
-        installedAt?: string;
-        schemaVersion?: string;
-    }>;
-    integrationsData?: Array<{
-        id: string;
-        userId: string;
-        provider: string;
-        accessToken: string;
-        refreshToken?: string;
-        expiresAt?: string;
-        metadata?: any;
-        createdAt?: string;
-        updatedAt?: string;
-        schemaVersion?: string;
-    }>;
-    assetsData?: Array<{
-        id: string;
-        projectId?: string;
-        name: string;
-        type?: string;
-        url?: string;
-        originApp?: string;
-        author?: string;
-        status?: string;
-        tags?: any;
-        metadata?: any;
-        createdAt?: string;
-        updatedAt?: string;
-        schemaVersion?: string;
-    }>;
-    profilesData?: Array<{
-        id: string;
-        fullName?: string;
-        email?: string;
-        avatarUrl?: string;
-        role?: string;
-        language?: string;
-        phone?: string;
-        uiStyle?: string;
-        activeTheme?: string;
-        fontFamily?: string;
-        baseSize?: string;
-        borderRadius?: string;
-        themePreference?: string;
-        coloredSidebarIcons?: boolean;
-        subscriptionPlan?: string;
-        onboardingCompleted?: boolean;
-        emailItId?: string;
-        updatedAt?: string;
-        hasCompletedTour?: boolean;
-        businessName?: string;
-        schemaVersion?: string;
-    }>;
-    
-    // Legacy/Extra fields
-    projects?: any[];
+    uiStyle: string;
+    activeTheme: string;
+    fontFamily: string;
+    baseSize: string;
+    borderRadius: string;
+    themePreference: string;
+    coloredSidebarIcons?: boolean;
+    subscriptionPlan: string;
+    onboardingCompleted: boolean;
+    isTrialUser?: boolean;
+    needsPassword?: boolean;
+    hasCompletedTour?: boolean;
+    emailItId?: string;
+    updatedAt?: string;
+    businessName?: string;
+    provider?: string;
+    preferredTheme?: string;
+    schemaVersion?: string;
+  };
+
+  // 2. Datos del Proyecto (Extendido)
+  projectsData?: {
+    id: string;
+    ownerId?: string;
+    name: string;
+    industry?: string;
+    whatsapp?: string;
+    website?: string;
+    email?: string;
+    address?: string;
+    brandColors: string[];
+    logoUrl?: string;
+    uiStyle?: string;
+    activeTheme?: string;
+    imageMappings?: any[];
+    isMaster?: boolean;
+    createdAt: number;
+    updatedAt?: number;
+    schemaVersion?: string;
+    webConfig?: any;
+    integrations?: any[];
+    currency?: string;
+    installedAppIds: string[];
+    assignedMemberIds: string[];
+    assets?: any[];
+  };
+
+  // 3. Equipo y Miembros
+  teamMembersData?: Array<{
+    id: string;
+    name: string;
+    email: string;
+    role: string;
+    avatarUrl?: string;
+    status?: string;
+    projectId?: string;
+    profileId?: string;
+    assignedAt?: string | number;
+    userId?: string;
+    permissions?: string[];
+    schemaVersion?: string;
+  }>;
+
+  // 4. CRM (Clientes)
+  customersData?: Array<{
+    id: string;
+    projectId?: string;
+    name: string;
+    email?: string;
+    phone?: string;
+    company?: string;
+    role?: string;
+    status?: string;
+    source?: string;
+    sourceAppId?: string;
+    businessId?: string;
+    visibility?: string;
+    assignedBusinessIds?: any;
+    lastActivity?: string;
+    notes?: string;
+    appData?: any;
+    createdAt?: string | number;
+    updatedAt?: string | number;
+    schemaVersion?: string;
+  }>;
+
+  // 5. Catálogo (Productos/Servicios)
+  productsData?: Array<{
+    id: string;
+    projectId?: string;
+    name: string;
+    description?: string;
+    unitCost?: number;
+    type?: string;
+    sku?: string;
+    status?: string;
+    businessId?: string;
+    appData?: any;
+    createdAt?: string | number;
+    updatedAt?: string | number;
+    schemaVersion?: string;
+  }>;
+
+  // 6. Activos Digitales
+  assetsData?: Array<{
+    id: string;
+    projectId?: string;
+    name: string;
+    type?: string;
+    url?: string;
+    originApp?: string;
+    author?: string;
+    status?: string;
+    tags?: string[];
+    metadata?: any;
+    createdAt?: string;
+    updatedAt?: string;
+    schemaVersion?: string;
+  }>;
+
+  // 7. Integraciones de Usuario
+  integrationsData?: any[];
+  
+  // Legacy fields for backwards compatibility
+  supabaseData?: {
+      url: string;
+      anonKey: string;
+  };
+  currentAsset?: {
+      id: string;
+      name: string;
+      type: string;
+      data?: any;
+  };
+}
+
+// Helper to verify HMAC-SHA256
+async function verifySignature(payloadBase64: string, signatureBase64: string, secret: string) {
+    try {
+        const encoder = new TextEncoder();
+        const keyData = encoder.encode(secret);
+        const cryptoKey = await crypto.subtle.importKey(
+            'raw',
+            keyData,
+            { name: 'HMAC', hash: 'SHA-256' },
+            false,
+            ['verify']
+        );
+        
+        // Convert base64url to Uint8Array
+        const sigStr = atob(signatureBase64.replace(/-/g, '+').replace(/_/g, '/'));
+        const sigBytes = new Uint8Array(sigStr.length);
+        for (let i = 0; i < sigStr.length; i++) {
+            sigBytes[i] = sigStr.charCodeAt(i);
+        }
+        
+        const dataBytes = encoder.encode(payloadBase64);
+        
+        return await crypto.subtle.verify(
+            'HMAC',
+            cryptoKey,
+            sigBytes,
+            dataBytes
+        );
+    } catch (e) {
+        console.error('Error verifying signature:', e);
+        return false;
+    }
 }
 
 export const useSolutium = () => {
-    // 1. Intentar obtener token de la URL (flujo iframe/redirect) inmediatamente
-    const initialConfig = useMemo(() => {
-        if (typeof window === 'undefined') return null;
-        try {
-            const hashParams = new URLSearchParams(window.location.hash.replace('#', '?'));
-            const token = hashParams.get('token') || new URLSearchParams(window.location.search).get('token');
-            if (token) {
-                const base64Payload = token.split('.')[0];
-                const decoded = JSON.parse(atob(base64Payload));
-                return decoded;
-            }
-        } catch (e) {
-            console.error('Error decodificando token inicial:', e);
-        }
-        return null;
-    }, []);
-
-    const [config, setConfig] = useState<SolutiumPayload | null>(initialConfig);
-    const [loading, setLoading] = useState(!initialConfig);
+    const [config, setConfig] = useState<SolutiumPayload | null>(null);
+    const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const isInitialized = useRef(false);
 
-    // Aplicar tema inicial si existe configuración
+    // 1. Intentar obtener token de la URL (flujo iframe/redirect) inmediatamente
     useEffect(() => {
-        if (initialConfig?.projectData) {
-            applyTheme(initialConfig.projectData);
-        }
-    }, [initialConfig]);
+        const initFromUrl = async () => {
+            if (typeof window === 'undefined') return;
+            try {
+                const hashParams = new URLSearchParams(window.location.hash.replace('#', '?'));
+                const token = hashParams.get('token') || new URLSearchParams(window.location.search).get('token');
+                
+                if (token) {
+                    const parts = token.split('.');
+                    const base64Payload = parts[0];
+                    const signature = parts[1];
+                    
+                    const secret = import.meta.env.VITE_SIP_SECRET_KEY;
+                    
+                    if (secret && signature) {
+                        const isValid = await verifySignature(base64Payload, signature, secret);
+                        if (!isValid) {
+                            console.error('Invalid SIP token signature');
+                            setError('Invalid token signature');
+                            setLoading(false);
+                            return;
+                        }
+                    }
+                    
+                    const decoded = JSON.parse(atob(base64Payload));
+                    setConfig(decoded);
+                    if (decoded.projectsData || decoded.projectData) {
+                        applyTheme(decoded.projectsData || decoded.projectData);
+                    }
+                }
+            } catch (e) {
+                console.error('Error decodificando token inicial:', e);
+            } finally {
+                setLoading(false);
+            }
+        };
+        
+        initFromUrl();
+    }, []);
 
     useEffect(() => {
         // 2. Avisar a la App Madre que el satélite está listo para recibir la data pesada (solo una vez)
@@ -263,18 +248,38 @@ export const useSolutium = () => {
             window.parent.postMessage({ type: 'SOLUTIUM_SATELLITE_READY' }, '*');
         }
 
-        const handleMessage = (event: MessageEvent) => {
+        const handleMessage = async (event: MessageEvent) => {
             
             if (event.data?.type === 'SOLUTIUM_INIT' || event.data?.type === 'SOLUTIUM_CONFIG') {
                 console.log("📦 [Satélite] Recibiendo payload pesado:", event.data.payload);
                 
-                const payload = event.data.payload as SolutiumPayload;
-                console.log("DEBUG: Full Payload Received:", payload);
+                let payload = event.data.payload;
+                
+                // If payload is a string (token), verify it
+                if (typeof payload === 'string') {
+                    const parts = payload.split('.');
+                    const base64Payload = parts[0];
+                    const signature = parts[1];
+                    const secret = import.meta.env.VITE_SIP_SECRET_KEY;
+                    
+                    if (secret && signature) {
+                        const isValid = await verifySignature(base64Payload, signature, secret);
+                        if (!isValid) {
+                            console.error('Invalid SIP token signature in message');
+                            return;
+                        }
+                    }
+                    payload = JSON.parse(atob(base64Payload));
+                }
+                
+                const typedPayload = payload as SolutiumPayload;
+                console.log("DEBUG: Full Payload Received:", typedPayload);
                 
                 // Apply Theme & Supabase
-                if (payload.projectData) applyTheme(payload.projectData);
-                if (payload.supabaseData?.url && payload.supabaseData?.anonKey) {
-                    initSupabase(payload.supabaseData.url, payload.supabaseData.anonKey);
+                const legacyPayload = typedPayload as any;
+                if (typedPayload.projectsData || legacyPayload.projectData) applyTheme(typedPayload.projectsData || legacyPayload.projectData);
+                if (typedPayload.supabaseData?.url && typedPayload.supabaseData?.anonKey) {
+                    initSupabase(typedPayload.supabaseData.url, typedPayload.supabaseData.anonKey);
                 }
 
              // Merge to avoid overwriting heavy data (crmData, productsData) with light data from URL token
@@ -282,16 +287,16 @@ export const useSolutium = () => {
                     if (prev) {
                         return {
                             ...prev,
-                            ...payload,
-                            customersData: payload.customersData || prev.customersData,
-                            productsData: payload.productsData || prev.productsData,
-                            assetsData: payload.assetsData || prev.assetsData,
-                            profilesData: payload.profilesData || prev.profilesData,
-                            teamMembersData: payload.teamMembersData || prev.teamMembersData,
-                            projectsData: payload.projectsData || prev.projectsData
+                            ...typedPayload,
+                            customersData: typedPayload.customersData || prev.customersData,
+                            productsData: typedPayload.productsData || prev.productsData,
+                            assetsData: typedPayload.assetsData || prev.assetsData,
+                            profilesData: typedPayload.profilesData || prev.profilesData,
+                            teamMembersData: typedPayload.teamMembersData || prev.teamMembersData,
+                            projectsData: typedPayload.projectsData || prev.projectsData
                         };
                     }
-                    return payload;
+                    return typedPayload;
                 });
                 setLoading(false);
                 
@@ -305,22 +310,25 @@ export const useSolutium = () => {
         window.addEventListener('message', handleMessage);
 
         // Timeout de seguridad para mostrar mensaje de carga
-        if (!initialConfig) {
-            setTimeout(() => {
-                setLoading(prev => {
-                    if (prev) {
-                        console.log('Cargando configuración desde la App Madre...');
-                    }
-                    return prev;
-                });
-            }, 1000);
-        }
+        const timeout = setTimeout(() => {
+            setLoading(prev => {
+                if (prev) {
+                    console.log('Cargando configuración desde la App Madre...');
+                }
+                return prev;
+            });
+        }, 1000);
 
-        return () => window.removeEventListener('message', handleMessage);
-    }, [initialConfig]);
+        return () => {
+            window.removeEventListener('message', handleMessage);
+            clearTimeout(timeout);
+        };
+    }, []);
 
-    const saveData = (assetId: string, data: any, metadata?: { name?: string, status?: string, tags?: string[], author?: string, updatedAt?: number }) => {
-        if (!config?.projectId) {
+    const saveData = (assetId: string, data: any, metadata?: { name?: string, status?: string, tags?: string[], author?: string, updatedAt?: number, projectId?: string }) => {
+        const targetProjectId = metadata?.projectId || config?.projectId;
+        
+        if (!targetProjectId) {
             console.error('[Solutium SDK] Cannot save: No Project ID configured.');
             return;
         }
@@ -332,7 +340,7 @@ export const useSolutium = () => {
         const message = {
             type: 'SOLUTIUM_SAVE',
             payload: {
-                projectId: config.projectId,
+                projectId: targetProjectId,
                 appId: 'web-constructor',
                 assetId: assetId,
                 timestamp: Date.now(),
@@ -341,7 +349,7 @@ export const useSolutium = () => {
                     name: metadata?.name || '',
                     status: metadata?.status || 'draft',
                     tags: metadata?.tags || [],
-                    author: metadata?.author || config.userProfile?.fullName || 'Usuario',
+                    author: metadata?.author || config?.profilesData?.fullName || 'Usuario',
                     updatedAt: metadata?.updatedAt || Date.now()
                 }
             }
@@ -357,21 +365,33 @@ export const useSolutium = () => {
     return { config, isReady: !loading, saveData, error };
 };
 
-const applyTheme = (projectData: SolutiumPayload['projectData']) => {
+const applyTheme = (projectData: SolutiumPayload['projectsData']) => {
+    if (!projectData) return;
     const root = document.documentElement;
     
-    if (projectData.colors && Array.isArray(projectData.colors)) {
-        if (projectData.colors[0]) root.style.setProperty('--color-primary-rgb', hexToRgb(projectData.colors[0]));
-        if (projectData.colors[1]) root.style.setProperty('--color-secondary-rgb', hexToRgb(projectData.colors[1]));
-        if (projectData.colors[2]) root.style.setProperty('--color-accent-rgb', hexToRgb(projectData.colors[2]));
-        if (projectData.colors[3]) root.style.setProperty('--color-background-rgb', hexToRgb(projectData.colors[3]));
-        if (projectData.colors[4]) root.style.setProperty('--color-surface-rgb', hexToRgb(projectData.colors[4]));
-        if (projectData.colors[5]) root.style.setProperty('--color-text-rgb', hexToRgb(projectData.colors[5]));
+    if (projectData.brandColors && Array.isArray(projectData.brandColors)) {
+        if (projectData.brandColors[0]) root.style.setProperty('--color-primary-rgb', hexToRgb(projectData.brandColors[0]));
+        if (projectData.brandColors[1]) root.style.setProperty('--color-secondary-rgb', hexToRgb(projectData.brandColors[1]));
+        if (projectData.brandColors[2]) root.style.setProperty('--color-accent-rgb', hexToRgb(projectData.brandColors[2]));
+        if (projectData.brandColors[3]) root.style.setProperty('--color-background-rgb', hexToRgb(projectData.brandColors[3]));
+        if (projectData.brandColors[4]) root.style.setProperty('--color-surface-rgb', hexToRgb(projectData.brandColors[4]));
+        if (projectData.brandColors[5]) root.style.setProperty('--color-text-rgb', hexToRgb(projectData.brandColors[5]));
     }
 
-    if (projectData.fontFamily) root.style.setProperty('--font-family', projectData.fontFamily);
-    if (projectData.borderRadius) root.style.setProperty('--border-radius', projectData.borderRadius);
-    if (projectData.baseSize) root.style.setProperty('--base-size', projectData.baseSize);
+    // Fallback to old property names if present in legacy payloads
+    const legacyData = projectData as any;
+    if (legacyData.colors && Array.isArray(legacyData.colors)) {
+        if (legacyData.colors[0]) root.style.setProperty('--color-primary-rgb', hexToRgb(legacyData.colors[0]));
+        if (legacyData.colors[1]) root.style.setProperty('--color-secondary-rgb', hexToRgb(legacyData.colors[1]));
+        if (legacyData.colors[2]) root.style.setProperty('--color-accent-rgb', hexToRgb(legacyData.colors[2]));
+        if (legacyData.colors[3]) root.style.setProperty('--color-background-rgb', hexToRgb(legacyData.colors[3]));
+        if (legacyData.colors[4]) root.style.setProperty('--color-surface-rgb', hexToRgb(legacyData.colors[4]));
+        if (legacyData.colors[5]) root.style.setProperty('--color-text-rgb', hexToRgb(legacyData.colors[5]));
+    }
+
+    if (legacyData.fontFamily) root.style.setProperty('--font-family', legacyData.fontFamily);
+    if (legacyData.borderRadius) root.style.setProperty('--border-radius', legacyData.borderRadius);
+    if (legacyData.baseSize) root.style.setProperty('--base-size', legacyData.baseSize);
 };
 
 const hexToRgb = (hex: string) => {

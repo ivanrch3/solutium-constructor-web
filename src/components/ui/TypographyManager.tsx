@@ -19,6 +19,7 @@ import {
   Star,
   Image as ImageIcon
 } from 'lucide-react';
+import { PremiumBadge } from './PremiumBadge';
 import { Typography } from '../ui/Typography';
 import { 
   HeroModule, 
@@ -53,9 +54,10 @@ interface TypographyManagerProps {
     isButton?: boolean; 
     isDisabled?: boolean;
   }[];
+  isPremiumUser?: boolean;
 }
 
-export const TypographyManager = ({ module, data, onUpdate, textElements }: TypographyManagerProps) => {
+export const TypographyManager = ({ module, data, onUpdate, textElements, isPremiumUser = false }: TypographyManagerProps) => {
   const [selectedElement, setSelectedElement] = useState(() => {
     const firstEnabled = textElements.find(el => !el.isDisabled);
     return firstEnabled?.key || textElements[0]?.key || '';
@@ -408,6 +410,42 @@ export const TypographyManager = ({ module, data, onUpdate, textElements }: Typo
                   )}
                 </div>
               )}
+            </div>
+
+            {/* Animated Text Effect (PRO) */}
+            <div className={`space-y-3 pt-4 border-t border-text/5 transition-opacity ${!isMainTitle ? 'opacity-40 pointer-events-none grayscale-[0.5]' : ''}`}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <label className="text-[10px] font-bold text-text/40 uppercase tracking-widest flex items-center gap-2">
+                    <Type className="w-3 h-3" /> Efecto Animado (Typewriter)
+                  </label>
+                  <PremiumBadge inline />
+                </div>
+                {!isMainTitle && (
+                  <span className="text-[8px] font-bold text-primary uppercase tracking-tighter bg-primary/10 px-1.5 py-0.5 rounded">
+                    Solo Títulos
+                  </span>
+                )}
+              </div>
+              <div className="relative">
+                <button
+                  onClick={() => {
+                    if (isPremiumUser) {
+                      updateStyle('animatedText', !currentStyle.animatedText);
+                    }
+                  }}
+                  className={`w-full py-2.5 px-3 text-[11px] font-bold uppercase tracking-wider rounded-lg border transition-all flex items-center justify-center gap-2 ${
+                    currentStyle.animatedText
+                      ? 'bg-primary/5 border-primary text-primary'
+                      : 'bg-background border-text/10 text-text/60 hover:border-text/20'
+                  } ${!isPremiumUser ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  {currentStyle.animatedText ? 'Animación Activada' : 'Activar Animación'}
+                </button>
+                {!isPremiumUser && (
+                  <div className="absolute inset-0 z-10" title="Requiere plan PRO" />
+                )}
+              </div>
             </div>
           </div>
 

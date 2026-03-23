@@ -14,7 +14,8 @@ import {
   Share2,
   Zap,
   Eye,
-  EyeOff
+  EyeOff,
+  Lock
 } from 'lucide-react';
 import { ColorPicker } from './ColorPicker';
 import { TypographyManager } from './TypographyManager';
@@ -25,10 +26,18 @@ interface HeaderManagerProps {
   onOpenImagePicker: (callback: (url: string) => void) => void;
   textElements: any[];
   module: any;
+  isPremiumUser?: boolean;
 }
 
-export const HeaderManager = ({ data, onUpdate, onOpenImagePicker, textElements, module }: HeaderManagerProps) => {
+export const HeaderManager = ({ data, onUpdate, onOpenImagePicker, textElements, module, isPremiumUser }: HeaderManagerProps) => {
   const [expandedSection, setExpandedSection] = React.useState<string | null>(null);
+
+  const PremiumBadge = () => (
+    <div className="inline-flex items-center gap-1 text-[8px] font-black uppercase tracking-widest text-[#FF0080] bg-[#FF0080]/10 px-1.5 py-0.5 rounded ml-2">
+      <Lock className="w-2.5 h-2.5" />
+      <span>PRO</span>
+    </div>
+  );
 
   const updateData = (newData: any) => {
     onUpdate({ ...data, ...newData });
@@ -109,19 +118,25 @@ export const HeaderManager = ({ data, onUpdate, onOpenImagePicker, textElements,
               <div className="grid grid-cols-1 gap-2">
                 {[
                   { id: 'inherited', label: 'Logo de la aplicación (Heredado)' },
-                  { id: 'custom', label: 'Subir nuevo logo / URL' },
+                  { id: 'custom', label: 'Subir nuevo logo / URL', isPremium: true },
                   { id: 'none', label: 'Sin logo (Solo texto)' }
                 ].map((opt) => (
                   <button
                     key={opt.id}
-                    onClick={() => updateData({ logoType: opt.id })}
-                    className={`py-2 px-3 text-[10px] font-bold uppercase tracking-wider rounded-lg border text-left transition-all ${
+                    onClick={() => {
+                      if (opt.isPremium && !isPremiumUser) return;
+                      updateData({ logoType: opt.id });
+                    }}
+                    className={`py-2 px-3 text-[10px] font-bold uppercase tracking-wider rounded-lg border text-left transition-all flex items-center justify-between ${
                       (data.logoType || 'inherited') === opt.id
                         ? 'bg-primary/5 border-primary text-primary'
+                        : opt.isPremium && !isPremiumUser
+                        ? 'bg-background border-text/5 text-text/30 cursor-not-allowed'
                         : 'bg-background border-text/10 text-text/60 hover:border-text/20'
                     }`}
                   >
-                    {opt.label}
+                    <span>{opt.label}</span>
+                    {opt.isPremium && !isPremiumUser && <PremiumBadge />}
                   </button>
                 ))}
               </div>
@@ -208,18 +223,24 @@ export const HeaderManager = ({ data, onUpdate, onOpenImagePicker, textElements,
                 {[
                   { id: 'static', label: 'Estático' },
                   { id: 'sticky', label: 'Fijo' },
-                  { id: 'smart-hide', label: 'Inteligente' }
+                  { id: 'smart-hide', label: 'Inteligente', isPremium: true }
                 ].map((opt) => (
                   <button
                     key={opt.id}
-                    onClick={() => updateData({ scrollMode: opt.id })}
-                    className={`py-2 px-1 text-[10px] font-bold uppercase tracking-wider rounded-lg border transition-all ${
+                    onClick={() => {
+                      if (opt.isPremium && !isPremiumUser) return;
+                      updateData({ scrollMode: opt.id });
+                    }}
+                    className={`py-2 px-1 text-[10px] font-bold uppercase tracking-wider rounded-lg border transition-all flex flex-col items-center justify-center gap-1 ${
                       (data.scrollMode || 'static') === opt.id
                         ? 'bg-primary/5 border-primary text-primary'
+                        : opt.isPremium && !isPremiumUser
+                        ? 'bg-background border-text/5 text-text/30 cursor-not-allowed'
                         : 'bg-background border-text/10 text-text/60 hover:border-text/20'
                     }`}
                   >
-                    {opt.label}
+                    <span>{opt.label}</span>
+                    {opt.isPremium && !isPremiumUser && <PremiumBadge />}
                   </button>
                 ))}
               </div>
@@ -280,43 +301,62 @@ export const HeaderManager = ({ data, onUpdate, onOpenImagePicker, textElements,
 
         {expandedSection === 'style' && (
           <div className="space-y-6 p-4 bg-background/30 rounded-2xl border border-text/5 animate-in fade-in slide-in-from-top-2 duration-300">
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold text-text/40 uppercase tracking-widest">Tipo de Fondo</label>
-              <div className="grid grid-cols-3 gap-2">
-                {[
-                  { id: 'solid', label: 'Sólido' },
-                  { id: 'transparent', label: 'Transp.' },
-                  { id: 'glass', label: 'Cristal' }
-                ].map((opt) => (
-                  <button
-                    key={opt.id}
-                    onClick={() => updateData({ bgType: opt.id })}
-                    className={`py-2 px-1 text-[10px] font-bold uppercase tracking-wider rounded-lg border transition-all ${
-                      (data.bgType || 'glass') === opt.id
-                        ? 'bg-primary/5 border-primary text-primary'
-                        : 'bg-background border-text/10 text-text/60 hover:border-text/20'
-                    }`}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between p-3 bg-background rounded-xl border border-text/5">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium text-text/60">Efecto Cristal</span>
+                  {!isPremiumUser && <PremiumBadge />}
+                </div>
+                <button 
+                  onClick={() => {
+                    if (!isPremiumUser) return;
+                    updateData({ glassmorphism: data.glassmorphism !== false ? false : true });
+                  }}
+                  className={`w-10 h-5 rounded-full transition-colors relative ${data.glassmorphism !== false ? 'bg-primary' : 'bg-text/10'} ${!isPremiumUser ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-all ${data.glassmorphism !== false ? 'left-6' : 'left-1'}`} />
+                </button>
+              </div>
+              <div className="flex items-center justify-between p-3 bg-background rounded-xl border border-text/5">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium text-text/60">Transparente al inicio</span>
+                  {!isPremiumUser && <PremiumBadge />}
+                </div>
+                <button 
+                  onClick={() => {
+                    if (!isPremiumUser) return;
+                    updateData({ transparentAtTop: !data.transparentAtTop });
+                  }}
+                  className={`w-10 h-5 rounded-full transition-colors relative ${data.transparentAtTop ? 'bg-primary' : 'bg-text/10'} ${!isPremiumUser ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-all ${data.transparentAtTop ? 'left-6' : 'left-1'}`} />
+                </button>
               </div>
             </div>
 
             <div className="space-y-2">
-              <label className="text-[10px] font-bold text-text/40 uppercase tracking-widest">Efecto Hover</label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="flex items-center gap-2">
+                <label className="text-[10px] font-bold text-text/40 uppercase tracking-widest">Efecto Hover</label>
+                {!isPremiumUser && <PremiumBadge />}
+              </div>
+              <div className="grid grid-cols-4 gap-2">
                 {[
+                  { id: 'none', label: 'Nada' },
                   { id: 'underline', label: 'Línea' },
-                  { id: 'capsule', label: 'Cápsula' },
+                  { id: 'pill', label: 'Cápsula' },
                   { id: 'color', label: 'Color' }
                 ].map((opt) => (
                   <button
                     key={opt.id}
-                    onClick={() => updateData({ hoverEffect: opt.id })}
+                    onClick={() => {
+                      if (!isPremiumUser) return;
+                      updateData({ hoverEffect: opt.id });
+                    }}
                     className={`py-2 px-1 text-[10px] font-bold uppercase tracking-wider rounded-lg border transition-all ${
                       (data.hoverEffect || 'underline') === opt.id
                         ? 'bg-primary/5 border-primary text-primary'
+                        : !isPremiumUser
+                        ? 'bg-background border-text/5 text-text/30 cursor-not-allowed'
                         : 'bg-background border-text/10 text-text/60 hover:border-text/20'
                     }`}
                   >
@@ -424,18 +464,28 @@ export const HeaderManager = ({ data, onUpdate, onOpenImagePicker, textElements,
               <div className="grid grid-cols-3 gap-2">
                 {[
                   { id: 'showSearch', icon: Search, label: 'Buscar' },
-                  { id: 'showLanguage', icon: Globe, label: 'Idioma' },
-                  { id: 'showSocials', icon: Share2, label: 'Social' }
+                  { id: 'showLanguage', icon: Globe, label: 'Idioma', isPremium: true },
+                  { id: 'showSocials', icon: Share2, label: 'Social', isPremium: true }
                 ].map((opt) => (
                   <button
                     key={opt.id}
-                    onClick={() => updateData({ [opt.id]: !data[opt.id] })}
-                    className={`flex flex-col items-center gap-2 p-3 rounded-xl border transition-all ${
+                    onClick={() => {
+                      if (opt.isPremium && !isPremiumUser) return;
+                      updateData({ [opt.id]: !data[opt.id] });
+                    }}
+                    className={`flex flex-col items-center gap-2 p-3 rounded-xl border transition-all relative ${
                       data[opt.id]
                         ? 'bg-primary/5 border-primary text-primary'
+                        : opt.isPremium && !isPremiumUser
+                        ? 'bg-background border-text/5 text-text/30 cursor-not-allowed'
                         : 'bg-background border-text/10 text-text/40 hover:border-text/20'
                     }`}
                   >
+                    {opt.isPremium && !isPremiumUser && (
+                      <div className="absolute top-1 right-1">
+                        <Lock className="w-3 h-3 text-[#FF0080]" />
+                      </div>
+                    )}
                     <opt.icon className="w-4 h-4" />
                     <span className="text-[8px] font-black uppercase tracking-widest">{opt.label}</span>
                   </button>

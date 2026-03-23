@@ -93,7 +93,8 @@ export const SolutiumProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       role: 'super-admin',
       timestamp: Date.now(),
       scopes: ['profile', 'project', 'crm', 'products', 'calendar', 'assets', 'integrations'],
-      userProfile: {
+      environment: 'development',
+      profilesData: {
         id: 'dev-user-1',
         fullName: 'Usuario Dev',
         email: 'dev@solutium.app',
@@ -102,55 +103,30 @@ export const SolutiumProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         language: 'es',
         businessName: 'Solutium Dev Studio',
         onboardingCompleted: true,
-        schemaVersion: '3.0.0'
-      },
-      projectData: {
-        name: 'Proyecto de Desarrollo',
-        colors: ['#3b82f6', '#1e293b', '#f59e0b'],
-        logoUrl: 'https://via.placeholder.com/150',
+        schemaVersion: '3.0.0',
+        uiStyle: 'modern',
+        activeTheme: 'dark',
         fontFamily: 'Inter',
         baseSize: '16px',
-        socials: {
-          facebook: 'https://facebook.com/solutium',
-          twitter: 'https://twitter.com/solutium',
-          instagram: 'https://instagram.com/solutium',
-          linkedin: 'https://linkedin.com/company/solutium'
-        }
+        borderRadius: '12px',
+        themePreference: 'system',
+        subscriptionPlan: 'pro'
+      },
+      projectsData: {
+        id: 'dev-project-1',
+        name: 'Proyecto de Desarrollo',
+        brandColors: ['#3b82f6', '#1e293b', '#f59e0b', '#ffffff', '#f3f4f6', '#111827'],
+        logoUrl: 'https://via.placeholder.com/150',
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        installedAppIds: [],
+        assignedMemberIds: []
       },
       customersData: [],
       teamMembersData: [],
-      projectsData: [],
-      projects: [],
       assetsData: [],
       currentAsset: null,
-      profilesData: [
-        {
-          id: 'dev-user-1',
-          fullName: 'Ivan Developer',
-          email: 'ivanrch3@gmail.com',
-          avatarUrl: 'https://picsum.photos/seed/ivan/200',
-          role: 'Administrator',
-          language: 'es',
-          phone: '+34 600 000 000',
-          uiStyle: 'modern',
-          activeTheme: 'dark',
-          fontFamily: 'Inter',
-          baseSize: '16px',
-          borderRadius: '12px',
-          themePreference: 'system',
-          coloredSidebarIcons: true,
-          subscriptionPlan: 'Enterprise',
-          onboardingCompleted: true,
-          emailItId: 'it-ivan-123',
-          updatedAt: new Date().toISOString(),
-          hasCompletedTour: true,
-          businessName: 'Solutium Labs',
-          schemaVersion: '1.0.0'
-        }
-      ],
       productsData: [],
-      appsData: [],
-      projectAppsData: [],
       integrationsData: [],
       supabaseData: {
         url: 'https://placeholder.supabase.co',

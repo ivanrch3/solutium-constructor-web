@@ -187,7 +187,7 @@ export const ModuleRenderer = ({
   return (
     <div 
       id={`module-${module.id}`}
-      className={`group relative ${isPreview || isSeamless ? '' : 'mb-8'} transition-all duration-300 ${isSelected && !isPreview ? `ring-2 ring-primary ring-offset-4 ${isSeamless ? 'rounded-none' : 'rounded-2xl'}` : ''} ${module.data?.isHidden ? 'opacity-50 grayscale' : ''}`}
+      className={`group relative ${isPreview || isSeamless ? '' : 'mb-8'} transition-all duration-300 ${isSelected && !isPreview ? `ring-2 ring-[#FF0080] ring-offset-4 ${isSeamless ? 'rounded-none' : 'rounded-2xl'}` : ''} ${module.data?.isHidden ? 'opacity-50 grayscale' : ''}`}
       onClick={() => onSelect(module.id)}
     >
       {/* Module Controls */}

@@ -10,14 +10,15 @@ const getIcon = (name: string) => {
   return Icon;
 };
 
-const Counter = ({ value, className }: { value: string, className?: string }) => {
+const Counter = ({ value, className }: { value: string | number, className?: string }) => {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-100px" });
   
+  const stringValue = String(value || '0');
   // Extract number and suffix (e.g., "15k+" -> 15, "k+")
-  const numberMatch = value.match(/(\d+)/);
+  const numberMatch = stringValue.match(/(\d+)/);
   const numberValue = numberMatch ? parseInt(numberMatch[0], 10) : 0;
-  const suffix = value.replace(numberMatch ? numberMatch[0] : '', '');
+  const suffix = stringValue.replace(numberMatch ? numberMatch[0] : '', '');
 
   const spring = useSpring(0, {
     mass: 1,
@@ -50,7 +51,8 @@ interface StatsModuleProps {
 export const StatsModule = ({ data, onUpdate }: StatsModuleProps) => {
   const { previewDevice } = usePageLayout();
   const isMobileSimulated = previewDevice === 'mobile';
-  const stats = data?.stats || [
+  const rawStats = data?.stats;
+  const stats = Array.isArray(rawStats) ? rawStats : [
     { value: '15k+', label: 'Usuarios', iconName: 'Users' },
     { value: '40m', label: 'Ventas', iconName: 'TrendingUp' },
     { value: '120', label: 'Países', iconName: 'Globe' },
@@ -110,7 +112,7 @@ export const StatsModule = ({ data, onUpdate }: StatsModuleProps) => {
               editable={!!onUpdate}
               onUpdate={(text) => handleTextUpdate('title', text)}
             >
-              {data.title}
+              {data?.title}
             </Typography>
             {data?.subtitle && (
               <Typography
@@ -119,7 +121,7 @@ export const StatsModule = ({ data, onUpdate }: StatsModuleProps) => {
                 editable={!!onUpdate}
                 onUpdate={(text) => handleTextUpdate('subtitle', text)}
               >
-                {data.subtitle}
+                {data?.subtitle}
               </Typography>
             )}
           </motion.div>
@@ -127,7 +129,8 @@ export const StatsModule = ({ data, onUpdate }: StatsModuleProps) => {
 
         <div className={`grid ${isMobileSimulated ? 'grid-cols-1 gap-12' : 'grid-cols-2 md:grid-cols-4 gap-12'} text-center`}>
           {stats.map((stat: any, i: number) => {
-            const Icon = stat.iconName ? getIcon(stat.iconName) : null;
+            if (!stat) return null;
+            const Icon = stat?.iconName ? getIcon(stat.iconName) : null;
             return (
               <motion.div 
                 key={i}
@@ -153,7 +156,7 @@ export const StatsModule = ({ data, onUpdate }: StatsModuleProps) => {
                     className={`${isMobileSimulated ? 'text-5xl' : 'text-6xl md:text-7xl'} font-black mb-3 tracking-tighter ${isLight ? 'text-primary' : 'text-white'} flex items-center justify-center`}
                   >
                     <Counter 
-                      value={stat.value || stat.val || '0'} 
+                      value={stat?.value || stat?.val || '0'} 
                       className="inline-block"
                     />
                   </Typography>
@@ -170,17 +173,17 @@ export const StatsModule = ({ data, onUpdate }: StatsModuleProps) => {
                   editable={!!onUpdate}
                   onUpdate={(text) => handleTextUpdate(`stats.${i}.label`, text)}
                 >
-                  {stat.label || 'Métrica'}
+                  {stat?.label || 'Métrica'}
                 </Typography>
                 
-                {stat.description && (
+                {stat?.description && (
                   <Typography
                     variant="p"
                     className={`text-xs opacity-50 max-w-[200px] ${isLight ? 'text-text' : 'text-white'}`}
                     editable={!!onUpdate}
                     onUpdate={(text) => handleTextUpdate(`stats.${i}.description`, text)}
                   >
-                    {stat.description}
+                    {stat?.description}
                   </Typography>
                 )}
               </motion.div>

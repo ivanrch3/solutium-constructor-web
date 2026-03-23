@@ -289,7 +289,7 @@ export const Sidebar = ({
             onClick={onGenerateAi}
             title={isCollapsed ? 'Generar con IA' : ''}
             style={{
-              background: `linear-gradient(135deg, ${config?.projectData?.colors?.[0] || '#3B82F6'}, ${config?.projectData?.colors?.[1] || '#1E293B'})`
+              background: `linear-gradient(135deg, ${config?.projectsData?.brandColors?.[0] || '#3B82F6'}, ${config?.projectsData?.brandColors?.[1] || '#1E293B'})`
             }}
             className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'justify-center gap-3 px-4'} py-3 rounded-xl text-white hover:opacity-90 transition-all group/ai shadow-md`}
           >

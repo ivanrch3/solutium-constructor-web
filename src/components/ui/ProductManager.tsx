@@ -2,13 +2,15 @@ import React from 'react';
 import { Package, Check, Plus } from 'lucide-react';
 import { useSolutiumContext } from '../../context/SatelliteContext';
 import { useBuilderStore } from '../../store/useBuilderStore';
+import { PremiumBadge } from './PremiumBadge';
 
 interface ProductManagerProps {
   data: any;
   onUpdate: (data: any) => void;
+  isPremiumUser?: boolean;
 }
 
-export const ProductManager: React.FC<ProductManagerProps> = ({ data, onUpdate }) => {
+export const ProductManager: React.FC<ProductManagerProps> = ({ data, onUpdate, isPremiumUser = false }) => {
   const { payload: config } = useSolutiumContext();
   const { selectedProductIds, updateSelectedProducts } = useBuilderStore();
   
@@ -20,6 +22,12 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ data, onUpdate }
     const newSelection = selectedProductIds.includes(idStr)
       ? selectedProductIds.filter(id => id !== idStr)
       : [...selectedProductIds, idStr];
+    
+    // Free users can only select up to 3 products
+    if (!isPremiumUser && newSelection.length > 3) {
+      return;
+    }
+    
     updateSelectedProducts(newSelection);
   };
 
@@ -33,17 +41,33 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ data, onUpdate }
 
   return (
     <div className="space-y-4">
+      {!isPremiumUser && (
+        <div className="p-3 bg-background border border-text/10 rounded-xl relative overflow-hidden">
+          <div className="absolute top-0 right-0 p-2">
+            <PremiumBadge inline />
+          </div>
+          <p className="text-xs font-medium text-text/80 pr-12">
+            En la versión gratuita puedes seleccionar hasta <span className="font-black text-primary">3 productos</span>.
+          </p>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 gap-2">
         {products.map((product: any) => {
           const isSelected = selectedProductIds.includes(product.id.toString());
+          const isLimitReached = !isPremiumUser && !isSelected && selectedProductIds.length >= 3;
+
           return (
             <button
               key={product.id}
               onClick={() => toggleProduct(product.id)}
+              disabled={isLimitReached}
               className={`flex items-center justify-between p-3 rounded-xl border transition-all text-left ${
                 isSelected 
                   ? 'bg-primary/5 border-primary shadow-sm' 
-                  : 'bg-surface border-text/5 hover:border-text/20'
+                  : isLimitReached
+                    ? 'bg-background border-text/5 opacity-50 cursor-not-allowed'
+                    : 'bg-surface border-text/5 hover:border-text/20'
               }`}
             >
               <div className="flex items-center gap-3">

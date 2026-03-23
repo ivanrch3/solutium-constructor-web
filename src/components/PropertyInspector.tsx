@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { X, Type, MousePointer2, Layout, ChevronDown, ChevronRight, Settings2, Share2, Sparkles, Package } from 'lucide-react';
+import { X, Type, MousePointer2, Layout, ChevronDown, ChevronRight, Settings2, Share2, Sparkles, Package, MessageSquare } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { getModuleSchema } from '../modules/schema';
 import { getModuleDefinition } from '../modules/registry';
@@ -9,6 +9,8 @@ import { StructureManager } from './ui/StructureManager';
 import { SocialNetworksManager } from './ui/SocialNetworksManager';
 import { AdvancedManager } from './ui/AdvancedManager';
 import { HeaderManager } from './ui/HeaderManager';
+import { FeaturesManager } from './ui/FeaturesManager';
+import { TestimonialsManager } from './ui/TestimonialsManager';
 import { ProductManager } from './ui/ProductManager';
 import { SolutiumContext } from '../context/SatelliteContext';
 
@@ -38,6 +40,8 @@ export const PropertyInspector = ({
   const satellite = useContext(SolutiumContext);
   const projectSocials = satellite?.payload?.projectData?.socials;
 
+  const isPremiumUser = satellite?.payload?.profilesData?.subscriptionPlan === 'pro' || satellite?.payload?.profilesData?.subscriptionPlan === 'premium';
+
   const moduleId = selectedModule?.id || 'default';
   const expandedSections = expandedSectionsByModule[moduleId] || {
     text: true,
@@ -45,7 +49,9 @@ export const PropertyInspector = ({
     structure: false,
     products: false,
     socials: false,
-    advanced: false
+    advanced: false,
+    features: false,
+    testimonials: false
   };
 
   const schema = selectedModule ? getModuleSchema(selectedModule.type) : null;
@@ -94,7 +100,8 @@ export const PropertyInspector = ({
           label: cleanLabel,
           defaultText: selectedModule.defaultData?.[f.name]?.text || '',
           isButton,
-          isDisabled
+          isDisabled,
+          isPremium: f.isPremium
         };
       }
       return {
@@ -102,7 +109,8 @@ export const PropertyInspector = ({
         label: cleanLabel,
         defaultText: selectedModule.defaultData?.[f.name] || '',
         isButton: false,
-        isDisabled
+        isDisabled,
+        isPremium: f.isPremium
       };
     }) || [];
 
@@ -111,7 +119,8 @@ export const PropertyInspector = ({
     ?.filter(f => f.type === 'object' && f.itemSchema?.some(s => s.name === 'url'))
     .map(f => ({
       key: f.name,
-      label: f.label
+      label: f.label,
+      isPremium: f.isPremium
     })) || [];
 
   const toggleSection = (section: string) => {
@@ -130,6 +139,8 @@ export const PropertyInspector = ({
           socials: section === 'socials' ? !isCurrentlyOpen : false,
           advanced: section === 'advanced' ? !isCurrentlyOpen : false,
           products: section === 'products' ? !isCurrentlyOpen : false,
+          features: section === 'features' ? !isCurrentlyOpen : false,
+          testimonials: section === 'testimonials' ? !isCurrentlyOpen : false,
         }
       };
     });
@@ -165,6 +176,7 @@ export const PropertyInspector = ({
                   onUpdate={(newData) => onUpdate(selectedModule.id, newData)}
                   onOpenImagePicker={onOpenImagePicker}
                   textElements={textElements}
+                  isPremiumUser={isPremiumUser}
                 />
               ) : (
                 <>
@@ -193,6 +205,7 @@ export const PropertyInspector = ({
                         data={selectedModule.data || {}}
                         onUpdate={(newData) => onUpdate(selectedModule.id, newData)}
                         textElements={textElements}
+                        isPremiumUser={isPremiumUser}
                       />
                     </div>
                   )}
@@ -223,6 +236,7 @@ export const PropertyInspector = ({
                         data={selectedModule.data || {}}
                         onUpdate={(newData) => onUpdate(selectedModule.id, newData)}
                         buttonElements={buttonElements}
+                        isPremiumUser={isPremiumUser}
                       />
                     </div>
                   )}
@@ -253,10 +267,73 @@ export const PropertyInspector = ({
                       onUpdate={(newData) => onUpdate(selectedModule.id, newData)}
                       onOpenImagePicker={onOpenImagePicker}
                       moduleType={selectedModule.type}
+                      isPremiumUser={isPremiumUser}
                     />
                   </div>
                 )}
               </div>
+
+              {/* FEATURES SECTION */}
+              {selectedModule.type === 'features' && (
+                <div className="space-y-4 pt-4 border-t border-text/5">
+                  <button 
+                    onClick={() => toggleSection('features')}
+                    className="w-full flex items-center justify-between group"
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className="p-1.5 bg-primary/10 rounded-lg text-primary">
+                        <Layout className="w-3 h-3" />
+                      </div>
+                      <span className="text-[10px] font-black text-text/60 uppercase tracking-widest group-hover:text-primary transition-colors">
+                        Gestor de Características
+                      </span>
+                    </div>
+                    {expandedSections.features ? <ChevronDown className="w-3 h-3 text-text/30" /> : <ChevronRight className="w-3 h-3 text-text/30" />}
+                  </button>
+                  
+                  {expandedSections.features && (
+                    <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                      <FeaturesManager 
+                        data={selectedModule.data || {}}
+                        onUpdate={(newData) => onUpdate(selectedModule.id, newData)}
+                        onOpenImagePicker={onOpenImagePicker}
+                        isPremiumUser={isPremiumUser}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* TESTIMONIALS SECTION */}
+              {selectedModule.type === 'testimonials' && (
+                <div className="space-y-4 pt-4 border-t border-text/5">
+                  <button 
+                    onClick={() => toggleSection('testimonials')}
+                    className="w-full flex items-center justify-between group"
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className="p-1.5 bg-primary/10 rounded-lg text-primary">
+                        <MessageSquare className="w-3 h-3" />
+                      </div>
+                      <span className="text-[10px] font-black text-text/60 uppercase tracking-widest group-hover:text-primary transition-colors">
+                        Gestor de Testimonios
+                      </span>
+                    </div>
+                    {expandedSections.testimonials ? <ChevronDown className="w-3 h-3 text-text/30" /> : <ChevronRight className="w-3 h-3 text-text/30" />}
+                  </button>
+                  
+                  {expandedSections.testimonials && (
+                    <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                      <TestimonialsManager 
+                        data={selectedModule.data || {}}
+                        onUpdate={(newData) => onUpdate(selectedModule.id, newData)}
+                        onOpenImagePicker={onOpenImagePicker}
+                        isPremiumUser={isPremiumUser}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* PRODUCTS SECTION */}
               {selectedModule.type === 'product-showcase' && (
@@ -281,6 +358,7 @@ export const PropertyInspector = ({
                       <ProductManager 
                         data={selectedModule.data || {}}
                         onUpdate={(newData) => onUpdate(selectedModule.id, newData)}
+                        isPremiumUser={isPremiumUser}
                       />
                     </div>
                   )}
@@ -339,6 +417,7 @@ export const PropertyInspector = ({
                       <AdvancedManager 
                         data={selectedModule.data || {}}
                         onUpdate={(newData) => onUpdate(selectedModule.id, newData)}
+                        isPremiumUser={isPremiumUser}
                       />
                     </div>
                   )}

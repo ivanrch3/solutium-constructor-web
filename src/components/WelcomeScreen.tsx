@@ -113,6 +113,7 @@ export const WelcomeScreen = ({
 }: WelcomeScreenProps) => {
   const [step, setStep] = React.useState<'project' | 'options'>('project');
   const [selectedOption, setSelectedOption] = React.useState<'ai' | 'template' | 'blank' | null>(null);
+  const [formStep, setFormStep] = React.useState<1 | 2>(1);
   const [pageName, setPageName] = React.useState('');
   const [pageDescription, setPageDescription] = React.useState('');
   const [selectedIndustryId, setSelectedIndustryId] = React.useState<string>('');
@@ -142,10 +143,11 @@ export const WelcomeScreen = ({
     : INDUSTRIES.find(i => i.id === selectedIndustryId)?.label || '';
 
   const wordCount = pageDescription.trim().split(/\s+/).filter(w => w.length > 0).length;
-  const isDescriptionValid = wordCount >= 5;
+  const isDescriptionValid = wordCount >= 10;
 
   const handleOptionClick = (option: 'ai' | 'template' | 'blank') => {
     setSelectedOption(option);
+    setFormStep(1);
   };
 
   const handleFinalContinue = () => {
@@ -163,12 +165,12 @@ export const WelcomeScreen = ({
   };
 
   const Logo = () => (
-    <div className="flex justify-center mb-12">
+    <div className="flex justify-center mb-16">
       <img 
         src="https://solutium.app/logos-de-apps/solutium-constructor-web-imagotipo.png" 
         alt="Constructor Web Logo" 
         className="h-12 w-auto object-contain"
-        style={{ transform: 'scale(1.44)' }}
+        style={{ transform: 'scale(1.728)' }}
         referrerPolicy="no-referrer"
       />
     </div>
@@ -215,45 +217,45 @@ export const WelcomeScreen = ({
 
   if (step === 'project') {
     return (
-      <div className="min-h-screen bg-background/50 p-8 font-sans">
-        <Logo />
-        <div className="max-w-5xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <div className="min-h-screen bg-background/50 p-8 font-sans flex flex-col justify-center">
+        <div className="w-full max-w-5xl mx-auto">
+          <Logo />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
             {/* Left Column: Nueva página */}
-            <div className="bg-surface p-8 rounded-3xl border border-text/10 shadow-sm flex flex-col items-start">
-              <h1 className="text-xl font-black text-text mb-2">Nueva página</h1>
-              <p className="text-text/60 mb-6">Crea una nueva página desde cero con nuestro constructor web o utilizando inteligencia artificial.</p>
+            <div className="bg-surface p-12 rounded-[2rem] border border-text/10 shadow-sm flex flex-col items-start min-h-[400px]">
+              <h1 className="text-2xl font-black text-text mb-4">Nueva página</h1>
+              <p className="text-text/60 mb-8 text-lg leading-relaxed">Crea una nueva página desde cero con nuestro constructor web o utilizando inteligencia artificial.</p>
               <button 
                 onClick={() => setStep('options')}
-                className="bg-primary text-white py-2 px-6 rounded-xl hover:bg-primary/90 transition-all font-bold flex items-center mt-auto"
+                className="bg-primary text-white py-3 px-8 rounded-xl hover:bg-primary/90 transition-all font-bold flex items-center mt-auto text-lg"
               >
-                <FilePlus className="w-4 h-4 mr-2" /> Crear nuevo
+                <FilePlus className="w-5 h-5 mr-3" /> Crear nuevo
               </button>
             </div>
 
             {/* Right Column: Activos existentes */}
-            <div className="bg-surface p-8 rounded-3xl border border-text/10 shadow-sm flex flex-col">
-              <h2 className="text-xl font-black text-text mb-6">Activos existentes</h2>
+            <div className="bg-surface p-12 rounded-[2rem] border border-text/10 shadow-sm flex flex-col min-h-[400px]">
+              <h2 className="text-2xl font-black text-text mb-8">Activos existentes</h2>
               {(() => {
                 const allAssets = projects.flatMap(p => (p.assets || []).map(a => ({ ...a, projectId: p.id })));
                 if (allAssets.length === 0) {
                   return (
-                    <div className="p-8 rounded-2xl border border-dashed border-text/20 text-center text-text/60 flex-1 flex items-center justify-center">
+                    <div className="p-8 rounded-2xl border border-dashed border-text/20 text-center text-text/60 flex-1 flex items-center justify-center text-lg">
                       No existen activos.
                     </div>
                   );
                 }
                 return (
-                  <div className="space-y-3 overflow-y-auto custom-scrollbar flex-1 max-h-[400px] pr-2">
+                  <div className="space-y-4 overflow-y-auto custom-scrollbar flex-1 max-h-[400px] pr-2">
                     {allAssets.map((asset) => (
                       <div
                         key={asset.id}
-                        className="flex items-center justify-between bg-background p-4 rounded-xl border border-text/10"
+                        className="flex items-center justify-between bg-background p-5 rounded-2xl border border-text/10 hover:border-text/20 transition-colors"
                       >
-                        <span className="font-medium text-text truncate mr-4">{asset.name}</span>
+                        <span className="font-medium text-text truncate mr-4 text-lg">{asset.name}</span>
                         <button
                           onClick={() => onSelectProject(asset.projectId)}
-                          className="px-4 py-2 bg-primary/10 text-primary border border-primary/20 rounded-lg hover:bg-primary hover:text-white transition-all font-bold text-sm whitespace-nowrap"
+                          className="px-6 py-2.5 bg-primary/10 text-primary border border-primary/20 rounded-xl hover:bg-primary hover:text-white transition-all font-bold whitespace-nowrap"
                         >
                           Abrir
                         </button>
@@ -274,12 +276,12 @@ export const WelcomeScreen = ({
     const secondary = brandColors?.[1] || '#1E293B';
 
     return (
-      <div className="min-h-screen bg-background/50 p-8 font-sans">
-        <Logo />
-        <div className="max-w-6xl mx-auto">
+      <div className="min-h-screen bg-background/50 p-8 font-sans flex flex-col justify-center">
+        <div className="w-full max-w-6xl mx-auto">
+          <Logo />
           <h2 className="text-3xl font-black text-text mb-12 text-center">¿Cómo quieres crear tu página?</h2>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
             {[
               { id: 'ai', icon: Sparkles, title: 'Generar con IA', desc: 'Describe tu negocio y deja que nuestra inteligencia artificial cree la estructura, textos e imágenes por ti en segundos.', style: { background: `linear-gradient(135deg, ${primary}, ${secondary})`, color: 'white' } },
               { id: 'template', icon: Layout, title: 'Usar Plantilla', desc: 'Elige entre diseños pre-construidos profesionales optimizados para conversión. Ideal si quieres una base sólida rápida.', style: { backgroundColor: 'var(--surface)', color: 'var(--text)', opacity: 0.5 }, disabled: true, badge: 'Próximamente' },
@@ -289,18 +291,18 @@ export const WelcomeScreen = ({
                 key={option.id}
                 onClick={() => !option.disabled && handleOptionClick(option.id as any)}
                 style={option.style}
-                className={`relative p-6 rounded-3xl border border-text/10 transition-all ${option.disabled ? 'cursor-not-allowed grayscale' : 'cursor-pointer hover:shadow-lg'} ${selectedOption === option.id ? 'ring-2 ring-primary' : ''}`}
+                className={`relative p-8 rounded-[2rem] border border-text/10 transition-all ${option.disabled ? 'cursor-not-allowed grayscale' : 'cursor-pointer hover:shadow-xl hover:-translate-y-1'} ${selectedOption === option.id ? 'ring-4 ring-primary ring-offset-4 ring-offset-background' : ''}`}
               >
                 {option.badge && (
-                  <span className="absolute top-4 right-4 bg-text/10 text-text text-xs font-bold px-2 py-1 rounded-full">
+                  <span className="absolute top-6 right-6 bg-text/10 text-text text-xs font-bold px-3 py-1.5 rounded-full">
                     {option.badge}
                   </span>
                 )}
-                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center mb-4">
-                  <option.icon className="w-5 h-5" />
+                <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center mb-6">
+                  <option.icon className="w-7 h-7" />
                 </div>
-                <h3 className="font-bold text-lg mb-2">{option.title}</h3>
-                <p className="text-sm leading-relaxed opacity-80">{option.desc}</p>
+                <h3 className="font-bold text-xl mb-3">{option.title}</h3>
+                <p className="text-base leading-relaxed opacity-80">{option.desc}</p>
               </div>
             ))}
           </div>
@@ -315,101 +317,125 @@ export const WelcomeScreen = ({
                 <h3 className="text-2xl font-bold text-text mb-6">Cuéntanos sobre tu proyecto</h3>
                 
                 <div className="space-y-6">
-                  <div>
-                    <label className="block text-sm font-bold text-text/80 mb-2">Nombre de la página</label>
-                    <input 
-                      type="text"
-                      value={pageName}
-                      onChange={(e) => setPageName(e.target.value)}
-                      placeholder="Ej: Inicio, Servicios, Contacto..."
-                      className="w-full px-4 py-3 bg-background border border-text/10 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
-                      autoFocus
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-bold text-text/80 mb-2">Sector o Industria</label>
-                    <div className="relative">
-                      <select 
-                        value={selectedIndustryId}
-                        onChange={(e) => setSelectedIndustryId(e.target.value)}
-                        className="w-full px-4 py-3 bg-background border border-text/10 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all appearance-none cursor-pointer"
-                      >
-                        <option value="" disabled>Selecciona una industria...</option>
-                        {INDUSTRIES.map(ind => (
-                          <option key={ind.id} value={ind.id}>{ind.label}</option>
-                        ))}
-                      </select>
-                      <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-text/40">
-                        <ChevronDown className="w-4 h-4" />
+                  {formStep === 1 && (
+                    <motion.div 
+                      key="step1"
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 20 }}
+                      className="space-y-6"
+                    >
+                      <div>
+                        <label className="block text-sm font-bold text-text/80 mb-2">Nombre de la página</label>
+                        <input 
+                          type="text"
+                          value={pageName}
+                          onChange={(e) => setPageName(e.target.value)}
+                          placeholder="Ej: Inicio, Servicios, Contacto..."
+                          className="w-full px-4 py-3 bg-background border border-text/10 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
+                          autoFocus
+                        />
                       </div>
-                    </div>
-                    
-                    <AnimatePresence>
-                      {selectedIndustryId === 'other' && (
-                        <motion.div
-                          initial={{ opacity: 0, height: 0, marginTop: 0 }}
-                          animate={{ opacity: 1, height: 'auto', marginTop: 12 }}
-                          exit={{ opacity: 0, height: 0, marginTop: 0 }}
-                          className="overflow-hidden"
-                        >
-                          <input 
-                            type="text"
-                            value={manualIndustry}
-                            onChange={(e) => setManualIndustry(e.target.value)}
-                            placeholder="Especifica tu industria (ej: Software B2B, Clínica Dental...)"
-                            className="w-full px-4 py-3 bg-background border border-text/10 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
-                            autoFocus
-                          />
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
 
-                  <div>
-                    <label className="block text-sm font-bold text-text/80 mb-2">Descripción breve (mínimo 5 palabras)</label>
-                    <textarea 
-                      value={pageDescription}
-                      onChange={(e) => setPageDescription(e.target.value)}
-                      placeholder="Describe qué hace tu negocio y qué ofreces..."
-                      className="w-full px-4 py-3 bg-background border border-text/10 rounded-xl h-24 resize-none focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
-                    />
-                    <p className="text-xs text-text/50 mt-1">Palabras: {wordCount}/5</p>
-                  </div>
+                      <div>
+                        <label className="block text-sm font-bold text-text/80 mb-2">Sector o Industria</label>
+                        <div className="relative">
+                          <select 
+                            value={selectedIndustryId}
+                            onChange={(e) => setSelectedIndustryId(e.target.value)}
+                            className="w-full px-4 py-3 bg-background border border-text/10 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all appearance-none cursor-pointer"
+                          >
+                            <option value="" disabled>Selecciona una industria...</option>
+                            {INDUSTRIES.map(ind => (
+                              <option key={ind.id} value={ind.id}>{ind.label}</option>
+                            ))}
+                          </select>
+                          <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-text/40">
+                            <ChevronDown className="w-4 h-4" />
+                          </div>
+                        </div>
+                        
+                        <AnimatePresence>
+                          {selectedIndustryId === 'other' && (
+                            <motion.div
+                              initial={{ opacity: 0, height: 0, marginTop: 0 }}
+                              animate={{ opacity: 1, height: 'auto', marginTop: 12 }}
+                              exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                              className="overflow-hidden"
+                            >
+                              <input 
+                                type="text"
+                                value={manualIndustry}
+                                onChange={(e) => setManualIndustry(e.target.value)}
+                                placeholder="Especifica tu industria (ej: Software B2B, Clínica Dental...)"
+                                className="w-full px-4 py-3 bg-background border border-text/10 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
+                                autoFocus
+                              />
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
 
-                  <div>
-                    <label className="block text-sm font-bold text-text/80 mb-2">Objetivo principal</label>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      {['Captar clientes', 'Vender productos', 'Presencia online'].map(obj => (
-                        <button
-                          key={obj}
-                          onClick={() => setObjective(obj)}
-                          className={`py-2 px-4 rounded-xl border text-sm font-medium transition-all ${objective === obj ? 'bg-primary border-primary text-white shadow-md' : 'bg-background border-text/10 text-text hover:border-primary/50'}`}
-                        >
-                          {obj}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+                      <div>
+                        <label className="block text-sm font-bold text-text/80 mb-2">Descripción breve (mínimo 10 palabras)</label>
+                        <textarea 
+                          value={pageDescription}
+                          onChange={(e) => setPageDescription(e.target.value)}
+                          placeholder="Describe qué hace tu negocio y qué ofreces..."
+                          className="w-full px-4 py-3 bg-background border border-text/10 rounded-xl h-24 resize-none focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
+                        />
+                        <p className="text-xs text-text/50 mt-1">Palabras: {wordCount}/10</p>
+                      </div>
+                    </motion.div>
+                  )}
 
-                  <div>
-                    <label className="block text-sm font-bold text-text/80 mb-2">Estilo visual</label>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      {['Moderno', 'Elegante', 'Divertido', 'Minimalista'].map(style => (
-                        <button
-                          key={style}
-                          onClick={() => setVisualStyle(style)}
-                          className={`py-2 px-4 rounded-xl border text-sm font-medium transition-all ${visualStyle === style ? 'bg-primary border-primary text-white shadow-md' : 'bg-background border-text/10 text-text hover:border-primary/50'}`}
-                        >
-                          {style}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+                  {formStep === 2 && (
+                    <motion.div 
+                      key="step2"
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -20 }}
+                      className="space-y-6"
+                    >
+                      <div>
+                        <label className="block text-sm font-bold text-text/80 mb-2">Objetivo principal</label>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {['Captar clientes', 'Vender productos', 'Presencia online', 'Informar / Educar', 'Portfolio / Galería', 'Reservas / Citas'].map(obj => (
+                            <button
+                              key={obj}
+                              onClick={() => setObjective(obj)}
+                              className={`py-2 px-4 rounded-xl border text-sm font-medium transition-all ${objective === obj ? 'bg-primary border-primary text-white shadow-md' : 'bg-background border-text/10 text-text hover:border-primary/50'}`}
+                            >
+                              {obj}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-bold text-text/80 mb-2">Estilo visual</label>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                          {['Moderno', 'Elegante', 'Divertido', 'Minimalista', 'Corporativo', 'Creativo', 'Clásico', 'Atrevido'].map(style => (
+                            <button
+                              key={style}
+                              onClick={() => setVisualStyle(style)}
+                              className={`py-2 px-4 rounded-xl border text-sm font-medium transition-all ${visualStyle === style ? 'bg-primary border-primary text-white shadow-md' : 'bg-background border-text/10 text-text hover:border-primary/50'}`}
+                            >
+                              {style}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
                 </div>
 
                 <div className="flex gap-4 mt-8 pt-6 border-t border-text/10">
-                  <button onClick={() => setSelectedOption(null)} className="px-6 py-3 bg-surface border border-text/10 text-text/80 rounded-xl font-bold hover:bg-text/5 transition-colors">Atrás</button>
+                  {formStep === 1 ? (
+                    <button onClick={() => setSelectedOption(null)} className="px-6 py-3 bg-surface border border-text/10 text-text/80 rounded-xl font-bold hover:bg-text/5 transition-colors">Cancelar</button>
+                  ) : (
+                    <button onClick={() => setFormStep(1)} className="px-6 py-3 bg-surface border border-text/10 text-text/80 rounded-xl font-bold hover:bg-text/5 transition-colors">Atrás</button>
+                  )}
                   <div className="flex-1"></div>
                   <button 
                     onClick={() => onSelectOption(
@@ -422,16 +448,27 @@ export const WelcomeScreen = ({
                   >
                     Omitir
                   </button>
-                  <button 
-                    onClick={() => {
-                      setIsCreating(true);
-                      handleFinalContinue();
-                    }}
-                    disabled={!pageName.trim() || !isDescriptionValid || !sector || !objective || !visualStyle}
-                    className="px-8 py-3 bg-primary text-white rounded-xl font-bold disabled:opacity-50 hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20"
-                  >
-                    Comenzar
-                  </button>
+                  
+                  {formStep === 1 ? (
+                    <button 
+                      onClick={() => setFormStep(2)}
+                      disabled={!pageName.trim() || !isDescriptionValid || !sector}
+                      className="px-8 py-3 bg-primary text-white rounded-xl font-bold disabled:opacity-50 hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20"
+                    >
+                      Siguiente
+                    </button>
+                  ) : (
+                    <button 
+                      onClick={() => {
+                        setIsCreating(true);
+                        handleFinalContinue();
+                      }}
+                      disabled={!objective || !visualStyle}
+                      className="px-8 py-3 bg-primary text-white rounded-xl font-bold disabled:opacity-50 hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20"
+                    >
+                      Comenzar
+                    </button>
+                  )}
                 </div>
               </motion.div>
             </div>

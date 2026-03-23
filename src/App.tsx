@@ -276,7 +276,8 @@ function App() {
       status: 'draft', // Always draft for save/autosave
       tags: assetSettings.tags || [],
       author: config?.userProfile?.fullName || 'Usuario',
-      updatedAt: Date.now()
+      updatedAt: Date.now(),
+      projectId: activeProjectId || undefined
     });
 
     setDirty(false);
@@ -366,7 +367,8 @@ function App() {
       status: 'published',
       tags: ['Landing Page', 'Publicado'],
       author: config?.userProfile?.fullName || 'Usuario',
-      updatedAt: Date.now()
+      updatedAt: Date.now(),
+      projectId: activeProjectId || undefined
     });
 
     await new Promise(resolve => setTimeout(resolve, 2500));
@@ -473,10 +475,11 @@ function App() {
       const initialModules = [
         createModule('header', { logoText: businessContext.name || finalProjectName, scrollMode: 'static', theme: 'dark' }),
         createModule('hero', { 
-          title: `Bienvenido a *${businessContext.name || finalProjectName}*`, 
-          titleStyle: { highlightType: 'gradient' },
-          subtitle: businessContext.description || "Nunca fue tan fácil crear su propia página web. Para comenzar, agregue cualquier módulo desde el Constructor a la izquierda",
-          layoutType: 'layout-2', // Split layout
+          title: businessContext.description === 'Omitido' ? 'Bienvenido al constructor web' : `Bienvenido a *${businessContext.name}*`, 
+          titleStyle: { highlightType: 'gradient', align: 'center' },
+          subtitle: businessContext.description === 'Omitido' ? 'Empieza a construir tu página agregando módulos desde el constructor a la izquierda.' : businessContext.description,
+          subtitleStyle: { align: 'center' },
+          layoutType: 'layout-1', // Centered layout
           primaryButton: null,
           secondaryButton: null,
           theme: 'light',
@@ -510,10 +513,11 @@ function App() {
         createModule('top-bar', { message: '¡Oferta especial de lanzamiento!', theme: 'dark' }),
         createModule('header', { logoText: businessContext.name || finalProjectName, scrollMode: 'static', theme: 'dark' }),
         createModule('hero', { 
-          title: `Bienvenidos a *${businessContext.name || finalProjectName}*`, 
-          titleStyle: { highlightType: 'gradient' },
-          subtitle: `Soluciones profesionales en ${businessContext.description || 'tu sector'}.`,
-          layoutType: 'layout-2', // Split layout
+          title: businessContext.description === 'Omitido' ? 'Bienvenido al constructor web' : `Bienvenidos a *${businessContext.name}*`, 
+          titleStyle: { highlightType: 'gradient', align: 'center' },
+          subtitle: businessContext.description === 'Omitido' ? 'Empieza a construir tu página agregando módulos desde el constructor a la izquierda.' : `Soluciones profesionales en ${businessContext.description}.`,
+          subtitleStyle: { align: 'center' },
+          layoutType: 'layout-1', // Centered layout
           theme: 'light',
           background: {
             image: getBusinessImage(businessContext.description || '')

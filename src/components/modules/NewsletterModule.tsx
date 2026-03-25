@@ -20,6 +20,56 @@ export const NewsletterModule = ({ data, onUpdate }: NewsletterModuleProps) => {
   const showNameField = data?.showNameField || false;
   const showSocialProof = data?.showSocialProof !== false;
   const backgroundImage = data?.backgroundImage;
+  const entranceAnimation = data?.entranceAnimation || 'fade';
+  const smartMode = data?.smartMode || false;
+
+  const effectiveLayout = smartMode 
+    ? (isMobileSimulated ? 'center' : 'slim')
+    : layoutType;
+
+  const getAnimationVariants = (idx: number) => {
+    const baseDelay = 0.1;
+    const stagger = 0.1;
+
+    switch (entranceAnimation) {
+      case 'slide':
+        return {
+          hidden: { opacity: 0, x: -30 },
+          visible: { 
+            opacity: 1, 
+            x: 0,
+            transition: { duration: 0.8, delay: baseDelay + idx * stagger, ease: [0.21, 0.45, 0.32, 0.9] }
+          }
+        };
+      case 'zoom':
+        return {
+          hidden: { opacity: 0, scale: 0.8 },
+          visible: { 
+            opacity: 1, 
+            scale: 1,
+            transition: { duration: 0.8, delay: baseDelay + idx * stagger, ease: [0.21, 0.45, 0.32, 0.9] }
+          }
+        };
+      case 'reveal':
+        return {
+          hidden: { opacity: 0, y: 40 },
+          visible: { 
+            opacity: 1, 
+            y: 0,
+            transition: { duration: 1, delay: baseDelay + idx * stagger, ease: [0.21, 0.45, 0.32, 0.9] }
+          }
+        };
+      default: // fade
+        return {
+          hidden: { opacity: 0, y: 20 },
+          visible: { 
+            opacity: 1, 
+            y: 0,
+            transition: { duration: 0.7, delay: baseDelay + idx * stagger }
+          }
+        };
+    }
+  };
 
   const handleTextUpdate = (path: string, value: string) => {
     if (onUpdate) {
@@ -147,7 +197,7 @@ export const NewsletterModule = ({ data, onUpdate }: NewsletterModuleProps) => {
   const renderSocialProof = () => {
     if (!showSocialProof) return null;
     return (
-      <motion.div variants={itemVariants} className="flex items-center justify-center gap-4 mt-10">
+      <motion.div variants={getAnimationVariants(4)} className="flex items-center justify-center gap-4 mt-10">
         <div className="flex -space-x-3">
           {[1, 2, 3, 4].map((i) => (
             <div key={i} className="w-10 h-10 rounded-full border-4 border-background overflow-hidden bg-current/10">
@@ -167,10 +217,10 @@ export const NewsletterModule = ({ data, onUpdate }: NewsletterModuleProps) => {
   };
 
   const renderContent = () => {
-    if (layoutType === 'slim') {
+    if (effectiveLayout === 'slim') {
       return (
         <div className={`flex flex-col ${isMobileSimulated ? '' : 'lg:flex-row'} items-center justify-between gap-12 max-w-7xl mx-auto`}>
-          <div className={`flex items-center gap-6 ${isMobileSimulated ? 'text-center flex-col' : 'text-left'} flex-1`}>
+          <motion.div variants={getAnimationVariants(0)} className={`flex items-center gap-6 ${isMobileSimulated ? 'text-center flex-col' : 'text-left'} flex-1`}>
             <div className="w-16 h-16 bg-primary/10 rounded-[1.5rem] flex items-center justify-center text-primary flex-shrink-0 shadow-xl shadow-primary/5">
               <Bell className="w-8 h-8 animate-bounce" />
             </div>
@@ -192,22 +242,22 @@ export const NewsletterModule = ({ data, onUpdate }: NewsletterModuleProps) => {
                 {data?.subtitle || 'Recibe las últimas novedades directamente en tu correo.'}
               </Typography>
             </div>
-          </div>
-          <div className={`w-full ${isMobileSimulated ? '' : 'lg:w-auto min-w-[500px]'}`}>
+          </motion.div>
+          <motion.div variants={getAnimationVariants(1)} className={`w-full ${isMobileSimulated ? '' : 'lg:w-auto min-w-[500px]'}`}>
             {renderForm(true)}
-          </div>
+          </motion.div>
         </div>
       );
     }
 
-    if (layoutType === 'split') {
+    if (effectiveLayout === 'split') {
       return (
         <div className={`grid ${isMobileSimulated ? 'grid-cols-1' : 'lg:grid-cols-2'} gap-24 items-center max-w-7xl mx-auto`}>
           <div className={`${isMobileSimulated ? 'text-center' : 'text-left'} space-y-10`}>
-            <div className={`w-20 h-20 bg-primary/10 rounded-[2rem] flex items-center justify-center text-primary border border-primary/20 shadow-2xl shadow-primary/10 ${isMobileSimulated ? 'mx-auto' : ''}`}>
+            <motion.div variants={getAnimationVariants(0)} className={`w-20 h-20 bg-primary/10 rounded-[2rem] flex items-center justify-center text-primary border border-primary/20 shadow-2xl shadow-primary/10 ${isMobileSimulated ? 'mx-auto' : ''}`}>
               <Mail className="w-10 h-10" />
-            </div>
-            <div>
+            </motion.div>
+            <motion.div variants={getAnimationVariants(1)}>
               <Typography
                 variant="h2"
                 className={`${isMobileSimulated ? 'text-4xl' : 'text-5xl md:text-7xl'} font-black mb-6 tracking-tighter leading-none`}
@@ -224,13 +274,13 @@ export const NewsletterModule = ({ data, onUpdate }: NewsletterModuleProps) => {
               >
                 {data?.subtitle || 'Recibe consejos semanales sobre crecimiento digital y ofertas exclusivas directamente en tu bandeja de entrada.'}
               </Typography>
-            </div>
-            <div className={`${isMobileSimulated ? 'w-full' : 'max-w-xl'}`}>
+            </motion.div>
+            <motion.div variants={getAnimationVariants(2)} className={`${isMobileSimulated ? 'w-full' : 'max-w-xl'}`}>
               {renderForm()}
               {renderSocialProof()}
-            </div>
+            </motion.div>
           </div>
-          <div className={`relative aspect-square ${isMobileSimulated ? 'h-[400px]' : 'lg:aspect-auto lg:h-[700px]'} rounded-[4rem] overflow-hidden shadow-2xl group`}>
+          <motion.div variants={getAnimationVariants(3)} className={`relative aspect-square ${isMobileSimulated ? 'h-[400px]' : 'lg:aspect-auto lg:h-[700px]'} rounded-[4rem] overflow-hidden shadow-2xl group`}>
              <motion.img 
               whileHover={{ scale: 1.05 }}
               src={backgroundImage || "https://picsum.photos/seed/newsletter/1000/1200"} 
@@ -244,7 +294,7 @@ export const NewsletterModule = ({ data, onUpdate }: NewsletterModuleProps) => {
                 <Typography variant="p" className="text-lg opacity-80 font-medium">Contenido exclusivo cada semana.</Typography>
               </div>
             </div>
-          </div>
+          </motion.div>
         </div>
       );
     }
@@ -252,14 +302,14 @@ export const NewsletterModule = ({ data, onUpdate }: NewsletterModuleProps) => {
     // Default Center Layout
     return (
       <div className="relative z-10 max-w-5xl mx-auto text-center">
-        <motion.div variants={itemVariants} className="flex items-center justify-center gap-3 mb-8">
+        <motion.div variants={getAnimationVariants(0)} className="flex items-center justify-center gap-3 mb-8">
           <div className="p-2 bg-primary/10 rounded-xl">
             <Sparkles className="w-5 h-5 text-primary animate-pulse" />
           </div>
           <span className="text-primary font-black tracking-[0.3em] uppercase text-[10px]">Newsletter Semanal</span>
         </motion.div>
         
-        <motion.div variants={itemVariants}>
+        <motion.div variants={getAnimationVariants(1)}>
           <Typography
             variant="h2"
             className={`${isMobileSimulated ? 'text-4xl' : 'text-5xl md:text-8xl'} font-black mb-8 tracking-tighter leading-none`}
@@ -270,7 +320,7 @@ export const NewsletterModule = ({ data, onUpdate }: NewsletterModuleProps) => {
           </Typography>
         </motion.div>
         
-        <motion.div variants={itemVariants}>
+        <motion.div variants={getAnimationVariants(2)}>
           <Typography
             variant="p"
             className={`${isMobileSimulated ? 'text-lg' : 'text-xl md:text-3xl'} opacity-60 mb-16 max-w-3xl mx-auto leading-relaxed font-medium tracking-tight`}
@@ -281,7 +331,7 @@ export const NewsletterModule = ({ data, onUpdate }: NewsletterModuleProps) => {
           </Typography>
         </motion.div>
         
-        <motion.div variants={itemVariants} className={`${isMobileSimulated ? 'w-full' : 'max-w-2xl'} mx-auto`}>
+        <motion.div variants={getAnimationVariants(3)} className={`${isMobileSimulated ? 'w-full' : 'max-w-2xl'} mx-auto`}>
           {renderForm()}
           {renderSocialProof()}
         </motion.div>

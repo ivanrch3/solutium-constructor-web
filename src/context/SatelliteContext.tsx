@@ -1,6 +1,6 @@
 // src/context/SatelliteContext.tsx
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { SolutiumPayload, useSolutium } from '../lib/solutium-sdk';
+import { SolutiumPayload, useSolutium, SolutiumLog } from '../lib/solutium-sdk';
 import { supabase } from '../lib/supabase';
 
 interface SolutiumContextType {
@@ -13,12 +13,13 @@ interface SolutiumContextType {
   customers: any[];
   products: any[];
   assets: any[];
+  logs: SolutiumLog[];
 }
 
 export const SolutiumContext = createContext<SolutiumContextType | undefined>(undefined);
 
 export const SolutiumProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { config: payload, isReady, saveData } = useSolutium();
+  const { config: payload, isReady, saveData, logs } = useSolutium();
   
   // 1. Añadimos estado interno para los datos
   const [customers, setCustomers] = useState<any[]>([]);
@@ -28,14 +29,19 @@ export const SolutiumProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // 2. Efecto reactivo: Cuando el payload cambia, actualizamos el estado
   useEffect(() => {
     if (payload) {
-      if (payload.customersData) {
-        setCustomers(payload.customersData);
+      const customersData = payload.customersData || (payload as any).crmData || (payload as any).crm_data;
+      if (customersData) {
+        setCustomers(customersData);
       }
-      if (payload.productsData) {
-        setProducts(payload.productsData);
+      
+      const productsData = payload.productsData || (payload as any).products_data;
+      if (productsData) {
+        setProducts(productsData);
       }
-      if (payload.assetsData) {
-        setAssets(payload.assetsData);
+      
+      const assetsData = payload.assetsData || (payload as any).assets_data;
+      if (assetsData) {
+        setAssets(assetsData);
       }
     }
   }, [payload]); // <--- ESTA ES LA CLAVE: Se ejecuta cada vez que el payload cambia
@@ -43,8 +49,9 @@ export const SolutiumProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // Función para obtener clientes directamente desde Supabase usando RLS
   const fetchCustomers = async () => {
     // Prioridad a los datos de la App Madre
-    if (payload && payload.crmData) {
-      return payload.crmData;
+    const customersData = payload?.customersData || (payload as any)?.crmData || (payload as any)?.crm_data;
+    if (customersData) {
+      return customersData;
     }
 
     try {
@@ -66,8 +73,9 @@ export const SolutiumProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // Función para obtener productos directamente desde Supabase usando RLS
   const fetchProducts = async () => {
     // Prioridad a los datos de la App Madre
-    if (payload && payload.productsData) {
-      return payload.productsData;
+    const productsData = payload?.productsData || (payload as any)?.products_data;
+    if (productsData) {
+      return productsData;
     }
 
     try {
@@ -148,7 +156,8 @@ export const SolutiumProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       simulateConnection,
       customers,
       products,
-      assets
+      assets,
+      logs
     }}>
       {children}
     </SolutiumContext.Provider>

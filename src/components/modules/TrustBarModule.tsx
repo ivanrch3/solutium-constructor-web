@@ -26,6 +26,31 @@ export const TrustBarModule = ({ data, onUpdate }: TrustBarModuleProps) => {
 
   const isGrayscale = data?.grayscale !== false;
   const showBadges = data?.showBadges || false;
+  const entranceAnimation = data?.entranceAnimation || 'fade';
+  const smartMode = data?.smartMode || false;
+
+  const getAnimationVariants = (idx: number) => {
+    switch (entranceAnimation) {
+      case 'slide':
+        return {
+          initial: { opacity: 0, x: -30 },
+          whileInView: { opacity: 1, x: 0 },
+          transition: { duration: 0.6, delay: idx * 0.1 }
+        };
+      case 'zoom':
+        return {
+          initial: { opacity: 0, scale: 0.8 },
+          whileInView: { opacity: 1, scale: 1 },
+          transition: { duration: 0.8, delay: idx * 0.1 }
+        };
+      default: // fade
+        return {
+          initial: { opacity: 0, y: 20 },
+          whileInView: { opacity: 1, y: 0 },
+          transition: { duration: 0.7, delay: idx * 0.1 }
+        };
+    }
+  };
 
   const handleTextUpdate = (path: string, value: string) => {
     if (onUpdate) {
@@ -46,36 +71,43 @@ export const TrustBarModule = ({ data, onUpdate }: TrustBarModuleProps) => {
     }
   };
 
-  const renderLogo = (logo: any, i: number) => (
-    <motion.div 
-      key={i} 
-      whileHover={{ scale: 1.05, y: -2 }}
-      className={`flex items-center gap-3 px-8 py-4 bg-current/[0.02] rounded-2xl border border-current/5 transition-all duration-300 group hover:bg-current/[0.04] hover:border-primary/20`}
-    >
-      {logo.url ? (
-        <img 
-          src={logo.url} 
-          alt={logo.name} 
-          className={`h-8 md:h-10 w-auto object-contain transition-all duration-500 ${isGrayscale ? 'grayscale group-hover:grayscale-0' : ''}`}
-          referrerPolicy="no-referrer"
-        />
-      ) : (
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-primary/10 rounded-lg group-hover:bg-primary group-hover:text-white transition-colors duration-300">
-            <ShieldCheck className="w-5 h-5" />
+  const renderLogo = (logo: any, i: number) => {
+    const animation = getAnimationVariants(i);
+    return (
+      <motion.div 
+        key={i} 
+        initial={animation.initial}
+        whileInView={animation.whileInView}
+        viewport={{ once: true }}
+        transition={animation.transition}
+        whileHover={{ scale: 1.05, y: -2 }}
+        className={`flex items-center gap-3 px-8 py-4 bg-current/[0.02] rounded-2xl border border-current/5 transition-all duration-300 group hover:bg-current/[0.04] hover:border-primary/20`}
+      >
+        {logo.url ? (
+          <img 
+            src={logo.url} 
+            alt={logo.name} 
+            className={`h-8 md:h-10 w-auto object-contain transition-all duration-500 ${isGrayscale ? 'grayscale group-hover:grayscale-0' : ''}`}
+            referrerPolicy="no-referrer"
+          />
+        ) : (
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-primary/10 rounded-lg group-hover:bg-primary group-hover:text-white transition-colors duration-300">
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+            <Typography
+              variant="span"
+              className="font-black text-lg md:text-xl tracking-tighter italic opacity-60 group-hover:opacity-100 transition-opacity"
+              editable={!!onUpdate}
+              onUpdate={(text) => handleTextUpdate(`logos.${i}.name`, text)}
+            >
+              {logo.name}
+            </Typography>
           </div>
-          <Typography
-            variant="span"
-            className="font-black text-lg md:text-xl tracking-tighter italic opacity-60 group-hover:opacity-100 transition-opacity"
-            editable={!!onUpdate}
-            onUpdate={(text) => handleTextUpdate(`logos.${i}.name`, text)}
-          >
-            {logo.name}
-          </Typography>
-        </div>
-      )}
-    </motion.div>
-  );
+        )}
+      </motion.div>
+    );
+  };
 
   const marqueeVariants = {
     animate: {
@@ -90,6 +122,10 @@ export const TrustBarModule = ({ data, onUpdate }: TrustBarModuleProps) => {
       },
     },
   };
+
+  const effectiveLayout = smartMode 
+    ? (isMobileSimulated || logos.length > 5 ? 'marquee' : 'grid')
+    : layoutType;
 
   return (
     <ModuleWrapper 
@@ -131,7 +167,7 @@ export const TrustBarModule = ({ data, onUpdate }: TrustBarModuleProps) => {
           </motion.div>
         </div>
 
-        {layoutType === 'marquee' ? (
+        {effectiveLayout === 'marquee' ? (
           <div className="relative">
             {/* Gradient Fades */}
             <div className="absolute inset-y-0 left-0 w-32 bg-gradient-to-r from-background to-transparent z-10" />

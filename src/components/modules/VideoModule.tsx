@@ -47,6 +47,44 @@ export const VideoModule = ({ data, onUpdate }: VideoModuleProps) => {
   const showPlayButton = data?.showPlayButton !== false;
   const playButtonStyle = data?.playButtonStyle || 'solid';
   const maskShape = data?.maskShape || 'none';
+  const entranceAnimation = data?.entranceAnimation || 'fade';
+  const smartMode = data?.smartMode || false;
+
+  const effectiveLayout = smartMode 
+    ? (isMobileSimulated ? 'classic' : 'hero')
+    : layoutType;
+
+  const getAnimationVariants = (idx: number) => {
+    switch (entranceAnimation) {
+      case 'slide':
+        return {
+          hidden: { opacity: 0, x: -30 },
+          visible: { 
+            opacity: 1, 
+            x: 0,
+            transition: { duration: 0.6, delay: idx * 0.1 }
+          }
+        };
+      case 'zoom':
+        return {
+          hidden: { opacity: 0, scale: 0.8 },
+          visible: { 
+            opacity: 1, 
+            scale: 1,
+            transition: { duration: 0.8, delay: idx * 0.1 }
+          }
+        };
+      default: // fade
+        return {
+          hidden: { opacity: 0, y: 20 },
+          visible: { 
+            opacity: 1, 
+            y: 0,
+            transition: { duration: 0.7, delay: idx * 0.1 }
+          }
+        };
+    }
+  };
 
   const handleTextUpdate = (path: string, value: string) => {
     if (onUpdate) {
@@ -108,7 +146,7 @@ export const VideoModule = ({ data, onUpdate }: VideoModuleProps) => {
         <div 
           className={`relative w-full h-full bg-black cursor-pointer group overflow-hidden ${getMaskClass()}`}
           onClick={() => {
-            if (layoutType === 'popup') {
+            if (effectiveLayout === 'popup') {
               setIsModalOpen(true);
             } else {
               setIsPlaying(true);
@@ -193,7 +231,7 @@ export const VideoModule = ({ data, onUpdate }: VideoModuleProps) => {
   };
 
   const renderContent = () => {
-    if (layoutType === 'hero') {
+    if (effectiveLayout === 'hero') {
       return (
         <div className={`relative ${isMobileSimulated ? 'h-[60vh]' : 'h-[90vh]'} w-full overflow-hidden -mx-4 md:-mx-8 lg:-mx-12`}>
           <div className="absolute inset-0">
@@ -207,7 +245,7 @@ export const VideoModule = ({ data, onUpdate }: VideoModuleProps) => {
               whileInView="visible"
               viewport={{ once: true }}
             >
-              <motion.div variants={itemVariants} className="flex items-center justify-center gap-2 mb-6">
+              <motion.div variants={getAnimationVariants(0)} className="flex items-center justify-center gap-2 mb-6">
                 <div className="w-12 h-[1px] bg-primary" />
                 <span className="text-primary font-black tracking-[0.4em] uppercase text-[10px]">Presentación</span>
                 <div className="w-12 h-[1px] bg-primary" />
@@ -230,7 +268,7 @@ export const VideoModule = ({ data, onUpdate }: VideoModuleProps) => {
               </Typography>
               {data?.showCta && (
                 <motion.a 
-                  variants={itemVariants}
+                  variants={getAnimationVariants(1)}
                   href={data?.ctaUrl || '#'}
                   onClick={(e) => {
                     if (onUpdate) e.preventDefault();
@@ -255,7 +293,7 @@ export const VideoModule = ({ data, onUpdate }: VideoModuleProps) => {
       );
     }
 
-    if (layoutType === 'split') {
+    if (effectiveLayout === 'split') {
       return (
         <motion.div 
           className={`grid ${isMobileSimulated ? 'grid-cols-1' : 'lg:grid-cols-2'} gap-16 lg:gap-24 items-center`}
@@ -265,7 +303,7 @@ export const VideoModule = ({ data, onUpdate }: VideoModuleProps) => {
           viewport={{ once: true }}
         >
           <div className={isMobileSimulated ? 'text-center' : ''}>
-            <motion.div variants={itemVariants} className="flex items-center gap-2 mb-6 justify-center lg:justify-start">
+            <motion.div variants={getAnimationVariants(0)} className="flex items-center gap-2 mb-6 justify-center lg:justify-start">
               <div className="w-8 h-[1px] bg-primary" />
               <span className="text-primary font-black tracking-[0.3em] uppercase text-[10px]">Video</span>
             </motion.div>
@@ -287,7 +325,7 @@ export const VideoModule = ({ data, onUpdate }: VideoModuleProps) => {
             </Typography>
             
             {data?.showTranscription && (
-              <motion.div variants={itemVariants} className="mb-10">
+              <motion.div variants={getAnimationVariants(1)} className="mb-10">
                 <button 
                   onClick={() => setShowTranscription(!showTranscription)}
                   className={`flex items-center gap-3 text-text font-black uppercase tracking-widest text-[10px] hover:text-primary transition-colors mb-4 ${isMobileSimulated ? 'mx-auto' : ''}`}
@@ -322,7 +360,7 @@ export const VideoModule = ({ data, onUpdate }: VideoModuleProps) => {
 
             {data?.showCta && (
               <motion.a 
-                variants={itemVariants}
+                variants={getAnimationVariants(2)}
                 href={data?.ctaUrl || '#'}
                 onClick={(e) => {
                   if (onUpdate) e.preventDefault();
@@ -343,7 +381,7 @@ export const VideoModule = ({ data, onUpdate }: VideoModuleProps) => {
             )}
           </div>
           <motion.div 
-            variants={itemVariants}
+            variants={getAnimationVariants(3)}
             className={`aspect-video shadow-2xl ${isMobileSimulated ? 'rounded-2xl' : 'rounded-[2.5rem]'} relative group`}
           >
             <div className="absolute -inset-4 bg-primary/5 rounded-[3rem] blur-2xl group-hover:bg-primary/10 transition-colors duration-500" />
@@ -365,7 +403,7 @@ export const VideoModule = ({ data, onUpdate }: VideoModuleProps) => {
         viewport={{ once: true }}
       >
         <div className={isMobileSimulated ? 'mb-12' : 'mb-20'}>
-          <motion.div variants={itemVariants} className="flex items-center justify-center gap-2 mb-6">
+          <motion.div variants={getAnimationVariants(0)} className="flex items-center justify-center gap-2 mb-6">
             <div className="w-8 h-[1px] bg-primary" />
             <span className="text-primary font-black tracking-[0.3em] uppercase text-[10px]">Video</span>
             <div className="w-8 h-[1px] bg-primary" />
@@ -389,8 +427,8 @@ export const VideoModule = ({ data, onUpdate }: VideoModuleProps) => {
         </div>
 
         <motion.div 
-          variants={itemVariants}
-          className={`aspect-video shadow-2xl mx-auto ${layoutType === 'popup' ? 'max-w-4xl' : 'w-full'} relative group`}
+          variants={getAnimationVariants(1)}
+          className={`aspect-video shadow-2xl mx-auto ${effectiveLayout === 'popup' ? 'max-w-4xl' : 'w-full'} relative group`}
         >
           <div className="absolute -inset-6 bg-primary/5 rounded-[3rem] blur-3xl group-hover:bg-primary/10 transition-colors duration-700" />
           <div className="relative h-full w-full">
@@ -399,7 +437,7 @@ export const VideoModule = ({ data, onUpdate }: VideoModuleProps) => {
         </motion.div>
 
         {data?.showTranscription && (
-          <motion.div variants={itemVariants} className="mt-12 text-left max-w-4xl mx-auto">
+          <motion.div variants={getAnimationVariants(2)} className="mt-12 text-left max-w-4xl mx-auto">
             <button 
               onClick={() => setShowTranscription(!showTranscription)}
               className="flex items-center gap-3 text-text font-black uppercase tracking-widest text-[10px] hover:text-primary transition-colors mb-4 mx-auto"
@@ -433,7 +471,7 @@ export const VideoModule = ({ data, onUpdate }: VideoModuleProps) => {
         )}
 
         {data?.showCta && (
-          <motion.div variants={itemVariants} className={isMobileSimulated ? 'mt-12' : 'mt-20'}>
+          <motion.div variants={getAnimationVariants(3)} className={isMobileSimulated ? 'mt-12' : 'mt-20'}>
             <motion.a 
               href={data?.ctaUrl || '#'}
               onClick={(e) => {

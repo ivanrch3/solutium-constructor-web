@@ -123,7 +123,7 @@ export const TopBarModule = ({ data, isPreview, onUpdate }: { data: any, isPrevi
 
   const socials = data?.socials || { useProjectSocials: true };
   const isUsingProject = socials.useProjectSocials !== false;
-  const projectSocials = satellite?.payload?.projectData?.socials || {};
+  const projectSocials = satellite?.payload?.projectsData?.socials || satellite?.payload?.projectData?.socials || {};
   const currentSocials = isUsingProject ? projectSocials : socials;
 
   return (

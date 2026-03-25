@@ -15,6 +15,33 @@ export const ProcessModule = ({ data, onUpdate }: ProcessModuleProps) => {
   const isMobileSimulated = previewDevice === 'mobile';
   
   const layoutType = data?.layoutType || 'horizontal'; // horizontal, vertical, zigzag
+  const entranceAnimation = data?.entranceAnimation || 'fade';
+  const smartMode = data?.smartMode || false;
+
+  const getAnimationVariants = (idx: number) => {
+    switch (entranceAnimation) {
+      case 'slide':
+        return {
+          hidden: { opacity: 0, x: -30 },
+          visible: { opacity: 1, x: 0, transition: { duration: 0.6, delay: idx * 0.1 } }
+        };
+      case 'zoom':
+        return {
+          hidden: { opacity: 0, scale: 0.8 },
+          visible: { opacity: 1, scale: 1, transition: { duration: 0.8, delay: idx * 0.1 } }
+        };
+      default: // fade
+        return {
+          hidden: { opacity: 0, y: 30 },
+          visible: { 
+            opacity: 1, 
+            y: 0,
+            transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: idx * 0.1 }
+          }
+        };
+    }
+  };
+
   const steps = data?.steps || [
     { step: '01', title: 'Regístrate', desc: 'Crea tu cuenta en segundos y accede al panel de control intuitivo.', icon: <UserPlus className="w-8 h-8" /> },
     { step: '02', title: 'Configura', desc: 'Personaliza tus preferencias y sincroniza tus datos con un solo clic.', icon: <Settings className="w-8 h-8" /> },
@@ -40,6 +67,10 @@ export const ProcessModule = ({ data, onUpdate }: ProcessModuleProps) => {
     }
   };
 
+  const effectiveLayout = smartMode 
+    ? (isMobileSimulated ? 'vertical' : 'horizontal')
+    : layoutType;
+
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: { 
@@ -48,23 +79,15 @@ export const ProcessModule = ({ data, onUpdate }: ProcessModuleProps) => {
     }
   };
 
-  const itemVariants = {
-    hidden: { opacity: 0, y: 30 },
-    visible: { 
-      opacity: 1, 
-      y: 0,
-      transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] }
-    }
-  };
-
   const renderStep = (item: any, i: number) => {
     const isLast = i === steps.length - 1;
+    const animation = getAnimationVariants(i);
     
-    if (layoutType === 'zigzag') {
+    if (effectiveLayout === 'zigzag') {
       return (
         <motion.div 
           key={i} 
-          variants={itemVariants}
+          variants={animation}
           className={`flex flex-col md:flex-row items-center gap-12 md:gap-24 mb-24 last:mb-0 ${i % 2 !== 0 ? 'md:flex-row-reverse' : ''}`}
         >
           <div className="w-full md:w-1/2 relative">
@@ -110,8 +133,8 @@ export const ProcessModule = ({ data, onUpdate }: ProcessModuleProps) => {
     }
 
     return (
-      <motion.div key={i} variants={itemVariants} className="relative text-center group">
-        {!isLast && layoutType === 'horizontal' && !isMobileSimulated && (
+      <motion.div key={i} variants={animation} className="relative text-center group">
+        {!isLast && effectiveLayout === 'horizontal' && !isMobileSimulated && (
           <div className="absolute top-12 left-[60%] right-[-40%] h-px bg-gradient-to-r from-primary/30 via-primary/10 to-transparent z-0" />
         )}
         

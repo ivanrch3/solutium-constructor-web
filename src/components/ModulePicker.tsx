@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { MODULE_REGISTRY } from '../modules/registry';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Sparkles } from 'lucide-react';
 
 const CATEGORY_LABELS: Record<string, string> = {
   'navigation': 'Navegación y Estructura',
@@ -80,6 +80,38 @@ export const ModulePicker = ({ onAdd }: { onAdd: (moduleId: string) => void }) =
           </div>
         );
       })}
+
+      {/* AI Generator Card (Mobile Highlight - Moved to Bottom) */}
+      <div className="md:hidden mt-10 mb-6">
+        <button
+          onClick={() => onAdd('ai-generator')}
+          className="w-full p-6 rounded-[2.5rem] bg-gradient-to-br from-primary via-primary/90 to-primary/80 text-white shadow-xl shadow-primary/20 relative overflow-hidden group active:scale-95 transition-all"
+        >
+          <div className="absolute -top-4 -right-4 p-4 opacity-10 group-hover:scale-125 transition-transform duration-700 rotate-12">
+            <Sparkles className="w-32 h-32" />
+          </div>
+          
+          <div className="relative z-10 flex flex-col gap-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-white/20 backdrop-blur-md rounded-2xl">
+                <Sparkles className="w-5 h-5 text-white" />
+              </div>
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/70">Herramienta Mágica</span>
+            </div>
+            
+            <div className="space-y-1">
+              <h3 className="text-2xl font-black leading-tight">¿Poco tiempo?</h3>
+              <p className="text-sm text-white/80 leading-relaxed max-w-[240px]">
+                Deja que la IA construya una sección completa por ti en segundos.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest bg-white/20 self-start px-4 py-2 rounded-2xl backdrop-blur-md border border-white/10 mt-2">
+              Generar con IA
+            </div>
+          </div>
+        </button>
+      </div>
     </div>
   );
 };

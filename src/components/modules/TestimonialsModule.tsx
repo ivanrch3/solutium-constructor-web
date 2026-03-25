@@ -10,16 +10,44 @@ export const TestimonialsModule = ({ data, onUpdate }: { data: any, onUpdate?: (
   const isMobileSimulated = previewDevice === 'mobile';
   const [activeSpotlight, setActiveSpotlight] = React.useState(0);
   const layoutType = data?.layoutType || 'grid';
+  const entranceAnimation = data?.entranceAnimation || 'fade';
+  const smartMode = data?.smartMode || false;
   const columns = data?.columns || 3;
   const alignment = data?.alignment || 'center';
   const gap = data?.gap !== undefined ? data.gap : 32;
   const cardStyle = data?.cardStyle || { border: true, shadow: 'sm', borderRadius: 'xl', style: 'classic' };
   const testimonials = data?.testimonials || [];
+
+  const effectiveLayout = smartMode 
+    ? (isMobileSimulated ? 'carousel' : 'grid')
+    : layoutType;
   
   const showRating = data?.showRating !== false;
   const showAvatar = data?.showAvatar !== false;
   const showRole = data?.showRole !== false;
   const showCompany = data?.showCompany !== false;
+
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: 0.6,
+        ease: "easeOut"
+      }
+    }
+  };
 
   const handleTextUpdate = (path: string, value: string) => {
     if (onUpdate) {
@@ -40,27 +68,37 @@ export const TestimonialsModule = ({ data, onUpdate }: { data: any, onUpdate?: (
     }
   };
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1,
-        delayChildren: 0.2
-      }
-    }
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 30 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: {
-        type: "spring",
-        stiffness: 100,
-        damping: 15
-      }
+  const getAnimationVariants = (idx: number) => {
+    switch (entranceAnimation) {
+      case 'slide':
+        return {
+          hidden: { opacity: 0, x: -30 },
+          visible: { opacity: 1, x: 0, transition: { duration: 0.6, delay: idx * 0.1 } }
+        };
+      case 'zoom':
+        return {
+          hidden: { opacity: 0, scale: 0.8 },
+          visible: { opacity: 1, scale: 1, transition: { duration: 0.8, delay: idx * 0.1 } }
+        };
+      case 'stagger-reveal':
+        return {
+          hidden: { opacity: 0, y: 50, rotate: 2 },
+          visible: { opacity: 1, y: 0, rotate: 0, transition: { duration: 0.8, delay: idx * 0.15, ease: [0.215, 0.61, 0.355, 1] } }
+        };
+      default: // fade
+        return {
+          hidden: { opacity: 0, y: 30 },
+          visible: {
+            opacity: 1,
+            y: 0,
+            transition: {
+              type: "spring",
+              stiffness: 100,
+              damping: 15,
+              delay: idx * 0.1
+            }
+          }
+        };
     }
   };
 
@@ -131,7 +169,7 @@ export const TestimonialsModule = ({ data, onUpdate }: { data: any, onUpdate?: (
   const renderTestimonial = (test: any, idx: number) => (
     <motion.div 
       key={idx} 
-      variants={itemVariants}
+      variants={getAnimationVariants(idx)}
       className={getCardClasses()}
       whileHover={{ y: -10 }}
     >
@@ -226,7 +264,13 @@ export const TestimonialsModule = ({ data, onUpdate }: { data: any, onUpdate?: (
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
     >
-      <div className={`flex items-center gap-3 mb-6 ${alignment === 'center' ? 'justify-center' : 'justify-start'}`}>
+      <div className={`flex items-center gap-3 mb-6 ${alignment === 'center' ? 'justify-center' : 'justify-start'} relative`}>
+        {data?.smartMode && (
+          <div className="absolute -top-8 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-2 py-0.5 bg-primary/20 backdrop-blur-md border border-primary/30 rounded-full whitespace-nowrap">
+            <Sparkles className="w-2.5 h-2.5 text-primary" />
+            <span className="text-[7px] font-black uppercase tracking-widest text-primary">IA Optimizado</span>
+          </div>
+        )}
         <div className="p-2 bg-primary/10 rounded-xl">
           <Sparkles className="w-5 h-5 text-primary animate-pulse" />
         </div>
@@ -266,11 +310,10 @@ export const TestimonialsModule = ({ data, onUpdate }: { data: any, onUpdate?: (
       4: 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4'
     }[columns as 1|2|3|4] || 'grid-cols-1 md:grid-cols-3';
 
-    switch (layoutType) {
+    switch (effectiveLayout) {
       case 'masonry':
         return (
           <motion.div 
-            variants={containerVariants}
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true }}
@@ -453,7 +496,6 @@ export const TestimonialsModule = ({ data, onUpdate }: { data: any, onUpdate?: (
       default: // Grid
         return (
           <motion.div 
-            variants={containerVariants}
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true }}

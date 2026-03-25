@@ -16,6 +16,13 @@ export const ContactModule = ({ data, onUpdate }: ContactModuleProps) => {
   const [formState, setFormState] = useState<'idle' | 'submitting' | 'success'>('idle');
 
   const layoutType = data?.layoutType || 'split'; // split, center, map-immersive, sidebar
+  const entranceAnimation = data?.entranceAnimation || 'fade';
+  const smartMode = data?.smartMode || false;
+
+  const effectiveLayout = smartMode 
+    ? (isMobileSimulated ? 'center' : 'split')
+    : layoutType;
+
   const showMap = data?.showMap !== false;
   const mapUrl = data?.mapUrl || '';
   const socialLinks = data?.socialLinks || [
@@ -56,20 +63,37 @@ export const ContactModule = ({ data, onUpdate }: ContactModuleProps) => {
     }, 1500);
   };
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: { 
-      opacity: 1,
-      transition: { staggerChildren: 0.1 }
-    }
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { 
-      opacity: 1, 
-      y: 0,
-      transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] }
+  const getAnimationVariants = (idx: number) => {
+    switch (entranceAnimation) {
+      case 'slide':
+        return {
+          hidden: { opacity: 0, x: -30 },
+          visible: { opacity: 1, x: 0, transition: { duration: 0.6, delay: idx * 0.1 } }
+        };
+      case 'zoom':
+        return {
+          hidden: { opacity: 0, scale: 0.8 },
+          visible: { opacity: 1, scale: 1, transition: { duration: 0.8, delay: idx * 0.1 } }
+        };
+      case 'stagger-reveal':
+        return {
+          hidden: { opacity: 0, y: 50, rotate: 2 },
+          visible: { opacity: 1, y: 0, rotate: 0, transition: { duration: 0.8, delay: idx * 0.15, ease: [0.215, 0.61, 0.355, 1] } }
+        };
+      default: // fade
+        return {
+          hidden: { opacity: 0, y: 30 },
+          visible: {
+            opacity: 1,
+            y: 0,
+            transition: {
+              type: "spring",
+              stiffness: 100,
+              damping: 15,
+              delay: idx * 0.1
+            }
+          }
+        };
     }
   };
 
@@ -84,9 +108,9 @@ export const ContactModule = ({ data, onUpdate }: ContactModuleProps) => {
     return icons[platform] || null;
   };
 
-  const renderContactCard = (icon: any, label: string, value: string, path: string, delay: number = 0) => (
+  const renderContactCard = (icon: any, label: string, value: string, path: string, idx: number = 0) => (
     <motion.div 
-      variants={itemVariants}
+      variants={getAnimationVariants(idx)}
       whileHover={{ y: -5, scale: 1.02 }}
       className={`flex items-center gap-6 p-6 bg-current/[0.03] rounded-[2rem] border border-current/5 hover:border-primary/30 hover:bg-current/[0.05] transition-all duration-300 group`}
     >
@@ -107,9 +131,9 @@ export const ContactModule = ({ data, onUpdate }: ContactModuleProps) => {
     </motion.div>
   );
 
-  const renderForm = () => (
+  const renderForm = (idx: number = 3) => (
     <motion.div 
-      variants={itemVariants}
+      variants={getAnimationVariants(idx)}
       className={`bg-current/[0.02] p-8 md:p-12 rounded-[3rem] border border-current/5 shadow-2xl backdrop-blur-md relative overflow-hidden`}
     >
       <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -mr-32 -mt-32" />
@@ -219,10 +243,16 @@ export const ContactModule = ({ data, onUpdate }: ContactModuleProps) => {
           </div>
           <Typography
             variant="h2"
-            className={`${isMobileSimulated ? 'text-4xl' : 'text-5xl md:text-7xl'} font-black tracking-tighter mb-6 leading-none`}
+            className={`${isMobileSimulated ? 'text-4xl' : 'text-5xl md:text-7xl'} font-black tracking-tighter mb-6 leading-none relative inline-block`}
             editable={!!onUpdate}
             onUpdate={(text) => handleTextUpdate('title', text)}
           >
+            {data?.smartMode && (
+              <div className="absolute -top-8 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-2 py-0.5 bg-primary/20 backdrop-blur-md border border-primary/30 rounded-full whitespace-nowrap">
+                <Sparkles className="w-2.5 h-2.5 text-primary" />
+                <span className="text-[7px] font-black uppercase tracking-widest text-primary">IA Optimizado</span>
+              </div>
+            )}
             {data?.title || 'Hablemos de tu Proyecto'}
           </Typography>
           <Typography
@@ -236,21 +266,20 @@ export const ContactModule = ({ data, onUpdate }: ContactModuleProps) => {
         </motion.div>
 
         <motion.div 
-          variants={containerVariants}
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true }}
-          className={`grid ${isMobileSimulated ? 'grid-cols-1 gap-16' : 'lg:grid-cols-2 gap-24'} items-start`}
+          className={`grid ${effectiveLayout === 'center' ? 'grid-cols-1 max-w-4xl mx-auto' : 'lg:grid-cols-2 gap-24'} items-start`}
         >
-          <div className="space-y-12">
-            <div className="grid grid-cols-1 gap-6">
-              {renderContactCard(<Mail className="w-6 h-6" />, 'Email', data?.email || 'hola@solutium.com', 'email')}
-              {renderContactCard(<Phone className="w-6 h-6" />, 'Teléfono', data?.phone || '+34 900 000 000', 'phone')}
-              {renderContactCard(<MapPin className="w-6 h-6" />, 'Ubicación', data?.address || 'Madrid, España', 'address')}
+          <div className={`space-y-12 ${effectiveLayout === 'center' ? 'text-center' : ''}`}>
+            <div className={`grid grid-cols-1 gap-6 ${effectiveLayout === 'center' ? 'md:grid-cols-3' : ''}`}>
+              {renderContactCard(<Mail className="w-6 h-6" />, 'Email', data?.email || 'hola@solutium.com', 'email', 0)}
+              {renderContactCard(<Phone className="w-6 h-6" />, 'Teléfono', data?.phone || '+34 900 000 000', 'phone', 1)}
+              {renderContactCard(<MapPin className="w-6 h-6" />, 'Ubicación', data?.address || 'Madrid, España', 'address', 2)}
             </div>
 
-            <motion.div variants={itemVariants} className="p-8 bg-current/[0.02] rounded-[2.5rem] border border-current/5">
-              <div className="flex items-center gap-4 mb-8">
+            <motion.div variants={getAnimationVariants(4)} className={`p-8 bg-current/[0.02] rounded-[2.5rem] border border-current/5 ${effectiveLayout === 'center' ? 'max-w-2xl mx-auto w-full' : ''}`}>
+              <div className={`flex items-center gap-4 mb-8 ${effectiveLayout === 'center' ? 'justify-center' : ''}`}>
                 <div className="p-3 bg-primary/10 text-primary rounded-2xl">
                   <Clock className="w-6 h-6" />
                 </div>
@@ -266,7 +295,7 @@ export const ContactModule = ({ data, onUpdate }: ContactModuleProps) => {
               </div>
             </motion.div>
 
-            <motion.div variants={itemVariants} className="flex items-center gap-4">
+            <motion.div variants={getAnimationVariants(5)} className={`flex items-center gap-4 ${effectiveLayout === 'center' ? 'justify-center' : ''}`}>
               <Typography variant="span" className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40 mr-4">Síguenos</Typography>
               <div className="flex gap-3">
                 {socialLinks.map((link: any, idx: number) => (
@@ -285,11 +314,11 @@ export const ContactModule = ({ data, onUpdate }: ContactModuleProps) => {
           </div>
 
           <div className="space-y-12">
-            {renderForm()}
+            {renderForm(3)}
             
             {showMap && mapUrl && (
               <motion.div 
-                variants={itemVariants}
+                variants={getAnimationVariants(6)}
                 className={`h-[400px] w-full rounded-[3rem] overflow-hidden shadow-2xl border border-current/10 relative group`}
               >
                 <iframe 

@@ -19,15 +19,17 @@ import {
   CheckCircle2,
   XCircle,
   Megaphone,
-  Link2
+  Link2,
+  ArrowLeft
 } from 'lucide-react';
 import { SolutiumPayload } from '../lib/solutium-sdk';
 
 interface DataAuditViewProps {
   config: SolutiumPayload | null;
+  onBack?: () => void;
 }
 
-export const DataAuditView: React.FC<DataAuditViewProps> = ({ config }) => {
+export const DataAuditView: React.FC<DataAuditViewProps> = ({ config, onBack }) => {
   const [activeTab, setActiveTab] = useState('profile');
   const [customersDataState, setCustomersDataState] = useState<any[]>(config?.customersData || []);
   const [productsDataState, setProductsDataState] = useState<any[]>(config?.productsData || []);
@@ -59,6 +61,7 @@ export const DataAuditView: React.FC<DataAuditViewProps> = ({ config }) => {
       { id: 'products', label: 'Productos', icon: Package, scope: 'products', show: true },
       { id: 'integrations', label: 'Integraciones', icon: Link2, scope: 'integrations', show: !!config?.integrationsData },
       { id: 'assets', label: 'Activos', icon: Box, scope: 'assets', show: true },
+      { id: 'raw', label: 'Raw Payload', icon: FileJson, scope: 'admin', show: true },
     ].filter(tab => tab.show);
   }, [config]);
 
@@ -141,12 +144,12 @@ export const DataAuditView: React.FC<DataAuditViewProps> = ({ config }) => {
     const currentTab = tabs.find(t => t.id === activeTab);
     if (!currentTab) return null;
 
-    const isAuthorized = config?.scopes?.includes(currentTab.scope);
-    if (!isAuthorized) return renderLockedState(currentTab.scope);
+    const isAuthorized = config?.scopes?.includes(currentTab.scope) || currentTab.id === 'raw';
+    if (!isAuthorized && config?.scopes) return renderLockedState(currentTab.scope);
 
     switch (activeTab) {
-      case 'profile':
-        if (!config?.userProfile) return renderEmptyState('Sin datos disponibles', User);
+      case 'profiles':
+        if (!config?.profilesData) return renderEmptyState('Sin datos disponibles', User);
         return (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="bg-surface p-6 rounded-2xl border border-text/5 shadow-sm">
@@ -156,25 +159,25 @@ export const DataAuditView: React.FC<DataAuditViewProps> = ({ config }) => {
               <div className="space-y-4">
                 <div>
                   <label className="text-[10px] font-bold text-text/30 uppercase tracking-tighter">Nombre Completo</label>
-                  <p className="text-lg font-bold text-text">{config.userProfile?.fullName || 'N/A'}</p>
+                  <p className="text-lg font-bold text-text">{config.profilesData?.fullName || 'N/A'}</p>
                 </div>
                 <div>
                   <label className="text-[10px] font-bold text-text/30 uppercase tracking-tighter">Correo Electrónico</label>
-                  <p className="text-text/80">{config.userProfile?.email || 'N/A'}</p>
+                  <p className="text-text/80">{config.profilesData?.email || 'N/A'}</p>
                 </div>
-                {config.userProfile?.avatarUrl && (
+                {config.profilesData?.avatarUrl && (
                   <div>
                     <label className="text-[10px] font-bold text-text/30 uppercase tracking-tighter">Avatar URL</label>
-                    <p className="text-xs text-primary truncate">{config.userProfile.avatarUrl}</p>
+                    <p className="text-xs text-primary truncate">{config.profilesData.avatarUrl}</p>
                   </div>
                 )}
                 <div>
                   <label className="text-[10px] font-bold text-text/30 uppercase tracking-tighter">Rol</label>
-                  <p className="text-text/80">{config.userProfile?.role || 'N/A'}</p>
+                  <p className="text-text/80">{config.profilesData?.role || 'N/A'}</p>
                 </div>
                 <div>
                   <label className="text-[10px] font-bold text-text/30 uppercase tracking-tighter">Empresa</label>
-                  <p className="text-text/80">{config.userProfile?.businessName || 'N/A'}</p>
+                  <p className="text-text/80">{config.profilesData?.businessName || 'N/A'}</p>
                 </div>
               </div>
             </div>
@@ -182,28 +185,7 @@ export const DataAuditView: React.FC<DataAuditViewProps> = ({ config }) => {
               <h4 className="text-sm font-bold text-text/40 uppercase tracking-widest mb-4 flex items-center gap-2">
                 <FileJson className="w-4 h-4" /> Raw Payload
               </h4>
-              {renderJson(config.userProfile)}
-            </div>
-          </div>
-        );
-
-      case 'profiles':
-        const profiles = profilesDataState || {};
-        if (Object.keys(profiles).length === 0) return renderEmptyState('Sin perfiles sincronizados', Users2);
-        return (
-          <div className="space-y-6">
-            <div className="bg-surface p-6 rounded-2xl border border-text/5 shadow-sm">
-              <h4 className="text-sm font-bold text-text/40 uppercase tracking-widest mb-4 flex items-center gap-2">
-                <User className="w-4 h-4" /> Perfil de Usuario
-              </h4>
-              <div className="space-y-4">
-                {Object.entries(profiles).map(([key, value]) => (
-                  <div key={key}>
-                    <label className="text-[10px] font-bold text-text/30 uppercase tracking-tighter">{key.replace('_', ' ')}</label>
-                    <p className="text-text/80">{String(value)}</p>
-                  </div>
-                ))}
-              </div>
+              {renderJson(config.profilesData)}
             </div>
           </div>
         );
@@ -226,7 +208,7 @@ export const DataAuditView: React.FC<DataAuditViewProps> = ({ config }) => {
         );
 
       case 'team':
-        const teamMembers = config?.teamMembers;
+        const teamMembers = teamMembersDataState || config?.teamMembers || config?.teamMembersData;
         if (!teamMembers || teamMembers.length === 0) {
           return renderEmptyState('Sin datos disponibles', Users);
         }
@@ -764,23 +746,56 @@ export const DataAuditView: React.FC<DataAuditViewProps> = ({ config }) => {
           </div>
         );
 
+      case 'raw':
+        return (
+          <div className="space-y-6">
+            <div className="bg-surface p-6 rounded-2xl border border-text/5 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="text-sm font-bold text-text/40 uppercase tracking-widest flex items-center gap-2">
+                  <FileJson className="w-4 h-4" /> Full Configuration Payload
+                </h4>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-mono bg-primary/10 text-primary px-2 py-1 rounded">
+                    {config?.projectId || 'No Project ID'}
+                  </span>
+                </div>
+              </div>
+              <p className="text-xs text-text/60 mb-4">
+                Este es el objeto completo que el Satélite ha procesado y normalizado. 
+                Si algún dato falta aquí, es posible que no se esté enviando correctamente desde la App Madre.
+              </p>
+              {renderJson(config)}
+            </div>
+          </div>
+        );
+
       default:
         return null;
     }
   };
 
   return (
-    <div className="min-h-screen bg-background p-8 animate-in fade-in duration-500">
+    <div className="min-h-screen bg-background p-4 md:p-8 animate-in fade-in duration-500 pb-32 md:pb-8">
       {/* Header */}
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-        <div>
-          <div className="flex items-center gap-3 mb-1">
-            <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
-              <Database className="w-6 h-6 text-primary" />
+        <div className="flex items-start gap-4">
+          {onBack && (
+            <button 
+              onClick={onBack}
+              className="md:hidden p-3 bg-surface rounded-2xl text-text/60 active:scale-95 transition-all"
+            >
+              <ArrowLeft className="w-6 h-6" />
+            </button>
+          )}
+          <div>
+            <div className="flex items-center gap-3 mb-1">
+              <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
+                <Database className="w-6 h-6 text-primary" />
+              </div>
+              <h1 className="text-3xl font-black text-text tracking-tight">Auditoría de Datos (S.I.P.)</h1>
             </div>
-            <h1 className="text-3xl font-black text-text tracking-tight">Auditoría de Datos (S.I.P.)</h1>
+            <p className="text-text/60 font-medium">Inspección técnica de los datos inyectados desde la App Madre.</p>
           </div>
-          <p className="text-text/60 font-medium">Inspección técnica de los datos inyectados desde la App Madre.</p>
         </div>
 
         <div className="flex items-center gap-3">

@@ -16,6 +16,33 @@ export const AboutModule = ({ data, onUpdate }: AboutModuleProps) => {
   
   const layoutType = data?.layoutType || 'split'; // split, centered, minimal
   const showValues = data?.showValues !== false;
+  const entranceAnimation = data?.entranceAnimation || 'fade';
+  const smartMode = data?.smartMode || false;
+
+  const getAnimationVariants = (idx: number) => {
+    switch (entranceAnimation) {
+      case 'slide':
+        return {
+          hidden: { opacity: 0, x: -30 },
+          visible: { opacity: 1, x: 0, transition: { duration: 0.6, delay: idx * 0.1 } }
+        };
+      case 'zoom':
+        return {
+          hidden: { opacity: 0, scale: 0.8 },
+          visible: { opacity: 1, scale: 1, transition: { duration: 0.8, delay: idx * 0.1 } }
+        };
+      default: // fade
+        return {
+          hidden: { opacity: 0, y: 30 },
+          visible: { 
+            opacity: 1, 
+            y: 0,
+            transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: idx * 0.1 }
+          }
+        };
+    }
+  };
+
   const values = data?.values || [
     { icon: <Target className="w-6 h-6" />, title: 'Misión', desc: 'Democratizar el acceso a la mejor tecnología para negocios de todos los tamaños.' },
     { icon: <Heart className="w-6 h-6" />, title: 'Pasión', desc: 'Nos apasiona crear soluciones que generen un impacto real en nuestros clientes.' },
@@ -41,6 +68,10 @@ export const AboutModule = ({ data, onUpdate }: AboutModuleProps) => {
     }
   };
 
+  const effectiveLayout = smartMode 
+    ? (isMobileSimulated ? 'centered' : 'split')
+    : layoutType;
+
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: { 
@@ -49,18 +80,9 @@ export const AboutModule = ({ data, onUpdate }: AboutModuleProps) => {
     }
   };
 
-  const itemVariants = {
-    hidden: { opacity: 0, y: 30 },
-    visible: { 
-      opacity: 1, 
-      y: 0,
-      transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] }
-    }
-  };
-
   const renderContent = () => (
-    <div className={layoutType === 'centered' ? 'text-center max-w-4xl mx-auto' : 'text-left'}>
-      <motion.div variants={itemVariants} className={`flex items-center gap-3 mb-8 ${layoutType === 'centered' ? 'justify-center' : 'justify-start'}`}>
+    <div className={effectiveLayout === 'centered' ? 'text-center max-w-4xl mx-auto' : 'text-left'}>
+      <motion.div variants={getAnimationVariants(0)} className={`flex items-center gap-3 mb-8 ${effectiveLayout === 'centered' ? 'justify-center' : 'justify-start'}`}>
         <div className="p-2 bg-primary/10 rounded-xl">
           <BookOpen className="w-5 h-5 text-primary" />
         </div>
@@ -74,7 +96,7 @@ export const AboutModule = ({ data, onUpdate }: AboutModuleProps) => {
         </Typography>
       </motion.div>
 
-      <motion.div variants={itemVariants}>
+      <motion.div variants={getAnimationVariants(1)}>
         <Typography
           variant="h2"
           className={`${isMobileSimulated ? 'text-4xl' : 'text-5xl md:text-7xl'} font-black tracking-tighter mb-8 leading-none`}
@@ -85,7 +107,7 @@ export const AboutModule = ({ data, onUpdate }: AboutModuleProps) => {
         </Typography>
       </motion.div>
 
-      <motion.div variants={itemVariants}>
+      <motion.div variants={getAnimationVariants(2)}>
         <Typography
           variant="p"
           className={`${isMobileSimulated ? 'text-lg' : 'text-xl md:text-2xl'} opacity-60 mb-12 leading-relaxed font-medium tracking-tight`}
@@ -96,7 +118,7 @@ export const AboutModule = ({ data, onUpdate }: AboutModuleProps) => {
         </Typography>
       </motion.div>
 
-      <motion.div variants={itemVariants} className={`grid grid-cols-2 gap-12 mb-16 ${layoutType === 'centered' ? 'max-w-md mx-auto' : ''}`}>
+      <motion.div variants={getAnimationVariants(3)} className={`grid grid-cols-2 gap-12 mb-16 ${effectiveLayout === 'centered' ? 'max-w-md mx-auto' : ''}`}>
         <div className="group">
           <Typography
             variant="h4"
@@ -136,10 +158,10 @@ export const AboutModule = ({ data, onUpdate }: AboutModuleProps) => {
       </motion.div>
 
       {showValues && (
-        <motion.div variants={itemVariants} className={`grid grid-cols-1 md:grid-cols-3 gap-8 ${layoutType === 'centered' ? 'text-center' : 'text-left'}`}>
+        <motion.div variants={getAnimationVariants(4)} className={`grid grid-cols-1 md:grid-cols-3 gap-8 ${effectiveLayout === 'centered' ? 'text-center' : 'text-left'}`}>
           {values.map((v: any, i: number) => (
             <div key={i} className="group">
-              <div className={`p-3 bg-current/[0.03] rounded-2xl w-fit mb-4 group-hover:bg-primary/10 group-hover:text-primary transition-colors duration-300 ${layoutType === 'centered' ? 'mx-auto' : ''}`}>
+              <div className={`p-3 bg-current/[0.03] rounded-2xl w-fit mb-4 group-hover:bg-primary/10 group-hover:text-primary transition-colors duration-300 ${effectiveLayout === 'centered' ? 'mx-auto' : ''}`}>
                 {v.icon}
               </div>
               <Typography variant="h4" className="text-lg font-black tracking-tight mb-2">{v.title}</Typography>
@@ -162,10 +184,10 @@ export const AboutModule = ({ data, onUpdate }: AboutModuleProps) => {
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true }}
-          className={`grid grid-cols-1 ${layoutType === 'split' && !isMobileSimulated ? 'lg:grid-cols-2' : ''} gap-24 items-center`}
+          className={`grid grid-cols-1 ${effectiveLayout === 'split' && !isMobileSimulated ? 'lg:grid-cols-2' : ''} gap-24 items-center`}
         >
-          {layoutType === 'split' && !isMobileSimulated && (
-            <motion.div variants={itemVariants} className="relative group">
+          {effectiveLayout === 'split' && !isMobileSimulated && (
+            <motion.div variants={getAnimationVariants(0)} className="relative group">
               <div className="absolute inset-0 bg-primary/20 rounded-[4rem] blur-[100px] opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
               <div className="relative aspect-[4/5] rounded-[4rem] overflow-hidden border-[12px] border-current/5 shadow-2xl">
                 <motion.img 

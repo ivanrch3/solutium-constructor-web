@@ -21,6 +21,56 @@ export const CtaBannerModule = ({ data, onUpdate }: CtaBannerModuleProps) => {
   const showMicroCopy = data?.showMicroCopy !== false;
   const showChecklist = data?.showChecklist || false;
   const showMockup = data?.showMockup || false;
+  const entranceAnimation = data?.entranceAnimation || 'fade';
+  const smartMode = data?.smartMode || false;
+
+  const effectiveLayout = smartMode 
+    ? (isMobileSimulated ? 'center' : 'split')
+    : layoutType;
+
+  const getAnimationVariants = (idx: number) => {
+    const baseDelay = 0.1;
+    const stagger = 0.1;
+
+    switch (entranceAnimation) {
+      case 'slide':
+        return {
+          hidden: { opacity: 0, x: -30 },
+          visible: { 
+            opacity: 1, 
+            x: 0,
+            transition: { duration: 0.8, delay: baseDelay + idx * stagger, ease: [0.21, 0.45, 0.32, 0.9] }
+          }
+        };
+      case 'zoom':
+        return {
+          hidden: { opacity: 0, scale: 0.8 },
+          visible: { 
+            opacity: 1, 
+            scale: 1,
+            transition: { duration: 0.8, delay: baseDelay + idx * stagger, ease: [0.21, 0.45, 0.32, 0.9] }
+          }
+        };
+      case 'reveal':
+        return {
+          hidden: { opacity: 0, y: 40 },
+          visible: { 
+            opacity: 1, 
+            y: 0,
+            transition: { duration: 1, delay: baseDelay + idx * stagger, ease: [0.21, 0.45, 0.32, 0.9] }
+          }
+        };
+      default: // fade
+        return {
+          hidden: { opacity: 0, y: 20 },
+          visible: { 
+            opacity: 1, 
+            y: 0,
+            transition: { duration: 0.7, delay: baseDelay + idx * stagger }
+          }
+        };
+    }
+  };
 
   const handleTextUpdate = (path: string, value: string) => {
     if (onUpdate) {
@@ -80,8 +130,8 @@ export const CtaBannerModule = ({ data, onUpdate }: CtaBannerModuleProps) => {
 
   const renderButtons = () => (
     <motion.div 
-      variants={itemVariants}
-      className={`flex ${isMobileSimulated ? 'flex-col' : 'flex-col sm:flex-row'} gap-4 ${layoutType === 'center' || layoutType === 'minimal' ? 'justify-center' : ''}`}
+      variants={getAnimationVariants(3)}
+      className={`flex ${isMobileSimulated ? 'flex-col' : 'flex-col sm:flex-row'} gap-4 ${effectiveLayout === 'center' || effectiveLayout === 'minimal' ? 'justify-center' : ''}`}
     >
       {showAppBadges ? (
         <>
@@ -180,18 +230,18 @@ export const CtaBannerModule = ({ data, onUpdate }: CtaBannerModuleProps) => {
   );
 
   const renderContent = () => (
-    <div className={`relative z-10 ${layoutType === 'split' && !isMobileSimulated ? 'lg:w-1/2' : 'w-full max-w-4xl mx-auto'}`}>
-      <motion.div variants={itemVariants} className={`flex items-center gap-3 mb-8 ${layoutType === 'center' || layoutType === 'minimal' ? 'justify-center' : 'justify-start'}`}>
+    <div className={`relative z-10 ${effectiveLayout === 'split' && !isMobileSimulated ? 'lg:w-1/2' : 'w-full max-w-4xl mx-auto'}`}>
+      <motion.div variants={getAnimationVariants(0)} className={`flex items-center gap-3 mb-8 ${effectiveLayout === 'center' || effectiveLayout === 'minimal' ? 'justify-center' : 'justify-start'}`}>
         <div className="p-2 bg-white/10 rounded-xl backdrop-blur-md border border-white/10">
           <Sparkles className="w-5 h-5 text-white animate-pulse" />
         </div>
         <span className="text-white font-black tracking-[0.3em] uppercase text-[10px] opacity-80">Acción Inmediata</span>
       </motion.div>
 
-      <motion.div variants={itemVariants}>
+      <motion.div variants={getAnimationVariants(1)}>
         <Typography
           variant="h2"
-          className={`font-black tracking-tighter mb-8 leading-[1.1] ${layoutType === 'minimal' ? 'text-4xl md:text-5xl' : isMobileSimulated ? 'text-4xl' : 'text-5xl md:text-7xl'}`}
+          className={`font-black tracking-tighter mb-8 leading-[1.1] ${effectiveLayout === 'minimal' ? 'text-4xl md:text-5xl' : isMobileSimulated ? 'text-4xl' : 'text-5xl md:text-7xl'}`}
           editable={!!onUpdate}
           onUpdate={(text) => handleTextUpdate('title', text)}
         >
@@ -199,10 +249,10 @@ export const CtaBannerModule = ({ data, onUpdate }: CtaBannerModuleProps) => {
         </Typography>
       </motion.div>
       
-      <motion.div variants={itemVariants}>
+      <motion.div variants={getAnimationVariants(2)}>
         <Typography
           variant="p"
-          className={`${isMobileSimulated ? 'text-xl' : 'text-2xl md:text-3xl'} opacity-80 mb-12 leading-relaxed font-medium tracking-tight ${layoutType === 'minimal' ? 'max-w-2xl mx-auto' : ''}`}
+          className={`${isMobileSimulated ? 'text-xl' : 'text-2xl md:text-3xl'} opacity-80 mb-12 leading-relaxed font-medium tracking-tight ${effectiveLayout === 'minimal' ? 'max-w-2xl mx-auto' : ''}`}
           editable={!!onUpdate}
           onUpdate={(text) => handleTextUpdate('subtitle', text)}
         >
@@ -212,8 +262,8 @@ export const CtaBannerModule = ({ data, onUpdate }: CtaBannerModuleProps) => {
 
       {showChecklist && data?.checklist && (
         <motion.div 
-          variants={itemVariants}
-          className={`flex flex-wrap gap-6 md:gap-10 mb-12 ${layoutType === 'center' || isMobileSimulated ? 'justify-center' : ''}`}
+          variants={getAnimationVariants(3)}
+          className={`flex flex-wrap gap-6 md:gap-10 mb-12 ${effectiveLayout === 'center' || isMobileSimulated ? 'justify-center' : ''}`}
         >
           {data.checklist.map((item: any, idx: number) => (
             <div key={idx} className="flex items-center gap-3 font-bold uppercase tracking-widest text-[11px] opacity-70 group">
@@ -254,7 +304,7 @@ export const CtaBannerModule = ({ data, onUpdate }: CtaBannerModuleProps) => {
     
     return (
       <motion.div 
-        variants={itemVariants}
+        variants={getAnimationVariants(4)}
         className={`${isMobileSimulated ? 'w-full' : 'lg:w-1/2'} relative mt-16 lg:mt-0`}
       >
         <motion.div 
@@ -280,7 +330,7 @@ export const CtaBannerModule = ({ data, onUpdate }: CtaBannerModuleProps) => {
     const base = 'relative overflow-hidden text-white';
     
     if (isMobileSimulated) {
-      switch (layoutType) {
+      switch (effectiveLayout) {
         case 'full':
           return `${base} py-20 px-6 w-full rounded-none`;
         case 'floating':
@@ -295,7 +345,7 @@ export const CtaBannerModule = ({ data, onUpdate }: CtaBannerModuleProps) => {
       }
     }
 
-    switch (layoutType) {
+    switch (effectiveLayout) {
       case 'full':
         return `${base} py-40 px-6 md:px-12 w-full rounded-none`;
       case 'floating':

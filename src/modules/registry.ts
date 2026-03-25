@@ -358,6 +358,59 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
       { name: 'subtitle', label: 'Subtítulo', type: 'textarea', category: 'content' },
       ...TYPOGRAPHY_PROPS('subtitle', 'Estilo del subtítulo').map(p => ({ ...p, category: 'content' })),
 
+      { 
+        name: 'layoutType', 
+        label: 'Tipo de Diseño', 
+        type: 'select', 
+        category: 'design',
+        premiumOptions: ['layout-3', 'layout-4', 'layout-6', 'layout-7'],
+        options: [
+          { label: 'Centrado (Clásico)', value: 'layout-1' },
+          { label: 'Dividido (Split)', value: 'layout-2' },
+          { label: 'Editorial (Offset)', value: 'layout-3' },
+          { label: 'Tarjeta Flotante', value: 'layout-4' },
+          { label: 'Barra Lateral', value: 'layout-5' },
+          { label: 'Bento Box', value: 'layout-6' },
+          { label: 'Superpuesto (Overlap)', value: 'layout-7' }
+        ]
+      },
+      {
+        name: 'backgroundType',
+        label: 'Tipo de Fondo',
+        type: 'select',
+        category: 'design',
+        isPremium: true,
+        premiumOptions: ['mesh', 'video', 'particles'],
+        options: [
+          { label: 'Color Sólido', value: 'solid' },
+          { label: 'Gradiente', value: 'gradient' },
+          { label: 'Mesh Gradient', value: 'mesh' },
+          { label: 'Video', value: 'video' },
+          { label: 'Partículas Interactivas', value: 'particles' }
+        ]
+      },
+      {
+        name: 'entranceAnimation',
+        label: 'Animación de Entrada',
+        type: 'select',
+        category: 'design',
+        isPremium: true,
+        premiumOptions: ['reveal', 'text-reveal'],
+        options: [
+          { label: 'Desvanecer (Fade)', value: 'fade' },
+          { label: 'Deslizar (Slide)', value: 'slide' },
+          { label: 'Zoom', value: 'zoom' },
+          { label: 'Revelación (Reveal)', value: 'reveal' },
+          { label: 'Revelación de Texto Pro', value: 'text-reveal' }
+        ]
+      },
+      { 
+        name: 'smartMode', 
+        label: 'Modo Inteligente (IA)', 
+        type: 'boolean', 
+        category: 'design',
+        isPremium: true
+      },
       // Botones y otros contenidos
       BUTTON_GROUP_PROPS('primaryButton', 'Botón Primario'),
       BUTTON_GROUP_PROPS('secondaryButton', 'Botón Secundario', true),
@@ -437,6 +490,41 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
           { label: 'Carrusel', value: 'carousel' }
         ],
         premiumOptions: ['bento', 'zigzag', 'carousel']
+      },
+      {
+        name: 'hoverEffect',
+        label: 'Efecto al pasar el mouse',
+        type: 'select',
+        category: 'design',
+        isPremium: true,
+        premiumOptions: ['glow', 'border-pulse'],
+        options: [
+          { label: 'Ninguno', value: 'none' },
+          { label: 'Elevar (Lift)', value: 'lift' },
+          { label: 'Resplandor (Glow)', value: 'glow' },
+          { label: 'Pulso de Borde', value: 'border-pulse' }
+        ]
+      },
+      {
+        name: 'entranceAnimation',
+        label: 'Animación de Entrada',
+        type: 'select',
+        category: 'design',
+        isPremium: true,
+        premiumOptions: ['stagger-reveal'],
+        options: [
+          { label: 'Desvanecer (Fade)', value: 'fade' },
+          { label: 'Deslizar (Slide)', value: 'slide' },
+          { label: 'Zoom', value: 'zoom' },
+          { label: 'Revelación Escalonada (Stagger)', value: 'stagger-reveal' }
+        ]
+      },
+      { 
+        name: 'smartMode', 
+        label: 'Modo Inteligente (IA)', 
+        type: 'boolean', 
+        category: 'design',
+        isPremium: true
       },
       { name: 'columns', label: 'Columnas (Escritorio)', type: 'range', min: 1, max: 4, step: 1, category: 'design' },
       { 
@@ -565,7 +653,8 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
         name: 'smartMode', 
         label: 'Modo Inteligente', 
         type: 'boolean',
-        category: 'design'
+        category: 'design',
+        isPremium: true
       },
       { 
         name: 'layoutType', 
@@ -577,6 +666,55 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
           { label: 'Lista', value: 'list' }
         ],
         premiumOptions: ['list']
+      },
+      {
+        name: 'entranceAnimation',
+        label: 'Animación de Entrada',
+        type: 'select',
+        category: 'design',
+        isPremium: true,
+        premiumOptions: ['stagger-reveal'],
+        options: [
+          { label: 'Desvanecer (Fade)', value: 'fade' },
+          { label: 'Deslizar (Slide)', value: 'slide' },
+          { label: 'Zoom', value: 'zoom' },
+          { label: 'Revelación Escalonada (Stagger)', value: 'stagger-reveal' }
+        ]
+      },
+      {
+        name: 'cardStyle',
+        label: 'Estilo de Tarjeta',
+        type: 'object',
+        category: 'design',
+        isPremium: true,
+        itemSchema: [
+          { name: 'border', label: 'Borde', type: 'boolean' },
+          { name: 'glass', label: 'Efecto Cristal (Glass)', type: 'boolean' },
+          { 
+            name: 'shadow', 
+            label: 'Sombra', 
+            type: 'select',
+            options: [
+              { label: 'Ninguna', value: 'none' },
+              { label: 'Suave', value: 'sm' },
+              { label: 'Media', value: 'md' },
+              { label: 'Profunda', value: 'lg' }
+            ],
+            premiumOptions: ['lg']
+          },
+          {
+            name: 'borderRadius',
+            label: 'Redondeo de Esquinas',
+            type: 'select',
+            options: [
+              { label: 'Ninguno', value: 'none' },
+              { label: 'Medio', value: 'md' },
+              { label: 'Extra Grande', value: 'xl' },
+              { label: 'Súper Grande', value: '3xl' }
+            ],
+            premiumOptions: ['3xl']
+          }
+        ]
       },
       ...DESIGN_PROPS.map(p => ({ ...p, category: 'design' as const }))
     ]
@@ -663,6 +801,27 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
           { label: 'Minimalista', value: 'minimal' }
         ],
         premiumOptions: ['masonry', 'carousel', 'spotlight']
+      },
+      {
+        name: 'entranceAnimation',
+        label: 'Animación de Entrada',
+        type: 'select',
+        category: 'design',
+        isPremium: true,
+        premiumOptions: ['stagger-reveal'],
+        options: [
+          { label: 'Desvanecer (Fade)', value: 'fade' },
+          { label: 'Deslizar (Slide)', value: 'slide' },
+          { label: 'Zoom', value: 'zoom' },
+          { label: 'Revelación Escalonada (Stagger)', value: 'stagger-reveal' }
+        ]
+      },
+      { 
+        name: 'smartMode', 
+        label: 'Modo Inteligente (IA)', 
+        type: 'boolean', 
+        category: 'design',
+        isPremium: true
       },
       { name: 'columns', label: 'Columnas (Escritorio)', type: 'range', min: 1, max: 4, step: 1, category: 'design' },
       { 
@@ -809,6 +968,72 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
           { label: 'Anual', value: 'annual' }
         ]
       },
+      {
+        name: 'layoutType',
+        label: 'Tipo de Diseño',
+        type: 'select',
+        category: 'design',
+        options: [
+          { label: 'Cuadrícula (Grid)', value: 'grid' },
+          { label: 'Tabla Comparativa', value: 'table' }
+        ],
+        premiumOptions: ['table']
+      },
+      {
+        name: 'entranceAnimation',
+        label: 'Animación de Entrada',
+        type: 'select',
+        category: 'design',
+        isPremium: true,
+        premiumOptions: ['stagger-reveal'],
+        options: [
+          { label: 'Desvanecer (Fade)', value: 'fade' },
+          { label: 'Deslizar (Slide)', value: 'slide' },
+          { label: 'Zoom', value: 'zoom' },
+          { label: 'Revelación Escalonada (Stagger)', value: 'stagger-reveal' }
+        ]
+      },
+      { 
+        name: 'smartMode', 
+        label: 'Modo Inteligente (IA)', 
+        type: 'boolean', 
+        category: 'design',
+        isPremium: true
+      },
+      {
+        name: 'cardStyle',
+        label: 'Estilo de Tarjeta',
+        type: 'object',
+        category: 'design',
+        itemSchema: [
+          { name: 'border', label: 'Borde', type: 'boolean' },
+          { 
+            name: 'shadow', 
+            label: 'Sombra', 
+            type: 'select',
+            options: [
+              { label: 'Ninguna', value: 'none' },
+              { label: 'Suave', value: 'sm' },
+              { label: 'Media', value: 'md' },
+              { label: 'Profunda', value: 'lg' }
+            ],
+            premiumOptions: ['lg']
+          },
+          { name: 'glass', label: 'Efecto Cristal (Glass)', type: 'boolean', isPremium: true },
+          { 
+            name: 'borderRadius', 
+            label: 'Redondeo', 
+            type: 'select',
+            options: [
+              { label: 'Ninguno', value: 'none' },
+              { label: 'Pequeño', value: 'md' },
+              { label: 'Grande', value: 'xl' },
+              { label: 'Extra Grande', value: '3xl' }
+            ],
+            premiumOptions: ['3xl']
+          }
+        ]
+      },
       { 
         name: 'plans', 
         label: 'Planes', 
@@ -883,7 +1108,29 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
           { label: 'Centrado (Minimal)', value: 'center' },
           { label: 'Mapa Inmersivo', value: 'map-immersive' },
           { label: 'Barra Lateral', value: 'sidebar' }
+        ],
+        premiumOptions: ['map-immersive', 'sidebar']
+      },
+      {
+        name: 'entranceAnimation',
+        label: 'Animación de Entrada',
+        type: 'select',
+        category: 'design',
+        isPremium: true,
+        premiumOptions: ['stagger-reveal'],
+        options: [
+          { label: 'Desvanecer (Fade)', value: 'fade' },
+          { label: 'Deslizar (Slide)', value: 'slide' },
+          { label: 'Zoom', value: 'zoom' },
+          { label: 'Revelación Escalonada (Stagger)', value: 'stagger-reveal' }
         ]
+      },
+      { 
+        name: 'smartMode', 
+        label: 'Modo Inteligente (IA)', 
+        type: 'boolean', 
+        category: 'design',
+        isPremium: true
       },
       { name: 'email', label: 'Email de Contacto', type: 'text', category: 'content' },
       { name: 'phone', label: 'Teléfono', type: 'text', category: 'content' },

@@ -7,8 +7,14 @@ import { usePageLayout } from '../../context/PageLayoutContext';
 
 export const HeroModule = ({ data, onUpdate, onCTA }: { data: any, onUpdate?: (data: any) => void, onCTA: (e: React.MouseEvent) => void }) => {
   const layoutType = data?.layoutType || 'layout-1';
+  const entranceAnimation = data?.entranceAnimation || 'fade';
+  const smartMode = data?.smartMode || false;
   const { previewDevice } = usePageLayout();
   const isMobile = previewDevice === 'mobile';
+
+  const effectiveLayout = smartMode 
+    ? (isMobile ? 'layout-1' : layoutType)
+    : layoutType;
   
   const handleTextUpdate = (path: string, value: string) => {
     if (onUpdate) {
@@ -24,25 +30,67 @@ export const HeroModule = ({ data, onUpdate, onCTA }: { data: any, onUpdate?: (d
     }
   };
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.15,
-        delayChildren: 0.2
-      }
+  const getVariants = () => {
+    switch (entranceAnimation) {
+      case 'slide':
+        return {
+          container: {
+            hidden: { opacity: 0 },
+            visible: { opacity: 1, transition: { staggerChildren: 0.1, delayChildren: 0.2 } }
+          },
+          item: {
+            hidden: { opacity: 0, x: -30 },
+            visible: { opacity: 1, x: 0, transition: { duration: 0.6 } }
+          }
+        };
+      case 'zoom':
+        return {
+          container: {
+            hidden: { opacity: 0 },
+            visible: { opacity: 1, transition: { staggerChildren: 0.15, delayChildren: 0.2 } }
+          },
+          item: {
+            hidden: { opacity: 0, scale: 0.8 },
+            visible: { opacity: 1, scale: 1, transition: { duration: 0.8, ease: "easeOut" } }
+          }
+        };
+      case 'reveal':
+        return {
+          container: {
+            hidden: { opacity: 0 },
+            visible: { opacity: 1, transition: { staggerChildren: 0.2, delayChildren: 0.3 } }
+          },
+          item: {
+            hidden: { opacity: 0, clipPath: 'inset(100% 0 0 0)' },
+            visible: { opacity: 1, clipPath: 'inset(0% 0 0 0)', transition: { duration: 1, ease: [0.16, 1, 0.3, 1] } }
+          }
+        };
+      case 'text-reveal':
+        return {
+          container: {
+            hidden: { opacity: 0 },
+            visible: { opacity: 1, transition: { staggerChildren: 0.05, delayChildren: 0.2 } }
+          },
+          item: {
+            hidden: { opacity: 0, y: 100, rotate: 5 },
+            visible: { opacity: 1, y: 0, rotate: 0, transition: { duration: 1, ease: [0.215, 0.61, 0.355, 1] } }
+          }
+        };
+      default: // fade
+        return {
+          container: {
+            hidden: { opacity: 0 },
+            visible: { opacity: 1, transition: { staggerChildren: 0.15, delayChildren: 0.2 } }
+          },
+          item: {
+            hidden: { opacity: 0, y: 30 },
+            visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: [0.21, 0.47, 0.32, 0.98] } }
+          }
+        };
     }
   };
 
-  const itemVariants = {
-    hidden: { opacity: 0, y: 30 },
-    visible: { 
-      opacity: 1, 
-      y: 0,
-      transition: { duration: 0.8, ease: [0.21, 0.47, 0.32, 0.98] }
-    }
-  };
+  const { container: containerVariants, item: itemVariants } = getVariants();
 
   const renderContent = (alignment: 'center' | 'left' = 'center', maxWidth: string = 'max-w-4xl') => (
     <motion.div 
@@ -52,6 +100,17 @@ export const HeroModule = ({ data, onUpdate, onCTA }: { data: any, onUpdate?: (d
       viewport={{ once: true }}
       className={`flex flex-col ${alignment === 'center' ? 'items-center text-center' : 'items-start text-left'} ${maxWidth} ${alignment === 'center' ? 'mx-auto' : ''} w-full relative z-10`}
     >
+      {data?.smartMode && (
+        <motion.div 
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="absolute -top-12 left-1/2 -translate-x-1/2 flex items-center gap-2 px-3 py-1 bg-primary/20 backdrop-blur-md border border-primary/30 rounded-full"
+        >
+          <Sparkles className="w-3 h-3 text-primary" />
+          <span className="text-[8px] font-black uppercase tracking-widest text-primary">Optimizado por IA</span>
+        </motion.div>
+      )}
+
       {data?.badge && (
         <motion.div 
           variants={itemVariants}
@@ -162,7 +221,7 @@ export const HeroModule = ({ data, onUpdate, onCTA }: { data: any, onUpdate?: (d
   );
 
   const renderLayout = () => {
-    switch (layoutType) {
+    switch (effectiveLayout) {
       case 'layout-1': // Centered
         return renderContent('center');
       
@@ -369,14 +428,16 @@ export const HeroModule = ({ data, onUpdate, onCTA }: { data: any, onUpdate?: (d
 
   return (
     <ModuleWrapper 
-      layout={layoutType}
+      layout={effectiveLayout}
       theme={data?.theme}
       // For split (layout-2) and overlay (layout-7), we use the image as content, not background
-      background={(layoutType === 'layout-2' || layoutType === 'layout-7') ? undefined : data?.background}
+      background={(effectiveLayout === 'layout-2' || effectiveLayout === 'layout-7') 
+        ? { type: data?.backgroundType || 'image' } 
+        : { ...data?.background, type: data?.backgroundType || 'image' }}
       id="hero-module"
     >
       {/* Decorative Blobs */}
-      {(layoutType === 'layout-1' || layoutType === 'layout-4' || layoutType === 'layout-5') && (
+      {(effectiveLayout === 'layout-1' || effectiveLayout === 'layout-4' || effectiveLayout === 'layout-5') && (
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <motion.div 
             animate={{ 

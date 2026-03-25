@@ -15,6 +15,45 @@ export const TeamModule = ({ data, onUpdate }: TeamModuleProps) => {
   const isMobileSimulated = previewDevice === 'mobile';
   
   const layoutType = data?.layoutType || 'grid'; // grid, minimal, cards
+  const entranceAnimation = data?.entranceAnimation || 'fade';
+  const smartMode = data?.smartMode || false;
+
+  const effectiveLayout = smartMode 
+    ? (isMobileSimulated ? 'cards' : 'grid')
+    : layoutType;
+
+  const getAnimationVariants = (idx: number) => {
+    switch (entranceAnimation) {
+      case 'slide':
+        return {
+          hidden: { opacity: 0, x: -30 },
+          visible: { 
+            opacity: 1, 
+            x: 0,
+            transition: { duration: 0.6, delay: idx * 0.1 }
+          }
+        };
+      case 'zoom':
+        return {
+          hidden: { opacity: 0, scale: 0.8 },
+          visible: { 
+            opacity: 1, 
+            scale: 1,
+            transition: { duration: 0.8, delay: idx * 0.1 }
+          }
+        };
+      default: // fade
+        return {
+          hidden: { opacity: 0, y: 20 },
+          visible: { 
+            opacity: 1, 
+            y: 0,
+            transition: { duration: 0.7, delay: idx * 0.1 }
+          }
+        };
+    }
+  };
+
   const items = data?.items || [
     { name: 'Alex Rivera', role: 'CEO & Fundador', image: '', bio: 'Visionario tecnológico con más de 15 años de experiencia en el sector digital.', social: { linkedin: '#', twitter: '#' } },
     { name: 'Elena Santos', role: 'Directora de Diseño', image: '', bio: 'Apasionada por crear experiencias de usuario intuitivas y visualmente impactantes.', social: { linkedin: '#', instagram: '#' } },
@@ -80,9 +119,10 @@ export const TeamModule = ({ data, onUpdate }: TeamModuleProps) => {
   };
 
   const renderTeamMember = (item: any, i: number) => {
-    if (layoutType === 'minimal') {
+    const animation = getAnimationVariants(i);
+    if (effectiveLayout === 'minimal') {
       return (
-        <motion.div key={i} variants={itemVariants} className="text-center group">
+        <motion.div key={i} variants={animation} className="text-center group">
           <div className="relative mb-6 mx-auto w-48 h-48">
             <div className="absolute inset-0 bg-primary/20 rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 scale-110" />
             <div className="relative aspect-square rounded-full overflow-hidden border-4 border-current/5 group-hover:border-primary/30 transition-all duration-500">
@@ -121,7 +161,7 @@ export const TeamModule = ({ data, onUpdate }: TeamModuleProps) => {
     return (
       <motion.div 
         key={i} 
-        variants={itemVariants} 
+        variants={animation} 
         className="group bg-current/[0.02] hover:bg-current/[0.04] rounded-[2.5rem] p-6 border border-current/5 hover:border-primary/20 transition-all duration-500"
       >
         <div className="relative aspect-[4/5] rounded-[2rem] overflow-hidden mb-8">
@@ -218,7 +258,7 @@ export const TeamModule = ({ data, onUpdate }: TeamModuleProps) => {
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true }}
-          className={`grid ${isMobileSimulated ? 'grid-cols-1 gap-12' : layoutType === 'minimal' ? 'grid-cols-2 md:grid-cols-4 gap-16' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8'}`}
+          className={`grid ${isMobileSimulated ? 'grid-cols-1 gap-12' : effectiveLayout === 'minimal' ? 'grid-cols-2 md:grid-cols-4 gap-16' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8'}`}
         >
           {items.map((item: any, i: number) => renderTeamMember(item, i))}
         </motion.div>

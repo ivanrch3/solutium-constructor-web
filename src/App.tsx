@@ -16,9 +16,12 @@ import { WelcomeScreen } from './components/WelcomeScreen';
 import { ImagePicker } from './components/ImagePicker';
 import { SidebarPanelWrapper } from './components/SidebarPanelWrapper';
 import { LoadingView } from './components/LoadingView';
+import { DebugPanel } from './components/DebugPanel';
 import { SettingsView } from './components/SettingsView';
 import { BuilderView } from './components/BuilderView';
 import { DataAuditView } from './components/DataAuditView';
+import { MobileNavBar, MobileTab } from './components/MobileNavBar';
+import { MobileHeader } from './components/MobileHeader';
 import { motion, AnimatePresence } from 'motion/react';
 import { PageLayoutProvider } from './context/PageLayoutContext';
 
@@ -28,7 +31,7 @@ import { getBusinessImage } from './lib/images';
 import { useAiGenerator } from './hooks/useAiGenerator';
 
 function App() {
-  const { payload: config, isReady, saveData, simulateConnection } = useSolutiumContext();
+  const { payload: config, isReady, saveData, simulateConnection, logs } = useSolutiumContext();
 
   const {
     projects,
@@ -77,6 +80,8 @@ function App() {
   const [lastSaveStatus, setLastSaveStatus] = useState<'borrador' | 'guardado'>('borrador');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const [mobileTab, setMobileTab] = useState<MobileTab>('preview');
   const [showWelcome, setShowWelcome] = useState(true);
   const [welcomeMode, setWelcomeMode] = useState<'project' | 'asset'>('asset');
   const [isImagePickerOpen, setIsImagePickerOpen] = useState(false);
@@ -92,7 +97,9 @@ function App() {
   // Handle window resize to auto-collapse panels on mobile
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth <= 768) {
+      const mobile = window.innerWidth <= 768;
+      setIsMobile(mobile);
+      if (mobile) {
         setIsSidebarPinned(false);
       }
     };
@@ -111,17 +118,18 @@ function App() {
     if (!config) return;
 
     if (projects.length === 0) {
-      // 1. Try to get projects from config.projectsData
-      let initialProjects = config.projectsData || [];
+      // 1. Try to get projects from config.projectsData or initialData
+      let initialProjects = config.projectsData || config.projectData || (config as any).initialData?.projects || [];
       
       // 2. If we have projects, ensure they have the correct structure
       if (initialProjects.length > 0) {
         initialProjects = initialProjects.map((p: any) => ({
           ...p,
-          name: p.name || config.projectData?.name || 'Proyecto Local',
+          name: p.name || config.projectsData?.name || config.projectData?.name || 'Proyecto Local',
           assets: p.assets?.map((a: any) => ({
             ...a,
-            modules: a.modules || a.data?.modules || [],
+            // Prioritize modules from data directly as requested
+            modules: a.modules || (Array.isArray(a.data) ? a.data : a.data?.modules) || [],
             settings: a.settings || a.data?.settings || { domain: '', seoTitle: '', seoDescription: '', pageLayout: 'seamless' },
             selectedProductIds: a.selectedProductIds || a.data?.selectedProductIds || []
           })) || []
@@ -129,8 +137,8 @@ function App() {
       } else {
         // 3. Fallback to a default project if none found
         initialProjects = [{
-          id: config.projectId || 'dev-project-1',
-          name: config.projectData?.name || 'Proyecto Local',
+          id: config.projectId || config.project_id || 'dev-project-1',
+          name: config.projectsData?.name || config.projectData?.name || 'Proyecto Local',
           assets: []
         }];
       }
@@ -139,7 +147,7 @@ function App() {
       const topLevelAssets = (config as any).assetsData || (config as any).assets || [];
       if (Array.isArray(topLevelAssets) && topLevelAssets.length > 0) {
         topLevelAssets.forEach((asset: any) => {
-          const pId = asset.projectId || config.projectId || initialProjects[0].id;
+          const pId = asset.projectId || config.projectId || config.project_id || initialProjects[0].id;
           initialProjects = initialProjects.map((p: any) => {
             if (p.id === pId) {
               const assetExists = p.assets.some((a: any) => a.id === asset.id);
@@ -148,7 +156,7 @@ function App() {
                   ...p,
                   assets: [...p.assets, {
                     ...asset,
-                    modules: asset.modules || asset.data?.modules || [],
+                    modules: asset.modules || (Array.isArray(asset.data) ? asset.data : asset.data?.modules) || [],
                     settings: asset.settings || asset.data?.settings || { domain: '', seoTitle: '', seoDescription: '', pageLayout: 'seamless' },
                     selectedProductIds: asset.selectedProductIds || asset.data?.selectedProductIds || []
                   }]
@@ -163,7 +171,7 @@ function App() {
       // 5. Handle currentAsset if provided by mother app
       if (config.currentAsset) {
         const asset = config.currentAsset;
-        const pId = asset.projectId || config.projectId || initialProjects[0].id;
+        const pId = asset.projectId || config.projectId || config.project_id || initialProjects[0].id;
         
         let projectFound = false;
         initialProjects = initialProjects.map((p: any) => {
@@ -175,7 +183,7 @@ function App() {
                 ...p,
                 assets: [...p.assets, {
                   ...asset,
-                  modules: asset.modules || asset.data?.modules || [],
+                  modules: asset.modules || (Array.isArray(asset.data) ? asset.data : asset.data?.modules) || [],
                   settings: asset.settings || asset.data?.settings || { domain: '', seoTitle: '', seoDescription: '', pageLayout: 'seamless' },
                   selectedProductIds: asset.selectedProductIds || asset.data?.selectedProductIds || []
                 }]
@@ -189,7 +197,7 @@ function App() {
                     return {
                       ...a,
                       ...asset,
-                      modules: asset.modules || asset.data?.modules || a.modules || [],
+                      modules: asset.modules || (Array.isArray(asset.data) ? asset.data : asset.data?.modules) || a.modules || [],
                       settings: asset.settings || asset.data?.settings || a.settings || { domain: '', seoTitle: '', seoDescription: '', pageLayout: 'seamless' },
                       selectedProductIds: asset.selectedProductIds || asset.data?.selectedProductIds || a.selectedProductIds || []
                     };
@@ -206,10 +214,10 @@ function App() {
         if (!projectFound) {
           initialProjects.push({
             id: pId,
-            name: config.projectData?.name || 'Proyecto Externo',
+            name: config.projectsData?.name || config.projectData?.name || 'Proyecto Externo',
             assets: [{
               ...asset,
-              modules: asset.modules || asset.data?.modules || [],
+              modules: asset.modules || (Array.isArray(asset.data) ? asset.data : asset.data?.modules) || [],
               settings: asset.settings || asset.data?.settings || { domain: '', seoTitle: '', seoDescription: '', pageLayout: 'seamless' },
               selectedProductIds: asset.selectedProductIds || asset.data?.selectedProductIds || []
             }]
@@ -220,7 +228,7 @@ function App() {
       setProjects(initialProjects);
       
       // 6. Auto-select project and asset if none active
-      const targetProjectId = config.currentAsset?.projectId || config.projectId || initialProjects[0]?.id;
+      const targetProjectId = config.currentAsset?.projectId || config.projectId || config.project_id || initialProjects[0]?.id;
       const targetProject = initialProjects.find((p: any) => p.id === targetProjectId) || initialProjects[0];
       
       if (targetProject) {
@@ -238,8 +246,9 @@ function App() {
       }
     }
     
-    if (config?.productsData && !hasInitializedProducts) {
-      updateSelectedProducts(config.productsData.map((p: any) => p.id.toString()));
+    const products = config?.productsData || (config as any).products_data;
+    if (products && !hasInitializedProducts) {
+      updateSelectedProducts(products.map((p: any) => p.id.toString()));
       setHasInitializedProducts(true);
     }
     
@@ -272,12 +281,12 @@ function App() {
     setTimeout(() => setShowSaveMessage(false), 3000);
   
     saveData(activeAssetId, assetDataToSave, {
-      name: activeAsset?.name || config?.projectData?.name || 'Landing Page',
+      name: activeAsset?.name || config?.projectsData?.name || config?.projectData?.name || 'Landing Page',
       status: 'draft', // Always draft for save/autosave
       tags: assetSettings.tags || [],
-      author: config?.userProfile?.fullName || 'Usuario',
+      author: config?.profilesData?.fullName || config?.userProfile?.fullName || 'Usuario',
       updatedAt: Date.now(),
-      projectId: activeProjectId || undefined
+      projectId: activeProjectId || config?.projectId || config?.project_id || undefined
     });
 
     setDirty(false);
@@ -297,11 +306,20 @@ function App() {
   }, [isDirty, isSaving, modules, selectedProductIds, assetSettings, handleSave, autoSaveInterval]);
 
   const handleAddModule = (type: string) => {
+    if (type === 'ai-generator') {
+      onGenerateAi();
+      setShowPicker(false);
+      return;
+    }
     addModule(type);
     setWelcomeMode('asset');
     setShowPicker(false);
     setIsMobileMenuOpen(false);
     
+    if (isMobile) {
+      setMobileTab('editor');
+    }
+
     // Scroll to the new module (which is added at the end)
     setTimeout(() => {
       const allModules = document.querySelectorAll('[id^="module-"]');
@@ -346,7 +364,7 @@ function App() {
     }
   ) => {
     const finalContext = context || businessContext;
-    const businessName = finalContext?.name || customName || activeProject?.name || config?.projectData?.name || 'Proyecto Local';
+    const businessName = finalContext?.name || customName || activeProject?.name || config?.projectsData?.name || config?.projectData?.name || 'Proyecto Local';
     handleGenerateAi(businessName, targetProjectId, targetAssetId, currentProjectsList, assetName, finalContext || undefined);
   };
 
@@ -363,12 +381,12 @@ function App() {
 
     // Save data with 'published' status
     saveData(activeAssetId, assetDataToSave, {
-      name: activeAsset?.name || config?.projectData?.name || 'Landing Page',
+      name: activeAsset?.name || config?.projectsData?.name || config?.projectData?.name || 'Landing Page',
       status: 'published',
       tags: ['Landing Page', 'Publicado'],
-      author: config?.userProfile?.fullName || 'Usuario',
+      author: config?.profilesData?.fullName || config?.userProfile?.fullName || 'Usuario',
       updatedAt: Date.now(),
-      projectId: activeProjectId || undefined
+      projectId: activeProjectId || config?.projectId || config?.project_id || undefined
     });
 
     await new Promise(resolve => setTimeout(resolve, 2500));
@@ -414,19 +432,19 @@ function App() {
       document.documentElement.style.setProperty('--color-secondary-rgb', hexToRgb(palette.secondary));
     }
     
-    let currentProjectId = activeProjectId || config?.projectId || projects[0]?.id || 'dev-project-1';
+    let currentProjectId = activeProjectId || config?.projectId || config?.project_id || projects[0]?.id || 'dev-project-1';
     let currentProjectsList = [...projects];
 
     // Ensure project exists in list
     if (!currentProjectsList.find(p => p.id === currentProjectId)) {
       currentProjectsList.push({
         id: currentProjectId,
-        name: config?.projectData?.name || businessContext.name || 'Proyecto Local',
+        name: config?.projectsData?.name || config?.projectData?.name || businessContext.name || 'Proyecto Local',
         assets: []
       });
     }
 
-    const finalProjectName = config?.projectData?.name || businessContext.name || 'Proyecto Local';
+    const finalProjectName = config?.projectsData?.name || config?.projectData?.name || businessContext.name || 'Proyecto Local';
     const finalAssetName = pageName;
     const newAssetId = 'asset-' + Math.random().toString(36).substr(2, 5);
 
@@ -605,6 +623,9 @@ function App() {
     if (newSelectedId) {
       if (source === 'structure' || window.innerWidth > 768) {
         editModule(newSelectedId);
+        if (isMobile) {
+          setMobileTab('editor');
+        }
       } else {
         editModule(null);
       }
@@ -636,7 +657,7 @@ function App() {
   };
 
   if (!isReady) {
-    return <LoadingView projectName={config?.projectData?.name} onSimulateConnection={simulateConnection} />;
+    return <LoadingView projectName={config?.projectsData?.name || config?.projectData?.name} onSimulateConnection={simulateConnection} />;
   }
 
   if (showWelcome) {
@@ -645,8 +666,8 @@ function App() {
         onSelectOption={handleWelcomeOption} 
         onSelectProject={handleSelectProject}
         projects={projects}
-        title={config?.projectData?.name || 'Proyecto'}
-        brandColors={config?.projectData?.colors}
+        title={config?.projectsData?.name || config?.projectData?.name || 'Proyecto'}
+        brandColors={config?.projectsData?.brandColors || config?.projectData?.brandColors}
         industry={activeProject?.industry}
       />
     );
@@ -712,6 +733,9 @@ function App() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Debug Panel */}
+      <DebugPanel logs={logs} projectId={config?.projectId} isReady={isReady} />
 
       {/* Exit Preview Button & Device Switcher */}
       {isPreviewMode && (
@@ -794,7 +818,7 @@ function App() {
           onGoHome={() => setShowWelcome(true)}
           onGenerateAi={() => onGenerateAi()}
           projects={projects}
-          activeProjectId={activeProjectId || config?.projectId || (projects[0]?.id)}
+          activeProjectId={activeProjectId || config?.projectId || config?.project_id || (projects[0]?.id)}
           onSelectProject={handleSelectProject}
           activeAssetId={activeAssetId}
           onSelectAsset={handleSelectAsset}
@@ -807,7 +831,7 @@ function App() {
       </div>
 
       {/* Left Panels Container (Structure & Properties) */}
-      {!isPreviewMode && activeTab === 'builder' && (
+      {!isPreviewMode && activeTab === 'builder' && !isMobile && (
         <SidebarPanelWrapper
           modules={modules}
           onReorder={handleReorderModules}
@@ -828,14 +852,24 @@ function App() {
       )}
 
       <main className="flex-1 flex flex-col h-screen overflow-hidden">
+        {isMobile && !isPreviewMode && activeTab === 'builder' && (
+          <MobileHeader
+            projectName={activeProject?.name || config?.projectsData?.name || config?.projectData?.name || 'Proyecto Local'}
+            assetName={activeAsset?.name || 'Página'}
+            onOpenSettings={() => setActiveTab('settings')}
+            onOpenData={() => setActiveTab('data-audit')}
+            onOpenAi={() => onGenerateAi()}
+            onOpenAssetSelector={() => setShowWelcome(true)}
+          />
+        )}
         {/* Content Area */}
         <div className={`flex-1 overflow-y-auto custom-scrollbar transition-all duration-500 ${
-          isPreviewMode || assetSettings.pageLayout === 'seamless' 
-            ? 'p-0 bg-surface' 
+          isPreviewMode || assetSettings.pageLayout === 'seamless' || isMobile
+            ? (isMobile && !isPreviewMode && activeTab === 'builder' ? 'pt-16 p-0 bg-surface' : 'p-0 bg-surface')
             : 'p-4 md:p-8 lg:p-10 bg-background'
         }`}>
           <div className={`transition-all duration-500 mx-auto ${
-            isPreviewMode && previewDevice === 'mobile' ? 'max-w-[375px] my-12 border-[12px] border-text/90 rounded-[3rem] shadow-2xl h-[760px] bg-white overflow-y-auto custom-scrollbar relative' :
+            (isPreviewMode && previewDevice === 'mobile') || (isMobile && mobileTab === 'preview') ? 'max-w-[375px] my-12 border-[12px] border-text/90 rounded-[3rem] shadow-2xl h-[760px] bg-white overflow-y-auto custom-scrollbar relative' :
             isPreviewMode && previewDevice === 'tablet' ? 'max-w-[768px] my-12 border-[12px] border-text/90 rounded-[2.5rem] shadow-2xl h-[1024px] bg-white overflow-y-auto custom-scrollbar relative' :
             'w-full'
           }`}>
@@ -880,61 +914,137 @@ function App() {
             )}
             </AnimatePresence>
 
-          {activeTab === 'builder' && (
-            <PageLayoutProvider 
-              pageLayout={assetSettings.pageLayout || 'seamless'}
-              previewDevice={isPreviewMode ? previewDevice : 'desktop'}
-            >
-              <BuilderView
-                isPreviewMode={isPreviewMode}
-                setIsPreviewMode={setIsPreviewMode}
-                setIsMobileMenuOpen={setIsMobileMenuOpen}
+            {activeTab === 'builder' && (
+              <div className="flex flex-col h-full">
+                {isMobile ? (
+                  <div className="flex-1 flex flex-col min-h-0">
+                    {mobileTab === 'constructor' && (
+                      <div className="flex-1 p-6 bg-background overflow-y-auto pb-32">
+                        <div className="mb-8">
+                          <h3 className="text-2xl font-black text-text tracking-tight">Biblioteca</h3>
+                          <p className="text-sm text-text/60">Añade nuevos módulos a tu página.</p>
+                        </div>
+                        <ModulePicker onAdd={handleAddModule} />
+                      </div>
+                    )}
+                    
+                    {mobileTab === 'editor' && (
+                      <div className="flex-1 p-4 bg-background overflow-y-auto pb-32">
+                        <SidebarPanelWrapper
+                          modules={modules}
+                          onReorder={handleReorderModules}
+                          onRemove={handleRemoveModule}
+                          onSelect={handleSelectModule}
+                          onEdit={handleEditModule}
+                          selectedModuleId={selectedModuleId}
+                          editingModuleId={editingModuleId}
+                          isSidebarCollapsed={false}
+                          isPinned={true}
+                          onTogglePin={() => {}}
+                          updateModule={updateModule}
+                          onOpenImagePicker={(callback) => {
+                            setImagePickerCallback(() => callback);
+                            setIsImagePickerOpen(true);
+                          }}
+                        />
+                      </div>
+                    )}
+
+                    {mobileTab === 'preview' && (
+                      <PageLayoutProvider 
+                        pageLayout={assetSettings.pageLayout || 'seamless'}
+                        previewDevice="mobile"
+                      >
+                        <BuilderView
+                          isPreviewMode={true}
+                          setIsPreviewMode={setIsPreviewMode}
+                          setIsMobileMenuOpen={setIsMobileMenuOpen}
+                          onSave={() => handleSave('guardado')}
+                          isSaving={isSaving}
+                          isDirty={isDirty}
+                          onPublish={handlePublish}
+                          publishStatus={publishStatus}
+                          modules={modules}
+                          setShowPicker={setShowPicker}
+                          onRemoveModule={removeModule}
+                          onUpdateModule={updateModule}
+                          onSelectModule={handleSelectModule}
+                          onEditModule={handleEditModule}
+                          selectedModuleId={selectedModuleId}
+                          setImagePickerCallback={setImagePickerCallback}
+                          setIsImagePickerOpen={setIsImagePickerOpen}
+                          config={config}
+                          selectedProductIds={selectedProductIds}
+                          pageLayout={assetSettings.pageLayout || 'seamless'}
+                        />
+                      </PageLayoutProvider>
+                    )}
+                  </div>
+                ) : (
+                  <PageLayoutProvider 
+                    pageLayout={assetSettings.pageLayout || 'seamless'}
+                    previewDevice={isPreviewMode ? previewDevice : 'desktop'}
+                  >
+                    <BuilderView
+                      isPreviewMode={isPreviewMode}
+                      setIsPreviewMode={setIsPreviewMode}
+                      setIsMobileMenuOpen={setIsMobileMenuOpen}
+                      onSave={() => handleSave('guardado')}
+                      isSaving={isSaving}
+                      isDirty={isDirty}
+                      onPublish={handlePublish}
+                      publishStatus={publishStatus}
+                      modules={modules}
+                      setShowPicker={setShowPicker}
+                      onRemoveModule={removeModule}
+                      onUpdateModule={updateModule}
+                      onSelectModule={handleSelectModule}
+                      onEditModule={handleEditModule}
+                      selectedModuleId={selectedModuleId}
+                      setImagePickerCallback={setImagePickerCallback}
+                      setIsImagePickerOpen={setIsImagePickerOpen}
+                      config={config}
+                      selectedProductIds={selectedProductIds}
+                      pageLayout={assetSettings.pageLayout || 'seamless'}
+                    />
+                  </PageLayoutProvider>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'settings' && (
+              <SettingsView
+                activeProject={activeProject}
+                activeAsset={activeAsset}
+                config={config}
+                assetSettings={assetSettings}
+                selectedProductIds={selectedProductIds}
+                updateAssetSettings={updateAssetSettings}
+                updateAssetName={updateAssetName}
+                updateSelectedProducts={updateSelectedProducts}
+                setActiveTab={setActiveTab}
                 onSave={() => handleSave('guardado')}
                 isSaving={isSaving}
                 isDirty={isDirty}
-                onPublish={handlePublish}
-                publishStatus={publishStatus}
-                modules={modules}
-                setShowPicker={setShowPicker}
-                onRemoveModule={removeModule}
-                onUpdateModule={updateModule}
-                onSelectModule={handleSelectModule}
-                onEditModule={handleEditModule}
-                selectedModuleId={selectedModuleId}
-                setImagePickerCallback={setImagePickerCallback}
-                setIsImagePickerOpen={setIsImagePickerOpen}
-                config={config}
-                selectedProductIds={selectedProductIds}
-                pageLayout={assetSettings.pageLayout || 'seamless'}
+                autoSaveInterval={autoSaveInterval}
+                setAutoSaveInterval={setAutoSaveInterval}
+                onBack={() => setActiveTab('builder')}
               />
-            </PageLayoutProvider>
-          )}
+            )}
 
-          {activeTab === 'settings' && (
-            <SettingsView
-              activeProject={activeProject}
-              activeAsset={activeAsset}
-              config={config}
-              assetSettings={assetSettings}
-              selectedProductIds={selectedProductIds}
-              updateAssetSettings={updateAssetSettings}
-              updateAssetName={updateAssetName}
-              updateSelectedProducts={updateSelectedProducts}
-              setActiveTab={setActiveTab}
-              onSave={() => handleSave('guardado')}
-              isSaving={isSaving}
-              isDirty={isDirty}
-              autoSaveInterval={autoSaveInterval}
-              setAutoSaveInterval={setAutoSaveInterval}
-            />
-          )}
-
-          {activeTab === 'data-audit' && (
-            <DataAuditView config={config} />
-          )}
+            {activeTab === 'data-audit' && (
+              <DataAuditView 
+                config={config} 
+                onBack={() => setActiveTab('builder')}
+              />
+            )}
           </div>
         </div>
       </main>
+
+      {isMobile && activeTab === 'builder' && (
+        <MobileNavBar activeTab={mobileTab} onTabChange={setMobileTab} />
+      )}
 
       {/* Delete Confirmation Modal */}
       <AnimatePresence>
@@ -1009,7 +1119,7 @@ function App() {
                 </button>
               </div>
               <div className="p-8 max-h-[70vh] overflow-y-auto">
-                <ModulePicker onAdd={addModule} />
+                <ModulePicker onAdd={handleAddModule} />
               </div>
             </motion.div>
           </div>

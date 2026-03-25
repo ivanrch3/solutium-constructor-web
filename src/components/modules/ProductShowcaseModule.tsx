@@ -60,6 +60,65 @@ export const ProductShowcaseModule = ({ data, config, selectedProductIds, onUpda
   };
 
   const layoutType = data?.layoutType || 'grid';
+  const entranceAnimation = data?.entranceAnimation || 'fade';
+  const cardStyle = data?.cardStyle || { border: true, shadow: 'sm', borderRadius: 'xl' };
+
+  const getAnimationVariants = (idx: number) => {
+    switch (entranceAnimation) {
+      case 'slide':
+        return {
+          hidden: { opacity: 0, x: -30 },
+          visible: { opacity: 1, x: 0, transition: { duration: 0.6, delay: idx * 0.1 } }
+        };
+      case 'zoom':
+        return {
+          hidden: { opacity: 0, scale: 0.8 },
+          visible: { opacity: 1, scale: 1, transition: { duration: 0.8, delay: idx * 0.1 } }
+        };
+      case 'stagger-reveal':
+        return {
+          hidden: { opacity: 0, y: 50, rotate: 2 },
+          visible: { opacity: 1, y: 0, rotate: 0, transition: { duration: 0.8, delay: idx * 0.15, ease: [0.215, 0.61, 0.355, 1] } }
+        };
+      default: // fade
+        return {
+          hidden: { opacity: 0, y: 30, scale: 0.95 },
+          visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.6, delay: idx * 0.1, ease: [0.215, 0.61, 0.355, 1] } }
+        };
+    }
+  };
+
+  const getCardClasses = () => {
+    const classes = ['transition-all duration-700 group overflow-hidden'];
+    
+    if (cardStyle.border) classes.push('border border-text/5');
+    if (cardStyle.glass) classes.push('bg-surface/50 backdrop-blur-sm');
+    else classes.push('bg-surface');
+    
+    const shadowMap: Record<string, string> = {
+      none: '',
+      sm: 'shadow-xl shadow-black/5 hover:shadow-2xl hover:shadow-primary/10',
+      md: 'shadow-2xl shadow-black/10 hover:shadow-3xl hover:shadow-primary/15',
+      lg: 'shadow-[0_20px_50px_rgba(0,0,0,0.1)] hover:shadow-[0_30px_60px_rgba(var(--color-primary-rgb),0.2)]'
+    };
+    classes.push(shadowMap[cardStyle.shadow || 'sm']);
+
+    const radiusMap: Record<string, string> = {
+      none: 'rounded-none',
+      md: 'rounded-2xl',
+      xl: 'rounded-[2.5rem]',
+      '3xl': 'rounded-[3.5rem]'
+    };
+    classes.push(radiusMap[cardStyle.borderRadius || 'xl']);
+
+    if (layoutType === 'list' && !isMobileSimulated) {
+      classes.push('flex flex-col sm:flex-row items-stretch');
+    } else {
+      classes.push('flex flex-col');
+    }
+
+    return classes.join(' ');
+  };
 
   return (
     <ModuleWrapper 
@@ -68,12 +127,18 @@ export const ProductShowcaseModule = ({ data, config, selectedProductIds, onUpda
     >
       <div className="max-w-7xl mx-auto">
         <motion.div 
-          className={`text-center ${isMobileSimulated ? 'mb-12' : 'mb-24'}`}
+          className={`text-center ${isMobileSimulated ? 'mb-12' : 'mb-24'} relative`}
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
         >
+          {data?.smartMode && (
+            <div className="absolute -top-12 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-3 py-1 bg-primary/20 backdrop-blur-md border border-primary/30 rounded-full">
+              <Sparkles className="w-3 h-3 text-primary animate-pulse" />
+              <span className="text-[8px] font-black uppercase tracking-widest text-primary">IA Optimizado</span>
+            </div>
+          )}
           <motion.div 
             className="flex items-center justify-center gap-2 mb-6"
             initial={{ opacity: 0, scale: 0.8 }}
@@ -105,7 +170,6 @@ export const ProductShowcaseModule = ({ data, config, selectedProductIds, onUpda
         
         {products.length > 0 ? (
           <motion.div 
-            variants={containerVariants}
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true }}
@@ -114,10 +178,8 @@ export const ProductShowcaseModule = ({ data, config, selectedProductIds, onUpda
             {products.map((product: any, idx: number) => (
               <motion.div 
                 key={product.id} 
-                variants={itemVariants}
-                className={`bg-surface/50 backdrop-blur-sm ${isMobileSimulated ? 'rounded-3xl' : 'rounded-[2.5rem]'} overflow-hidden border border-text/5 shadow-xl shadow-black/5 hover:shadow-2xl hover:shadow-primary/10 transition-all duration-700 group ${
-                  layoutType === 'list' && !isMobileSimulated ? 'flex flex-col sm:flex-row items-stretch' : 'flex flex-col'
-                }`}
+                variants={getAnimationVariants(idx)}
+                className={getCardClasses()}
               >
                 {/* Image Section */}
                 <div className={`relative ${layoutType === 'list' && !isMobileSimulated ? 'w-full sm:w-2/5' : 'aspect-[4/3] w-full'} overflow-hidden bg-text/5`}>

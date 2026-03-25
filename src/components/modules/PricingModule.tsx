@@ -9,6 +9,14 @@ export const PricingModule = ({ data, onCTA, onUpdate }: { data: any, onCTA: (e:
   const { previewDevice } = usePageLayout();
   const isMobileSimulated = previewDevice === 'mobile';
   const billingCycle = data?.billingCycle || 'monthly';
+  const entranceAnimation = data?.entranceAnimation || 'fade';
+  const smartMode = data?.smartMode || false;
+  const cardStyle = data?.cardStyle || { border: true, shadow: 'sm', borderRadius: 'xl' };
+
+  const effectiveLayout = smartMode 
+    ? (isMobileSimulated ? 'stack' : 'grid')
+    : (data?.layoutType || 'grid');
+
   const plans = data?.plans || [
     { 
       name: 'Básico', 
@@ -61,27 +69,68 @@ export const PricingModule = ({ data, onCTA, onUpdate }: { data: any, onCTA: (e:
     }
   };
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1,
-        delayChildren: 0.2
-      }
+  const getCardClasses = (isPopular: boolean) => {
+    const base = "p-8 md:p-10 transition-all duration-500 relative overflow-hidden flex flex-col group";
+    const border = cardStyle.border ? "border" : "border-0";
+    
+    const shadows: any = {
+      none: "",
+      sm: "shadow-sm",
+      md: "shadow-md",
+      lg: "shadow-lg",
+      xl: "shadow-xl",
+      '2xl': "shadow-2xl"
+    };
+
+    const radius: any = {
+      none: "rounded-none",
+      md: "rounded-2xl",
+      xl: "rounded-[2.5rem]",
+      '3xl': "rounded-[3.5rem]"
+    };
+
+    const shadowClass = shadows[cardStyle.shadow] || shadows.sm;
+    const radiusClass = radius[cardStyle.borderRadius] || radius.xl;
+    const glassClass = cardStyle.glass ? "backdrop-blur-md bg-white/10" : "";
+
+    if (isPopular) {
+      return `${base} ${radiusClass} border-primary bg-primary text-white shadow-2xl shadow-primary/30 scale-100 md:scale-105 z-10`;
     }
+
+    return `${base} ${radiusClass} ${border} border-current/10 bg-current/5 hover:border-primary/50 hover:shadow-2xl hover:shadow-primary/5 ${shadowClass} ${glassClass}`;
   };
 
-  const itemVariants = {
-    hidden: { opacity: 0, y: 30 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: {
-        type: "spring",
-        stiffness: 100,
-        damping: 15
-      }
+  const getAnimationVariants = (idx: number) => {
+    switch (entranceAnimation) {
+      case 'slide':
+        return {
+          hidden: { opacity: 0, x: -30 },
+          visible: { opacity: 1, x: 0, transition: { duration: 0.6, delay: idx * 0.1 } }
+        };
+      case 'zoom':
+        return {
+          hidden: { opacity: 0, scale: 0.8 },
+          visible: { opacity: 1, scale: 1, transition: { duration: 0.8, delay: idx * 0.1 } }
+        };
+      case 'stagger-reveal':
+        return {
+          hidden: { opacity: 0, y: 50, rotate: 2 },
+          visible: { opacity: 1, y: 0, rotate: 0, transition: { duration: 0.8, delay: idx * 0.15, ease: [0.215, 0.61, 0.355, 1] } }
+        };
+      default: // fade
+        return {
+          hidden: { opacity: 0, y: 30 },
+          visible: {
+            opacity: 1,
+            y: 0,
+            transition: {
+              type: "spring",
+              stiffness: 100,
+              damping: 15,
+              delay: idx * 0.1
+            }
+          }
+        };
     }
   };
 
@@ -99,13 +148,19 @@ export const PricingModule = ({ data, onCTA, onUpdate }: { data: any, onCTA: (e:
         >
           <Typography
             variant="h2"
-            className="text-4xl md:text-6xl font-black mb-6 tracking-tight"
+            className="text-4xl md:text-6xl font-black mb-6 tracking-tight relative inline-block"
             editable={!!onUpdate}
             onUpdate={(text) => handleTextUpdate('title', text)}
             highlightType={data?.titleStyle?.highlightType}
             highlightColor1={data?.titleStyle?.highlightColor1}
             highlightColor2={data?.titleStyle?.highlightColor2}
           >
+            {data?.smartMode && (
+              <div className="absolute -top-8 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-2 py-0.5 bg-primary/20 backdrop-blur-md border border-primary/30 rounded-full whitespace-nowrap">
+                <Sparkles className="w-2.5 h-2.5 text-primary" />
+                <span className="text-[7px] font-black uppercase tracking-widest text-primary">IA Optimizado</span>
+              </div>
+            )}
             {data?.title || 'Planes Flexibles'}
           </Typography>
           <Typography
@@ -168,22 +223,17 @@ export const PricingModule = ({ data, onCTA, onUpdate }: { data: any, onCTA: (e:
         </motion.div>
 
         <motion.div 
-          variants={containerVariants}
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true }}
-          className={`grid ${isMobileSimulated ? 'grid-cols-1' : 'md:grid-cols-2 lg:grid-cols-3'} gap-8 max-w-6xl mx-auto`}
+          className={`grid ${effectiveLayout === 'stack' ? 'grid-cols-1 max-w-2xl' : 'md:grid-cols-2 lg:grid-cols-3'} gap-8 max-w-6xl mx-auto`}
         >
           {plans.map((plan: any, idx: number) => (
             <motion.div 
               key={idx} 
-              variants={itemVariants}
+              variants={getAnimationVariants(idx)}
               whileHover={{ y: -10, transition: { duration: 0.3 } }}
-              className={`p-8 md:p-10 rounded-[2.5rem] border transition-all duration-500 relative overflow-hidden flex flex-col group ${
-                plan.popular 
-                  ? 'bg-primary text-white border-primary shadow-2xl shadow-primary/30 scale-100 md:scale-105 z-10' 
-                  : 'bg-current/5 border-current/10 hover:border-primary/50 hover:shadow-2xl hover:shadow-primary/5'
-              }`}
+              className={getCardClasses(plan.popular)}
             >
               {plan.popular && (
                 <>

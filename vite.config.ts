@@ -15,8 +15,8 @@ export default defineConfig(({mode, command}) => {
         name: 'html-csp-plugin',
         transformIndexHtml(html) {
           const cspContent = isDev
-            ? "default-src * 'self' 'unsafe-inline' 'unsafe-eval' data: gap: content: blob:; script-src * 'self' 'unsafe-inline' 'unsafe-eval'; style-src * 'self' 'unsafe-inline';"
-            : "default-src * 'self' 'unsafe-inline' data: gap: content: blob:; script-src * 'self' 'unsafe-inline'; style-src * 'self' 'unsafe-inline';";
+            ? "default-src * 'self' 'unsafe-inline' data: gap: content: blob:; script-src * 'self' 'unsafe-inline' 'unsafe-eval'; style-src * 'self' 'unsafe-inline';"
+            : "default-src * 'self' 'unsafe-inline' data: gap: content: blob:; script-src * 'self' 'unsafe-inline' 'unsafe-eval'; style-src * 'self' 'unsafe-inline';";
           
           return html.replace(
             '<head>',

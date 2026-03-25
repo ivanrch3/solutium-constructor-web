@@ -14,6 +14,9 @@ export const FeaturesModule = ({ data, onUpdate }: { data: any, onUpdate?: (data
   const { previewDevice } = usePageLayout();
   const isMobileSimulated = previewDevice === 'mobile';
   const layoutType = data?.layoutType || 'grid';
+  const hoverEffect = data?.hoverEffect || 'none';
+  const entranceAnimation = data?.entranceAnimation || 'fade';
+  const smartMode = data?.smartMode || false;
   const columns = data?.columns || 3;
   const alignment = data?.alignment || 'center';
   const gap = data?.gap !== undefined ? data.gap : 32;
@@ -22,12 +25,10 @@ export const FeaturesModule = ({ data, onUpdate }: { data: any, onUpdate?: (data
   const showIcons = data?.showIcons !== false;
   const showDescriptions = data?.showDescriptions !== false;
 
-  // Filter features to follow the "3 or 6" rule if requested or if it's the default grid
-  // However, we should probably just adjust the grid layout to accommodate the number of items
-  // but the user was very specific about 3 or 6. 
-  // For now, I'll ensure the grid layout handles 4 items by switching to 2 columns if columns=4 is not explicitly set or if it's better.
-  // Actually, I'll just follow the user's instruction to "procure" 3 or 6.
-  
+  const effectiveLayout = smartMode 
+    ? (isMobileSimulated ? 'list' : 'grid')
+    : layoutType;
+
   const handleTextUpdate = (path: string, value: string) => {
     if (onUpdate) {
       const newData = { ...data };
@@ -73,7 +74,40 @@ export const FeaturesModule = ({ data, onUpdate }: { data: any, onUpdate?: (data
     if (alignment === 'center') classes.push('items-center text-center p-8 md:p-12');
     else classes.push('items-start text-left p-8 md:p-12');
 
+    if (hoverEffect === 'lift') classes.push('hover:-translate-y-4');
+    if (hoverEffect === 'glow') classes.push('hover:shadow-[0_0_50px_rgba(var(--color-primary-rgb),0.3)]');
+    if (hoverEffect === 'border-pulse') classes.push('hover:animate-pulse border-2');
+
     return classes.join(' ');
+  };
+
+  const getAnimationVariants = (idx: number) => {
+    switch (entranceAnimation) {
+      case 'slide':
+        return {
+          initial: { opacity: 0, x: -30 },
+          whileInView: { opacity: 1, x: 0 },
+          transition: { duration: 0.6, delay: idx * 0.1 }
+        };
+      case 'zoom':
+        return {
+          initial: { opacity: 0, scale: 0.8 },
+          whileInView: { opacity: 1, scale: 1 },
+          transition: { duration: 0.8, delay: idx * 0.1 }
+        };
+      case 'stagger-reveal':
+        return {
+          initial: { opacity: 0, y: 50, rotate: 2 },
+          whileInView: { opacity: 1, y: 0, rotate: 0 },
+          transition: { duration: 0.8, delay: idx * 0.15, ease: [0.215, 0.61, 0.355, 1] }
+        };
+      default: // fade
+        return {
+          initial: { opacity: 0, y: 30 },
+          whileInView: { opacity: 1, y: 0 },
+          transition: { duration: 0.7, delay: idx * 0.1, ease: [0.21, 0.47, 0.32, 0.98] }
+        };
+    }
   };
 
   const renderMedia = (feature: any, idx: number) => {
@@ -116,21 +150,20 @@ export const FeaturesModule = ({ data, onUpdate }: { data: any, onUpdate?: (data
     );
   };
 
-  const renderFeature = (feature: any, idx: number) => (
-    <motion.div 
-      key={idx} 
-      initial={{ opacity: 0, y: 30 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-50px" }}
-      transition={{ 
-        duration: 0.7, 
-        delay: idx * 0.1,
-        ease: [0.21, 0.47, 0.32, 0.98]
-      }}
-      whileHover={{ y: -10 }}
-      className={getCardClasses()}
-      id={`feature-${idx}`}
-    >
+  const renderFeature = (feature: any, idx: number) => {
+    const animation = getAnimationVariants(idx);
+    
+    return (
+      <motion.div 
+        key={idx} 
+        initial={animation.initial}
+        whileInView={animation.whileInView}
+        viewport={{ once: true, margin: "-50px" }}
+        transition={animation.transition}
+        whileHover={hoverEffect === 'none' ? { y: -10 } : undefined}
+        className={getCardClasses()}
+        id={`feature-${idx}`}
+      >
       {/* Background Accent */}
       <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16 blur-3xl group-hover:bg-primary/10 transition-colors duration-500" />
       
@@ -195,7 +228,8 @@ export const FeaturesModule = ({ data, onUpdate }: { data: any, onUpdate?: (data
         </motion.a>
       )}
     </motion.div>
-  );
+    );
+  };
 
   const renderHeader = () => (
     <motion.div 
@@ -205,7 +239,13 @@ export const FeaturesModule = ({ data, onUpdate }: { data: any, onUpdate?: (data
       transition={{ duration: 0.8, ease: "easeOut" }}
       className={`mb-24 ${alignment === 'center' ? 'text-center' : 'text-left'}`}
     >
-      <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/5 border border-primary/10 mb-6 ${alignment === 'center' ? 'mx-auto' : ''}`}>
+      <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/5 border border-primary/10 mb-6 ${alignment === 'center' ? 'mx-auto' : ''} relative`}>
+        {data?.smartMode && (
+          <div className="absolute -top-8 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-2 py-0.5 bg-primary/20 backdrop-blur-md border border-primary/30 rounded-full whitespace-nowrap">
+            <LucideIcons.Sparkles className="w-2.5 h-2.5 text-primary" />
+            <span className="text-[7px] font-black uppercase tracking-widest text-primary">IA Optimizado</span>
+          </div>
+        )}
         <LucideIcons.Sparkles className="w-4 h-4 text-primary animate-pulse" />
         <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-primary/80">Características</span>
       </div>
@@ -255,7 +295,7 @@ export const FeaturesModule = ({ data, onUpdate }: { data: any, onUpdate?: (data
       gridCols = 'grid-cols-1 md:grid-cols-2'; // 2x2 is better than 3+1
     }
 
-    switch (layoutType) {
+    switch (effectiveLayout) {
       case 'bento':
         return (
           <div className={`grid ${isMobileSimulated ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-4'} gap-8`}>
@@ -418,3 +458,5 @@ export const FeaturesModule = ({ data, onUpdate }: { data: any, onUpdate?: (data
     </ModuleWrapper>
   );
 };
+
+export default FeaturesModule;

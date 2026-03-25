@@ -16,6 +16,57 @@ export const FaqModule = ({ data, onUpdate }: FaqModuleProps) => {
   const [expandedIndex, setExpandedIndex] = useState<number | null>(0);
   
   const layoutType = data?.layoutType || 'accordion'; // accordion, grid, minimal
+  const entranceAnimation = data?.entranceAnimation || 'fade';
+  const smartMode = data?.smartMode || false;
+
+  const effectiveLayout = smartMode 
+    ? (isMobileSimulated ? 'accordion' : 'grid')
+    : layoutType;
+
+  const getAnimationVariants = (idx: number) => {
+    const baseDelay = 0.1;
+    const stagger = 0.1;
+
+    switch (entranceAnimation) {
+      case 'slide':
+        return {
+          hidden: { opacity: 0, x: -30 },
+          visible: { 
+            opacity: 1, 
+            x: 0,
+            transition: { duration: 0.8, delay: baseDelay + idx * stagger, ease: [0.21, 0.45, 0.32, 0.9] }
+          }
+        };
+      case 'zoom':
+        return {
+          hidden: { opacity: 0, scale: 0.8 },
+          visible: { 
+            opacity: 1, 
+            scale: 1,
+            transition: { duration: 0.8, delay: baseDelay + idx * stagger, ease: [0.21, 0.45, 0.32, 0.9] }
+          }
+        };
+      case 'reveal':
+        return {
+          hidden: { opacity: 0, y: 40 },
+          visible: { 
+            opacity: 1, 
+            y: 0,
+            transition: { duration: 1, delay: baseDelay + idx * stagger, ease: [0.21, 0.45, 0.32, 0.9] }
+          }
+        };
+      default: // fade
+        return {
+          hidden: { opacity: 0, y: 20 },
+          visible: { 
+            opacity: 1, 
+            y: 0,
+            transition: { duration: 0.7, delay: baseDelay + idx * stagger }
+          }
+        };
+    }
+  };
+
   const items = data?.items || [
     { q: '¿Cómo funciona la sincronización con Solutium?', a: 'Es automática. Una vez conectas tu cuenta, todos tus productos y leads se sincronizan en tiempo real sin necesidad de configuración manual adicional.' },
     { q: '¿Puedo usar mi propio dominio?', a: 'Sí, en el plan Pro y superiores puedes conectar cualquier dominio que ya poseas. También ofrecemos subdominios gratuitos para que empieces de inmediato.' },
@@ -61,11 +112,12 @@ export const FaqModule = ({ data, onUpdate }: FaqModuleProps) => {
 
   const renderAccordionItem = (item: any, i: number) => {
     const isExpanded = expandedIndex === i;
+    const animation = getAnimationVariants(i);
     
     return (
       <motion.div 
         key={i}
-        variants={itemVariants}
+        variants={animation}
         className={`group border-b border-current/10 last:border-0 transition-all duration-300 ${isExpanded ? 'bg-current/[0.02]' : 'hover:bg-current/[0.01]'}`}
       >
         <button 
@@ -116,35 +168,38 @@ export const FaqModule = ({ data, onUpdate }: FaqModuleProps) => {
     );
   };
 
-  const renderGridItem = (item: any, i: number) => (
-    <motion.div 
-      key={i}
-      variants={itemVariants}
-      className={`p-8 bg-current/[0.03] rounded-[2rem] border border-current/5 hover:border-primary/20 hover:bg-current/[0.05] transition-all duration-300 group`}
-    >
-      <div className="flex items-center gap-4 mb-6">
-        <div className="p-3 bg-primary/10 text-primary rounded-2xl group-hover:scale-110 transition-transform duration-300">
-          <HelpCircle className="w-6 h-6" />
+  const renderGridItem = (item: any, i: number) => {
+    const animation = getAnimationVariants(i);
+    return (
+      <motion.div 
+        key={i}
+        variants={animation}
+        className={`p-8 bg-current/[0.03] rounded-[2rem] border border-current/5 hover:border-primary/20 hover:bg-current/[0.05] transition-all duration-300 group`}
+      >
+        <div className="flex items-center gap-4 mb-6">
+          <div className="p-3 bg-primary/10 text-primary rounded-2xl group-hover:scale-110 transition-transform duration-300">
+            <HelpCircle className="w-6 h-6" />
+          </div>
+          <Typography
+            variant="h4"
+            className="text-xl font-black tracking-tight"
+            editable={!!onUpdate}
+            onUpdate={(text) => handleTextUpdate(`items.${i}.q`, text)}
+          >
+            {item.q}
+          </Typography>
         </div>
         <Typography
-          variant="h4"
-          className="text-xl font-black tracking-tight"
+          variant="p"
+          className="text-base opacity-60 leading-relaxed font-medium"
           editable={!!onUpdate}
-          onUpdate={(text) => handleTextUpdate(`items.${i}.q`, text)}
+          onUpdate={(text) => handleTextUpdate(`items.${i}.a`, text)}
         >
-          {item.q}
+          {item.a}
         </Typography>
-      </div>
-      <Typography
-        variant="p"
-        className="text-base opacity-60 leading-relaxed font-medium"
-        editable={!!onUpdate}
-        onUpdate={(text) => handleTextUpdate(`items.${i}.a`, text)}
-      >
-        {item.a}
-      </Typography>
-    </motion.div>
-  );
+      </motion.div>
+    );
+  };
 
   return (
     <ModuleWrapper 
@@ -187,10 +242,10 @@ export const FaqModule = ({ data, onUpdate }: FaqModuleProps) => {
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true }}
-          className={layoutType === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 gap-8' : 'space-y-2 max-w-4xl mx-auto'}
+          className={effectiveLayout === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 gap-8' : 'space-y-2 max-w-4xl mx-auto'}
         >
           {items.map((item: any, i: number) => (
-            layoutType === 'grid' ? renderGridItem(item, i) : renderAccordionItem(item, i)
+            effectiveLayout === 'grid' ? renderGridItem(item, i) : renderAccordionItem(item, i)
           ))}
         </motion.div>
 

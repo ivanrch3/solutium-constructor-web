@@ -81,6 +81,48 @@ export const StatsModule = ({ data, onUpdate }: StatsModuleProps) => {
   };
 
   const isLight = data?.theme === 'light';
+  const smartMode = data?.smartMode || false;
+  const entranceAnimation = data?.entranceAnimation || 'fade';
+
+  const getEntranceAnimation = (idx: number) => {
+    const baseDelay = 0.1;
+    const stagger = 0.1;
+
+    switch (entranceAnimation) {
+      case 'slide':
+        return {
+          initial: { opacity: 0, x: -30 },
+          whileInView: { opacity: 1, x: 0 },
+          viewport: { once: true },
+          transition: { duration: 0.8, delay: baseDelay + idx * stagger, ease: [0.21, 0.45, 0.32, 0.9] }
+        };
+      case 'zoom':
+        return {
+          initial: { opacity: 0, scale: 0.8 },
+          whileInView: { opacity: 1, scale: 1 },
+          viewport: { once: true },
+          transition: { duration: 0.8, delay: baseDelay + idx * stagger, ease: [0.21, 0.45, 0.32, 0.9] }
+        };
+      case 'reveal':
+        return {
+          initial: { opacity: 0, y: 40 },
+          whileInView: { opacity: 1, y: 0 },
+          viewport: { once: true },
+          transition: { duration: 1, delay: baseDelay + idx * stagger, ease: [0.21, 0.45, 0.32, 0.9] }
+        };
+      default: // fade
+        return {
+          initial: { opacity: 0, y: 20 },
+          whileInView: { opacity: 1, y: 0 },
+          viewport: { once: true },
+          transition: { duration: 0.7, delay: baseDelay + idx * stagger }
+        };
+    }
+  };
+
+  const effectiveLayout = smartMode ? (isMobileSimulated ? 'stack' : 'grid') : (data?.layoutType || 'grid');
+  const gridCols = isMobileSimulated ? 'grid-cols-1 gap-12' : 
+    effectiveLayout === 'grid' ? 'grid-cols-2 md:grid-cols-4 gap-12' : 'grid-cols-1 gap-16';
 
   return (
     <ModuleWrapper 
@@ -127,19 +169,17 @@ export const StatsModule = ({ data, onUpdate }: StatsModuleProps) => {
           </motion.div>
         )}
 
-        <div className={`grid ${isMobileSimulated ? 'grid-cols-1 gap-12' : 'grid-cols-2 md:grid-cols-4 gap-12'} text-center`}>
+        <div className={`grid ${gridCols} text-center`}>
           {stats.map((stat: any, i: number) => {
             if (!stat) return null;
             const Icon = stat?.iconName ? getIcon(stat.iconName) : null;
+            const animation = getEntranceAnimation(i);
             return (
               <motion.div 
                 key={i}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.6, delay: i * 0.1, ease: "easeOut" }}
+                {...animation}
                 whileHover={{ y: -5 }}
-                className="flex flex-col items-center group"
+                className={`flex flex-col items-center group ${effectiveLayout === 'stack' ? 'max-w-md mx-auto w-full' : ''}`}
               >
                 {Icon && (
                   <motion.div 

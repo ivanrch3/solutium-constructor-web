@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Settings, Globe, CheckCircle, Clock, Tag, Edit3 } from 'lucide-react';
+import { Settings, Globe, CheckCircle, Clock, Tag, Edit3, ArrowLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface SettingsViewProps {
@@ -17,6 +17,7 @@ interface SettingsViewProps {
   isDirty: boolean;
   autoSaveInterval: number;
   setAutoSaveInterval: (interval: number) => void;
+  onBack?: () => void;
 }
 
 export const SettingsView: React.FC<SettingsViewProps> = ({
@@ -33,7 +34,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   isSaving,
   isDirty,
   autoSaveInterval,
-  setAutoSaveInterval
+  setAutoSaveInterval,
+  onBack
 }) => {
   const [activeSettingsTab, setActiveSettingsTab] = useState<'general' | 'domain'>('general');
   const [tagInput, setTagInput] = useState('');
@@ -54,15 +56,25 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   };
 
   return (
-    <div className="max-w-5xl mx-auto">
+    <div className="max-w-5xl mx-auto px-4 md:px-0 pb-32">
       <div className="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div>
-          <div className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-widest mb-2">
-            <Settings className="w-3 h-3" />
-            Ajustes del Activo
+        <div className="flex items-start gap-4">
+          {onBack && (
+            <button 
+              onClick={onBack}
+              className="md:hidden p-3 bg-surface rounded-2xl text-text/60 active:scale-95 transition-all"
+            >
+              <ArrowLeft className="w-6 h-6" />
+            </button>
+          )}
+          <div>
+            <div className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-widest mb-2">
+              <Settings className="w-3 h-3" />
+              Ajustes del Activo
+            </div>
+            <h3 className="text-3xl font-black text-text mb-1">{activeAsset?.name || 'Configuración'}</h3>
+            <p className="text-text/60">Configura las opciones específicas para este activo del proyecto.</p>
           </div>
-          <h3 className="text-3xl font-black text-text mb-1">{activeAsset?.name || 'Configuración'}</h3>
-          <p className="text-text/60">Configura las opciones específicas para este activo del proyecto.</p>
         </div>
       </div>
 

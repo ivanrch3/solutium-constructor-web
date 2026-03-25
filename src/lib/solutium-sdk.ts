@@ -193,11 +193,43 @@ async function verifySignature(payloadBase64: string, signatureBase64: string, s
     }
 }
 
+export interface SolutiumLog {
+  id: string;
+  timestamp: number;
+  origin: string;
+  type: string;
+  payloadRaw: any;
+  isCamelCase: boolean;
+  ackStatus: 'pending' | 'success' | 'failed';
+  error?: string;
+}
+
 export const useSolutium = () => {
     const [config, setConfig] = useState<SolutiumPayload | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [logs, setLogs] = useState<SolutiumLog[]>([]);
     const isInitialized = useRef(false);
+
+    const addLog = (log: Omit<SolutiumLog, 'id' | 'timestamp'>) => {
+        const newLog: SolutiumLog = {
+            ...log,
+            id: Math.random().toString(36).substring(7),
+            timestamp: Date.now()
+        };
+        setLogs(prev => [newLog, ...prev].slice(0, 50));
+        console.log(`[Solutium Log] ${log.type} from ${log.origin}`, log);
+    };
+
+    const checkCamelCase = (obj: any): boolean => {
+        if (!obj || typeof obj !== 'object') return true;
+        const snakeCaseKeys = Object.keys(obj).filter(key => key.includes('_'));
+        if (snakeCaseKeys.length > 0) {
+            console.warn(`[Solutium Warning] Snake Case detected in keys: ${snakeCaseKeys.join(', ')}`);
+            return false;
+        }
+        return true;
+    };
 
     // 1. Intentar obtener token de la URL (flujo iframe/redirect) inmediatamente
     useEffect(() => {
@@ -208,6 +240,14 @@ export const useSolutium = () => {
                 const token = hashParams.get('token') || new URLSearchParams(window.location.search).get('token');
                 
                 if (token) {
+                    addLog({
+                        origin: 'URL_PARAMS',
+                        type: 'TOKEN_RECEIVED',
+                        payloadRaw: { token: token.substring(0, 20) + '...' },
+                        isCamelCase: true,
+                        ackStatus: 'pending'
+                    });
+
                     const parts = token.split('.');
                     const base64Payload = parts[0];
                     const signature = parts[1];
@@ -220,18 +260,63 @@ export const useSolutium = () => {
                             console.error('Invalid SIP token signature');
                             setError('Invalid token signature');
                             setLoading(false);
+                            addLog({
+                                origin: 'URL_PARAMS',
+                                type: 'TOKEN_ERROR',
+                                payloadRaw: { error: 'Invalid signature' },
+                                isCamelCase: true,
+                                ackStatus: 'failed',
+                                error: 'Invalid signature'
+                            });
                             return;
                         }
                     }
                     
                     const decoded = JSON.parse(atob(base64Payload));
-                    setConfig(decoded);
-                    if (decoded.projectsData || decoded.projectData) {
-                        applyTheme(decoded.projectsData || decoded.projectData);
+                    
+                    // Robustness: check legacy keys
+                    const profilesData = decoded.profilesData || decoded.profiles || decoded.profile || decoded.userProfile;
+                    const projectsData = decoded.projectsData || decoded.projects || decoded.project || decoded.projectData;
+                    const customersData = decoded.customersData || decoded.crmData || decoded.crm_data || decoded.customers;
+                    const productsData = decoded.productsData || decoded.products_data || decoded.products;
+                    const assetsData = decoded.assetsData || decoded.assets_data || decoded.assets;
+                    const teamMembersData = decoded.teamMembersData || decoded.team_members || decoded.team;
+
+                    const normalizedDecoded = {
+                        ...decoded,
+                        profilesData,
+                        projectsData,
+                        customersData,
+                        productsData,
+                        assetsData,
+                        teamMembersData
+                    };
+
+                    const isCamel = checkCamelCase(normalizedDecoded);
+                    
+                    addLog({
+                        origin: 'URL_PARAMS',
+                        type: 'TOKEN_DECODED',
+                        payloadRaw: normalizedDecoded,
+                        isCamelCase: isCamel,
+                        ackStatus: 'success'
+                    });
+
+                    setConfig(normalizedDecoded);
+                    if (normalizedDecoded.projectsData) {
+                        applyTheme(normalizedDecoded.projectsData);
                     }
                 }
             } catch (e) {
                 console.error('Error decodificando token inicial:', e);
+                addLog({
+                    origin: 'URL_PARAMS',
+                    type: 'DECODE_ERROR',
+                    payloadRaw: { error: String(e) },
+                    isCamelCase: true,
+                    ackStatus: 'failed',
+                    error: String(e)
+                });
             } finally {
                 setLoading(false);
             }
@@ -249,60 +334,115 @@ export const useSolutium = () => {
         }
 
         const handleMessage = async (event: MessageEvent) => {
-            
-            if (event.data?.type === 'SOLUTIUM_INIT' || event.data?.type === 'SOLUTIUM_CONFIG') {
-                console.log("📦 [Satélite] Recibiendo payload pesado:", event.data.payload);
+            // Log every message received
+            if (event.data?.type) {
+                const isCamel = checkCamelCase(event.data.payload || event.data.config);
                 
-                let payload = event.data.payload;
-                
-                // If payload is a string (token), verify it
-                if (typeof payload === 'string') {
-                    const parts = payload.split('.');
-                    const base64Payload = parts[0];
-                    const signature = parts[1];
-                    const secret = import.meta.env.VITE_SIP_SECRET_KEY;
+                const logEntry: Omit<SolutiumLog, 'id' | 'timestamp'> = {
+                    origin: event.origin,
+                    type: event.data.type,
+                    payloadRaw: event.data,
+                    isCamelCase: isCamel,
+                    ackStatus: 'pending'
+                };
+
+                if (event.data?.type === 'SOLUTIUM_INIT' || event.data?.type === 'SOLUTIUM_CONFIG') {
+                    console.log("📦 [Satélite] Recibiendo payload pesado:", event.data.payload || event.data.config);
                     
-                    if (secret && signature) {
-                        const isValid = await verifySignature(base64Payload, signature, secret);
-                        if (!isValid) {
-                            console.error('Invalid SIP token signature in message');
+                    let payload = event.data.payload || event.data.config;
+                    
+                    // If payload is a string (token), verify it
+                    if (typeof payload === 'string') {
+                        const parts = payload.split('.');
+                        const base64Payload = parts[0];
+                        const signature = parts[1];
+                        const secret = import.meta.env.VITE_SIP_SECRET_KEY;
+                        
+                        if (secret && signature) {
+                            const isValid = await verifySignature(base64Payload, signature, secret);
+                            if (!isValid) {
+                                console.error('Invalid SIP token signature in message');
+                                addLog({ ...logEntry, ackStatus: 'failed', error: 'Invalid signature' });
+                                return;
+                            }
+                        }
+                        try {
+                            payload = JSON.parse(atob(base64Payload));
+                        } catch (e) {
+                            addLog({ ...logEntry, ackStatus: 'failed', error: 'JSON Parse Error' });
                             return;
                         }
                     }
-                    payload = JSON.parse(atob(base64Payload));
-                }
-                
-                const typedPayload = payload as SolutiumPayload;
-                console.log("DEBUG: Full Payload Received:", typedPayload);
-                
-                // Apply Theme & Supabase
-                const legacyPayload = typedPayload as any;
-                if (typedPayload.projectsData || legacyPayload.projectData) applyTheme(typedPayload.projectsData || legacyPayload.projectData);
-                if (typedPayload.supabaseData?.url && typedPayload.supabaseData?.anonKey) {
-                    initSupabase(typedPayload.supabaseData.url, typedPayload.supabaseData.anonKey);
-                }
+                    
+                    const typedPayload = payload as SolutiumPayload;
+                    
+                    // Robustness: check legacy keys
+                    const profilesData = typedPayload.profilesData || (typedPayload as any).profiles || (typedPayload as any).profile || (typedPayload as any).userProfile;
+                    const projectsData = typedPayload.projectsData || (typedPayload as any).projects || (typedPayload as any).project || (typedPayload as any).projectData;
+                    const customersData = typedPayload.customersData || (typedPayload as any).crmData || (typedPayload as any).crm_data || (typedPayload as any).customers;
+                    const productsData = typedPayload.productsData || (typedPayload as any).products_data || (typedPayload as any).products || (typedPayload as any).inventory;
+                    const assetsData = typedPayload.assetsData || (typedPayload as any).assets_data || (typedPayload as any).assets;
+                    const teamMembersData = typedPayload.teamMembersData || (typedPayload as any).team_members || (typedPayload as any).team;
 
-             // Merge to avoid overwriting heavy data (crmData, productsData) with light data from URL token
-                setConfig(prev => {
-                    if (prev) {
-                        return {
-                            ...prev,
-                            ...typedPayload,
-                            customersData: typedPayload.customersData || prev.customersData,
-                            productsData: typedPayload.productsData || prev.productsData,
-                            assetsData: typedPayload.assetsData || prev.assetsData,
-                            profilesData: typedPayload.profilesData || prev.profilesData,
-                            teamMembersData: typedPayload.teamMembersData || prev.teamMembersData,
-                            projectsData: typedPayload.projectsData || prev.projectsData
-                        };
+                    const normalizedPayload: SolutiumPayload = {
+                        ...typedPayload,
+                        profilesData,
+                        projectsData,
+                        customersData,
+                        productsData,
+                        assetsData,
+                        teamMembersData
+                    };
+
+                    const isPayloadCamel = checkCamelCase(normalizedPayload);
+                    
+                    // Apply Theme & Supabase
+                    if (normalizedPayload.projectsData) applyTheme(normalizedPayload.projectsData);
+                    if (normalizedPayload.supabaseData?.url && normalizedPayload.supabaseData?.anonKey) {
+                        initSupabase(normalizedPayload.supabaseData.url, normalizedPayload.supabaseData.anonKey);
                     }
-                    return typedPayload;
-                });
-                setLoading(false);
-                
-                // Enviar acuse de recibo a la App Madre
-                if (event.source) {
-                    (event.source as Window).postMessage({ type: 'SOLUTIUM_ACK' }, '*');
+
+                    // Merge to avoid overwriting heavy data (crmData, productsData) with light data from URL token
+                    setConfig(prev => {
+                        if (prev) {
+                            return {
+                                ...prev,
+                                ...normalizedPayload,
+                                customersData: normalizedPayload.customersData || prev.customersData,
+                                productsData: normalizedPayload.productsData || prev.productsData,
+                                assetsData: normalizedPayload.assetsData || prev.assetsData,
+                                profilesData: normalizedPayload.profilesData || prev.profilesData,
+                                teamMembersData: normalizedPayload.teamMembersData || prev.teamMembersData,
+                                projectsData: normalizedPayload.projectsData || prev.projectsData
+                            };
+                        }
+                        return normalizedPayload;
+                    });
+                    setLoading(false);
+                    
+                    // Enviar acuse de recibo a la App Madre
+                    try {
+                        const ackMessage = { type: 'SOLUTIUM_ACK' };
+
+                        if (window.opener) {
+                            window.opener.postMessage(ackMessage, '*');
+                            addLog({ ...logEntry, isCamelCase: isPayloadCamel, ackStatus: 'success' });
+                        } else if (event.source) {
+                            (event.source as Window).postMessage(ackMessage, '*');
+                            addLog({ ...logEntry, isCamelCase: isPayloadCamel, ackStatus: 'success' });
+                        } else if (window.parent !== window) {
+                            window.parent.postMessage(ackMessage, '*');
+                            addLog({ ...logEntry, isCamelCase: isPayloadCamel, ackStatus: 'success' });
+                        } else {
+                            addLog({ ...logEntry, isCamelCase: isPayloadCamel, ackStatus: 'failed', error: 'No source to ACK' });
+                        }
+                    } catch (e) {
+                        console.error('Error sending ACK:', e);
+                        addLog({ ...logEntry, isCamelCase: isPayloadCamel, ackStatus: 'failed', error: 'Security/CSP Block' });
+                    }
+                } else {
+                    // Log other messages but don't process them as config
+                    addLog(logEntry);
                 }
             }
         };
@@ -362,7 +502,7 @@ export const useSolutium = () => {
         }
     };
 
-    return { config, isReady: !loading, saveData, error };
+    return { config, isReady: !loading, saveData, error, logs };
 };
 
 const applyTheme = (projectData: SolutiumPayload['projectsData']) => {

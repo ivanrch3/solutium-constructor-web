@@ -52,6 +52,44 @@ export const GalleryModule = ({ data, onUpdate }: GalleryModuleProps) => {
   const hoverEffect = data?.hoverEffect || 'zoom';
   const borderRadius = data?.borderRadius || 'xl';
   const showViewAllButton = data?.showViewAllButton !== false;
+  const entranceAnimation = data?.entranceAnimation || 'fade';
+  const smartMode = data?.smartMode || false;
+
+  const effectiveLayout = smartMode 
+    ? (isMobileSimulated ? 'masonry' : 'grid')
+    : layoutType;
+
+  const getAnimationVariants = (idx: number) => {
+    switch (entranceAnimation) {
+      case 'slide':
+        return {
+          hidden: { opacity: 0, x: -30 },
+          visible: { 
+            opacity: 1, 
+            x: 0,
+            transition: { duration: 0.6, delay: idx * 0.05 }
+          }
+        };
+      case 'zoom':
+        return {
+          hidden: { opacity: 0, scale: 0.8 },
+          visible: { 
+            opacity: 1, 
+            scale: 1,
+            transition: { duration: 0.8, delay: idx * 0.05 }
+          }
+        };
+      default: // fade
+        return {
+          hidden: { opacity: 0, y: 20 },
+          visible: { 
+            opacity: 1, 
+            y: 0,
+            transition: { duration: 0.7, delay: idx * 0.05 }
+          }
+        };
+    }
+  };
 
   const categories = ['All', ...Array.from(new Set(images.map((img: any) => img.category).filter(Boolean)))];
   
@@ -168,26 +206,29 @@ export const GalleryModule = ({ data, onUpdate }: GalleryModuleProps) => {
     );
   };
 
-  const renderImage = (img: any, idx: number, extraClasses = '') => (
-    <motion.div 
-      key={img.id || idx}
-      variants={itemVariants}
-      layout
-      className={`relative overflow-hidden group cursor-pointer bg-surface/50 backdrop-blur-sm border border-text/5 ${getRadiusClass()} ${getAspectRatioClass()} ${extraClasses}`}
-      onClick={() => setSelectedImageIndex(idx)}
-    >
-      <img 
-        src={img.url} 
-        alt={img.title} 
-        className={`w-full h-full object-cover will-change-transform ${getHoverClass()}`}
-        referrerPolicy="no-referrer"
-      />
-      {renderOverlay(img, idx)}
-    </motion.div>
-  );
+  const renderImage = (img: any, idx: number, extraClasses = '') => {
+    const animation = getAnimationVariants(idx);
+    return (
+      <motion.div 
+        key={img.id || idx}
+        variants={animation}
+        layout
+        className={`relative overflow-hidden group cursor-pointer bg-surface/50 backdrop-blur-sm border border-text/5 ${getRadiusClass()} ${getAspectRatioClass()} ${extraClasses}`}
+        onClick={() => setSelectedImageIndex(idx)}
+      >
+        <img 
+          src={img.url} 
+          alt={img.title} 
+          className={`w-full h-full object-cover will-change-transform ${getHoverClass()}`}
+          referrerPolicy="no-referrer"
+        />
+        {renderOverlay(img, idx)}
+      </motion.div>
+    );
+  };
 
   const renderContent = () => {
-    if (layoutType === 'carousel') {
+    if (effectiveLayout === 'carousel') {
       return (
         <div className="relative group/carousel">
           <div className="flex gap-6 overflow-x-auto pb-8 snap-x no-scrollbar -mx-4 px-4">
@@ -195,7 +236,7 @@ export const GalleryModule = ({ data, onUpdate }: GalleryModuleProps) => {
               {filteredImages.map((img: any, idx: number) => (
                 <motion.div 
                   key={img.id || idx} 
-                  variants={itemVariants}
+                  variants={getAnimationVariants(idx)}
                   className="min-w-[300px] md:min-w-[450px] snap-center"
                 >
                   {renderImage(img, idx)}
@@ -207,7 +248,7 @@ export const GalleryModule = ({ data, onUpdate }: GalleryModuleProps) => {
       );
     }
 
-    if (layoutType === 'masonry') {
+    if (effectiveLayout === 'masonry') {
       return (
         <motion.div 
           variants={containerVariants}
@@ -227,7 +268,7 @@ export const GalleryModule = ({ data, onUpdate }: GalleryModuleProps) => {
       );
     }
 
-    if (layoutType === 'mosaic') {
+    if (effectiveLayout === 'mosaic') {
       return (
         <motion.div 
           variants={containerVariants}

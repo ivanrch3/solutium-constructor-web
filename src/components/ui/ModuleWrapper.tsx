@@ -9,7 +9,7 @@ interface ModuleWrapperProps {
   layout?: 'layout-1' | 'layout-2' | 'layout-3' | 'layout-4' | 'layout-5' | 'layout-6' | 'layout-7';
   theme?: 'light' | 'dark';
   background?: {
-    type?: 'image' | 'video' | 'carousel' | 'particles';
+    type?: 'image' | 'video' | 'carousel' | 'particles' | 'mesh';
     image?: string;
     videoUrl?: string;
     carouselImages?: string[];
@@ -222,6 +222,18 @@ export const ModuleWrapper = ({
     );
   };
 
+  const renderMeshBackground = () => {
+    if (background?.type !== 'mesh') return null;
+    
+    return (
+      <div className="absolute inset-0 w-full h-full overflow-hidden z-0 pointer-events-none opacity-40">
+        <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] bg-primary/30 rounded-full blur-[120px] animate-pulse" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-accent/30 rounded-full blur-[120px] animate-pulse delay-1000" />
+        <div className="absolute top-[20%] right-[10%] w-[40%] h-[40%] bg-primary/20 rounded-full blur-[100px] animate-bounce duration-[10s]" />
+      </div>
+    );
+  };
+
   return (
     <ScrollAnimation 
       animation={animation} 
@@ -233,8 +245,9 @@ export const ModuleWrapper = ({
       {renderVideoBackground()}
       {renderCarouselBackground()}
       {renderParticlesBackground()}
+      {renderMeshBackground()}
       
-      {(background?.image || background?.type === 'video' || background?.type === 'carousel' || background?.type === 'particles') && (
+      {(background?.image || background?.type === 'video' || background?.type === 'carousel' || background?.type === 'particles' || background?.type === 'mesh') && (
         <div className="absolute inset-0 z-0 pointer-events-none transition-opacity duration-500" style={overlayStyle} />
       )}
 

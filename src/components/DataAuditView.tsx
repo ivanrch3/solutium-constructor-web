@@ -48,6 +48,15 @@ export const DataAuditView: React.FC<DataAuditViewProps> = ({ config, onBack }) 
 
   const isAdmin = config?.role === 'admin' || config?.role === 'super-admin' || config?.profilesData?.role === 'admin' || config?.profilesData?.role === 'super-admin';
   const environment = config?.environment || 'production';
+  const supabaseReady = (supabase as any).isInitialized;
+
+  // Re-intento Automático (Foundry v2)
+  useEffect(() => {
+    if (isReady && supabaseReady && isAdmin) {
+      console.log('[Boot Observer] Handshake completado. Iniciando carga automática de datos...');
+      fetchAllData();
+    }
+  }, [isReady, supabaseReady, isAdmin]);
 
   const fetchAllData = async () => {
     if (!isAdmin || !isReady || !(supabase as any).isInitialized) {

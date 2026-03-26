@@ -347,11 +347,18 @@ export const useSolutium = () => {
 
     useEffect(() => {
         // 2. Avisar a la App Madre que el satélite está listo para recibir la data pesada (solo una vez)
-        if (window.opener) {
-            window.opener.postMessage({ type: 'SOLUTIUM_SATELLITE_READY' }, '*');
-        } else if (window.parent !== window) {
-            window.parent.postMessage({ type: 'SOLUTIUM_SATELLITE_READY' }, '*');
-        }
+        const initMessages = [
+            { type: 'SOLUTIUM_SATELLITE_READY' },
+            { type: 'SOLUTIUM_SATELLITE_INIT' }
+        ];
+
+        initMessages.forEach(msg => {
+            if (window.opener) {
+                window.opener.postMessage(msg, '*');
+            } else if (window.parent !== window) {
+                window.parent.postMessage(msg, '*');
+            }
+        });
 
         const handleMessage = async (event: MessageEvent) => {
             // Log every message received

@@ -67,9 +67,7 @@ function App() {
     setLastSaved
   } = useBuilderStore();
 
-  const [skipDirty, setSkipDirty] = useState(false);
   const [activeTab, setActiveTab] = useState('builder');
-  const [activeSettingsTab, setActiveSettingsTab] = useState<'general' | 'products' | 'domain'>('general');
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   const [previewDevice, setPreviewDevice] = useState<'mobile' | 'tablet' | 'desktop'>('desktop');
   const [showPicker, setShowPicker] = useState(false);
@@ -89,7 +87,6 @@ function App() {
   const [moduleToDelete, setModuleToDelete] = useState<string | null>(null);
   // Initialize panels as pinned by default, resize handler will collapse on mobile
   const [isSidebarPinned, setIsSidebarPinned] = useState(true);
-  const [isLayersHovered, setIsLayersHovered] = useState(false);
 
   const activeProject = projects.find(p => p.id === (activeProjectId || config?.projectId)) || projects[0];
   const activeAsset = activeProject?.assets?.find((a: any) => a.id === activeAssetId) || activeProject?.assets?.[0];

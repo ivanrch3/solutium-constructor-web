@@ -453,13 +453,16 @@ export const useSolutium = () => {
                     });
                     // Enviar acuse de recibo a la App Madre ANTES de quitar el loading
                     try {
-                        const ackMessage = { type: 'SOLUTIUM_ACK' };
+                        const ackMessage = { 
+                            type: 'SOLUTIUM_ACK',
+                            payload: { status: 'success' }
+                        };
 
                         if (window.opener) {
                             window.opener.postMessage(ackMessage, '*');
                             addLog({ ...logEntry, isCamelCase: isPayloadCamel, ackStatus: 'success' });
-                        } else if (event.source) {
-                            (event.source as Window).postMessage(ackMessage, '*');
+                        } else if (event.source && 'postMessage' in event.source) {
+                            (event.source as any).postMessage(ackMessage, '*');
                             addLog({ ...logEntry, isCamelCase: isPayloadCamel, ackStatus: 'success' });
                         } else if (window.parent !== window) {
                             window.parent.postMessage(ackMessage, '*');

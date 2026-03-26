@@ -361,9 +361,12 @@ export const useSolutium = () => {
         });
 
         const handleMessage = async (event: MessageEvent) => {
-            // Log every message received
+            // Auditoría Profunda: Logs de depuración para el puente de comunicación
             if (event.data?.type) {
-                const isCamel = checkCamelCase(event.data.payload || event.data.config);
+                console.log(`📡 [S.I.P. v4.0] Mensaje recibido: ${event.data.type}`);
+                console.log(`📦 [S.I.P. v4.0] Payload recibido:`, event.data.payload || event.data.config || event.data.data);
+                
+                const isCamel = checkCamelCase(event.data.payload || event.data.config || event.data.data);
                 
                 const logEntry: Omit<SolutiumLog, 'id' | 'timestamp'> = {
                     origin: event.origin,
@@ -373,10 +376,25 @@ export const useSolutium = () => {
                     ackStatus: 'pending'
                 };
 
-                if (event.data?.type === 'SOLUTIUM_INIT' || event.data?.type === 'SOLUTIUM_CONFIG' || event.data?.type === 'SOLUTIUM_HANDSHAKE') {
-                    console.log(`📦 [Satélite] Recibiendo payload pesado (${event.data.type}):`, event.data.payload || event.data.config);
+                // Soporte para múltiples tipos de mensajes de configuración (v4.0)
+                const isConfigMessage = [
+                    'SOLUTIUM_INIT', 
+                    'SOLUTIUM_CONFIG', 
+                    'SOLUTIUM_HANDSHAKE', 
+                    'SOLUTIUM_PROJECT_UPDATE'
+                ].includes(event.data.type);
+
+                if (isConfigMessage) {
+                    console.log(`✅ [S.I.P. v4.0] Procesando configuración desde: ${event.origin}`);
                     
-                    let payload = event.data.payload || event.data.config;
+                    // Prioridad: payload > config > data (Protocolo v4.0)
+                    let payload = event.data.payload || event.data.config || event.data.data;
+                    
+                    if (!payload) {
+                        console.error('❌ [S.I.P. v4.0] Mensaje de configuración sin payload válido.');
+                        addLog({ ...logEntry, ackStatus: 'failed', error: 'Missing payload' });
+                        return;
+                    }
                     
                     // If payload is a string (token), verify it
                     if (typeof payload === 'string') {
@@ -411,16 +429,17 @@ export const useSolutium = () => {
                     const assetsData = typedPayload.assetsData || (typedPayload as any).assets_data || (typedPayload as any).assets;
                     const teamMembersData = typedPayload.teamMembersData || (typedPayload as any).team_members || (typedPayload as any).team;
 
+                    // Mapeo Robusto de camelCase (Protocolo v4.0)
                     const normalizedPayload: SolutiumPayload = {
                         ...typedPayload,
-                        projectId: typedPayload.projectId || (typedPayload as any).project_id,
-                        userId: typedPayload.userId || (typedPayload as any).user_id,
-                        profilesData,
-                        projectsData,
-                        customersData,
-                        productsData,
-                        assetsData,
-                        teamMembersData
+                        projectId: typedPayload.projectId || (typedPayload as any).project_id || (typedPayload as any).id,
+                        userId: typedPayload.userId || (typedPayload as any).user_id || (typedPayload as any).ownerId,
+                        profilesData: profilesData || (typedPayload as any).profile_data,
+                        projectsData: projectsData || (typedPayload as any).project_data,
+                        customersData: customersData || (typedPayload as any).customers_data,
+                        productsData: productsData || (typedPayload as any).products_data,
+                        assetsData: assetsData || (typedPayload as any).assets_data,
+                        teamMembersData: teamMembersData || (typedPayload as any).team_members_data
                     };
 
                     const isPayloadCamel = checkCamelCase(normalizedPayload);
@@ -451,27 +470,36 @@ export const useSolutium = () => {
                         }
                         return normalizedPayload;
                     });
-                    // Enviar acuse de recibo a la App Madre ANTES de quitar el loading
+                    // Enviar acuse de recibo (ACK) ultra-robusto (v4.0)
                     try {
                         const ackMessage = { 
                             type: 'SOLUTIUM_ACK',
-                            payload: { status: 'success' }
+                            payload: { 
+                                status: 'success',
+                                timestamp: Date.now(),
+                                satelliteId: 'constructor-web'
+                            }
                         };
 
-                        if (window.opener) {
-                            window.opener.postMessage(ackMessage, '*');
-                            addLog({ ...logEntry, isCamelCase: isPayloadCamel, ackStatus: 'success' });
-                        } else if (event.source && 'postMessage' in event.source) {
+                        // Prioridad: event.source (más fiable en iframes) > window.opener > window.parent
+                        if (event.source && 'postMessage' in event.source) {
                             (event.source as any).postMessage(ackMessage, '*');
+                            console.log('📤 [S.I.P. v4.0] ACK enviado a event.source');
+                            addLog({ ...logEntry, isCamelCase: isPayloadCamel, ackStatus: 'success' });
+                        } else if (window.opener) {
+                            window.opener.postMessage(ackMessage, '*');
+                            console.log('📤 [S.I.P. v4.0] ACK enviado a window.opener');
                             addLog({ ...logEntry, isCamelCase: isPayloadCamel, ackStatus: 'success' });
                         } else if (window.parent !== window) {
                             window.parent.postMessage(ackMessage, '*');
+                            console.log('📤 [S.I.P. v4.0] ACK enviado a window.parent');
                             addLog({ ...logEntry, isCamelCase: isPayloadCamel, ackStatus: 'success' });
                         } else {
+                            console.warn('⚠️ [S.I.P. v4.0] No se encontró destino para el ACK');
                             addLog({ ...logEntry, isCamelCase: isPayloadCamel, ackStatus: 'failed', error: 'No source to ACK' });
                         }
                     } catch (e) {
-                        console.error('Error sending ACK:', e);
+                        console.error('❌ [S.I.P. v4.0] Error al enviar ACK:', e);
                         addLog({ ...logEntry, isCamelCase: isPayloadCamel, ackStatus: 'failed', error: 'Security/CSP Block' });
                     }
 

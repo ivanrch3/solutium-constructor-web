@@ -33,6 +33,10 @@ import { useAiGenerator } from './hooks/useAiGenerator';
 function App() {
   const { payload: config, isReady, saveData, simulateConnection, logs } = useSolutiumContext();
 
+  useEffect(() => {
+    console.log(`🖥️ [App] Estado de conexión: isReady=${isReady}, config=${config ? 'Cargado' : 'Nulo'}`);
+  }, [isReady, config]);
+
   const {
     projects,
     activeProjectId,

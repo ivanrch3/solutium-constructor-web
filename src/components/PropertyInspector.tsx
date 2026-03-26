@@ -38,9 +38,9 @@ export const PropertyInspector = ({
   const [expandedSectionsByModule, setExpandedSectionsByModule] = useState<Record<string, Record<string, boolean>>>({});
 
   const satellite = useContext(SolutiumContext);
-  const projectSocials = satellite?.payload?.projectsData?.socials || satellite?.payload?.projectData?.socials;
+  const projectSocials = satellite?.payload?.project?.socials || (satellite?.payload as any)?.projectsData?.socials || (satellite?.payload as any)?.projectData?.socials;
 
-  const isPremiumUser = satellite?.payload?.profilesData?.subscriptionPlan === 'pro' || satellite?.payload?.profilesData?.subscriptionPlan === 'premium';
+  const isPremiumUser = satellite?.payload?.profile?.subscriptionPlan === 'pro' || satellite?.payload?.profile?.subscriptionPlan === 'premium' || (satellite?.payload as any)?.profilesData?.subscriptionPlan === 'pro';
 
   const moduleId = selectedModule?.id || 'default';
   const expandedSections = expandedSectionsByModule[moduleId] || {
@@ -84,7 +84,7 @@ export const PropertyInspector = ({
 
         // Special case for Footer logoText
         if (selectedModule.type === 'footer' && f.name === 'logoText') {
-          const projectLogo = satellite?.payload?.projectsData?.logoUrl || satellite?.payload?.projectData?.logoUrl;
+          const projectLogo = satellite?.payload?.project?.logoUrl || (satellite?.payload as any)?.projectsData?.logoUrl || (satellite?.payload as any)?.projectData?.logoUrl;
           const logoSrc = selectedModule.data.logoImage || projectLogo;
           if (logoSrc) {
             isDisabled = true;

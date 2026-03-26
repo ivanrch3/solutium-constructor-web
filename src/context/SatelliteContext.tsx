@@ -29,17 +29,17 @@ export const SolutiumProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // 2. Efecto reactivo: Cuando el payload cambia, actualizamos el estado
   useEffect(() => {
     if (payload) {
-      const customersData = payload.customersData || (payload as any).crmData || (payload as any).crm_data;
+      const customersData = payload.customers || (payload as any).crmData || (payload as any).crm_data;
       if (customersData) {
         setCustomers(customersData);
       }
       
-      const productsData = payload.productsData || (payload as any).products_data;
+      const productsData = payload.products || (payload as any).products_data;
       if (productsData) {
         setProducts(productsData);
       }
       
-      const assetsData = payload.assetsData || (payload as any).assets_data;
+      const assetsData = payload.assets || (payload as any).assets_data;
       if (assetsData) {
         setAssets(assetsData);
       }
@@ -53,7 +53,7 @@ export const SolutiumProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       return [];
     }
     // Prioridad a los datos de la App Madre
-    const customersData = payload?.customersData || (payload as any)?.crmData || (payload as any)?.crm_data || (payload as any)?.customers;
+    const customersData = payload?.customers || (payload as any)?.crmData || (payload as any)?.crm_data;
     if (customersData) {
       return customersData;
     }
@@ -86,7 +86,7 @@ export const SolutiumProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       return [];
     }
     // Prioridad a los datos de la App Madre
-    const productsData = payload?.productsData || (payload as any)?.products_data || (payload as any)?.products || (payload as any)?.inventory;
+    const productsData = payload?.products || (payload as any)?.products_data || (payload as any)?.inventory;
     if (productsData) {
       return productsData;
     }
@@ -128,7 +128,7 @@ export const SolutiumProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       timestamp: Date.now(),
       scopes: ['profile', 'project', 'crm', 'products', 'calendar', 'assets', 'integrations'],
       environment: 'development',
-      profilesData: {
+      profile: {
         id: 'dev-user-1',
         fullName: 'Usuario Dev',
         email: 'dev@solutium.app',
@@ -137,7 +137,7 @@ export const SolutiumProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         language: 'es',
         businessName: 'Solutium Dev Studio',
         onboardingCompleted: true,
-        schemaVersion: '3.0.0',
+        schemaVersion: '4.0.0',
         uiStyle: 'modern',
         activeTheme: 'dark',
         fontFamily: 'Inter',
@@ -146,7 +146,7 @@ export const SolutiumProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         themePreference: 'system',
         subscriptionPlan: 'pro'
       },
-      projectsData: {
+      project: {
         id: 'dev-project-1',
         name: 'Proyecto de Desarrollo',
         brandColors: ['#3b82f6', '#1e293b', '#f59e0b', '#ffffff', '#f3f4f6', '#111827'],
@@ -156,12 +156,13 @@ export const SolutiumProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         installedAppIds: [],
         assignedMemberIds: []
       },
-      customersData: [],
-      teamMembersData: [],
-      assetsData: [],
+      projects: [],
+      customers: [],
+      members: [],
+      assets: [],
       currentAsset: null,
-      productsData: [],
-      integrationsData: [],
+      products: [],
+      integrations: [],
       supabaseData: {
         url: 'https://placeholder.supabase.co',
         anonKey: 'placeholder'

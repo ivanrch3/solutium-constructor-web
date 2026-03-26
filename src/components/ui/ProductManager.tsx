@@ -15,7 +15,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ data, onUpdate, 
   const { selectedProductIds, updateSelectedProducts } = useBuilderStore();
   
   // Get products from config (mother app)
-  const products = config?.productsData || [];
+  const products = config?.products || (config as any)?.productsData || [];
 
   const toggleProduct = (productId: string) => {
     const idStr = productId.toString();

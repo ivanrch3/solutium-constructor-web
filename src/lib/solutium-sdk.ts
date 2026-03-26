@@ -16,7 +16,7 @@ export interface SolutiumPayload {
   environment: string;
 
   // 1. Perfil de Usuario (Extendido)
-  profilesData?: {
+  profile?: {
     id: string;
     fullName: string;
     email: string;
@@ -45,7 +45,7 @@ export interface SolutiumPayload {
   };
 
   // 2. Datos del Proyecto (Extendido)
-  projectsData?: {
+  project?: {
     id: string;
     ownerId?: string;
     name: string;
@@ -70,9 +70,10 @@ export interface SolutiumPayload {
     assignedMemberIds: string[];
     assets?: any[];
   };
+  projects?: any[];
 
   // 3. Equipo y Miembros
-  teamMembersData?: Array<{
+  members?: Array<{
     id: string;
     name: string;
     email: string;
@@ -88,7 +89,7 @@ export interface SolutiumPayload {
   }>;
 
   // 4. CRM (Clientes)
-  customersData?: Array<{
+  customers?: Array<{
     id: string;
     projectId?: string;
     name: string;
@@ -111,7 +112,7 @@ export interface SolutiumPayload {
   }>;
 
   // 5. Catálogo (Productos/Servicios)
-  productsData?: Array<{
+  products?: Array<{
     id: string;
     projectId?: string;
     name: string;
@@ -128,7 +129,7 @@ export interface SolutiumPayload {
   }>;
 
   // 6. Activos Digitales
-  assetsData?: Array<{
+  assets?: Array<{
     id: string;
     projectId?: string;
     name: string;
@@ -145,7 +146,9 @@ export interface SolutiumPayload {
   }>;
 
   // 7. Integraciones de Usuario
-  integrationsData?: any[];
+  integrations?: any[];
+  apps?: any[];
+  projectApps?: any[];
   
   // Legacy fields for backwards compatibility
   supabaseData?: {
@@ -222,16 +225,6 @@ export const useSolutium = () => {
         console.log(`[Solutium Log] ${log.type} from ${log.origin}`, log);
     };
 
-    const checkCamelCase = (obj: any): boolean => {
-        if (!obj || typeof obj !== 'object') return true;
-        const snakeCaseKeys = Object.keys(obj).filter(key => key.includes('_'));
-        if (snakeCaseKeys.length > 0) {
-            console.warn(`[Solutium Warning] Snake Case detected in keys: ${snakeCaseKeys.join(', ')}`);
-            return false;
-        }
-        return true;
-    };
-
     // 1. Intentar obtener token de la URL (flujo iframe/redirect) inmediatamente
     useEffect(() => {
         const initFromUrl = async () => {
@@ -295,36 +288,36 @@ export const useSolutium = () => {
                     }
                     
                     // Robustness: check legacy keys
-                    const profilesData = decoded.profilesData || decoded.profiles || decoded.profile || decoded.userProfile;
-                    const projectsData = decoded.projectsData || decoded.projects || decoded.project || decoded.projectData;
-                    const customersData = decoded.customersData || decoded.crmData || decoded.crm_data || decoded.customers;
-                    const productsData = decoded.productsData || decoded.products_data || decoded.products;
-                    const assetsData = decoded.assetsData || decoded.assets_data || decoded.assets;
-                    const teamMembersData = decoded.teamMembersData || decoded.team_members || decoded.team;
+                    const profile = decoded.profile || decoded.profilesData || decoded.profiles || decoded.userProfile;
+                    const project = decoded.project || decoded.projectsData || decoded.projectData;
+                    const projects = decoded.projects || (Array.isArray(decoded.projectsData) ? decoded.projectsData : (project ? [project] : []));
+                    const customers = decoded.customers || decoded.customersData || decoded.crmData || decoded.crm_data;
+                    const products = decoded.products || decoded.productsData || decoded.products_data;
+                    const assets = decoded.assets || decoded.assetsData || decoded.assets_data;
+                    const members = decoded.members || decoded.teamMembersData || decoded.team_members || decoded.team;
 
                     const normalizedDecoded = {
                         ...decoded,
-                        profilesData,
-                        projectsData,
-                        customersData,
-                        productsData,
-                        assetsData,
-                        teamMembersData
+                        profile,
+                        project,
+                        projects,
+                        customers,
+                        products,
+                        assets,
+                        members
                     };
-
-                    const isCamel = checkCamelCase(normalizedDecoded);
                     
                     addLog({
                         origin: 'URL_PARAMS',
                         type: 'TOKEN_DECODED',
                         payloadRaw: normalizedDecoded,
-                        isCamelCase: isCamel,
+                        isCamelCase: true,
                         ackStatus: 'success'
                     });
 
                     setConfig(normalizedDecoded);
-                    if (normalizedDecoded.projectsData) {
-                        applyTheme(normalizedDecoded.projectsData);
+                    if (normalizedDecoded.project) {
+                        applyTheme(normalizedDecoded.project);
                     }
                 }
             } catch (e) {
@@ -366,13 +359,11 @@ export const useSolutium = () => {
                 console.log(`📡 [S.I.P. v4.0] Mensaje recibido: ${event.data.type}`);
                 console.log(`📦 [S.I.P. v4.0] Payload recibido:`, event.data.payload || event.data.config || event.data.data);
                 
-                const isCamel = checkCamelCase(event.data.payload || event.data.config || event.data.data);
-                
                 const logEntry: Omit<SolutiumLog, 'id' | 'timestamp'> = {
                     origin: event.origin,
                     type: event.data.type,
                     payloadRaw: event.data,
-                    isCamelCase: isCamel,
+                    isCamelCase: true,
                     ackStatus: 'pending'
                 };
 
@@ -422,30 +413,36 @@ export const useSolutium = () => {
                     const typedPayload = payload as SolutiumPayload;
                     
                     // Robustness: check legacy keys
-                    const profilesData = typedPayload.profilesData || (typedPayload as any).profiles || (typedPayload as any).profile || (typedPayload as any).userProfile;
-                    const projectsData = typedPayload.projectsData || (typedPayload as any).projects || (typedPayload as any).project || (typedPayload as any).projectData;
-                    const customersData = typedPayload.customersData || (typedPayload as any).crmData || (typedPayload as any).crm_data || (typedPayload as any).customers;
-                    const productsData = typedPayload.productsData || (typedPayload as any).products_data || (typedPayload as any).products || (typedPayload as any).inventory;
-                    const assetsData = typedPayload.assetsData || (typedPayload as any).assets_data || (typedPayload as any).assets;
-                    const teamMembersData = typedPayload.teamMembersData || (typedPayload as any).team_members || (typedPayload as any).team;
+                    const profile = typedPayload.profile || (typedPayload as any).profilesData || (typedPayload as any).profiles || (typedPayload as any).userProfile;
+                    const project = typedPayload.project || (typedPayload as any).projectsData || (typedPayload as any).projectData;
+                    const projects = typedPayload.projects || (Array.isArray((typedPayload as any).projectsData) ? (typedPayload as any).projectsData : (project ? [project] : []));
+                    const customers = typedPayload.customers || (typedPayload as any).customersData || (typedPayload as any).crmData || (typedPayload as any).crm_data;
+                    const products = typedPayload.products || (typedPayload as any).productsData || (typedPayload as any).products_data || (typedPayload as any).inventory;
+                    const assets = typedPayload.assets || (typedPayload as any).assetsData || (typedPayload as any).assets_data;
+                    const members = typedPayload.members || (typedPayload as any).teamMembersData || (typedPayload as any).team_members || (typedPayload as any).team;
+                    const apps = typedPayload.apps || (typedPayload as any).appsData;
+                    const projectApps = typedPayload.projectApps || (typedPayload as any).projectAppsData;
+                    const integrations = typedPayload.integrations || (typedPayload as any).integrationsData;
 
                     // Mapeo Robusto de camelCase (Protocolo v4.0)
                     const normalizedPayload: SolutiumPayload = {
                         ...typedPayload,
                         projectId: typedPayload.projectId || (typedPayload as any).project_id || (typedPayload as any).id,
                         userId: typedPayload.userId || (typedPayload as any).user_id || (typedPayload as any).ownerId,
-                        profilesData: profilesData || (typedPayload as any).profile_data,
-                        projectsData: projectsData || (typedPayload as any).project_data,
-                        customersData: customersData || (typedPayload as any).customers_data,
-                        productsData: productsData || (typedPayload as any).products_data,
-                        assetsData: assetsData || (typedPayload as any).assets_data,
-                        teamMembersData: teamMembersData || (typedPayload as any).team_members_data
+                        profile,
+                        project,
+                        projects,
+                        customers,
+                        products,
+                        assets,
+                        members,
+                        apps,
+                        projectApps,
+                        integrations
                     };
 
-                    const isPayloadCamel = checkCamelCase(normalizedPayload);
-                    
                     // Apply Theme & Supabase
-                    if (normalizedPayload.projectsData) applyTheme(normalizedPayload.projectsData);
+                    if (normalizedPayload.project) applyTheme(normalizedPayload.project);
                     if (normalizedPayload.supabaseData?.url && normalizedPayload.supabaseData?.anonKey) {
                         initSupabase(
                             normalizedPayload.supabaseData.url, 
@@ -460,12 +457,16 @@ export const useSolutium = () => {
                             return {
                                 ...prev,
                                 ...normalizedPayload,
-                                customersData: normalizedPayload.customersData || prev.customersData,
-                                productsData: normalizedPayload.productsData || prev.productsData,
-                                assetsData: normalizedPayload.assetsData || prev.assetsData,
-                                profilesData: normalizedPayload.profilesData || prev.profilesData,
-                                teamMembersData: normalizedPayload.teamMembersData || prev.teamMembersData,
-                                projectsData: normalizedPayload.projectsData || prev.projectsData
+                                customers: normalizedPayload.customers || prev.customers,
+                                products: normalizedPayload.products || prev.products,
+                                assets: normalizedPayload.assets || prev.assets,
+                                profile: normalizedPayload.profile || prev.profile,
+                                members: normalizedPayload.members || prev.members,
+                                project: normalizedPayload.project || prev.project,
+                                projects: normalizedPayload.projects || prev.projects,
+                                apps: normalizedPayload.apps || prev.apps,
+                                projectApps: normalizedPayload.projectApps || prev.projectApps,
+                                integrations: normalizedPayload.integrations || prev.integrations
                             };
                         }
                         return normalizedPayload;
@@ -485,22 +486,22 @@ export const useSolutium = () => {
                         if (event.source && 'postMessage' in event.source) {
                             (event.source as any).postMessage(ackMessage, '*');
                             console.log('📤 [S.I.P. v4.0] ACK enviado a event.source');
-                            addLog({ ...logEntry, isCamelCase: isPayloadCamel, ackStatus: 'success' });
+                            addLog({ ...logEntry, isCamelCase: true, ackStatus: 'success' });
                         } else if (window.opener) {
                             window.opener.postMessage(ackMessage, '*');
                             console.log('📤 [S.I.P. v4.0] ACK enviado a window.opener');
-                            addLog({ ...logEntry, isCamelCase: isPayloadCamel, ackStatus: 'success' });
+                            addLog({ ...logEntry, isCamelCase: true, ackStatus: 'success' });
                         } else if (window.parent !== window) {
                             window.parent.postMessage(ackMessage, '*');
                             console.log('📤 [S.I.P. v4.0] ACK enviado a window.parent');
-                            addLog({ ...logEntry, isCamelCase: isPayloadCamel, ackStatus: 'success' });
+                            addLog({ ...logEntry, isCamelCase: true, ackStatus: 'success' });
                         } else {
                             console.warn('⚠️ [S.I.P. v4.0] No se encontró destino para el ACK');
-                            addLog({ ...logEntry, isCamelCase: isPayloadCamel, ackStatus: 'failed', error: 'No source to ACK' });
+                            addLog({ ...logEntry, isCamelCase: true, ackStatus: 'failed', error: 'No source to ACK' });
                         }
                     } catch (e) {
                         console.error('❌ [S.I.P. v4.0] Error al enviar ACK:', e);
-                        addLog({ ...logEntry, isCamelCase: isPayloadCamel, ackStatus: 'failed', error: 'Security/CSP Block' });
+                        addLog({ ...logEntry, isCamelCase: true, ackStatus: 'failed', error: 'Security/CSP Block' });
                     }
 
                     setLoading(false);
@@ -552,7 +553,7 @@ export const useSolutium = () => {
                     name: metadata?.name || 'Landing Page Principal',
                     type: metadata?.type || 'web_page',
                     data: data,
-                    author: metadata?.author || config?.profilesData?.fullName || 'Usuario',
+                    author: metadata?.author || config?.profile?.fullName || 'Usuario',
                     status: metadata?.status || 'draft',
                     tags: metadata?.tags || [],
                     updated_at: new Date().toISOString()
@@ -576,7 +577,7 @@ export const useSolutium = () => {
                         name: metadata?.name || '',
                         status: metadata?.status || 'draft',
                         tags: metadata?.tags || [],
-                        author: metadata?.author || config?.profilesData?.fullName || 'Usuario',
+                        author: metadata?.author || config?.profile?.fullName || 'Usuario',
                         updatedAt: metadata?.updatedAt || Date.now()
                     }
                 }
@@ -593,21 +594,21 @@ export const useSolutium = () => {
     return { config, isReady: !loading, saveData, error, logs };
 };
 
-const applyTheme = (projectData: SolutiumPayload['projectsData']) => {
-    if (!projectData) return;
+const applyTheme = (project: SolutiumPayload['project']) => {
+    if (!project) return;
     const root = document.documentElement;
     
-    if (projectData.brandColors && Array.isArray(projectData.brandColors)) {
-        if (projectData.brandColors[0]) root.style.setProperty('--color-primary-rgb', hexToRgb(projectData.brandColors[0]));
-        if (projectData.brandColors[1]) root.style.setProperty('--color-secondary-rgb', hexToRgb(projectData.brandColors[1]));
-        if (projectData.brandColors[2]) root.style.setProperty('--color-accent-rgb', hexToRgb(projectData.brandColors[2]));
-        if (projectData.brandColors[3]) root.style.setProperty('--color-background-rgb', hexToRgb(projectData.brandColors[3]));
-        if (projectData.brandColors[4]) root.style.setProperty('--color-surface-rgb', hexToRgb(projectData.brandColors[4]));
-        if (projectData.brandColors[5]) root.style.setProperty('--color-text-rgb', hexToRgb(projectData.brandColors[5]));
+    if (project.brandColors && Array.isArray(project.brandColors)) {
+        if (project.brandColors[0]) root.style.setProperty('--color-primary-rgb', hexToRgb(project.brandColors[0]));
+        if (project.brandColors[1]) root.style.setProperty('--color-secondary-rgb', hexToRgb(project.brandColors[1]));
+        if (project.brandColors[2]) root.style.setProperty('--color-accent-rgb', hexToRgb(project.brandColors[2]));
+        if (project.brandColors[3]) root.style.setProperty('--color-background-rgb', hexToRgb(project.brandColors[3]));
+        if (project.brandColors[4]) root.style.setProperty('--color-surface-rgb', hexToRgb(project.brandColors[4]));
+        if (project.brandColors[5]) root.style.setProperty('--color-text-rgb', hexToRgb(project.brandColors[5]));
     }
 
     // Fallback to old property names if present in legacy payloads
-    const legacyData = projectData as any;
+    const legacyData = project as any;
     if (legacyData.colors && Array.isArray(legacyData.colors)) {
         if (legacyData.colors[0]) root.style.setProperty('--color-primary-rgb', hexToRgb(legacyData.colors[0]));
         if (legacyData.colors[1]) root.style.setProperty('--color-secondary-rgb', hexToRgb(legacyData.colors[1]));

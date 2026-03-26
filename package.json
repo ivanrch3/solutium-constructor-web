@@ -11,6 +11,7 @@
     "dev:local": "vite --port 3001 --strictPort --mode devlocal",
     "build": "vite build",
     "preview": "vite preview",
+    "start": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit"
   },

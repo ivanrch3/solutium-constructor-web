@@ -119,14 +119,19 @@ function App() {
     if (!isReady || !config) return;
 
     if (projects.length === 0) {
-      // 1. Try to get projects from config.projectsData or initialData
-      let initialProjects = config.projectsData || config.projectData || (config as any).initialData?.projects || [];
+      // 1. Try to get projects from config.projects or initialData
+      let initialProjects = config.projects || config.project || (config as any).initialData?.projects || [];
+      
+      // Ensure initialProjects is an array if it's just a single project object
+      if (initialProjects && !Array.isArray(initialProjects)) {
+        initialProjects = [initialProjects];
+      }
       
       // 2. If we have projects, ensure they have the correct structure
       if (initialProjects.length > 0) {
         initialProjects = initialProjects.map((p: any) => ({
           ...p,
-          name: p.name || config.projectsData?.name || config.projectData?.name || 'Proyecto Local',
+          name: p.name || config.project?.name || 'Proyecto Local',
           assets: p.assets?.map((a: any) => ({
             ...a,
             // Prioritize modules from data directly as requested
@@ -138,17 +143,17 @@ function App() {
       } else {
         // 3. Fallback to a default project if none found
         initialProjects = [{
-          id: config.projectId || config.project_id || 'dev-project-1',
-          name: config.projectsData?.name || config.projectData?.name || 'Proyecto Local',
+          id: config.projectId || (config as any).project_id || 'dev-project-1',
+          name: config.project?.name || 'Proyecto Local',
           assets: []
         }];
       }
  
       // 4. Handle top-level assets array if present in config
-      const topLevelAssets = (config as any).assetsData || (config as any).assets || [];
+      const topLevelAssets = config.assets || [];
       if (Array.isArray(topLevelAssets) && topLevelAssets.length > 0) {
         topLevelAssets.forEach((asset: any) => {
-          const pId = asset.projectId || config.projectId || config.project_id || initialProjects[0].id;
+          const pId = asset.projectId || config.projectId || (config as any).project_id || initialProjects[0].id;
           initialProjects = initialProjects.map((p: any) => {
             if (p.id === pId) {
               const assetExists = p.assets.some((a: any) => a.id === asset.id);
@@ -172,7 +177,7 @@ function App() {
       // 5. Handle currentAsset if provided by mother app
       if (config.currentAsset) {
         const asset = config.currentAsset;
-        const pId = asset.projectId || config.projectId || config.project_id || initialProjects[0].id;
+        const pId = asset.projectId || config.projectId || (config as any).project_id || initialProjects[0].id;
         
         let projectFound = false;
         initialProjects = initialProjects.map((p: any) => {
@@ -215,7 +220,7 @@ function App() {
         if (!projectFound) {
           initialProjects.push({
             id: pId,
-            name: config.projectsData?.name || config.projectData?.name || 'Proyecto Externo',
+            name: config.project?.name || 'Proyecto Externo',
             assets: [{
               ...asset,
               modules: asset.modules || (Array.isArray(asset.data) ? asset.data : asset.data?.modules) || [],
@@ -229,7 +234,7 @@ function App() {
       setProjects(initialProjects);
       
       // 6. Auto-select project and asset if none active
-      const targetProjectId = config.currentAsset?.projectId || config.projectId || config.project_id || initialProjects[0]?.id;
+      const targetProjectId = config.currentAsset?.projectId || config.projectId || (config as any).project_id || initialProjects[0]?.id;
       const targetProject = initialProjects.find((p: any) => p.id === targetProjectId) || initialProjects[0];
       
       if (targetProject) {
@@ -247,7 +252,7 @@ function App() {
       }
     }
     
-    const products = config?.productsData || (config as any).products_data;
+    const products = config?.products;
     if (products && !hasInitializedProducts) {
       updateSelectedProducts(products.map((p: any) => p.id.toString()));
       setHasInitializedProducts(true);
@@ -282,12 +287,12 @@ function App() {
     setTimeout(() => setShowSaveMessage(false), 3000);
   
     saveData(activeAssetId, assetDataToSave, {
-      name: activeAsset?.name || config?.projectsData?.name || config?.projectData?.name || 'Landing Page',
+      name: activeAsset?.name || config?.project?.name || 'Landing Page',
       status: 'draft', // Always draft for save/autosave
       tags: assetSettings.tags || [],
-      author: config?.profilesData?.fullName || config?.userProfile?.fullName || 'Usuario',
+      author: config?.profile?.fullName || 'Usuario',
       updatedAt: Date.now(),
-      projectId: activeProjectId || config?.projectId || config?.project_id || undefined
+      projectId: activeProjectId || config?.projectId || (config as any).project_id || undefined
     });
 
     setDirty(false);
@@ -365,7 +370,7 @@ function App() {
     }
   ) => {
     const finalContext = context || businessContext;
-    const businessName = finalContext?.name || customName || activeProject?.name || config?.projectsData?.name || config?.projectData?.name || 'Proyecto Local';
+    const businessName = finalContext?.name || customName || activeProject?.name || config?.project?.name || 'Proyecto Local';
     handleGenerateAi(businessName, targetProjectId, targetAssetId, currentProjectsList, assetName, finalContext || undefined);
   };
 
@@ -382,12 +387,12 @@ function App() {
 
     // Save data with 'published' status
     saveData(activeAssetId, assetDataToSave, {
-      name: activeAsset?.name || config?.projectsData?.name || config?.projectData?.name || 'Landing Page',
+      name: activeAsset?.name || config?.project?.name || 'Landing Page',
       status: 'published',
       tags: ['Landing Page', 'Publicado'],
-      author: config?.profilesData?.fullName || config?.userProfile?.fullName || 'Usuario',
+      author: config?.profile?.fullName || 'Usuario',
       updatedAt: Date.now(),
-      projectId: activeProjectId || config?.projectId || config?.project_id || undefined
+      projectId: activeProjectId || config?.projectId || (config as any).project_id || undefined
     });
 
     await new Promise(resolve => setTimeout(resolve, 2500));
@@ -440,12 +445,12 @@ function App() {
     if (!currentProjectsList.find(p => p.id === currentProjectId)) {
       currentProjectsList.push({
         id: currentProjectId,
-        name: config?.projectsData?.name || config?.projectData?.name || businessContext.name || 'Proyecto Local',
+        name: config?.project?.name || businessContext.name || 'Proyecto Local',
         assets: []
       });
     }
 
-    const finalProjectName = config?.projectsData?.name || config?.projectData?.name || businessContext.name || 'Proyecto Local';
+    const finalProjectName = config?.project?.name || businessContext.name || 'Proyecto Local';
     const finalAssetName = pageName;
     const newAssetId = 'asset-' + Math.random().toString(36).substr(2, 5);
 
@@ -658,7 +663,7 @@ function App() {
   };
 
   if (!isReady) {
-    return <LoadingView projectName={config?.projectsData?.name || config?.projectData?.name} onSimulateConnection={simulateConnection} />;
+    return <LoadingView projectName={config?.project?.name} onSimulateConnection={simulateConnection} />;
   }
 
   if (showWelcome) {
@@ -667,8 +672,8 @@ function App() {
         onSelectOption={handleWelcomeOption} 
         onSelectProject={handleSelectProject}
         projects={projects}
-        title={config?.projectsData?.name || config?.projectData?.name || 'Proyecto'}
-        brandColors={config?.projectsData?.brandColors || config?.projectData?.brandColors}
+        title={config?.project?.name || 'Proyecto'}
+        brandColors={config?.project?.brandColors}
         industry={activeProject?.industry}
       />
     );
@@ -855,7 +860,7 @@ function App() {
       <main className="flex-1 flex flex-col h-screen overflow-hidden">
         {isMobile && !isPreviewMode && activeTab === 'builder' && (
           <MobileHeader
-            projectName={activeProject?.name || config?.projectsData?.name || config?.projectData?.name || 'Proyecto Local'}
+            projectName={activeProject?.name || config?.project?.name || (config as any)?.projectsData?.name || (config as any)?.projectData?.name || 'Proyecto Local'}
             assetName={activeAsset?.name || 'Página'}
             onOpenSettings={() => setActiveTab('settings')}
             onOpenData={() => setActiveTab('data-audit')}

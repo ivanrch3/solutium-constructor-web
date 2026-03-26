@@ -41,8 +41,8 @@ export const HeaderModule = ({ data, modules = [], isPreview, onCTA, onUpdate }:
   const [activeSection, setActiveSection] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const projectLogo = payload?.projectsData?.logoUrl || payload?.projectData?.logoUrl;
-  const projectBusinessName = payload?.projectsData?.name || payload?.projectData?.name || payload?.profilesData?.businessName || payload?.userProfile?.businessName;
+  const projectLogo = payload?.project?.logoUrl;
+  const projectBusinessName = payload?.project?.name || payload?.profile?.businessName || payload?.userProfile?.businessName;
 
   const layoutType = data?.layoutType || 'logo-left';
   const scrollMode = data?.scrollMode || (data?.isSticky ? 'sticky' : 'static');
@@ -59,7 +59,7 @@ export const HeaderModule = ({ data, modules = [], isPreview, onCTA, onUpdate }:
 
   const socials = data?.socials || { useProjectSocials: true };
   const isUsingProject = socials.useProjectSocials !== false;
-  const projectSocials = payload?.projectsData?.socials || payload?.projectData?.socials || {};
+  const projectSocials = payload?.project?.socials || {};
   const currentSocials = isUsingProject ? projectSocials : socials;
 
   const hasSocials = data?.showSocials && Object.keys(currentSocials).some(k => k !== 'useProjectSocials' && currentSocials[k]);

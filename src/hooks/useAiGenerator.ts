@@ -76,8 +76,8 @@ export const useAiGenerator = () => {
     const industryInfo = INDUSTRIES.find(i => i.id === industry || i.label === industry);
     const industryColors = industryInfo?.colors || { primary: '#000000', secondary: '#F5F5F5', accent: '#3B82F6' };
 
-    const projectLogo = payload?.projectsData?.logoUrl || payload?.projectData?.logoUrl;
-    const projectBusinessName = payload?.projectsData?.name || payload?.projectData?.name || payload?.profilesData?.businessName || payload?.userProfile?.businessName;
+    const projectLogo = payload?.project?.logoUrl || (payload as any)?.projectsData?.logoUrl || (payload as any)?.projectData?.logoUrl;
+    const projectBusinessName = payload?.project?.name || (payload as any)?.projectsData?.name || (payload as any)?.projectData?.name || payload?.profile?.businessName || (payload as any)?.profilesData?.businessName || (payload as any)?.userProfile?.businessName;
 
     const contextString = businessContext 
       ? `

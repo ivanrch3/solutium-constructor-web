@@ -15,8 +15,8 @@ export const FooterModule = ({ data, onUpdate }: FooterModuleProps) => {
   const { previewDevice } = usePageLayout();
   const isMobileSimulated = previewDevice === 'mobile';
   
-  const projectLogo = payload?.projectsData?.logoUrl || payload?.projectData?.logoUrl;
-  const projectBusinessName = payload?.projectsData?.name || payload?.projectData?.name || payload?.profilesData?.businessName || payload?.userProfile?.businessName;
+  const projectLogo = payload?.project?.logoUrl;
+  const projectBusinessName = payload?.project?.name || payload?.profile?.businessName || payload?.userProfile?.businessName;
 
   const layoutType = data?.layoutType || 'columns';
   const showSocialLinks = data?.showSocialLinks !== false;

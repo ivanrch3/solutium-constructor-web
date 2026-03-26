@@ -268,7 +268,7 @@ export const Sidebar = ({
         ))}
 
         {/* Data Audit Button - Only visible for admins as per user request */}
-        {(config?.role === 'admin' || config?.role === 'super-admin' || config?.profilesData?.role === 'admin' || config?.profilesData?.role === 'super-admin') && (
+        {(config?.role === 'admin' || config?.role === 'super-admin' || config?.profile?.role === 'admin' || config?.profile?.role === 'super-admin') && (
           <button
             onClick={() => setActiveTab('data-audit')}
             title={isCollapsed ? 'Datos' : ''}
@@ -291,7 +291,7 @@ export const Sidebar = ({
             onClick={onGenerateAi}
             title={isCollapsed ? 'Generar con IA' : ''}
             style={{
-              background: `linear-gradient(135deg, ${config?.projectsData?.brandColors?.[0] || '#3B82F6'}, ${config?.projectsData?.brandColors?.[1] || '#1E293B'})`
+              background: `linear-gradient(135deg, ${config?.project?.brandColors?.[0] || '#3B82F6'}, ${config?.project?.brandColors?.[1] || '#1E293B'})`
             }}
             className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'justify-center gap-3 px-4'} py-3 rounded-xl text-white hover:opacity-90 transition-all group/ai shadow-md`}
           >

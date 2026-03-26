@@ -35,18 +35,18 @@ interface DataAuditViewProps {
 export const DataAuditView: React.FC<DataAuditViewProps> = ({ config, onBack }) => {
   const { logs, isReady } = useSolutiumContext();
   const [activeTab, setActiveTab] = useState('profiles');
-  const [customersDataState, setCustomersDataState] = useState<any[]>(config?.customersData || []);
-  const [productsDataState, setProductsDataState] = useState<any[]>(config?.productsData || []);
-  const [assetsDataState, setAssetsDataState] = useState<any[]>(config?.assetsData || []);
-  const [profilesDataState, setProfilesDataState] = useState<any[]>(config?.profilesData ? [config.profilesData] : []);
-  const [teamMembersDataState, setTeamMembersDataState] = useState<any[]>(config?.teamMembersData || []);
-  const [projectsDataState, setProjectsDataState] = useState<any[]>(config?.projectsData ? [config.projectsData] : []);
-  const [integrationsDataState, setIntegrationsDataState] = useState<any[]>(config?.integrationsData || []);
-  const [appsDataState, setAppsDataState] = useState<any[]>(config?.appsData || []);
+  const [customersDataState, setCustomersDataState] = useState<any[]>(config?.customers || []);
+  const [productsDataState, setProductsDataState] = useState<any[]>(config?.products || []);
+  const [assetsDataState, setAssetsDataState] = useState<any[]>(config?.assets || []);
+  const [profilesDataState, setProfilesDataState] = useState<any[]>(config?.profile ? [config.profile] : []);
+  const [teamMembersDataState, setTeamMembersDataState] = useState<any[]>(config?.members || []);
+  const [projectsDataState, setProjectsDataState] = useState<any[]>(config?.project ? [config.project] : []);
+  const [integrationsDataState, setIntegrationsDataState] = useState<any[]>(config?.integrations || []);
+  const [appsDataState, setAppsDataState] = useState<any[]>(config?.apps || []);
   const [isLoading, setIsLoading] = useState(false);
   const [inspectedRow, setInspectedRow] = useState<any | null>(null);
 
-  const isAdmin = config?.role === 'admin' || config?.role === 'super-admin' || config?.profilesData?.role === 'admin' || config?.profilesData?.role === 'super-admin';
+  const isAdmin = config?.role === 'admin' || config?.role === 'super-admin' || config?.profile?.role === 'admin' || config?.profile?.role === 'super-admin';
   const environment = config?.environment || 'production';
   const supabaseReady = (supabase as any).isInitialized;
 
@@ -291,7 +291,7 @@ export const DataAuditView: React.FC<DataAuditViewProps> = ({ config, onBack }) 
         );
 
       case 'team':
-        const teamMembers = teamMembersDataState || config?.teamMembers || config?.teamMembersData;
+        const teamMembers = teamMembersDataState || config?.members;
         if (!teamMembers || teamMembers.length === 0) {
           return renderEmptyState('Sin datos disponibles', Users);
         }
@@ -669,8 +669,8 @@ export const DataAuditView: React.FC<DataAuditViewProps> = ({ config, onBack }) 
         );
 
       case 'apps':
-        const appsData = config?.appsData;
-        const projectAppsData = config?.projectAppsData || [];
+        const appsData = config?.apps;
+        const projectAppsData = config?.projectApps || [];
         
         if (!appsData || appsData.length === 0) {
           return renderEmptyState('Sin datos de aplicaciones disponibles', LayoutGrid);
@@ -749,7 +749,7 @@ export const DataAuditView: React.FC<DataAuditViewProps> = ({ config, onBack }) 
         );
       
       case 'integrations':
-        const integrationsData = config?.integrationsData;
+        const integrationsData = config?.integrations;
         if (!integrationsData || integrationsData.length === 0) {
           return renderEmptyState('Sin integraciones configuradas', Link2);
         }

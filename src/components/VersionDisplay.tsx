@@ -22,9 +22,13 @@ export const VersionDisplay = () => {
 
   if (!data) return null;
 
+  // Sistema de semáforo Foundry v2
+  const isCompatible = data.version.startsWith('3'); // Ejemplo: v3.x es compatible
+  
   return (
-    <div className="flex items-center">
-      <span className="text-[9px] font-bold text-text/30">
+    <div className="flex items-center gap-1.5">
+      <div className={`w-1.5 h-1.5 rounded-full ${isCompatible ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]'}`} />
+      <span className={`text-[9px] font-bold ${isCompatible ? 'text-text/40' : 'text-amber-500/80'}`}>
         v{data.version}
       </span>
     </div>

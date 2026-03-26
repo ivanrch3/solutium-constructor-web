@@ -48,6 +48,10 @@ export const SolutiumProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // Función para obtener clientes directamente desde Supabase usando RLS
   const fetchCustomers = async () => {
+    if (!isReady || !(supabase as any).isInitialized) {
+      console.warn('[Boot Observer] Supabase no listo para fetchCustomers');
+      return [];
+    }
     // Prioridad a los datos de la App Madre
     const customersData = payload?.customersData || (payload as any)?.crmData || (payload as any)?.crm_data || (payload as any)?.customers;
     if (customersData) {
@@ -77,6 +81,10 @@ export const SolutiumProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // Función para obtener productos directamente desde Supabase usando RLS
   const fetchProducts = async () => {
+    if (!isReady || !(supabase as any).isInitialized) {
+      console.warn('[Boot Observer] Supabase no listo para fetchProducts');
+      return [];
+    }
     // Prioridad a los datos de la App Madre
     const productsData = payload?.productsData || (payload as any)?.products_data || (payload as any)?.products || (payload as any)?.inventory;
     if (productsData) {

@@ -33,7 +33,7 @@ interface DataAuditViewProps {
 }
 
 export const DataAuditView: React.FC<DataAuditViewProps> = ({ config, onBack }) => {
-  const { logs } = useSolutiumContext();
+  const { logs, isReady } = useSolutiumContext();
   const [activeTab, setActiveTab] = useState('profiles');
   const [customersDataState, setCustomersDataState] = useState<any[]>(config?.customersData || []);
   const [productsDataState, setProductsDataState] = useState<any[]>(config?.productsData || []);
@@ -50,7 +50,10 @@ export const DataAuditView: React.FC<DataAuditViewProps> = ({ config, onBack }) 
   const environment = config?.environment || 'production';
 
   const fetchAllData = async () => {
-    if (!isAdmin) return;
+    if (!isAdmin || !isReady || !(supabase as any).isInitialized) {
+      console.warn('[Boot Observer] Auditoría no lista para fetchAllData');
+      return;
+    }
     setIsLoading(true);
     try {
       // Fetch Projects

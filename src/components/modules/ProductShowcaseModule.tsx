@@ -36,8 +36,11 @@ const itemVariants = {
 export const ProductShowcaseModule = ({ data, config, selectedProductIds, onUpdate }: ProductShowcaseModuleProps) => {
   const { previewDevice } = usePageLayout();
   const isMobileSimulated = previewDevice === 'mobile';
+  
+  // Filtrar por IDs seleccionados Y por projectId actual (Foundry v2)
   const products = (config?.productsData || []).filter((p: any) => 
-    selectedProductIds.includes(p.id.toString())
+    selectedProductIds.includes(p.id.toString()) && 
+    (!config?.projectId || p.projectId === config.projectId || p.project_id === config.projectId)
   );
 
   const handleTextUpdate = (path: string, value: string) => {

@@ -267,19 +267,21 @@ export const Sidebar = ({
           </div>
         ))}
 
-        {/* Data Audit Button - Always visible as per user request to not hide tabs */}
-        <button
-          onClick={() => setActiveTab('data-audit')}
-          title={isCollapsed ? 'Datos' : ''}
-          className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'gap-3 px-4'} py-3 rounded-xl transition-all duration-200 ${
-            activeTab === 'data-audit'
-              ? 'bg-primary/5 text-primary font-semibold shadow-sm'
-              : 'text-text/60 hover:bg-background hover:text-text/80'
-          }`}
-        >
-          <Database className={`w-5 h-5 flex-shrink-0 ${activeTab === 'data-audit' ? 'text-primary' : 'text-text/40'}`} />
-          {!isCollapsed && <span className="truncate flex-1 text-left">Datos</span>}
-        </button>
+        {/* Data Audit Button - Only visible for admins as per user request */}
+        {(config?.role === 'admin' || config?.role === 'super-admin' || config?.profilesData?.role === 'admin' || config?.profilesData?.role === 'super-admin') && (
+          <button
+            onClick={() => setActiveTab('data-audit')}
+            title={isCollapsed ? 'Datos' : ''}
+            className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'gap-3 px-4'} py-3 rounded-xl transition-all duration-200 ${
+              activeTab === 'data-audit'
+                ? 'bg-primary/5 text-primary font-semibold shadow-sm'
+                : 'text-text/60 hover:bg-background hover:text-text/80'
+            }`}
+          >
+            <Database className={`w-5 h-5 flex-shrink-0 ${activeTab === 'data-audit' ? 'text-primary' : 'text-text/40'}`} />
+            {!isCollapsed && <span className="truncate flex-1 text-left">Datos</span>}
+          </button>
+        )}
       </nav>
 
       <div className="mt-auto pt-4 pb-4 space-y-2">

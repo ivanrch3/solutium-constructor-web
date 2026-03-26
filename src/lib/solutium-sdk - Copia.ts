@@ -283,8 +283,7 @@ export const useSolutium = () => {
                     }
                     
                     // CRÍTICO: Usar JSON.parse(atob()) para seguridad CSP
-                    const normalizedBase64 = base64Payload.replace(/ /g, '+');
-const decoded = JSON.parse(decodeURIComponent(Array.prototype.map.call(atob(normalizedBase64), (c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join('')));
+                    const decoded = JSON.parse(atob(base64Payload));
                     
                     // Inicializar Supabase con el sessionToken (V2)
                     if (decoded.supabaseData?.url && decoded.supabaseData?.anonKey) {

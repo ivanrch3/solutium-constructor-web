@@ -20,9 +20,12 @@ import {
   XCircle,
   Megaphone,
   Link2,
-  ArrowLeft
+  ArrowLeft,
+  Terminal
 } from 'lucide-react';
-import { SolutiumPayload } from '../lib/solutium-sdk';
+import { SolutiumPayload, SolutiumLog } from '../lib/solutium-sdk';
+import { supabase } from '../lib/supabase';
+import { useSolutiumContext } from '../context/SatelliteContext';
 
 interface DataAuditViewProps {
   config: SolutiumPayload | null;
@@ -30,40 +33,80 @@ interface DataAuditViewProps {
 }
 
 export const DataAuditView: React.FC<DataAuditViewProps> = ({ config, onBack }) => {
-  const [activeTab, setActiveTab] = useState('profile');
+  const { logs } = useSolutiumContext();
+  const [activeTab, setActiveTab] = useState('profiles');
   const [customersDataState, setCustomersDataState] = useState<any[]>(config?.customersData || []);
   const [productsDataState, setProductsDataState] = useState<any[]>(config?.productsData || []);
   const [assetsDataState, setAssetsDataState] = useState<any[]>(config?.assetsData || []);
-  const [profilesDataState, setProfilesDataState] = useState<any[]>(config?.profilesData || []);
+  const [profilesDataState, setProfilesDataState] = useState<any[]>(config?.profilesData ? [config.profilesData] : []);
   const [teamMembersDataState, setTeamMembersDataState] = useState<any[]>(config?.teamMembersData || []);
-  const [projectsDataState, setProjectsDataState] = useState<any[]>(config?.projectsData || []);
+  const [projectsDataState, setProjectsDataState] = useState<any[]>(config?.projectsData ? [config.projectsData] : []);
   const [integrationsDataState, setIntegrationsDataState] = useState<any[]>(config?.integrationsData || []);
+  const [appsDataState, setAppsDataState] = useState<any[]>(config?.appsData || []);
+  const [isLoading, setIsLoading] = useState(false);
   const [inspectedRow, setInspectedRow] = useState<any | null>(null);
 
-  useEffect(() => {
-    if (config?.customersData) setCustomersDataState(config.customersData);
-    if (config?.productsData) setProductsDataState(config.productsData);
-    if (config?.assetsData) setAssetsDataState(config.assetsData);
-    if (config?.profilesData) setProfilesDataState(config.profilesData);
-    if (config?.teamMembersData) setTeamMembersDataState(config.teamMembersData);
-    if (config?.projectsData) setProjectsDataState(config.projectsData);
-    if (config?.integrationsData) setIntegrationsDataState(config.integrationsData);
-  }, [config]);
-
+  const isAdmin = config?.role === 'admin' || config?.role === 'super-admin' || config?.profilesData?.role === 'admin' || config?.profilesData?.role === 'super-admin';
   const environment = config?.environment || 'production';
+
+  const fetchAllData = async () => {
+    if (!isAdmin) return;
+    setIsLoading(true);
+    try {
+      // Fetch Projects
+      const { data: projects } = await supabase.from('projects').select('*');
+      if (projects) setProjectsDataState(projects);
+
+      // Fetch Assets
+      const { data: assets } = await supabase.from('assets').select('*');
+      if (assets) setAssetsDataState(assets);
+
+      // Fetch Products
+      const { data: products } = await supabase.from('products').select('*');
+      if (products) setProductsDataState(products.map(p => ({
+        ...p,
+        unitCost: p.unit_cost,
+        imageUrl: p.image_url,
+        appData: p.app_data,
+        projectId: p.project_id
+      })));
+
+      // Fetch Customers
+      const { data: customers } = await supabase.from('customers').select('*');
+      if (customers) setCustomersDataState(customers);
+
+      // Fetch Team
+      const { data: team } = await supabase.from('team').select('*');
+      if (team) setTeamMembersDataState(team);
+
+      // Fetch Profiles
+      const { data: profiles } = await supabase.from('profiles').select('*');
+      if (profiles) setProfilesDataState(profiles);
+
+    } catch (error) {
+      console.error('Error fetching all data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAllData();
+  }, [config?.projectId]);
 
   const tabs = useMemo(() => {
     return [
-      { id: 'profiles', label: 'Perfil', icon: User, scope: 'profile', show: !!config?.profilesData },
-      { id: 'projects', label: 'Proyecto', icon: Briefcase, scope: 'project', show: !!config?.projectsData },
-      { id: 'team', label: 'Equipo', icon: Users, scope: 'team', show: true },
-      { id: 'customers', label: 'Clientes', icon: Users2, scope: 'crm', show: true },
-      { id: 'products', label: 'Productos', icon: Package, scope: 'products', show: true },
-      { id: 'integrations', label: 'Integraciones', icon: Link2, scope: 'integrations', show: !!config?.integrationsData },
-      { id: 'assets', label: 'Activos', icon: Box, scope: 'assets', show: true },
-      { id: 'raw', label: 'Raw Payload', icon: FileJson, scope: 'admin', show: true },
-    ].filter(tab => tab.show);
-  }, [config]);
+      { id: 'profiles', label: 'Perfiles', icon: User, scope: 'profile' },
+      { id: 'projects', label: 'Proyectos', icon: Briefcase, scope: 'project' },
+      { id: 'team', label: 'Equipo', icon: Users, scope: 'team' },
+      { id: 'customers', label: 'Clientes', icon: Users2, scope: 'crm' },
+      { id: 'products', label: 'Productos', icon: Package, scope: 'products' },
+      { id: 'integrations', label: 'Integraciones', icon: Link2, scope: 'integrations' },
+      { id: 'assets', label: 'Activos', icon: Box, scope: 'assets' },
+      { id: 'logs', label: 'Logs S.I.P.', icon: Terminal, scope: 'admin' },
+      { id: 'raw', label: 'Raw Payload', icon: FileJson, scope: 'admin' },
+    ];
+  }, []);
 
   // Asegurar que activeTab sea válida si las pestañas cambian
   useEffect(() => {
@@ -141,66 +184,94 @@ export const DataAuditView: React.FC<DataAuditViewProps> = ({ config, onBack }) 
   };
 
   const renderTabContent = () => {
+    if (isLoading) {
+      return (
+        <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
+          <div className="w-16 h-16 border-4 border-primary/20 border-t-primary rounded-full animate-spin mb-4" />
+          <p className="text-text/60 font-medium">Sincronizando con Base de Datos...</p>
+        </div>
+      );
+    }
+
     const currentTab = tabs.find(t => t.id === activeTab);
     if (!currentTab) return null;
 
-    const isAuthorized = config?.scopes?.includes(currentTab.scope) || currentTab.id === 'raw';
+    const isAuthorized = isAdmin || config?.scopes?.includes(currentTab.scope) || currentTab.id === 'raw' || currentTab.id === 'logs';
     if (!isAuthorized && config?.scopes) return renderLockedState(currentTab.scope);
 
     switch (activeTab) {
       case 'profiles':
-        if (!config?.profilesData) return renderEmptyState('Sin datos disponibles', User);
+        if (profilesDataState.length === 0) return renderEmptyState('Sin datos disponibles', User);
         return (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-surface p-6 rounded-2xl border border-text/5 shadow-sm">
-              <h4 className="text-sm font-bold text-text/40 uppercase tracking-widest mb-4 flex items-center gap-2">
-                <Info className="w-4 h-4" /> Información de Usuario
-              </h4>
-              <div className="space-y-4">
-                <div>
-                  <label className="text-[10px] font-bold text-text/30 uppercase tracking-tighter">Nombre Completo</label>
-                  <p className="text-lg font-bold text-text">{config.profilesData?.fullName || 'N/A'}</p>
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold text-text/30 uppercase tracking-tighter">Correo Electrónico</label>
-                  <p className="text-text/80">{config.profilesData?.email || 'N/A'}</p>
-                </div>
-                {config.profilesData?.avatarUrl && (
-                  <div>
-                    <label className="text-[10px] font-bold text-text/30 uppercase tracking-tighter">Avatar URL</label>
-                    <p className="text-xs text-primary truncate">{config.profilesData.avatarUrl}</p>
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {profilesDataState.map((profile: any, idx: number) => (
+                <div key={idx} className="bg-surface p-6 rounded-2xl border border-text/5 shadow-sm">
+                  <div className="flex items-center gap-4 mb-4">
+                    <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center text-primary font-bold overflow-hidden border border-text/5">
+                      {profile.avatarUrl ? (
+                        <img src={profile.avatarUrl} alt={profile.fullName} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                      ) : (
+                        profile.fullName?.charAt(0) || '?'
+                      )}
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-text">{profile.fullName || 'N/A'}</h4>
+                      <p className="text-xs text-text/40">{profile.role || 'Sin rol'}</p>
+                    </div>
                   </div>
-                )}
-                <div>
-                  <label className="text-[10px] font-bold text-text/30 uppercase tracking-tighter">Rol</label>
-                  <p className="text-text/80">{config.profilesData?.role || 'N/A'}</p>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-[10px] font-bold text-text/30 uppercase tracking-tighter">Email</label>
+                      <p className="text-sm text-text/80 truncate">{profile.email || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-text/30 uppercase tracking-tighter">Empresa</label>
+                      <p className="text-sm text-text/80">{profile.businessName || 'N/A'}</p>
+                    </div>
+                    <div className="pt-3 border-t border-text/5 flex justify-end">
+                      <button 
+                        onClick={() => setInspectedRow(profile)}
+                        className="text-[9px] font-bold text-primary hover:underline uppercase"
+                      >
+                        Ver JSON
+                      </button>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <label className="text-[10px] font-bold text-text/30 uppercase tracking-tighter">Empresa</label>
-                  <p className="text-text/80">{config.profilesData?.businessName || 'N/A'}</p>
-                </div>
-              </div>
-            </div>
-            <div className="bg-surface p-6 rounded-2xl border border-text/5 shadow-sm">
-              <h4 className="text-sm font-bold text-text/40 uppercase tracking-widest mb-4 flex items-center gap-2">
-                <FileJson className="w-4 h-4" /> Raw Payload
-              </h4>
-              {renderJson(config.profilesData)}
+              ))}
             </div>
           </div>
         );
 
       case 'projects':
-        const projects = Array.isArray(projectsDataState) ? projectsDataState : [];
-        if (projects.length === 0) return renderEmptyState('Sin datos disponibles', Briefcase);
+        if (projectsDataState.length === 0) return renderEmptyState('Sin datos disponibles', Briefcase);
         return (
           <div className="space-y-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {projects.map((proj: any, idx: number) => (
+              {projectsDataState.map((proj: any, idx: number) => (
                 <div key={idx} className="bg-surface p-5 rounded-2xl border border-text/5 shadow-sm">
-                  <h5 className="font-bold text-text mb-1">{proj.name || 'Proyecto'}</h5>
-                  <p className="text-[10px] text-text/60 mb-1">{proj.industry || 'Industria no especificada'}</p>
-                  <p className="text-xs text-text/40 truncate">{proj.website || proj.email || 'Sin contacto'}</p>
+                  <div className="flex items-center justify-between mb-3">
+                    <h5 className="font-bold text-text truncate">{proj.name || 'Proyecto'}</h5>
+                    <span className="text-[9px] font-bold bg-primary/10 text-primary px-2 py-0.5 rounded uppercase">{proj.industry || 'General'}</span>
+                  </div>
+                  <div className="space-y-2 mb-4">
+                    <p className="text-xs text-text/60 flex items-center gap-2">
+                      <Link2 className="w-3 h-3" /> {proj.website || 'Sin sitio web'}
+                    </p>
+                    <p className="text-xs text-text/60 flex items-center gap-2">
+                      <Tag className="w-3 h-3" /> {proj.currency || 'USD'}
+                    </p>
+                  </div>
+                  <div className="pt-3 border-t border-text/5 flex justify-between items-center">
+                    <span className="text-[8px] font-mono text-text/20">ID: {proj.id?.slice(0, 8)}</span>
+                    <button 
+                      onClick={() => setInspectedRow(proj)}
+                      className="text-[9px] font-bold text-primary hover:underline uppercase"
+                    >
+                      Payload
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -746,6 +817,67 @@ export const DataAuditView: React.FC<DataAuditViewProps> = ({ config, onBack }) 
           </div>
         );
 
+      case 'logs':
+        if (logs.length === 0) return renderEmptyState('Sin logs registrados', Terminal);
+        return (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="text-sm font-bold text-text/40 uppercase tracking-widest flex items-center gap-2">
+                <Terminal className="w-4 h-4" /> Historial de Mensajería S.I.P.
+              </h4>
+              <span className="text-[10px] font-mono bg-text/5 px-2 py-1 rounded text-text/40">
+                {logs.length} Eventos
+              </span>
+            </div>
+            <div className="space-y-2">
+              {logs.map((log, idx) => (
+                <div key={idx} className="bg-surface p-4 rounded-xl border border-text/5 hover:border-primary/20 transition-all group">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-3">
+                      <span className={`text-[8px] font-black px-1.5 py-0.5 rounded uppercase ${
+                        log.type === 'SOLUTIUM_CONFIG' ? 'bg-primary text-white' : 
+                        log.type === 'SOLUTIUM_ACK' ? 'bg-emerald-500 text-white' : 
+                        'bg-text/10 text-text/40'
+                      }`}>
+                        {log.type}
+                      </span>
+                      <span className="text-[10px] text-text/40 font-mono">{new Date(log.timestamp).toLocaleTimeString()}</span>
+                    </div>
+                    <button 
+                      onClick={() => setInspectedRow(log.payload)}
+                      className="text-[9px] font-bold text-primary opacity-0 group-hover:opacity-100 transition-opacity uppercase"
+                    >
+                      Ver Payload
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-[10px] text-text/30 uppercase font-bold mb-1">Origen</p>
+                      <p className="text-xs text-text/60 truncate font-mono">{log.origin}</p>
+                    </div>
+                    {log.validation && (
+                      <div>
+                        <p className="text-[10px] text-text/30 uppercase font-bold mb-1">Validación</p>
+                        <div className="flex items-center gap-2">
+                          {log.validation.isCamelCase ? (
+                            <span className="text-[10px] text-emerald-500 flex items-center gap-1">
+                              <CheckCircle2 className="w-3 h-3" /> Camel Case OK
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-amber-500 flex items-center gap-1">
+                              <AlertCircle className="w-3 h-3" /> Snake Case Detectado
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+
       case 'raw':
         return (
           <div className="space-y-6">
@@ -813,7 +945,7 @@ export const DataAuditView: React.FC<DataAuditViewProps> = ({ config, onBack }) 
       <div className="flex items-center gap-1 p-1 bg-surface border border-text/10 rounded-2xl mb-8 overflow-x-auto custom-scrollbar no-scrollbar">
         {tabs.map((tab) => {
           const Icon = tab.icon;
-          const isAuthorized = config?.scopes?.includes(tab.scope);
+          const isAuthorized = isAdmin || config?.scopes?.includes(tab.scope) || tab.id === 'raw' || tab.id === 'logs';
           
           return (
             <button

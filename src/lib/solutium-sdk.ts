@@ -373,8 +373,8 @@ export const useSolutium = () => {
                     ackStatus: 'pending'
                 };
 
-                if (event.data?.type === 'SOLUTIUM_INIT' || event.data?.type === 'SOLUTIUM_CONFIG') {
-                    console.log("📦 [Satélite] Recibiendo payload pesado:", event.data.payload || event.data.config);
+                if (event.data?.type === 'SOLUTIUM_INIT' || event.data?.type === 'SOLUTIUM_CONFIG' || event.data?.type === 'SOLUTIUM_HANDSHAKE') {
+                    console.log(`📦 [Satélite] Recibiendo payload pesado (${event.data.type}):`, event.data.payload || event.data.config);
                     
                     let payload = event.data.payload || event.data.config;
                     
@@ -413,6 +413,8 @@ export const useSolutium = () => {
 
                     const normalizedPayload: SolutiumPayload = {
                         ...typedPayload,
+                        projectId: typedPayload.projectId || (typedPayload as any).project_id,
+                        userId: typedPayload.userId || (typedPayload as any).user_id,
                         profilesData,
                         projectsData,
                         customersData,
@@ -449,9 +451,7 @@ export const useSolutium = () => {
                         }
                         return normalizedPayload;
                     });
-                    setLoading(false);
-                    
-                    // Enviar acuse de recibo a la App Madre
+                    // Enviar acuse de recibo a la App Madre ANTES de quitar el loading
                     try {
                         const ackMessage = { type: 'SOLUTIUM_ACK' };
 
@@ -471,6 +471,8 @@ export const useSolutium = () => {
                         console.error('Error sending ACK:', e);
                         addLog({ ...logEntry, isCamelCase: isPayloadCamel, ackStatus: 'failed', error: 'Security/CSP Block' });
                     }
+
+                    setLoading(false);
                 } else {
                     // Log other messages but don't process them as config
                     addLog(logEntry);

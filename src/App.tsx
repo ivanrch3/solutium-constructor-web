@@ -113,9 +113,9 @@ function App() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Load initial data if available
+  // Load initial data if available (S.I.P. v4.0)
   useEffect(() => {
-    if (!config) return;
+    if (!isReady || !config) return;
 
     if (projects.length === 0) {
       // 1. Try to get projects from config.projectsData or initialData
@@ -260,10 +260,10 @@ function App() {
         seoDescription: activeAsset.settings.seoDescription || ''
       });
     }
-  }, [config, hasInitializedProducts, activeAsset]);
+  }, [isReady, config, hasInitializedProducts, activeAsset]);
 
   const handleSave = useCallback(async (status: 'borrador' | 'guardado' = 'borrador') => {
-    if (isSaving || !activeAssetId) return;
+    if (!isReady || isSaving || !activeAssetId) return;
     
     setSaving(true);
     setLastSaveStatus(status);
@@ -369,7 +369,7 @@ function App() {
   };
 
   const handlePublish = async () => {
-    if (!activeAssetId) return;
+    if (!isReady || !activeAssetId) return;
     setPublishStatus('publishing');
     
     const assetDataToSave = {

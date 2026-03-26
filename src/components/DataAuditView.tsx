@@ -50,17 +50,17 @@ export const DataAuditView: React.FC<DataAuditViewProps> = ({ config, onBack }) 
   const environment = config?.environment || 'production';
   const supabaseReady = (supabase as any).isInitialized;
 
-  // Re-intento Automático (Foundry v2)
+  // Re-intento Automático (S.I.P. v4.0)
   useEffect(() => {
-    if (isReady && supabaseReady && isAdmin) {
-      console.log('[Boot Observer] Handshake completado. Iniciando carga automática de datos...');
+    if (isReady && config && supabaseReady && isAdmin) {
+      console.log('[S.I.P. v4.0] Handshake completado. Iniciando carga automática de datos...');
       fetchAllData();
     }
-  }, [isReady, supabaseReady, isAdmin]);
+  }, [isReady, config, supabaseReady, isAdmin]);
 
   const fetchAllData = async () => {
-    if (!isAdmin || !isReady || !(supabase as any).isInitialized) {
-      console.warn('[Boot Observer] Auditoría no lista para fetchAllData');
+    if (!isAdmin || !isReady || !config || !(supabase as any).isInitialized) {
+      console.warn('[S.I.P. v4.0] Auditoría bloqueada: Esperando configuración o permisos.');
       return;
     }
     setIsLoading(true);

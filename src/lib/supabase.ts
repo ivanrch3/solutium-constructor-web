@@ -3,10 +3,18 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 let clientInstance: SupabaseClient | null = null;
 
 // Función para inicializar dinámicamente con credenciales de la App Madre
-export const initSupabase = (url: string, key: string) => {
+export const initSupabase = (url: string, key: string, sessionToken?: string) => {
   if (url && key) {
-    clientInstance = createClient(url, key);
-    console.log('Cliente de Supabase inicializado dinámicamente con credenciales de Solutium.');
+    const options = sessionToken ? {
+      global: {
+        headers: {
+          Authorization: `Bearer ${sessionToken}`,
+        },
+      },
+    } : undefined;
+
+    clientInstance = createClient(url, key, options);
+    console.log('Cliente de Supabase inicializado dinámicamente con estándar Solutium V2.');
   }
 };
 

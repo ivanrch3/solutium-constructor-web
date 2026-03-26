@@ -4,11 +4,12 @@
  * Protocol: S.I.P. v2
  */
 import { useEffect, useState, useMemo, useRef } from 'react';
-import { initSupabase } from './supabase';
+import { initSupabase, supabase } from './supabase';
 
 export interface SolutiumPayload {
   userId: string;
   projectId: string;
+  sessionToken?: string;
   role: string;
   timestamp: number;
   scopes: string[];
@@ -236,12 +237,21 @@ export const useSolutium = () => {
         const initFromUrl = async () => {
             if (typeof window === 'undefined') return;
             try {
-                const hashParams = new URLSearchParams(window.location.hash.replace('#', '?'));
-                const token = hashParams.get('token') || new URLSearchParams(window.location.search).get('token');
+                // Estándar V2: El token viene en el hash #token=payloadBase64.firma
+                const hash = window.location.hash;
+                let token = null;
+                
+                if (hash.startsWith('#token=')) {
+                    token = hash.replace('#token=', '');
+                } else {
+                    // Fallback a query params
+                    const params = new URLSearchParams(window.location.search);
+                    token = params.get('token');
+                }
                 
                 if (token) {
                     addLog({
-                        origin: 'URL_PARAMS',
+                        origin: 'URL_HASH',
                         type: 'TOKEN_RECEIVED',
                         payloadRaw: { token: token.substring(0, 20) + '...' },
                         isCamelCase: true,
@@ -261,7 +271,7 @@ export const useSolutium = () => {
                             setError('Invalid token signature');
                             setLoading(false);
                             addLog({
-                                origin: 'URL_PARAMS',
+                                origin: 'URL_HASH',
                                 type: 'TOKEN_ERROR',
                                 payloadRaw: { error: 'Invalid signature' },
                                 isCamelCase: true,
@@ -272,7 +282,17 @@ export const useSolutium = () => {
                         }
                     }
                     
+                    // CRÍTICO: Usar JSON.parse(atob()) para seguridad CSP
                     const decoded = JSON.parse(atob(base64Payload));
+                    
+                    // Inicializar Supabase con el sessionToken (V2)
+                    if (decoded.supabaseData?.url && decoded.supabaseData?.anonKey) {
+                        initSupabase(
+                            decoded.supabaseData.url, 
+                            decoded.supabaseData.anonKey, 
+                            decoded.sessionToken
+                        );
+                    }
                     
                     // Robustness: check legacy keys
                     const profilesData = decoded.profilesData || decoded.profiles || decoded.profile || decoded.userProfile;
@@ -399,7 +419,11 @@ export const useSolutium = () => {
                     // Apply Theme & Supabase
                     if (normalizedPayload.projectsData) applyTheme(normalizedPayload.projectsData);
                     if (normalizedPayload.supabaseData?.url && normalizedPayload.supabaseData?.anonKey) {
-                        initSupabase(normalizedPayload.supabaseData.url, normalizedPayload.supabaseData.anonKey);
+                        initSupabase(
+                            normalizedPayload.supabaseData.url, 
+                            normalizedPayload.supabaseData.anonKey,
+                            normalizedPayload.sessionToken
+                        );
                     }
 
                     // Merge to avoid overwriting heavy data (crmData, productsData) with light data from URL token
@@ -465,7 +489,7 @@ export const useSolutium = () => {
         };
     }, []);
 
-    const saveData = (assetId: string, data: any, metadata?: { name?: string, status?: string, tags?: string[], author?: string, updatedAt?: number, projectId?: string }) => {
+    const saveData = async (assetId: string, data: any, metadata?: { name?: string, status?: string, tags?: string[], author?: string, updatedAt?: number, projectId?: string, type?: string }) => {
         const targetProjectId = metadata?.projectId || config?.projectId;
         
         if (!targetProjectId) {
@@ -477,28 +501,52 @@ export const useSolutium = () => {
             return;
         }
         
-        const message = {
-            type: 'SOLUTIUM_SAVE',
-            payload: {
-                projectId: targetProjectId,
-                appId: 'web-constructor',
-                assetId: assetId,
-                timestamp: Date.now(),
-                data: data,
-                metadata: {
-                    name: metadata?.name || '',
+        // Estándar V2: Conexión Directa a Base de Datos
+        try {
+            const { error } = await supabase
+                .from('assets')
+                .upsert({
+                    id: assetId,
+                    project_id: targetProjectId,
+                    origin_app: 'constructor-web',
+                    name: metadata?.name || 'Landing Page Principal',
+                    type: metadata?.type || 'web_page',
+                    data: data,
+                    author: metadata?.author || config?.profilesData?.fullName || 'Usuario',
                     status: metadata?.status || 'draft',
                     tags: metadata?.tags || [],
-                    author: metadata?.author || config?.profilesData?.fullName || 'Usuario',
-                    updatedAt: metadata?.updatedAt || Date.now()
-                }
-            }
-        };
+                    updated_at: new Date().toISOString()
+                });
 
-        if (window.opener) {
-            window.opener.postMessage(message, '*');
-        } else if (window.parent !== window) {
-            window.parent.postMessage(message, '*');
+            if (error) throw error;
+            console.log('[Solutium SDK] Datos guardados exitosamente en Supabase (V2).');
+        } catch (e) {
+            console.error('[Solutium SDK] Error al guardar en Supabase:', e);
+            
+            // Fallback al protocolo postMessage por si acaso
+            const message = {
+                type: 'SOLUTIUM_SAVE',
+                payload: {
+                    projectId: targetProjectId,
+                    appId: 'constructor-web',
+                    assetId: assetId,
+                    timestamp: Date.now(),
+                    data: data,
+                    metadata: {
+                        name: metadata?.name || '',
+                        status: metadata?.status || 'draft',
+                        tags: metadata?.tags || [],
+                        author: metadata?.author || config?.profilesData?.fullName || 'Usuario',
+                        updatedAt: metadata?.updatedAt || Date.now()
+                    }
+                }
+            };
+
+            if (window.opener) {
+                window.opener.postMessage(message, '*');
+            } else if (window.parent !== window) {
+                window.parent.postMessage(message, '*');
+            }
         }
     };
 

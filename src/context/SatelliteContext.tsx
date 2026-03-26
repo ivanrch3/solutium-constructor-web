@@ -49,15 +49,20 @@ export const SolutiumProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // Función para obtener clientes directamente desde Supabase usando RLS
   const fetchCustomers = async () => {
     // Prioridad a los datos de la App Madre
-    const customersData = payload?.customersData || (payload as any)?.crmData || (payload as any)?.crm_data;
+    const customersData = payload?.customersData || (payload as any)?.crmData || (payload as any)?.crm_data || (payload as any)?.customers;
     if (customersData) {
       return customersData;
     }
 
     try {
-      const { data, error } = await supabase
-        .from('customers')
-        .select('*');
+      let query = supabase.from('customers').select('*');
+      
+      // Filtrar por proyecto si tenemos el ID (Estándar V2)
+      if (payload?.projectId) {
+        query = query.eq('project_id', payload.projectId);
+      }
+
+      const { data, error } = await query;
         
       if (error) {
         console.error('Error fetching customers from Supabase:', error);
@@ -73,21 +78,34 @@ export const SolutiumProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // Función para obtener productos directamente desde Supabase usando RLS
   const fetchProducts = async () => {
     // Prioridad a los datos de la App Madre
-    const productsData = payload?.productsData || (payload as any)?.products_data;
+    const productsData = payload?.productsData || (payload as any)?.products_data || (payload as any)?.products || (payload as any)?.inventory;
     if (productsData) {
       return productsData;
     }
 
     try {
-      const { data, error } = await supabase
-        .from('products')
-        .select('*');
+      let query = supabase.from('products').select('*');
+      
+      // Filtrar por proyecto si tenemos el ID (Estándar V2)
+      if (payload?.projectId) {
+        query = query.eq('project_id', payload.projectId);
+      }
+
+      const { data, error } = await query;
         
       if (error) {
         console.error('Error fetching products from Supabase:', error);
         throw error;
       }
-      return data || [];
+      
+      // Mapear snake_case a camelCase para compatibilidad con la UI si es necesario
+      return (data || []).map((p: any) => ({
+        ...p,
+        unitCost: p.unit_cost,
+        imageUrl: p.image_url,
+        appData: p.app_data,
+        projectId: p.project_id
+      }));
     } catch (e) {
       console.warn("No se pudieron obtener los productos de Supabase, usando fallback vacío.");
       return [];

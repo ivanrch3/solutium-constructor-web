@@ -45,11 +45,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // 2. Parse token from URL hash (Payload Ligero)
     const hash = window.location.hash;
-    if (hash.startsWith('#token=')) {
+    if (hash.includes('token=')) {
       try {
-        const tokenStr = hash.substring(7);
-        const tokenData = JSON.parse(atob(tokenStr)); // Assuming base64 encoded JSON
-        console.log('Token data from hash:', tokenData);
+        const rawToken = hash.split('token=')[1];
+        const cleanToken = decodeURIComponent(rawToken).replace(/ /g, '+');
+        const base64Payload = cleanToken.split('.')[0];
+        
+        const tokenData = JSON.parse(atob(base64Payload));
+        console.log('Token data from hash (v4.0):', tokenData);
+        
         if (tokenData.projectId) setProjectId(tokenData.projectId);
         if (tokenData.userId) {
           setUser(prev => prev ? { ...prev, id: tokenData.userId } : { id: tokenData.userId } as Profile);

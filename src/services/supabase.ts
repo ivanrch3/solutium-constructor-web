@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = 'https://zzysjtxnbzquufajtqgf.supabase.co';
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp6eXNqdHhuYnpxdXVmYWp0cWdmIiwicm9sZSI6YmFub24iLCJpYXQiOjE3NzI3MzQzOTIsImV4cCI6MjA4ODMxMDM5Mn0.XR-SveroOoAXilYp_JVW2_yiZmrTjz4K1lxo2e_17_4';
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp6eXNqdHhuYnpxdXVmYWp0cWdmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI3MzQzOTIsImV4cCI6MjA4ODMxMDM5Mn0.XR-SveroOoAXilYp_JVW2_yiZmrTjz4K1lxo2e_17_4';
 
 const extractPayload = () => {
   const hash = window.location.hash;
@@ -49,11 +49,20 @@ const extractPayload = () => {
 export const initialPayload = extractPayload();
 const sessionToken = initialPayload?.sessionToken;
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+// Use credentials from payload if provided by the App Madre, otherwise fallback to hardcoded ones
+const finalUrl = initialPayload?.supabaseUrl || supabaseUrl;
+const finalKey = initialPayload?.supabaseKey || supabaseAnonKey;
+
+export const supabase = createClient(finalUrl, finalKey, {
   global: {
     headers: {
-      'apikey': supabaseAnonKey,
+      'apikey': finalKey,
       ...(sessionToken ? { 'Authorization': `Bearer ${sessionToken}` } : {})
     }
+  },
+  auth: {
+    persistSession: false,
+    autoRefreshToken: false,
+    detectSessionInUrl: false
   }
 });

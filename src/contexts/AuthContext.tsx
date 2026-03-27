@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Profile, Project, AuthContextType } from '../types';
-import { decodeToken } from '../lib/utils';
-import { getSupabaseClient } from '../services/supabase';
+import { supabase, initialPayload } from '../services/supabase';
+import { toCamelCase } from '../lib/utils';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -16,22 +16,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsDemo(true);
     setUser({
       id: 'demo-user',
-      full_name: 'Usuario Demo',
+      fullName: 'Usuario Demo',
       email: 'demo@solutium.app',
       role: 'super-admin',
-      avatar_url: 'https://picsum.photos/seed/user/200',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
+      avatarUrl: 'https://picsum.photos/seed/user/200',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     });
     setProject({
       id: 'demo-project',
-      owner_id: 'demo-user',
+      ownerId: 'demo-user',
       name: 'Proyecto Demo',
-      brand_colors: ['#3b82f6', '#1e40af'],
-      logo_url: 'https://solutium.app/logo.png',
-      ui_style: 'modern',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
+      brandColors: ['#3b82f6', '#1e40af'],
+      logoUrl: 'https://solutium.app/logo.png',
+      uiStyle: 'modern',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     });
     setProjectId('demo-project');
     setLoading(false);
@@ -39,37 +39,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     const init = async () => {
-      const hash = window.location.hash;
-      if (hash.startsWith('#token=')) {
-        const token = hash.replace('#token=', '');
-        const payload = decodeToken(token);
+      if (initialPayload) {
+        const { projectId: pId, userId } = initialPayload;
+        setProjectId(pId);
         
-        if (payload) {
-          const { projectId, userId, sessionToken } = payload;
-          setProjectId(projectId);
+        try {
+          // Fetch profile and project in parallel using the singleton client
+          const [profileRes, projectRes] = await Promise.all([
+            supabase.from('profiles').select('*').eq('id', userId).single(),
+            supabase.from('projects').select('*').eq('id', pId).single()
+          ]);
           
-          const supabase = getSupabaseClient(sessionToken);
+          if (profileRes.error) throw profileRes.error;
+          if (projectRes.error) throw projectRes.error;
           
-          try {
-            // Fetch profile
-            const { data: profileData } = await supabase
-              .from('profiles')
-              .select('*')
-              .eq('id', userId)
-              .single();
-            
-            // Fetch project
-            const { data: projectData } = await supabase
-              .from('projects')
-              .select('*')
-              .eq('id', projectId)
-              .single();
-            
-            setUser(profileData);
-            setProject(projectData);
-          } catch (error) {
-            console.error('Error fetching auth data:', error);
-          }
+          setUser(toCamelCase(profileRes.data));
+          setProject(toCamelCase(projectRes.data));
+        } catch (error) {
+          console.error('Error fetching auth data:', error);
         }
       }
       setLoading(false);

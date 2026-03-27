@@ -8,7 +8,7 @@ export function cn(...inputs: ClassValue[]) {
 export function decodeToken(token: string) {
   try {
     const payloadBase64 = token.split('.')[0];
-    const decoded = JSON.parse(
+    return JSON.parse(
       decodeURIComponent(
         Array.prototype.map.call(
           atob(payloadBase64.replace(/ /g, '+')),
@@ -16,9 +16,38 @@ export function decodeToken(token: string) {
         ).join('')
       )
     );
-    return decoded;
   } catch (error) {
     console.error('Error decoding token:', error);
     return null;
   }
+}
+
+export function toCamelCase(obj: any): any {
+  if (Array.isArray(obj)) {
+    return obj.map(v => toCamelCase(v));
+  } else if (obj !== null && obj.constructor === Object) {
+    return Object.keys(obj).reduce(
+      (result, key) => ({
+        ...result,
+        [key.replace(/(_[a-z])/g, group => group.toUpperCase().replace('_', ''))]: toCamelCase(obj[key]),
+      }),
+      {}
+    );
+  }
+  return obj;
+}
+
+export function toSnakeCase(obj: any): any {
+  if (Array.isArray(obj)) {
+    return obj.map(v => toSnakeCase(v));
+  } else if (obj !== null && obj.constructor === Object) {
+    return Object.keys(obj).reduce(
+      (result, key) => ({
+        ...result,
+        [key.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`)]: toSnakeCase(obj[key]),
+      }),
+      {}
+    );
+  }
+  return obj;
 }

@@ -19,7 +19,7 @@ const AppContent: React.FC = () => {
   }
 
   // Dynamic Styles from Project
-  const brandColors = project?.brand_colors || ['#3b82f6', '#1e40af'];
+  const brandColors = project?.brandColors || ['#3b82f6', '#1e40af'];
   const primaryColor = brandColors[0];
 
   return (

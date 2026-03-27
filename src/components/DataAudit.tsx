@@ -2,11 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../services/supabase';
 import { Loader2, AlertCircle } from 'lucide-react';
+import { toCamelCase } from '../lib/utils';
 
 const DataAudit: React.FC = () => {
   const { projectId, user } = useAuth();
   const [activeTab, setActiveTab] = useState('customers');
-  const [data, setData] = useState<any[]>([]);
+  const [records, setRecords] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -19,7 +20,7 @@ const DataAudit: React.FC = () => {
   ];
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchRecords = async () => {
       if (!projectId) return;
       setLoading(true);
       setError(null);
@@ -37,7 +38,7 @@ const DataAudit: React.FC = () => {
         const { data: result, error: fetchError } = await query;
 
         if (fetchError) throw fetchError;
-        setData(result || []);
+        setRecords(toCamelCase(result) || []);
       } catch (err: any) {
         console.error('Error fetching audit data:', err);
         setError(err.message);
@@ -46,7 +47,7 @@ const DataAudit: React.FC = () => {
       }
     };
 
-    fetchData();
+    fetchRecords();
   }, [activeTab, projectId]);
 
   if (user?.role === 'user') {
@@ -94,7 +95,7 @@ const DataAudit: React.FC = () => {
               <AlertCircle className="w-5 h-5" />
               <p className="text-sm font-medium">{error}</p>
             </div>
-          ) : data.length === 0 ? (
+          ) : records.length === 0 ? (
             <div className="text-center py-20 text-gray-400">
               No se encontraron registros en esta tabla.
             </div>
@@ -102,7 +103,7 @@ const DataAudit: React.FC = () => {
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-gray-100">
-                  {Object.keys(data[0]).map((key) => (
+                  {Object.keys(records[0]).map((key) => (
                     <th key={key} className="px-4 py-3 font-bold text-gray-900 uppercase text-[10px] tracking-wider">
                       {key}
                     </th>
@@ -110,7 +111,7 @@ const DataAudit: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {data.map((row, i) => (
+                {records.map((row, i) => (
                   <tr key={i} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
                     {Object.values(row).map((val: any, j) => (
                       <td key={j} className="px-4 py-3 text-gray-600 truncate max-w-[200px]">

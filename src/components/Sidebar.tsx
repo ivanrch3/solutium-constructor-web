@@ -27,14 +27,14 @@ const Sidebar: React.FC = () => {
     { icon: Settings, label: 'Configuración', path: '/settings' },
   ];
 
-  const brandColor = project?.brand_colors?.[0] || '#3b82f6';
+  const brandColor = project?.brandColors?.[0] || '#3b82f6';
 
   return (
     <aside className="w-64 bg-white border-right border-gray-200 flex flex-col h-screen fixed left-0 top-0 z-50">
       {/* Logo Section */}
       <div className="p-6 border-bottom border-gray-100 flex items-center gap-3">
-        {project?.logo_url ? (
-          <img src={project.logo_url} alt="Logo" className="h-8 w-auto" referrerPolicy="no-referrer" />
+        {project?.logoUrl ? (
+          <img src={project.logoUrl} alt="Logo" className="h-8 w-auto" referrerPolicy="no-referrer" />
         ) : (
           <div className="w-8 h-8 rounded bg-blue-600 flex items-center justify-center text-white font-bold">
             {project?.name?.charAt(0) || 'C'}
@@ -66,15 +66,15 @@ const Sidebar: React.FC = () => {
       {/* User Profile */}
       <div className="p-4 border-top border-gray-100">
         <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
-          {user?.avatar_url ? (
-            <img src={user.avatar_url} alt="Avatar" className="w-10 h-10 rounded-full border border-gray-200" referrerPolicy="no-referrer" />
+          {user?.avatarUrl ? (
+            <img src={user.avatarUrl} alt="Avatar" className="w-10 h-10 rounded-full border border-gray-200" referrerPolicy="no-referrer" />
           ) : (
             <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-500">
               <User className="w-6 h-6" />
             </div>
           )}
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-gray-900 truncate">{user?.full_name || 'Usuario'}</p>
+            <p className="text-sm font-semibold text-gray-900 truncate">{user?.fullName || 'Usuario'}</p>
             <p className="text-xs text-gray-500 truncate capitalize">{user?.role || 'User'}</p>
           </div>
           <LogOut className="w-4 h-4 text-gray-400 hover:text-red-500" />

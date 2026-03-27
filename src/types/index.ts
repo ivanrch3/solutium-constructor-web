@@ -1,6 +1,6 @@
 export interface Project {
   id: string;
-  owner_id: string;
+  ownerId: string;
   name: string;
   industry?: string;
   whatsapp?: string;
@@ -8,48 +8,48 @@ export interface Project {
   address?: string;
   website?: string;
   socials?: any;
-  brand_colors?: string[];
-  logo_url?: string;
-  ui_style?: string;
-  active_theme?: string;
-  image_mappings?: any;
-  is_master?: boolean;
+  brandColors?: string[];
+  logoUrl?: string;
+  uiStyle?: string;
+  activeTheme?: string;
+  imageMappings?: any;
+  isMaster?: boolean;
   currency?: string;
-  web_config?: any;
+  webConfig?: any;
   integrations?: any;
-  schema_version?: string;
-  created_at: string;
-  updated_at: string;
+  schemaVersion?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Profile {
   id: string;
-  full_name: string;
+  fullName: string;
   email: string;
-  avatar_url?: string;
+  avatarUrl?: string;
   role: 'super-admin' | 'admin' | 'user';
   language?: string;
   phone?: string;
-  ui_style?: string;
-  active_theme?: string;
-  font_family?: string;
-  base_size?: number;
-  border_radius?: number;
-  theme_preference?: string;
-  colored_sidebar_icons?: boolean;
-  subscription_plan?: string;
-  onboarding_completed?: boolean;
-  has_completed_tour?: boolean;
-  email_it_id?: string;
-  is_trial_user?: boolean;
-  email_confirmed?: boolean;
-  created_at: string;
-  updated_at: string;
+  uiStyle?: string;
+  activeTheme?: string;
+  fontFamily?: string;
+  baseSize?: number;
+  borderRadius?: number;
+  themePreference?: string;
+  coloredSidebarIcons?: boolean;
+  subscriptionPlan?: string;
+  onboardingCompleted?: boolean;
+  hasCompletedTour?: boolean;
+  emailItId?: string;
+  isTrialUser?: boolean;
+  emailConfirmed?: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Customer {
   id: string;
-  project_id: string;
+  projectId: string;
   name: string;
   email?: string;
   phone?: string;
@@ -57,51 +57,51 @@ export interface Customer {
   role?: string;
   status?: string;
   source?: string;
-  source_app_id?: string;
-  business_id?: string;
+  sourceAppId?: string;
+  businessId?: string;
   visibility?: string;
-  assigned_business_ids?: string[];
-  image_url?: string;
-  last_activity?: string;
+  assignedBusinessIds?: string[];
+  imageUrl?: string;
+  lastActivity?: string;
   notes?: string;
-  app_data?: any;
-  schema_version?: string;
-  created_at: string;
-  updated_at: string;
+  app?: any; // Renamed from app_data to avoid 'data' suffix and use camelCase
+  schemaVersion?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Product {
   id: string;
-  project_id: string;
+  projectId: string;
   name: string;
   description?: string;
-  unit_cost?: number;
+  unitCost?: number;
   type?: string;
   sku?: string;
   status?: string;
-  image_url?: string;
-  business_id?: string;
-  app_data?: any;
-  schema_version?: string;
-  created_at: string;
-  updated_at: string;
+  imageUrl?: string;
+  businessId?: string;
+  app?: any; // Renamed from app_data
+  schemaVersion?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Asset {
   id: string;
-  project_id: string;
+  projectId: string;
   name: string;
   type: string;
   url: string;
-  origin_app: string;
+  originApp: string;
   author?: string;
   status?: string;
   tags?: string[];
-  data?: any;
+  content?: any; // Renamed from data to avoid 'data' suffix
   metadata?: any;
-  schema_version?: string;
-  created_at: string;
-  updated_at: string;
+  schemaVersion?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface AuthContextType {

@@ -7,20 +7,34 @@ export function cn(...inputs: ClassValue[]) {
 
 export function decodeToken(token: string) {
   try {
-    const parts = token.split('.');
-    let payloadBase64 = parts.length > 1 ? parts[1] : parts[0];
+    // Decode URL encoding if present
+    const decodedToken = decodeURIComponent(token);
+    const parts = decodedToken.split('.');
     
-    // Fix URL-safe base64 and padding
+    // JWT: header.payload.signature (3 parts) -> index 1
+    // Simple: payload (1 part) -> index 0
+    let payloadBase64 = parts.length === 3 ? parts[1] : parts[0];
+    
+    // Protocol requirement: replace spaces with +
+    payloadBase64 = payloadBase64.replace(/ /g, '+');
+    
+    // Fix URL-safe base64
     payloadBase64 = payloadBase64.replace(/-/g, '+').replace(/_/g, '/');
-    while (payloadBase64.length % 4) {
+    
+    // Remove any character that is not in the base64 alphabet to prevent atob errors
+    payloadBase64 = payloadBase64.replace(/[^A-Za-z0-9+/=]/g, '');
+
+    // Add padding if missing
+    while (payloadBase64.length % 4 !== 0) {
       payloadBase64 += '=';
     }
 
+    const binaryString = atob(payloadBase64);
     return JSON.parse(
       decodeURIComponent(
         Array.prototype.map.call(
-          atob(payloadBase64),
-          (c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+          binaryString,
+          (c: any) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
         ).join('')
       )
     );

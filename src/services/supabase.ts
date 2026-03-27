@@ -5,24 +5,38 @@ const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 
 const extractPayload = () => {
   const hash = window.location.hash;
-  if (!hash.startsWith('#token=')) return null;
+  // Support both #token=... and #...&token=...
+  const match = hash.match(/[#&]token=([^&]*)/);
+  if (!match) return null;
   
   try {
-    const token = hash.replace('#token=', '');
+    const token = decodeURIComponent(match[1]);
     const parts = token.split('.');
-    let payloadBase64 = parts.length > 1 ? parts[1] : parts[0];
     
-    // Fix URL-safe base64 and padding
+    // JWT: header.payload.signature (3 parts) -> index 1
+    // Simple: payload (1 part) -> index 0
+    let payloadBase64 = parts.length === 3 ? parts[1] : parts[0];
+    
+    // Protocol requirement: replace spaces with +
+    payloadBase64 = payloadBase64.replace(/ /g, '+');
+    
+    // Fix URL-safe base64
     payloadBase64 = payloadBase64.replace(/-/g, '+').replace(/_/g, '/');
-    while (payloadBase64.length % 4) {
+    
+    // Remove any character that is not in the base64 alphabet to prevent atob errors
+    payloadBase64 = payloadBase64.replace(/[^A-Za-z0-9+/=]/g, '');
+
+    // Add padding if missing
+    while (payloadBase64.length % 4 !== 0) {
       payloadBase64 += '=';
     }
 
+    const binaryString = atob(payloadBase64);
     return JSON.parse(
       decodeURIComponent(
         Array.prototype.map.call(
-          atob(payloadBase64),
-          (c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+          binaryString,
+          (c: any) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
         ).join('')
       )
     );

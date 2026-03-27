@@ -574,7 +574,7 @@ const Builder: React.FC = () => {
             </div>
 
             <button 
-              onClick={() => navigate('/data')}
+              onClick={() => window.location.href = '/data'}
               className="w-full flex items-center justify-between p-3 text-sm font-bold text-gray-500 hover:bg-gray-50 rounded-xl transition-colors mt-4"
             >
               <div className="flex items-center gap-3">

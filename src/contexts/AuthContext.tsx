@@ -67,21 +67,46 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // 4. Handshake Logic
     if (embedded) {
-      // Notify Mother App that we are ready
-      window.parent.postMessage({ type: 'SOLUTIUM_READY' }, '*');
+      // Send SOLUTIUM_READY every 500ms until we get a config
+      const handshakeInterval = setInterval(() => {
+        console.log('Sending SOLUTIUM_READY to Mother App...');
+        window.parent.postMessage({ type: 'SOLUTIUM_READY' }, '*');
+      }, 500);
       
-      // Safety timeout: If no config received in 10s, allow demo mode or show error
+      // Safety timeout: If no config received in 20s, allow demo mode
       const safetyTimer = setTimeout(() => {
         setLoading((prevLoading) => {
           if (prevLoading) {
-            console.warn('Handshake timeout: No config received from Mother App');
+            console.warn('Handshake timeout: No config received from Mother App after 20s');
           }
           return prevLoading;
         });
-      }, 10000);
+        clearInterval(handshakeInterval);
+      }, 20000);
+      
+      // We need to clear the interval when loading becomes false (config received)
+      // But since we are in a useEffect with [] dependencies, we can't easily 
+      // react to loading state changes here without re-running the effect.
+      // However, the handleMessage will be called, and it sets loading to false.
+      // We can check the loading state inside the interval or just let it run 
+      // until the component unmounts or we clear it in handleMessage.
+      
+      // Let's modify handleMessage to clear the interval
+      const originalHandler = handleMessage;
+      const wrappedHandler = (event: MessageEvent) => {
+        if (event.data && event.data.type === 'SOLUTIUM_CONFIG') {
+          clearInterval(handshakeInterval);
+          clearTimeout(safetyTimer);
+        }
+        originalHandler(event);
+      };
+      
+      window.removeEventListener('message', handleMessage);
+      window.addEventListener('message', wrappedHandler);
       
       return () => {
-        window.removeEventListener('message', handleMessage);
+        window.removeEventListener('message', wrappedHandler);
+        clearInterval(handshakeInterval);
         clearTimeout(safetyTimer);
       };
     } else {

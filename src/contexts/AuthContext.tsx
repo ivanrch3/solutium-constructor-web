@@ -39,12 +39,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
-    // Detect if running in iframe or has projectId in URL
-    const searchParams = new URLSearchParams(window.location.search);
-    const hasProjectId = searchParams.has('projectId');
-    const embedded = window.self !== window.top || hasProjectId;
+    // 1. Detect if running in iframe (Strict check)
+    const embedded = window.self !== window.top;
     setIsEmbedded(embedded);
 
+    // 2. Define message handler
     const handleMessage = (event: MessageEvent) => {
       const data = event.data;
       
@@ -63,19 +62,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     };
 
+    // 3. Register listener
     window.addEventListener('message', handleMessage);
 
-    // Notify Mother App that we are ready
+    // 4. Handshake Logic
     if (embedded) {
+      // Notify Mother App that we are ready
       window.parent.postMessage({ type: 'SOLUTIUM_READY' }, '*');
       
-      // Even if embedded, if we don't get a config after 3 seconds, 
-      // maybe the mother app is not sending it. 
-      // But we should probably wait longer or show a specific loading state.
+      // Safety timeout: If no config received in 10s, allow demo mode or show error
+      const safetyTimer = setTimeout(() => {
+        setLoading((prevLoading) => {
+          if (prevLoading) {
+            console.warn('Handshake timeout: No config received from Mother App');
+          }
+          return prevLoading;
+        });
+      }, 10000);
+      
+      return () => {
+        window.removeEventListener('message', handleMessage);
+        clearTimeout(safetyTimer);
+      };
     } else {
-      // If not embedded, use mocks after a short delay
+      // Standalone mode: Load mocks or demo data
       const timer = setTimeout(() => {
-        if (loading && !isDemo) {
+        if (!isDemo) {
           setUser({
             id: 'proj_user_123',
             fullName: 'Ivan Solutium',
@@ -118,12 +130,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           ]);
           setLoading(false);
         }
-      }, 1000);
-      return () => clearTimeout(timer);
+      }, 500);
+      
+      return () => {
+        window.removeEventListener('message', handleMessage);
+        clearTimeout(timer);
+      };
     }
-
-    return () => window.removeEventListener('message', handleMessage);
-  }, [loading, isDemo]);
+  }, [isDemo]);
 
   return (
     <AuthContext.Provider value={{ user, project, projectId, products, loading, isDemo, isEmbedded, setDemoMode }}>

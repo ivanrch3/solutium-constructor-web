@@ -39,38 +39,58 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
-    // 1. Detect if running in iframe (Strict check)
-    const embedded = window.self !== window.top;
+    // 1. Detect if running in iframe or popup (Strict check)
+    const embedded = window.self !== window.top || !!window.opener;
     setIsEmbedded(embedded);
 
-    // 2. Define message handler
+    // 2. Parse token from URL hash (Payload Ligero)
+    const hash = window.location.hash;
+    if (hash.startsWith('#token=')) {
+      try {
+        const tokenStr = hash.substring(7);
+        const tokenData = JSON.parse(atob(tokenStr)); // Assuming base64 encoded JSON
+        console.log('Token data from hash:', tokenData);
+        if (tokenData.projectId) setProjectId(tokenData.projectId);
+        if (tokenData.userId) {
+          setUser(prev => prev ? { ...prev, id: tokenData.userId } : { id: tokenData.userId } as Profile);
+        }
+      } catch (e) {
+        console.warn('Failed to parse token from hash:', e);
+      }
+    }
+
+    // 3. Define message handler (Unified Schema v4.0)
     const handleMessage = (event: MessageEvent) => {
       const data = event.data;
       
       if (data && data.type === 'SOLUTIUM_CONFIG') {
-        console.log('SOLUTIUM_CONFIG received:', data.payload);
-        const { user: userData, project: projectData, products: productsData } = data.payload;
+        console.log('SOLUTIUM_CONFIG received (v4.0):', data.payload);
+        const { profile, project, products, customers, members, integrations, assets } = data.payload;
         
-        if (userData) setUser(userData);
-        if (projectData) {
-          setProject(projectData);
-          setProjectId(projectData.id);
+        if (profile) setUser(profile);
+        if (project) {
+          setProject(project);
+          setProjectId(project.id);
         }
-        if (productsData) setProducts(productsData);
+        if (products) setProducts(products);
+        // We could also store customers, members, etc. if needed
         
         setLoading(false);
       }
     };
 
-    // 3. Register listener
+    // 4. Register listener
     window.addEventListener('message', handleMessage);
 
-    // 4. Handshake Logic
+    // 5. Handshake Logic (S.I.P. v3.0)
     if (embedded) {
-      // Send SOLUTIUM_READY every 500ms until we get a config
+      // Send SOLUTIUM_SATELLITE_READY every 500ms until we get a config
       const handshakeInterval = setInterval(() => {
-        console.log('Sending SOLUTIUM_READY to Mother App...');
-        window.parent.postMessage({ type: 'SOLUTIUM_READY' }, '*');
+        console.log('Sending SOLUTIUM_SATELLITE_READY to Mother App...');
+        const target = window.opener || window.parent;
+        if (target) {
+          target.postMessage({ type: 'SOLUTIUM_SATELLITE_READY' }, '*');
+        }
       }, 500);
       
       // Safety timeout: If no config received in 20s, allow demo mode
@@ -84,14 +104,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         clearInterval(handshakeInterval);
       }, 20000);
       
-      // We need to clear the interval when loading becomes false (config received)
-      // But since we are in a useEffect with [] dependencies, we can't easily 
-      // react to loading state changes here without re-running the effect.
-      // However, the handleMessage will be called, and it sets loading to false.
-      // We can check the loading state inside the interval or just let it run 
-      // until the component unmounts or we clear it in handleMessage.
-      
-      // Let's modify handleMessage to clear the interval
+      // Clear timers on config reception
       const originalHandler = handleMessage;
       const wrappedHandler = (event: MessageEvent) => {
         if (event.data && event.data.type === 'SOLUTIUM_CONFIG') {

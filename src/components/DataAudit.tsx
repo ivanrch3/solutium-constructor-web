@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../services/supabase';
 import { Loader2, AlertCircle } from 'lucide-react';
-import { toCamelCase } from '../lib/utils';
+import { cn, toCamelCase } from '../lib/utils';
 
 const DataAudit: React.FC = () => {
   const { projectId, user } = useAuth();
@@ -26,19 +25,28 @@ const DataAudit: React.FC = () => {
       setError(null);
 
       try {
-        let query = supabase.from(activeTab).select('*');
-        
-        // Filter by projectId if applicable
-        if (['customers', 'products', 'assets'].includes(activeTab)) {
-          query = query.eq('project_id', projectId);
-        } else if (activeTab === 'projects') {
-          query = query.eq('id', projectId);
-        }
+        // Mocking audit data
+        const mockData: Record<string, any[]> = {
+          customers: [
+            { id: 'c1', name: 'Juan Perez', email: 'juan@example.com', project_id: 'proj_123' },
+            { id: 'c2', name: 'Maria Lopez', email: 'maria@example.com', project_id: 'proj_123' }
+          ],
+          products: [
+            { id: 'prod_1', name: 'Producto Premium', price: 99.99, project_id: 'proj_123', status: 'active' },
+            { id: 'prod_2', name: 'Producto Básico', price: 49.99, project_id: 'proj_123', status: 'active' }
+          ],
+          assets: [
+            { id: 'a1', type: 'image', url: 'https://picsum.photos/seed/a1/200', project_id: 'proj_123' }
+          ],
+          projects: [
+            { id: 'proj_123', name: 'Mi Proyecto Solutium', owner_id: 'proj_user_123' }
+          ],
+          profiles: [
+            { id: 'proj_user_123', full_name: 'Ivan Solutium', email: 'ivanrch3@gmail.com', role: 'admin' }
+          ]
+        };
 
-        const { data: result, error: fetchError } = await query;
-
-        if (fetchError) throw fetchError;
-        setRecords(toCamelCase(result) || []);
+        setRecords(toCamelCase(mockData[activeTab]) || []);
       } catch (err: any) {
         console.error('Error fetching audit data:', err);
         setError(err.message);
@@ -129,5 +137,4 @@ const DataAudit: React.FC = () => {
   );
 };
 
-import { cn } from '../lib/utils';
 export default DataAudit;

@@ -2,9 +2,12 @@ import React from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
 import { motion } from 'motion/react';
+import { APP_NAME, APP_LOGO_URL } from '../constants';
 
 const AuthScreen: React.FC = () => {
   const { setDemoMode } = useAuth();
+  const appLogo = APP_LOGO_URL;
+  const appName = APP_NAME;
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
@@ -14,12 +17,10 @@ const AuthScreen: React.FC = () => {
         className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center"
       >
         <div className="mb-8 flex justify-center">
-          <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center text-white text-3xl font-bold shadow-lg shadow-blue-200">
-            C
-          </div>
+          <img src={appLogo} alt={appName} className="w-16 h-16 rounded-2xl object-contain shadow-lg shadow-blue-200" referrerPolicy="no-referrer" />
         </div>
         
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Constructor Web</h1>
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">{appName}</h1>
         <p className="text-gray-500 mb-8">
           Cargando configuración del proyecto...
         </p>

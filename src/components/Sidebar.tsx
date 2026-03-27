@@ -1,6 +1,7 @@
 import React from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { cn } from '../lib/utils';
+import { APP_NAME, APP_LOGO_URL } from '../constants';
 import { 
   LayoutDashboard, 
   Database, 
@@ -28,19 +29,15 @@ const Sidebar: React.FC = () => {
   ];
 
   const brandColor = project?.brandColors?.[0] || '#3b82f6';
+  const appLogo = APP_LOGO_URL;
+  const appName = APP_NAME;
 
   return (
     <aside className="w-64 bg-white border-right border-gray-200 flex flex-col h-screen fixed left-0 top-0 z-50">
-      {/* Logo Section */}
+      {/* Logo Section - App Imagotype */}
       <div className="p-6 border-bottom border-gray-100 flex items-center gap-3">
-        {project?.logoUrl ? (
-          <img src={project.logoUrl} alt="Logo" className="h-8 w-auto" referrerPolicy="no-referrer" />
-        ) : (
-          <div className="w-8 h-8 rounded bg-blue-600 flex items-center justify-center text-white font-bold">
-            {project?.name?.charAt(0) || 'C'}
-          </div>
-        )}
-        <span className="font-bold text-gray-900 truncate">{project?.name || 'Constructor Web'}</span>
+        <img src={appLogo} alt={appName} className="h-8 w-8 rounded object-contain" referrerPolicy="no-referrer" />
+        <span className="font-bold text-gray-900 truncate">{appName}</span>
       </div>
 
       {/* Navigation */}

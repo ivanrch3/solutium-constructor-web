@@ -1,1 +1,21 @@
 @import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-family, "Inter"), ui-sans-serif, system-ui, sans-serif;
+  --radius-xl: var(--border-radius, 12px);
+}
+
+:root {
+  --font-family: "Inter";
+  --border-radius: 12px;
+  --base-size: 16px;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--base-size);
+}
+
+.rounded-custom {
+  border-radius: var(--border-radius);
+}

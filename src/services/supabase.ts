@@ -10,11 +10,18 @@ const extractPayload = () => {
   try {
     const token = hash.replace('#token=', '');
     const parts = token.split('.');
-    const payloadBase64 = parts.length > 1 ? parts[1] : parts[0];
+    let payloadBase64 = parts.length > 1 ? parts[1] : parts[0];
+    
+    // Fix URL-safe base64 and padding
+    payloadBase64 = payloadBase64.replace(/-/g, '+').replace(/_/g, '/');
+    while (payloadBase64.length % 4) {
+      payloadBase64 += '=';
+    }
+
     return JSON.parse(
       decodeURIComponent(
         Array.prototype.map.call(
-          atob(payloadBase64.replace(/ /g, '+')),
+          atob(payloadBase64),
           (c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
         ).join('')
       )

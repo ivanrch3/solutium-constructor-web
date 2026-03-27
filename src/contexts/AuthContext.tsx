@@ -39,8 +39,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
-    // Detect if running in iframe
-    const embedded = window.self !== window.top;
+    // Detect if running in iframe or has projectId in URL
+    const searchParams = new URLSearchParams(window.location.search);
+    const hasProjectId = searchParams.has('projectId');
+    const embedded = window.self !== window.top || hasProjectId;
     setIsEmbedded(embedded);
 
     const handleMessage = (event: MessageEvent) => {
@@ -66,6 +68,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Notify Mother App that we are ready
     if (embedded) {
       window.parent.postMessage({ type: 'SOLUTIUM_READY' }, '*');
+      
+      // Even if embedded, if we don't get a config after 3 seconds, 
+      // maybe the mother app is not sending it. 
+      // But we should probably wait longer or show a specific loading state.
     } else {
       // If not embedded, use mocks after a short delay
       const timer = setTimeout(() => {

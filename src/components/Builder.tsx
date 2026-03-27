@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Lock,
   Trash2,
@@ -60,6 +61,7 @@ interface CanvasModule {
 }
 
 const Builder: React.FC = () => {
+  const navigate = useNavigate();
   const { config, saveData, publishSite } = useSolutium();
   const { isEmbedded } = useAuth();
   const [step, setStep] = useState<Step>('choice');
@@ -119,18 +121,20 @@ const Builder: React.FC = () => {
   };
 
   const renderChoice = () => (
-    <div className="min-h-screen bg-gray-50 flex flex-col items-center pt-12 px-4">
+    <div className={cn("min-h-screen bg-gray-50 flex flex-col items-center px-4", isEmbedded ? "pt-6" : "pt-12")}>
       {/* Header Logo */}
-      <div className="mb-12 flex flex-col items-center">
-        <div className="flex items-center gap-3">
-          <img src={appLogo} alt={appName} className="h-16 w-16 object-contain" referrerPolicy="no-referrer" />
-          <div className="flex flex-col">
-            <span className="text-3xl font-bold text-gray-900 leading-none">Constructor</span>
-            <span className="text-3xl font-bold text-[#1e3a8a] leading-none">Web</span>
-            <span className="text-xs font-medium text-pink-500 self-end mt-1">by Solutium</span>
+      {!isEmbedded && (
+        <div className="mb-12 flex flex-col items-center">
+          <div className="flex items-center gap-3">
+            <img src={appLogo} alt={appName} className="h-16 w-16 object-contain" referrerPolicy="no-referrer" />
+            <div className="flex flex-col">
+              <span className="text-3xl font-bold text-gray-900 leading-none">Constructor</span>
+              <span className="text-3xl font-bold text-[#1e3a8a] leading-none">Web</span>
+              <span className="text-xs font-medium text-pink-500 self-end mt-1">by Solutium</span>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       <h1 className="text-4xl font-bold text-gray-900 mb-16">¿Cómo quieres crear tu página?</h1>
 
@@ -570,7 +574,7 @@ const Builder: React.FC = () => {
             </div>
 
             <button 
-              onClick={() => window.location.href = '/data'}
+              onClick={() => navigate('/data')}
               className="w-full flex items-center justify-between p-3 text-sm font-bold text-gray-500 hover:bg-gray-50 rounded-xl transition-colors mt-4"
             >
               <div className="flex items-center gap-3">

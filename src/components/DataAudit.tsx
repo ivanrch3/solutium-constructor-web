@@ -15,7 +15,10 @@ const DataAudit: React.FC = () => {
     { id: 'products', label: 'Productos' },
     { id: 'assets', label: 'Activos' },
     { id: 'projects', label: 'Proyectos' },
-    { id: 'profiles', label: 'Perfiles' }
+    { id: 'profiles', label: 'Perfiles' },
+    { id: 'modules', label: 'Módulos' },
+    { id: 'pages', label: 'Páginas' },
+    { id: 'leads', label: 'Leads' }
   ];
 
   useEffect(() => {
@@ -43,6 +46,17 @@ const DataAudit: React.FC = () => {
           ],
           profiles: [
             { id: 'proj_user_123', full_name: 'Ivan Solutium', email: 'ivanrch3@gmail.com', role: 'admin' }
+          ],
+          modules: [
+            { id: 'm1', type: 'hero', title: 'Portada Principal', project_id: 'proj_123' },
+            { id: 'm2', type: 'features', title: 'Nuestros Servicios', project_id: 'proj_123' }
+          ],
+          pages: [
+            { id: 'p1', name: 'Inicio', slug: 'home', project_id: 'proj_123' },
+            { id: 'p2', name: 'Contacto', slug: 'contact', project_id: 'proj_123' }
+          ],
+          leads: [
+            { id: 'l1', name: 'Carlos Ruiz', email: 'carlos@test.com', message: 'Interesado en servicios', created_at: '2026-03-26' }
           ]
         };
 

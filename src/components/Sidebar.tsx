@@ -21,9 +21,12 @@ const Sidebar: React.FC = () => {
   const location = useLocation();
   const isAdmin = user?.role === 'admin' || user?.role === 'super-admin';
 
-  const menuItems = [
+  const topItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
     { icon: Layers, label: 'Constructor', path: '/builder' },
+  ];
+
+  const bottomItems = [
     ...(isAdmin ? [{ icon: Database, label: 'Datos', path: '/data' }] : []),
     { icon: Settings, label: 'Configuración', path: '/settings' },
   ];
@@ -42,7 +45,7 @@ const Sidebar: React.FC = () => {
 
       {/* Navigation */}
       <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-        {menuItems.map((item) => (
+        {topItems.map((item) => (
           <Link
             key={item.path}
             to={item.path}
@@ -59,6 +62,26 @@ const Sidebar: React.FC = () => {
           </Link>
         ))}
       </nav>
+
+      {/* Bottom Navigation */}
+      <div className="p-4 border-top border-gray-100 space-y-1">
+        {bottomItems.map((item) => (
+          <Link
+            key={item.path}
+            to={item.path}
+            className={cn(
+              "flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm font-medium",
+              location.pathname === item.path 
+                ? "bg-gray-100 text-gray-900" 
+                : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
+            )}
+            style={location.pathname === item.path ? { borderLeft: `4px solid ${brandColor}` } : {}}
+          >
+            <item.icon className="w-5 h-5" />
+            {item.label}
+          </Link>
+        ))}
+      </div>
 
       {/* User Profile */}
       <div className="p-4 border-top border-gray-100">

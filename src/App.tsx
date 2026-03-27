@@ -25,13 +25,13 @@ const AppContent: React.FC = () => {
   return (
     <div className="flex min-h-screen bg-gray-50" style={{ '--primary': primaryColor } as React.CSSProperties}>
       <Routes>
-        <Route path="/" element={<Dashboard />} />
         <Route path="/builder" element={<Builder />} />
         <Route path="*" element={
           <>
             <Sidebar />
             <main className="flex-1 ml-64 min-h-screen">
               <Routes>
+                <Route path="/" element={<Dashboard />} />
                 <Route path="/data" element={<DataAudit />} />
                 <Route path="*" element={<Navigate to="/" />} />
               </Routes>

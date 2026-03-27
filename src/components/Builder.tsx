@@ -39,7 +39,8 @@ import {
   ArrowRightCircle,
   MapPin,
   ArrowUpDown,
-  Rocket
+  Rocket,
+  Database
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
@@ -565,6 +566,17 @@ const Builder: React.FC = () => {
                 </section>
               </div>
             </div>
+
+            <button 
+              onClick={() => window.location.href = '/data'}
+              className="w-full flex items-center justify-between p-3 text-sm font-bold text-gray-500 hover:bg-gray-50 rounded-xl transition-colors mt-4"
+            >
+              <div className="flex items-center gap-3">
+                <Database className="w-5 h-5" />
+                <span>Datos</span>
+              </div>
+              <ChevronRight className="w-4 h-4" />
+            </button>
           </div>
         </div>
 

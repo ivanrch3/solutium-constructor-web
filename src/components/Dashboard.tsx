@@ -3,27 +3,30 @@ import { useAuth } from '../contexts/AuthContext';
 import { PlusCircle } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
+import { cn } from '../lib/utils';
 import { APP_NAME, APP_LOGO_URL } from '../constants';
 
 const Dashboard: React.FC = () => {
-  const { project } = useAuth();
+  const { project, isEmbedded } = useAuth();
   const navigate = useNavigate();
   const appLogo = APP_LOGO_URL;
   const appName = APP_NAME;
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col items-center pt-12 px-4">
+    <div className={cn("min-h-screen bg-gray-50 flex flex-col items-center px-4", isEmbedded ? "pt-6" : "pt-12")}>
       {/* Header Logo */}
-      <div className="mb-16 flex flex-col items-center">
-        <div className="flex items-center gap-3">
-          <img src={appLogo} alt={appName} className="h-16 w-16 object-contain" referrerPolicy="no-referrer" />
-          <div className="flex flex-col">
-            <span className="text-3xl font-bold text-gray-900 leading-none">Constructor</span>
-            <span className="text-3xl font-bold text-[#1e3a8a] leading-none">Web</span>
-            <span className="text-xs font-medium text-pink-500 self-end mt-1">by Solutium</span>
+      {!isEmbedded && (
+        <div className="mb-16 flex flex-col items-center">
+          <div className="flex items-center gap-3">
+            <img src={appLogo} alt={appName} className="h-16 w-16 object-contain" referrerPolicy="no-referrer" />
+            <div className="flex flex-col">
+              <span className="text-3xl font-bold text-gray-900 leading-none">Constructor</span>
+              <span className="text-3xl font-bold text-[#1e3a8a] leading-none">Web</span>
+              <span className="text-xs font-medium text-pink-500 self-end mt-1">by Solutium</span>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-6xl w-full">
         {/* Left Card: Nueva página */}

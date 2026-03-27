@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { cn } from './lib/utils';
 import Sidebar from './components/Sidebar';
 import AuthScreen from './components/AuthScreen';
 import Dashboard from './components/Dashboard';
@@ -8,7 +9,7 @@ import Builder from './components/Builder';
 import DataAudit from './components/DataAudit';
 
 const AppContent: React.FC = () => {
-  const { user, loading, project } = useAuth();
+  const { user, loading, project, isEmbedded } = useAuth();
 
   if (loading) {
     return <AuthScreen />;
@@ -28,8 +29,8 @@ const AppContent: React.FC = () => {
         <Route path="/builder" element={<Builder />} />
         <Route path="*" element={
           <>
-            <Sidebar />
-            <main className="flex-1 ml-64 min-h-screen">
+            {!isEmbedded && <Sidebar />}
+            <main className={cn("flex-1 min-h-screen", !isEmbedded && "ml-64")}>
               <Routes>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/data" element={<DataAudit />} />

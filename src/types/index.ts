@@ -12,6 +12,9 @@ export interface Project {
   logoUrl?: string;
   uiStyle?: string;
   activeTheme?: string;
+  fontFamily?: string;
+  baseSize?: number;
+  borderRadius?: number;
   imageMappings?: any;
   isMaster?: boolean;
   currency?: string;
@@ -108,7 +111,9 @@ export interface AuthContextType {
   user: Profile | null;
   project: Project | null;
   projectId: string | null;
+  products: Product[];
   loading: boolean;
   isDemo: boolean;
+  isEmbedded: boolean;
   setDemoMode: () => void;
 }

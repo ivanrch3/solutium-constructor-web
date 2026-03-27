@@ -8,8 +8,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<Profile | null>(null);
   const [project, setProject] = useState<Project | null>(null);
   const [projectId, setProjectId] = useState<string | null>(null);
+  const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDemo, setIsDemo] = useState(false);
+  const [isEmbedded, setIsEmbedded] = useState(false);
 
   const setDemoMode = () => {
     setIsDemo(true);
@@ -37,36 +39,88 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
-    const init = async () => {
-      // Mocking initial load
-      setUser({
-        id: 'proj_user_123',
-        fullName: 'Ivan Solutium',
-        email: 'ivanrch3@gmail.com',
-        role: 'admin',
-        avatarUrl: 'https://picsum.photos/seed/ivan/200',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      });
-      setProject({
-        id: 'proj_123',
-        ownerId: 'proj_user_123',
-        name: 'Mi Proyecto Solutium',
-        brandColors: ['#3b82f6', '#1e40af'],
-        logoUrl: 'https://solutium.app/logo.png',
-        uiStyle: 'minimal',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      });
-      setProjectId('proj_123');
-      setLoading(false);
+    // Detect if running in iframe
+    const embedded = window.self !== window.top;
+    setIsEmbedded(embedded);
+
+    const handleMessage = (event: MessageEvent) => {
+      const data = event.data;
+      
+      if (data && data.type === 'SOLUTIUM_CONFIG') {
+        console.log('SOLUTIUM_CONFIG received:', data.payload);
+        const { user: userData, project: projectData, products: productsData } = data.payload;
+        
+        if (userData) setUser(userData);
+        if (projectData) {
+          setProject(projectData);
+          setProjectId(projectData.id);
+        }
+        if (productsData) setProducts(productsData);
+        
+        setLoading(false);
+      }
     };
 
-    init();
-  }, []);
+    window.addEventListener('message', handleMessage);
+
+    // Notify Mother App that we are ready
+    if (embedded) {
+      window.parent.postMessage({ type: 'SOLUTIUM_READY' }, '*');
+    } else {
+      // If not embedded, use mocks after a short delay
+      const timer = setTimeout(() => {
+        if (loading && !isDemo) {
+          setUser({
+            id: 'proj_user_123',
+            fullName: 'Ivan Solutium',
+            email: 'ivanrch3@gmail.com',
+            role: 'admin',
+            avatarUrl: 'https://picsum.photos/seed/ivan/200',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          });
+          setProject({
+            id: 'proj_123',
+            ownerId: 'proj_user_123',
+            name: 'Mi Proyecto Solutium',
+            brandColors: ['#3b82f6', '#1e40af'],
+            logoUrl: 'https://solutium.app/logo.png',
+            uiStyle: 'minimal',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          });
+          setProjectId('proj_123');
+          setProducts([
+            {
+              id: 'prod_1',
+              projectId: 'proj_123',
+              name: 'Producto Premium',
+              description: 'Una descripción increíble del producto.',
+              price: 99.99,
+              image: 'https://picsum.photos/seed/prod1/400/400',
+              status: 'active',
+            },
+            {
+              id: 'prod_2',
+              projectId: 'proj_123',
+              name: 'Producto Básico',
+              description: 'Algo más sencillo pero útil.',
+              price: 49.99,
+              image: 'https://picsum.photos/seed/prod2/400/400',
+              status: 'active',
+            }
+          ]);
+          setLoading(false);
+        }
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+
+    return () => window.removeEventListener('message', handleMessage);
+  }, [loading, isDemo]);
 
   return (
-    <AuthContext.Provider value={{ user, project, projectId, loading, isDemo, setDemoMode }}>
+    <AuthContext.Provider value={{ user, project, projectId, products, loading, isDemo, isEmbedded, setDemoMode }}>
       {children}
     </AuthContext.Provider>
   );

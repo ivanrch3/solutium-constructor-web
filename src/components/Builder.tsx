@@ -46,6 +46,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 import { APP_NAME, APP_LOGO_URL } from '../constants';
 import { useSolutium } from '../hooks/useSolutium';
+import { useAuth } from '../contexts/AuthContext';
 import { ProductShowcase } from './ProductShowcase';
 
 type Step = 'choice' | 'ai-form' | 'ai-style' | 'generating' | 'editor';
@@ -60,6 +61,7 @@ interface CanvasModule {
 
 const Builder: React.FC = () => {
   const { config, saveData, publishSite } = useSolutium();
+  const { isEmbedded } = useAuth();
   const [step, setStep] = useState<Step>('choice');
   const [mode, setMode] = useState<'ai' | 'blank'>('ai');
   const [viewMode, setViewMode] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');

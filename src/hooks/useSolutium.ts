@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useAuth } from '../contexts/AuthContext';
 
 export interface SolutiumProject {
   id: string;
@@ -35,16 +36,18 @@ export interface SolutiumConfig {
 }
 
 export const useSolutium = () => {
-  // Mocking the SDK behavior
+  const { project: authProject, products: authProducts } = useAuth();
+  
+  // Initialize with authProject if available, otherwise use defaults
   const [config, setConfig] = useState<SolutiumConfig>({
     project: {
-      id: 'proj_123',
-      name: 'Mi Proyecto Solutium',
-      fontFamily: 'Inter',
-      baseSize: '16px',
-      borderRadius: '12px',
-      uiStyle: 'minimal',
-      activeTheme: 'light',
+      id: authProject?.id || 'proj_123',
+      name: authProject?.name || 'Mi Proyecto Solutium',
+      fontFamily: authProject?.fontFamily || 'Inter',
+      baseSize: authProject?.baseSize?.toString() || '16px',
+      borderRadius: authProject?.borderRadius?.toString() || '12px',
+      uiStyle: (authProject?.uiStyle as any) || 'minimal',
+      activeTheme: (authProject?.activeTheme as any) || 'light',
     },
     profile: {
       fontFamily: 'Inter',
@@ -53,36 +56,27 @@ export const useSolutium = () => {
       uiStyle: 'minimal',
       activeTheme: 'light',
     },
-    products: [
-      {
-        id: 'prod_1',
-        projectId: 'proj_123',
-        name: 'Producto Premium',
-        description: 'Una descripción increíble del producto.',
-        price: 99.99,
-        image: 'https://picsum.photos/seed/prod1/400/400',
-        status: 'active',
-      },
-      {
-        id: 'prod_2',
-        projectId: 'proj_123',
-        name: 'Producto Básico',
-        description: 'Algo más sencillo pero útil.',
-        price: 49.99,
-        image: 'https://picsum.photos/seed/prod2/400/400',
-        status: 'active',
-      },
-      {
-        id: 'prod_3',
-        projectId: 'other_proj',
-        name: 'Producto Ajeno',
-        description: 'No debería verse.',
-        price: 10.00,
-        image: 'https://picsum.photos/seed/prod3/400/400',
-        status: 'active',
-      },
-    ],
+    products: (authProducts as any[]) || [],
   });
+
+  // Update config when authProject or authProducts change (from handshake)
+  useEffect(() => {
+    if (authProject || authProducts) {
+      setConfig(prev => ({
+        ...prev,
+        project: authProject ? {
+          id: authProject.id,
+          name: authProject.name,
+          fontFamily: authProject.fontFamily || 'Inter',
+          baseSize: authProject.baseSize?.toString() || '16px',
+          borderRadius: authProject.borderRadius?.toString() || '12px',
+          uiStyle: (authProject.uiStyle as any) || 'minimal',
+          activeTheme: (authProject.activeTheme as any) || 'light',
+        } : prev.project,
+        products: (authProducts as any[]) || prev.products
+      }));
+    }
+  }, [authProject, authProducts]);
 
   const saveData = async (data: any) => {
     console.log('Saving data via Solutium SDK:', data);

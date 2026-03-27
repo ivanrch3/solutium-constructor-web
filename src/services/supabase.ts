@@ -9,7 +9,8 @@ const extractPayload = () => {
   
   try {
     const token = hash.replace('#token=', '');
-    const payloadBase64 = token.split('.')[0];
+    const parts = token.split('.');
+    const payloadBase64 = parts.length > 1 ? parts[1] : parts[0];
     return JSON.parse(
       decodeURIComponent(
         Array.prototype.map.call(
@@ -29,6 +30,9 @@ const sessionToken = initialPayload?.sessionToken;
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   global: {
-    headers: sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {}
+    headers: {
+      'apikey': supabaseAnonKey,
+      ...(sessionToken ? { 'Authorization': `Bearer ${sessionToken}` } : {})
+    }
   }
 });

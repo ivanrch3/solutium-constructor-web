@@ -7,7 +7,8 @@ export function cn(...inputs: ClassValue[]) {
 
 export function decodeToken(token: string) {
   try {
-    const payloadBase64 = token.split('.')[0];
+    const parts = token.split('.');
+    const payloadBase64 = parts.length > 1 ? parts[1] : parts[0];
     return JSON.parse(
       decodeURIComponent(
         Array.prototype.map.call(

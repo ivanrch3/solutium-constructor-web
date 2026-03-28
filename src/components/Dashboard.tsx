@@ -71,7 +71,7 @@ const Dashboard: React.FC = () => {
                       <div>
                         <h4 className="font-bold text-gray-900">{asset.name}</h4>
                         <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">
-                          Última edición: {new Date(asset.updatedAt || asset.updated_at).toLocaleDateString()}
+                          Última edición: {new Date(asset.updatedAt).toLocaleDateString()}
                         </p>
                       </div>
                     </div>

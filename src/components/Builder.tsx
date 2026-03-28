@@ -826,12 +826,14 @@ const Builder: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50 relative">
       {/* Background Choice Screen (Blurred when modal is open) */}
-      <div className={cn(
-        "transition-all duration-300",
-        (step === 'ai-form' || step === 'ai-style') && "blur-md pointer-events-none brightness-75"
-      )}>
-        {renderChoice()}
-      </div>
+      {step !== 'editor' && (
+        <div className={cn(
+          "transition-all duration-300",
+          (step === 'ai-form' || step === 'ai-style') && "blur-md pointer-events-none brightness-75"
+        )}>
+          {renderChoice()}
+        </div>
+      )}
 
       <AnimatePresence mode="wait">
         {step === 'ai-form' && (

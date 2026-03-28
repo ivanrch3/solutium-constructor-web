@@ -17,6 +17,42 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isEmbedded, setIsEmbedded] = useState(false);
 
   useEffect(() => {
+    // Estrategia 0: Inyección Directa (Zero-Handshake)
+    if (window.name && window.name.startsWith('{"type":"SOLUTIUM_DIRECT_INJECTION"')) {
+      try {
+        const directData = JSON.parse(window.name);
+        if (directData.payload && directData.payload.projectId) {
+          console.log('[Satellite] Conexión Directa detectada vía window.name');
+          const config = directData.payload;
+          
+          if (config.profile) setUser(config.profile);
+          if (config.project) {
+            setProject(config.project);
+            setProjectId(config.project.id);
+            
+            // Apply Theme Visual
+            if (config.project.brandColors && config.project.brandColors.length > 0) {
+              document.documentElement.style.setProperty('--primary', config.project.brandColors[0]);
+              document.documentElement.style.setProperty('--primary-dark', config.project.brandColors[1] || config.project.brandColors[0]);
+            }
+            if (config.project.fontFamily) {
+              document.documentElement.style.setProperty('--font-family', config.project.fontFamily);
+            }
+          }
+          if (config.products) setProducts(config.products);
+          if (config.customers) setCustomers(config.customers);
+          if (config.members) setMembers(config.members);
+          if (config.integrations) setIntegrations(config.integrations);
+          if (config.assets) setAssets(config.assets);
+          
+          setLoading(false);
+          return; // Detener el resto del handshake ya que tenemos los datos
+        }
+      } catch (e) {
+        console.error('[Satellite] Error al parsear window.name', e);
+      }
+    }
+
     // 1. Detect if running in iframe or popup (Strict check)
     const embedded = window.self !== window.top || !!window.opener;
     setIsEmbedded(embedded);

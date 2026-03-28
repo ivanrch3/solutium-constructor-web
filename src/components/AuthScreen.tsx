@@ -5,7 +5,6 @@ import { motion } from 'motion/react';
 import { APP_NAME, APP_LOGO_URL } from '../constants';
 
 const AuthScreen: React.FC = () => {
-  const { setDemoMode } = useAuth();
   const appLogo = APP_LOGO_URL;
   const appName = APP_NAME;
 
@@ -29,22 +28,6 @@ const AuthScreen: React.FC = () => {
           <div className="flex justify-center py-4">
             <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
           </div>
-          
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t border-gray-200" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-white px-2 text-gray-500">O prueba la demo</span>
-            </div>
-          </div>
-
-          <button
-            onClick={setDemoMode}
-            className="w-full py-3 px-4 bg-gray-900 text-white rounded-xl font-semibold hover:bg-gray-800 transition-all active:scale-95 shadow-lg shadow-gray-200"
-          >
-            Saltar Autenticación (Demo)
-          </button>
         </div>
       </motion.div>
       

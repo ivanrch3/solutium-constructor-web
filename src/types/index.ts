@@ -117,7 +117,5 @@ export interface AuthContextType {
   integrations: any[];
   assets: Asset[];
   loading: boolean;
-  isDemo: boolean;
   isEmbedded: boolean;
-  setDemoMode: () => void;
 }

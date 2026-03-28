@@ -11,18 +11,7 @@ import DataAudit from './components/DataAudit';
 import InitialDataCheck from './components/InitialDataCheck';
 
 const AppContent: React.FC = () => {
-  const { user, loading, project, isEmbedded } = useAuth();
-  const [proceed, setProceed] = React.useState(false);
-
-  React.useEffect(() => {
-    const handleProceed = () => setProceed(true);
-    window.addEventListener('SOLUTIUM_PROCEED', handleProceed);
-    return () => window.removeEventListener('SOLUTIUM_PROCEED', handleProceed);
-  }, []);
-
-  if (!proceed) {
-    return <InitialDataCheck />;
-  }
+  const { user, loading, project, isEmbedded, assets } = useAuth();
 
   if (loading) {
     return <AuthScreen />;
@@ -36,14 +25,16 @@ const AppContent: React.FC = () => {
   const brandColors = project?.brandColors || ['#3b82f6', '#1e40af'];
   const primaryColor = brandColors[0];
 
+  const showSidebar = !isEmbedded && assets.length > 0;
+
   return (
     <div className="flex min-h-screen bg-gray-50" style={{ '--primary': primaryColor } as React.CSSProperties}>
       <Routes>
         <Route path="/builder" element={<Builder />} />
         <Route path="*" element={
           <>
-            {!isEmbedded && <Sidebar />}
-            <main className={cn("flex-1 min-h-screen", !isEmbedded && "ml-64")}>
+            {showSidebar && <Sidebar />}
+            <main className={cn("flex-1 min-h-screen", showSidebar && "ml-64")}>
               <Routes>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/data" element={<DataAudit />} />

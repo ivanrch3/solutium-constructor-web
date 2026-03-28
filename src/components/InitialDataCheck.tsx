@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import DataAudit from './DataAudit';
-import { Database, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 const InitialDataCheck: React.FC = () => {
   const { loading } = useAuth();
@@ -22,34 +22,22 @@ const InitialDataCheck: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-white">
-      <nav className="border-b border-gray-100 px-8 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white">
-            <Database className="w-6 h-6" />
-          </div>
-          <div>
-            <h1 className="text-lg font-bold text-gray-900">Verificación de Datos</h1>
-            <p className="text-xs text-gray-500">Esquema Unificado v4.0</p>
-          </div>
-        </div>
-        
+    <div className="min-h-screen bg-white flex flex-col">
+      <div className="flex-1 overflow-hidden">
+        <DataAudit />
+      </div>
+
+      <div className="p-8 border-t border-gray-100 bg-gray-50/50 flex justify-between items-center">
         <button 
           onClick={() => window.location.reload()}
-          className="px-4 py-2 text-sm font-bold text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+          className="px-6 py-3 text-sm font-bold text-gray-500 hover:text-gray-900 transition-colors"
         >
           Reintentar Handshake
         </button>
-      </nav>
-
-      <main className="max-w-7xl mx-auto">
-        <DataAudit />
-      </main>
-
-      <div className="fixed bottom-8 right-8">
+        
         <button 
           onClick={() => window.dispatchEvent(new CustomEvent('SOLUTIUM_PROCEED'))}
-          className="px-8 py-4 bg-gray-900 text-white rounded-2xl font-bold shadow-2xl hover:bg-black transition-all active:scale-95 flex items-center gap-3"
+          className="px-10 py-4 bg-blue-600 text-white rounded-2xl font-black shadow-xl shadow-blue-100 hover:bg-blue-700 transition-all active:scale-95 flex items-center gap-3 uppercase tracking-widest text-xs"
         >
           Continuar a la Aplicación
         </button>

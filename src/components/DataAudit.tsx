@@ -1,9 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Loader2, AlertCircle } from 'lucide-react';
+import { Loader2, AlertCircle, Database } from 'lucide-react';
 import { cn, toCamelCase } from '../lib/utils';
 
-const DataAudit: React.FC = () => {
+interface DataAuditProps {
+  onClose?: () => void;
+}
+
+const DataAudit: React.FC<DataAuditProps> = ({ onClose }) => {
   const { 
     user, 
     project, 
@@ -44,7 +48,6 @@ const DataAudit: React.FC = () => {
       setError(null);
 
       try {
-        // Mostramos los datos tal cual vienen, sin camelCase para auditoría pura
         setRecords(dataMap[activeTab] || []);
       } catch (err: any) {
         console.error('Error getting audit data:', err);
@@ -63,22 +66,48 @@ const DataAudit: React.FC = () => {
         <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
         <h2 className="text-xl font-bold">Acceso Denegado</h2>
         <p className="text-gray-500">Solo los administradores pueden acceder a esta sección de auditoría.</p>
+        {onClose && (
+          <button 
+            onClick={onClose}
+            className="mt-6 px-6 py-2 bg-gray-900 text-white rounded-xl font-bold"
+          >
+            Cerrar
+          </button>
+        )}
       </div>
     );
   }
 
   return (
-    <div className="p-8">
-      <header className="mb-8">
-        <div className="flex items-center gap-3 mb-2">
-          <span className="px-2 py-1 bg-blue-100 text-blue-700 text-[10px] font-black uppercase rounded">Audit Mode</span>
-          <h1 className="text-2xl font-bold text-gray-900">Variables de Base de Datos</h1>
+    <div className="flex flex-col h-full bg-white">
+      <header className="px-8 py-6 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-blue-100">
+            <Database className="w-6 h-6" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2 mb-0.5">
+              <h1 className="text-xl font-black text-gray-900 tracking-tight">Verificación de Datos</h1>
+              <span className="px-1.5 py-0.5 bg-blue-100 text-blue-700 text-[9px] font-black uppercase rounded">S.I.P. v4.0</span>
+            </div>
+            <p className="text-xs text-gray-500 font-medium">Esquema Unificado v4.0</p>
+          </div>
         </div>
-        <p className="text-gray-500 text-sm">Inspección completa de todas las tablas y variables sincronizadas vía S.I.P. v4.0 / Esquema v4.0.</p>
+        
+        {onClose && (
+          <button 
+            onClick={onClose}
+            className="p-2 hover:bg-gray-100 rounded-xl transition-colors text-gray-400 hover:text-gray-900"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        )}
       </header>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="flex border-b border-gray-100 overflow-x-auto scrollbar-hide">
+      <div className="flex-1 overflow-hidden flex flex-col">
+        <div className="flex border-b border-gray-100 overflow-x-auto scrollbar-hide bg-white px-4">
           {tabs.map((tab) => (
             <button
               key={tab.id}
@@ -101,49 +130,60 @@ const DataAudit: React.FC = () => {
           ))}
         </div>
 
-        <div className="p-0 overflow-x-auto">
+        <div className="flex-1 overflow-auto custom-scrollbar">
           {loading ? (
-            <div className="flex justify-center py-20">
-              <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+            <div className="flex flex-col items-center justify-center py-20 gap-4">
+              <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
+              <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">Consultando Base de Datos...</p>
             </div>
           ) : error ? (
-            <div className="m-6 p-4 bg-red-50 text-red-600 rounded-xl flex items-center gap-3">
-              <AlertCircle className="w-5 h-5" />
-              <p className="text-sm font-medium">{error}</p>
+            <div className="m-8 p-6 bg-red-50 text-red-600 rounded-2xl flex items-start gap-4 border border-red-100">
+              <AlertCircle className="w-6 h-6 shrink-0" />
+              <div>
+                <p className="font-bold mb-1">Error de Sincronización</p>
+                <p className="text-sm opacity-80">{error}</p>
+              </div>
             </div>
           ) : records.length === 0 ? (
-            <div className="text-center py-20 text-gray-400">
-              No hay datos disponibles en la tabla <span className="font-mono text-blue-600">[{activeTab}]</span>.
+            <div className="flex flex-col items-center justify-center py-32 text-gray-400 gap-4">
+              <Database className="w-12 h-12 opacity-20" />
+              <p className="text-sm font-bold uppercase tracking-widest">
+                No hay datos en <span className="font-mono text-blue-600">[{activeTab}]</span>
+              </p>
             </div>
           ) : (
-            <table className="w-full text-left text-[11px] font-mono">
-              <thead className="bg-gray-50">
-                <tr className="border-b border-gray-100">
-                  {Object.keys(records[0]).map((key) => (
-                    <th key={key} className="px-4 py-3 font-black text-gray-500 uppercase tracking-tighter border-r border-gray-100 last:border-0">
-                      {key}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {records.map((row, i) => (
-                  <tr key={i} className="border-b border-gray-50 hover:bg-blue-50/20 transition-colors">
-                    {Object.values(row).map((val: any, j) => (
-                      <td key={j} className="px-4 py-3 text-gray-700 border-r border-gray-50 last:border-0 align-top break-all min-w-[120px]">
-                        {typeof val === 'object' ? (
-                          <pre className="text-[9px] leading-tight text-blue-800 bg-blue-50/50 p-1 rounded">
-                            {JSON.stringify(val, null, 2)}
-                          </pre>
-                        ) : (
-                          String(val)
-                        )}
-                      </td>
+            <div className="min-w-full inline-block align-middle">
+              <table className="min-w-full text-left text-[11px] font-mono border-collapse">
+                <thead className="bg-gray-50 sticky top-0 z-10">
+                  <tr className="border-b border-gray-200">
+                    {Object.keys(records[0]).map((key) => (
+                      <th key={key} className="px-4 py-4 font-black text-gray-500 uppercase tracking-tighter border-r border-gray-200 last:border-0 whitespace-nowrap">
+                        {key}
+                      </th>
                     ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {records.map((row, i) => (
+                    <tr key={i} className="hover:bg-blue-50/30 transition-colors group">
+                      {Object.values(row).map((val: any, j) => (
+                        <td key={j} className="px-4 py-4 text-gray-700 border-r border-gray-100 last:border-0 align-top break-all min-w-[150px] group-hover:text-gray-900">
+                          {val === null ? (
+                            <span className="text-gray-300 italic">null</span>
+                          ) : typeof val === 'object' ? (
+                            <pre className="text-[10px] leading-relaxed text-blue-800 bg-blue-50/50 p-2 rounded-lg border border-blue-100/50">
+                              {JSON.stringify(val, null, 2)}
+                            </pre>
+                          ) : (
+                            String(val)
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       </div>

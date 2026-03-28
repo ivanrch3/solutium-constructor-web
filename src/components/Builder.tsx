@@ -49,6 +49,7 @@ import { APP_NAME, APP_LOGO_URL } from '../constants';
 import { useSolutium } from '../hooks/useSolutium';
 import { useAuth } from '../contexts/AuthContext';
 import { ProductShowcase } from './ProductShowcase';
+import DataAudit from './DataAudit';
 
 type Step = 'choice' | 'ai-form' | 'ai-style' | 'generating' | 'editor';
 type ModuleType = 'hero' | 'features' | 'products' | 'contact' | 'about' | 'process' | 'gallery' | 'testimonials' | 'pricing' | 'faq';
@@ -78,6 +79,7 @@ const Builder: React.FC = () => {
     objective: '',
     style: ''
   });
+  const [showDataAudit, setShowDataAudit] = useState(false);
 
   const appLogo = APP_LOGO_URL;
   const appName = APP_NAME;
@@ -574,7 +576,7 @@ const Builder: React.FC = () => {
             </div>
 
             <button 
-              onClick={() => window.location.href = '/data'}
+              onClick={() => setShowDataAudit(true)}
               className="w-full flex items-center justify-between p-3 text-sm font-bold text-gray-500 hover:bg-gray-50 rounded-xl transition-colors mt-4"
             >
               <div className="flex items-center gap-3">
@@ -868,6 +870,28 @@ const Builder: React.FC = () => {
           <motion.div key="editor" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100]">
             {renderEditor()}
           </motion.div>
+        )}
+      </AnimatePresence>
+      {/* Data Audit Modal */}
+      <AnimatePresence>
+        {showDataAudit && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-12">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowDataAudit(false)}
+              className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-white w-full max-w-6xl h-full max-h-[90vh] rounded-[2.5rem] shadow-2xl overflow-hidden relative z-10 flex flex-col"
+            >
+              <DataAudit onClose={() => setShowDataAudit(false)} />
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </div>

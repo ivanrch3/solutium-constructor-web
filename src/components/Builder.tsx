@@ -3,34 +3,23 @@ import { useNavigate } from 'react-router-dom';
 import { 
   Lock,
   Trash2,
-  Palette,
   Sparkles, 
   Layout, 
-  PlusSquare, 
-  ArrowLeft,
   ChevronRight,
   Monitor,
-  Smartphone,
-  Tablet,
   Save,
-  Eye,
   Plus,
   PlusCircle,
-  Type,
   Image as ImageIcon,
   Video,
   Users,
-  Star,
-  BarChart,
   Package,
   CreditCard,
   Mail,
   HelpCircle,
   MessageSquare,
   Menu,
-  Navigation,
   Footprints,
-  Maximize2,
   Layers,
   Megaphone,
   List,
@@ -51,7 +40,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { ProductShowcase } from './ProductShowcase';
 import DataAudit from './DataAudit';
 
-type Step = 'choice' | 'ai-form' | 'ai-style' | 'generating' | 'editor';
+type Step = 'editor';
 type ModuleType = 'hero' | 'features' | 'products' | 'contact' | 'about' | 'process' | 'gallery' | 'testimonials' | 'pricing' | 'faq';
 
 interface CanvasModule {
@@ -65,8 +54,7 @@ const Builder: React.FC = () => {
   const navigate = useNavigate();
   const { config, saveData, publishSite } = useSolutium();
   const { isEmbedded } = useAuth();
-  const [step, setStep] = useState<Step>('choice');
-  const [mode, setMode] = useState<'ai' | 'blank'>('ai');
+  const [step, setStep] = useState<Step>('editor');
   const [viewMode, setViewMode] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
   const [canvasModules, setCanvasModules] = useState<CanvasModule[]>([]);
   const [isPublishing, setIsPublishing] = useState(false);
@@ -121,317 +109,6 @@ const Builder: React.FC = () => {
       setIsSaving(false);
     }
   };
-
-  const renderChoice = () => (
-    <div className={cn("min-h-screen bg-gray-50 flex flex-col items-center px-4", isEmbedded ? "pt-6" : "pt-12")}>
-      {/* Header Logo */}
-      {!isEmbedded && (
-        <div className="mb-12 flex flex-col items-center">
-          <div className="flex items-center gap-3">
-            <img src={appLogo} alt={appName} className="h-16 w-16 object-contain" referrerPolicy="no-referrer" />
-            <div className="flex flex-col">
-              <span className="text-3xl font-bold text-gray-900 leading-none">Constructor</span>
-              <span className="text-3xl font-bold text-[#1e3a8a] leading-none">Web</span>
-              <span className="text-xs font-medium text-pink-500 self-end mt-1">by Solutium</span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <h1 className="text-4xl font-bold text-gray-900 mb-16">¿Cómo quieres crear tu página?</h1>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl w-full">
-        {/* Generar con IA */}
-        <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          onClick={() => { setMode('ai'); setStep('ai-form'); }}
-          className="bg-[#3b82f6] text-white p-10 rounded-[2.5rem] text-left flex flex-col h-full shadow-xl shadow-blue-100 relative overflow-hidden group"
-        >
-          <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center mb-8">
-            <Sparkles className="w-8 h-8 text-white" />
-          </div>
-          <h2 className="text-2xl font-bold mb-4">Generar con IA</h2>
-          <p className="text-blue-50 text-lg leading-relaxed">
-            Describe tu negocio y deja que nuestra inteligencia artificial cree la estructura, textos e imágenes por ti en segundos.
-          </p>
-        </motion.button>
-
-        {/* Usar Plantilla */}
-        <div className="relative group">
-          <div className="bg-white p-10 rounded-[2.5rem] text-left flex flex-col h-full border border-gray-100 shadow-sm opacity-60">
-            <div className="w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center mb-8">
-              <Layout className="w-8 h-8 text-gray-400" />
-            </div>
-            <h2 className="text-2xl font-bold text-gray-400 mb-4">Usar Plantilla</h2>
-            <p className="text-gray-400 text-lg leading-relaxed">
-              Elige entre diseños pre-construidos profesionales optimizados para conversión. Ideal si quieres una base sólida rápida.
-            </p>
-          </div>
-          <span className="absolute top-6 right-6 bg-gray-100 text-gray-500 text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">
-            Próximamente
-          </span>
-        </div>
-
-        {/* Lienzo en Blanco */}
-        <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          onClick={() => { setMode('blank'); setStep('ai-form'); }}
-          className="bg-white p-10 rounded-[2.5rem] text-left flex flex-col h-full border border-gray-100 shadow-sm"
-        >
-          <div className="w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center mb-8">
-            <PlusSquare className="w-8 h-8 text-gray-900" />
-          </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Lienzo en Blanco</h2>
-          <p className="text-gray-500 text-lg leading-relaxed">
-            Empieza desde cero. Añade secciones una a una y construye tu sitio con total control creativo sin distracciones.
-          </p>
-        </motion.button>
-      </div>
-
-      <button 
-        onClick={() => window.history.back()}
-        className="mt-16 text-gray-500 font-bold flex items-center gap-2 hover:text-gray-900 transition-colors"
-      >
-        Atrás
-      </button>
-    </div>
-  );
-
-  const renderAIForm = () => (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
-      <motion.div 
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl p-10 relative"
-      >
-        <h2 className="text-3xl font-bold text-gray-900 mb-8">Cuéntanos sobre tu proyecto</h2>
-        
-        <div className="space-y-6">
-          <div>
-            <label className="block text-sm font-bold text-gray-700 mb-3">Nombre de la página</label>
-            <input 
-              type="text" 
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              placeholder="Ej: Inicio, Servicios, Contacto..." 
-              className="w-full px-5 py-4 rounded-2xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none text-lg transition-all"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-bold text-gray-700 mb-3">Sector o Industria</label>
-            <div className="relative">
-              <select 
-                value={formData.industry}
-                onChange={(e) => setFormData({ ...formData, industry: e.target.value })}
-                className="w-full px-5 py-4 rounded-2xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none appearance-none bg-white text-lg text-gray-500"
-              >
-                <option value="">Selecciona una industria...</option>
-                <option value="tech">Tecnología</option>
-                <option value="health">Salud</option>
-                <option value="edu">Educación</option>
-                <option value="retail">Comercio</option>
-              </select>
-              <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
-                <ChevronRight className="w-5 h-5 rotate-90" />
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-bold text-gray-700 mb-3">Descripción breve (mínimo 10 palabras)</label>
-            <textarea 
-              rows={4}
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              placeholder="Describe qué hace tu negocio y qué ofreces..." 
-              className="w-full px-5 py-4 rounded-2xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none text-lg resize-none"
-            />
-            <p className="text-xs text-gray-400 mt-2">Palabras: {formData.description.split(/\s+/).filter(Boolean).length}/10</p>
-          </div>
-
-          <div className="flex items-center justify-between pt-6">
-            <button 
-              onClick={() => setStep('choice')}
-              className="px-8 py-3 font-bold text-gray-900 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
-            >
-              Cancelar
-            </button>
-            <div className="flex items-center gap-8">
-              <button 
-                onClick={() => setStep('ai-style')}
-                className="font-bold text-gray-500 hover:text-gray-900 transition-colors"
-              >
-                Omitir
-              </button>
-              <button 
-                onClick={() => setStep('ai-style')}
-                disabled={!formData.name}
-                className={cn(
-                  "px-10 py-3 rounded-xl font-bold transition-all",
-                  formData.name ? "bg-[#3b82f6] text-white shadow-lg shadow-blue-100" : "bg-blue-200 text-white cursor-not-allowed"
-                )}
-              >
-                Siguiente
-              </button>
-            </div>
-          </div>
-        </div>
-      </motion.div>
-    </div>
-  );
-
-  const handleStart = () => {
-    if (mode === 'ai') {
-      setStep('generating');
-      setTimeout(() => {
-        setStep('editor');
-      }, 3000);
-    } else {
-      setStep('editor');
-    }
-  };
-
-  const renderGenerating = () => (
-    <div className="fixed inset-0 z-[90] bg-white flex flex-col items-center justify-center overflow-hidden">
-      {/* Background patterns */}
-      <div className="absolute inset-0 opacity-[0.03] pointer-events-none">
-        <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(#3b82f6_1px,transparent_1px)] [background-size:40px_40px]" />
-      </div>
-
-      <motion.div
-        animate={{ 
-          scale: [1, 1.05, 1],
-          boxShadow: [
-            "0 0 0 0 rgba(59, 130, 246, 0)",
-            "0 0 40px 10px rgba(59, 130, 246, 0.1)",
-            "0 0 0 0 rgba(59, 130, 246, 0)"
-          ]
-        }}
-        transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-        className="mb-12 relative"
-      >
-        <div className="absolute inset-0 bg-blue-500/10 blur-3xl rounded-full" />
-        <img src={appLogo} alt={appName} className="h-32 w-32 object-contain relative z-10" referrerPolicy="no-referrer" />
-      </motion.div>
-
-      <div className="text-center relative z-10">
-        <h2 className="text-4xl font-black text-gray-900 mb-4 tracking-tight">
-          Diseñando tu <span className="text-blue-600">éxito digital</span>
-        </h2>
-        <p className="text-gray-500 text-xl max-w-md mx-auto leading-relaxed">
-          Nuestra IA está analizando tu sector para crear la estructura perfecta para <span className="font-bold text-gray-800">{formData.name || 'tu proyecto'}</span>
-        </p>
-      </div>
-      
-      <div className="mt-16 w-80">
-        <div className="flex justify-between mb-3 text-xs font-bold text-gray-400 uppercase tracking-widest">
-          <span>Progreso</span>
-          <span>75%</span>
-        </div>
-        <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden shadow-inner p-0.5">
-          <motion.div 
-            initial={{ width: '0%' }}
-            animate={{ width: '75%' }}
-            transition={{ duration: 2.5, ease: "easeOut" }}
-            className="h-full bg-gradient-to-r from-blue-600 to-blue-400 rounded-full shadow-lg"
-          />
-        </div>
-        <div className="mt-6 flex flex-col items-center gap-2">
-          <div className="flex gap-1">
-            {[0, 1, 2].map(i => (
-              <motion.div
-                key={i}
-                animate={{ opacity: [0.3, 1, 0.3] }}
-                transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }}
-                className="w-1.5 h-1.5 bg-blue-600 rounded-full"
-              />
-            ))}
-          </div>
-          <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">Optimizando SEO y Conversión</span>
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderAIStyle = () => (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
-      <motion.div 
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl p-10 relative"
-      >
-        <h2 className="text-3xl font-bold text-gray-900 mb-8">Cuéntanos sobre tu proyecto</h2>
-        
-        <div className="space-y-8">
-          <div>
-            <p className="text-sm font-bold text-gray-700 mb-4 uppercase tracking-wider">Objetivo principal</p>
-            <div className="grid grid-cols-2 gap-3">
-              {['Captar clientes', 'Vender productos', 'Presencia online', 'Informar / Educar', 'Portfolio / Galería', 'Reservas / Citas'].map(opt => (
-                <button 
-                  key={opt} 
-                  onClick={() => setFormData({ ...formData, objective: opt })}
-                  className={cn(
-                    "px-4 py-4 rounded-xl border text-sm font-bold transition-all",
-                    formData.objective === opt 
-                      ? "border-blue-500 bg-blue-50 text-blue-600" 
-                      : "border-gray-100 bg-gray-50 text-gray-600 hover:border-blue-200"
-                  )}
-                >
-                  {opt}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <p className="text-sm font-bold text-gray-700 mb-4 uppercase tracking-wider">Estilo visual</p>
-            <div className="grid grid-cols-4 gap-3">
-              {['Moderno', 'Elegante', 'Divertido', 'Minimalista', 'Corporativo', 'Creativo', 'Clásico', 'Atrevido'].map(opt => (
-                <button 
-                  key={opt} 
-                  onClick={() => setFormData({ ...formData, style: opt })}
-                  className={cn(
-                    "px-3 py-4 rounded-xl border text-xs font-bold transition-all",
-                    formData.style === opt 
-                      ? "border-blue-500 bg-blue-50 text-blue-600" 
-                      : "border-gray-100 bg-gray-50 text-gray-600 hover:border-blue-200"
-                  )}
-                >
-                  {opt}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between pt-6">
-            <button 
-              onClick={() => setStep('ai-form')}
-              className="px-8 py-3 font-bold text-gray-900 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
-            >
-              Atrás
-            </button>
-            <div className="flex items-center gap-8">
-              <button 
-                onClick={handleStart}
-                className="font-bold text-gray-500 hover:text-gray-900 transition-colors"
-              >
-                Omitir
-              </button>
-              <button 
-                onClick={handleStart}
-                className="px-10 py-3 bg-[#3b82f6] text-white rounded-xl font-bold shadow-lg shadow-blue-100"
-              >
-                Comenzar
-              </button>
-            </div>
-          </div>
-        </div>
-      </motion.div>
-    </div>
-  );
 
   const renderEditor = () => (
     <div className="flex h-screen bg-[#f8fafc] overflow-hidden font-sans text-gray-600">
@@ -825,59 +502,14 @@ const Builder: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 relative">
-      {/* Background Choice Screen (Blurred when modal is open) */}
-      {step !== 'editor' && (
-        <div className={cn(
-          "transition-all duration-300",
-          (step === 'ai-form' || step === 'ai-style') && "blur-md pointer-events-none brightness-75"
-        )}>
-          {renderChoice()}
-        </div>
-      )}
-
-      <AnimatePresence mode="wait">
-        {step === 'ai-form' && (
-          <motion.div 
-            key="ai-form" 
-            initial={{ opacity: 0 }} 
-            animate={{ opacity: 1 }} 
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[80] bg-black/20 backdrop-blur-sm"
-          >
-            {renderAIForm()}
-          </motion.div>
-        )}
-        {step === 'ai-style' && (
-          <motion.div 
-            key="ai-style" 
-            initial={{ opacity: 0 }} 
-            animate={{ opacity: 1 }} 
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[80] bg-black/20 backdrop-blur-sm"
-          >
-            {renderAIStyle()}
-          </motion.div>
-        )}
-        {step === 'generating' && (
-          <motion.div 
-            key="generating" 
-            initial={{ opacity: 0 }} 
-            animate={{ opacity: 1 }} 
-            exit={{ opacity: 0 }}
-          >
-            {renderGenerating()}
-          </motion.div>
-        )}
-        {step === 'editor' && (
-          <motion.div key="editor" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100]">
-            {renderEditor()}
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <div className="fixed inset-0 z-[100]">
+        {renderEditor()}
+      </div>
+      
       {/* Data Audit Modal */}
       <AnimatePresence>
         {showDataAudit && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-12">
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 md:p-12">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}

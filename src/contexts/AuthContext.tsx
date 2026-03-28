@@ -24,6 +24,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       fullName: 'Usuario Demo',
       email: 'demo@solutium.app',
       role: 'super-admin',
+      uiStyle: 'minimal',
+      activeTheme: 'light',
+      fontFamily: 'Inter',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     });

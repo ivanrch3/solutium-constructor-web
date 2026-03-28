@@ -1,5 +1,6 @@
 import React from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useSolutium } from '../hooks/useSolutium';
 import { cn } from '../lib/utils';
 import { APP_NAME, APP_LOGO_URL } from '../constants';
 import { 
@@ -18,6 +19,7 @@ import { Link, useLocation } from 'react-router-dom';
 
 const Sidebar: React.FC = () => {
   const { user, project } = useAuth();
+  const { config } = useSolutium();
   const location = useLocation();
   const isAdmin = user?.role === 'admin' || user?.role === 'super-admin';
 
@@ -32,8 +34,8 @@ const Sidebar: React.FC = () => {
   ];
 
   const brandColor = project?.brandColors?.[0] || '#3b82f6';
-  const appLogo = APP_LOGO_URL;
-  const appName = APP_NAME;
+  const appLogo = config.project.logoUrl || APP_LOGO_URL;
+  const appName = config.project.name || APP_NAME;
 
   return (
     <aside className="w-64 bg-white border-right border-gray-200 flex flex-col h-screen fixed left-0 top-0 z-50">

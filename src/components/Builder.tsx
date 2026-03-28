@@ -69,8 +69,8 @@ const Builder: React.FC = () => {
   });
   const [showDataAudit, setShowDataAudit] = useState(false);
 
-  const appLogo = APP_LOGO_URL;
-  const appName = APP_NAME;
+  const appLogo = config.project.logoUrl || APP_LOGO_URL;
+  const appName = config.project.name || APP_NAME;
 
   const addModule = (type: ModuleType, title: string) => {
     const newModule: CanvasModule = {

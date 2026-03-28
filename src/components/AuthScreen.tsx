@@ -1,13 +1,15 @@
 import React from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useSolutium } from '../hooks/useSolutium';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { motion } from 'motion/react';
 import { APP_NAME, APP_LOGO_URL } from '../constants';
 
 const AuthScreen: React.FC = () => {
   const { loading, setDemoMode } = useAuth();
-  const appLogo = APP_LOGO_URL;
-  const appName = APP_NAME;
+  const { config } = useSolutium();
+  const appLogo = config.project.logoUrl || APP_LOGO_URL;
+  const appName = config.project.name || APP_NAME;
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">

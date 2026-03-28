@@ -9,6 +9,7 @@ export interface SolutiumProject {
   borderRadius?: string;
   uiStyle?: 'minimal' | 'glass' | 'brutal' | 'luxury';
   activeTheme?: 'light' | 'dark' | 'system';
+  logoUrl?: string;
 }
 
 export interface SolutiumProfile {
@@ -36,9 +37,9 @@ export interface SolutiumConfig {
 }
 
 export const useSolutium = () => {
-  const { project: authProject, products: authProducts } = useAuth();
+  const { project: authProject, user: authUser, products: authProducts } = useAuth();
   
-  // Initialize with authProject if available, otherwise use defaults
+  // Initialize with authProject and authUser if available
   const [config, setConfig] = useState<SolutiumConfig>({
     project: {
       id: authProject?.id || 'proj_123',
@@ -48,20 +49,21 @@ export const useSolutium = () => {
       borderRadius: authProject?.borderRadius?.toString() || '12px',
       uiStyle: (authProject?.uiStyle as any) || 'minimal',
       activeTheme: (authProject?.activeTheme as any) || 'light',
+      logoUrl: authProject?.logoUrl,
     },
     profile: {
-      fontFamily: 'Inter',
-      baseSize: '16px',
-      borderRadius: '8px',
-      uiStyle: 'minimal',
-      activeTheme: 'light',
+      fontFamily: authUser?.fontFamily || 'Inter',
+      baseSize: authUser?.baseSize?.toString() || '16px',
+      borderRadius: authUser?.borderRadius?.toString() || '8px',
+      uiStyle: (authUser?.uiStyle as any) || 'minimal',
+      activeTheme: (authUser?.activeTheme as any) || 'light',
     },
     products: (authProducts as any[]) || [],
   });
 
-  // Update config when authProject or authProducts change (from handshake)
+  // Update config when authProject, authUser or authProducts change
   useEffect(() => {
-    if (authProject || authProducts) {
+    if (authProject || authUser || authProducts) {
       setConfig(prev => ({
         ...prev,
         project: authProject ? {
@@ -72,11 +74,19 @@ export const useSolutium = () => {
           borderRadius: authProject.borderRadius?.toString() || '12px',
           uiStyle: (authProject.uiStyle as any) || 'minimal',
           activeTheme: (authProject.activeTheme as any) || 'light',
+          logoUrl: authProject.logoUrl,
         } : prev.project,
+        profile: authUser ? {
+          fontFamily: authUser.fontFamily || 'Inter',
+          baseSize: authUser.baseSize?.toString() || '16px',
+          borderRadius: authUser.borderRadius?.toString() || '8px',
+          uiStyle: (authUser.uiStyle as any) || 'minimal',
+          activeTheme: (authUser.activeTheme as any) || 'light',
+        } : prev.profile,
         products: (authProducts as any[]) || prev.products
       }));
     }
-  }, [authProject, authProducts]);
+  }, [authProject, authUser, authProducts]);
 
   const saveData = async (data: any) => {
     console.log('Saving data via Solutium SDK:', data);
@@ -91,26 +101,29 @@ export const useSolutium = () => {
   };
 
   useEffect(() => {
-    // Apply CSS variables based on config
+    // Apply CSS variables based on config - Prioritize Profile as requested
     const root = document.documentElement;
-    const project = config.project;
     const profile = config.profile;
 
-    const fontFamily = project.fontFamily || profile.fontFamily;
-    const baseSize = project.baseSize || profile.baseSize;
-    const borderRadius = project.borderRadius || profile.borderRadius;
+    const fontFamily = profile.fontFamily;
+    const baseSize = profile.baseSize;
+    const borderRadius = profile.borderRadius;
 
     root.style.setProperty('--font-family', fontFamily);
     root.style.setProperty('--base-size', baseSize);
     root.style.setProperty('--border-radius', borderRadius);
     
-    // Set theme class
-    const theme = project.activeTheme || profile.activeTheme;
+    // Set theme class from profile
+    const theme = profile.activeTheme;
     if (theme === 'dark') {
       root.classList.add('dark');
     } else {
       root.classList.remove('dark');
     }
+
+    // Apply UI Style class to body
+    const uiStyle = profile.uiStyle || 'minimal';
+    root.setAttribute('data-ui-style', uiStyle);
   }, [config]);
 
   return {

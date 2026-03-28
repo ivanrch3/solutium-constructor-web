@@ -48,7 +48,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const initialize = async () => {
       const hash = window.location.hash.substring(1);
       if (!hash.includes('token=')) {
-        setLoading(false);
+        setDemoMode();
         return;
       }
 

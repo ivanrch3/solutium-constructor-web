@@ -35,7 +35,7 @@ const AppContent: React.FC = () => {
             {showSidebar && <Sidebar />}
             <main className={cn("flex-1 min-h-screen", showSidebar && "ml-64")}>
               <Routes>
-                <Route path="/" element={assets.length > 0 ? <Dashboard /> : <Navigate to="/builder" />} />
+                <Route path="/" element={<Navigate to="/builder" />} />
                 <Route path="/data" element={<DataAudit />} />
                 <Route path="*" element={<Navigate to="/" />} />
               </Routes>

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { Profile, Project, AuthContextType } from '../types';
-import { toCamelCase } from '../lib/utils';
+import { Profile, Project, AuthContextType, Product, Customer, Asset } from '../types';
+import { initSupabase, getSupabase } from '../services/supabase';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -8,187 +8,126 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<Profile | null>(null);
   const [project, setProject] = useState<Project | null>(null);
   const [projectId, setProjectId] = useState<string | null>(null);
-  const [products, setProducts] = useState<any[]>([]);
-  const [customers, setCustomers] = useState<any[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [customers, setCustomerList] = useState<Customer[]>([]);
   const [members, setMembers] = useState<any[]>([]);
   const [integrations, setIntegrations] = useState<any[]>([]);
-  const [assets, setAssets] = useState<any[]>([]);
+  const [assets, setAssets] = useState<Asset[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isDemo, setIsDemo] = useState(false);
   const [isEmbedded, setIsEmbedded] = useState(false);
 
-  useEffect(() => {
-    // Estrategia 0: Inyección Directa (Zero-Handshake)
-    if (window.name && window.name.startsWith('{"type":"SOLUTIUM_DIRECT_INJECTION"')) {
-      try {
-        const directData = JSON.parse(window.name);
-        if (directData.payload && directData.payload.projectId) {
-          console.log('[Satellite] Conexión Directa detectada vía window.name');
-          const config = directData.payload;
-          
-          if (config.profile) setUser(config.profile);
-          if (config.project) {
-            setProject(config.project);
-            setProjectId(config.project.id);
-            
-            // Apply Theme Visual
-            if (config.project.brandColors && config.project.brandColors.length > 0) {
-              document.documentElement.style.setProperty('--primary', config.project.brandColors[0]);
-              document.documentElement.style.setProperty('--primary-dark', config.project.brandColors[1] || config.project.brandColors[0]);
-            }
-            if (config.project.fontFamily) {
-              document.documentElement.style.setProperty('--font-family', config.project.fontFamily);
-            }
-          }
-          if (config.products) setProducts(config.products);
-          if (config.customers) setCustomers(config.customers);
-          if (config.members) setMembers(config.members);
-          if (config.integrations) setIntegrations(config.integrations);
-          if (config.assets) setAssets(config.assets);
-          
-          setLoading(false);
-          return; // Detener el resto del handshake ya que tenemos los datos
-        }
-      } catch (e) {
-        console.error('[Satellite] Error al parsear window.name', e);
-      }
-    }
+  const setDemoMode = () => {
+    setIsDemo(true);
+    setUser({
+      id: 'demo-user',
+      fullName: 'Usuario Demo',
+      email: 'demo@solutium.app',
+      role: 'super-admin',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+    setProject({
+      id: 'demo-project',
+      ownerId: 'demo-user',
+      name: 'Proyecto Demo',
+      brandColors: ['#3b82f6', '#1e40af'],
+      logoUrl: 'https://solutium.app/logo.png',
+      uiStyle: 'modern',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+    setProjectId('demo-project');
+    setLoading(false);
+  };
 
-    // 1. Detect if running in iframe or popup (Strict check)
+  useEffect(() => {
     const embedded = window.self !== window.top || !!window.opener;
     setIsEmbedded(embedded);
 
-    const target = window.opener || window.parent;
-
-    // 2. Robust Token Parser (Fallback)
-    const parseTokenFromHash = () => {
+    const initialize = async () => {
       const hash = window.location.hash.substring(1);
-      const hashParams = new URLSearchParams(hash.includes('?') ? hash.split('?')[1] : hash);
-      const token = hashParams.get('token');
-
-      if (token) {
-        try {
-          const cleanToken = decodeURIComponent(token).replace(/ /g, '+');
-          const base64Payload = cleanToken.split('.')[0];
-          const tokenData = JSON.parse(atob(base64Payload));
-          
-          console.log('Token data from hash (S.I.P. v4.0 Fallback):', tokenData);
-          
-          if (tokenData.projectId) setProjectId(tokenData.projectId);
-          if (tokenData.userId) {
-            setUser(prev => prev ? { ...prev, id: tokenData.userId } : { id: tokenData.userId } as Profile);
-          }
-        } catch (e) {
-          console.warn('Failed to parse token from hash:', e);
-        }
+      if (!hash.includes('token=')) {
+        setLoading(false);
+        return;
       }
-    };
 
-    // 3. Define message handler (Unified Schema v4.0)
-    const handleMessage = (event: MessageEvent) => {
-      const data = event.data;
-      
-      if (data && data.type === 'SOLUTIUM_CONFIG') {
-        console.log('SOLUTIUM_CONFIG received (v4.0):', data.payload);
-        const config = data.payload;
+      try {
+        const tokenPart = hash.split('token=')[1];
+        const payloadBase64 = tokenPart.split('.')[0];
         
-        if (config.profile) setUser(config.profile);
-        if (config.project) {
-          setProject(config.project);
-          setProjectId(config.project.id);
-          
-          // Apply Theme Visual
-          if (config.project.brandColors && config.project.brandColors.length > 0) {
-            document.documentElement.style.setProperty('--primary', config.project.brandColors[0]);
-            document.documentElement.style.setProperty('--primary-dark', config.project.brandColors[1] || config.project.brandColors[0]);
+        // Robust UTF-8 decoding logic from prompt
+        const decodedPayload = JSON.parse(
+          decodeURIComponent(
+            Array.prototype.map.call(
+              atob(payloadBase64.replace(/ /g, '+')), 
+              (c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+            ).join('')
+          )
+        );
+
+        console.log('[Satellite] Decoded Token Payload:', decodedPayload);
+
+        const { projectId: pid, userId: uid, sessionToken } = decodedPayload;
+        setProjectId(pid);
+
+        // Initialize Supabase Singleton with sessionToken
+        const supabase = initSupabase(sessionToken);
+
+        // Fetch Project Data (Dynamic Styles)
+        const { data: projectData, error: projectError } = await supabase
+          .from('projects')
+          .select('*')
+          .eq('id', pid)
+          .single();
+
+        if (projectData) {
+          setProject(projectData);
+          // Apply Dynamic Styles
+          if (projectData.brand_colors && projectData.brand_colors.length > 0) {
+            document.documentElement.style.setProperty('--primary', projectData.brand_colors[0]);
+            document.documentElement.style.setProperty('--primary-dark', projectData.brand_colors[1] || projectData.brand_colors[0]);
           }
-          if (config.project.fontFamily) {
-            document.documentElement.style.setProperty('--font-family', config.project.fontFamily);
+          if (projectData.logo_url) {
+            // Logo is handled in components
           }
         }
-        if (config.products) setProducts(config.products);
-        if (config.customers) setCustomers(config.customers);
-        if (config.members) setMembers(config.members);
-        if (config.integrations) setIntegrations(config.integrations);
-        if (config.assets) setAssets(config.assets);
-        
-        // Send ACK back
-        if (target) {
-          target.postMessage({ 
-            type: 'SOLUTIUM_ACK', 
-            payload: { status: 'connected', timestamp: Date.now() } 
-          }, '*');
-        }
-        
+
+        // Fetch User Profile
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', uid)
+          .single();
+
+        if (profileData) setUser(profileData);
+
+        // Fetch other data based on contracts
+        const [
+          { data: productsData },
+          { data: customersData },
+          { data: assetsData }
+        ] = await Promise.all([
+          supabase.from('products').select('*').eq('project_id', pid),
+          supabase.from('customers').select('*').eq('project_id', pid),
+          supabase.from('assets').select('*').eq('project_id', pid)
+        ]);
+
+        if (productsData) setProducts(productsData);
+        if (customersData) setCustomerList(customersData);
+        if (assetsData) setAssets(assetsData);
+
+      } catch (error) {
+        console.error('[Satellite] Initialization Error:', error);
+      } finally {
         setLoading(false);
       }
     };
 
-    // 4. Register listener
-    window.addEventListener('message', handleMessage);
-
-    // 5. Handshake Logic (S.I.P. v4.0)
-    let handshakeInterval: any;
-    let fallbackTimer: any;
-
-    if (embedded) {
-      // Send SOLUTIUM_SATELLITE_READY immediately and then every 500ms
-      const sendReady = () => {
-        console.log('Sending SOLUTIUM_SATELLITE_READY (v2.1.0) to Mother App...');
-        if (target) {
-          target.postMessage({ 
-            type: 'SOLUTIUM_SATELLITE_READY', 
-            payload: { version: '2.1.0', timestamp: Date.now() } 
-          }, '*');
-        }
-      };
-
-      sendReady();
-      handshakeInterval = setInterval(sendReady, 500);
-      
-      // Fallback: If no config in 3s, try hash token
-      fallbackTimer = setTimeout(() => {
-        parseTokenFromHash();
-      }, 3000);
-
-      // Safety timeout: If no config received in 20s, allow demo mode
-      const safetyTimer = setTimeout(() => {
-        setLoading((prevLoading) => {
-          if (prevLoading) {
-            console.warn('Handshake timeout: No config received from Mother App after 20s');
-          }
-          return prevLoading;
-        });
-        clearInterval(handshakeInterval);
-      }, 20000);
-      
-      // Clear timers on config reception
-      const originalHandler = handleMessage;
-      const wrappedHandler = (event: MessageEvent) => {
-        if (event.data && event.data.type === 'SOLUTIUM_CONFIG') {
-          clearInterval(handshakeInterval);
-          clearTimeout(fallbackTimer);
-          clearTimeout(safetyTimer);
-        }
-        originalHandler(event);
-      };
-      
-      window.removeEventListener('message', handleMessage);
-      window.addEventListener('message', wrappedHandler);
-      
-      return () => {
-        window.removeEventListener('message', wrappedHandler);
-        clearInterval(handshakeInterval);
-        clearTimeout(fallbackTimer);
-        clearTimeout(safetyTimer);
-      };
-    } else {
-      // Standalone mode: Just wait for config or show loading
-      setLoading(false);
-      return () => {
-        window.removeEventListener('message', handleMessage);
-      };
+    if (!isDemo) {
+      initialize();
     }
-  }, []);
+  }, [isDemo]);
 
   return (
     <AuthContext.Provider value={{ 
@@ -196,12 +135,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       project, 
       projectId, 
       products, 
-      customers,
+      customers: customers,
       members,
       integrations,
       assets,
       loading, 
-      isEmbedded
+      isDemo,
+      isEmbedded, 
+      setDemoMode 
     }}>
       {children}
     </AuthContext.Provider>

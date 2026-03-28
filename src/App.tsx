@@ -8,8 +8,21 @@ import Dashboard from './components/Dashboard';
 import Builder from './components/Builder';
 import DataAudit from './components/DataAudit';
 
+import InitialDataCheck from './components/InitialDataCheck';
+
 const AppContent: React.FC = () => {
   const { user, loading, project, isEmbedded } = useAuth();
+  const [proceed, setProceed] = React.useState(false);
+
+  React.useEffect(() => {
+    const handleProceed = () => setProceed(true);
+    window.addEventListener('SOLUTIUM_PROCEED', handleProceed);
+    return () => window.removeEventListener('SOLUTIUM_PROCEED', handleProceed);
+  }, []);
+
+  if (!proceed) {
+    return <InitialDataCheck />;
+  }
 
   if (loading) {
     return <AuthScreen />;

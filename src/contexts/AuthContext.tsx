@@ -9,6 +9,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [project, setProject] = useState<Project | null>(null);
   const [projectId, setProjectId] = useState<string | null>(null);
   const [products, setProducts] = useState<any[]>([]);
+  const [customers, setCustomers] = useState<any[]>([]);
+  const [members, setMembers] = useState<any[]>([]);
+  const [integrations, setIntegrations] = useState<any[]>([]);
+  const [assets, setAssets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDemo, setIsDemo] = useState(false);
   const [isEmbedded, setIsEmbedded] = useState(false);
@@ -77,7 +81,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setProjectId(project.id);
         }
         if (products) setProducts(products);
-        // We could also store customers, members, etc. if needed
+        if (customers) setCustomers(customers);
+        if (members) setMembers(members);
+        if (integrations) setIntegrations(integrations);
+        if (assets) setAssets(assets);
         
         setLoading(false);
       }
@@ -182,7 +189,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [isDemo]);
 
   return (
-    <AuthContext.Provider value={{ user, project, projectId, products, loading, isDemo, isEmbedded, setDemoMode }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      project, 
+      projectId, 
+      products, 
+      customers,
+      members,
+      integrations,
+      assets,
+      loading, 
+      isDemo, 
+      isEmbedded, 
+      setDemoMode 
+    }}>
       {children}
     </AuthContext.Provider>
   );

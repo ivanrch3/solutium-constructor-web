@@ -4,73 +4,58 @@ import { Loader2, AlertCircle } from 'lucide-react';
 import { cn, toCamelCase } from '../lib/utils';
 
 const DataAudit: React.FC = () => {
-  const { projectId, user } = useAuth();
+  const { 
+    projectId, 
+    user, 
+    project, 
+    products, 
+    customers, 
+    members, 
+    integrations, 
+    assets 
+  } = useAuth();
   const [activeTab, setActiveTab] = useState('customers');
   const [records, setRecords] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const tabs = [
     { id: 'customers', label: 'Clientes' },
     { id: 'products', label: 'Productos' },
     { id: 'assets', label: 'Activos' },
-    { id: 'projects', label: 'Proyectos' },
-    { id: 'profiles', label: 'Perfiles' },
-    { id: 'modules', label: 'Módulos' },
-    { id: 'pages', label: 'Páginas' },
-    { id: 'leads', label: 'Leads' }
+    { id: 'members', label: 'Miembros' },
+    { id: 'integrations', label: 'Integraciones' },
+    { id: 'project', label: 'Proyecto' },
+    { id: 'profile', label: 'Perfil' }
   ];
 
   useEffect(() => {
-    const fetchRecords = async () => {
-      if (!projectId) return;
+    const getRecords = () => {
       setLoading(true);
       setError(null);
 
       try {
-        // Mocking audit data
-        const mockData: Record<string, any[]> = {
-          customers: [
-            { id: 'c1', name: 'Juan Perez', email: 'juan@example.com', project_id: 'proj_123' },
-            { id: 'c2', name: 'Maria Lopez', email: 'maria@example.com', project_id: 'proj_123' }
-          ],
-          products: [
-            { id: 'prod_1', name: 'Producto Premium', price: 99.99, project_id: 'proj_123', status: 'active' },
-            { id: 'prod_2', name: 'Producto Básico', price: 49.99, project_id: 'proj_123', status: 'active' }
-          ],
-          assets: [
-            { id: 'a1', type: 'image', url: 'https://picsum.photos/seed/a1/200', project_id: 'proj_123' }
-          ],
-          projects: [
-            { id: 'proj_123', name: 'Mi Proyecto Solutium', owner_id: 'proj_user_123' }
-          ],
-          profiles: [
-            { id: 'proj_user_123', full_name: 'Ivan Solutium', email: 'ivanrch3@gmail.com', role: 'admin' }
-          ],
-          modules: [
-            { id: 'm1', type: 'hero', title: 'Portada Principal', project_id: 'proj_123' },
-            { id: 'm2', type: 'features', title: 'Nuestros Servicios', project_id: 'proj_123' }
-          ],
-          pages: [
-            { id: 'p1', name: 'Inicio', slug: 'home', project_id: 'proj_123' },
-            { id: 'p2', name: 'Contacto', slug: 'contact', project_id: 'proj_123' }
-          ],
-          leads: [
-            { id: 'l1', name: 'Carlos Ruiz', email: 'carlos@test.com', message: 'Interesado en servicios', created_at: '2026-03-26' }
-          ]
+        const dataMap: Record<string, any[]> = {
+          customers: customers || [],
+          products: products || [],
+          assets: assets || [],
+          members: members || [],
+          integrations: integrations || [],
+          project: project ? [project] : [],
+          profile: user ? [user] : []
         };
 
-        setRecords(toCamelCase(mockData[activeTab]) || []);
+        setRecords(toCamelCase(dataMap[activeTab]) || []);
       } catch (err: any) {
-        console.error('Error fetching audit data:', err);
+        console.error('Error getting audit data:', err);
         setError(err.message);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchRecords();
-  }, [activeTab, projectId]);
+    getRecords();
+  }, [activeTab, customers, products, assets, members, integrations, project, user]);
 
   if (user?.role === 'user') {
     return (

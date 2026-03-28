@@ -112,6 +112,10 @@ export interface AuthContextType {
   project: Project | null;
   projectId: string | null;
   products: Product[];
+  customers: Customer[];
+  members: any[];
+  integrations: any[];
+  assets: Asset[];
   loading: boolean;
   isDemo: boolean;
   isEmbedded: boolean;

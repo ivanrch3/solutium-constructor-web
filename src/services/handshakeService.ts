@@ -24,22 +24,44 @@ export const listenForHandshake = (
     const required = ['satellite_id', 'supabase_url', 'supabase_anon_key', 'session_token'];
     const missing = required.filter(field => !payload[field]);
 
-    if (missing.length > 0) return false;
+    if (missing.length > 0) {
+      console.warn("[DIAGNOSTICO] Payload incompleto en URL:", missing);
+      return false;
+    }
 
     console.log("[DIAGNOSTICO] Handshake válido detectado. Procesando...");
     onHandshake(payload as HandshakePayload);
     return true;
   };
 
-  // ESTRATEGIA 1: Revisar window.name (Inyección Directa)
+  // ESTRATEGIA PRIORITARIA: Leer de la URL (Fat URL)
+  const urlParams = new URLSearchParams(window.location.search);
+  const urlPayload: any = {};
+  const keys = [
+    'satellite_id', 'supabase_url', 'supabase_anon_key', 'session_token',
+    'do_endpoint', 'do_access_key', 'do_secret_key', 'do_bucket'
+  ];
+  
+  keys.forEach(key => {
+    const val = urlParams.get(key);
+    if (val) urlPayload[key] = val;
+  });
+
+  if (Object.keys(urlPayload).length > 0) {
+    console.log("[DIAGNOSTICO] Detectada Fat URL. Intentando validar...");
+    if (validateAndProcess(urlPayload)) {
+      return () => {}; // Handshake completado por URL, no hace falta limpiar nada
+    }
+  }
+
+  // ESTRATEGIA DE RESPALDO: window.name e inyección postMessage
   if (window.name) {
     try {
       const nameData = JSON.parse(window.name);
       validateAndProcess(nameData);
-    } catch (e) { /* No es JSON, ignorar */ }
+    } catch (e) { /* No es JSON */ }
   }
 
-  // ESTRATEGIA 2: Listener de mensajes postMessage
   const handler = (event: MessageEvent) => {
     if (!event.data) return;
     validateAndProcess(event.data);
@@ -47,18 +69,5 @@ export const listenForHandshake = (
 
   window.addEventListener('message', handler);
   
-  // Avisar a la Madre que estamos listos para recibir datos
-  const signalReady = () => {
-    const readyMsg = { type: 'SOLUTIUM_SATELLITE_READY', timestamp: Date.now() };
-    if (window.opener) window.opener.postMessage(readyMsg, '*');
-    else if (window.parent !== window) window.parent.postMessage(readyMsg, '*');
-  };
-  
-  signalReady();
-  const readyInterval = setInterval(signalReady, 2000); // Re-intentar cada 2s
-
-  return () => {
-    window.removeEventListener('message', handler);
-    clearInterval(readyInterval);
-  };
+  return () => window.removeEventListener('message', handler);
 };

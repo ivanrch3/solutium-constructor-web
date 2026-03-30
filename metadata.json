@@ -1,5 +1,5 @@
 {
-  "name": "Solutium Constructor Web",
-  "description": "Constructor profesional de páginas web y landings pages, simple, sencillo pero poderoso y profesional.",
+  "name": "Solutium Satellite Base",
+  "description": "Plantilla base para aplicaciones satélites de Solutium con handshake, temas dinámicos y panel de datos para superadmins.",
   "requestFramePermissions": []
 }

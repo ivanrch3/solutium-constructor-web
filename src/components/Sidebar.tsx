@@ -1,109 +1,63 @@
 import React from 'react';
-import { useAuth } from '../contexts/AuthContext';
-import { useSolutium } from '../hooks/useSolutium';
-import { cn } from '../lib/utils';
-import { APP_NAME, APP_LOGO_URL } from '../constants';
-import { 
-  LayoutDashboard, 
-  Database, 
-  Settings, 
-  LogOut, 
-  User,
-  PlusCircle,
-  Layers,
-  Palette,
-  Eye,
-  Save
-} from 'lucide-react';
-import { Link, useLocation } from 'react-router-dom';
+import { Database, Home, Settings, FileBox } from 'lucide-react';
 
-const Sidebar: React.FC = () => {
-  const { user, project } = useAuth();
-  const { config } = useSolutium();
-  const location = useLocation();
-  const isAdmin = user?.role === 'admin' || user?.role === 'super-admin';
+interface SidebarProps {
+  role: string;
+  activeTab: string;
+  onTabChange: (tab: string) => void;
+}
 
-  const topItems = [
-    { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
-    { icon: Layers, label: 'Constructor', path: '/builder' },
-  ];
-
-  const bottomItems = [
-    ...(isAdmin ? [{ icon: Database, label: 'Datos', path: '/data' }] : []),
-    { icon: Settings, label: 'Configuración', path: '/settings' },
-  ];
-
-  const brandColor = project?.brandColors?.[0] || '#3b82f6';
-  const appLogo = config.project.logoUrl || APP_LOGO_URL;
-  const appName = config.project.name || APP_NAME;
-
+export const Sidebar: React.FC<SidebarProps> = ({ role, activeTab, onTabChange }) => {
   return (
-    <aside className="w-64 bg-white border-right border-gray-200 flex flex-col h-screen fixed left-0 top-0 z-50">
-      {/* Logo Section - App Imagotype */}
-      <div className="p-6 border-bottom border-gray-100 flex items-center gap-3">
-        <img src={appLogo} alt={appName} className="h-8 w-8 rounded object-contain" referrerPolicy="no-referrer" />
-        <span className="font-bold text-gray-900 truncate">{appName}</span>
+    <div className="w-64 h-screen bg-surface border-r border-gray-200 flex flex-col">
+      <div className="p-6">
+        <h1 className="text-2xl font-bold text-primary">Solutium</h1>
+        <p className="text-sm text-gray-500">Satellite Base</p>
       </div>
-
-      {/* Navigation */}
-      <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-        {topItems.map((item) => (
-          <Link
-            key={item.path}
-            to={item.path}
-            className={cn(
-              "flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm font-medium",
-              location.pathname === item.path 
-                ? "bg-gray-100 text-gray-900" 
-                : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
-            )}
-            style={location.pathname === item.path ? { borderLeft: `4px solid ${brandColor}` } : {}}
+      
+      <nav className="flex-1 px-4 space-y-2">
+        <button
+          onClick={() => onTabChange('home')}
+          className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
+            activeTab === 'home' ? 'bg-primary/10 text-primary' : 'text-text hover:bg-gray-100'
+          }`}
+        >
+          <Home size={20} />
+          <span>Inicio</span>
+        </button>
+        
+        <button
+          onClick={() => onTabChange('activos')}
+          className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
+            activeTab === 'activos' ? 'bg-primary/10 text-primary' : 'text-text hover:bg-gray-100'
+          }`}
+        >
+          <FileBox size={20} />
+          <span>Activos</span>
+        </button>
+        
+        {role === 'superadmin' && (
+          <button
+            onClick={() => onTabChange('datos')}
+            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
+              activeTab === 'datos' ? 'bg-primary/10 text-primary' : 'text-text hover:bg-gray-100'
+            }`}
           >
-            <item.icon className="w-5 h-5" />
-            {item.label}
-          </Link>
-        ))}
+            <Database size={20} />
+            <span>Datos</span>
+          </button>
+        )}
+        
+        <button
+          onClick={() => onTabChange('settings')}
+          className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
+            activeTab === 'settings' ? 'bg-primary/10 text-primary' : 'text-text hover:bg-gray-100'
+          }`}
+        >
+          <Settings size={20} />
+          <span>Ajustes</span>
+        </button>
       </nav>
-
-      {/* Bottom Navigation */}
-      <div className="p-4 border-top border-gray-100 space-y-1">
-        {bottomItems.map((item) => (
-          <Link
-            key={item.path}
-            to={item.path}
-            className={cn(
-              "flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm font-medium",
-              location.pathname === item.path 
-                ? "bg-gray-100 text-gray-900" 
-                : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
-            )}
-            style={location.pathname === item.path ? { borderLeft: `4px solid ${brandColor}` } : {}}
-          >
-            <item.icon className="w-5 h-5" />
-            {item.label}
-          </Link>
-        ))}
-      </div>
-
-      {/* User Profile */}
-      <div className="p-4 border-top border-gray-100">
-        <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
-          {user?.avatarUrl ? (
-            <img src={user.avatarUrl} alt="Avatar" className="w-10 h-10 rounded-full border border-gray-200" referrerPolicy="no-referrer" />
-          ) : (
-            <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-500">
-              <User className="w-6 h-6" />
-            </div>
-          )}
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-gray-900 truncate">{user?.fullName || 'Usuario'}</p>
-            <p className="text-xs text-gray-500 truncate capitalize">{user?.role || 'User'}</p>
-          </div>
-          <LogOut className="w-4 h-4 text-gray-400 hover:text-red-500" />
-        </div>
-      </div>
-    </aside>
+    </div>
   );
 };
-
-export default Sidebar;

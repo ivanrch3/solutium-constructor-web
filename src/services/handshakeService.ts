@@ -12,43 +12,53 @@ export interface HandshakePayload {
 export const listenForHandshake = (
   onHandshake: (payload: HandshakePayload) => void
 ) => {
-  console.log("[DIAGNOSTICO] Listener de handshake inicializado y esperando mensajes...");
+  console.log("[DIAGNOSTICO] Listener de handshake inicializado.");
 
-  const handler = (event: MessageEvent) => {
-    console.log("[DIAGNOSTICO] Mensaje recibido en Satélite");
-    console.log("[DIAGNOSTICO] Origen del mensaje (event.origin):", event.origin);
-    console.log("[DIAGNOSTICO] Datos del mensaje (event.data):", event.data);
-
-    const data = event.data;
+  const validateAndProcess = (data: any) => {
+    if (!data) return false;
     
-    if (!data) {
-      console.warn("[DIAGNOSTICO] El mensaje fue ignorado: event.data es null o undefined.");
-      return;
-    }
+    // Soporte para el formato inyectado o el formato plano
+    const payload = (data.type === 'SOLUTIUM_DIRECT_INJECTION') ? data.payload : data;
+    if (!payload) return false;
 
-    // Validar qué campos faltan para dar un reporte exacto
-    const missingFields = [];
-    if (!data.satellite_id) missingFields.push('satellite_id');
-    if (!data.supabase_url) missingFields.push('supabase_url');
-    if (!data.supabase_anon_key) missingFields.push('supabase_anon_key');
-    if (!data.session_token) missingFields.push('session_token');
+    const required = ['satellite_id', 'supabase_url', 'supabase_anon_key', 'session_token'];
+    const missing = required.filter(field => !payload[field]);
 
-    if (missingFields.length > 0) {
-      // Es normal recibir mensajes de extensiones de React/Vite, así que solo logueamos como warning
-      // si parece ser un intento de handshake pero está incompleto, o simplemente lo ignoramos.
-      // Para diagnóstico profundo, logueamos todo.
-      console.warn(`[DIAGNOSTICO] Mensaje ignorado. Faltan campos requeridos para el handshake: ${missingFields.join(', ')}`);
-      return;
-    }
+    if (missing.length > 0) return false;
 
-    console.log("[DIAGNOSTICO] Handshake válido. Procesando payload...");
-    onHandshake(data as HandshakePayload);
+    console.log("[DIAGNOSTICO] Handshake válido detectado. Procesando...");
+    onHandshake(payload as HandshakePayload);
+    return true;
+  };
+
+  // ESTRATEGIA 1: Revisar window.name (Inyección Directa)
+  if (window.name) {
+    try {
+      const nameData = JSON.parse(window.name);
+      validateAndProcess(nameData);
+    } catch (e) { /* No es JSON, ignorar */ }
+  }
+
+  // ESTRATEGIA 2: Listener de mensajes postMessage
+  const handler = (event: MessageEvent) => {
+    if (!event.data) return;
+    validateAndProcess(event.data);
   };
 
   window.addEventListener('message', handler);
   
+  // Avisar a la Madre que estamos listos para recibir datos
+  const signalReady = () => {
+    const readyMsg = { type: 'SOLUTIUM_SATELLITE_READY', timestamp: Date.now() };
+    if (window.opener) window.opener.postMessage(readyMsg, '*');
+    else if (window.parent !== window) window.parent.postMessage(readyMsg, '*');
+  };
+  
+  signalReady();
+  const readyInterval = setInterval(signalReady, 2000); // Re-intentar cada 2s
+
   return () => {
-    console.log("[DIAGNOSTICO] Removiendo listener de handshake...");
     window.removeEventListener('message', handler);
+    clearInterval(readyInterval);
   };
 };

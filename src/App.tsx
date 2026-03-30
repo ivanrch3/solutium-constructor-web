@@ -125,8 +125,8 @@ const AppContent: React.FC = () => {
             <AssetGenerator userId={profile.id} />
           </div>
         )}
-
-        {activeTab === 'datos' && profile?.role === 'superadmin' && (
+        
+        {activeTab === 'datos' && profile?.role?.toLowerCase().replace('-', '') === 'superadmin' && (
           <DataTab />
         )}
         

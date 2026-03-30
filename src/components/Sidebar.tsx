@@ -8,6 +8,8 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ role, activeTab, onTabChange }) => {
+  const isSuperAdmin = role?.toLowerCase().replace('-', '') === 'superadmin';
+
   return (
     <div className="w-64 h-screen bg-surface border-r border-gray-200 flex flex-col">
       <div className="p-6">
@@ -36,7 +38,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ role, activeTab, onTabChange }
           <span>Activos</span>
         </button>
         
-        {role === 'superadmin' && (
+        {isSuperAdmin && (
           <button
             onClick={() => onTabChange('datos')}
             className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${

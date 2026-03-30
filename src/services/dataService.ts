@@ -27,7 +27,7 @@ export const getProfile = async (userId: string): Promise<Profile | null> => {
 
     const mappedData = {
       id: data.id,
-      role: data.role,
+      role: data.role ? data.role.toLowerCase().replace('-', '') : 'user',
       activeTheme: data.active_theme,
       fontFamily: data.font_family,
       fullName: data.full_name,
@@ -57,7 +57,7 @@ export const getProfiles = async (page: number, pageSize: number): Promise<Profi
 
     const mappedData = data.map((item: any) => ({
       id: item.id,
-      role: item.role,
+      role: item.role ? item.role.toLowerCase().replace('-', '') : 'user',
       activeTheme: item.active_theme,
       fontFamily: item.font_family,
       fullName: item.full_name,

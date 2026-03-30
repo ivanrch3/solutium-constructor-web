@@ -16,6 +16,15 @@ const AppContent: React.FC = () => {
   const { setTheme } = useTheme();
 
   useEffect(() => {
+    console.log("--- DIAGNÓSTICO DE EMERGENCIA ---");
+    console.log("1. window.name contenido:", window.name ? (window.name.substring(0, 50) + "...") : "VACÍO");
+    console.log("2. ¿Tiene abridor (window.opener)?:", !!window.opener);
+    console.log("3. ¿Está en iframe?:", window.parent !== window);
+    console.log("4. URL actual:", window.location.href);
+    console.log("---------------------------------");
+  }, []);
+
+  useEffect(() => {
     const cleanup = listenForHandshake(async (payload) => {
       try {
         const supabase = initSupabase(

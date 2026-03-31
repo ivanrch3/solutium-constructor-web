@@ -89,7 +89,11 @@ const ThemeContext = createContext<ThemeContextProps | undefined>(undefined);
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const setTheme = (themeName: string, fontFamily: string) => {
-    const theme = SOLUTIUM_THEMES.find(t => t.name === themeName) || SOLUTIUM_THEMES[2]; // Default to blue-light
+    const normalizedName = (themeName || '').toLowerCase();
+    console.log(`[THEME] Intentando aplicar tema: "${themeName}" (normalizado: "${normalizedName}")`);
+    
+    const theme = SOLUTIUM_THEMES.find(t => t.name.toLowerCase() === normalizedName) || SOLUTIUM_THEMES[2]; // Default to blue-light
+    console.log(`[THEME] Tema seleccionado: ${theme.name}`);
     
     const root = document.documentElement;
     root.style.setProperty('--primary', theme.colors.primary);

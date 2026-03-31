@@ -6,7 +6,6 @@ import { getProfile, getProject } from './services/dataService';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { Sidebar } from './components/Sidebar';
 import { DataTab } from './components/DataTab';
-import { AssetGenerator } from './components/AssetGenerator';
 import { Profile, Project } from './types/schema';
 
 const AppContent: React.FC = () => {
@@ -151,12 +150,6 @@ const AppContent: React.FC = () => {
                 <li><span className="font-medium text-gray-500">Tema:</span> {profile?.activeTheme}</li>
               </ul>
             </div>
-          </div>
-        )}
-        
-        {activeTab === 'activos' && profile && (
-          <div className="p-8">
-            <AssetGenerator userId={profile.id} projectId={projectId} />
           </div>
         )}
         

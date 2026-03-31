@@ -1,5 +1,5 @@
 import React from 'react';
-import { Database, Home, Settings, FileBox, User } from 'lucide-react';
+import { Database, Home, Settings, User } from 'lucide-react';
 import { Profile, Project } from '../types/schema';
 
 interface SidebarProps {
@@ -59,16 +59,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ profile, project, activeTab, o
         </button>
         
         <button
-          onClick={() => onTabChange('activos')}
+          onClick={() => onTabChange('settings')}
           className={`w-full flex items-center space-x-3 px-4 py-2.5 rounded-lg transition-all duration-200 ${
-            activeTab === 'activos' ? '' : 'hover:bg-black/5 dark:hover:bg-white/5'
+            activeTab === 'settings' ? '' : 'hover:bg-black/5 dark:hover:bg-white/5'
           }`}
-          style={activeTab === 'activos' ? activeButtonStyle : {}}
+          style={activeTab === 'settings' ? activeButtonStyle : {}}
         >
-          <FileBox size={18} />
-          <span className="font-medium">Activos</span>
+          <Settings size={18} />
+          <span className="font-medium">Ajustes</span>
         </button>
-        
+
         {isSuperAdmin && (
           <button
             onClick={() => onTabChange('datos')}
@@ -81,17 +81,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ profile, project, activeTab, o
             <span className="font-medium">Datos</span>
           </button>
         )}
-        
-        <button
-          onClick={() => onTabChange('settings')}
-          className={`w-full flex items-center space-x-3 px-4 py-2.5 rounded-lg transition-all duration-200 ${
-            activeTab === 'settings' ? '' : 'hover:bg-black/5 dark:hover:bg-white/5'
-          }`}
-          style={activeTab === 'settings' ? activeButtonStyle : {}}
-        >
-          <Settings size={18} />
-          <span className="font-medium">Ajustes</span>
-        </button>
       </nav>
 
       <div className="p-4 border-t" style={{ borderColor: profile?.sidebarBorder || 'var(--border)' }}>

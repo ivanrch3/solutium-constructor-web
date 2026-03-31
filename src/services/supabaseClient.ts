@@ -14,8 +14,5 @@ export const initSupabase = (url: string, key: string, token: string) => {
 };
 
 export const getSupabase = () => {
-  if (!supabaseInstance) {
-    throw new Error('Supabase client not initialized. Waiting for handshake.');
-  }
   return supabaseInstance;
 };

@@ -101,6 +101,31 @@ const AppContent: React.FC = () => {
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
         <h2 className="text-xl font-semibold">Esperando handshake...</h2>
         <p className="text-gray-500 mt-2">Conectando con la base principal de Solutium</p>
+        
+        {import.meta.env.DEV && (
+          <button 
+            onClick={() => {
+              // Initialize Supabase with dummy values for development
+              initSupabase(
+                'https://placeholder-project.supabase.co',
+                'placeholder-key',
+                'placeholder-token'
+              );
+              setProjectId('dev-project');
+              setProfile({
+                id: 'dev-user',
+                role: 'superadmin',
+                activeTheme: 'blue-light',
+                fontFamily: 'Inter, sans-serif'
+              });
+              setTheme('blue-light', 'Inter, sans-serif');
+              setIsHandshakeComplete(true);
+            }}
+            className="mt-8 px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-md text-sm transition-colors border border-gray-300"
+          >
+            Saltar Handshake (Solo Dev)
+          </button>
+        )}
       </div>
     );
   }

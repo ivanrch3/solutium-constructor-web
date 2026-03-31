@@ -16,6 +16,10 @@ const validateData = <T>(schema: z.ZodType<T>, data: unknown, context: string): 
 export const getProfile = async (userId: string): Promise<Profile | null> => {
   try {
     const supabase = getSupabase();
+    if (!supabase) {
+      console.warn('Supabase client not initialized. Waiting for handshake.');
+      return null;
+    }
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
@@ -75,6 +79,10 @@ export const getProfile = async (userId: string): Promise<Profile | null> => {
 export const getProject = async (projectId: string): Promise<Project | null> => {
   try {
     const supabase = getSupabase();
+    if (!supabase) {
+      console.warn('Supabase client not initialized. Waiting for handshake.');
+      return null;
+    }
     const { data, error } = await supabase
       .from('projects')
       .select('*')
@@ -108,7 +116,7 @@ export const getProject = async (projectId: string): Promise<Project | null> => 
       updatedAt: data.updated_at,
     };
 
-    return validateData(projectSchema, mappedData, 'getProject');
+    return validateData(projectSchema, mappedData, 'getProject') as Project | null;
   } catch (err) {
     console.error('Error in getProject:', err);
     return null;
@@ -118,6 +126,10 @@ export const getProject = async (projectId: string): Promise<Project | null> => 
 export const getProfiles = async (page: number, pageSize: number, projectId: string, currentUserId: string): Promise<Profile[]> => {
   try {
     const supabase = getSupabase();
+    if (!supabase) {
+      console.warn('Supabase client not initialized. Waiting for handshake.');
+      return [];
+    }
     const start = page * pageSize;
     const end = start + pageSize - 1;
 
@@ -184,6 +196,10 @@ export const getProfiles = async (page: number, pageSize: number, projectId: str
 export const getProjects = async (page: number, pageSize: number, projectId: string): Promise<Project[]> => {
   try {
     const supabase = getSupabase();
+    if (!supabase) {
+      console.warn('Supabase client not initialized. Waiting for handshake.');
+      return [];
+    }
     const start = page * pageSize;
     const end = start + pageSize - 1;
 
@@ -221,7 +237,7 @@ export const getProjects = async (page: number, pageSize: number, projectId: str
     }));
 
     const validData = mappedData
-      .map(item => validateData(projectSchema, item, 'getProjects'))
+      .map(item => validateData(projectSchema, item, 'getProjects') as Project | null)
       .filter((item): item is Project => item !== null);
 
     return validData;
@@ -234,6 +250,10 @@ export const getProjects = async (page: number, pageSize: number, projectId: str
 export const getCustomers = async (page: number, pageSize: number, projectId: string): Promise<Customer[]> => {
   try {
     const supabase = getSupabase();
+    if (!supabase) {
+      console.warn('Supabase client not initialized. Waiting for handshake.');
+      return [];
+    }
     const start = page * pageSize;
     const end = start + pageSize - 1;
 
@@ -272,7 +292,7 @@ export const getCustomers = async (page: number, pageSize: number, projectId: st
     }));
 
     const validData = mappedData
-      .map(item => validateData(customerSchema, item, 'getCustomers'))
+      .map(item => validateData(customerSchema, item, 'getCustomers') as Customer | null)
       .filter((item): item is Customer => item !== null);
 
     return validData;
@@ -285,6 +305,10 @@ export const getCustomers = async (page: number, pageSize: number, projectId: st
 export const getProducts = async (page: number, pageSize: number, projectId: string): Promise<Product[]> => {
   try {
     const supabase = getSupabase();
+    if (!supabase) {
+      console.warn('Supabase client not initialized. Waiting for handshake.');
+      return [];
+    }
     const start = page * pageSize;
     const end = start + pageSize - 1;
 
@@ -316,7 +340,7 @@ export const getProducts = async (page: number, pageSize: number, projectId: str
     }));
 
     const validData = mappedData
-      .map(item => validateData(productSchema, item, 'getProducts'))
+      .map(item => validateData(productSchema, item, 'getProducts') as Product | null)
       .filter((item): item is Product => item !== null);
 
     return validData;

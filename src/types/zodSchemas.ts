@@ -45,11 +45,27 @@ export const projectSchema = z.object({
 
 export const customerSchema = z.object({
   id: z.string(),
-  companyName: z.string().optional().nullable(),
-  contactEmail: z.string().optional().nullable(),
-  contactPhone: z.string().optional().nullable(),
-  brandColors: brandColorsSchema.optional().nullable(),
+  name: z.string(),
+  email: z.string().optional().nullable(),
+  phone: z.string().optional().nullable(),
+  company: z.string().optional().nullable(),
+  role: z.string().optional().nullable(),
+  status: z.string().optional().nullable(),
+  source: z.string().optional().nullable(),
+  businessId: z.string().optional().nullable(),
+  projectId: z.string().optional().nullable(),
+  sourceAppId: z.string().optional().nullable(),
+  visibility: z.string().optional().nullable(),
+  notes: z.string().optional().nullable(),
+  companyLogoUrl: z.string().optional().nullable(),
+  profilePhotoUrl: z.string().optional().nullable(),
+  imageUrl: z.string().optional().nullable(),
+  schemaVersion: z.string().optional().nullable(),
+  appData: z.any().optional().nullable(),
+  assignedBusinessIds: z.any().optional().nullable(),
   createdAt: z.string().optional().nullable(),
+  updatedAt: z.string().optional().nullable(),
+  lastActivity: z.string().optional().nullable(),
 });
 
 export const productSchema = z.object({

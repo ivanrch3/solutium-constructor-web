@@ -43,11 +43,27 @@ export interface Project {
 
 export interface Customer {
   id: string;
-  companyName?: string;
-  contactEmail?: string;
-  contactPhone?: string;
-  brandColors?: BrandColors;
+  name: string;
+  email?: string;
+  phone?: string;
+  company?: string;
+  role?: string;
+  status?: string;
+  source?: string;
+  businessId?: string;
+  projectId?: string;
+  sourceAppId?: string;
+  visibility?: string;
+  notes?: string;
+  companyLogoUrl?: string;
+  profilePhotoUrl?: string;
+  imageUrl?: string;
+  schemaVersion?: string;
+  appData?: any;
+  assignedBusinessIds?: any;
   createdAt?: string;
+  updatedAt?: string;
+  lastActivity?: string;
 }
 
 export interface Product {

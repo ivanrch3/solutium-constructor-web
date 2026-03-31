@@ -127,11 +127,27 @@ export const getCustomers = async (page: number, pageSize: number): Promise<Cust
 
     const mappedData = data.map((item: any) => ({
       id: item.id,
-      companyName: item.company_name,
-      contactEmail: item.contact_email,
-      contactPhone: item.contact_phone,
-      brandColors: item.brand_colors,
+      name: item.name,
+      email: item.email,
+      phone: item.phone,
+      company: item.company,
+      role: item.role,
+      status: item.status,
+      source: item.source,
+      businessId: item.business_id,
+      projectId: item.project_id,
+      sourceAppId: item.source_app_id,
+      visibility: item.visibility,
+      notes: item.notes,
+      companyLogoUrl: item.company_logo_url,
+      profilePhotoUrl: item.profile_photo_url,
+      imageUrl: item.image_url,
+      schemaVersion: item.schema_version,
+      appData: item.app_data,
+      assignedBusinessIds: item.assigned_business_ids,
       createdAt: item.created_at,
+      updatedAt: item.updated_at,
+      lastActivity: item.last_activity,
     }));
 
     const validData = mappedData

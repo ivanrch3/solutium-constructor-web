@@ -70,9 +70,18 @@ export const customerSchema = z.object({
 
 export const productSchema = z.object({
   id: z.string(),
-  name: z.string().optional().nullable(),
-  price: z.number().optional().nullable(),
-  isActive: z.boolean().optional().nullable(),
-  appData: appDataSchema.optional().nullable(),
+  name: z.string(),
+  description: z.string().optional().nullable(),
+  unitCost: z.number().optional().nullable(),
+  type: z.string().optional().nullable(),
+  sku: z.string().optional().nullable(),
+  status: z.string().optional().nullable(),
+  imageUrl: z.string().optional().nullable(),
+  photoUrl: z.string().optional().nullable(),
+  businessId: z.string().optional().nullable(),
+  projectId: z.string().optional().nullable(),
+  schemaVersion: z.string().optional().nullable(),
+  appData: z.any().optional().nullable(),
   createdAt: z.string().optional().nullable(),
+  updatedAt: z.string().optional().nullable(),
 });

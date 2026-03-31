@@ -68,9 +68,18 @@ export interface Customer {
 
 export interface Product {
   id: string;
-  name?: string;
-  price?: number;
-  isActive?: boolean;
-  appData?: AppData;
+  name: string;
+  description?: string;
+  unitCost?: number;
+  type?: string;
+  sku?: string;
+  status?: string;
+  imageUrl?: string;
+  photoUrl?: string;
+  businessId?: string;
+  projectId?: string;
+  schemaVersion?: string;
+  appData?: any;
   createdAt?: string;
+  updatedAt?: string;
 }

@@ -178,10 +178,19 @@ export const getProducts = async (page: number, pageSize: number): Promise<Produ
     const mappedData = data.map((item: any) => ({
       id: item.id,
       name: item.name,
-      price: item.price,
-      isActive: item.is_active,
+      description: item.description,
+      unitCost: item.unit_cost,
+      type: item.type,
+      sku: item.sku,
+      status: item.status,
+      imageUrl: item.image_url,
+      photoUrl: item.photo_url,
+      businessId: item.business_id,
+      projectId: item.project_id,
+      schemaVersion: item.schema_version,
       appData: item.app_data,
       createdAt: item.created_at,
+      updatedAt: item.updated_at,
     }));
 
     const validData = mappedData

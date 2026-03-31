@@ -15,6 +15,29 @@ export interface AppData {
   features?: string[];
 }
 
+export interface Theme {
+  name: string;
+  displayName: string;
+  colors: {
+    primary: string;
+    secondary: string;
+    accent: string;
+    background: string;
+    text: string;
+    card: string;
+    border: string;
+    sidebar_bg?: string;
+    sidebar_foreground?: string;
+    sidebar_accent?: string;
+    sidebar_border?: string;
+  };
+  uiTheme: 'light' | 'dark' | 'alt';
+  fontFamily?: string;
+  borderRadius?: string;
+  baseSize?: string;
+  uiStyle?: 'windows' | 'solutium';
+}
+
 export interface Profile {
   id: string;
   fullName?: string;

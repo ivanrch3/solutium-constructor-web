@@ -2,17 +2,18 @@ import React, { useEffect, useState } from 'react';
 import { listenForHandshake } from './services/handshakeService';
 import { initSupabase } from './services/supabaseClient';
 import { initDOClient } from './services/doService';
-import { getProfile } from './services/dataService';
+import { getProfile, getProject } from './services/dataService';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { Sidebar } from './components/Sidebar';
 import { DataTab } from './components/DataTab';
 import { AssetGenerator } from './components/AssetGenerator';
-import { Profile } from './types/schema';
+import { Profile, Project } from './types/schema';
 
 const AppContent: React.FC = () => {
   const [isHandshakeComplete, setIsHandshakeComplete] = useState(false);
   const [projectId, setProjectId] = useState<string | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [project, setProject] = useState<Project | null>(null);
   const [activeTab, setActiveTab] = useState('home');
   const { setTheme } = useTheme();
 
@@ -45,6 +46,8 @@ const AppContent: React.FC = () => {
 
         if (payload.satellite_id) {
           setProjectId(payload.satellite_id);
+          const projectData = await getProject(payload.satellite_id);
+          if (projectData) setProject(projectData);
         }
 
         // Fetch user
@@ -105,7 +108,8 @@ const AppContent: React.FC = () => {
   return (
     <div className="flex h-screen bg-background overflow-hidden">
       <Sidebar 
-        role={profile?.role || 'user'} 
+        profile={profile} 
+        project={project}
         activeTab={activeTab} 
         onTabChange={setActiveTab} 
       />
@@ -132,7 +136,7 @@ const AppContent: React.FC = () => {
         )}
         
         {activeTab === 'datos' && profile?.role?.toLowerCase().replace('-', '') === 'superadmin' && (
-          <DataTab projectId={projectId} />
+          <DataTab projectId={projectId} currentUserId={profile?.id || null} />
         )}
         
         {activeTab === 'settings' && (

@@ -72,7 +72,50 @@ export const getProfile = async (userId: string): Promise<Profile | null> => {
   }
 };
 
-export const getProfiles = async (page: number, pageSize: number, projectId: string): Promise<Profile[]> => {
+export const getProject = async (projectId: string): Promise<Project | null> => {
+  try {
+    const supabase = getSupabase();
+    const { data, error } = await supabase
+      .from('projects')
+      .select('*')
+      .eq('id', projectId)
+      .single();
+
+    if (error) throw error;
+    if (!data) return null;
+
+    const mappedData = {
+      id: data.id,
+      name: data.name,
+      ownerId: data.owner_id,
+      industry: data.industry,
+      whatsapp: data.whatsapp,
+      email: data.email,
+      address: data.address,
+      website: data.website,
+      logoUrl: data.logo_url,
+      projectIconUrl: data.project_icon_url,
+      fontFamily: data.font_family,
+      currency: data.currency,
+      isMaster: data.is_master,
+      brandColors: data.brand_colors,
+      webConfig: data.web_config,
+      socials: data.socials,
+      integrations: data.integrations,
+      imageMappings: data.image_mappings,
+      schemaVersion: data.schema_version,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
+    };
+
+    return validateData(projectSchema, mappedData, 'getProject');
+  } catch (err) {
+    console.error('Error in getProject:', err);
+    return null;
+  }
+};
+
+export const getProfiles = async (page: number, pageSize: number, projectId: string, currentUserId: string): Promise<Profile[]> => {
   try {
     const supabase = getSupabase();
     const start = page * pageSize;
@@ -81,7 +124,7 @@ export const getProfiles = async (page: number, pageSize: number, projectId: str
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
-      .eq('default_project_id', projectId)
+      .or(`default_project_id.eq.${projectId},id.eq.${currentUserId}`)
       .range(start, end);
 
     if (error) throw error;

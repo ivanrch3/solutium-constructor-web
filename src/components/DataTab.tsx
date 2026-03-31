@@ -5,9 +5,10 @@ type SubTab = 'profiles' | 'projects' | 'customers' | 'products';
 
 interface DataTabProps {
   projectId: string | null;
+  currentUserId: string | null;
 }
 
-export const DataTab: React.FC<DataTabProps> = ({ projectId }) => {
+export const DataTab: React.FC<DataTabProps> = ({ projectId, currentUserId }) => {
   const [activeSubTab, setActiveSubTab] = useState<SubTab>('profiles');
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -15,7 +16,7 @@ export const DataTab: React.FC<DataTabProps> = ({ projectId }) => {
   const pageSize = 20;
 
   const fetchData = async (tab: SubTab, pageIndex: number) => {
-    if (!projectId) {
+    if (!projectId || !currentUserId) {
       setData([]);
       return;
     }
@@ -25,7 +26,7 @@ export const DataTab: React.FC<DataTabProps> = ({ projectId }) => {
       let result: any[] = [];
       switch (tab) {
         case 'profiles':
-          result = await getProfiles(pageIndex, pageSize, projectId);
+          result = await getProfiles(pageIndex, pageSize, projectId, currentUserId);
           break;
         case 'projects':
           result = await getProjects(pageIndex, pageSize, projectId);
@@ -48,7 +49,7 @@ export const DataTab: React.FC<DataTabProps> = ({ projectId }) => {
 
   useEffect(() => {
     fetchData(activeSubTab, page);
-  }, [activeSubTab, page, projectId]);
+  }, [activeSubTab, page, projectId, currentUserId]);
 
   const handleTabChange = (tab: SubTab) => {
     setActiveSubTab(tab);

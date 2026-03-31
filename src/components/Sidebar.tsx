@@ -30,20 +30,22 @@ export const Sidebar: React.FC<SidebarProps> = ({ profile, project, activeTab, o
       className="w-64 h-screen border-r flex flex-col transition-colors duration-200"
       style={sidebarStyle}
     >
-      <div className="p-6 flex items-center space-x-3">
-        <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center text-white font-bold text-xl overflow-hidden">
+      <div className="p-6 flex items-center gap-3">
+        <div className="h-10 w-auto flex items-center justify-center overflow-hidden">
           {project?.logoUrl ? (
-            <img src={project.logoUrl} alt="Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+            <img 
+              src={project.logoUrl} 
+              alt={`Logo de ${project?.name || 'Solutium'}`} 
+              className="h-full w-auto object-contain" 
+              referrerPolicy="no-referrer" 
+            />
           ) : (
-            <span>S</span>
+            <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center text-white font-bold text-xl">
+              <span>{project?.name?.charAt(0) || 'S'}</span>
+            </div>
           )}
         </div>
-        <div>
-          <h1 className="text-xl font-bold leading-tight truncate max-w-[140px]">
-            {project?.name || 'Solutium'}
-          </h1>
-          <p className="text-xs opacity-60">Satellite Base</p>
-        </div>
+        <span className="font-bold text-lg truncate">{project?.name || 'App Satélite'}</span>
       </div>
       
       <nav className="flex-1 px-4 space-y-1">
@@ -96,7 +98,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ profile, project, activeTab, o
           </div>
           <div className="flex-1 text-left truncate">
             <p className="text-sm font-bold truncate">{profile?.fullName || 'Usuario'}</p>
-            <p className="text-xs opacity-60 truncate capitalize">{role}</p>
+            <p className="text-xs opacity-60 truncate">{profile?.email || profile?.role || 'user'}</p>
           </div>
         </button>
       </div>

@@ -73,6 +73,7 @@ const AppContent: React.FC = () => {
         } else {
           const fallbackProfile: Profile = {
             id: user.id,
+            email: user.email,
             role: 'user',
             activeTheme: (typeof themeToApply === 'string' ? themeToApply : 'blue-light') as any
           };
@@ -84,6 +85,12 @@ const AppContent: React.FC = () => {
         if (handshakeFont) {
           document.documentElement.style.setProperty('--font-family', handshakeFont);
           document.body.style.fontFamily = handshakeFont;
+        }
+        
+        // Limpiar la URL por seguridad (Ocultar tokens y parámetros)
+        if (window.history && window.history.replaceState) {
+          const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+          window.history.replaceState({ path: cleanUrl }, '', cleanUrl);
         }
         
         setIsHandshakeComplete(true);
@@ -146,7 +153,7 @@ const AppContent: React.FC = () => {
               <h3 className="text-lg font-semibold mb-2">Tu Perfil</h3>
               <ul className="space-y-2 text-sm">
                 <li><span className="font-medium text-gray-500">ID:</span> {profile?.id}</li>
-                <li><span className="font-medium text-gray-500">Rol:</span> <span className="capitalize">{profile?.role}</span></li>
+                <li><span className="font-medium text-gray-500">Email:</span> {profile?.email}</li>
                 <li><span className="font-medium text-gray-500">Tema:</span> {profile?.activeTheme}</li>
               </ul>
             </div>

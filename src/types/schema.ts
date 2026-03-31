@@ -63,13 +63,26 @@ export interface ProjectBranding {
 
 export interface Project {
   id: string;
-  name?: string;
-  description?: string;
-  customerId?: string;
-  status?: string;
+  name: string;
+  ownerId?: string;
+  industry?: string;
+  whatsapp?: string;
+  email?: string;
+  address?: string;
+  website?: string;
+  logoUrl?: string;
+  projectIconUrl?: string;
+  fontFamily?: string;
+  currency?: string;
+  isMaster?: boolean;
+  brandColors?: BrandColors;
+  webConfig?: any;
+  socials?: any;
+  integrations?: any;
+  imageMappings?: any;
+  schemaVersion?: string;
   createdAt?: string;
-  webConfig?: WebConfig;
-  branding?: ProjectBranding;
+  updatedAt?: string;
 }
 
 export interface Customer {

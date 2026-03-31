@@ -77,13 +77,13 @@ export const DataTab: React.FC = () => {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
+            <table className="min-w-full divide-y divide-gray-200 table-fixed">
               <thead className="bg-gray-50">
                 <tr>
                   {Object.keys(data[0]).map((key) => (
                     <th 
                       key={key}
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      className="w-48 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200"
                     >
                       {key}
                     </th>
@@ -92,12 +92,26 @@ export const DataTab: React.FC = () => {
               </thead>
               <tbody className="bg-surface divide-y divide-gray-200">
                 {data.map((row, i) => (
-                  <tr key={i} className="hover:bg-gray-50">
-                    {Object.values(row).map((val: any, j) => (
-                      <td key={j} className="px-6 py-4 whitespace-nowrap text-sm text-text">
-                        {typeof val === 'object' ? JSON.stringify(val) : String(val)}
-                      </td>
-                    ))}
+                  <tr key={i} className="hover:bg-gray-50 transition-colors">
+                    {Object.keys(data[0]).map((key) => {
+                      const val = row[key];
+                      let displayVal = '';
+                      
+                      if (val === null) displayVal = 'null';
+                      else if (val === undefined) displayVal = 'undefined';
+                      else if (typeof val === 'object') displayVal = JSON.stringify(val);
+                      else displayVal = String(val);
+
+                      return (
+                        <td 
+                          key={key} 
+                          className="px-4 py-3 text-sm text-text border-b border-gray-100 truncate max-w-xs"
+                          title={displayVal}
+                        >
+                          {displayVal}
+                        </td>
+                      );
+                    })}
                   </tr>
                 ))}
               </tbody>

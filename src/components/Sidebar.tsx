@@ -5,11 +5,12 @@ import { Profile, Project } from '../types/schema';
 interface SidebarProps {
   profile: Profile | null;
   project: Project | null;
+  urlLogo?: string | null;
   activeTab: string;
   onTabChange: (tab: string) => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ profile, project, activeTab, onTabChange }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ profile, project, urlLogo, activeTab, onTabChange }) => {
   const role = profile?.role || 'user';
   const isSuperAdmin = role.toLowerCase().replace('-', '') === 'superadmin';
 
@@ -26,6 +27,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ profile, project, activeTab, o
   };
 
   const [logoError, setLogoError] = React.useState(false);
+  const displayLogo = urlLogo || project?.logoUrl || project?.isoUrl;
 
   return (
     <div 
@@ -34,9 +36,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ profile, project, activeTab, o
     >
       <div className="p-6 flex items-center justify-center">
         <div className="h-12 w-full flex items-center justify-center overflow-hidden">
-          {(project?.logoUrl || project?.isoUrl) && !logoError ? (
+          {displayLogo && !logoError ? (
             <img 
-              src={project.logoUrl || project.isoUrl} 
+              src={displayLogo} 
               alt={`Logo de ${project?.name || 'Solutium'}`} 
               className="h-full w-auto object-contain" 
               referrerPolicy="no-referrer" 

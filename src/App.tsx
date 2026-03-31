@@ -15,9 +15,14 @@ const AppContent: React.FC = () => {
   const [project, setProject] = useState<Project | null>(null);
   const [activeTab, setActiveTab] = useState('home');
   const [loadingLogoError, setLoadingLogoError] = useState(false);
+  const [urlLogo, setUrlLogo] = useState<string | null>(null);
   const { applyTheme } = useTheme();
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const logo = params.get('logoUrl') || params.get('logo_url') || params.get('isoUrl') || params.get('iso_url');
+    if (logo) setUrlLogo(logo);
+    
     console.log("--- DIAGNÓSTICO DE EMERGENCIA ---");
     console.log("1. window.name contenido:", window.name ? (window.name.substring(0, 50) + "...") : "VACÍO");
     console.log("2. ¿Tiene abridor (window.opener)?:", !!window.opener);
@@ -111,15 +116,12 @@ const AppContent: React.FC = () => {
   }, [applyTheme]);
 
   if (!isHandshakeComplete) {
-    const params = new URLSearchParams(window.location.search);
-    const logoFromUrl = params.get('logoUrl') || params.get('logo_url') || params.get('isoUrl') || params.get('iso_url');
-
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center text-text p-6">
         <div className="flex flex-col items-center space-y-12">
-          {logoFromUrl && !loadingLogoError ? (
+          {urlLogo && !loadingLogoError ? (
             <img 
-              src={logoFromUrl} 
+              src={urlLogo} 
               alt="Loading Logo" 
               className="h-24 w-auto object-contain animate-pulse" 
               referrerPolicy="no-referrer" 
@@ -169,6 +171,7 @@ const AppContent: React.FC = () => {
       <Sidebar 
         profile={profile} 
         project={project}
+        urlLogo={urlLogo}
         activeTab={activeTab} 
         onTabChange={setActiveTab} 
       />

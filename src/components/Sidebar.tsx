@@ -25,6 +25,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ profile, project, activeTab, o
     color: 'inherit', // Use inherit to let the foreground color rule
   };
 
+  const [logoError, setLogoError] = React.useState(false);
+
   return (
     <div 
       className="w-64 h-screen border-r flex flex-col transition-colors duration-200"
@@ -32,12 +34,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ profile, project, activeTab, o
     >
       <div className="p-6 flex items-center justify-center">
         <div className="h-12 w-full flex items-center justify-center overflow-hidden">
-          {project?.logoUrl ? (
+          {(project?.logoUrl || project?.isoUrl) && !logoError ? (
             <img 
-              src={project.logoUrl} 
+              src={project.logoUrl || project.isoUrl} 
               alt={`Logo de ${project?.name || 'Solutium'}`} 
               className="h-full w-auto object-contain" 
               referrerPolicy="no-referrer" 
+              onError={() => setLogoError(true)}
             />
           ) : (
             <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center text-white font-bold text-xl">

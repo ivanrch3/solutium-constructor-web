@@ -111,17 +111,19 @@ const AppContent: React.FC = () => {
 
   if (!isHandshakeComplete) {
     const params = new URLSearchParams(window.location.search);
-    const logoFromUrl = params.get('logoUrl') || params.get('logo_url');
+    const logoFromUrl = params.get('logoUrl') || params.get('logo_url') || params.get('isoUrl') || params.get('iso_url');
+    const [loadingLogoError, setLoadingLogoError] = useState(false);
 
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center text-text p-6">
         <div className="flex flex-col items-center space-y-12">
-          {logoFromUrl ? (
+          {logoFromUrl && !loadingLogoError ? (
             <img 
               src={logoFromUrl} 
               alt="Loading Logo" 
               className="h-24 w-auto object-contain animate-pulse" 
               referrerPolicy="no-referrer" 
+              onError={() => setLoadingLogoError(true)}
             />
           ) : (
             <div className="w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center text-primary font-bold text-3xl animate-pulse">

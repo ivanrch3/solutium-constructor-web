@@ -62,6 +62,7 @@ export const projectSchema = z.object({
   address: z.any().optional().nullable(),
   website: z.any().optional().nullable(),
   logoUrl: z.any().optional().nullable(),
+  isoUrl: z.any().optional().nullable(),
   projectIconUrl: z.any().optional().nullable(),
   fontFamily: z.any().optional().nullable(),
   currency: z.any().optional().nullable(),

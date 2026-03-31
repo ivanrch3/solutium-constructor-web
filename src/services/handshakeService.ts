@@ -33,7 +33,7 @@ export const listenForHandshake = (
       return false;
     }
 
-    console.log("[DIAGNOSTICO] Handshake válido detectado. Procesando...");
+    console.log("[DIAGNOSTICO] Handshake válido detectado. Payload completo:", payload);
     onHandshake(payload as HandshakePayload);
     return true;
   };

@@ -14,6 +14,7 @@ const AppContent: React.FC = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [project, setProject] = useState<Project | null>(null);
   const [activeTab, setActiveTab] = useState('home');
+  const [loadingLogoError, setLoadingLogoError] = useState(false);
   const { applyTheme } = useTheme();
 
   useEffect(() => {
@@ -112,7 +113,6 @@ const AppContent: React.FC = () => {
   if (!isHandshakeComplete) {
     const params = new URLSearchParams(window.location.search);
     const logoFromUrl = params.get('logoUrl') || params.get('logo_url') || params.get('isoUrl') || params.get('iso_url');
-    const [loadingLogoError, setLoadingLogoError] = useState(false);
 
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center text-text p-6">

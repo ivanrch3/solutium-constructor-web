@@ -17,11 +17,42 @@ export interface AppData {
 
 export interface Profile {
   id: string;
+  fullName?: string;
+  email?: string;
+  avatarUrl?: string;
   role?: string;
+  language?: string;
+  phone?: string;
+  timezone?: string;
+  currency?: string;
+  businessName?: string;
+  subscriptionPlan?: string;
+  provider?: string;
+  themePreference?: string;
+  preferredTheme?: string;
   activeTheme?: string;
   fontFamily?: string;
-  fullName?: string;
-  avatarUrl?: string;
+  uiStyle?: string;
+  baseSize?: string;
+  borderRadius?: string;
+  sidebarBg?: string;
+  sidebarForeground?: string;
+  sidebarAccent?: string;
+  sidebarBorder?: string;
+  coloredSidebarIcons?: boolean;
+  onboardingCompleted?: boolean;
+  hasCompletedTour?: boolean;
+  needsPassword?: boolean;
+  isTrialUser?: boolean;
+  emailConfirmed?: boolean;
+  verificationSent?: boolean;
+  totalRequestsMade?: number;
+  lastRequestAt?: string;
+  updatedAt?: string;
+  defaultProjectId?: string;
+  systemRoleId?: string;
+  emailItId?: string;
+  schemaVersion?: string;
 }
 
 export interface ProjectBranding {

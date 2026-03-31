@@ -134,7 +134,7 @@ export const DataTab: React.FC<DataTabProps> = ({ projectId, currentUserId }) =>
         <button 
           onClick={() => setPage(p => Math.max(0, p - 1))}
           disabled={page === 0 || loading}
-          className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-text bg-surface hover:bg-gray-50 disabled:opacity-50"
+          className="btn-primary"
         >
           Anterior
         </button>
@@ -142,7 +142,7 @@ export const DataTab: React.FC<DataTabProps> = ({ projectId, currentUserId }) =>
         <button 
           onClick={() => setPage(p => p + 1)}
           disabled={data.length < pageSize || loading}
-          className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-text bg-surface hover:bg-gray-50 disabled:opacity-50"
+          className="btn-primary"
         >
           Siguiente
         </button>

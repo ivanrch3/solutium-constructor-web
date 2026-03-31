@@ -114,25 +114,25 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       
       const theme = SOLUTIUM_THEMES.find(t => t.name.toLowerCase() === normalizedName) || SOLUTIUM_THEMES[2];
       
-      root.style.setProperty('--primary', theme.colors.primary);
-      root.style.setProperty('--secondary', theme.colors.secondary);
-      root.style.setProperty('--accent', theme.colors.accent);
-      root.style.setProperty('--background', theme.colors.background);
-      root.style.setProperty('--card', theme.colors.card);
-      root.style.setProperty('--foreground', theme.colors.text);
-      root.style.setProperty('--border', theme.colors.border);
+      root.style.setProperty('--primary-color', theme.colors.primary);
+      root.style.setProperty('--secondary-color', theme.colors.secondary);
+      root.style.setProperty('--accent-color', theme.colors.accent);
+      root.style.setProperty('--background-color', theme.colors.background);
+      root.style.setProperty('--card-color', theme.colors.card);
+      root.style.setProperty('--foreground-color', theme.colors.text);
+      root.style.setProperty('--border-color', theme.colors.border);
       
-      root.style.setProperty('--solutium-sidebar-bg', theme.colors.sidebar_bg || theme.colors.card);
-      root.style.setProperty('--solutium-sidebar-fg', theme.colors.sidebar_foreground || theme.colors.text);
-      root.style.setProperty('--solutium-sidebar-accent', theme.colors.sidebar_accent || 'rgba(59, 130, 246, 0.1)');
-      root.style.setProperty('--solutium-sidebar-border', theme.colors.sidebar_border || theme.colors.border);
+      // Sidebar variables
+      root.style.setProperty('--sidebar-bg', theme.colors.sidebar_bg || theme.colors.card);
+      root.style.setProperty('--sidebar-foreground', theme.colors.sidebar_foreground || theme.colors.text);
+      root.style.setProperty('--sidebar-accent', theme.colors.sidebar_accent || 'rgba(59, 130, 246, 0.1)');
+      root.style.setProperty('--sidebar-border', theme.colors.sidebar_border || theme.colors.border);
       
       const font = theme.fontFamily || 'Inter, sans-serif';
-      root.style.setProperty('--font-family', font);
+      root.style.setProperty('--solutium-font', font);
       document.body.style.fontFamily = font;
       
       if (theme.borderRadius) root.style.setProperty('--radius', theme.borderRadius);
-      if (theme.baseSize) root.style.setProperty('--base-size', theme.baseSize);
       return;
     }
 
@@ -140,30 +140,37 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const theme = themeData;
     console.log('[THEME] Aplicando tema calculado:', theme);
 
-    if (theme.primary) root.style.setProperty('--primary', theme.primary);
-    if (theme.secondary) root.style.setProperty('--secondary', theme.secondary);
-    if (theme.accent) root.style.setProperty('--accent', theme.accent);
-    if (theme.background) root.style.setProperty('--background', theme.background);
-    if (theme.card || theme.surface) root.style.setProperty('--card', theme.card || theme.surface);
-    if (theme.text || theme.foreground) root.style.setProperty('--foreground', theme.text || theme.foreground);
-    if (theme.border) root.style.setProperty('--border', theme.border);
+    if (theme.primary) root.style.setProperty('--primary-color', theme.primary);
+    if (theme.secondary) root.style.setProperty('--secondary-color', theme.secondary);
+    if (theme.accent) root.style.setProperty('--accent-color', theme.accent);
+    if (theme.background) root.style.setProperty('--background-color', theme.background);
+    if (theme.card || theme.surface) root.style.setProperty('--card-color', theme.card || theme.surface);
+    if (theme.text || theme.foreground) root.style.setProperty('--foreground-color', theme.text || theme.foreground);
+    if (theme.border) root.style.setProperty('--border-color', theme.border);
+    
+    // Contraste Crítico
+    if (theme.dark) root.style.setProperty('--solutium-dark', theme.dark);
 
-    // Sidebar variables (Confianza ciega en los valores recibidos)
-    if (theme.sidebar_bg) root.style.setProperty('--solutium-sidebar-bg', theme.sidebar_bg);
-    if (theme.sidebar_foreground) root.style.setProperty('--solutium-sidebar-fg', theme.sidebar_foreground);
-    if (theme.sidebar_accent) root.style.setProperty('--solutium-sidebar-accent', theme.sidebar_accent);
-    if (theme.sidebar_border) root.style.setProperty('--solutium-sidebar-border', theme.sidebar_border);
+    // Sidebar variables
+    if (theme.sidebar_bg) root.style.setProperty('--sidebar-bg', theme.sidebar_bg);
+    if (theme.sidebar_foreground) root.style.setProperty('--sidebar-foreground', theme.sidebar_foreground);
+    if (theme.sidebar_accent) root.style.setProperty('--sidebar-accent', theme.sidebar_accent);
+    if (theme.sidebar_border) root.style.setProperty('--sidebar-border', theme.sidebar_border);
 
     // Tipografía
     const font = theme.fontFamily || theme.font_family;
     if (font) {
       console.log('[THEME] Aplicando fontFamily:', font);
-      root.style.setProperty('--font-family', font);
+      root.style.setProperty('--solutium-font', font);
       document.body.style.fontFamily = font;
     }
 
-    if (theme.borderRadius) root.style.setProperty('--radius', theme.borderRadius);
-    if (theme.baseSize) root.style.setProperty('--base-size', theme.baseSize);
+    // Modo Visual (Windows / Fluent UI)
+    if (theme.uiStyle === 'windows') {
+      root.style.setProperty('--radius', '2px'); // Bordes más rectos para Windows
+    } else if (theme.borderRadius) {
+      root.style.setProperty('--radius', theme.borderRadius);
+    }
   };
 
   useEffect(() => {
@@ -171,6 +178,11 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (event.data?.type === 'SOLUTIUM_THEME') {
         const themePayload = event.data.payload.theme || event.data.payload;
         applyTheme(themePayload);
+        
+        // Responder con ACK
+        if (window.parent !== window) {
+          window.parent.postMessage({ type: 'SOLUTIUM_THEME_ACK' }, '*');
+        }
       }
     };
 

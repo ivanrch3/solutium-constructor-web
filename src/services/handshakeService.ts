@@ -10,6 +10,7 @@ export interface HandshakePayload {
   fontFamily?: string;
   profile?: any;
   project?: any;
+  activeThemeData?: any;
 }
 
 export const listenForHandshake = (

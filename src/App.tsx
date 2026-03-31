@@ -63,9 +63,10 @@ const AppContent: React.FC = () => {
         // Fetch profile using the data service
         const mappedProfile = await getProfile(user.id);
 
-        // Prioritize theme from handshake payload if available
-        const handshakeTheme = payload.profile?.activeTheme || payload.project?.activeTheme;
-        const themeToApply = handshakeTheme || mappedProfile?.activeTheme || 'blue-light';
+        // Prioritize theme data from handshake payload if available
+        const handshakeThemeData = payload.activeThemeData;
+        const handshakeThemeName = payload.profile?.activeTheme || payload.project?.activeTheme;
+        const themeToApply = handshakeThemeData || handshakeThemeName || mappedProfile?.activeTheme || 'blue-light';
 
         if (mappedProfile) {
           setProfile(mappedProfile);
@@ -73,12 +74,12 @@ const AppContent: React.FC = () => {
           const fallbackProfile: Profile = {
             id: user.id,
             role: 'user',
-            activeTheme: themeToApply as any
+            activeTheme: (typeof themeToApply === 'string' ? themeToApply : 'blue-light') as any
           };
           setProfile(fallbackProfile);
         }
 
-        // Apply theme with font from handshake
+        // Apply theme
         applyTheme(themeToApply);
         if (handshakeFont) {
           document.documentElement.style.setProperty('--font-family', handshakeFont);

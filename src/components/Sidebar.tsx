@@ -15,13 +15,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ profile, project, activeTab, o
 
   // Sidebar styles are derived from CSS variables set by ThemeContext
   const sidebarStyle = {
-    backgroundColor: 'var(--solutium-sidebar-bg)',
-    color: 'var(--solutium-sidebar-fg)',
-    borderColor: 'var(--solutium-sidebar-border)',
+    backgroundColor: 'var(--sidebar-bg)',
+    color: 'var(--sidebar-foreground)',
+    borderColor: 'var(--sidebar-border)',
   };
 
   const activeButtonStyle = {
-    backgroundColor: 'var(--solutium-sidebar-accent)',
+    backgroundColor: 'var(--sidebar-accent)',
     color: 'inherit', // Use inherit to let the foreground color rule
   };
 

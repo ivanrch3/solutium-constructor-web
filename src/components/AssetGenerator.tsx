@@ -5,7 +5,12 @@ import { generateAsset } from '../services/assetService';
 import { WebRenderer } from './WebRenderer';
 import { Asset } from '../types/asset';
 
-export const AssetGenerator: React.FC<{ userId: string }> = ({ userId }) => {
+interface AssetGeneratorProps {
+  userId: string;
+  projectId: string | null;
+}
+
+export const AssetGenerator: React.FC<AssetGeneratorProps> = ({ userId, projectId }) => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
@@ -15,14 +20,15 @@ export const AssetGenerator: React.FC<{ userId: string }> = ({ userId }) => {
 
   useEffect(() => {
     const loadData = async () => {
-      const projs = await getProjects(0, 100);
-      const prods = await getProducts(0, 100);
+      if (!projectId) return;
+      const projs = await getProjects(0, 100, projectId);
+      const prods = await getProducts(0, 100, projectId);
       setProjects(projs);
       setProducts(prods);
       if (projs.length > 0) setSelectedProjectId(projs[0].id);
     };
     loadData();
-  }, []);
+  }, [projectId]);
 
   const handleGenerate = async () => {
     const project = projects.find(p => p.id === selectedProjectId);

@@ -11,6 +11,7 @@ import { Profile } from './types/schema';
 
 const AppContent: React.FC = () => {
   const [isHandshakeComplete, setIsHandshakeComplete] = useState(false);
+  const [projectId, setProjectId] = useState<string | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [activeTab, setActiveTab] = useState('home');
   const { setTheme } = useTheme();
@@ -40,6 +41,10 @@ const AppContent: React.FC = () => {
             payload.do_secret_key,
             payload.do_bucket
           );
+        }
+
+        if (payload.satellite_id) {
+          setProjectId(payload.satellite_id);
         }
 
         // Fetch user
@@ -122,12 +127,12 @@ const AppContent: React.FC = () => {
         
         {activeTab === 'activos' && profile && (
           <div className="p-8">
-            <AssetGenerator userId={profile.id} />
+            <AssetGenerator userId={profile.id} projectId={projectId} />
           </div>
         )}
         
         {activeTab === 'datos' && profile?.role?.toLowerCase().replace('-', '') === 'superadmin' && (
-          <DataTab />
+          <DataTab projectId={projectId} />
         )}
         
         {activeTab === 'settings' && (

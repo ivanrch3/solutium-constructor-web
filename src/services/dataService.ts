@@ -72,7 +72,7 @@ export const getProfile = async (userId: string): Promise<Profile | null> => {
   }
 };
 
-export const getProfiles = async (page: number, pageSize: number): Promise<Profile[]> => {
+export const getProfiles = async (page: number, pageSize: number, projectId: string): Promise<Profile[]> => {
   try {
     const supabase = getSupabase();
     const start = page * pageSize;
@@ -81,6 +81,7 @@ export const getProfiles = async (page: number, pageSize: number): Promise<Profi
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
+      .eq('default_project_id', projectId)
       .range(start, end);
 
     if (error) throw error;
@@ -137,7 +138,7 @@ export const getProfiles = async (page: number, pageSize: number): Promise<Profi
   }
 };
 
-export const getProjects = async (page: number, pageSize: number): Promise<Project[]> => {
+export const getProjects = async (page: number, pageSize: number, projectId: string): Promise<Project[]> => {
   try {
     const supabase = getSupabase();
     const start = page * pageSize;
@@ -146,6 +147,7 @@ export const getProjects = async (page: number, pageSize: number): Promise<Proje
     const { data, error } = await supabase
       .from('projects')
       .select('*')
+      .eq('id', projectId)
       .range(start, end);
 
     if (error) throw error;
@@ -186,7 +188,7 @@ export const getProjects = async (page: number, pageSize: number): Promise<Proje
   }
 };
 
-export const getCustomers = async (page: number, pageSize: number): Promise<Customer[]> => {
+export const getCustomers = async (page: number, pageSize: number, projectId: string): Promise<Customer[]> => {
   try {
     const supabase = getSupabase();
     const start = page * pageSize;
@@ -195,6 +197,7 @@ export const getCustomers = async (page: number, pageSize: number): Promise<Cust
     const { data, error } = await supabase
       .from('customers')
       .select('*')
+      .eq('project_id', projectId)
       .range(start, end);
 
     if (error) throw error;
@@ -236,7 +239,7 @@ export const getCustomers = async (page: number, pageSize: number): Promise<Cust
   }
 };
 
-export const getProducts = async (page: number, pageSize: number): Promise<Product[]> => {
+export const getProducts = async (page: number, pageSize: number, projectId: string): Promise<Product[]> => {
   try {
     const supabase = getSupabase();
     const start = page * pageSize;
@@ -245,6 +248,7 @@ export const getProducts = async (page: number, pageSize: number): Promise<Produ
     const { data, error } = await supabase
       .from('products')
       .select('*')
+      .eq('project_id', projectId)
       .range(start, end);
 
     if (error) throw error;

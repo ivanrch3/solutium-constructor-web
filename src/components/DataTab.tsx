@@ -3,7 +3,11 @@ import { getProfiles, getProjects, getCustomers, getProducts } from '../services
 
 type SubTab = 'profiles' | 'projects' | 'customers' | 'products';
 
-export const DataTab: React.FC = () => {
+interface DataTabProps {
+  projectId: string | null;
+}
+
+export const DataTab: React.FC<DataTabProps> = ({ projectId }) => {
   const [activeSubTab, setActiveSubTab] = useState<SubTab>('profiles');
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -11,21 +15,26 @@ export const DataTab: React.FC = () => {
   const pageSize = 20;
 
   const fetchData = async (tab: SubTab, pageIndex: number) => {
+    if (!projectId) {
+      setData([]);
+      return;
+    }
+
     setLoading(true);
     try {
       let result: any[] = [];
       switch (tab) {
         case 'profiles':
-          result = await getProfiles(pageIndex, pageSize);
+          result = await getProfiles(pageIndex, pageSize, projectId);
           break;
         case 'projects':
-          result = await getProjects(pageIndex, pageSize);
+          result = await getProjects(pageIndex, pageSize, projectId);
           break;
         case 'customers':
-          result = await getCustomers(pageIndex, pageSize);
+          result = await getCustomers(pageIndex, pageSize, projectId);
           break;
         case 'products':
-          result = await getProducts(pageIndex, pageSize);
+          result = await getProducts(pageIndex, pageSize, projectId);
           break;
       }
       setData(result);
@@ -39,7 +48,7 @@ export const DataTab: React.FC = () => {
 
   useEffect(() => {
     fetchData(activeSubTab, page);
-  }, [activeSubTab, page]);
+  }, [activeSubTab, page, projectId]);
 
   const handleTabChange = (tab: SubTab) => {
     setActiveSubTab(tab);

@@ -51,18 +51,7 @@ export interface Profile {
   businessName?: string;
   subscriptionPlan?: string;
   provider?: string;
-  themePreference?: string;
-  preferredTheme?: string;
   activeTheme?: string;
-  fontFamily?: string;
-  uiStyle?: string;
-  baseSize?: string;
-  borderRadius?: string;
-  sidebarBg?: string;
-  sidebarForeground?: string;
-  sidebarAccent?: string;
-  sidebarBorder?: string;
-  coloredSidebarIcons?: boolean;
   onboardingCompleted?: boolean;
   hasCompletedTour?: boolean;
   needsPassword?: boolean;

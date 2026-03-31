@@ -22,6 +22,10 @@ export const SOLUTIUM_THEMES: Theme[] = [
       text: SOLUTIUM_COLORS.deepGray,
       card: '#FFFFFF',
       border: '#E2E8F0',
+      sidebar_bg: SOLUTIUM_COLORS.green,
+      sidebar_foreground: '#FFFFFF',
+      sidebar_accent: 'rgba(255, 255, 255, 0.1)',
+      sidebar_border: 'rgba(255, 255, 255, 0.1)',
     },
     uiTheme: 'light',
     fontFamily: 'Inter, sans-serif',
@@ -39,6 +43,10 @@ export const SOLUTIUM_THEMES: Theme[] = [
       text: SOLUTIUM_COLORS.deepGray,
       card: '#FFFFFF',
       border: '#E2E8F0',
+      sidebar_bg: SOLUTIUM_COLORS.violet,
+      sidebar_foreground: '#FFFFFF',
+      sidebar_accent: 'rgba(255, 255, 255, 0.1)',
+      sidebar_border: 'rgba(255, 255, 255, 0.1)',
     },
     uiTheme: 'light',
     fontFamily: 'Inter, sans-serif',
@@ -56,6 +64,10 @@ export const SOLUTIUM_THEMES: Theme[] = [
       text: SOLUTIUM_COLORS.deepGray,
       card: '#FFFFFF',
       border: '#E2E8F0',
+      sidebar_bg: SOLUTIUM_COLORS.blue,
+      sidebar_foreground: '#FFFFFF',
+      sidebar_accent: 'rgba(255, 255, 255, 0.1)',
+      sidebar_border: 'rgba(255, 255, 255, 0.1)',
     },
     uiTheme: 'light',
     fontFamily: 'Inter, sans-serif',
@@ -73,6 +85,10 @@ export const SOLUTIUM_THEMES: Theme[] = [
       text: SOLUTIUM_COLORS.deepGray,
       card: '#FFFFFF',
       border: '#E2E8F0',
+      sidebar_bg: SOLUTIUM_COLORS.deepGray,
+      sidebar_foreground: '#FFFFFF',
+      sidebar_accent: 'rgba(255, 255, 255, 0.1)',
+      sidebar_border: 'rgba(255, 255, 255, 0.1)',
     },
     uiTheme: 'light',
     fontFamily: 'Inter, sans-serif',
@@ -104,6 +120,12 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     root.style.setProperty('--foreground', theme.colors.text);
     root.style.setProperty('--border', theme.colors.border);
     
+    // Sidebar variables
+    root.style.setProperty('--sidebar-bg', theme.colors.sidebar_bg || theme.colors.card);
+    root.style.setProperty('--sidebar-foreground', theme.colors.sidebar_foreground || theme.colors.text);
+    root.style.setProperty('--sidebar-accent', theme.colors.sidebar_accent || 'rgba(var(--primary-rgb), 0.1)');
+    root.style.setProperty('--sidebar-border', theme.colors.sidebar_border || theme.colors.border);
+    
     root.style.setProperty('--font-family', fontFamily || theme.fontFamily || 'Inter, sans-serif');
     if (theme.borderRadius) root.style.setProperty('--radius', theme.borderRadius);
     if (theme.baseSize) root.style.setProperty('--base-size', theme.baseSize);
@@ -124,6 +146,12 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         root.style.setProperty('--card', theme.card || theme.surface); // Use card or surface as fallback
         root.style.setProperty('--foreground', theme.text);
         root.style.setProperty('--border', theme.border);
+        
+        // Sidebar variables from sync
+        if (theme.sidebar_bg) root.style.setProperty('--sidebar-bg', theme.sidebar_bg);
+        if (theme.sidebar_foreground) root.style.setProperty('--sidebar-foreground', theme.sidebar_foreground);
+        if (theme.sidebar_accent) root.style.setProperty('--sidebar-accent', theme.sidebar_accent);
+        if (theme.sidebar_border) root.style.setProperty('--sidebar-border', theme.sidebar_border);
         
         // Estilos de interfaz
         if (theme.fontFamily) {

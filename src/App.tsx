@@ -62,17 +62,16 @@ const AppContent: React.FC = () => {
 
         if (mappedProfile) {
           setProfile(mappedProfile);
-          setTheme(mappedProfile.activeTheme, mappedProfile.fontFamily);
+          setTheme(mappedProfile.activeTheme || 'blue-light', '');
         } else {
           // Fallback profile if fetch or validation fails but handshake succeeded
           const fallbackProfile: Profile = {
             id: user.id,
             role: 'user',
-            activeTheme: 'blue-light',
-            fontFamily: 'Inter, sans-serif'
+            activeTheme: 'blue-light'
           };
           setProfile(fallbackProfile);
-          setTheme('blue-light', 'Inter, sans-serif');
+          setTheme('blue-light', '');
         }
         
         setIsHandshakeComplete(true);

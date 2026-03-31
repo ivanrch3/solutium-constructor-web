@@ -13,16 +13,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ profile, project, activeTab, o
   const role = profile?.role || 'user';
   const isSuperAdmin = role.toLowerCase().replace('-', '') === 'superadmin';
 
-  // Custom styles from profile
+  // Sidebar styles are derived from CSS variables set by ThemeContext
   const sidebarStyle = {
-    backgroundColor: profile?.sidebarBg || 'var(--surface)',
-    color: profile?.sidebarForeground || 'var(--text)',
-    borderColor: profile?.sidebarBorder || 'var(--border)',
+    backgroundColor: 'var(--sidebar-bg)',
+    color: 'var(--sidebar-foreground)',
+    borderColor: 'var(--sidebar-border)',
   };
 
   const activeButtonStyle = {
-    backgroundColor: profile?.sidebarAccent || 'rgba(var(--primary-rgb), 0.1)',
-    color: 'var(--primary)',
+    backgroundColor: 'var(--sidebar-accent)',
+    color: 'inherit', // Use inherit to let the foreground color rule
   };
 
   return (
@@ -83,7 +83,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ profile, project, activeTab, o
         )}
       </nav>
 
-      <div className="p-4 border-t" style={{ borderColor: profile?.sidebarBorder || 'var(--border)' }}>
+      <div className="p-4 border-t" style={{ borderColor: 'var(--sidebar-border)' }}>
         <button className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 transition-all duration-200 group">
           <div className="w-10 h-10 rounded-full bg-gray-200 flex-shrink-0 overflow-hidden border-2 border-transparent group-hover:border-primary transition-colors">
             {profile?.avatarUrl ? (

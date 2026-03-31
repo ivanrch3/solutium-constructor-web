@@ -98,70 +98,79 @@ export const SOLUTIUM_THEMES: Theme[] = [
 ];
 
 interface ThemeContextProps {
-  setTheme: (themeName: string, fontFamily: string) => void;
+  applyTheme: (themeData: any) => void;
 }
 
 const ThemeContext = createContext<ThemeContextProps | undefined>(undefined);
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const setTheme = (themeName: string, fontFamily: string) => {
-    const normalizedName = (themeName || '').toLowerCase();
-    console.log(`[THEME] Intentando aplicar tema: "${themeName}" (normalizado: "${normalizedName}")`);
-    
-    const theme = SOLUTIUM_THEMES.find(t => t.name.toLowerCase() === normalizedName) || SOLUTIUM_THEMES[2]; // Default to blue-light
-    console.log(`[THEME] Tema seleccionado: ${theme.name}`);
-    
+  const applyTheme = (themeData: any) => {
     const root = document.documentElement;
-    root.style.setProperty('--primary', theme.colors.primary);
-    root.style.setProperty('--secondary', theme.colors.secondary);
-    root.style.setProperty('--accent', theme.colors.accent);
-    root.style.setProperty('--background', theme.colors.background);
-    root.style.setProperty('--card', theme.colors.card);
-    root.style.setProperty('--foreground', theme.colors.text);
-    root.style.setProperty('--border', theme.colors.border);
     
-    // Sidebar variables
-    root.style.setProperty('--sidebar-bg', theme.colors.sidebar_bg || theme.colors.card);
-    root.style.setProperty('--sidebar-foreground', theme.colors.sidebar_foreground || theme.colors.text);
-    root.style.setProperty('--sidebar-accent', theme.colors.sidebar_accent || 'rgba(var(--primary-rgb), 0.1)');
-    root.style.setProperty('--sidebar-border', theme.colors.sidebar_border || theme.colors.border);
-    
-    root.style.setProperty('--font-family', fontFamily || theme.fontFamily || 'Inter, sans-serif');
+    // Si recibimos un nombre de tema (string), buscamos en nuestros temas predefinidos
+    if (typeof themeData === 'string') {
+      const normalizedName = themeData.toLowerCase();
+      console.log(`[THEME] Aplicando tema predefinido: "${themeData}"`);
+      
+      const theme = SOLUTIUM_THEMES.find(t => t.name.toLowerCase() === normalizedName) || SOLUTIUM_THEMES[2];
+      
+      root.style.setProperty('--primary', theme.colors.primary);
+      root.style.setProperty('--secondary', theme.colors.secondary);
+      root.style.setProperty('--accent', theme.colors.accent);
+      root.style.setProperty('--background', theme.colors.background);
+      root.style.setProperty('--card', theme.colors.card);
+      root.style.setProperty('--foreground', theme.colors.text);
+      root.style.setProperty('--border', theme.colors.border);
+      
+      root.style.setProperty('--solutium-sidebar-bg', theme.colors.sidebar_bg || theme.colors.card);
+      root.style.setProperty('--solutium-sidebar-fg', theme.colors.sidebar_foreground || theme.colors.text);
+      root.style.setProperty('--solutium-sidebar-accent', theme.colors.sidebar_accent || 'rgba(59, 130, 246, 0.1)');
+      root.style.setProperty('--solutium-sidebar-border', theme.colors.sidebar_border || theme.colors.border);
+      
+      const font = theme.fontFamily || 'Inter, sans-serif';
+      root.style.setProperty('--font-family', font);
+      document.body.style.fontFamily = font;
+      
+      if (theme.borderRadius) root.style.setProperty('--radius', theme.borderRadius);
+      if (theme.baseSize) root.style.setProperty('--base-size', theme.baseSize);
+      return;
+    }
+
+    // Si recibimos un objeto de tema calculado por la App Madre
+    const theme = themeData;
+    console.log('[THEME] Aplicando tema calculado:', theme);
+
+    if (theme.primary) root.style.setProperty('--primary', theme.primary);
+    if (theme.secondary) root.style.setProperty('--secondary', theme.secondary);
+    if (theme.accent) root.style.setProperty('--accent', theme.accent);
+    if (theme.background) root.style.setProperty('--background', theme.background);
+    if (theme.card || theme.surface) root.style.setProperty('--card', theme.card || theme.surface);
+    if (theme.text || theme.foreground) root.style.setProperty('--foreground', theme.text || theme.foreground);
+    if (theme.border) root.style.setProperty('--border', theme.border);
+
+    // Sidebar variables (Confianza ciega en los valores recibidos)
+    if (theme.sidebar_bg) root.style.setProperty('--solutium-sidebar-bg', theme.sidebar_bg);
+    if (theme.sidebar_foreground) root.style.setProperty('--solutium-sidebar-fg', theme.sidebar_foreground);
+    if (theme.sidebar_accent) root.style.setProperty('--solutium-sidebar-accent', theme.sidebar_accent);
+    if (theme.sidebar_border) root.style.setProperty('--solutium-sidebar-border', theme.sidebar_border);
+
+    // Tipografía
+    const font = theme.fontFamily || theme.font_family;
+    if (font) {
+      console.log('[THEME] Aplicando fontFamily:', font);
+      root.style.setProperty('--font-family', font);
+      document.body.style.fontFamily = font;
+    }
+
     if (theme.borderRadius) root.style.setProperty('--radius', theme.borderRadius);
     if (theme.baseSize) root.style.setProperty('--base-size', theme.baseSize);
   };
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
-      // Validar el tipo de mensaje de la App Madre
       if (event.data?.type === 'SOLUTIUM_THEME') {
-        const theme = event.data.payload.theme;
-        const root = document.documentElement;
-
-        // Aplicar variables CSS para Tailwind y estilos globales
-        root.style.setProperty('--primary', theme.primary);
-        root.style.setProperty('--secondary', theme.secondary);
-        root.style.setProperty('--accent', theme.accent);
-        root.style.setProperty('--background', theme.background);
-        root.style.setProperty('--card', theme.card || theme.surface); // Use card or surface as fallback
-        root.style.setProperty('--foreground', theme.text);
-        root.style.setProperty('--border', theme.border);
-        
-        // Sidebar variables from sync
-        if (theme.sidebar_bg) root.style.setProperty('--sidebar-bg', theme.sidebar_bg);
-        if (theme.sidebar_foreground) root.style.setProperty('--sidebar-foreground', theme.sidebar_foreground);
-        if (theme.sidebar_accent) root.style.setProperty('--sidebar-accent', theme.sidebar_accent);
-        if (theme.sidebar_border) root.style.setProperty('--sidebar-border', theme.sidebar_border);
-        
-        // Estilos de interfaz
-        if (theme.fontFamily) {
-          document.body.style.fontFamily = theme.fontFamily;
-          root.style.setProperty('--font-family', theme.fontFamily);
-        }
-        if (theme.borderRadius) root.style.setProperty('--radius', theme.borderRadius);
-        if (theme.baseSize) root.style.setProperty('--base-size', theme.baseSize);
-
-        console.log('Tema sincronizado con App Madre:', theme.name);
+        const themePayload = event.data.payload.theme || event.data.payload;
+        applyTheme(themePayload);
       }
     };
 
@@ -170,7 +179,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, []);
 
   return (
-    <ThemeContext.Provider value={{ setTheme }}>
+    <ThemeContext.Provider value={{ applyTheme }}>
       {children}
     </ThemeContext.Provider>
   );

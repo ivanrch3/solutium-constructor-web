@@ -14,7 +14,7 @@ const AppContent: React.FC = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [project, setProject] = useState<Project | null>(null);
   const [activeTab, setActiveTab] = useState('home');
-  const { setTheme } = useTheme();
+  const { applyTheme } = useTheme();
 
   useEffect(() => {
     console.log("--- DIAGNÓSTICO DE EMERGENCIA ---");
@@ -33,6 +33,9 @@ const AppContent: React.FC = () => {
           payload.supabase_anon_key,
           payload.session_token
         );
+
+        const handshakeFont = payload.fontFamily || (payload as any).font_family || '';
+        console.log('[HANDSHAKE] fontFamily detectada:', handshakeFont);
 
         if (payload.do_endpoint && payload.do_access_key && payload.do_secret_key && payload.do_bucket) {
           initDOClient(
@@ -60,18 +63,26 @@ const AppContent: React.FC = () => {
         // Fetch profile using the data service
         const mappedProfile = await getProfile(user.id);
 
+        // Prioritize theme from handshake payload if available
+        const handshakeTheme = payload.profile?.activeTheme || payload.project?.activeTheme;
+        const themeToApply = handshakeTheme || mappedProfile?.activeTheme || 'blue-light';
+
         if (mappedProfile) {
           setProfile(mappedProfile);
-          setTheme(mappedProfile.activeTheme || 'blue-light', '');
         } else {
-          // Fallback profile if fetch or validation fails but handshake succeeded
           const fallbackProfile: Profile = {
             id: user.id,
             role: 'user',
-            activeTheme: 'blue-light'
+            activeTheme: themeToApply as any
           };
           setProfile(fallbackProfile);
-          setTheme('blue-light', '');
+        }
+
+        // Apply theme with font from handshake
+        applyTheme(themeToApply);
+        if (handshakeFont) {
+          document.documentElement.style.setProperty('--font-family', handshakeFont);
+          document.body.style.fontFamily = handshakeFont;
         }
         
         setIsHandshakeComplete(true);
@@ -80,18 +91,8 @@ const AppContent: React.FC = () => {
       }
     });
 
-    // For development/testing without an iframe parent, we can simulate a handshake
-    // setTimeout(() => {
-    //   window.postMessage({
-    //     satellite_id: 'test',
-    //     supabase_url: 'https://test.supabase.co',
-    //     supabase_anon_key: 'test',
-    //     session_token: 'test'
-    //   }, '*');
-    // }, 1000);
-
     return cleanup;
-  }, [setTheme]);
+  }, [applyTheme]);
 
   if (!isHandshakeComplete) {
     return (
@@ -113,10 +114,9 @@ const AppContent: React.FC = () => {
               setProfile({
                 id: 'dev-user',
                 role: 'superadmin',
-                activeTheme: 'blue-light',
-                fontFamily: 'Inter, sans-serif'
+                activeTheme: 'blue-light'
               });
-              setTheme('blue-light', 'Inter, sans-serif');
+              applyTheme('blue-light');
               setIsHandshakeComplete(true);
             }}
             className="mt-8 px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-md text-sm transition-colors border border-gray-300"

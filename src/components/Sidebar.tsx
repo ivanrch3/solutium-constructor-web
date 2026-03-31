@@ -15,13 +15,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ profile, project, activeTab, o
 
   // Sidebar styles are derived from CSS variables set by ThemeContext
   const sidebarStyle = {
-    backgroundColor: 'var(--sidebar-bg)',
-    color: 'var(--sidebar-foreground)',
-    borderColor: 'var(--sidebar-border)',
+    backgroundColor: 'var(--solutium-sidebar-bg)',
+    color: 'var(--solutium-sidebar-fg)',
+    borderColor: 'var(--solutium-sidebar-border)',
   };
 
   const activeButtonStyle = {
-    backgroundColor: 'var(--sidebar-accent)',
+    backgroundColor: 'var(--solutium-sidebar-accent)',
     color: 'inherit', // Use inherit to let the foreground color rule
   };
 
@@ -83,7 +83,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ profile, project, activeTab, o
         )}
       </nav>
 
-      <div className="p-4 border-t" style={{ borderColor: 'var(--sidebar-border)' }}>
+      <div className="p-4 border-t" style={{ borderColor: 'var(--solutium-sidebar-border)' }}>
         <button className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 transition-all duration-200 group">
           <div className="w-10 h-10 rounded-full bg-gray-200 flex-shrink-0 overflow-hidden border-2 border-transparent group-hover:border-primary transition-colors">
             {profile?.avatarUrl ? (

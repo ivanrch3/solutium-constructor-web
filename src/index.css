@@ -9,17 +9,20 @@
   --color-text: var(--foreground, #1E2128);
   --color-border: var(--border, #E2E8F0);
   
-  --sidebar-bg: var(--sidebar-bg, #FFFFFF);
-  --sidebar-foreground: var(--sidebar-foreground, #1E2128);
-  --sidebar-accent: var(--sidebar-accent, rgba(59, 130, 246, 0.1));
-  --sidebar-border: var(--sidebar-border, #E2E8F0);
+  --solutium-sidebar-bg: var(--solutium-sidebar-bg, #FFFFFF);
+  --solutium-sidebar-fg: var(--solutium-sidebar-fg, #1E2128);
+  --solutium-sidebar-accent: var(--solutium-sidebar-accent, rgba(59, 130, 246, 0.1));
+  --solutium-sidebar-border: var(--solutium-sidebar-border, #E2E8F0);
   
   --font-sans: var(--font-family, "Inter", sans-serif);
   --radius-lg: var(--radius, 0.75rem);
 }
 
+* {
+  font-family: var(--font-sans);
+}
+
 body {
   background-color: var(--color-background);
   color: var(--color-text);
-  font-family: var(--font-sans);
 }

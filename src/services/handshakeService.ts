@@ -7,6 +7,9 @@ export interface HandshakePayload {
   do_access_key?: string;
   do_secret_key?: string;
   do_bucket?: string;
+  fontFamily?: string;
+  profile?: any;
+  project?: any;
 }
 
 export const listenForHandshake = (
@@ -18,7 +21,7 @@ export const listenForHandshake = (
     if (!data) return false;
     
     // Soporte para el formato inyectado o el formato plano
-    const payload = (data.type === 'SOLUTIUM_DIRECT_INJECTION') ? data.payload : data;
+    const payload = (data.type === 'SOLUTIUM_DIRECT_INJECTION' || data.type === 'SOLUTIUM_CONFIG') ? data.payload : data;
     if (!payload) return false;
 
     const required = ['satellite_id', 'supabase_url', 'supabase_anon_key', 'session_token'];
@@ -39,7 +42,7 @@ export const listenForHandshake = (
   const urlPayload: any = {};
   const keys = [
     'satellite_id', 'supabase_url', 'supabase_anon_key', 'session_token',
-    'do_endpoint', 'do_access_key', 'do_secret_key', 'do_bucket'
+    'do_endpoint', 'do_access_key', 'do_secret_key', 'do_bucket', 'fontFamily'
   ];
   
   keys.forEach(key => {

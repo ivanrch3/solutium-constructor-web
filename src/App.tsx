@@ -48,8 +48,15 @@ const AppContent: React.FC = () => {
 
         if (payload.satellite_id) {
           setProjectId(payload.satellite_id);
-          const projectData = await getProject(payload.satellite_id);
-          if (projectData) setProject(projectData);
+          
+          // Prioritize project data from handshake payload if available
+          if (payload.project) {
+            console.log('[HANDSHAKE] Usando datos de proyecto del payload:', payload.project);
+            setProject(payload.project);
+          } else {
+            const projectData = await getProject(payload.satellite_id);
+            if (projectData) setProject(projectData);
+          }
         }
 
         // Fetch user
@@ -103,34 +110,53 @@ const AppContent: React.FC = () => {
   }, [applyTheme]);
 
   if (!isHandshakeComplete) {
+    const params = new URLSearchParams(window.location.search);
+    const logoFromUrl = params.get('logoUrl') || params.get('logo_url');
+
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center text-text">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
-        <h2 className="text-xl font-semibold">Esperando handshake...</h2>
-        <p className="text-gray-500 mt-2">Conectando con la base principal de Solutium</p>
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center text-text p-6">
+        <div className="flex flex-col items-center space-y-12">
+          {logoFromUrl ? (
+            <img 
+              src={logoFromUrl} 
+              alt="Loading Logo" 
+              className="h-24 w-auto object-contain animate-pulse" 
+              referrerPolicy="no-referrer" 
+            />
+          ) : (
+            <div className="w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center text-primary font-bold text-3xl animate-pulse">
+              S
+            </div>
+          )}
+          
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
         
         {import.meta.env.DEV && (
-          <button 
-            onClick={() => {
-              // Initialize Supabase with dummy values for development
-              initSupabase(
-                'https://placeholder-project.supabase.co',
-                'placeholder-key',
-                'placeholder-token'
-              );
-              setProjectId('dev-project');
-              setProfile({
-                id: 'dev-user',
-                role: 'superadmin',
-                activeTheme: 'blue-light'
-              });
-              applyTheme('blue-light');
-              setIsHandshakeComplete(true);
-            }}
-            className="mt-8 px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-md text-sm transition-colors border border-gray-300"
-          >
-            Saltar Handshake (Solo Dev)
-          </button>
+          <div className="absolute bottom-12">
+            <button 
+              onClick={() => {
+                // Initialize Supabase with dummy values for development
+                initSupabase(
+                  'https://placeholder-project.supabase.co',
+                  'placeholder-key',
+                  'placeholder-token'
+                );
+                setProjectId('dev-project');
+                setProfile({
+                  id: 'dev-user',
+                  email: 'dev@solutium.com',
+                  role: 'superadmin',
+                  activeTheme: 'blue-light'
+                });
+                applyTheme('blue-light');
+                setIsHandshakeComplete(true);
+              }}
+              className="px-6 py-2.5 bg-surface hover:bg-gray-50 text-gray-600 rounded-xl text-sm font-medium transition-all border border-gray-200 shadow-sm"
+            >
+              Saltar Handshake (Solo Dev)
+            </button>
+          </div>
         )}
       </div>
     );

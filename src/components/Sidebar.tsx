@@ -30,8 +30,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ profile, project, activeTab, o
       className="w-64 h-screen border-r flex flex-col transition-colors duration-200"
       style={sidebarStyle}
     >
-      <div className="p-6 flex items-center gap-3">
-        <div className="h-10 w-auto flex items-center justify-center overflow-hidden">
+      <div className="p-6 flex items-center justify-center">
+        <div className="h-12 w-full flex items-center justify-center overflow-hidden">
           {project?.logoUrl ? (
             <img 
               src={project.logoUrl} 
@@ -45,7 +45,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ profile, project, activeTab, o
             </div>
           )}
         </div>
-        <span className="font-bold text-lg truncate">{project?.name || 'App Satélite'}</span>
       </div>
       
       <nav className="flex-1 px-4 space-y-1">

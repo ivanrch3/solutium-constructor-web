@@ -4,7 +4,7 @@
  * Protocol: S.I.P. v2
  */
 import { useEffect, useState, useMemo, useRef } from 'react';
-import { initSupabase, supabase } from '../services/supabase';
+import { getSupabaseClient, supabase } from '../services/supabase';
 
 export interface SolutiumPayload {
   userId: string;
@@ -280,7 +280,7 @@ export const useSolutium = () => {
                     
                     // Inicializar Supabase con el sessionToken (V2)
                     if (decoded.supabaseData?.url && decoded.supabaseData?.anonKey) {
-                        initSupabase(
+                        getSupabaseClient(
                             decoded.supabaseData.url, 
                             decoded.supabaseData.anonKey, 
                             decoded.sessionToken
@@ -444,7 +444,7 @@ export const useSolutium = () => {
                     // Apply Theme & Supabase
                     if (normalizedPayload.project) applyTheme(normalizedPayload.project);
                     if (normalizedPayload.supabaseData?.url && normalizedPayload.supabaseData?.anonKey) {
-                        initSupabase(
+                        getSupabaseClient(
                             normalizedPayload.supabaseData.url, 
                             normalizedPayload.supabaseData.anonKey,
                             normalizedPayload.sessionToken

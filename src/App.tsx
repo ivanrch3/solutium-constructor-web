@@ -28,7 +28,7 @@ import { useBuilderStore } from './store/useBuilderStore';
 import { getModuleDefinition } from './modules/registry';
 import { getBusinessImage } from './lib/images';
 import { useAiGenerator } from './hooks/useAiGenerator';
-import { supabase } from './services/supabase';
+import { getSupabaseClient } from './services/supabase';
 import { migrationLogger } from './lib/migrationLogger';
 
 function App() {
@@ -41,37 +41,48 @@ function App() {
     setIsReady(true);
   };
 
+  // --- NUEVA LÓGICA: HANDSHAKE CON APP MADRE ---
   useEffect(() => {
-    const fetchProjectData = async () => {
-      migrationLogger.log('DATA_FETCH', 'Iniciando carga directa desde Supabase');
-      try {
-        const projectId = 'dev-project-1'; 
+    const handleMessage = async (event: MessageEvent) => {
+      if (event.data?.type === 'SOLUTIUM_CONFIG') {
+        const payload = event.data.payload;
         
-        const { data, error } = await supabase
-          .from('projects')
-          .select('*, assets(*)')
-          .eq('id', projectId)
-          .single();
+        // 1. Inicializar Supabase dinámicamente
+        const supabase = getSupabaseClient(
+          payload.config.supabaseUrl, 
+          payload.config.supabaseAnonKey, 
+          payload.sessionToken
+        );
 
-        if (error) throw error;
+        // 2. Cargar datos usando el cliente dinámico
+        try {
+          const { data, error } = await supabase
+            .from('projects')
+            .select('*, assets(*)')
+            .eq('id', payload.projectId)
+            .single();
 
-        setProjectData(data);
-        setConfig({
-          projectId: data.id,
-          project: data,
-          projects: [data],
-          assets: data.assets
-        });
-        setIsReady(true);
-        migrationLogger.success('DATA_FETCH', 'Datos cargados correctamente');
-      } catch (err) {
-        migrationLogger.error('DATA_FETCH', 'Error al cargar datos', err);
-      } finally {
-        setLoading(false);
+          if (error) throw error;
+
+          setProjectData(data);
+          setConfig({
+            projectId: data.id,
+            project: data,
+            projects: [data],
+            assets: data.assets,
+            profile: payload.profile
+          });
+          setIsReady(true);
+        } catch (err) {
+          console.error('HANDSHAKE', 'Error al cargar datos', err);
+        } finally {
+          setLoading(false);
+        }
       }
     };
 
-    fetchProjectData();
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
   }, []);
 
   useEffect(() => {
@@ -257,20 +268,16 @@ function App() {
     
     setSaving(true);
     setLastSaveStatus(status);
-    
+
     const assetDataToSave = {
       modules: modules,
       settings: assetSettings,
       selectedProductIds: selectedProductIds,
       version: "1.0.0"
     };
-  
-    console.log(`Enviando datos (${status}) a la App Madre...`, assetDataToSave);
-    
-    setShowSaveMessage(true);
-    setTimeout(() => setShowSaveMessage(false), 3000);
-  
+
     const targetProjectId = activeProjectId || config?.projectId || (config as any).project_id;
+    const supabase = getSupabaseClient();
     
     const { error } = await supabase
       .from('assets')
@@ -291,6 +298,8 @@ function App() {
       migrationLogger.error('SAVE', 'Error al guardar en Supabase', error);
     } else {
       migrationLogger.success('SAVE', 'Datos guardados en Supabase');
+      setShowSaveMessage(true);
+      setTimeout(() => setShowSaveMessage(false), 3000);
     }
 
     setDirty(false);
@@ -384,6 +393,7 @@ function App() {
     };
 
     const targetProjectId = activeProjectId || config?.projectId || (config as any).project_id;
+    const supabase = getSupabaseClient();
     
     const { error } = await supabase
       .from('assets')

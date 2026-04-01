@@ -1,0 +1,11 @@
+{
+  "id": "web-constructor",
+  "name": "Constructor Web",
+  "description": "Crea sitios web y landing pages con IA y módulos inteligentes.",
+  "version": "1.0.0",
+  "sdkVersion": "1.1.0",
+  "category": "Marketing y Ventas",
+  "icon": "Code",
+  "scopes": ["profile", "crm", "products"],
+  "logoUrl": ""
+}

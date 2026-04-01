@@ -41,46 +41,62 @@ function App() {
     setIsReady(true);
   };
 
+  const procesarPayload = async (payload: any) => {
+    if (!payload) return;
+    
+    // 1. Inicializar Supabase dinámicamente
+    const supabase = getSupabaseClient(
+      payload.config.supabaseUrl, 
+      payload.config.supabaseAnonKey, 
+      payload.sessionToken
+    );
+
+    // 2. Cargar datos usando el cliente dinámico
+    try {
+      const { data, error } = await supabase
+        .from('projects')
+        .select('*, assets(*)')
+        .eq('id', payload.projectId)
+        .single();
+
+      if (error) throw error;
+
+      setProjectData(data);
+      setConfig({
+        projectId: data.id,
+        project: data,
+        projects: [data],
+        assets: data.assets,
+        profile: payload.profile
+      });
+      setIsReady(true);
+    } catch (err) {
+      console.error('HANDSHAKE', 'Error al cargar datos', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // --- NUEVA LÓGICA: HANDSHAKE CON APP MADRE ---
   useEffect(() => {
+    // --- MODO DE RESCATE: Leer de window.name ---
+    try {
+      const nameData = window.name ? JSON.parse(window.name) : null;
+      if (nameData && nameData.type === 'SOLUTIUM_DIRECT_INJECTION') {
+        console.log("[Solutium] Configuración recuperada de window.name");
+        procesarPayload(nameData.payload);
+        return; // Si cargamos desde aquí, no necesitamos esperar el postMessage
+      }
+    } catch (e) {
+      console.warn("[Solutium] No se pudo leer window.name", e);
+    }
+
+    // --- Lógica existente de postMessage (Fallback) ---
     const handleMessage = async (event: MessageEvent) => {
       if (event.data?.type === 'SOLUTIUM_CONFIG') {
-        const payload = event.data.payload;
-        
-        // 1. Inicializar Supabase dinámicamente
-        const supabase = getSupabaseClient(
-          payload.config.supabaseUrl, 
-          payload.config.supabaseAnonKey, 
-          payload.sessionToken
-        );
-
-        // 2. Cargar datos usando el cliente dinámico
-        try {
-          const { data, error } = await supabase
-            .from('projects')
-            .select('*, assets(*)')
-            .eq('id', payload.projectId)
-            .single();
-
-          if (error) throw error;
-
-          setProjectData(data);
-          setConfig({
-            projectId: data.id,
-            project: data,
-            projects: [data],
-            assets: data.assets,
-            profile: payload.profile
-          });
-          setIsReady(true);
-        } catch (err) {
-          console.error('HANDSHAKE', 'Error al cargar datos', err);
-        } finally {
-          setLoading(false);
-        }
+         procesarPayload(event.data.payload);
       }
     };
-
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
   }, []);

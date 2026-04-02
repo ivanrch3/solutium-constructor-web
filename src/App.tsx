@@ -11,7 +11,6 @@ import {
 import { useState, useEffect, useCallback } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { ModulePicker } from './components/ModulePicker';
-import { WelcomeScreen } from './components/WelcomeScreen';
 import { ImagePicker } from './components/ImagePicker';
 import { SidebarPanelWrapper } from './components/SidebarPanelWrapper';
 import { LoadingView } from './components/LoadingView';
@@ -245,8 +244,6 @@ function App() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [mobileTab, setMobileTab] = useState<MobileTab>('preview');
-  const [showWelcome, setShowWelcome] = useState(true);
-  const [welcomeMode, setWelcomeMode] = useState<'project' | 'asset'>('asset');
   const [isImagePickerOpen, setIsImagePickerOpen] = useState(false);
   const [imagePickerCallback, setImagePickerCallback] = useState<((url: string) => void) | null>(null);
   const [moduleToDelete, setModuleToDelete] = useState<string | null>(null);
@@ -303,10 +300,47 @@ function App() {
         }));
       } else {
         // 3. Fallback to a default project if none found
+        const defaultProjectId = config.projectId || 'dev-project-1';
+        const defaultProjectName = config.project?.name || 'Proyecto Local';
+        const defaultAssetId = 'asset-' + Math.random().toString(36).substr(2, 5);
+        
+        // Create a default initial structure (Header + Hero)
+        const createModule = (type: string, customData: any = {}) => {
+          const def = getModuleDefinition(type);
+          return {
+            id: Math.random().toString(36).substr(2, 9),
+            type,
+            data: { ...(def?.defaultData || {}), ...customData }
+          };
+        };
+
+        const initialModules = [
+          createModule('header', { logoText: defaultProjectName, scrollMode: 'static', theme: 'dark' }),
+          createModule('hero', { 
+            title: `Bienvenido a *${defaultProjectName}*`, 
+            titleStyle: { highlightType: 'gradient', align: 'center' },
+            subtitle: 'Empieza a construir tu página agregando módulos desde el constructor a la izquierda.',
+            subtitleStyle: { align: 'center' },
+            layoutType: 'layout-1',
+            primaryButton: null,
+            secondaryButton: null,
+            theme: 'light',
+            background: {
+              image: getBusinessImage('')
+            }
+          })
+        ];
+
         initialProjects = [{
-          id: config.projectId || 'dev-project-1',
-          name: config.project?.name || 'Proyecto Local',
-          assets: []
+          id: defaultProjectId,
+          name: defaultProjectName,
+          assets: [{
+            id: defaultAssetId,
+            name: 'Página Principal',
+            modules: initialModules,
+            settings: { domain: '', seoTitle: 'Página Principal | ' + defaultProjectName, seoDescription: 'Bienvenido al constructor web' },
+            selectedProductIds: []
+          }]
         }];
       }
  
@@ -434,7 +468,6 @@ function App() {
       return;
     }
     addModule(type);
-    setWelcomeMode('asset');
     setShowPicker(false);
     setIsMobileMenuOpen(false);
     
@@ -539,79 +572,18 @@ function App() {
     setTimeout(() => setPublishStatus('idle'), 5000);
   };
 
-  const handleWelcomeOption = (
-    option: 'ai' | 'template' | 'blank', 
-    pageName: string, 
-    businessContext: {
-      name: string;
-      sector: string;
-      description: string;
-      objective: string;
-      visualStyle: string;
-    },
-    palette?: { primary: string, secondary: string }
-  ) => {
-    setShowWelcome(false);
-    
-    // Apply palette if provided
-    if (palette) {
-      document.documentElement.style.setProperty('--color-primary', palette.primary);
-      document.documentElement.style.setProperty('--color-secondary', palette.secondary);
-      // Also update RGB values for Tailwind opacity utilities
-      const hexToRgb = (hex: string) => {
-        const r = parseInt(hex.slice(1, 3), 16);
-        const g = parseInt(hex.slice(3, 5), 16);
-        const b = parseInt(hex.slice(5, 7), 16);
-        return `${r} ${g} ${b}`;
-      };
-      document.documentElement.style.setProperty('--color-primary-rgb', hexToRgb(palette.primary));
-      document.documentElement.style.setProperty('--color-secondary-rgb', hexToRgb(palette.secondary));
+  const handleCreateNewAssetClick = () => {
+    if (isDirty) {
+      if (!window.confirm('Tienes cambios sin guardar en el proyecto actual. ¿Estás seguro de que quieres crear una nueva página y perder los cambios no guardados?')) {
+        return;
+      }
     }
     
-    let currentProjectId = activeProjectId || config?.projectId || config?.project_id || projects[0]?.id || 'dev-project-1';
-    let currentProjectsList = [...projects];
-
-    // Ensure project exists in list
-    if (!currentProjectsList.find(p => p.id === currentProjectId)) {
-      currentProjectsList.push({
-        id: currentProjectId,
-        name: config?.project?.name || businessContext.name || 'Proyecto Local',
-        assets: []
-      });
-    }
-
-    const finalProjectName = config?.project?.name || businessContext.name || 'Proyecto Local';
-    const finalAssetName = pageName;
+    // Create a new blank asset directly
+    const currentProjectId = activeProjectId || config?.projectId || config?.project_id || projects[0]?.id || 'dev-project-1';
+    const finalProjectName = config?.project?.name || 'Proyecto Local';
     const newAssetId = 'asset-' + Math.random().toString(36).substr(2, 5);
-
-    // Create new asset
-    const newAsset = {
-      id: newAssetId,
-      name: finalAssetName,
-      modules: [],
-      businessContext,
-      settings: {
-        domain: '',
-        seoTitle: finalAssetName + ' | ' + finalProjectName,
-        seoDescription: businessContext.description || `Bienvenido a ${finalAssetName}`
-      }
-    };
-
-    // Add asset to project
-    currentProjectsList = currentProjectsList.map(p => {
-      if (p.id === currentProjectId) {
-        return {
-          ...p,
-          assets: [...(p.assets || []), newAsset]
-        };
-      }
-      return p;
-    });
-
-    setProjects(currentProjectsList);
-    setActiveProject(currentProjectId);
-    setActiveAsset(newAssetId);
-    setBusinessContext(businessContext);
+    const finalAssetName = 'Nueva Página';
 
     const createModule = (type: string, customData: any = {}) => {
       const def = getModuleDefinition(type);
@@ -622,97 +594,49 @@ function App() {
       };
     };
 
-    if (option === 'ai') {
-      onGenerateAi(finalProjectName, currentProjectId, newAssetId, currentProjectsList, finalAssetName, businessContext);
-    } else if (option === 'blank') {
-      // Initialize with basic structure but customized text based on businessContext
-      const initialModules = [
-        createModule('header', { logoText: businessContext.name || finalProjectName, scrollMode: 'static', theme: 'dark' }),
-        createModule('hero', { 
-          title: businessContext.description === 'Omitido' ? 'Bienvenido al constructor web' : `Bienvenido a *${businessContext.name}*`, 
-          titleStyle: { highlightType: 'gradient', align: 'center' },
-          subtitle: businessContext.description === 'Omitido' ? 'Empieza a construir tu página agregando módulos desde el constructor a la izquierda.' : businessContext.description,
-          subtitleStyle: { align: 'center' },
-          layoutType: 'layout-1', // Centered layout
-          primaryButton: null,
-          secondaryButton: null,
-          theme: 'light',
-          background: {
-            image: getBusinessImage(businessContext.description || '')
-          }
-        })
-      ];
-      
-      setModules(initialModules);
-      setDirty(false);
-      
-      const finalProjectsList = currentProjectsList.map(p => {
-        if (p.id === currentProjectId) {
-          return {
-            ...p,
-            assets: p.assets.map((a: any) => {
-              if (a.id === newAssetId) {
-                return { ...a, modules: initialModules };
-              }
-              return a;
-            })
-          };
+    const initialModules = [
+      createModule('header', { logoText: finalProjectName, scrollMode: 'static', theme: 'dark' }),
+      createModule('hero', { 
+        title: 'Nueva Página', 
+        titleStyle: { highlightType: 'gradient', align: 'center' },
+        subtitle: 'Empieza a construir tu página agregando módulos desde el constructor a la izquierda.',
+        subtitleStyle: { align: 'center' },
+        layoutType: 'layout-1',
+        primaryButton: null,
+        secondaryButton: null,
+        theme: 'light',
+        background: {
+          image: getBusinessImage('')
         }
-        return p;
-      });
-      setProjects(finalProjectsList);
-    } else {
-      // Template option - for now, just use a default template but customized
-      const initialModules = [
-        createModule('top-bar', { message: '¡Oferta especial de lanzamiento!', theme: 'dark' }),
-        createModule('header', { logoText: businessContext.name || finalProjectName, scrollMode: 'static', theme: 'dark' }),
-        createModule('hero', { 
-          title: businessContext.description === 'Omitido' ? 'Bienvenido al constructor web' : `Bienvenidos a *${businessContext.name}*`, 
-          titleStyle: { highlightType: 'gradient', align: 'center' },
-          subtitle: businessContext.description === 'Omitido' ? 'Empieza a construir tu página agregando módulos desde el constructor a la izquierda.' : `Soluciones profesionales en ${businessContext.description}.`,
-          subtitleStyle: { align: 'center' },
-          layoutType: 'layout-1', // Centered layout
-          theme: 'light',
-          background: {
-            image: getBusinessImage(businessContext.description || '')
-          }
-        }),
-        createModule('features', { title: '¿Por qué elegirnos?', subtitle: `Diseñamos soluciones de ${businessContext.description || 'calidad'} que se adaptan a tus necesidades.` }),
-        createModule('contact', { title: 'Contáctanos', subtitle: 'Estamos aquí para ayudarte.' }),
-        createModule('footer', { logoText: businessContext.name || finalProjectName }),
-      ];
-      
-      setModules(initialModules);
-      setDirty(false);
-      
-      const finalProjectsList = currentProjectsList.map(p => {
-        if (p.id === currentProjectId) {
-          return {
-            ...p,
-            assets: p.assets.map((a: any) => {
-              if (a.id === newAssetId) {
-                return { ...a, modules: initialModules };
-              }
-              return a;
-            })
-          };
-        }
-        return p;
-      });
-      setProjects(finalProjectsList);
-    }
-    
-    setWelcomeMode('asset'); // Always stay in asset mode
-  };
+      })
+    ];
 
-  const handleCreateNewAssetClick = () => {
-    if (isDirty) {
-      if (!window.confirm('Tienes cambios sin guardar en el proyecto actual. ¿Estás seguro de que quieres crear una nueva página y perder los cambios no guardados?')) {
-        return;
+    const newAsset = {
+      id: newAssetId,
+      name: finalAssetName,
+      modules: initialModules,
+      settings: {
+        domain: '',
+        seoTitle: finalAssetName + ' | ' + finalProjectName,
+        seoDescription: `Bienvenido a ${finalAssetName}`
       }
-    }
-    setWelcomeMode('asset');
-    setShowWelcome(true);
+    };
+
+    const updatedProjects = projects.map(p => {
+      if (p.id === currentProjectId) {
+        return {
+          ...p,
+          assets: [...(p.assets || []), newAsset]
+        };
+      }
+      return p;
+    });
+
+    setProjects(updatedProjects);
+    setActiveProject(currentProjectId);
+    setActiveAsset(newAssetId);
+    setModules(initialModules);
+    setDirty(false);
   };
 
   const handleReorderModules = (newModules: any[]) => {
@@ -720,7 +644,6 @@ function App() {
   };
 
   const handleSelectProject = (projectId: string) => {
-    setShowWelcome(false);
     setActiveProject(projectId);
     const project = projects.find(p => p.id === projectId);
     if (project && project.assets?.length > 0) {
@@ -794,19 +717,6 @@ function App() {
 
   if (!isReady) {
     return <LoadingView projectName={config?.project?.name} onSimulateConnection={simulateConnection} />;
-  }
-
-  if (showWelcome) {
-    return (
-      <WelcomeScreen 
-        onSelectOption={handleWelcomeOption} 
-        onSelectProject={handleSelectProject}
-        projects={projects}
-        title={config?.project?.name || 'Proyecto'}
-        brandColors={config?.project?.brandColors}
-        industry={activeProject?.industry}
-      />
-    );
   }
 
   return (
@@ -951,7 +861,7 @@ function App() {
           isCollapsed={isSidebarCollapsed}
           onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
           onAddModule={handleAddModule}
-          onGoHome={() => setShowWelcome(true)}
+          onGoHome={() => {}}
           onGenerateAi={() => onGenerateAi()}
           projects={projects}
           activeProjectId={activeProjectId || config?.projectId || config?.project_id || (projects[0]?.id)}
@@ -996,7 +906,7 @@ function App() {
             onOpenSettings={() => setActiveTab('settings')}
             onOpenData={() => setActiveTab('data-audit')}
             onOpenAi={() => onGenerateAi()}
-            onOpenAssetSelector={() => setShowWelcome(true)}
+            onOpenAssetSelector={() => {}}
           />
         )}
         {/* Content Area */}

@@ -50,7 +50,7 @@ function App() {
       sessionToken: rawPayload.sessionToken || rawPayload.session_token,
       config: rawPayload.config || {
         supabaseUrl: rawPayload.supabase_url,
-        supabaseAnonKey: rawPayload.supabase_anon_key || rawPayload.supabase_key || rawPayload.supabase_url?.includes('supabase.co') ? 'anon-key-placeholder' : null
+        supabaseAnonKey: rawPayload.supabase_anon_key || rawPayload.supabase_key || (rawPayload.supabase_url?.includes('supabase.co') ? 'anon-key-placeholder' : null)
       }
     };
 
@@ -147,20 +147,21 @@ function App() {
     }
     console.log("[Constructor] Señal READY enviada a la App Madre");
 
-    // Función de validación y procesamiento (Patrón robusto)
+    // Función de validación y procesamiento (Patrón robusto de referencia)
     const validateAndProcess = (data: any) => {
       if (!data) return false;
       
-      // Soporta tanto objeto directo como wrapper
+      // Soporta tanto objeto directo como wrapper SOLUTIUM_CONFIG
       const payload = (data.type === 'SOLUTIUM_CONFIG') ? data.payload : data;
       
-      // Verifica campos críticos (Soporta ambos estándares de nombres)
-      const isComplete = payload && (
-        (payload.satellite_id && payload.supabase_url && payload.session_token) ||
-        (payload.projectId && payload.config?.supabaseUrl)
-      );
+      // Campos requeridos según patrón de referencia
+      const required = ['satellite_id', 'supabase_url', 'session_token'];
+      const isComplete = required.every(field => payload[field]);
+      
+      // Fallback para el estándar camelCase si el anterior falla
+      const isCompleteCamel = !isComplete && payload.projectId && payload.config?.supabaseUrl;
 
-      if (isComplete) {
+      if (isComplete || isCompleteCamel) {
         console.log("[Constructor] Handshake validado:", payload);
         procesarPayload(payload, data.correlationId);
         return true;
@@ -168,25 +169,30 @@ function App() {
       return false;
     };
 
-    // 1. Intento por window.name (Prioridad alta)
+    // 1. Prioridad: window.name (Inmune a truncamiento)
     if (window.name) {
       try {
         const nameData = JSON.parse(window.name);
         console.log("[Constructor] Intentando handshake vía window.name");
         if (validateAndProcess(nameData)) return; 
       } catch (e) {
-        console.warn("[Constructor] window.name no contiene JSON válido o está incompleto", e);
+        // Ignorar si no es JSON válido
+        console.warn("[Constructor] window.name no contiene JSON válido");
       }
     }
 
-    // 2. Intento por postMessage (Escucha activa)
+    // 2. Respaldo: postMessage (Escucha activa, sin JSON.parse innecesario)
     const handleMessage = (event: MessageEvent) => {
-      if (!event.data) return;
-      
-      // No hacemos JSON.parse aquí, tratamos event.data directamente como objeto
-      // tal como se solicitó para evitar errores de truncamiento en strings.
-      console.log("[Constructor] postMessage recibido, validando estructura...");
-      validateAndProcess(event.data);
+      try {
+        if (!event.data) return;
+        
+        // NO parseamos event.data, lo tratamos como objeto directamente
+        // para evitar SyntaxError por truncamiento o doble parseo.
+        console.log("[Constructor] Mensaje recibido vía postMessage:", event.data);
+        validateAndProcess(event.data);
+      } catch (error) {
+        console.error("[Constructor] ERROR CRÍTICO EN LISTENER:", error);
+      }
     };
 
     window.addEventListener('message', handleMessage);

@@ -98,6 +98,20 @@ function App() {
         profile: payload.profile
       });
       setIsReady(true);
+
+      // 3. Enviar ACK a la App Madre
+      const ackMessage = { 
+        type: 'SOLUTIUM_SATELLITE_ACK', 
+        correlationId: correlationId || 'no-id',
+        timestamp: Date.now() 
+      };
+      if (window.opener) {
+        window.opener.postMessage(ackMessage, '*');
+      }
+      if (window.parent !== window) {
+        window.parent.postMessage(ackMessage, '*');
+      }
+      console.log("[Constructor] ACK enviado a la App Madre");
     } catch (err: any) {
       const errorResponse = {
         error: "PROCESSING_FAILED",
@@ -137,12 +151,16 @@ function App() {
 
     // --- Lógica existente de postMessage (Fallback) ---
     const handleMessage = async (event: MessageEvent) => {
-      // Log de todos los eventos recibidos para diagnóstico
-      console.log("[Constructor] Mensaje recibido en el event listener:", event.data);
+      try {
+        // Log de todos los eventos recibidos para diagnóstico
+        console.log("[Constructor] Mensaje recibido:", event.data);
 
-      if (event.data?.type === 'SOLUTIUM_CONFIG') {
-         console.log("[Constructor] Configuración SOLUTIUM_CONFIG detectada:", event.data.payload);
-         procesarPayload(event.data.payload, event.data.correlationId);
+        if (event.data?.type === 'SOLUTIUM_CONFIG') {
+           console.log("[Constructor] Configuración SOLUTIUM_CONFIG detectada:", event.data.payload);
+           procesarPayload(event.data.payload, event.data.correlationId);
+        }
+      } catch (error) {
+        console.error("[Constructor] ERROR CRÍTICO EN LISTENER:", error);
       }
     };
     window.addEventListener('message', handleMessage);

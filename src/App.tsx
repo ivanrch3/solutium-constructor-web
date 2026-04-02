@@ -41,25 +41,53 @@ function App() {
     setIsReady(true);
   };
 
-  const procesarPayload = async (payload: any) => {
+  const procesarPayload = async (payload: any, correlationId?: string) => {
     if (!payload) return;
-    
-    // 1. Inicializar Supabase dinámicamente
-    const supabase = getSupabaseClient(
-      payload.config.supabaseUrl, 
-      payload.config.supabaseAnonKey, 
-      payload.sessionToken
-    );
 
-    // 2. Cargar datos usando el cliente dinámico
+    // 1. Logging de Diagnóstico (Enviar al servidor para registro en DB)
     try {
+      await fetch('/api/config/receive', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Correlation-ID': correlationId || 'no-id'
+        },
+        body: JSON.stringify({ payload, correlationId })
+      });
+    } catch (logErr) {
+      console.warn("[Diagnostic] No se pudo enviar el log al servidor", logErr);
+    }
+    
+    // 2. Validación y Procesamiento
+    try {
+      if (!payload.config?.supabaseUrl || !payload.config?.supabaseAnonKey || !payload.projectId) {
+        const errorData = {
+          error: "INVALID_PAYLOAD_STRUCTURE",
+          details: "El payload recibido no contiene los campos necesarios (config.supabaseUrl, config.supabaseAnonKey, projectId).",
+          payload_summary: JSON.stringify(payload).substring(0, 200),
+          correlation_id: correlationId || "no-id"
+        };
+        console.error("[Solutium] Error de validación:", errorData);
+        return;
+      }
+
+      // Inicializar Supabase dinámicamente
+      const supabase = getSupabaseClient(
+        payload.config.supabaseUrl, 
+        payload.config.supabaseAnonKey, 
+        payload.sessionToken
+      );
+
+      // Cargar datos usando el cliente dinámico
       const { data, error } = await supabase
         .from('projects')
         .select('*, assets(*)')
         .eq('id', payload.projectId)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        throw new Error(`Error de Supabase: ${error.message} (Código: ${error.code})`);
+      }
 
       setProjectData(data);
       setConfig({
@@ -70,8 +98,14 @@ function App() {
         profile: payload.profile
       });
       setIsReady(true);
-    } catch (err) {
-      console.error('HANDSHAKE', 'Error al cargar datos', err);
+    } catch (err: any) {
+      const errorResponse = {
+        error: "PROCESSING_FAILED",
+        details: err.message || "Error desconocido durante el procesamiento del payload.",
+        payload_summary: JSON.stringify(payload).substring(0, 200),
+        correlation_id: correlationId || "no-id"
+      };
+      console.error('HANDSHAKE', errorResponse);
     } finally {
       setLoading(false);
     }
@@ -84,8 +118,8 @@ function App() {
       const nameData = window.name ? JSON.parse(window.name) : null;
       if (nameData && nameData.type === 'SOLUTIUM_DIRECT_INJECTION') {
         console.log("[Solutium] Configuración recuperada de window.name");
-        procesarPayload(nameData.payload);
-        return; // Si cargamos desde aquí, no necesitamos esperar el postMessage
+        procesarPayload(nameData.payload, nameData.correlationId);
+        return; 
       }
     } catch (e) {
       console.warn("[Solutium] No se pudo leer window.name", e);
@@ -94,7 +128,7 @@ function App() {
     // --- Lógica existente de postMessage (Fallback) ---
     const handleMessage = async (event: MessageEvent) => {
       if (event.data?.type === 'SOLUTIUM_CONFIG') {
-         procesarPayload(event.data.payload);
+         procesarPayload(event.data.payload, event.data.correlationId);
       }
     };
     window.addEventListener('message', handleMessage);

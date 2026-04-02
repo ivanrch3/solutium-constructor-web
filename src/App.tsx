@@ -41,8 +41,19 @@ function App() {
     setIsReady(true);
   };
 
-  const procesarPayload = async (payload: any, correlationId?: string) => {
-    if (!payload) return;
+  const procesarPayload = async (rawPayload: any, correlationId?: string) => {
+    if (!rawPayload) return;
+
+    // Normalización para soportar múltiples estándares de payload (incluyendo el robusto)
+    const payload = {
+      ...rawPayload,
+      projectId: rawPayload.projectId || rawPayload.satellite_id,
+      sessionToken: rawPayload.sessionToken || rawPayload.session_token,
+      config: rawPayload.config || {
+        supabaseUrl: rawPayload.supabase_url,
+        supabaseAnonKey: rawPayload.supabase_anon_key || rawPayload.supabase_key || rawPayload.supabase_url?.includes('supabase.co') ? 'anon-key-placeholder' : null
+      }
+    };
 
     // 1. Logging de Diagnóstico (Enviar al servidor para registro en DB)
     try {
@@ -60,10 +71,10 @@ function App() {
     
     // 2. Validación y Procesamiento
     try {
-      if (!payload.config?.supabaseUrl || !payload.config?.supabaseAnonKey || !payload.projectId) {
+      if (!payload.config?.supabaseUrl || !payload.projectId) {
         const errorData = {
           error: "INVALID_PAYLOAD_STRUCTURE",
-          details: "El payload recibido no contiene los campos necesarios (config.supabaseUrl, config.supabaseAnonKey, projectId).",
+          details: "El payload recibido no contiene los campos necesarios (supabaseUrl, projectId).",
           payload_summary: JSON.stringify(payload).substring(0, 200),
           correlation_id: correlationId || "no-id"
         };
@@ -74,7 +85,7 @@ function App() {
       // Inicializar Supabase dinámicamente
       const supabase = getSupabaseClient(
         payload.config.supabaseUrl, 
-        payload.config.supabaseAnonKey, 
+        payload.config.supabaseAnonKey || '', 
         payload.sessionToken
       );
 
@@ -125,7 +136,7 @@ function App() {
     }
   };
 
-  // --- NUEVA LÓGICA: HANDSHAKE CON APP MADRE ---
+  // --- NUEVA LÓGICA: HANDSHAKE CON APP MADRE (TRIPLE REDUNDANCIA) ---
   useEffect(() => {
     // 1. Notificar a la App Madre que el satélite está listo
     const readyMessage = { type: 'SOLUTIUM_SATELLITE_READY', timestamp: Date.now() };
@@ -137,47 +148,48 @@ function App() {
     }
     console.log("[Constructor] Señal READY enviada a la App Madre");
 
-    // --- MODO DE RESCATE: Leer de window.name ---
-    try {
-      const nameData = window.name ? JSON.parse(window.name) : null;
-      if (nameData && nameData.type === 'SOLUTIUM_DIRECT_INJECTION') {
-        console.log("[Solutium] Configuración recuperada de window.name");
-        procesarPayload(nameData.payload, nameData.correlationId);
-        return; 
+    // Función de validación y procesamiento (Patrón robusto)
+    const validateAndProcess = (data: any) => {
+      if (!data) return false;
+      
+      // Soporta tanto objeto directo como wrapper
+      const payload = (data.type === 'SOLUTIUM_CONFIG') ? data.payload : data;
+      
+      // Verifica campos críticos (Soporta ambos estándares de nombres)
+      const isComplete = payload && (
+        (payload.satellite_id && payload.supabase_url && payload.session_token) ||
+        (payload.projectId && payload.config?.supabaseUrl)
+      );
+
+      if (isComplete) {
+        console.log("[Constructor] Handshake validado:", payload);
+        procesarPayload(payload, data.correlationId);
+        return true;
       }
-    } catch (e) {
-      console.warn("[Solutium] No se pudo leer window.name", e);
+      return false;
+    };
+
+    // 1. Intento por window.name (Prioridad alta)
+    if (window.name) {
+      try {
+        const nameData = JSON.parse(window.name);
+        console.log("[Constructor] Intentando handshake vía window.name");
+        if (validateAndProcess(nameData)) return; 
+      } catch (e) {
+        console.warn("[Constructor] window.name no contiene JSON válido o está incompleto", e);
+      }
     }
 
-    // --- Lógica existente de postMessage (Fallback) ---
-    const handleMessage = async (event: MessageEvent) => {
-      try {
-        // Log de todos los eventos recibidos para diagnóstico
-        console.log("[Constructor] Evento completo recibido:", event);
-        console.log("[Constructor] event.data:", event.data);
-        console.log("[Constructor] event.origin:", event.origin);
-        console.log("[Constructor] Tipo de event.data:", typeof event.data);
-
-        // 1. Parsear el string a objeto si es necesario
-        let data;
-        try {
-          data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
-        } catch (parseError) {
-          console.warn("[Constructor] No se pudo parsear event.data como JSON, usándolo como está:", parseError);
-          data = event.data;
-        }
-
-        console.log("[Constructor] Datos parseados:", data);
-
-        // 2. Ahora sí, acceder a las propiedades
-        if (data && data.type === 'SOLUTIUM_CONFIG') {
-           console.log("[Constructor] Configuración SOLUTIUM_CONFIG detectada:", data.payload);
-           procesarPayload(data.payload, data.correlationId);
-        }
-      } catch (error) {
-        console.error("[Constructor] ERROR CRÍTICO EN LISTENER:", error);
-      }
+    // 2. Intento por postMessage (Escucha activa)
+    const handleMessage = (event: MessageEvent) => {
+      if (!event.data) return;
+      
+      // No hacemos JSON.parse aquí, tratamos event.data directamente como objeto
+      // tal como se solicitó para evitar errores de truncamiento en strings.
+      console.log("[Constructor] postMessage recibido, validando estructura...");
+      validateAndProcess(event.data);
     };
+
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
   }, []);

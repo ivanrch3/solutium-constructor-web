@@ -153,7 +153,10 @@ function App() {
     const handleMessage = async (event: MessageEvent) => {
       try {
         // Log de todos los eventos recibidos para diagnóstico
-        console.log("[Constructor] Mensaje recibido:", event.data);
+        console.log("[Constructor] Evento completo recibido:", event);
+        console.log("[Constructor] event.data:", event.data);
+        console.log("[Constructor] event.origin:", event.origin);
+        console.log("[Constructor] Tipo de event.data:", typeof event.data);
 
         if (event.data?.type === 'SOLUTIUM_CONFIG') {
            console.log("[Constructor] Configuración SOLUTIUM_CONFIG detectada:", event.data.payload);

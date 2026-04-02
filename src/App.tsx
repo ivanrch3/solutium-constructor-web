@@ -113,6 +113,16 @@ function App() {
 
   // --- NUEVA LÓGICA: HANDSHAKE CON APP MADRE ---
   useEffect(() => {
+    // 1. Notificar a la App Madre que el satélite está listo
+    const readyMessage = { type: 'SOLUTIUM_SATELLITE_READY', timestamp: Date.now() };
+    if (window.opener) {
+      window.opener.postMessage(readyMessage, '*');
+    }
+    if (window.parent !== window) {
+      window.parent.postMessage(readyMessage, '*');
+    }
+    console.log("[Constructor] Señal READY enviada a la App Madre");
+
     // --- MODO DE RESCATE: Leer de window.name ---
     try {
       const nameData = window.name ? JSON.parse(window.name) : null;
@@ -127,7 +137,11 @@ function App() {
 
     // --- Lógica existente de postMessage (Fallback) ---
     const handleMessage = async (event: MessageEvent) => {
+      // Log de todos los eventos recibidos para diagnóstico
+      console.log("[Constructor] Mensaje recibido en el event listener:", event.data);
+
       if (event.data?.type === 'SOLUTIUM_CONFIG') {
+         console.log("[Constructor] Configuración SOLUTIUM_CONFIG detectada:", event.data.payload);
          procesarPayload(event.data.payload, event.data.correlationId);
       }
     };

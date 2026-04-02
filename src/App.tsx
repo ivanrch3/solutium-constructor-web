@@ -158,9 +158,21 @@ function App() {
         console.log("[Constructor] event.origin:", event.origin);
         console.log("[Constructor] Tipo de event.data:", typeof event.data);
 
-        if (event.data?.type === 'SOLUTIUM_CONFIG') {
-           console.log("[Constructor] Configuración SOLUTIUM_CONFIG detectada:", event.data.payload);
-           procesarPayload(event.data.payload, event.data.correlationId);
+        // 1. Parsear el string a objeto si es necesario
+        let data;
+        try {
+          data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+        } catch (parseError) {
+          console.warn("[Constructor] No se pudo parsear event.data como JSON, usándolo como está:", parseError);
+          data = event.data;
+        }
+
+        console.log("[Constructor] Datos parseados:", data);
+
+        // 2. Ahora sí, acceder a las propiedades
+        if (data && data.type === 'SOLUTIUM_CONFIG') {
+           console.log("[Constructor] Configuración SOLUTIUM_CONFIG detectada:", data.payload);
+           procesarPayload(data.payload, data.correlationId);
         }
       } catch (error) {
         console.error("[Constructor] ERROR CRÍTICO EN LISTENER:", error);

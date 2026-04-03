@@ -1,0 +1,5 @@
+{
+  "name": "Solutium Satellite Base",
+  "description": "Plantilla base para aplicaciones satélites de Solutium con handshake, temas dinámicos y panel de datos para superadmins.",
+  "requestFramePermissions": []
+}

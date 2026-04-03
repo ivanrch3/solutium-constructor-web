@@ -1,0 +1,49 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: var(--primary-color, #3D248B);
+  --color-secondary: var(--secondary-color, #F8FAFC);
+  --color-accent: var(--accent-color, #700AB1);
+  --color-background: var(--background-color, #FFFFFF);
+  --color-surface: var(--card-color, #ffffff);
+  --color-text: var(--foreground-color, #1E2128);
+  --color-border: var(--border-color, #E2E8F0);
+  
+  --sidebar-bg: var(--sidebar-bg, #FFFFFF);
+  --sidebar-foreground: var(--sidebar-foreground, #1E2128);
+  --sidebar-accent: var(--sidebar-accent, rgba(59, 130, 246, 0.1));
+  --sidebar-border: var(--sidebar-border, #E2E8F0);
+  
+  --font-sans: var(--solutium-font, "Inter", sans-serif);
+  --radius-lg: var(--radius, 0.75rem);
+  
+  /* Contraste Crítico */
+  --color-solutium-dark: var(--solutium-dark, var(--primary-color));
+}
+
+* {
+  font-family: var(--font-sans);
+}
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-text);
+}
+
+.btn-primary {
+  background-color: var(--color-solutium-dark);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-lg);
+  font-weight: 500;
+  transition: opacity 0.2s;
+}
+
+.btn-primary:hover {
+  opacity: 0.9;
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

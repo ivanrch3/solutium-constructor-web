@@ -148,7 +148,9 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const cleanFont = font.split(',')[0].trim().replace(/['"]/g, '');
       loadGoogleFont(cleanFont);
       
-      const fontValue = font.includes(',') ? font : `${font}, sans-serif`;
+      const formattedFont = cleanFont.includes(' ') ? `'${cleanFont}'` : cleanFont;
+      const fontValue = font.includes(',') ? font : `${formattedFont}, sans-serif`;
+      
       root.style.setProperty('--solutium-font', fontValue);
       document.body.style.fontFamily = fontValue;
       
@@ -184,7 +186,10 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const cleanFont = font.split(',')[0].trim().replace(/['"]/g, '');
       loadGoogleFont(cleanFont);
       
-      const fontValue = font.includes(',') ? font : `${font}, sans-serif`;
+      // Asegurar que si el nombre tiene espacios, esté entre comillas para el CSS
+      const formattedFont = cleanFont.includes(' ') ? `'${cleanFont}'` : cleanFont;
+      const fontValue = font.includes(',') ? font : `${formattedFont}, sans-serif`;
+      
       root.style.setProperty('--solutium-font', fontValue);
       document.body.style.fontFamily = fontValue;
     }

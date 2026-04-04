@@ -35,6 +35,11 @@ const AppContent: React.FC = () => {
     const logo = params.get('logoUrl') || params.get('logo_url') || params.get('isoUrl') || params.get('iso_url');
     if (logo) setUrlLogo(logo);
     
+    const fontParam = params.get('fontFamily') || params.get('font_family');
+    if (fontParam) {
+      applyTheme({ fontFamily: fontParam });
+    }
+    
     const favicon = params.get('faviconUrl') || params.get('favicon_url');
     if (favicon) {
       let link: HTMLLinkElement | null = document.querySelector("link[rel~='icon']");

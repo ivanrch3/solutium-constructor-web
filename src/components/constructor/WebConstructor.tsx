@@ -80,11 +80,11 @@ const MainSidebar = ({
       {/* Logo Section */}
       <div className="p-8 pb-10">
         <div className="flex items-center justify-center">
-          <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-2xl overflow-hidden">
+          <div className="h-16 w-full flex items-center justify-center">
             {logoUrl ? (
-              <img src={logoUrl} alt="Logo" className="w-full h-full object-contain p-2" referrerPolicy="no-referrer" />
+              <img src={logoUrl} alt="Logo" className="max-h-full max-w-full object-contain" referrerPolicy="no-referrer" />
             ) : (
-              <FileText className="text-[#004D56] w-8 h-8" />
+              <FileText className="text-white/20 w-12 h-12" />
             )}
           </div>
         </div>

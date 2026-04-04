@@ -14,7 +14,8 @@
   --sidebar-accent: var(--sidebar-accent, rgba(59, 130, 246, 0.1));
   --sidebar-border: var(--sidebar-border, #E2E8F0);
   
-  --font-sans: var(--solutium-font, "Inter", sans-serif);
+  --solutium-font: "Inter", sans-serif;
+  --font-sans: var(--solutium-font);
   --radius-lg: var(--radius, 0.75rem);
   
   /* Contraste Crítico */

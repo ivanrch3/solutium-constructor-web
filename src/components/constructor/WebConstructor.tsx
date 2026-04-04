@@ -78,13 +78,13 @@ const MainSidebar = ({
   return (
     <div className="w-[280px] bg-[#004D56] flex flex-col z-40 h-full border-r border-white/5">
       {/* Logo Section */}
-      <div className="p-8 pb-10">
+      <div className="p-6">
         <div className="flex items-center justify-center">
-          <div className="h-16 w-full flex items-center justify-center">
+          <div className="h-12 w-full flex items-center justify-center">
             {logoUrl ? (
-              <img src={logoUrl} alt="Logo" className="max-h-full max-w-full object-contain" referrerPolicy="no-referrer" />
+              <img src={logoUrl} alt="Logo" className="h-full w-auto object-contain" referrerPolicy="no-referrer" />
             ) : (
-              <FileText className="text-white/20 w-12 h-12" />
+              <FileText className="text-white/20 w-10 h-10" />
             )}
           </div>
         </div>

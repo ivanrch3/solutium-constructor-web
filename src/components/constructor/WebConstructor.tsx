@@ -1,14 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   Home, 
-  Clock, 
-  Info, 
-  Star, 
+  PlusCircle, 
   Settings, 
+  Database,
   Layout, 
   Type, 
-  Image as ImageIcon, 
-  MousePointer2, 
   Layers, 
   Eye, 
   Save, 
@@ -24,118 +21,260 @@ import {
   Link as LinkIcon, 
   GripVertical,
   CheckCircle2,
-  FileText
+  FileText,
+  User
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { DataTab } from '../DataTab';
 
 // --- SUB-COMPONENTS ---
 
-const LeftNav = () => (
-  <div className="w-[60px] bg-white border-r border-slate-100 flex flex-col items-center py-6 gap-8 z-50">
-    <div className="p-2 text-slate-400 hover:text-blue-600 cursor-pointer transition-colors"><Home size={22} /></div>
-    <div className="p-2 text-slate-400 hover:text-blue-600 cursor-pointer transition-colors"><Clock size={22} /></div>
-    <div className="p-2 text-slate-400 hover:text-blue-600 cursor-pointer transition-colors"><Info size={22} /></div>
-    <div className="p-2 text-slate-400 hover:text-blue-600 cursor-pointer transition-colors"><Star size={22} /></div>
-    <div className="mt-auto p-2 text-slate-400 hover:text-blue-600 cursor-pointer transition-colors"><Settings size={22} /></div>
-  </div>
+interface SidebarItemProps {
+  icon: React.ReactNode;
+  label: string;
+  active?: boolean;
+  onClick?: () => void;
+}
+
+const SidebarItem: React.FC<SidebarItemProps> = ({ icon, label, active, onClick }) => (
+  <button 
+    onClick={onClick}
+    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+      active 
+        ? 'bg-white/10 text-white font-bold' 
+        : 'text-white/60 hover:text-white hover:bg-white/5 font-medium'
+    }`}
+  >
+    <div className={active ? 'text-white' : 'text-white/60'}>{icon}</div>
+    <span className="text-sm">{label}</span>
+  </button>
 );
 
-const MainSidebar = () => (
-  <div className="w-[240px] bg-white border-r border-slate-100 flex flex-col z-40">
-    <div className="p-5">
-      <div className="flex items-center gap-2 mb-1">
-        <div className="w-7 h-7 bg-[#E11D48] rounded-lg flex items-center justify-center shadow-sm">
-          <FileText className="text-white w-4 h-4" />
-        </div>
-        <div>
-          <h1 className="text-xs font-bold text-slate-800 leading-none">Constructor</h1>
-          <div className="flex items-center gap-1">
-            <span className="text-xs font-bold text-slate-800">Web</span>
-            <span className="text-[9px] text-slate-400 font-bold mt-0.5">by Solutium</span>
-          </div>
-        </div>
-      </div>
-      <div className="flex items-center gap-1 mt-1.5 pl-0.5">
-        <div className="w-1.5 h-1.5 rounded-full bg-yellow-400"></div>
-        <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">v1.0.0</span>
-      </div>
-    </div>
+const MainSidebar = ({ 
+  activeTab, 
+  onTabChange, 
+  onBackToDashboard,
+  logoUrl
+}: { 
+  activeTab: string, 
+  onTabChange: (tab: string) => void, 
+  onBackToDashboard: () => void,
+  logoUrl: string | null
+}) => {
+  const [expandedSection, setExpandedSection] = useState<string | null>('constructor');
+  const [expandedCategory, setExpandedCategory] = useState<string | null>('navegacion');
 
-    <div className="flex-1 overflow-y-auto px-3 space-y-5">
-      {/* Diseño Section */}
-      <div>
-        <button className="w-full flex items-center justify-between p-2 text-slate-500 hover:bg-slate-50 rounded-xl transition-colors">
-          <div className="flex items-center gap-2.5">
-            <Monitor size={16} className="text-slate-400" />
-            <span className="text-xs font-bold">Diseño</span>
-          </div>
-          <ChevronDown size={12} className="text-slate-300" />
-        </button>
-      </div>
+  const toggleSection = (section: string) => {
+    setExpandedSection(expandedSection === section ? null : section);
+  };
 
-      {/* Constructor Section */}
-      <div>
-        <button className="w-full flex items-center justify-between p-2 text-blue-600 bg-blue-50/50 rounded-xl mb-1">
-          <div className="flex items-center gap-2.5">
-            <Layout size={16} />
-            <span className="text-xs font-bold">Constructor</span>
+  const toggleCategory = (category: string) => {
+    setExpandedCategory(expandedCategory === category ? null : category);
+  };
+
+  return (
+    <div className="w-[280px] bg-[#004D56] flex flex-col z-40 h-full border-r border-white/5">
+      {/* Logo Section */}
+      <div className="p-8 pb-10">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-lg overflow-hidden">
+            {logoUrl ? (
+              <img src={logoUrl} alt="Logo" className="w-full h-full object-contain p-1.5" referrerPolicy="no-referrer" />
+            ) : (
+              <FileText className="text-[#004D56] w-6 h-6" />
+            )}
           </div>
-          <ChevronDown size={12} />
-        </button>
-        
-        <div className="pl-3 space-y-3 mt-3">
-          <div className="space-y-1.5">
-            <span className="text-[9px] font-bold text-slate-300 uppercase tracking-widest pl-2">Navegación</span>
-            <div className="space-y-0.5">
-              {['Barra superior', 'Menú', 'Pie de página', 'Espaciadores'].map(item => (
-                <div key={item} className="flex items-center gap-2.5 p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-50 rounded-lg cursor-pointer text-[11px] font-bold transition-all">
-                  <div className="w-3.5 h-3.5 border border-slate-200 rounded-md bg-white"></div>
-                  {item}
-                </div>
-              ))}
-            </div>
-          </div>
-          
-          <div className="space-y-1.5">
-            <span className="text-[9px] font-bold text-slate-300 uppercase tracking-widest pl-2">Contenido</span>
-            <div className="space-y-0.5">
-              {['CONFIANZA', 'VENTAS', 'CONTACTO'].map(item => (
-                <div key={item} className="flex items-center justify-between p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-lg cursor-pointer text-[10px] font-bold tracking-wider transition-all">
-                  {item}
-                  <ChevronRight size={10} />
-                </div>
-              ))}
+          <div className="flex flex-col">
+            <h1 className="text-sm font-black text-white leading-none tracking-tight">Constructor</h1>
+            <div className="flex items-center gap-1">
+              <span className="text-sm font-black text-white tracking-tight">Web</span>
+              <span className="text-[9px] text-white/50 font-bold mt-0.5">by Solutium</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Ajustes Section */}
-      <div>
-        <button className="w-full flex items-center justify-between p-2 text-slate-500 hover:bg-slate-50 rounded-xl transition-colors">
-          <div className="flex items-center gap-2.5">
-            <Settings size={16} className="text-slate-400" />
-            <span className="text-xs font-bold">Ajustes</span>
-          </div>
-        </button>
-      </div>
-    </div>
+      {/* Navigation */}
+      <div className="flex-1 px-4 space-y-1 overflow-y-auto custom-scrollbar pb-10">
+        {/* DISEÑO */}
+        <div className="space-y-1">
+          <button 
+            onClick={() => toggleSection('diseno')}
+            className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all ${
+              expandedSection === 'diseno' ? 'text-white font-bold' : 'text-white/60 hover:text-white'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <Monitor size={20} />
+              <span className="text-sm">Diseño</span>
+            </div>
+            <ChevronDown size={16} className={`transition-transform ${expandedSection === 'diseno' ? 'rotate-180' : ''}`} />
+          </button>
+          {expandedSection === 'diseno' && (
+            <div className="pl-12 py-2 space-y-2">
+              <p className="text-[11px] text-white/40 font-bold uppercase tracking-widest">Opciones de diseño</p>
+            </div>
+          )}
+        </div>
 
-    <div className="p-4 space-y-3 border-t border-slate-50">
-      <button className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl text-xs font-bold shadow-lg shadow-blue-100 transition-all">
-        <Sparkles size={14} />
-        Generar con IA
-      </button>
-      
-      <div className="space-y-1">
-        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider pl-1">Seleccionar activo</span>
-        <div className="flex items-center justify-between p-2 border border-slate-100 rounded-xl text-[10px] font-bold text-slate-500 bg-slate-50/50 cursor-pointer hover:bg-slate-50 transition-colors">
-          Proyecto:
-          <ChevronDown size={10} />
+        {/* CONSTRUCTOR */}
+        <div className="space-y-1">
+          <button 
+            onClick={() => {
+              toggleSection('constructor');
+              onTabChange('constructor');
+            }}
+            className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all ${
+              expandedSection === 'constructor' 
+                ? 'bg-white text-[#3B82F6] font-bold shadow-xl shadow-black/10' 
+                : 'text-white/60 hover:text-white'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <Layout size={20} />
+              <span className="text-sm">Constructor</span>
+            </div>
+            <ChevronDown size={16} className={`transition-transform ${expandedSection === 'constructor' ? 'rotate-180' : ''}`} />
+          </button>
+
+          {expandedSection === 'constructor' && (
+            <div className="mt-4 space-y-4">
+              {/* NAVEGACIÓN */}
+              <div className="space-y-2">
+                <button 
+                  onClick={() => toggleCategory('navegacion')}
+                  className="w-full flex items-center justify-between px-4 py-1 text-[10px] font-black text-blue-300 uppercase tracking-widest"
+                >
+                  Navegación
+                  <ChevronDown size={12} className={`transition-transform ${expandedCategory === 'navegacion' ? 'rotate-180' : ''}`} />
+                </button>
+                {expandedCategory === 'navegacion' && (
+                  <div className="space-y-0.5 px-2">
+                    <ModuleItem icon={<Monitor size={18} />} label="Barra superior" />
+                    <ModuleItem icon={<FileText size={18} />} label="Menú" />
+                    <ModuleItem icon={<Layout size={18} />} label="Pie de página" />
+                    <ModuleItem icon={<RotateCcw size={18} className="rotate-90" />} label="Espaciadores" />
+                  </div>
+                )}
+              </div>
+
+              {/* CONTENIDO */}
+              <div className="space-y-2">
+                <button 
+                  onClick={() => toggleCategory('contenido')}
+                  className="w-full flex items-center justify-between px-4 py-1 text-[10px] font-black text-blue-300 uppercase tracking-widest"
+                >
+                  Contenido
+                  <ChevronDown size={12} className={`transition-transform ${expandedCategory === 'contenido' ? 'rotate-180' : ''}`} />
+                </button>
+                {expandedCategory === 'contenido' && (
+                  <div className="space-y-0.5 px-2">
+                    <ModuleItem icon={<Sparkles size={18} />} label="Portada" />
+                    <ModuleItem icon={<Type size={18} />} label="Características" />
+                    <ModuleItem icon={<User size={18} />} label="Sobre Nosotros" />
+                    <ModuleItem icon={<Layers size={18} />} label="Proceso" />
+                    <ModuleItem icon={<PlusCircle size={18} />} label="Galería" />
+                    <ModuleItem icon={<Monitor size={18} />} label="Video" />
+                  </div>
+                )}
+              </div>
+
+              {/* CONFIANZA */}
+              <div className="space-y-2">
+                <button 
+                  onClick={() => toggleCategory('confianza')}
+                  className="w-full flex items-center justify-between px-4 py-1 text-[10px] font-black text-blue-300 uppercase tracking-widest"
+                >
+                  Confianza
+                  <ChevronDown size={12} className={`transition-transform ${expandedCategory === 'confianza' ? 'rotate-180' : ''}`} />
+                </button>
+                {expandedCategory === 'confianza' && (
+                  <div className="space-y-0.5 px-2">
+                    <ModuleItem icon={<FileText size={18} />} label="Testimonios" />
+                    <ModuleItem icon={<CheckCircle2 size={18} />} label="Clientes" />
+                    <ModuleItem icon={<Database size={18} />} label="Estadísticas" />
+                    <ModuleItem icon={<User size={18} />} label="Equipo" />
+                  </div>
+                )}
+              </div>
+
+              {/* VENTAS */}
+              <div className="space-y-2">
+                <button 
+                  onClick={() => toggleCategory('ventas')}
+                  className="w-full flex items-center justify-between px-4 py-1 text-[10px] font-black text-blue-300 uppercase tracking-widest"
+                >
+                  Ventas
+                  <ChevronDown size={12} className={`transition-transform ${expandedCategory === 'ventas' ? 'rotate-180' : ''}`} />
+                </button>
+                {expandedCategory === 'ventas' && (
+                  <div className="space-y-0.5 px-2">
+                    <ModuleItem icon={<Layout size={18} />} label="Productos" />
+                    <ModuleItem icon={<Settings size={18} />} label="Planes" />
+                    <ModuleItem icon={<PlusCircle size={18} />} label="Call to Action (C...)" />
+                  </div>
+                )}
+              </div>
+
+              {/* CONTACTO */}
+              <div className="space-y-2">
+                <button 
+                  onClick={() => toggleCategory('contacto')}
+                  className="w-full flex items-center justify-between px-4 py-1 text-[10px] font-black text-blue-300 uppercase tracking-widest"
+                >
+                  Contacto
+                  <ChevronDown size={12} className={`transition-transform ${expandedCategory === 'contacto' ? 'rotate-180' : ''}`} />
+                </button>
+                {expandedCategory === 'contacto' && (
+                  <div className="space-y-0.5 px-2">
+                    <ModuleItem icon={<Home size={18} />} label="Contacto" />
+                    <ModuleItem icon={<FileText size={18} />} label="Newsletter" />
+                    <ModuleItem icon={<Settings size={18} />} label="FAQ" />
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* AJUSTES */}
+        <SidebarItem 
+          icon={<Settings size={20} />} 
+          label="Ajustes" 
+          active={activeTab === 'settings'} 
+          onClick={() => onTabChange('settings')}
+        />
+
+        {/* DATOS */}
+        <SidebarItem 
+          icon={<Database size={20} />} 
+          label="Datos" 
+          active={activeTab === 'datos'} 
+          onClick={() => onTabChange('datos')}
+        />
+      </div>
+
+      {/* User Profile Section */}
+      <div className="p-6 border-t border-white/5 bg-black/10">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center">
+            <User className="text-white w-5 h-5" />
+          </div>
+          <div className="flex flex-col">
+            <span className="text-sm font-bold text-white leading-none">Master</span>
+            <span className="text-[10px] text-white/40 font-bold mt-1 uppercase tracking-wider">Proyecto Activo</span>
+          </div>
         </div>
       </div>
     </div>
-  </div>
+  );
+};
+
+const ModuleItem = ({ icon, label }: { icon: React.ReactNode, label: string }) => (
+  <button className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-white/60 hover:text-white hover:bg-white/5 transition-all group">
+    <div className="text-white/40 group-hover:text-white transition-colors">{icon}</div>
+    <span className="text-[13px] font-medium">{label}</span>
+  </button>
 );
 
 const StructurePanel = () => (
@@ -347,14 +486,64 @@ const Canvas = () => (
 
 // --- MAIN COMPONENT ---
 
-export const WebConstructor: React.FC = () => {
+interface WebConstructorProps {
+  onBackToDashboard: () => void;
+  projectId: string | null;
+  currentUserId: string | null;
+  logoUrl: string | null;
+}
+
+export const WebConstructor: React.FC<WebConstructorProps> = ({ 
+  onBackToDashboard, 
+  projectId, 
+  currentUserId,
+  logoUrl
+}) => {
+  const [activeTab, setActiveTab] = useState('constructor');
+
   return (
     <div className="h-screen w-screen flex overflow-hidden bg-white font-sans antialiased">
-      <MainSidebar />
-      <StructurePanel />
-      <div className="flex-1 flex flex-col">
-        <TopBar />
-        <Canvas />
+      <MainSidebar 
+        activeTab={activeTab} 
+        onTabChange={setActiveTab} 
+        onBackToDashboard={onBackToDashboard} 
+        logoUrl={logoUrl}
+      />
+      
+      <div className="flex-1 flex flex-col h-full overflow-hidden">
+        {activeTab === 'constructor' && (
+          <div className="flex flex-1 h-full overflow-hidden">
+            <StructurePanel />
+            <div className="flex-1 flex flex-col h-full">
+              <TopBar />
+              <Canvas />
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'datos' && (
+          <div className="flex-1 h-full overflow-auto bg-[#F8FAFC]">
+            <div className="p-8">
+              <div className="flex flex-col mb-8">
+                <h2 className="text-3xl font-bold text-slate-800">Gestión de Datos</h2>
+                <p className="text-sm text-slate-400 font-medium">Administra la información de tu proyecto de forma profesional.</p>
+              </div>
+              <DataTab projectId={projectId || ''} currentUserId={currentUserId || ''} />
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'settings' && (
+          <div className="flex-1 h-full overflow-auto bg-[#F8FAFC] flex items-center justify-center">
+            <div className="text-center space-y-4">
+              <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto">
+                <Settings className="text-slate-400 w-8 h-8" />
+              </div>
+              <h2 className="text-xl font-bold text-slate-800">Ajustes del Proyecto</h2>
+              <p className="text-slate-400 max-w-xs mx-auto">Configura los parámetros generales de tu sitio web.</p>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -296,7 +296,14 @@ const AppContent: React.FC = () => {
           </div>
         );
       case 'constructor':
-        return <WebConstructor />;
+        return (
+          <WebConstructor 
+            onBackToDashboard={() => setCurrentView('dashboard')} 
+            projectId={projectId} 
+            currentUserId={profile?.id || null}
+            logoUrl={urlLogo}
+          />
+        );
       default:
         return <div>Vista no encontrada</div>;
     }

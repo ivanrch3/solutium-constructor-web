@@ -151,5 +151,6 @@ export interface Asset {
   status?: string;
   metadata?: any;
   data?: any;
+  size?: number;
   updated_at?: string;
 }

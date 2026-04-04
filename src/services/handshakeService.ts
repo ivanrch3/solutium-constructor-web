@@ -11,6 +11,7 @@ export interface HandshakePayload {
   profile?: any;
   project?: any;
   activeThemeData?: any;
+  favicon_url?: string;
 }
 
 export const listenForHandshake = (
@@ -43,12 +44,20 @@ export const listenForHandshake = (
   const urlPayload: any = {};
   const keys = [
     'satellite_id', 'supabase_url', 'supabase_anon_key', 'session_token',
-    'do_endpoint', 'do_access_key', 'do_secret_key', 'do_bucket', 'fontFamily'
+    'do_endpoint', 'do_access_key', 'do_secret_key', 'do_bucket', 'fontFamily',
+    'favicon_url', 'project', 'activeThemeData'
   ];
   
   keys.forEach(key => {
     const val = urlParams.get(key);
-    if (val) urlPayload[key] = val;
+    if (val) {
+      try {
+        // Intenta parsear si es JSON (para project o activeThemeData)
+        urlPayload[key] = JSON.parse(val);
+      } catch (e) {
+        urlPayload[key] = val;
+      }
+    }
   });
 
   if (Object.keys(urlPayload).length > 0) {

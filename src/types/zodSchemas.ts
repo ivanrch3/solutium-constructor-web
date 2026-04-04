@@ -130,5 +130,6 @@ export const assetSchema = z.object({
   status: z.any().optional().nullable(),
   metadata: z.any().optional().nullable(),
   data: z.any().optional().nullable(),
+  size: z.number().optional().nullable(),
   updated_at: z.any().optional().nullable(),
 });

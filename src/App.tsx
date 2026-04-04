@@ -23,6 +23,17 @@ const AppContent: React.FC = () => {
     const logo = params.get('logoUrl') || params.get('logo_url') || params.get('isoUrl') || params.get('iso_url');
     if (logo) setUrlLogo(logo);
     
+    const favicon = params.get('faviconUrl') || params.get('favicon_url');
+    if (favicon) {
+      let link: HTMLLinkElement | null = document.querySelector("link[rel~='icon']");
+      if (!link) {
+        link = document.createElement('link');
+        link.rel = 'icon';
+        document.getElementsByTagName('head')[0].appendChild(link);
+      }
+      link.href = favicon;
+    }
+    
     console.log("--- DIAGNÓSTICO DE EMERGENCIA ---");
     console.log("1. window.name contenido:", window.name ? (window.name.substring(0, 50) + "...") : "VACÍO");
     console.log("2. ¿Tiene abridor (window.opener)?:", !!window.opener);
@@ -40,8 +51,29 @@ const AppContent: React.FC = () => {
           payload.session_token
         );
 
-        const handshakeFont = payload.fontFamily || (payload as any).font_family || '';
+        // Extraer fontFamily con prioridad: payload directo > project > activeThemeData
+        const handshakeFont = 
+          payload.fontFamily || 
+          (payload as any).font_family || 
+          payload.project?.fontFamily || 
+          payload.project?.font_family ||
+          payload.activeThemeData?.fontFamily ||
+          payload.activeThemeData?.font_family ||
+          '';
+
         console.log('[HANDSHAKE] fontFamily detectada:', handshakeFont);
+
+        // Update favicon if provided
+        if (payload.favicon_url) {
+          console.log('[HANDSHAKE] Actualizando favicon:', payload.favicon_url);
+          let link: HTMLLinkElement | null = document.querySelector("link[rel~='icon']");
+          if (!link) {
+            link = document.createElement('link');
+            link.rel = 'icon';
+            document.getElementsByTagName('head')[0].appendChild(link);
+          }
+          link.href = payload.favicon_url;
+        }
 
         if (payload.do_endpoint && payload.do_access_key && payload.do_secret_key && payload.do_bucket) {
           initDOClient(
@@ -95,7 +127,10 @@ const AppContent: React.FC = () => {
 
         // Apply theme
         if (typeof themeToApply === 'object') {
-          applyTheme({ ...themeToApply, fontFamily: handshakeFont || themeToApply.fontFamily });
+          applyTheme({ 
+            ...themeToApply, 
+            fontFamily: handshakeFont || themeToApply.fontFamily || themeToApply.font_family 
+          });
         } else {
           applyTheme(themeToApply);
           if (handshakeFont) {

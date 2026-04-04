@@ -25,6 +25,16 @@ export const syncAsset = async (
   // Convención de rutas en Digital Ocean: [tipo_de_activo]s/[project_id]/[id_del_activo].[extensión]
   const fileName = `${type}s/${entity.projectId}/${entity.id}.${extension}`;
   
+  // Calcular tamaño en bytes
+  let fileSize = 0;
+  if (file instanceof Blob) {
+    fileSize = file.size;
+  } else if (file instanceof Uint8Array) {
+    fileSize = file.length;
+  } else if (typeof file === 'string') {
+    fileSize = new Blob([file]).size;
+  }
+  
   try {
     // 1. Subir a Digital Ocean Spaces
     const url = await uploadToDO(fileName, file, contentType);
@@ -41,6 +51,7 @@ export const syncAsset = async (
       name: assetName,
       type: type,
       url: url,
+      size: fileSize,
       status: entity.status,
       metadata: {
         assetName: assetName,

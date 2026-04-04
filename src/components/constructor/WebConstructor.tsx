@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { DataTab } from '../DataTab';
+import { Project } from '../../types/schema';
 
 // --- SUB-COMPONENTS ---
 
@@ -54,12 +55,14 @@ const MainSidebar = ({
   activeTab, 
   onTabChange, 
   onBackToDashboard,
-  logoUrl
+  logoUrl,
+  project
 }: { 
   activeTab: string, 
   onTabChange: (tab: string) => void, 
   onBackToDashboard: () => void,
-  logoUrl: string | null
+  logoUrl: string | null,
+  project: Project | null
 }) => {
   const [expandedSection, setExpandedSection] = useState<string | null>('constructor');
   const [expandedCategory, setExpandedCategory] = useState<string | null>('navegacion');
@@ -76,20 +79,13 @@ const MainSidebar = ({
     <div className="w-[280px] bg-[#004D56] flex flex-col z-40 h-full border-r border-white/5">
       {/* Logo Section */}
       <div className="p-8 pb-10">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-lg overflow-hidden">
+        <div className="flex items-center justify-center">
+          <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-2xl overflow-hidden">
             {logoUrl ? (
-              <img src={logoUrl} alt="Logo" className="w-full h-full object-contain p-1.5" referrerPolicy="no-referrer" />
+              <img src={logoUrl} alt="Logo" className="w-full h-full object-contain p-2" referrerPolicy="no-referrer" />
             ) : (
-              <FileText className="text-[#004D56] w-6 h-6" />
+              <FileText className="text-[#004D56] w-8 h-8" />
             )}
-          </div>
-          <div className="flex flex-col">
-            <h1 className="text-sm font-black text-white leading-none tracking-tight">Constructor</h1>
-            <div className="flex items-center gap-1">
-              <span className="text-sm font-black text-white tracking-tight">Web</span>
-              <span className="text-[9px] text-white/50 font-bold mt-0.5">by Solutium</span>
-            </div>
           </div>
         </div>
       </div>
@@ -257,11 +253,17 @@ const MainSidebar = ({
       {/* User Profile Section */}
       <div className="p-6 border-t border-white/5 bg-black/10">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center">
-            <User className="text-white w-5 h-5" />
+          <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center overflow-hidden">
+            {project?.projectIconUrl ? (
+              <img src={project.projectIconUrl} alt="Project Icon" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+            ) : (
+              <User className="text-white w-5 h-5" />
+            )}
           </div>
           <div className="flex flex-col">
-            <span className="text-sm font-bold text-white leading-none">Master</span>
+            <span className="text-sm font-bold text-white leading-none truncate max-w-[160px]">
+              {project?.name || 'Proyecto'}
+            </span>
             <span className="text-[10px] text-white/40 font-bold mt-1 uppercase tracking-wider">Proyecto Activo</span>
           </div>
         </div>
@@ -491,13 +493,15 @@ interface WebConstructorProps {
   projectId: string | null;
   currentUserId: string | null;
   logoUrl: string | null;
+  project: Project | null;
 }
 
 export const WebConstructor: React.FC<WebConstructorProps> = ({ 
   onBackToDashboard, 
   projectId, 
   currentUserId,
-  logoUrl
+  logoUrl,
+  project
 }) => {
   const [activeTab, setActiveTab] = useState('constructor');
 
@@ -508,6 +512,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         onTabChange={setActiveTab} 
         onBackToDashboard={onBackToDashboard} 
         logoUrl={logoUrl}
+        project={project}
       />
       
       <div className="flex-1 flex flex-col h-full overflow-hidden">

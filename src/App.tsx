@@ -302,6 +302,7 @@ const AppContent: React.FC = () => {
             projectId={projectId} 
             currentUserId={profile?.id || null}
             logoUrl={urlLogo}
+            project={project}
           />
         );
       default:

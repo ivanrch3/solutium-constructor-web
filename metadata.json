@@ -1,5 +1,5 @@
 {
-  "name": "Solutium Satellite Base",
-  "description": "Plantilla base para aplicaciones satélites de Solutium con handshake, temas dinámicos y panel de datos para superadmins.",
+  "name": "solutium constructor web",
+  "description": "Crea páginas web y landing pages profesionales en minutos",
   "requestFramePermissions": []
 }

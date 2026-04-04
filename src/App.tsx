@@ -6,14 +6,26 @@ import { getProfile, getProject } from './services/dataService';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { Sidebar } from './components/Sidebar';
 import { DataTab } from './components/DataTab';
-import { Profile, Project } from './types/schema';
+import { Dashboard } from './components/Dashboard';
+import { MethodSelection, CreationMethod } from './components/MethodSelection';
+import { ProjectForm, ProjectFormData } from './components/ProjectForm';
+import { WebConstructor } from './components/constructor/WebConstructor';
+import { Profile, Project, Asset } from './types/schema';
+import { getAssets } from './services/dataService';
+
+type View = 'dashboard' | 'selection-method' | 'form' | 'generator' | 'constructor';
 
 const AppContent: React.FC = () => {
   const [isHandshakeComplete, setIsHandshakeComplete] = useState(false);
   const [projectId, setProjectId] = useState<string | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [project, setProject] = useState<Project | null>(null);
+  const [assets, setAssets] = useState<Asset[]>([]);
   const [activeTab, setActiveTab] = useState('home');
+  const [currentView, setCurrentView] = useState<View>('dashboard');
+  const [selectedMethod, setSelectedMethod] = useState<CreationMethod | null>(null);
+  const [formData, setFormData] = useState<ProjectFormData | null>(null);
+  const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const [loadingLogoError, setLoadingLogoError] = useState(false);
   const [urlLogo, setUrlLogo] = useState<string | null>(null);
   const { applyTheme } = useTheme();
@@ -64,11 +76,8 @@ const AppContent: React.FC = () => {
           '';
 
         console.log('[HANDSHAKE] fontFamily detectada:', handshakeFont || 'NINGUNA (vacia)');
-        if (!handshakeFont) {
-          console.log('[HANDSHAKE] Payload completo para depuracion:', payload);
-        }
-
-        // Update favicon if provided (check root, project, or activeThemeData)
+        
+        // Update favicon if provided
         const handshakeFavicon = 
           payload.favicon_url || 
           payload.faviconUrl || 
@@ -78,7 +87,6 @@ const AppContent: React.FC = () => {
           payload.activeThemeData?.faviconUrl;
 
         if (handshakeFavicon) {
-          console.log('[HANDSHAKE] Actualizando favicon:', handshakeFavicon);
           let link: HTMLLinkElement | null = document.querySelector("link[rel~='icon']");
           if (!link) {
             link = document.createElement('link');
@@ -100,14 +108,16 @@ const AppContent: React.FC = () => {
         if (payload.satellite_id) {
           setProjectId(payload.satellite_id);
           
-          // Prioritize project data from handshake payload if available
           if (payload.project) {
-            console.log('[HANDSHAKE] Usando datos de proyecto del payload:', payload.project);
             setProject(payload.project);
           } else {
             const projectData = await getProject(payload.satellite_id);
             if (projectData) setProject(projectData);
           }
+
+          // Fetch assets for the project
+          const projectAssets = await getAssets(payload.satellite_id, 'web_page');
+          setAssets(projectAssets);
         }
 
         // Fetch user
@@ -118,25 +128,10 @@ const AppContent: React.FC = () => {
           return;
         }
 
-        // Fetch profile using the data service
         const mappedProfile = await getProfile(user.id);
-
-        // Prioritize theme data from handshake payload if available
-        // PRIORIDAD 1: Datos de tema explícitos en el handshake (activeThemeData)
         const handshakeThemeData = payload.activeThemeData;
-        
-        // PRIORIDAD 2: Nombre de tema en el handshake (profile o project)
         const handshakeThemeName = payload.profile?.activeTheme || payload.project?.activeTheme;
-        
-        // PRIORIDAD 3: Perfil de Supabase o fallback
         const themeToApply = handshakeThemeData || handshakeThemeName || mappedProfile?.activeTheme || 'blue-light';
-
-        console.log('[HANDSHAKE] Determinando tema a aplicar:', {
-          hasHandshakeData: !!handshakeThemeData,
-          handshakeName: handshakeThemeName,
-          profileTheme: mappedProfile?.activeTheme,
-          finalChoice: typeof themeToApply === 'string' ? themeToApply : 'OBJECT'
-        });
 
         if (mappedProfile) {
           setProfile(mappedProfile);
@@ -159,12 +154,10 @@ const AppContent: React.FC = () => {
         } else {
           applyTheme(themeToApply);
           if (handshakeFont) {
-            // If we applied a named theme but have a specific font override
             applyTheme({ fontFamily: handshakeFont });
           }
         }
         
-        // Limpiar la URL por seguridad (Ocultar tokens y parámetros)
         if (window.history && window.history.replaceState) {
           const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
           window.history.replaceState({ path: cleanUrl }, '', cleanUrl);
@@ -178,6 +171,29 @@ const AppContent: React.FC = () => {
 
     return cleanup;
   }, [applyTheme]);
+
+  const handleNewPage = () => {
+    setCurrentView('selection-method');
+  };
+
+  const handleSelectMethod = (method) => {
+    setSelectedMethod(method);
+    setCurrentView('form');
+  };
+
+  const handleFormSubmit = (data: ProjectFormData) => {
+    setFormData(data);
+    if (selectedMethod === 'ai') {
+      setCurrentView('generator');
+    } else {
+      setCurrentView('constructor');
+    }
+  };
+
+  const handleSelectAsset = (asset: Asset) => {
+    setSelectedAsset(asset);
+    setCurrentView('constructor');
+  };
 
   if (!isHandshakeComplete) {
     return (
@@ -198,74 +214,97 @@ const AppContent: React.FC = () => {
           )}
           
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-        </div>
-        
-        {import.meta.env.DEV && (
-          <div className="absolute bottom-12">
-            <button 
-              onClick={() => {
-                // Initialize Supabase with dummy values for development
-                initSupabase(
-                  'https://placeholder-project.supabase.co',
-                  'placeholder-key',
-                  'placeholder-token'
-                );
-                setProjectId('dev-project');
-                setProfile({
-                  id: 'dev-user',
-                  email: 'dev@solutium.com',
-                  role: 'superadmin',
-                  activeTheme: 'blue-light'
-                });
-                applyTheme('blue-light');
-                setIsHandshakeComplete(true);
-              }}
-              className="px-6 py-2.5 bg-surface hover:bg-gray-50 text-gray-600 rounded-xl text-sm font-medium transition-all border border-gray-200 shadow-sm"
-            >
-              Saltar Handshake (Solo Dev)
-            </button>
+          <div className="text-center space-y-2">
+            <h2 className="text-2xl font-bold tracking-tight">Iniciando Constructor Web</h2>
+            <p className="text-text/60">Sincronizando con Solutium...</p>
           </div>
-        )}
+        </div>
+
+        {/* Botón de Emergencia para Desarrollo */}
+        <div className="absolute bottom-10">
+          <button 
+            onClick={() => {
+              // Inicialización de emergencia con datos de prueba
+              initSupabase(
+                'https://placeholder-project.supabase.co',
+                'placeholder-key',
+                'placeholder-token'
+              );
+              setProjectId('dev-project-id');
+              setProfile({
+                id: 'dev-user-id',
+                email: 'admin@solutium.com',
+                role: 'superadmin',
+                activeTheme: 'blue-light'
+              });
+              setIsHandshakeComplete(true);
+            }}
+            className="px-6 py-2 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-xl text-sm font-medium transition-all border border-slate-200 shadow-sm"
+          >
+            Saltar Handshake (Modo Dev)
+          </button>
+        </div>
       </div>
     );
   }
 
+  const renderView = () => {
+    switch (currentView) {
+      case 'dashboard':
+        return (
+          <Dashboard 
+            assets={assets} 
+            onNewPage={handleNewPage} 
+            onSelectAsset={handleSelectAsset}
+            logoUrl={urlLogo}
+          />
+        );
+      case 'selection-method':
+        return (
+          <MethodSelection 
+            onSelect={handleSelectMethod}
+            onBack={() => setCurrentView('dashboard')}
+          />
+        );
+      case 'form':
+        return (
+          <>
+            <MethodSelection 
+              onSelect={handleSelectMethod}
+              onBack={() => setCurrentView('dashboard')}
+            />
+            <ProjectForm 
+              onSubmit={handleFormSubmit}
+              onCancel={() => setCurrentView('selection-method')}
+              onSkip={() => {
+                if (selectedMethod === 'ai') {
+                  setCurrentView('generator');
+                } else {
+                  setCurrentView('constructor');
+                }
+              }}
+            />
+          </>
+        );
+      case 'generator':
+        return (
+          <div className="p-8 flex flex-col items-center justify-center min-h-screen">
+            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-500 mb-6"></div>
+            <h2 className="text-3xl font-bold">Generando tu página con IA...</h2>
+            <p className="text-text/60 mt-2">Estamos creando la estructura perfecta para {formData?.name}</p>
+            <button onClick={() => setCurrentView('constructor')} className="mt-8 text-blue-500 font-bold">Saltar a Constructor (Simulación)</button>
+          </div>
+        );
+      case 'constructor':
+        return <WebConstructor />;
+      default:
+        return <div>Vista no encontrada</div>;
+    }
+  };
+
   return (
-    <div className="flex h-screen bg-background overflow-hidden">
-      <Sidebar 
-        profile={profile} 
-        project={project}
-        urlLogo={urlLogo}
-        activeTab={activeTab} 
-        onTabChange={setActiveTab} 
-      />
-      <main className="flex-1 overflow-auto">
-        {activeTab === 'home' && (
-          <div className="p-8">
-            <h2 className="text-2xl font-bold text-text mb-4">Bienvenido a Solutium Satellite</h2>
-            <p className="text-gray-600">Has iniciado sesión correctamente.</p>
-            <div className="mt-6 p-6 bg-surface rounded-lg shadow-sm border border-gray-100">
-              <h3 className="text-lg font-semibold mb-2">Tu Perfil</h3>
-              <ul className="space-y-2 text-sm">
-                <li><span className="font-medium text-gray-500">ID:</span> {profile?.id}</li>
-                <li><span className="font-medium text-gray-500">Email:</span> {profile?.email}</li>
-                <li><span className="font-medium text-gray-500">Tema:</span> {profile?.activeTheme}</li>
-              </ul>
-            </div>
-          </div>
-        )}
-        
-        {activeTab === 'datos' && profile?.role?.toLowerCase().replace('-', '') === 'superadmin' && (
-          <DataTab projectId={projectId} currentUserId={profile?.id || null} />
-        )}
-        
-        {activeTab === 'settings' && (
-          <div className="p-8">
-            <h2 className="text-2xl font-bold text-text mb-4">Ajustes</h2>
-            <p className="text-gray-600">Configuración de la aplicación satélite.</p>
-          </div>
-        )}
-      </main>
+    <div className="min-h-screen bg-background text-text">
+      {renderView()}
     </div>
   );
 };

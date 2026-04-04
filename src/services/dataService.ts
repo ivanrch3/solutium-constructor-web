@@ -1,5 +1,5 @@
 import { getSupabase } from './supabaseClient';
-import { Profile, Project, Customer, Product } from '../types/schema';
+import { Profile, Project, Customer, Product, Asset } from '../types/schema';
 import { profileSchema, projectSchema, customerSchema, productSchema } from '../types/zodSchemas';
 import { z } from 'zod';
 
@@ -326,6 +326,47 @@ export const getProducts = async (page: number, pageSize: number, projectId: str
     return validData;
   } catch (err) {
     console.error('Error in getProducts:', err);
+    return [];
+  }
+};
+
+export const getAssets = async (projectId: string, type?: string): Promise<Asset[]> => {
+  try {
+    const supabase = getSupabase();
+    if (!supabase) {
+      console.warn('Supabase client not initialized. Waiting for handshake.');
+      return [];
+    }
+
+    let query = supabase
+      .from('assets')
+      .select('*')
+      .eq('project_id', projectId);
+
+    if (type) {
+      query = query.eq('type', type);
+    }
+
+    const { data, error } = await query.order('updated_at', { ascending: false });
+
+    if (error) throw error;
+    if (!data) return [];
+
+    return data.map((item: any) => ({
+      id: item.id,
+      project_id: item.project_id,
+      origin_app: item.origin_app,
+      name: item.name,
+      type: item.type,
+      url: item.url,
+      status: item.status,
+      metadata: item.metadata,
+      data: item.data,
+      size: item.size,
+      updated_at: item.updated_at,
+    }));
+  } catch (err) {
+    console.error('Error in getAssets:', err);
     return [];
   }
 };

@@ -51,7 +51,7 @@ const AppContent: React.FC = () => {
           payload.session_token
         );
 
-        // Extraer fontFamily con prioridad: payload directo > project > activeThemeData
+        // Extraer fontFamily con prioridad: payload directo > project > activeThemeData > profile
         const handshakeFont = 
           payload.fontFamily || 
           (payload as any).font_family || 
@@ -59,20 +59,33 @@ const AppContent: React.FC = () => {
           payload.project?.font_family ||
           payload.activeThemeData?.fontFamily ||
           payload.activeThemeData?.font_family ||
+          payload.profile?.fontFamily ||
+          payload.profile?.font_family ||
           '';
 
-        console.log('[HANDSHAKE] fontFamily detectada:', handshakeFont);
+        console.log('[HANDSHAKE] fontFamily detectada:', handshakeFont || 'NINGUNA (vacia)');
+        if (!handshakeFont) {
+          console.log('[HANDSHAKE] Payload completo para depuracion:', payload);
+        }
 
-        // Update favicon if provided
-        if (payload.favicon_url) {
-          console.log('[HANDSHAKE] Actualizando favicon:', payload.favicon_url);
+        // Update favicon if provided (check root, project, or activeThemeData)
+        const handshakeFavicon = 
+          payload.favicon_url || 
+          payload.faviconUrl || 
+          payload.project?.favicon_url || 
+          payload.project?.faviconUrl ||
+          payload.activeThemeData?.favicon_url ||
+          payload.activeThemeData?.faviconUrl;
+
+        if (handshakeFavicon) {
+          console.log('[HANDSHAKE] Actualizando favicon:', handshakeFavicon);
           let link: HTMLLinkElement | null = document.querySelector("link[rel~='icon']");
           if (!link) {
             link = document.createElement('link');
             link.rel = 'icon';
             document.getElementsByTagName('head')[0].appendChild(link);
           }
-          link.href = payload.favicon_url;
+          link.href = handshakeFavicon;
         }
 
         if (payload.do_endpoint && payload.do_access_key && payload.do_secret_key && payload.do_bucket) {
@@ -109,9 +122,21 @@ const AppContent: React.FC = () => {
         const mappedProfile = await getProfile(user.id);
 
         // Prioritize theme data from handshake payload if available
+        // PRIORIDAD 1: Datos de tema explícitos en el handshake (activeThemeData)
         const handshakeThemeData = payload.activeThemeData;
+        
+        // PRIORIDAD 2: Nombre de tema en el handshake (profile o project)
         const handshakeThemeName = payload.profile?.activeTheme || payload.project?.activeTheme;
+        
+        // PRIORIDAD 3: Perfil de Supabase o fallback
         const themeToApply = handshakeThemeData || handshakeThemeName || mappedProfile?.activeTheme || 'blue-light';
+
+        console.log('[HANDSHAKE] Determinando tema a aplicar:', {
+          hasHandshakeData: !!handshakeThemeData,
+          handshakeName: handshakeThemeName,
+          profileTheme: mappedProfile?.activeTheme,
+          finalChoice: typeof themeToApply === 'string' ? themeToApply : 'OBJECT'
+        });
 
         if (mappedProfile) {
           setProfile(mappedProfile);

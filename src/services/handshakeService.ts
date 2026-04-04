@@ -12,6 +12,7 @@ export interface HandshakePayload {
   project?: any;
   activeThemeData?: any;
   favicon_url?: string;
+  faviconUrl?: string;
 }
 
 export const listenForHandshake = (
@@ -42,28 +43,20 @@ export const listenForHandshake = (
   // ESTRATEGIA PRIORITARIA: Leer de la URL (Fat URL)
   const urlParams = new URLSearchParams(window.location.search);
   const urlPayload: any = {};
-  const keys = [
-    'satellite_id', 'supabase_url', 'supabase_anon_key', 'session_token',
-    'do_endpoint', 'do_access_key', 'do_secret_key', 'do_bucket', 'fontFamily',
-    'favicon_url', 'project', 'activeThemeData'
-  ];
   
-  keys.forEach(key => {
-    const val = urlParams.get(key);
-    if (val) {
-      try {
-        // Intenta parsear si es JSON (para project o activeThemeData)
-        urlPayload[key] = JSON.parse(val);
-      } catch (e) {
-        urlPayload[key] = val;
-      }
+  urlParams.forEach((val, key) => {
+    try {
+      // Intenta parsear si es JSON (para objetos complejos como project o activeThemeData)
+      urlPayload[key] = JSON.parse(val);
+    } catch (e) {
+      urlPayload[key] = val;
     }
   });
 
   if (Object.keys(urlPayload).length > 0) {
     console.log("[DIAGNOSTICO] Detectada Fat URL. Intentando validar...");
     if (validateAndProcess(urlPayload)) {
-      return () => {}; // Handshake completado por URL, no hace falta limpiar nada
+      return () => {}; // Handshake completado por URL
     }
   }
 

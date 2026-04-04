@@ -148,8 +148,9 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const cleanFont = font.split(',')[0].trim().replace(/['"]/g, '');
       loadGoogleFont(cleanFont);
       
-      root.style.setProperty('--solutium-font', font);
-      document.body.style.fontFamily = font;
+      const fontValue = font.includes(',') ? font : `${font}, sans-serif`;
+      root.style.setProperty('--solutium-font', fontValue);
+      document.body.style.fontFamily = fontValue;
       
       if (theme.borderRadius) root.style.setProperty('--radius', theme.borderRadius);
       return;
@@ -183,8 +184,9 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const cleanFont = font.split(',')[0].trim().replace(/['"]/g, '');
       loadGoogleFont(cleanFont);
       
-      root.style.setProperty('--solutium-font', font);
-      document.body.style.fontFamily = font;
+      const fontValue = font.includes(',') ? font : `${font}, sans-serif`;
+      root.style.setProperty('--solutium-font', fontValue);
+      document.body.style.fontFamily = fontValue;
     }
 
     // Modo Visual (Windows / Fluent UI)

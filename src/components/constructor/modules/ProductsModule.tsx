@@ -52,9 +52,10 @@ const MOCK_PRODUCTS: Product[] = [
 export const ProductsModule: React.FC<{ 
   moduleId: string, 
   settingsValues: Record<string, any>,
-  products?: Product[]
-}> = ({ moduleId, settingsValues, products }) => {
-  const displayProducts = products && products.length > 0 ? products : MOCK_PRODUCTS;
+  products?: Product[],
+  isDevMode?: boolean
+}> = ({ moduleId, settingsValues, products, isDevMode }) => {
+  const displayProducts = products && products.length > 0 ? products : (isDevMode ? MOCK_PRODUCTS : []);
   
   // Helper to get setting value
   const getVal = (elementId: string | null, settingId: string, defaultValue: any) => {
@@ -145,136 +146,148 @@ export const ProductsModule: React.FC<{
         </div>
 
         {/* Grid de Productos */}
-        <div 
-          className="grid"
-          style={{ 
-            gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
-            gap: `${gap}px`
-          }}
-        >
-          {displayProducts.map((product) => (
-            <div 
-              key={product.id} 
-              className={`group rounded-2xl border overflow-hidden transition-all duration-500 flex flex-col ${
-                darkMode 
-                  ? 'bg-slate-800 border-slate-700 hover:shadow-2xl hover:shadow-black/50' 
-                  : 'bg-white border-slate-100 hover:shadow-2xl hover:shadow-slate-200/50'
-              } ${hoverEffect === 'lift' ? 'hover:-translate-y-2' : ''}`}
-            >
-              {/* Imagen y Badge */}
-              <div className={`relative overflow-hidden bg-slate-50 ${getAspectRatioClass(imgAspectRatio)}`}>
-                <img 
-                  src={product.imageUrl || 'https://images.unsplash.com/photo-1560393464-5c69a73c5770?q=80&w=1000&auto=format&fit=crop'} 
-                  alt={product.name} 
-                  className={`w-full h-full object-cover transition-all duration-700 ${
-                    hoverEffect === 'zoom' ? 'group-hover:scale-110' : ''
-                  } ${product.image2Url ? 'group-hover:opacity-0' : ''}`}
-                  style={{ borderRadius: `${imgBorderRadius}px` }}
-                  referrerPolicy="no-referrer"
-                />
-
-                {product.image2Url && (
+        {displayProducts.length > 0 ? (
+          <div 
+            className="grid"
+            style={{ 
+              gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
+              gap: `${gap}px`
+            }}
+          >
+            {displayProducts.map((product) => (
+              <div 
+                key={product.id} 
+                className={`group rounded-2xl border overflow-hidden transition-all duration-500 flex flex-col ${
+                  darkMode 
+                    ? 'bg-slate-800 border-slate-700 hover:shadow-2xl hover:shadow-black/50' 
+                    : 'bg-white border-slate-100 hover:shadow-2xl hover:shadow-slate-200/50'
+                } ${hoverEffect === 'lift' ? 'hover:-translate-y-2' : ''}`}
+              >
+                {/* Imagen y Badge */}
+                <div className={`relative overflow-hidden bg-slate-50 ${getAspectRatioClass(imgAspectRatio)}`}>
                   <img 
-                    src={product.image2Url} 
-                    alt={`${product.name} alternate`} 
-                    className={`absolute inset-0 w-full h-full object-cover transition-all duration-700 opacity-0 group-hover:opacity-100 ${
+                    src={product.imageUrl || 'https://images.unsplash.com/photo-1560393464-5c69a73c5770?q=80&w=1000&auto=format&fit=crop'} 
+                    alt={product.name} 
+                    className={`w-full h-full object-cover transition-all duration-700 ${
                       hoverEffect === 'zoom' ? 'group-hover:scale-110' : ''
-                    }`}
+                    } ${product.image2Url ? 'group-hover:opacity-0' : ''}`}
                     style={{ borderRadius: `${imgBorderRadius}px` }}
                     referrerPolicy="no-referrer"
                   />
-                )}
-                
-                {product.badgeText && showBadge && (
-                  <div 
-                    className="absolute top-4 left-4 text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest shadow-lg"
-                    style={{ backgroundColor: badgeBg }}
-                  >
-                    {product.badgeText}
-                  </div>
-                )}
 
-                {/* Overlays de Acción */}
-                <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-3">
-                  <button className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-slate-900 hover:bg-blue-600 hover:text-white transition-all transform translate-y-4 group-hover:translate-y-0 duration-300">
-                    <Eye size={18} />
-                  </button>
-                  <button className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-slate-900 hover:bg-rose-500 hover:text-white transition-all transform translate-y-4 group-hover:translate-y-0 duration-300 delay-75">
-                    <Heart size={18} />
-                  </button>
-                </div>
-              </div>
-
-              {/* Información */}
-              <div className="p-6 flex flex-col flex-1">
-                <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest mb-2">
-                  {product.category}
-                </span>
-                <h3 
-                  className={`mb-2 line-clamp-2 transition-colors ${
-                    darkMode ? 'text-white' : 'text-slate-800'
-                  } ${getFontWeightClass(titleFontWeight)}`}
-                  style={{ fontSize: `${titleFontSize}px` }}
-                >
-                  {product.name}
-                </h3>
-
-                {showDesc && (
-                  <p 
-                    className={`mb-4 line-clamp-2 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}
-                    style={{ fontSize: `${descSize}px` }}
-                  >
-                    Esta es una descripción corta del producto para mostrar cómo se ve en el constructor.
-                  </p>
-                )}
-                
-                {/* Rating */}
-                {showRating && (
-                  <div className="flex items-center gap-1 mb-4">
-                    {[...Array(5)].map((_, i) => (
-                      <Star 
-                        key={i} 
-                        size={12} 
-                        className={i < Math.floor(product.ratingAverage || 0) ? '' : 'text-slate-200'} 
-                        style={{ color: i < Math.floor(product.ratingAverage || 0) ? starColor : undefined, fill: i < Math.floor(product.ratingAverage || 0) ? starColor : undefined }}
-                      />
-                    ))}
-                    <span className="text-[10px] font-bold text-slate-400 ml-1">({product.reviewCount || 0})</span>
-                  </div>
-                )}
-
-                {/* Precio y Botón */}
-                <div className={`mt-auto pt-4 border-t flex items-center justify-between ${darkMode ? 'border-slate-700' : 'border-slate-50'}`}>
-                  <div className="flex flex-col">
-                    {product.priceReference && (
-                      <span className="text-xs text-slate-400 line-through font-medium">
-                        {currency}{product.priceReference.toFixed(2)}
-                      </span>
-                    )}
-                    <span 
-                      className={`font-black ${darkMode ? 'text-white' : 'text-slate-900'}`}
-                      style={{ fontSize: `${priceSize}px` }}
+                  {product.image2Url && (
+                    <img 
+                      src={product.image2Url} 
+                      alt={`${product.name} alternate`} 
+                      className={`absolute inset-0 w-full h-full object-cover transition-all duration-700 opacity-0 group-hover:opacity-100 ${
+                        hoverEffect === 'zoom' ? 'group-hover:scale-110' : ''
+                      }`}
+                      style={{ borderRadius: `${imgBorderRadius}px` }}
+                      referrerPolicy="no-referrer"
+                    />
+                  )}
+                  
+                  {product.badgeText && showBadge && (
+                    <div 
+                      className="absolute top-4 left-4 text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest shadow-lg"
+                      style={{ backgroundColor: badgeBg }}
                     >
-                      {currency}{(product.price || 0).toFixed(2)}
-                    </span>
+                      {product.badgeText}
+                    </div>
+                  )}
+
+                  {/* Overlays de Acción */}
+                  <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-3">
+                    <button className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-slate-900 hover:bg-blue-600 hover:text-white transition-all transform translate-y-4 group-hover:translate-y-0 duration-300">
+                      <Eye size={18} />
+                    </button>
+                    <button className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-slate-900 hover:bg-rose-500 hover:text-white transition-all transform translate-y-4 group-hover:translate-y-0 duration-300 delay-75">
+                      <Heart size={18} />
+                    </button>
                   </div>
-                  <button 
-                    className="px-4 h-10 rounded-xl flex items-center justify-center transition-all shadow-lg shadow-slate-900/10 text-[10px] font-bold uppercase tracking-widest gap-2"
-                    style={{ 
-                      backgroundColor: ctaBg, 
-                      color: ctaColor 
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = ctaHoverBg}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = ctaBg}
+                </div>
+
+                {/* Información */}
+                <div className="p-6 flex flex-col flex-1">
+                  <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest mb-2">
+                    {product.category}
+                  </span>
+                  <h3 
+                    className={`mb-2 line-clamp-2 transition-colors ${
+                      darkMode ? 'text-white' : 'text-slate-800'
+                    } ${getFontWeightClass(titleFontWeight)}`}
+                    style={{ fontSize: `${titleFontSize}px` }}
                   >
-                    <ShoppingCart size={14} />
-                    {ctaText}
-                  </button>
+                    {product.name}
+                  </h3>
+
+                  {showDesc && (
+                    <p 
+                      className={`mb-4 line-clamp-2 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}
+                      style={{ fontSize: `${descSize}px` }}
+                    >
+                      Esta es una descripción corta del producto para mostrar cómo se ve en el constructor.
+                    </p>
+                  )}
+                  
+                  {/* Rating */}
+                  {showRating && (
+                    <div className="flex items-center gap-1 mb-4">
+                      {[...Array(5)].map((_, i) => (
+                        <Star 
+                          key={i} 
+                          size={12} 
+                          className={i < Math.floor(product.ratingAverage || 0) ? '' : 'text-slate-200'} 
+                          style={{ color: i < Math.floor(product.ratingAverage || 0) ? starColor : undefined, fill: i < Math.floor(product.ratingAverage || 0) ? starColor : undefined }}
+                        />
+                      ))}
+                      <span className="text-[10px] font-bold text-slate-400 ml-1">({product.reviewCount || 0})</span>
+                    </div>
+                  )}
+
+                  {/* Precio y Botón */}
+                  <div className={`mt-auto pt-4 border-t flex items-center justify-between ${darkMode ? 'border-slate-700' : 'border-slate-50'}`}>
+                    <div className="flex flex-col">
+                      {product.priceReference && (
+                        <span className="text-xs text-slate-400 line-through font-medium">
+                          {currency}{product.priceReference.toFixed(2)}
+                        </span>
+                      )}
+                      <span 
+                        className={`font-black ${darkMode ? 'text-white' : 'text-slate-900'}`}
+                        style={{ fontSize: `${priceSize}px` }}
+                      >
+                        {currency}{(product.price || 0).toFixed(2)}
+                      </span>
+                    </div>
+                    <button 
+                      className="px-4 h-10 rounded-xl flex items-center justify-center transition-all shadow-lg shadow-slate-900/10 text-[10px] font-bold uppercase tracking-widest gap-2"
+                      style={{ 
+                        backgroundColor: ctaBg, 
+                        color: ctaColor 
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = ctaHoverBg}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = ctaBg}
+                    >
+                      <ShoppingCart size={14} />
+                      {ctaText}
+                    </button>
+                  </div>
                 </div>
               </div>
+            ))}
+          </div>
+        ) : (
+          <div className={`py-20 text-center border-2 border-dashed rounded-3xl ${darkMode ? 'border-slate-700 bg-slate-800/50' : 'border-slate-100 bg-slate-50/50'}`}>
+            <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <ShoppingCart className="text-blue-500 w-8 h-8" />
             </div>
-          ))}
-        </div>
+            <h3 className={`text-lg font-bold mb-2 ${darkMode ? 'text-white' : 'text-slate-800'}`}>No hay productos disponibles</h3>
+            <p className={`text-sm ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+              Agrega productos a tu inventario en la pestaña de Datos para verlos aquí.
+            </p>
+          </div>
+        )}
       </div>
     </section>
   );

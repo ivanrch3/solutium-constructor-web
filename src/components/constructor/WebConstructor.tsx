@@ -968,25 +968,12 @@ const TopBar = ({ onSave, onPublish }: { onSave: () => void, onPublish: () => vo
 const Canvas: React.FC<{ 
   editorState: EditorState, 
   onAddModule: (module: WebModule) => void,
-  products: Product[]
-}> = ({ editorState, onAddModule, products }) => (
+  products: Product[],
+  isDevMode: boolean
+}> = ({ editorState, onAddModule, products, isDevMode }) => (
   <div className="flex-1 bg-slate-50 p-12 overflow-y-auto flex flex-col items-center">
     {/* Preview Window */}
     <div className="w-full max-w-5xl bg-white shadow-2xl rounded-2xl overflow-hidden border border-slate-200/50 min-h-[800px] flex flex-col">
-      {/* Top Banner */}
-      <div className="bg-blue-600 py-2 px-6 flex items-center justify-between text-white text-[10px] font-bold">
-        <div className="flex items-center gap-4">
-          <span>¡Bienvenidos a nuestro sitio web!</span>
-          <span className="underline cursor-pointer">Comprar ahora</span>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="flex gap-2">
-            <span>f</span><span>y</span><span>o</span><span>in</span>
-          </div>
-          <span className="opacity-50">x</span>
-        </div>
-      </div>
-
       {/* Dynamic Modules */}
       {editorState.addedModules.map(module => {
         if (module.type === 'products') {
@@ -996,6 +983,7 @@ const Canvas: React.FC<{
               moduleId={module.id}
               settingsValues={editorState.settingsValues}
               products={products}
+              isDevMode={isDevMode}
             />
           );
         }
@@ -1130,10 +1118,8 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
 
   React.useEffect(() => {
     if (projectId) {
-      getProducts(1, 10, projectId).then(data => {
-        if (data && data.length > 0) {
-          setProducts(data);
-        }
+      getProducts(0, 12, projectId).then(data => {
+        setProducts(data || []);
       });
     }
   }, [projectId]);
@@ -1337,6 +1323,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
                 editorState={editorState} 
                 onAddModule={addModule} 
                 products={products}
+                isDevMode={projectId === 'dev-project-id'}
               />
             </div>
           </div>

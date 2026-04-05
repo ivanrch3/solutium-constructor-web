@@ -74,8 +74,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ assets, onNewPage, onSelec
                         <FileText className="w-5 h-5" />
                       </div>
                       <div>
-                        <h3 className="text-sm font-bold text-[#1E293B] group-hover:text-blue-600 transition-colors">{asset.name}</h3>
-                        <p className="text-[11px] text-slate-400 font-medium">Actualizado el {new Date(asset.updated_at || '').toLocaleDateString()}</p>
+                        <h3 className="text-base font-bold text-[#1E293B] group-hover:text-blue-600 transition-colors">{asset.name}</h3>
+                        <p className="text-xs text-slate-400 font-medium">Actualizado el {new Date(asset.updated_at || '').toLocaleDateString()}</p>
                       </div>
                     </div>
                     <ExternalLink className="w-4 h-4 text-slate-300 group-hover:text-blue-500 transition-colors" />
@@ -87,7 +87,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ assets, onNewPage, onSelec
                 <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center">
                   <FileText className="w-6 h-6 text-slate-200" />
                 </div>
-                <p className="text-sm font-medium">No existen activos.</p>
+                <p className="text-base font-medium">No existen activos.</p>
               </div>
             )}
           </div>

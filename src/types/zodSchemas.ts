@@ -106,12 +106,17 @@ export const productSchema = z.object({
   id: z.string(),
   name: z.any().optional().nullable(),
   description: z.any().optional().nullable(),
-  unitCost: z.any().optional().nullable(),
-  type: z.any().optional().nullable(),
+  price: z.any().optional().nullable(),
+  priceReference: z.any().optional().nullable(),
+  category: z.any().optional().nullable(),
   sku: z.any().optional().nullable(),
   status: z.any().optional().nullable(),
   imageUrl: z.any().optional().nullable(),
-  photoUrl: z.any().optional().nullable(),
+  image2Url: z.any().optional().nullable(),
+  stock: z.any().optional().nullable(),
+  ratingAverage: z.any().optional().nullable(),
+  reviewCount: z.any().optional().nullable(),
+  badgeText: z.any().optional().nullable(),
   businessId: z.any().optional().nullable(),
   projectId: z.any().optional().nullable(),
   schemaVersion: z.any().optional().nullable(),
@@ -120,16 +125,41 @@ export const productSchema = z.object({
   updatedAt: z.any().optional().nullable(),
 });
 
+export const webBuilderSiteSchema = z.object({
+  id: z.string(),
+  projectId: z.string(),
+  name: z.string(),
+  contentDraft: z.any(),
+  status: z.enum(['draft', 'published']),
+  subdomain: z.string().optional().nullable(),
+  createdAt: z.string().optional().nullable(),
+  updatedAt: z.string().optional().nullable(),
+});
+
+export const publishedSiteSchema = z.object({
+  id: z.string(),
+  projectId: z.string(),
+  appId: z.literal('web-builder'),
+  content: z.any(), // RenderingContract
+  metadata: z.object({
+    title: z.string().optional().nullable(),
+    description: z.string().optional().nullable(),
+    favicon: z.string().optional().nullable(),
+    ogImage: z.string().optional().nullable(),
+  }),
+  subdomainId: z.string().optional().nullable(),
+  createdAt: z.string().optional().nullable(),
+  updatedAt: z.string().optional().nullable(),
+});
+
 export const assetSchema = z.object({
   id: z.string(),
-  project_id: z.string(),
-  origin_app: z.string(),
+  projectId: z.string(),
   name: z.string(),
-  type: z.string(),
   url: z.string(),
-  status: z.any().optional().nullable(),
+  type: z.string(),
+  originApp: z.literal('web-builder'),
   metadata: z.any().optional().nullable(),
-  data: z.any().optional().nullable(),
   size: z.number().optional().nullable(),
-  updated_at: z.any().optional().nullable(),
+  updatedAt: z.any().optional().nullable(),
 });

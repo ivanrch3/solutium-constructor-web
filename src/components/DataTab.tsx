@@ -108,7 +108,7 @@ export const DataTab: React.FC<DataTabProps> = ({ projectId, currentUserId }) =>
           <button
             key={tab}
             onClick={() => handleTabChange(tab)}
-            className={`pb-3 px-2 capitalize font-medium transition-colors ${
+            className={`pb-3 px-2 capitalize text-base font-medium transition-colors ${
               activeSubTab === tab 
                 ? 'border-b-2 border-primary text-primary' 
                 : 'text-gray-500 hover:text-text'

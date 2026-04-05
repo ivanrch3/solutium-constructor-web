@@ -22,11 +22,231 @@ import {
   GripVertical,
   CheckCircle2,
   FileText,
-  User
+  User,
+  Image as ImageIcon,
+  Star,
+  MousePointer2,
+  Box,
+  Send,
+  Upload,
+  Loader2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { DataTab } from '../DataTab';
-import { Project } from '../../types/schema';
+import { Project, RenderingContract } from '../../types/schema';
+import { WebModule, ModuleElement, SettingGroupType, EditorState, SettingDefinition } from '../../types/constructor';
+import { ProductsModule } from './modules/ProductsModule';
+import { HeroModule } from './modules/HeroModule';
+import { FeaturesModule } from './modules/FeaturesModule';
+import { saveWebBuilderSiteDraft, publishWebBuilderSite, getProducts } from '../../services/dataService';
+import { syncAsset } from '../../services/assetService';
+import { Product } from '../../types/schema';
+
+// --- CONSTANTS ---
+
+const PRODUCTS_MODULE: WebModule = {
+  id: 'mod_products_1',
+  type: 'products',
+  name: 'Productos',
+  globalGroups: ['contenido', 'estructura', 'estilo', 'multimedia', 'interaccion'],
+  globalSettings: {
+    contenido: [
+      { id: 'section_title', label: 'Título de la Sección', type: 'text', defaultValue: 'Nuestros Productos' },
+      { id: 'section_desc', label: 'Descripción', type: 'text', defaultValue: 'Descubre nuestra selección exclusiva de productos.' },
+      { id: 'select_products', label: 'Selección de Productos', type: 'button', defaultValue: 'Seleccionar' }
+    ],
+    estructura: [
+      { id: 'columns', label: 'Columnas', type: 'range', defaultValue: 4, min: 1, max: 6 },
+      { id: 'gap', label: 'Espaciado', type: 'range', defaultValue: 24, min: 0, max: 100, unit: 'px' }
+    ],
+    estilo: [
+      { id: 'dark_mode', label: 'Modo Oscuro', type: 'boolean', defaultValue: false },
+      { id: 'bg_color', label: 'Color de Fondo', type: 'color', defaultValue: '#FFFFFF' }
+    ],
+    interaccion: [
+      { id: 'hover_effect', label: 'Efecto al pasar el mouse', type: 'select', defaultValue: 'zoom', options: [
+        { label: 'Ninguno', value: 'none' },
+        { label: 'Zoom', value: 'zoom' },
+        { label: 'Levantar', value: 'lift' }
+      ]}
+    ],
+    tipografia: [],
+    multimedia: [
+      { id: 'section_bg_image', label: 'Imagen de Fondo de Sección', type: 'image', defaultValue: '' }
+    ]
+  },
+  elements: [
+    { 
+      id: 'el_img', 
+      name: 'Imagen del Producto', 
+      type: 'image', 
+      groups: ['contenido', 'estructura', 'estilo', 'multimedia', 'interaccion'],
+      settings: {
+        multimedia: [
+          { id: 'aspect_ratio', label: 'Proporción', type: 'select', defaultValue: '1:1', options: [
+            { label: '1:1 (Cuadrado)', value: '1:1' },
+            { label: '4:5 (Retrato)', value: '4:5' },
+            { label: '16:9 (Panorámico)', value: '16:9' }
+          ]}
+        ],
+        estilo: [
+          { id: 'border_radius', label: 'Redondeo', type: 'range', defaultValue: 16, min: 0, max: 50, unit: 'px' }
+        ],
+        contenido: [],
+        estructura: [],
+        tipografia: [],
+        interaccion: []
+      }
+    },
+    { 
+      id: 'el_title', 
+      name: 'Título del Producto', 
+      type: 'text', 
+      groups: ['contenido', 'estructura', 'tipografia', 'interaccion'],
+      settings: {
+        tipografia: [
+          { id: 'font_size', label: 'Tamaño de Fuente', type: 'range', defaultValue: 16, min: 12, max: 24, unit: 'px' },
+          { id: 'font_weight', label: 'Grosor', type: 'select', defaultValue: 'bold', options: [
+            { label: 'Normal', value: 'normal' },
+            { label: 'Medio', value: 'medium' },
+            { label: 'Negrita', value: 'bold' },
+            { label: 'Extra Negrita', value: 'black' }
+          ]}
+        ],
+        contenido: [],
+        estructura: [],
+        estilo: [],
+        multimedia: [],
+        interaccion: []
+      }
+    },
+    { 
+      id: 'el_price', 
+      name: 'Precio', 
+      type: 'price', 
+      groups: ['contenido', 'estructura', 'estilo', 'tipografia'],
+      settings: {
+        contenido: [
+          { id: 'currency', label: 'Moneda', type: 'text', defaultValue: '$' }
+        ],
+        tipografia: [
+          { id: 'price_size', label: 'Tamaño del Precio', type: 'range', defaultValue: 18, min: 14, max: 32, unit: 'px' }
+        ],
+        estructura: [],
+        estilo: [],
+        multimedia: [],
+        interaccion: []
+      }
+    },
+    { id: 'el_badge', name: 'Etiquetas / Badges', type: 'badge', groups: ['contenido', 'estilo'], settings: {
+      contenido: [
+        { id: 'show_badge', label: 'Mostrar Etiquetas', type: 'boolean', defaultValue: true }
+      ],
+      estilo: [
+        { id: 'badge_bg', label: 'Color de Fondo', type: 'color', defaultValue: '#2563EB' }
+      ],
+      estructura: [],
+      tipografia: [],
+      multimedia: [],
+      interaccion: []
+    }},
+    { id: 'el_rating', name: 'Valoración', type: 'rating', groups: ['contenido', 'estilo'], settings: {
+      contenido: [
+        { id: 'show_rating', label: 'Mostrar Valoración', type: 'boolean', defaultValue: true }
+      ],
+      estilo: [
+        { id: 'star_color', label: 'Color de Estrellas', type: 'color', defaultValue: '#FBBF24' }
+      ],
+      estructura: [],
+      tipografia: [],
+      multimedia: [],
+      interaccion: []
+    }},
+    { id: 'el_cta', name: 'Botón de Acción', type: 'button', groups: ['contenido', 'estilo', 'interaccion'], settings: {
+      contenido: [
+        { id: 'cta_text', label: 'Texto del Botón', type: 'text', defaultValue: 'Añadir' }
+      ],
+      estilo: [
+        { id: 'cta_bg', label: 'Color de Fondo', type: 'color', defaultValue: '#0F172A' },
+        { id: 'cta_color', label: 'Color de Texto', type: 'color', defaultValue: '#FFFFFF' }
+      ],
+      interaccion: [
+        { id: 'cta_hover_bg', label: 'Color al pasar el mouse', type: 'color', defaultValue: '#2563EB' }
+      ],
+      estructura: [],
+      tipografia: [],
+      multimedia: []
+    }},
+    { id: 'el_desc', name: 'Descripción Corta', type: 'text', groups: ['contenido', 'tipografia'], settings: {
+      contenido: [
+        { id: 'show_desc', label: 'Mostrar Descripción', type: 'boolean', defaultValue: false }
+      ],
+      tipografia: [
+        { id: 'desc_size', label: 'Tamaño de Fuente', type: 'range', defaultValue: 12, min: 10, max: 16, unit: 'px' }
+      ],
+      estructura: [],
+      estilo: [],
+      multimedia: [],
+      interaccion: []
+    }},
+  ]
+};
+
+const HERO_MODULE: WebModule = {
+  id: 'mod_hero_1',
+  type: 'hero',
+  name: 'Portada / Hero',
+  globalGroups: ['contenido', 'estructura', 'estilo', 'multimedia', 'interaccion'],
+  globalSettings: {
+    contenido: [
+      { id: 'title', label: 'Título Principal', type: 'text', defaultValue: 'Construye tu futuro hoy' },
+      { id: 'subtitle', label: 'Subtítulo', type: 'text', defaultValue: 'La plataforma más completa para gestionar tu negocio.' }
+    ],
+    estructura: [
+      { id: 'height', label: 'Altura (vh)', type: 'range', defaultValue: 80, min: 40, max: 100, unit: 'vh' }
+    ],
+    estilo: [
+      { id: 'overlay_opacity', label: 'Opacidad del Overlay', type: 'range', defaultValue: 50, min: 0, max: 100, unit: '%' }
+    ],
+    multimedia: [
+      { id: 'bg_image', label: 'Imagen de Fondo', type: 'image', defaultValue: '' }
+    ],
+    interaccion: [],
+    tipografia: []
+  },
+  elements: []
+};
+
+const FEATURES_MODULE: WebModule = {
+  id: 'mod_features_1',
+  type: 'features',
+  name: 'Características',
+  globalGroups: ['contenido', 'estructura', 'estilo', 'multimedia', 'interaccion'],
+  globalSettings: {
+    contenido: [
+      { id: 'title', label: 'Título', type: 'text', defaultValue: 'Nuestras Ventajas' }
+    ],
+    estructura: [
+      { id: 'columns', label: 'Columnas', type: 'range', defaultValue: 3, min: 1, max: 4 }
+    ],
+    estilo: [],
+    multimedia: [
+      { id: 'section_icon', label: 'Icono de Sección', type: 'image', defaultValue: '' }
+    ],
+    interaccion: [],
+    tipografia: []
+  },
+  elements: []
+};
+
+const GROUP_LABELS: Record<SettingGroupType, string> = {
+  contenido: 'Contenido',
+  estructura: 'Estructura',
+  estilo: 'Estilo',
+  tipografia: 'Tipografía',
+  multimedia: 'Multimedia',
+  interaccion: 'Interacción'
+};
 
 // --- SUB-COMPONENTS ---
 
@@ -42,12 +262,12 @@ const SidebarItem: React.FC<SidebarItemProps> = ({ icon, label, active, onClick 
     onClick={onClick}
     className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
       active 
-        ? 'bg-white/10 text-white font-bold' 
+        ? 'text-white font-bold' 
         : 'text-white/60 hover:text-white hover:bg-white/5 font-medium'
     }`}
   >
     <div className={active ? 'text-white' : 'text-white/60'}>{icon}</div>
-    <span className="text-sm">{label}</span>
+    <span className="text-base">{label}</span>
   </button>
 );
 
@@ -56,16 +276,18 @@ const MainSidebar = ({
   onTabChange, 
   onBackToDashboard,
   logoUrl,
-  project
+  project,
+  onAddModule
 }: { 
   activeTab: string, 
   onTabChange: (tab: string) => void, 
   onBackToDashboard: () => void,
   logoUrl: string | null,
-  project: Project | null
+  project: Project | null,
+  onAddModule: (module: WebModule) => void
 }) => {
   const [expandedSection, setExpandedSection] = useState<string | null>('constructor');
-  const [expandedCategory, setExpandedCategory] = useState<string | null>('navegacion');
+  const [expandedCategory, setExpandedCategory] = useState<string | null>('ventas');
 
   const toggleSection = (section: string) => {
     setExpandedSection(expandedSection === section ? null : section);
@@ -102,13 +324,13 @@ const MainSidebar = ({
           >
             <div className="flex items-center gap-3">
               <Monitor size={20} />
-              <span className="text-sm">Diseño</span>
+              <span className="text-base">Diseño</span>
             </div>
             <ChevronDown size={16} className={`transition-transform ${expandedSection === 'diseno' ? 'rotate-180' : ''}`} />
           </button>
           {expandedSection === 'diseno' && (
             <div className="pl-12 py-2 space-y-2">
-              <p className="text-[11px] text-white/40 font-bold uppercase tracking-widest">Opciones de diseño</p>
+              <p className="text-xs text-white/40 font-normal uppercase tracking-widest">Opciones de diseño</p>
             </div>
           )}
         </div>
@@ -122,16 +344,17 @@ const MainSidebar = ({
             }}
             className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all ${
               expandedSection === 'constructor' 
-                ? 'bg-white text-[#3B82F6] font-bold shadow-xl shadow-black/10' 
+                ? 'text-white font-bold' 
                 : 'text-white/60 hover:text-white'
             }`}
           >
             <div className="flex items-center gap-3">
               <Layout size={20} />
-              <span className="text-sm">Constructor</span>
+              <span className="text-base">Constructor</span>
             </div>
             <ChevronDown size={16} className={`transition-transform ${expandedSection === 'constructor' ? 'rotate-180' : ''}`} />
           </button>
+        </div>
 
           {expandedSection === 'constructor' && (
             <div className="mt-4 space-y-4">
@@ -139,7 +362,9 @@ const MainSidebar = ({
               <div className="space-y-2">
                 <button 
                   onClick={() => toggleCategory('navegacion')}
-                  className="w-full flex items-center justify-between px-4 py-1 text-[10px] font-black text-blue-300 uppercase tracking-widest"
+                  className={`w-full flex items-center justify-between px-4 py-1 text-xs text-blue-300 uppercase tracking-widest transition-all ${
+                    expandedCategory === 'navegacion' ? 'font-bold' : 'font-normal'
+                  }`}
                 >
                   Navegación
                   <ChevronDown size={12} className={`transition-transform ${expandedCategory === 'navegacion' ? 'rotate-180' : ''}`} />
@@ -158,15 +383,25 @@ const MainSidebar = ({
               <div className="space-y-2">
                 <button 
                   onClick={() => toggleCategory('contenido')}
-                  className="w-full flex items-center justify-between px-4 py-1 text-[10px] font-black text-blue-300 uppercase tracking-widest"
+                  className={`w-full flex items-center justify-between px-4 py-1 text-xs text-blue-300 uppercase tracking-widest transition-all ${
+                    expandedCategory === 'contenido' ? 'font-bold' : 'font-normal'
+                  }`}
                 >
                   Contenido
                   <ChevronDown size={12} className={`transition-transform ${expandedCategory === 'contenido' ? 'rotate-180' : ''}`} />
                 </button>
                 {expandedCategory === 'contenido' && (
                   <div className="space-y-0.5 px-2">
-                    <ModuleItem icon={<Sparkles size={18} />} label="Portada" />
-                    <ModuleItem icon={<Type size={18} />} label="Características" />
+                    <ModuleItem 
+                      icon={<Sparkles size={18} />} 
+                      label="Portada" 
+                      onClick={() => onAddModule(HERO_MODULE)}
+                    />
+                    <ModuleItem 
+                      icon={<Type size={18} />} 
+                      label="Características" 
+                      onClick={() => onAddModule(FEATURES_MODULE)}
+                    />
                     <ModuleItem icon={<User size={18} />} label="Sobre Nosotros" />
                     <ModuleItem icon={<Layers size={18} />} label="Proceso" />
                     <ModuleItem icon={<PlusCircle size={18} />} label="Galería" />
@@ -179,7 +414,9 @@ const MainSidebar = ({
               <div className="space-y-2">
                 <button 
                   onClick={() => toggleCategory('confianza')}
-                  className="w-full flex items-center justify-between px-4 py-1 text-[10px] font-black text-blue-300 uppercase tracking-widest"
+                  className={`w-full flex items-center justify-between px-4 py-1 text-xs text-blue-300 uppercase tracking-widest transition-all ${
+                    expandedCategory === 'confianza' ? 'font-bold' : 'font-normal'
+                  }`}
                 >
                   Confianza
                   <ChevronDown size={12} className={`transition-transform ${expandedCategory === 'confianza' ? 'rotate-180' : ''}`} />
@@ -198,14 +435,20 @@ const MainSidebar = ({
               <div className="space-y-2">
                 <button 
                   onClick={() => toggleCategory('ventas')}
-                  className="w-full flex items-center justify-between px-4 py-1 text-[10px] font-black text-blue-300 uppercase tracking-widest"
+                  className={`w-full flex items-center justify-between px-4 py-1 text-xs text-blue-300 uppercase tracking-widest transition-all ${
+                    expandedCategory === 'ventas' ? 'font-bold' : 'font-normal'
+                  }`}
                 >
                   Ventas
                   <ChevronDown size={12} className={`transition-transform ${expandedCategory === 'ventas' ? 'rotate-180' : ''}`} />
                 </button>
                 {expandedCategory === 'ventas' && (
                   <div className="space-y-0.5 px-2">
-                    <ModuleItem icon={<Layout size={18} />} label="Productos" />
+                    <ModuleItem 
+                      icon={<Layout size={18} />} 
+                      label="Productos" 
+                      onClick={() => onAddModule(PRODUCTS_MODULE)}
+                    />
                     <ModuleItem icon={<Settings size={18} />} label="Planes" />
                     <ModuleItem icon={<PlusCircle size={18} />} label="Call to Action (C...)" />
                   </div>
@@ -216,7 +459,9 @@ const MainSidebar = ({
               <div className="space-y-2">
                 <button 
                   onClick={() => toggleCategory('contacto')}
-                  className="w-full flex items-center justify-between px-4 py-1 text-[10px] font-black text-blue-300 uppercase tracking-widest"
+                  className={`w-full flex items-center justify-between px-4 py-1 text-xs text-blue-300 uppercase tracking-widest transition-all ${
+                    expandedCategory === 'contacto' ? 'font-bold' : 'font-normal'
+                  }`}
                 >
                   Contacto
                   <ChevronDown size={12} className={`transition-transform ${expandedCategory === 'contacto' ? 'rotate-180' : ''}`} />
@@ -231,7 +476,6 @@ const MainSidebar = ({
               </div>
             </div>
           )}
-        </div>
 
         {/* AJUSTES */}
         <SidebarItem 
@@ -261,10 +505,10 @@ const MainSidebar = ({
             )}
           </div>
           <div className="flex flex-col">
-            <span className="text-sm font-bold text-white leading-none truncate max-w-[160px]">
+            <span className="text-base font-bold text-white leading-none truncate max-w-[160px]">
               {project?.name || 'Proyecto'}
             </span>
-            <span className="text-[10px] text-white/40 font-bold mt-1 uppercase tracking-wider">Proyecto Activo</span>
+            <span className="text-xs text-white/40 font-normal mt-1 uppercase tracking-wider">Proyecto Activo</span>
           </div>
         </div>
       </div>
@@ -272,125 +516,423 @@ const MainSidebar = ({
   );
 };
 
-const ModuleItem = ({ icon, label }: { icon: React.ReactNode, label: string }) => (
-  <button className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-white/60 hover:text-white hover:bg-white/5 transition-all group">
+const ModuleItem = ({ icon, label, onClick }: { icon: React.ReactNode, label: string, onClick?: () => void }) => (
+  <button 
+    onClick={onClick}
+    className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-white/60 hover:text-white hover:bg-white/5 transition-all group"
+  >
     <div className="text-white/40 group-hover:text-white transition-colors">{icon}</div>
-    <span className="text-[13px] font-medium">{label}</span>
+    <span className="text-sm font-medium">{label}</span>
   </button>
 );
 
-const StructurePanel = () => (
-  <div className="w-[260px] bg-white border-r border-slate-100 flex flex-col z-30 shadow-xl shadow-slate-200/30">
-    <div className="p-4 flex items-center justify-between border-b border-slate-50">
-      <div className="flex items-center gap-2">
-        <div className="w-7 h-7 bg-rose-500 rounded-lg flex items-center justify-center">
-          <Layers className="text-white w-3.5 h-3.5" />
-        </div>
-        <span className="text-xs font-bold text-slate-800">Estructura</span>
-      </div>
-      <button className="text-blue-500 hover:bg-blue-50 p-1.5 rounded-lg transition-colors">
-        <RotateCcw size={14} />
-      </button>
-    </div>
+interface StructurePanelProps {
+  editorState: EditorState;
+  setEditorState: React.Dispatch<React.SetStateAction<EditorState>>;
+  onSettingChange: (elementOrModuleId: string, settingId: string, value: any) => void;
+  onRemoveModule: (moduleId: string) => void;
+  projectId: string | null;
+}
 
-    <div className="p-3 space-y-2">
-      {/* Barra Superior Item */}
-      <div className="flex items-center gap-2.5 p-2.5 bg-slate-50/50 rounded-xl border border-slate-100 group cursor-pointer hover:border-slate-200 transition-all">
-        <GripVertical className="text-slate-300" size={14} />
-        <div className="w-7 h-7 bg-white border border-slate-100 rounded-lg flex items-center justify-center">
-          <Monitor className="text-slate-400" size={12} />
-        </div>
-        <span className="text-[11px] font-bold text-slate-700 flex-1">Barra Superior</span>
-      </div>
+const SettingControl: React.FC<{ 
+  setting: SettingDefinition, 
+  value: any, 
+  onChange: (value: any) => void,
+  projectId: string | null
+}> = ({ setting, value, onChange, projectId }) => {
+  const [isUploading, setIsUploading] = useState(false);
+  const currentValue = value !== undefined ? value : setting.defaultValue;
 
-      {/* Portada Item */}
-      <div className="flex items-center gap-2.5 p-2.5 bg-blue-50/50 rounded-xl border border-blue-100 group cursor-pointer hover:bg-blue-50 transition-all">
-        <GripVertical className="text-blue-200" size={14} />
-        <div className="w-7 h-7 bg-blue-600 rounded-lg flex items-center justify-center">
-          <Sparkles className="text-white w-3.5 h-3.5" />
-        </div>
-        <span className="text-[11px] font-bold text-blue-700 flex-1">Portada</span>
-        <div className="flex items-center gap-1.5">
-          <Eye size={12} className="text-blue-400 hover:text-blue-600" />
-          <LinkIcon size={12} className="text-blue-400 hover:text-blue-600" />
-          <Trash2 size={12} className="text-blue-400 hover:text-blue-600" />
-        </div>
-      </div>
-    </div>
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !projectId) return;
 
-    {/* Editor Panel Section */}
-    <div className="flex-1 overflow-y-auto border-t border-slate-50 custom-scrollbar">
-      <div className="p-4 space-y-5">
+    setIsUploading(true);
+    try {
+      const extension = file.name.split('.').pop() || 'png';
+      const url = await syncAsset(
+        { id: `asset_${Date.now()}`, projectId },
+        'web_builder_asset',
+        file,
+        extension,
+        file.type,
+        file.name
+      );
+      onChange(url);
+    } catch (error) {
+      console.error('Error uploading image:', error);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  switch (setting.type) {
+    case 'image':
+      return (
+        <div className="space-y-1.5">
+          <label className="text-[10px] font-bold text-slate-400">{setting.label}</label>
+          <div className="flex items-center gap-2">
+            <div className="w-10 h-10 rounded-lg bg-slate-50 border border-slate-100 overflow-hidden flex-shrink-0">
+              {currentValue ? (
+                <img src={currentValue} alt="Preview" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-slate-300">
+                  <ImageIcon size={14} />
+                </div>
+              )}
+            </div>
+            <div className="flex-1">
+              <label className="cursor-pointer">
+                <input 
+                  type="file" 
+                  className="hidden" 
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  disabled={isUploading}
+                />
+                <div className={`flex items-center justify-center gap-2 py-1.5 px-3 border border-slate-100 rounded-md text-[10px] font-bold transition-all ${
+                  isUploading ? 'bg-slate-50 text-slate-400' : 'bg-white text-blue-600 hover:bg-blue-50 hover:border-blue-100'
+                }`}>
+                  {isUploading ? (
+                    <>
+                      <Loader2 size={12} className="animate-spin" />
+                      Subiendo...
+                    </>
+                  ) : (
+                    <>
+                      <Upload size={12} />
+                      Subir Imagen
+                    </>
+                  )}
+                </div>
+              </label>
+            </div>
+          </div>
+        </div>
+      );
+    case 'range':
+      return (
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <label className="text-[10px] font-bold text-slate-400">{setting.label}</label>
+            <span className="text-[10px] font-medium text-blue-600">{currentValue}{setting.unit}</span>
+          </div>
+          <input 
+            type="range" 
+            min={setting.min} 
+            max={setting.max} 
+            step={setting.step || 1}
+            value={currentValue}
+            onChange={(e) => onChange(Number(e.target.value))}
+            className="w-full h-1 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-blue-600" 
+          />
+        </div>
+      );
+    case 'select':
+      return (
+        <div className="space-y-1.5">
+          <label className="text-[10px] font-bold text-slate-400">{setting.label}</label>
+          <select 
+            value={currentValue}
+            onChange={(e) => onChange(e.target.value)}
+            className="w-full p-1.5 border border-slate-100 rounded-md text-[10px] font-medium focus:outline-none focus:border-blue-300 bg-white"
+          >
+            {setting.options?.map(opt => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+        </div>
+      );
+    case 'boolean':
+      return (
+        <div className="flex items-center justify-between p-1.5 bg-slate-50 rounded-md">
+          <span className="text-[10px] font-medium text-slate-600">{setting.label}</span>
+          <button 
+            onClick={() => onChange(!currentValue)}
+            className={`w-7 h-3.5 rounded-full relative transition-colors ${currentValue ? 'bg-blue-600' : 'bg-slate-200'}`}
+          >
+            <div className={`absolute top-0.5 w-2.5 h-2.5 bg-white rounded-full shadow-sm transition-all ${currentValue ? 'left-4' : 'left-0.5'}`}></div>
+          </button>
+        </div>
+      );
+    case 'color':
+      return (
+        <div className="flex items-center justify-between">
+          <label className="text-[10px] font-bold text-slate-400">{setting.label}</label>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-mono text-slate-400 uppercase">{currentValue}</span>
+            <input 
+              type="color"
+              value={currentValue}
+              onChange={(e) => onChange(e.target.value)}
+              className="w-5 h-5 rounded-md border border-slate-200 shadow-sm p-0 overflow-hidden cursor-pointer"
+            />
+          </div>
+        </div>
+      );
+    case 'button':
+      return (
+        <div className="p-2 bg-blue-50/50 border border-blue-100 rounded-lg">
+          <p className="text-[10px] font-bold text-blue-600 mb-2">{setting.label}</p>
+          <button className="w-full py-1.5 bg-white border border-blue-200 rounded-md text-[10px] font-bold text-blue-600 hover:bg-blue-50 transition-all flex items-center justify-center gap-1.5">
+            <Plus size={12} /> {setting.defaultValue}
+          </button>
+        </div>
+      );
+    default:
+      return (
+        <div className="space-y-1.5">
+          <label className="text-[10px] font-bold text-slate-400">{setting.label}</label>
+          <input 
+            type="text" 
+            value={currentValue} 
+            onChange={(e) => onChange(e.target.value)}
+            className="w-full p-1.5 border border-slate-100 rounded-md text-[10px] font-medium focus:outline-none focus:border-blue-300" 
+          />
+        </div>
+      );
+  }
+};
+
+const StructurePanel: React.FC<StructurePanelProps> = ({ editorState, setEditorState, onSettingChange, onRemoveModule, projectId }) => {
+  const toggleModule = (moduleId: string) => {
+    setEditorState(prev => ({
+      ...prev,
+      expandedModuleId: prev.expandedModuleId === moduleId ? null : moduleId
+    }));
+  };
+
+  const toggleElement = (elementId: string) => {
+    setEditorState(prev => ({
+      ...prev,
+      selectedElementId: prev.selectedElementId === elementId ? null : elementId
+    }));
+  };
+
+  const toggleGroup = (elementId: string, group: SettingGroupType) => {
+    setEditorState(prev => ({
+      ...prev,
+      expandedGroupsByElement: {
+        ...prev.expandedGroupsByElement,
+        [elementId]: prev.expandedGroupsByElement[elementId] === group ? null : group
+      }
+    }));
+  };
+
+  const getElementIcon = (type: string) => {
+    switch (type) {
+      case 'image': return <ImageIcon size={12} />;
+      case 'text': return <Type size={12} />;
+      case 'price': return <Database size={12} />;
+      case 'badge': return <Box size={12} />;
+      case 'rating': return <Star size={12} />;
+      case 'button': return <MousePointer2 size={12} />;
+      case 'global': return <Settings size={12} />;
+      default: return <Layers size={12} />;
+    }
+  };
+
+  return (
+    <div className="w-[300px] bg-white border-r border-slate-100 flex flex-col z-30 shadow-xl shadow-slate-200/30 overflow-hidden">
+      <div className="p-4 flex items-center justify-between border-b border-slate-50">
         <div className="flex items-center gap-2">
-          <div className="w-5 h-5 bg-rose-500 rounded-md flex items-center justify-center">
-            <Sparkles className="text-white w-2.5 h-2.5" />
+          <div className="w-7 h-7 bg-rose-500 rounded-lg flex items-center justify-center">
+            <Layers className="text-white w-3.5 h-3.5" />
           </div>
-          <span className="text-[11px] font-bold text-slate-800">Portada</span>
-          <ChevronDown size={12} className="ml-auto text-slate-400" />
+          <span className="text-sm font-bold text-slate-800">Estructura</span>
         </div>
+        <button className="text-blue-500 hover:bg-blue-50 p-1.5 rounded-lg transition-colors">
+          <RotateCcw size={14} />
+        </button>
+      </div>
 
-        <div className="space-y-4">
-          <div className="flex items-center justify-between group cursor-pointer">
-            <div className="flex items-center gap-2">
-              <Type size={12} className="text-blue-500" />
-              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Editor de textos</span>
+      <div className="flex-1 overflow-y-auto custom-scrollbar">
+        {editorState.addedModules.length === 0 && (
+          <div className="p-8 text-center space-y-4">
+            <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mx-auto">
+              <Layout className="text-slate-200 w-6 h-6" />
             </div>
-            <ChevronDown size={12} className="text-slate-300 group-hover:text-slate-500 transition-colors" />
+            <p className="text-[11px] font-medium text-slate-400">No hay módulos añadidos aún.</p>
           </div>
+        )}
 
-          <div className="space-y-1.5">
-            <label className="text-[9px] font-bold text-slate-300 uppercase tracking-widest pl-1">Elemento a editar</label>
-            <div className="flex items-center justify-between p-2.5 border border-slate-100 rounded-xl text-[11px] font-bold text-slate-700 bg-white shadow-sm hover:border-slate-200 cursor-pointer transition-all">
-              Título
-              <ChevronDown size={12} className="text-slate-400" />
-            </div>
-          </div>
+        {editorState.addedModules.map(module => {
+          const isModuleExpanded = editorState.expandedModuleId === module.id;
+          
+          // Virtual element for global configuration
+          const globalElement: ModuleElement = {
+            id: module.id + '_global',
+            name: 'Configuración Global',
+            type: 'global',
+            groups: module.globalGroups
+          };
 
-          <div className="space-y-1.5">
-            <label className="text-[9px] font-bold text-slate-300 uppercase tracking-widest pl-1">Contenido del texto</label>
-            <div className="p-3.5 border border-slate-100 rounded-xl bg-slate-50/30 min-h-[70px] hover:bg-slate-50 transition-colors">
-              <p className="text-[11px] font-bold text-slate-800 leading-relaxed">Bienvenido al constructor web</p>
-              <p className="text-[8px] text-slate-300 mt-2 font-bold italic tracking-wide uppercase">* Usa asteriscos para resaltar: *texto*</p>
-            </div>
-          </div>
+          const allElements = [globalElement, ...module.elements];
 
-          <div className="grid grid-cols-2 gap-2.5">
-            <div className="space-y-1.5">
-              <label className="text-[9px] font-bold text-slate-300 uppercase tracking-widest pl-1">Tamaño</label>
-              <div className="flex items-center justify-between p-2 border border-slate-100 rounded-xl text-[10px] font-bold text-slate-700 bg-white hover:border-slate-200 cursor-pointer transition-all">
-                Título 1 (H1)
-                <ChevronDown size={10} className="text-slate-400" />
+          return (
+            <div key={module.id} className="p-3 border-b border-slate-50 last:border-0">
+              <div 
+                onClick={() => toggleModule(module.id)}
+                className={`flex items-center gap-2.5 p-2.5 rounded-xl border transition-all cursor-pointer group ${
+                  isModuleExpanded 
+                    ? 'bg-blue-50 border-blue-100' 
+                    : 'bg-slate-50/50 border-slate-100 hover:border-slate-200'
+                }`}
+              >
+                <GripVertical className={isModuleExpanded ? 'text-blue-300' : 'text-slate-300'} size={14} />
+                <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${
+                  isModuleExpanded ? 'bg-blue-600' : 'bg-white border border-slate-100'
+                }`}>
+                  <Layout className={isModuleExpanded ? 'text-white' : 'text-slate-400'} size={12} />
+                </div>
+                <span className={`text-[14px] font-bold flex-1 ${
+                  isModuleExpanded ? 'text-blue-700' : 'text-slate-700'
+                }`}>
+                  {module.name}
+                </span>
+                
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onRemoveModule(module.id);
+                  }}
+                  className="p-1.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                  title="Eliminar módulo"
+                >
+                  <Trash2 size={14} />
+                </button>
+
+                <ChevronDown size={14} className={`text-slate-300 transition-transform ${isModuleExpanded ? 'rotate-180 text-blue-500' : ''}`} />
               </div>
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-[9px] font-bold text-slate-300 uppercase tracking-widest pl-1">Peso</label>
-              <div className="flex items-center justify-between p-2 border border-slate-100 rounded-xl text-[10px] font-bold text-slate-700 bg-white hover:border-slate-200 cursor-pointer transition-all">
-                Black
-                <ChevronDown size={10} className="text-slate-400" />
-              </div>
-            </div>
-          </div>
 
-          <div className="flex items-center gap-1 p-1 bg-slate-50/50 rounded-xl border border-slate-100">
-            <div className="flex-1 flex justify-center p-1.5 text-slate-400 hover:text-blue-600 hover:bg-white rounded-lg cursor-pointer transition-all"><Layout size={12} /></div>
-            <div className="flex-1 flex justify-center p-1.5 text-slate-400 hover:text-blue-600 hover:bg-white rounded-lg cursor-pointer transition-all"><Layout size={12} className="rotate-90" /></div>
-            <div className="flex-1 flex justify-center p-1.5 text-slate-400 hover:text-blue-600 hover:bg-white rounded-lg cursor-pointer transition-all"><Layout size={12} className="rotate-180" /></div>
-            <div className="w-px h-3 bg-slate-200 mx-0.5"></div>
-            <div className="flex-1 flex justify-center p-1.5 text-slate-400 hover:text-blue-600 hover:bg-white rounded-lg cursor-pointer italic font-serif text-xs font-bold">I</div>
-            <div className="flex-1 flex justify-center p-1.5 text-slate-400 hover:text-blue-600 hover:bg-white rounded-lg cursor-pointer underline text-xs font-bold">U</div>
-            <div className="flex-1 flex justify-center p-1.5 text-slate-400 hover:text-blue-600 hover:bg-white rounded-lg cursor-pointer line-through text-xs font-bold">S</div>
-          </div>
-        </div>
+              {/* Elements List */}
+              <AnimatePresence>
+                {isModuleExpanded && (
+                  <motion.div 
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="mt-2 ml-4 border-l-2 border-slate-100 pl-3 space-y-1.5 overflow-hidden"
+                  >
+                    {allElements.map(element => {
+                      const isElementSelected = editorState.selectedElementId === element.id;
+                      
+                      return (
+                        <div key={element.id} className="space-y-1">
+                          <div 
+                            onClick={() => toggleElement(element.id)}
+                            className={`flex items-center gap-2.5 p-2 rounded-lg border transition-all cursor-pointer ${
+                              isElementSelected 
+                                ? 'bg-blue-50/50 border-blue-100' 
+                                : 'bg-transparent border-transparent hover:bg-slate-50'
+                            }`}
+                          >
+                            <div className={`w-6 h-6 rounded-md flex items-center justify-center ${
+                              isElementSelected ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-400'
+                            }`}>
+                              {getElementIcon(element.type)}
+                            </div>
+                            <span className={`text-[11px] font-medium flex-1 ${
+                              isElementSelected ? 'text-blue-700' : 'text-slate-500'
+                            }`}>
+                              {element.name}
+                            </span>
+                            <ChevronDown size={12} className={`text-slate-300 transition-transform ${isElementSelected ? 'rotate-180 text-blue-500' : ''}`} />
+                          </div>
+
+                          {/* Inline Configuration Groups */}
+                          <AnimatePresence>
+                            {isElementSelected && (
+                              <motion.div 
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: 'auto', opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                className="ml-2 space-y-1 overflow-hidden pb-2"
+                              >
+                                {(['contenido', 'estructura', 'estilo', 'tipografia', 'multimedia', 'interaccion'] as SettingGroupType[]).map(group => {
+                                  const isAvailable = element.groups.includes(group);
+                                  if (!isAvailable) return null;
+
+                                  const isGroupExpanded = editorState.expandedGroupsByElement[element.id] === group;
+
+                                  return (
+                                    <div key={group} className="border border-slate-100 rounded-lg bg-white overflow-hidden shadow-sm">
+                                      <button 
+                                        onClick={() => toggleGroup(element.id, group)}
+                                        className="w-full flex items-center justify-between p-2 hover:bg-slate-50 transition-colors"
+                                      >
+                                        <span className={`text-[12px] transition-all ${isGroupExpanded ? 'font-bold text-blue-600' : 'font-normal text-slate-500'}`}>
+                                          {GROUP_LABELS[group]}
+                                        </span>
+                                        <ChevronDown size={10} className={`text-slate-300 transition-transform ${isGroupExpanded ? 'rotate-180 text-blue-500' : ''}`} />
+                                      </button>
+                                      
+                                      <AnimatePresence>
+                                        {isGroupExpanded && (
+                                          <motion.div 
+                                            initial={{ height: 0, opacity: 0 }}
+                                            animate={{ height: 'auto', opacity: 1 }}
+                                            exit={{ height: 0, opacity: 0 }}
+                                            className="overflow-hidden"
+                                          >
+                                            <div className="p-3 pt-0 space-y-4 border-t border-slate-50 mt-1">
+                                              {/* DYNAMIC SETTINGS FOR EACH GROUP */}
+                                              {element.type === 'global' ? (
+                                                module.globalSettings?.[group]?.map(setting => (
+                                                  <SettingControl 
+                                                    key={setting.id} 
+                                                    setting={setting} 
+                                                    value={editorState.settingsValues[`${module.id}_global_${setting.id}`]}
+                                                    onChange={(val) => onSettingChange(`${module.id}_global`, setting.id, val)}
+                                                    projectId={projectId}
+                                                  />
+                                                ))
+                                              ) : (
+                                                element.settings?.[group]?.map(setting => (
+                                                  <SettingControl 
+                                                    key={setting.id} 
+                                                    setting={setting} 
+                                                    value={editorState.settingsValues[`${element.id}_${setting.id}`]}
+                                                    onChange={(val) => onSettingChange(element.id, setting.id, val)}
+                                                    projectId={projectId}
+                                                  />
+                                                ))
+                                              )}
+                                              
+                                              {/* Fallback if no settings defined for this group */}
+                                              {((element.type === 'global' && !module.globalSettings?.[group]?.length) || 
+                                                (element.type !== 'global' && !element.settings?.[group]?.length)) && (
+                                                <p className="text-[10px] text-slate-400 italic pt-2">No hay opciones disponibles para este grupo.</p>
+                                              )}
+                                            </div>
+                                          </motion.div>
+                                        )}
+                                      </AnimatePresence>
+                                    </div>
+                                  );
+                                })}
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                      );
+                    })}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          );
+        })}
       </div>
     </div>
-  </div>
-);
+  );
+};
 
-const TopBar = () => (
+const TopBar = ({ onSave, onPublish }: { onSave: () => void, onPublish: () => void }) => (
   <div className="h-[60px] bg-white border-b border-slate-100 flex items-center justify-between px-6 z-20">
     <div className="flex flex-col">
-      <h2 className="text-sm font-bold text-slate-800">Editor de Módulos</h2>
-      <p className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">Añade módulos para construir tu página</p>
+      <h2 className="text-base font-bold text-slate-800">Editor de Módulos</h2>
+      <p className="text-xs font-normal text-slate-300 uppercase tracking-wider">Añade módulos para construir tu página</p>
     </div>
 
     <div className="flex items-center gap-4">
@@ -404,20 +946,30 @@ const TopBar = () => (
       </div>
 
       <div className="flex items-center gap-2">
-        <button className="flex items-center gap-2 px-4 py-2 text-slate-600 font-bold text-xs hover:bg-slate-50 rounded-xl transition-all">
-          <Eye size={16} />
-          Vista Previa
-        </button>
-        <button className="flex items-center gap-2 px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-lg shadow-blue-100 transition-all">
+        <button 
+          onClick={onSave}
+          className="flex items-center gap-2 px-4 py-2 text-slate-600 font-bold text-xs hover:bg-slate-50 rounded-xl transition-all"
+        >
           <Save size={16} />
-          Guardar
+          Guardar Borrador
+        </button>
+        <button 
+          onClick={onPublish}
+          className="flex items-center gap-2 px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-lg shadow-blue-100 transition-all"
+        >
+          <Send size={16} />
+          Publicar
         </button>
       </div>
     </div>
   </div>
 );
 
-const Canvas = () => (
+const Canvas: React.FC<{ 
+  editorState: EditorState, 
+  onAddModule: (module: WebModule) => void,
+  products: Product[]
+}> = ({ editorState, onAddModule, products }) => (
   <div className="flex-1 bg-slate-50 p-12 overflow-y-auto flex flex-col items-center">
     {/* Preview Window */}
     <div className="w-full max-w-5xl bg-white shadow-2xl rounded-2xl overflow-hidden border border-slate-200/50 min-h-[800px] flex flex-col">
@@ -435,41 +987,56 @@ const Canvas = () => (
         </div>
       </div>
 
-      {/* Hero Section */}
-      <div className="flex-1 bg-[#0F172A] flex flex-col items-center justify-center text-center p-20 relative group">
-        {/* IA Badge */}
-        <div className="absolute top-8 right-8 flex items-center gap-2 bg-white/5 border border-white/10 px-3 py-1.5 rounded-full">
-          <Sparkles size={12} className="text-blue-400" />
-          <span className="text-[9px] font-bold text-blue-400 uppercase tracking-widest">Optimizado por IA</span>
-        </div>
+      {/* Dynamic Modules */}
+      {editorState.addedModules.map(module => {
+        if (module.type === 'products') {
+          return (
+            <ProductsModule 
+              key={module.id} 
+              moduleId={module.id}
+              settingsValues={editorState.settingsValues}
+              products={products}
+            />
+          );
+        }
+        if (module.type === 'hero') {
+          return (
+            <HeroModule 
+              key={module.id} 
+              moduleId={module.id}
+              settingsValues={editorState.settingsValues}
+            />
+          );
+        }
+        if (module.type === 'features') {
+          return (
+            <FeaturesModule 
+              key={module.id} 
+              moduleId={module.id}
+              settingsValues={editorState.settingsValues}
+            />
+          );
+        }
+        return null;
+      })}
 
-        {/* Edit Controls Overlay (Visible on Hover) */}
-        <div className="absolute top-4 right-4 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-          <button className="p-2 bg-white/10 hover:bg-white/20 rounded-lg text-white transition-colors"><Settings size={14} /></button>
-          <button className="p-2 bg-white/10 hover:bg-white/20 rounded-lg text-white transition-colors"><Trash2 size={14} /></button>
+      {/* Empty State if no modules */}
+      {editorState.addedModules.length === 0 && (
+        <div className="flex-1 flex flex-col items-center justify-center p-20 text-center border-t border-slate-50">
+          <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-6">
+            <Plus size={32} className="text-slate-200" />
+          </div>
+          <h3 className="text-xl font-bold text-slate-800 mb-2">Tu página está vacía</h3>
+          <p className="text-slate-400 max-w-xs">Selecciona un módulo en el panel de la izquierda para empezar a construir.</p>
         </div>
-
-        <h1 className="text-6xl font-black text-white mb-8 max-w-3xl leading-[1.1]">
-          Bienvenido al <br /> constructor web
-        </h1>
-        <p className="text-slate-400 text-lg max-w-2xl mb-12 leading-relaxed">
-          Empieza a construir tu página agregando módulos desde el constructor a la izquierda.
-        </p>
-
-        <div className="flex items-center gap-6">
-          <button className="bg-blue-600 hover:bg-blue-700 text-white px-10 py-4 rounded-xl font-bold text-sm shadow-xl shadow-blue-900/20 transition-all">
-            EMPEZAR AHORA
-          </button>
-          <button className="text-slate-400 hover:text-white font-bold text-sm flex items-center gap-2 transition-colors">
-            VER DEMO
-            <ChevronRight size={16} />
-          </button>
-        </div>
-      </div>
+      )}
 
       {/* Add Module Button */}
-      <div className="p-12 flex justify-center bg-white">
-        <button className="flex items-center gap-3 px-8 py-4 border-2 border-dashed border-slate-100 rounded-2xl text-slate-400 font-bold hover:border-blue-200 hover:text-blue-500 transition-all group">
+      <div className="p-12 flex justify-center bg-white border-t border-slate-50">
+        <button 
+          onClick={() => onAddModule(PRODUCTS_MODULE)}
+          className="flex items-center gap-3 px-8 py-4 border-2 border-dashed border-slate-100 rounded-2xl text-slate-400 font-bold hover:border-blue-200 hover:text-blue-500 transition-all group"
+        >
           <Plus size={20} className="group-hover:scale-110 transition-transform" />
           Añadir Módulo
         </button>
@@ -483,6 +1050,53 @@ const Canvas = () => (
       </div>
       <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Configuración Recibida</span>
     </div>
+  </div>
+);
+
+const DeleteConfirmationModal: React.FC<{ 
+  moduleName: string, 
+  onConfirm: () => void, 
+  onCancel: () => void 
+}> = ({ moduleName, onConfirm, onCancel }) => (
+  <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      onClick={onCancel}
+      className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+    />
+    <motion.div 
+      initial={{ scale: 0.9, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      exit={{ scale: 0.9, opacity: 0 }}
+      className="relative w-full max-w-sm bg-white rounded-3xl shadow-2xl overflow-hidden"
+    >
+      <div className="p-8 text-center">
+        <div className="w-16 h-16 bg-rose-50 rounded-2xl flex items-center justify-center mx-auto mb-6">
+          <Trash2 className="text-rose-500 w-8 h-8" />
+        </div>
+        <h3 className="text-xl font-bold text-slate-800 mb-2 font-sans">¿Eliminar módulo?</h3>
+        <p className="text-slate-500 text-sm leading-relaxed mb-8">
+          Estás a punto de eliminar el módulo <span className="font-bold text-slate-700">"{moduleName}"</span>. 
+          Esta acción no se puede deshacer.
+        </p>
+        <div className="flex gap-3">
+          <button 
+            onClick={onCancel}
+            className="flex-1 py-3 px-4 bg-slate-50 hover:bg-slate-100 text-slate-600 font-bold rounded-xl transition-all"
+          >
+            Cancelar
+          </button>
+          <button 
+            onClick={onConfirm}
+            className="flex-1 py-3 px-4 bg-rose-500 hover:bg-rose-600 text-white font-bold rounded-xl shadow-lg shadow-rose-200 transition-all"
+          >
+            Eliminar
+          </button>
+        </div>
+      </div>
+    </motion.div>
   </div>
 );
 
@@ -504,6 +1118,197 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   project
 }) => {
   const [activeTab, setActiveTab] = useState('constructor');
+  const [products, setProducts] = useState<Product[]>([]);
+  const [moduleToDelete, setModuleToDelete] = useState<WebModule | null>(null);
+  const [editorState, setEditorState] = useState<EditorState>({
+    addedModules: [],
+    expandedModuleId: null,
+    selectedElementId: null,
+    expandedGroupsByElement: {},
+    settingsValues: {}
+  });
+
+  React.useEffect(() => {
+    if (projectId) {
+      getProducts(1, 10, projectId).then(data => {
+        if (data && data.length > 0) {
+          setProducts(data);
+        }
+      });
+    }
+  }, [projectId]);
+
+  const addModule = (module: WebModule) => {
+    const moduleId = `${module.id}_${Date.now()}`;
+    
+    // Prefix element IDs to ensure uniqueness
+    const newElements = module.elements.map(el => ({
+      ...el,
+      id: `${moduleId}_${el.id}`
+    }));
+
+    const newModule = { 
+      ...module, 
+      id: moduleId,
+      elements: newElements
+    };
+
+    // Initialize default values for all settings in the module
+    const initialValues: Record<string, any> = {};
+    
+    // Global settings
+    if (module.globalSettings) {
+      Object.values(module.globalSettings).forEach(groupSettings => {
+        groupSettings.forEach(setting => {
+          initialValues[`${moduleId}_global_${setting.id}`] = setting.defaultValue;
+        });
+      });
+    }
+
+    // Element settings
+    newElements.forEach(element => {
+      if (element.settings) {
+        Object.values(element.settings).forEach(groupSettings => {
+          groupSettings.forEach(setting => {
+            // The element.id already contains the moduleId prefix
+            initialValues[`${element.id}_${setting.id}`] = setting.defaultValue;
+          });
+        });
+      }
+    });
+    
+    setEditorState(prev => ({
+      ...prev,
+      addedModules: [...prev.addedModules, newModule],
+      expandedModuleId: null,
+      selectedElementId: null,
+      settingsValues: {
+        ...prev.settingsValues,
+        ...initialValues
+      }
+    }));
+  };
+
+  const removeModule = (moduleId: string) => {
+    const module = editorState.addedModules.find(m => m.id === moduleId);
+    if (module) {
+      setModuleToDelete(module);
+    }
+  };
+
+  const confirmRemoveModule = () => {
+    if (!moduleToDelete) return;
+    
+    const moduleId = moduleToDelete.id;
+    setEditorState(prev => {
+      const newModules = prev.addedModules.filter(m => m.id !== moduleId);
+      
+      // Clean up settings for this module
+      const newSettingsValues = { ...prev.settingsValues };
+      Object.keys(newSettingsValues).forEach(key => {
+        if (key.startsWith(moduleId)) {
+          delete newSettingsValues[key];
+        }
+      });
+
+      return {
+        ...prev,
+        addedModules: newModules,
+        expandedModuleId: prev.expandedModuleId === moduleId ? null : prev.expandedModuleId,
+        selectedElementId: prev.selectedElementId?.startsWith(moduleId) ? null : prev.selectedElementId,
+        settingsValues: newSettingsValues
+      };
+    });
+    setModuleToDelete(null);
+  };
+
+  const handleSettingChange = (elementOrModuleId: string, settingId: string, value: any) => {
+    setEditorState(prev => ({
+      ...prev,
+      settingsValues: {
+        ...prev.settingsValues,
+        [`${elementOrModuleId}_${settingId}`]: value
+      }
+    }));
+  };
+
+  const handleSaveDraft = async () => {
+    if (!projectId) return;
+    
+    const siteData = {
+      projectId,
+      name: 'Mi Sitio Web',
+      contentDraft: editorState,
+      status: 'draft' as const,
+    };
+    
+    const result = await saveWebBuilderSiteDraft(siteData);
+    if (result) {
+      console.log('Borrador guardado con éxito');
+    }
+  };
+
+  const handlePublish = async () => {
+    if (!projectId) return;
+
+    // Helper to get setting value with fallback
+    const getSetting = (moduleId: string, settingId: string, defaultValue: any) => {
+      const key = `${moduleId}_global_${settingId}`;
+      return editorState.settingsValues[key] !== undefined ? editorState.settingsValues[key] : defaultValue;
+    };
+
+    // 1. Determine Global Theme
+    // We take the primary color from the first module's global settings or project default
+    const firstModuleId = editorState.addedModules[0]?.id;
+    const primaryColor = firstModuleId 
+      ? getSetting(firstModuleId, 'primary_color', project?.brandColors?.primary || '#2563EB')
+      : (project?.brandColors?.primary || '#2563EB');
+
+    const renderingContract: RenderingContract = {
+      theme: {
+        primaryColor,
+        fontFamily: project?.fontFamily || 'Inter',
+      },
+      sections: editorState.addedModules.map(module => {
+        // Map module settings to the rendering contract content structure
+        const content: any = {
+          title: getSetting(module.id, 'section_title', ''),
+          subtitle: getSetting(module.id, 'section_desc', ''),
+        };
+
+        // Specific mapping based on module type
+        if (module.type === 'products') {
+          // For products, the renderer usually fetches them by projectId, 
+          // but we can pass layout hints in metadata if the contract allows, 
+          // or just the basic title/subtitle.
+        }
+
+        return {
+          id: module.id,
+          type: module.type as any,
+          content
+        };
+      })
+    };
+
+    const publishData = {
+      projectId,
+      appId: 'web-builder' as const,
+      content: renderingContract,
+      metadata: {
+        title: project?.webConfig?.seoTitle || project?.name || 'Mi Sitio Web',
+        description: project?.webConfig?.seoDescription || 'Construido con Solutium Web Builder',
+        ogImage: project?.logoUrl || undefined,
+      }
+    };
+
+    const result = await publishWebBuilderSite(publishData);
+    if (result) {
+      console.log('Sitio publicado con éxito');
+      // In a real app, we would show a success modal with the URL:
+      // https://[subdomain].solutium.app
+    }
+  };
 
   return (
     <div className="h-screen w-screen flex overflow-hidden bg-white font-sans antialiased">
@@ -513,15 +1318,26 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         onBackToDashboard={onBackToDashboard} 
         logoUrl={logoUrl}
         project={project}
+        onAddModule={addModule}
       />
       
       <div className="flex-1 flex flex-col h-full overflow-hidden">
         {activeTab === 'constructor' && (
           <div className="flex flex-1 h-full overflow-hidden">
-            <StructurePanel />
+            <StructurePanel 
+              editorState={editorState} 
+              setEditorState={setEditorState} 
+              onSettingChange={handleSettingChange}
+              onRemoveModule={removeModule}
+              projectId={projectId}
+            />
             <div className="flex-1 flex flex-col h-full">
-              <TopBar />
-              <Canvas />
+              <TopBar onSave={handleSaveDraft} onPublish={handlePublish} />
+              <Canvas 
+                editorState={editorState} 
+                onAddModule={addModule} 
+                products={products}
+              />
             </div>
           </div>
         )}
@@ -550,6 +1366,17 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
           </div>
         )}
       </div>
+
+      {/* Modal de Confirmación de Eliminación */}
+      <AnimatePresence>
+        {moduleToDelete && (
+          <DeleteConfirmationModal 
+            moduleName={moduleToDelete.name}
+            onConfirm={confirmRemoveModule}
+            onCancel={() => setModuleToDelete(null)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 };

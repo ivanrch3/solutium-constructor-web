@@ -46,18 +46,17 @@ export const syncAsset = async (
 
     const assetData: Asset = {
       id: entity.id,
-      project_id: entity.projectId,
-      origin_app: APP_NAME,
+      projectId: entity.projectId,
+      originApp: 'web-builder',
       name: assetName,
       type: type,
       url: url,
       size: fileSize,
-      status: entity.status,
       metadata: {
         assetName: assetName,
+        ...entity.metadata
       },
-      data: { ...entity },
-      updated_at: new Date().toISOString()
+      updatedAt: new Date().toISOString()
     };
 
     // 3. Registrar en Supabase
@@ -69,8 +68,8 @@ export const syncAsset = async (
     if (error) throw error;
 
     return url;
-  } catch (error) {
-    console.error('Error sincronizando activo:', error);
+  } catch (error: any) {
+    console.error('Error detallado en syncAsset:', error);
     
     // 4. Resiliencia y Fallback: Guardar en localStorage
     const pendingAssets = JSON.parse(localStorage.getItem('pending_assets') || '[]');
@@ -79,12 +78,14 @@ export const syncAsset = async (
       type,
       extension,
       timestamp: new Date().toISOString(),
-      error: error instanceof Error ? error.message : String(error)
+      error: error instanceof Error ? error.message : String(error),
+      fullError: error
     });
     localStorage.setItem('pending_assets', JSON.stringify(pendingAssets));
     
     // Informar al usuario (el componente que llama debe manejar este error)
-    throw new Error('Error al sincronizar el activo. Los datos se han guardado localmente como respaldo.');
+    const displayError = error instanceof Error ? error.message : String(error);
+    throw new Error(`Error al sincronizar el activo: ${displayError}. Los datos se han guardado localmente como respaldo.`);
   }
 };
 

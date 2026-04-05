@@ -101,7 +101,7 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, onCancel, on
               >
                 {/* Nombre de la página */}
                 <div className="space-y-2">
-                  <label className="block text-sm font-bold text-[#1E293B]">Nombre de la página</label>
+                  <label className="block text-base font-bold text-[#1E293B]">Nombre de la página</label>
                   <input
                     type="text"
                     placeholder="Ej: Inicio, Servicios, Contacto..."
@@ -113,7 +113,7 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, onCancel, on
 
                 {/* Sector o Industria */}
                 <div className="space-y-2">
-                  <label className="block text-sm font-bold text-[#1E293B]">Sector o Industria</label>
+                  <label className="block text-base font-bold text-[#1E293B]">Sector o Industria</label>
                   <div className="relative">
                     <select
                       value={formData.industry}
@@ -131,7 +131,7 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, onCancel, on
 
                 {/* Descripción breve */}
                 <div className="space-y-2">
-                  <label className="block text-sm font-bold text-[#1E293B]">Descripción breve (mínimo 10 palabras)</label>
+                  <label className="block text-base font-bold text-[#1E293B]">Descripción breve (mínimo 10 palabras)</label>
                   <textarea
                     placeholder="Describe qué hace tu negocio y qué ofreces..."
                     value={formData.description}
@@ -140,7 +140,7 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, onCancel, on
                     className="w-full px-4 py-3 rounded-xl border border-slate-100 focus:border-blue-500 focus:ring-0 outline-none transition-all text-sm text-slate-700 placeholder:text-slate-300 resize-none"
                   />
                   <div className="flex justify-between items-center px-1">
-                    <span className={`text-[10px] font-bold uppercase tracking-wider ${isDescriptionValid ? 'text-green-500' : 'text-slate-400'}`}>
+                    <span className={`text-xs font-bold uppercase tracking-wider ${isDescriptionValid ? 'text-green-500' : 'text-slate-400'}`}>
                       Palabras: {wordCount}/10
                     </span>
                   </div>
@@ -156,13 +156,13 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, onCancel, on
               >
                 {/* Objetivo principal */}
                 <div className="space-y-4">
-                  <label className="block text-sm font-bold text-[#1E293B]">Objetivo principal</label>
+                  <label className="block text-base font-bold text-[#1E293B]">Objetivo principal</label>
                   <div className="grid grid-cols-2 gap-2">
                     {GOALS.map((goal) => (
                       <button
                         key={goal}
                         onClick={() => setFormData({ ...formData, goal })}
-                        className={`py-3 px-4 rounded-xl border text-xs font-bold transition-all text-center ${
+                        className={`py-3 px-4 rounded-xl border text-sm font-bold transition-all text-center ${
                           formData.goal === goal 
                             ? 'border-blue-500 bg-blue-50 text-blue-600' 
                             : 'border-slate-100 text-slate-500 hover:border-slate-200'
@@ -176,13 +176,13 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, onCancel, on
 
                 {/* Estilo visual */}
                 <div className="space-y-4">
-                  <label className="block text-sm font-bold text-[#1E293B]">Estilo visual</label>
+                  <label className="block text-base font-bold text-[#1E293B]">Estilo visual</label>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                     {STYLES.map((style) => (
                       <button
                         key={style}
                         onClick={() => setFormData({ ...formData, style })}
-                        className={`py-2.5 px-3 rounded-lg border text-[11px] font-bold transition-all text-center ${
+                        className={`py-2.5 px-3 rounded-lg border text-xs font-bold transition-all text-center ${
                           formData.style === style 
                             ? 'border-blue-500 bg-blue-50 text-blue-600' 
                             : 'border-slate-100 text-slate-500 hover:border-slate-200'
@@ -201,7 +201,7 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, onCancel, on
           <div className="flex items-center justify-between mt-10">
             <button
               onClick={handleBack}
-              className="px-6 py-3 rounded-xl font-bold text-sm text-slate-400 hover:text-slate-600 transition-all"
+              className="px-6 py-3 rounded-xl font-bold text-base text-slate-400 hover:text-slate-600 transition-all"
             >
               {step === 1 ? 'Cancelar' : 'Atrás'}
             </button>
@@ -209,14 +209,14 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, onCancel, on
             <div className="flex items-center gap-3">
               <button
                 onClick={onSkip}
-                className="px-6 py-3 rounded-xl font-bold text-sm text-slate-300 hover:text-slate-500 transition-all"
+                className="px-6 py-3 rounded-xl font-bold text-base text-slate-300 hover:text-slate-500 transition-all"
               >
                 Omitir
               </button>
               <button
                 disabled={step === 1 ? !isStep1Valid : !isStep2Valid}
                 onClick={handleNext}
-                className={`px-8 py-3 rounded-xl font-bold text-sm transition-all shadow-lg ${
+                className={`px-8 py-3 rounded-xl font-bold text-base transition-all shadow-lg ${
                   (step === 1 ? isStep1Valid : isStep2Valid)
                     ? 'bg-[#3B82F6] text-white shadow-blue-100 hover:bg-blue-600' 
                     : 'bg-blue-200 text-white cursor-not-allowed shadow-none'

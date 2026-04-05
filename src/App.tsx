@@ -235,6 +235,12 @@ const AppContent: React.FC = () => {
                 'placeholder-key',
                 'placeholder-token'
               );
+              initDOClient(
+                'https://nyc3.digitaloceanspaces.com',
+                'mock-key',
+                'mock-secret',
+                'mock-bucket'
+              );
               setProjectId('dev-project-id');
               setProfile({
                 id: 'dev-user-id',

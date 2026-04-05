@@ -50,7 +50,7 @@ export const MethodSelection: React.FC<MethodSelectionProps> = ({ onSelect, onBa
 
         {/* Usar Plantilla (Disabled) */}
         <div className="bg-white rounded-3xl p-8 text-left flex flex-col h-[400px] border border-slate-100 opacity-60 relative cursor-not-allowed">
-          <div className="absolute top-6 right-6 bg-slate-100 text-slate-500 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">
+          <div className="absolute top-6 right-6 bg-slate-100 text-slate-500 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
             Próximamente
           </div>
           <div className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center mb-6">

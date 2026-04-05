@@ -61,7 +61,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ profile, project, urlLogo, act
           style={activeTab === 'home' ? activeButtonStyle : {}}
         >
           <Home size={18} />
-          <span className="font-medium">Inicio</span>
+          <span className="text-base font-medium">Inicio</span>
         </button>
         
         <button
@@ -72,7 +72,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ profile, project, urlLogo, act
           style={activeTab === 'settings' ? activeButtonStyle : {}}
         >
           <Settings size={18} />
-          <span className="font-medium">Ajustes</span>
+          <span className="text-base font-medium">Ajustes</span>
         </button>
 
         {isSuperAdmin && (
@@ -84,7 +84,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ profile, project, urlLogo, act
             style={activeTab === 'datos' ? activeButtonStyle : {}}
           >
             <Database size={18} />
-            <span className="font-medium">Datos</span>
+            <span className="text-base font-medium">Datos</span>
           </button>
         )}
       </nav>
@@ -106,8 +106,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ profile, project, urlLogo, act
             )}
           </div>
           <div className="flex-1 text-left truncate">
-            <p className="text-sm font-bold truncate text-inherit">{project?.name || 'Proyecto'}</p>
-            <p className="text-[10px] font-medium opacity-60 truncate">Proyecto Activo</p>
+            <p className="text-base font-bold truncate text-inherit">{project?.name || 'Proyecto'}</p>
+            <p className="text-xs font-medium opacity-60 truncate">Proyecto Activo</p>
           </div>
         </div>
       </div>

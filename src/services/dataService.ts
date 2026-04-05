@@ -1,6 +1,6 @@
 import { getSupabase } from './supabaseClient';
-import { Profile, Project, Customer, Product, Asset } from '../types/schema';
-import { profileSchema, projectSchema, customerSchema, productSchema } from '../types/zodSchemas';
+import { Profile, Project, Customer, Product, Asset, WebBuilderSite, PublishedSite, RenderingContract } from '../types/schema';
+import { profileSchema, projectSchema, customerSchema, productSchema, webBuilderSiteSchema, publishedSiteSchema, assetSchema } from '../types/zodSchemas';
 import { z } from 'zod';
 
 // Helper to handle validation and logging
@@ -305,12 +305,17 @@ export const getProducts = async (page: number, pageSize: number, projectId: str
       id: item.id,
       name: item.name,
       description: item.description,
-      unitCost: item.unit_cost,
-      type: item.type,
+      price: item.price,
+      priceReference: item.price_reference,
+      category: item.category,
       sku: item.sku,
       status: item.status,
       imageUrl: item.image_url,
-      photoUrl: item.photo_url,
+      image2Url: item.image2_url,
+      stock: item.stock,
+      ratingAverage: item.rating_average,
+      reviewCount: item.review_count,
+      badgeText: item.badge_text,
       businessId: item.business_id,
       projectId: item.project_id,
       schemaVersion: item.schema_version,
@@ -352,21 +357,147 @@ export const getAssets = async (projectId: string, type?: string): Promise<Asset
     if (error) throw error;
     if (!data) return [];
 
-    return data.map((item: any) => ({
+    const mappedData = data.map((item: any) => ({
       id: item.id,
-      project_id: item.project_id,
-      origin_app: item.origin_app,
+      projectId: item.project_id,
       name: item.name,
-      type: item.type,
       url: item.url,
-      status: item.status,
+      type: item.type,
+      originApp: item.origin_app,
       metadata: item.metadata,
-      data: item.data,
       size: item.size,
-      updated_at: item.updated_at,
+      updatedAt: item.updated_at,
     }));
+
+    return mappedData
+      .map(item => validateData(assetSchema, item, 'getAssets'))
+      .filter((item): item is Asset => item !== null);
   } catch (err) {
     console.error('Error in getAssets:', err);
     return [];
+  }
+};
+
+export const saveWebBuilderSiteDraft = async (site: Partial<WebBuilderSite>): Promise<WebBuilderSite | null> => {
+  try {
+    const supabase = getSupabase();
+    if (!supabase) return null;
+
+    const dbData: any = {
+      project_id: site.projectId,
+      name: site.name,
+      content_draft: site.contentDraft,
+      status: site.status || 'draft',
+      subdomain: site.subdomain,
+    };
+
+    if (site.id) dbData.id = site.id;
+
+    const { data, error } = await supabase
+      .from('web_builder_sites')
+      .upsert(dbData)
+      .select()
+      .single();
+
+    if (error) throw error;
+    
+    const mapped = {
+      id: data.id,
+      projectId: data.project_id,
+      name: data.name,
+      contentDraft: data.content_draft,
+      status: data.status,
+      subdomain: data.subdomain,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
+    };
+
+    return validateData(webBuilderSiteSchema, mapped, 'saveWebBuilderSiteDraft');
+  } catch (err) {
+    console.error('Error in saveWebBuilderSiteDraft:', err);
+    return null;
+  }
+};
+
+export const publishWebBuilderSite = async (site: Partial<PublishedSite>): Promise<PublishedSite | null> => {
+  try {
+    const supabase = getSupabase();
+    if (!supabase) return null;
+
+    const dbData: any = {
+      project_id: site.projectId,
+      app_id: 'web-builder',
+      content: site.content,
+      metadata: site.metadata,
+      subdomain_id: site.subdomainId,
+    };
+
+    if (site.id) dbData.id = site.id;
+
+    const { data, error } = await supabase
+      .from('published_sites')
+      .upsert(dbData, { onConflict: 'project_id, app_id' })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    const mapped = {
+      id: data.id,
+      projectId: data.project_id,
+      appId: data.app_id,
+      content: data.content,
+      metadata: data.metadata,
+      subdomainId: data.subdomain_id,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
+    };
+
+    return validateData(publishedSiteSchema, mapped, 'publishWebBuilderSite');
+  } catch (err) {
+    console.error('Error in publishWebBuilderSite:', err);
+    return null;
+  }
+};
+
+export const registerAsset = async (asset: Partial<Asset>): Promise<Asset | null> => {
+  try {
+    const supabase = getSupabase();
+    if (!supabase) return null;
+
+    const dbData = {
+      project_id: asset.projectId,
+      name: asset.name,
+      url: asset.url,
+      type: asset.type,
+      origin_app: 'web-builder',
+      metadata: asset.metadata,
+      size: asset.size,
+    };
+
+    const { data, error } = await supabase
+      .from('assets')
+      .insert(dbData)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    const mapped = {
+      id: data.id,
+      projectId: data.project_id,
+      name: data.name,
+      url: data.url,
+      type: data.type,
+      originApp: data.origin_app,
+      metadata: data.metadata,
+      size: data.size,
+      updatedAt: data.updated_at,
+    };
+
+    return validateData(assetSchema, mapped, 'registerAsset');
+  } catch (err) {
+    console.error('Error in registerAsset:', err);
+    return null;
   }
 };

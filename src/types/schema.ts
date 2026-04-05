@@ -127,12 +127,17 @@ export interface Product {
   id: string;
   name: string;
   description?: string;
-  unitCost?: number;
-  type?: string;
+  price?: number;
+  priceReference?: number;
+  category?: string;
   sku?: string;
   status?: string;
   imageUrl?: string;
-  photoUrl?: string;
+  image2Url?: string;
+  stock?: number;
+  ratingAverage?: number;
+  reviewCount?: number;
+  badgeText?: string;
   businessId?: string;
   projectId?: string;
   schemaVersion?: string;
@@ -141,16 +146,63 @@ export interface Product {
   updatedAt?: string;
 }
 
+export interface WebBuilderSite {
+  id: string;
+  projectId: string;
+  name: string;
+  contentDraft: any; // EditorState or internal structure
+  status: 'draft' | 'published';
+  subdomain?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface RenderingContract {
+  theme: {
+    primaryColor: string;
+    fontFamily: string;
+  };
+  sections: Array<{
+    id: string;
+    type: 'hero' | 'features' | 'pricing' | 'contact' | 'footer' | 'products';
+    content: {
+      title?: string;
+      subtitle?: string;
+      imageUrl?: string;
+      buttonText?: string;
+      items?: Array<{ title: string; description: string; icon?: string }>;
+      email?: string;
+      phone?: string;
+      address?: string;
+      plans?: Array<{ name: string; price: string; features: string[]; featured: boolean }>;
+    };
+  }>;
+}
+
+export interface PublishedSite {
+  id: string;
+  projectId: string;
+  appId: 'web-builder';
+  content: RenderingContract;
+  metadata: {
+    title?: string;
+    description?: string;
+    favicon?: string;
+    ogImage?: string;
+  };
+  subdomainId?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface Asset {
   id: string;
-  project_id: string;
-  origin_app: string;
+  projectId: string;
   name: string;
-  type: string;
   url: string;
-  status?: string;
+  type: string;
+  originApp: 'web-builder';
   metadata?: any;
-  data?: any;
   size?: number;
-  updated_at?: string;
+  updatedAt?: string;
 }

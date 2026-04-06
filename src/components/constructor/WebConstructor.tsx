@@ -1528,7 +1528,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         metadata: {
           siteId: siteId,
           siteName: siteName || 'Borrador sin nombre',
-          action: 'save' as const,
+          action: 'saveDraft' as const,
           isPublish: false,
           timestamp: Date.now()
         }
@@ -1608,7 +1608,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         metadata: {
           siteId: siteId,
           siteName: siteName,
-          action: 'publish' as const,
+          action: 'publishSite' as const,
           isPublish: true,
           timestamp: Date.now()
         }

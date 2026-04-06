@@ -8,10 +8,14 @@ Usted debe seguir estrictamente el **PROTOCOLO ESTÁNDAR PARA LA CREACIÓN DE M�
 3.  **Consistencia:** Garantice que la ubicación de las características sea idéntica en todos los módulos.
 4.  **Investigación Previa:** Antes de implementar cualquier módulo, realice un benchmarking de 3-5 proveedores líderes.
 5.  **Tematización:** Use siempre variables de tema para asegurar que los módulos hereden correctamente los estilos de la aplicación madre.
-6.  **Protocolo de Guardado y Publicación Multi-Sitio (SIP v4.0):**
-    - **appId:** `11111111-1111-1111-1111-111111111111`.
-    - **Contrato `saveData`:** El payload debe incluir `data` (contenido) y `metadata` (`siteId`, `siteName`, `action`, `isPublish`, `timestamp`).
-    - **Flujo de Usuario:** Antes de publicar (`action: 'publish'`), es OBLIGATORIO solicitar al usuario un `siteName` (ej: "Página de Inicio").
-    - **Diferenciación:** `action: 'save'` para borradores internos y `action: 'publish'` para la versión en vivo accesible vía dominios personalizados.
+6.  ## Protocolo de Comunicación SIP v4.0 (Guardado y Publicación Multi-Sitio):
+- **appId:** `11111111-1111-1111-1111-111111111111`.
+- **Identificación de Páginas:** Cada página DEBE tener un `siteId` (UUID) y un `siteName` (Nombre amigable). Estos campos deben enviarse en el objeto `metadata`.
+- **Acciones de Persistencia:**
+    - **GUARDAR BORRADOR:** Usa la acción `saveDraft`. Esto guarda el contenido en `web_builder_sites` con `is_publish = FALSE`.
+    - **PUBLICAR:** Usa la acción `publishSite`. Esto copia el contenido a `published_sites` con `is_publish = TRUE`. Solo estos son visibles en dominios personalizados.
+- **Estructura del Contenido (content):** El objeto `content` debe seguir el contrato: `{ "theme": { ... }, "sections": [ ... ] }`.
+- **Gestión de Activos:** Al subir archivos, el campo `origin_app` debe ser obligatoriamente `'web-builder'`.
+- **Flujo de Usuario:** Antes de publicar por primera vez, solicita al usuario un `siteName`. Informa que la página podrá ser vinculada a un dominio desde el panel de "Dominios" en la App Madre.
 
 Consulte `MODULE_PROTOCOL.md` al inicio de cada nueva implementación de módulo.

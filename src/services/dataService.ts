@@ -386,6 +386,9 @@ export const saveWebBuilderSiteDraft = async (site: Partial<WebBuilderSite>): Pr
     const dbData: any = {
       project_id: site.projectId,
       user_id: site.userId,
+      site_id: site.siteId,
+      site_name: site.siteName,
+      is_publish: site.isPublish || false,
       name: site.name,
       content_draft: site.contentDraft,
       status: site.status || 'draft',
@@ -428,6 +431,9 @@ export const publishWebBuilderSite = async (site: Partial<PublishedSite>): Promi
     const dbData: any = {
       project_id: site.projectId,
       app_id: '11111111-1111-1111-1111-111111111111',
+      site_id: site.siteId,
+      site_name: site.siteName,
+      is_publish: site.isPublish !== undefined ? site.isPublish : true,
       content: site.content,
       metadata: site.metadata,
       subdomain_id: site.subdomainId,

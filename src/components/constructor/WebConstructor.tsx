@@ -1537,6 +1537,9 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       const siteData = {
         projectId,
         userId: currentUserId || undefined,
+        siteId: payload.metadata.siteId,
+        siteName: payload.metadata.siteName,
+        isPublish: false,
         name: payload.metadata.siteName,
         contentDraft: payload.data,
         status: 'draft' as const,
@@ -1613,6 +1616,9 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
 
       const result = await publishWebBuilderSite({
         projectId,
+        siteId: payload.metadata.siteId,
+        siteName: payload.metadata.siteName,
+        isPublish: true,
         content: payload.data,
         metadata: payload.metadata
       });

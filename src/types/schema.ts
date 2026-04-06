@@ -150,8 +150,11 @@ export interface WebBuilderSite {
   id: string;
   projectId: string;
   userId?: string;
+  siteId?: string;
+  siteName?: string;
+  isPublish?: boolean;
   name: string;
-  contentDraft: any; // EditorState or internal structure
+  contentDraft: any; 
   status: 'draft' | 'published';
   subdomain?: string;
   createdAt?: string;
@@ -175,6 +178,9 @@ export interface PublishedSite {
   id: string;
   projectId: string;
   appId: string;
+  siteId?: string;
+  siteName?: string;
+  isPublish?: boolean;
   content: RenderingContract;
   metadata: any;
   subdomainId?: string;

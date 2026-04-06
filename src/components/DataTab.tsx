@@ -103,7 +103,7 @@ export const DataTab: React.FC<DataTabProps> = ({ projectId, currentUserId }) =>
     <div className="p-8 h-full flex flex-col">
       <h2 className="text-2xl font-bold mb-6 text-text">Gestión de Datos</h2>
       
-      <div className="flex space-x-4 mb-6 border-b border-gray-200">
+      <div className="flex space-x-4 mb-6 border-b border-border/30">
         {(['profiles', 'projects', 'customers', 'products', 'test'] as SubTab[]).map((tab) => (
           <button
             key={tab}
@@ -111,7 +111,7 @@ export const DataTab: React.FC<DataTabProps> = ({ projectId, currentUserId }) =>
             className={`pb-3 px-2 capitalize text-base font-medium transition-colors ${
               activeSubTab === tab 
                 ? 'border-b-2 border-primary text-primary' 
-                : 'text-gray-500 hover:text-text'
+                : 'text-text/40 hover:text-text'
             }`}
           >
             {tab === 'test' ? 'Prueba de Sincronización' : tab}
@@ -119,12 +119,12 @@ export const DataTab: React.FC<DataTabProps> = ({ projectId, currentUserId }) =>
         ))}
       </div>
       
-      <div className="flex-1 overflow-auto bg-surface rounded-lg shadow-sm border border-gray-100 p-4">
+      <div className="flex-1 overflow-auto bg-surface rounded-lg shadow-sm border border-border/30 p-4">
         {activeSubTab === 'test' ? (
           <div className="flex flex-col items-center justify-center h-full space-y-6 p-8 text-center">
             <div className="max-w-md">
-              <h3 className="text-lg font-bold mb-2">Verificación de Activos</h3>
-              <p className="text-gray-500 mb-6">
+              <h3 className="text-lg font-bold mb-2 text-text">Verificación de Activos</h3>
+              <p className="text-text/40 mb-6">
                 Esta prueba verificará la conexión con Digital Ocean Spaces y el registro en la tabla 'assets' de Supabase siguiendo el estándar de Solutium.
               </p>
               
@@ -149,27 +149,27 @@ export const DataTab: React.FC<DataTabProps> = ({ projectId, currentUserId }) =>
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
           </div>
         ) : data.length === 0 ? (
-          <div className="flex justify-center items-center h-full text-gray-500">
+          <div className="flex justify-center items-center h-full text-text/40">
             No hay datos disponibles.
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 table-fixed">
-              <thead className="bg-gray-50">
+            <table className="min-w-full divide-y divide-border/30 table-fixed">
+              <thead className="bg-secondary">
                 <tr>
                   {Object.keys(data[0]).map((key) => (
                     <th 
                       key={key}
-                      className="w-48 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200"
+                      className="w-48 px-4 py-3 text-left text-xs font-medium text-text/40 uppercase tracking-wider border-b border-border/30"
                     >
                       {key}
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="bg-surface divide-y divide-gray-200">
+              <tbody className="bg-surface divide-y divide-border/30">
                 {data.map((row, i) => (
-                  <tr key={i} className="hover:bg-gray-50 transition-colors">
+                  <tr key={i} className="hover:bg-secondary transition-colors">
                     {Object.keys(data[0]).map((key) => {
                       const val = row[key];
                       let displayVal = '';
@@ -182,7 +182,7 @@ export const DataTab: React.FC<DataTabProps> = ({ projectId, currentUserId }) =>
                       return (
                         <td 
                           key={key} 
-                          className="px-4 py-3 text-sm text-text border-b border-gray-100 truncate max-w-xs"
+                          className="px-4 py-3 text-sm text-text border-b border-border/10 truncate max-w-xs"
                           title={displayVal}
                         >
                           {displayVal}
@@ -205,7 +205,7 @@ export const DataTab: React.FC<DataTabProps> = ({ projectId, currentUserId }) =>
         >
           Anterior
         </button>
-        <span className="text-sm text-gray-500">Página {page + 1}</span>
+        <span className="text-sm text-text/40">Página {page + 1}</span>
         <button 
           onClick={() => setPage(p => p + 1)}
           disabled={data.length < pageSize || loading}

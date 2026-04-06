@@ -250,7 +250,7 @@ const AppContent: React.FC = () => {
               });
               setIsHandshakeComplete(true);
             }}
-            className="px-6 py-2 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-xl text-sm font-medium transition-all border border-slate-200 shadow-sm"
+            className="px-6 py-2 bg-secondary hover:bg-secondary/80 text-text/40 rounded-xl text-sm font-medium transition-all border border-border shadow-sm"
           >
             Saltar Handshake (Modo Dev)
           </button>
@@ -300,10 +300,10 @@ const AppContent: React.FC = () => {
       case 'generator':
         return (
           <div className="p-8 flex flex-col items-center justify-center min-h-screen">
-            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-500 mb-6"></div>
+            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary mb-6"></div>
             <h2 className="text-3xl font-bold">Generando tu página con IA...</h2>
             <p className="text-text/60 mt-2">Estamos creando la estructura perfecta para {formData?.name}</p>
-            <button onClick={() => setCurrentView('constructor')} className="mt-8 text-blue-500 font-bold">Saltar a Constructor (Simulación)</button>
+            <button onClick={() => setCurrentView('constructor')} className="mt-8 text-primary font-bold">Saltar a Constructor (Simulación)</button>
           </div>
         );
       case 'constructor':

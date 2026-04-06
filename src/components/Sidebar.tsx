@@ -56,7 +56,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ profile, project, urlLogo, act
         <button
           onClick={() => onTabChange('home')}
           className={`w-full flex items-center space-x-3 px-4 py-2.5 rounded-lg transition-all duration-200 ${
-            activeTab === 'home' ? '' : 'hover:bg-black/5 dark:hover:bg-white/5'
+            activeTab === 'home' ? '' : 'hover:bg-sidebar-foreground/5'
           }`}
           style={activeTab === 'home' ? activeButtonStyle : {}}
         >
@@ -67,7 +67,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ profile, project, urlLogo, act
         <button
           onClick={() => onTabChange('settings')}
           className={`w-full flex items-center space-x-3 px-4 py-2.5 rounded-lg transition-all duration-200 ${
-            activeTab === 'settings' ? '' : 'hover:bg-black/5 dark:hover:bg-white/5'
+            activeTab === 'settings' ? '' : 'hover:bg-sidebar-foreground/5'
           }`}
           style={activeTab === 'settings' ? activeButtonStyle : {}}
         >
@@ -79,7 +79,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ profile, project, urlLogo, act
           <button
             onClick={() => onTabChange('datos')}
             className={`w-full flex items-center space-x-3 px-4 py-2.5 rounded-lg transition-all duration-200 ${
-              activeTab === 'datos' ? '' : 'hover:bg-black/5 dark:hover:bg-white/5'
+              activeTab === 'datos' ? '' : 'hover:bg-sidebar-foreground/5'
             }`}
             style={activeTab === 'datos' ? activeButtonStyle : {}}
           >
@@ -89,9 +89,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ profile, project, urlLogo, act
         )}
       </nav>
 
-      <div className="p-4 border-t" style={{ borderColor: 'var(--solutium-sidebar-border)' }}>
+      <div className="p-4 border-t border-sidebar-border">
         <div className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200">
-          <div className="w-10 h-10 rounded-xl bg-gray-100 flex-shrink-0 overflow-hidden border border-gray-200">
+          <div className="w-10 h-10 rounded-xl bg-sidebar-foreground/10 flex-shrink-0 overflow-hidden border border-sidebar-border">
             {project?.projectIconUrl ? (
               <img 
                 src={project.projectIconUrl} 

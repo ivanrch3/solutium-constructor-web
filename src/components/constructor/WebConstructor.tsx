@@ -41,6 +41,7 @@ import { FeaturesModule } from './modules/FeaturesModule';
 import { saveWebBuilderSiteDraft, publishWebBuilderSite, getProducts } from '../../services/dataService';
 import { syncAsset } from '../../services/assetService';
 import { Product } from '../../types/schema';
+import { MOCK_PRODUCTS } from '../../constants/mockData';
 
 // --- CONSTANTS ---
 
@@ -53,7 +54,7 @@ const PRODUCTS_MODULE: WebModule = {
     contenido: [
       { id: 'section_title', label: 'Título de la Sección', type: 'text', defaultValue: 'Nuestros Productos' },
       { id: 'section_desc', label: 'Descripción', type: 'text', defaultValue: 'Descubre nuestra selección exclusiva de productos.' },
-      { id: 'select_products', label: 'Selección de Productos', type: 'button', defaultValue: 'Seleccionar' }
+      { id: 'select_products', label: 'Selección de Productos', type: 'product_selection', defaultValue: [] }
     ],
     estructura: [
       { id: 'columns', label: 'Columnas', type: 'range', defaultValue: 4, min: 1, max: 6 },
@@ -262,11 +263,11 @@ const SidebarItem: React.FC<SidebarItemProps> = ({ icon, label, active, onClick 
     onClick={onClick}
     className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
       active 
-        ? 'text-white font-bold' 
-        : 'text-white/60 hover:text-white hover:bg-white/5 font-medium'
+        ? 'text-sidebar-foreground font-bold' 
+        : 'text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-foreground/5 font-medium'
     }`}
   >
-    <div className={active ? 'text-white' : 'text-white/60'}>{icon}</div>
+    <div className={active ? 'text-sidebar-foreground' : 'text-sidebar-foreground/60'}>{icon}</div>
     <span className="text-base">{label}</span>
   </button>
 );
@@ -298,7 +299,7 @@ const MainSidebar = ({
   };
 
   return (
-    <div className="w-[280px] bg-[#004D56] flex flex-col z-40 h-full border-r border-white/5">
+    <div className="w-64 bg-sidebar-bg flex flex-col z-40 h-full border-r border-sidebar-border">
       {/* Logo Section */}
       <div className="p-6">
         <div className="flex items-center justify-center">
@@ -306,7 +307,7 @@ const MainSidebar = ({
             {logoUrl ? (
               <img src={logoUrl} alt="Logo" className="h-full w-auto object-contain" referrerPolicy="no-referrer" />
             ) : (
-              <FileText className="text-white/20 w-10 h-10" />
+              <FileText className="text-sidebar-foreground/20 w-10 h-10" />
             )}
           </div>
         </div>
@@ -319,7 +320,7 @@ const MainSidebar = ({
           <button 
             onClick={() => toggleSection('diseno')}
             className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all ${
-              expandedSection === 'diseno' ? 'text-white font-bold' : 'text-white/60 hover:text-white'
+              expandedSection === 'diseno' ? 'text-sidebar-foreground font-bold' : 'text-sidebar-foreground/60 hover:text-sidebar-foreground'
             }`}
           >
             <div className="flex items-center gap-3">
@@ -330,7 +331,7 @@ const MainSidebar = ({
           </button>
           {expandedSection === 'diseno' && (
             <div className="pl-12 py-2 space-y-2">
-              <p className="text-xs text-white/40 font-normal uppercase tracking-widest">Opciones de diseño</p>
+              <p className="text-xs text-sidebar-foreground/40 font-normal uppercase tracking-widest">Opciones de diseño</p>
             </div>
           )}
         </div>
@@ -344,8 +345,8 @@ const MainSidebar = ({
             }}
             className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all ${
               expandedSection === 'constructor' 
-                ? 'text-white font-bold' 
-                : 'text-white/60 hover:text-white'
+                ? 'text-sidebar-foreground font-bold' 
+                : 'text-sidebar-foreground/60 hover:text-sidebar-foreground'
             }`}
           >
             <div className="flex items-center gap-3">
@@ -362,7 +363,7 @@ const MainSidebar = ({
               <div className="space-y-2">
                 <button 
                   onClick={() => toggleCategory('navegacion')}
-                  className={`w-full flex items-center justify-between px-4 py-1 text-xs text-blue-300 uppercase tracking-widest transition-all ${
+                  className={`w-full flex items-center justify-between px-4 py-1 text-xs text-primary uppercase tracking-widest transition-all ${
                     expandedCategory === 'navegacion' ? 'font-bold' : 'font-normal'
                   }`}
                 >
@@ -383,7 +384,7 @@ const MainSidebar = ({
               <div className="space-y-2">
                 <button 
                   onClick={() => toggleCategory('contenido')}
-                  className={`w-full flex items-center justify-between px-4 py-1 text-xs text-blue-300 uppercase tracking-widest transition-all ${
+                  className={`w-full flex items-center justify-between px-4 py-1 text-xs text-primary uppercase tracking-widest transition-all ${
                     expandedCategory === 'contenido' ? 'font-bold' : 'font-normal'
                   }`}
                 >
@@ -414,7 +415,7 @@ const MainSidebar = ({
               <div className="space-y-2">
                 <button 
                   onClick={() => toggleCategory('confianza')}
-                  className={`w-full flex items-center justify-between px-4 py-1 text-xs text-blue-300 uppercase tracking-widest transition-all ${
+                  className={`w-full flex items-center justify-between px-4 py-1 text-xs text-primary uppercase tracking-widest transition-all ${
                     expandedCategory === 'confianza' ? 'font-bold' : 'font-normal'
                   }`}
                 >
@@ -435,7 +436,7 @@ const MainSidebar = ({
               <div className="space-y-2">
                 <button 
                   onClick={() => toggleCategory('ventas')}
-                  className={`w-full flex items-center justify-between px-4 py-1 text-xs text-blue-300 uppercase tracking-widest transition-all ${
+                  className={`w-full flex items-center justify-between px-4 py-1 text-xs text-primary uppercase tracking-widest transition-all ${
                     expandedCategory === 'ventas' ? 'font-bold' : 'font-normal'
                   }`}
                 >
@@ -459,7 +460,7 @@ const MainSidebar = ({
               <div className="space-y-2">
                 <button 
                   onClick={() => toggleCategory('contacto')}
-                  className={`w-full flex items-center justify-between px-4 py-1 text-xs text-blue-300 uppercase tracking-widest transition-all ${
+                  className={`w-full flex items-center justify-between px-4 py-1 text-xs text-primary uppercase tracking-widest transition-all ${
                     expandedCategory === 'contacto' ? 'font-bold' : 'font-normal'
                   }`}
                 >
@@ -495,20 +496,20 @@ const MainSidebar = ({
       </div>
 
       {/* User Profile Section */}
-      <div className="p-6 border-t border-white/5 bg-black/10">
+      <div className="p-6 border-t border-sidebar-border bg-sidebar-foreground/5">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center overflow-hidden">
+          <div className="w-10 h-10 bg-sidebar-foreground/10 rounded-xl flex items-center justify-center overflow-hidden">
             {project?.projectIconUrl ? (
               <img src={project.projectIconUrl} alt="Project Icon" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
             ) : (
-              <User className="text-white w-5 h-5" />
+              <User className="text-sidebar-foreground w-5 h-5" />
             )}
           </div>
           <div className="flex flex-col">
-            <span className="text-base font-bold text-white leading-none truncate max-w-[160px]">
+            <span className="text-base font-bold text-sidebar-foreground leading-none truncate max-w-[160px]">
               {project?.name || 'Proyecto'}
             </span>
-            <span className="text-xs text-white/40 font-normal mt-1 uppercase tracking-wider">Proyecto Activo</span>
+            <span className="text-xs text-sidebar-foreground/40 font-normal mt-1 uppercase tracking-wider">Proyecto Activo</span>
           </div>
         </div>
       </div>
@@ -519,9 +520,9 @@ const MainSidebar = ({
 const ModuleItem = ({ icon, label, onClick }: { icon: React.ReactNode, label: string, onClick?: () => void }) => (
   <button 
     onClick={onClick}
-    className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-white/60 hover:text-white hover:bg-white/5 transition-all group"
+    className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-foreground/5 transition-all group"
   >
-    <div className="text-white/40 group-hover:text-white transition-colors">{icon}</div>
+    <div className="text-sidebar-foreground/40 group-hover:text-sidebar-foreground transition-colors">{icon}</div>
     <span className="text-sm font-medium">{label}</span>
   </button>
 );
@@ -532,14 +533,16 @@ interface StructurePanelProps {
   onSettingChange: (elementOrModuleId: string, settingId: string, value: any) => void;
   onRemoveModule: (moduleId: string) => void;
   projectId: string | null;
+  products: Product[];
 }
 
 const SettingControl: React.FC<{ 
   setting: SettingDefinition, 
   value: any, 
   onChange: (value: any) => void,
-  projectId: string | null
-}> = ({ setting, value, onChange, projectId }) => {
+  projectId: string | null,
+  products?: Product[]
+}> = ({ setting, value, onChange, projectId, products }) => {
   const [isUploading, setIsUploading] = useState(false);
   const currentValue = value !== undefined ? value : setting.defaultValue;
 
@@ -567,16 +570,72 @@ const SettingControl: React.FC<{
   };
 
   switch (setting.type) {
+    case 'product_selection':
+      const availableProducts = (products && products.length > 0) ? products : (projectId === 'dev-project-id' ? MOCK_PRODUCTS : []);
+      
+      return (
+        <div className="space-y-3">
+          <label className="text-[10px] font-bold text-text/40 uppercase tracking-wider">{setting.label}</label>
+          <div className="grid grid-cols-1 gap-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+            {availableProducts.map(product => {
+              const isSelected = Array.isArray(currentValue) && currentValue.includes(product.id);
+              
+              return (
+                <div 
+                  key={product.id}
+                  onClick={() => {
+                    const newValue = isSelected 
+                      ? (currentValue as string[]).filter(id => id !== product.id)
+                      : [...(currentValue as string[] || []), product.id];
+                    onChange(newValue);
+                  }}
+                  className={`flex items-center gap-3 p-2 rounded-xl border transition-all cursor-pointer group ${
+                    isSelected 
+                      ? 'bg-primary/10 border-primary/20 shadow-sm' 
+                      : 'bg-surface border-border hover:border-border/80'
+                  }`}
+                >
+                  <div className="w-12 h-12 rounded-lg overflow-hidden bg-secondary flex-shrink-0 border border-border/30">
+                    {product.imageUrl ? (
+                      <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-text/20">
+                        <ImageIcon size={16} />
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-[11px] font-bold truncate ${isSelected ? 'text-primary' : 'text-text'}`}>
+                      {product.name}
+                    </p>
+                    <p className="text-[10px] text-text/40 font-medium">${product.price}</p>
+                  </div>
+                  <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${
+                    isSelected ? 'bg-primary border-primary' : 'bg-surface border-border group-hover:border-border/80'
+                  }`}>
+                    {isSelected && <CheckCircle2 size={12} className="text-white" />}
+                  </div>
+                </div>
+              );
+            })}
+            {availableProducts.length === 0 && (
+              <div className="p-6 text-center bg-secondary rounded-xl border border-dashed border-border">
+                <p className="text-[10px] text-text/40 font-medium">No hay productos disponibles.</p>
+              </div>
+            )}
+          </div>
+        </div>
+      );
     case 'image':
       return (
         <div className="space-y-1.5">
-          <label className="text-[10px] font-bold text-slate-400">{setting.label}</label>
+          <label className="text-[10px] font-bold text-text/40">{setting.label}</label>
           <div className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-lg bg-slate-50 border border-slate-100 overflow-hidden flex-shrink-0">
+            <div className="w-10 h-10 rounded-lg bg-secondary border border-border overflow-hidden flex-shrink-0">
               {currentValue ? (
                 <img src={currentValue} alt="Preview" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-slate-300">
+                <div className="w-full h-full flex items-center justify-center text-text/20">
                   <ImageIcon size={14} />
                 </div>
               )}
@@ -590,8 +649,8 @@ const SettingControl: React.FC<{
                   onChange={handleFileChange}
                   disabled={isUploading}
                 />
-                <div className={`flex items-center justify-center gap-2 py-1.5 px-3 border border-slate-100 rounded-md text-[10px] font-bold transition-all ${
-                  isUploading ? 'bg-slate-50 text-slate-400' : 'bg-white text-blue-600 hover:bg-blue-50 hover:border-blue-100'
+                <div className={`flex items-center justify-center gap-2 py-1.5 px-3 border border-border rounded-md text-[10px] font-bold transition-all ${
+                  isUploading ? 'bg-secondary text-text/40' : 'bg-surface text-primary hover:bg-primary/10 hover:border-primary/20'
                 }`}>
                   {isUploading ? (
                     <>
@@ -614,8 +673,8 @@ const SettingControl: React.FC<{
       return (
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <label className="text-[10px] font-bold text-slate-400">{setting.label}</label>
-            <span className="text-[10px] font-medium text-blue-600">{currentValue}{setting.unit}</span>
+            <label className="text-[10px] font-bold text-text/40">{setting.label}</label>
+            <span className="text-[10px] font-medium text-primary">{currentValue}{setting.unit}</span>
           </div>
           <input 
             type="range" 
@@ -624,18 +683,18 @@ const SettingControl: React.FC<{
             step={setting.step || 1}
             value={currentValue}
             onChange={(e) => onChange(Number(e.target.value))}
-            className="w-full h-1 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-blue-600" 
+            className="w-full h-1 bg-secondary rounded-lg appearance-none cursor-pointer accent-primary" 
           />
         </div>
       );
     case 'select':
       return (
         <div className="space-y-1.5">
-          <label className="text-[10px] font-bold text-slate-400">{setting.label}</label>
+          <label className="text-[10px] font-bold text-text/40">{setting.label}</label>
           <select 
             value={currentValue}
             onChange={(e) => onChange(e.target.value)}
-            className="w-full p-1.5 border border-slate-100 rounded-md text-[10px] font-medium focus:outline-none focus:border-blue-300 bg-white"
+            className="w-full p-1.5 border border-border rounded-md text-[10px] font-medium focus:outline-none focus:border-primary/30 bg-surface"
           >
             {setting.options?.map(opt => (
               <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -645,11 +704,11 @@ const SettingControl: React.FC<{
       );
     case 'boolean':
       return (
-        <div className="flex items-center justify-between p-1.5 bg-slate-50 rounded-md">
-          <span className="text-[10px] font-medium text-slate-600">{setting.label}</span>
+        <div className="flex items-center justify-between p-1.5 bg-secondary rounded-md">
+          <span className="text-[10px] font-medium text-text/60">{setting.label}</span>
           <button 
             onClick={() => onChange(!currentValue)}
-            className={`w-7 h-3.5 rounded-full relative transition-colors ${currentValue ? 'bg-blue-600' : 'bg-slate-200'}`}
+            className={`w-7 h-3.5 rounded-full relative transition-colors ${currentValue ? 'bg-primary' : 'bg-secondary-foreground/20'}`}
           >
             <div className={`absolute top-0.5 w-2.5 h-2.5 bg-white rounded-full shadow-sm transition-all ${currentValue ? 'left-4' : 'left-0.5'}`}></div>
           </button>
@@ -658,23 +717,23 @@ const SettingControl: React.FC<{
     case 'color':
       return (
         <div className="flex items-center justify-between">
-          <label className="text-[10px] font-bold text-slate-400">{setting.label}</label>
+          <label className="text-[10px] font-bold text-text/40">{setting.label}</label>
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-mono text-slate-400 uppercase">{currentValue}</span>
+            <span className="text-[10px] font-mono text-text/40 uppercase">{currentValue}</span>
             <input 
               type="color"
               value={currentValue}
               onChange={(e) => onChange(e.target.value)}
-              className="w-5 h-5 rounded-md border border-slate-200 shadow-sm p-0 overflow-hidden cursor-pointer"
+              className="w-5 h-5 rounded-md border border-border shadow-sm p-0 overflow-hidden cursor-pointer"
             />
           </div>
         </div>
       );
     case 'button':
       return (
-        <div className="p-2 bg-blue-50/50 border border-blue-100 rounded-lg">
-          <p className="text-[10px] font-bold text-blue-600 mb-2">{setting.label}</p>
-          <button className="w-full py-1.5 bg-white border border-blue-200 rounded-md text-[10px] font-bold text-blue-600 hover:bg-blue-50 transition-all flex items-center justify-center gap-1.5">
+        <div className="p-2 bg-primary/5 border border-primary/10 rounded-lg">
+          <p className="text-[10px] font-bold text-primary mb-2">{setting.label}</p>
+          <button className="w-full py-1.5 bg-surface border border-primary/20 rounded-md text-[10px] font-bold text-primary hover:bg-primary/10 transition-all flex items-center justify-center gap-1.5">
             <Plus size={12} /> {setting.defaultValue}
           </button>
         </div>
@@ -682,19 +741,26 @@ const SettingControl: React.FC<{
     default:
       return (
         <div className="space-y-1.5">
-          <label className="text-[10px] font-bold text-slate-400">{setting.label}</label>
+          <label className="text-[10px] font-bold text-text/40">{setting.label}</label>
           <input 
             type="text" 
             value={currentValue} 
             onChange={(e) => onChange(e.target.value)}
-            className="w-full p-1.5 border border-slate-100 rounded-md text-[10px] font-medium focus:outline-none focus:border-blue-300" 
+            className="w-full p-1.5 border border-border rounded-md text-[10px] font-medium focus:outline-none focus:border-primary/30 bg-surface" 
           />
         </div>
       );
   }
 };
 
-const StructurePanel: React.FC<StructurePanelProps> = ({ editorState, setEditorState, onSettingChange, onRemoveModule, projectId }) => {
+const StructurePanel: React.FC<StructurePanelProps> = ({ 
+  editorState, 
+  setEditorState, 
+  onSettingChange, 
+  onRemoveModule, 
+  projectId,
+  products
+}) => {
   const toggleModule = (moduleId: string) => {
     setEditorState(prev => ({
       ...prev,
@@ -733,15 +799,15 @@ const StructurePanel: React.FC<StructurePanelProps> = ({ editorState, setEditorS
   };
 
   return (
-    <div className="w-[300px] bg-white border-r border-slate-100 flex flex-col z-30 shadow-xl shadow-slate-200/30 overflow-hidden">
-      <div className="p-4 flex items-center justify-between border-b border-slate-50">
+    <div className="w-64 bg-surface border-r border-border flex flex-col z-30 shadow-xl shadow-text/5 overflow-hidden">
+      <div className="p-4 flex items-center justify-between border-b border-border/30">
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 bg-rose-500 rounded-lg flex items-center justify-center">
+          <div className="w-7 h-7 bg-primary rounded-lg flex items-center justify-center">
             <Layers className="text-white w-3.5 h-3.5" />
           </div>
-          <span className="text-sm font-bold text-slate-800">Estructura</span>
+          <span className="text-sm font-bold text-text">Estructura</span>
         </div>
-        <button className="text-blue-500 hover:bg-blue-50 p-1.5 rounded-lg transition-colors">
+        <button className="text-primary hover:bg-primary/10 p-1.5 rounded-lg transition-colors">
           <RotateCcw size={14} />
         </button>
       </div>
@@ -749,10 +815,10 @@ const StructurePanel: React.FC<StructurePanelProps> = ({ editorState, setEditorS
       <div className="flex-1 overflow-y-auto custom-scrollbar">
         {editorState.addedModules.length === 0 && (
           <div className="p-8 text-center space-y-4">
-            <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mx-auto">
-              <Layout className="text-slate-200 w-6 h-6" />
+            <div className="w-12 h-12 bg-secondary rounded-full flex items-center justify-center mx-auto">
+              <Layout className="text-text/20 w-6 h-6" />
             </div>
-            <p className="text-[11px] font-medium text-slate-400">No hay módulos añadidos aún.</p>
+            <p className="text-[11px] font-medium text-text/40">No hay módulos añadidos aún.</p>
           </div>
         )}
 
@@ -770,23 +836,23 @@ const StructurePanel: React.FC<StructurePanelProps> = ({ editorState, setEditorS
           const allElements = [globalElement, ...module.elements];
 
           return (
-            <div key={module.id} className="p-3 border-b border-slate-50 last:border-0">
+            <div key={module.id} className="p-3 border-b border-border/30 last:border-0">
               <div 
                 onClick={() => toggleModule(module.id)}
                 className={`flex items-center gap-2.5 p-2.5 rounded-xl border transition-all cursor-pointer group ${
                   isModuleExpanded 
-                    ? 'bg-blue-50 border-blue-100' 
-                    : 'bg-slate-50/50 border-slate-100 hover:border-slate-200'
+                    ? 'bg-primary/10 border-primary/20' 
+                    : 'bg-secondary/50 border-border/50 hover:border-border'
                 }`}
               >
-                <GripVertical className={isModuleExpanded ? 'text-blue-300' : 'text-slate-300'} size={14} />
+                <GripVertical className={isModuleExpanded ? 'text-primary/30' : 'text-text/20'} size={14} />
                 <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${
-                  isModuleExpanded ? 'bg-blue-600' : 'bg-white border border-slate-100'
+                  isModuleExpanded ? 'bg-primary' : 'bg-surface border border-border/50'
                 }`}>
-                  <Layout className={isModuleExpanded ? 'text-white' : 'text-slate-400'} size={12} />
+                  <Layout className={isModuleExpanded ? 'text-white' : 'text-text/40'} size={12} />
                 </div>
                 <span className={`text-[14px] font-bold flex-1 ${
-                  isModuleExpanded ? 'text-blue-700' : 'text-slate-700'
+                  isModuleExpanded ? 'text-primary' : 'text-text'
                 }`}>
                   {module.name}
                 </span>
@@ -796,13 +862,13 @@ const StructurePanel: React.FC<StructurePanelProps> = ({ editorState, setEditorS
                     e.stopPropagation();
                     onRemoveModule(module.id);
                   }}
-                  className="p-1.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                  className="p-1.5 text-text/20 hover:text-error hover:bg-error/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"
                   title="Eliminar módulo"
                 >
                   <Trash2 size={14} />
                 </button>
 
-                <ChevronDown size={14} className={`text-slate-300 transition-transform ${isModuleExpanded ? 'rotate-180 text-blue-500' : ''}`} />
+                <ChevronDown size={14} className={`text-text/20 transition-transform ${isModuleExpanded ? 'rotate-180 text-primary' : ''}`} />
               </div>
 
               {/* Elements List */}
@@ -812,7 +878,7 @@ const StructurePanel: React.FC<StructurePanelProps> = ({ editorState, setEditorS
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: 'auto', opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
-                    className="mt-2 ml-4 border-l-2 border-slate-100 pl-3 space-y-1.5 overflow-hidden"
+                    className="mt-2 ml-4 border-l-2 border-border/30 pl-3 space-y-1.5 overflow-hidden"
                   >
                     {allElements.map(element => {
                       const isElementSelected = editorState.selectedElementId === element.id;
@@ -823,21 +889,21 @@ const StructurePanel: React.FC<StructurePanelProps> = ({ editorState, setEditorS
                             onClick={() => toggleElement(element.id)}
                             className={`flex items-center gap-2.5 p-2 rounded-lg border transition-all cursor-pointer ${
                               isElementSelected 
-                                ? 'bg-blue-50/50 border-blue-100' 
-                                : 'bg-transparent border-transparent hover:bg-slate-50'
+                                ? 'bg-primary/5 border-primary/20' 
+                                : 'bg-transparent border-transparent hover:bg-secondary'
                             }`}
                           >
                             <div className={`w-6 h-6 rounded-md flex items-center justify-center ${
-                              isElementSelected ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-400'
+                              isElementSelected ? 'bg-primary/20 text-primary' : 'bg-secondary text-text/40'
                             }`}>
                               {getElementIcon(element.type)}
                             </div>
                             <span className={`text-[11px] font-medium flex-1 ${
-                              isElementSelected ? 'text-blue-700' : 'text-slate-500'
+                              isElementSelected ? 'text-primary' : 'text-text/60'
                             }`}>
                               {element.name}
                             </span>
-                            <ChevronDown size={12} className={`text-slate-300 transition-transform ${isElementSelected ? 'rotate-180 text-blue-500' : ''}`} />
+                            <ChevronDown size={12} className={`text-text/20 transition-transform ${isElementSelected ? 'rotate-180 text-primary' : ''}`} />
                           </div>
 
                           {/* Inline Configuration Groups */}
@@ -856,15 +922,15 @@ const StructurePanel: React.FC<StructurePanelProps> = ({ editorState, setEditorS
                                   const isGroupExpanded = editorState.expandedGroupsByElement[element.id] === group;
 
                                   return (
-                                    <div key={group} className="border border-slate-100 rounded-lg bg-white overflow-hidden shadow-sm">
+                                    <div key={group} className="border border-border/30 rounded-lg bg-surface overflow-hidden shadow-sm">
                                       <button 
                                         onClick={() => toggleGroup(element.id, group)}
-                                        className="w-full flex items-center justify-between p-2 hover:bg-slate-50 transition-colors"
+                                        className="w-full flex items-center justify-between p-2 hover:bg-secondary transition-colors"
                                       >
-                                        <span className={`text-[12px] transition-all ${isGroupExpanded ? 'font-bold text-blue-600' : 'font-normal text-slate-500'}`}>
+                                        <span className={`text-[12px] transition-all ${isGroupExpanded ? 'font-bold text-primary' : 'font-normal text-text/60'}`}>
                                           {GROUP_LABELS[group]}
                                         </span>
-                                        <ChevronDown size={10} className={`text-slate-300 transition-transform ${isGroupExpanded ? 'rotate-180 text-blue-500' : ''}`} />
+                                        <ChevronDown size={10} className={`text-text/20 transition-transform ${isGroupExpanded ? 'rotate-180 text-primary' : ''}`} />
                                       </button>
                                       
                                       <AnimatePresence>
@@ -875,7 +941,7 @@ const StructurePanel: React.FC<StructurePanelProps> = ({ editorState, setEditorS
                                             exit={{ height: 0, opacity: 0 }}
                                             className="overflow-hidden"
                                           >
-                                            <div className="p-3 pt-0 space-y-4 border-t border-slate-50 mt-1">
+                                            <div className="p-3 pt-0 space-y-4 border-t border-border/30 mt-1">
                                               {/* DYNAMIC SETTINGS FOR EACH GROUP */}
                                               {element.type === 'global' ? (
                                                 module.globalSettings?.[group]?.map(setting => (
@@ -885,6 +951,7 @@ const StructurePanel: React.FC<StructurePanelProps> = ({ editorState, setEditorS
                                                     value={editorState.settingsValues[`${module.id}_global_${setting.id}`]}
                                                     onChange={(val) => onSettingChange(`${module.id}_global`, setting.id, val)}
                                                     projectId={projectId}
+                                                    products={products}
                                                   />
                                                 ))
                                               ) : (
@@ -902,7 +969,7 @@ const StructurePanel: React.FC<StructurePanelProps> = ({ editorState, setEditorS
                                               {/* Fallback if no settings defined for this group */}
                                               {((element.type === 'global' && !module.globalSettings?.[group]?.length) || 
                                                 (element.type !== 'global' && !element.settings?.[group]?.length)) && (
-                                                <p className="text-[10px] text-slate-400 italic pt-2">No hay opciones disponibles para este grupo.</p>
+                                                <p className="text-[10px] text-text/40 italic pt-2">No hay opciones disponibles para este grupo.</p>
                                               )}
                                             </div>
                                           </motion.div>
@@ -929,33 +996,33 @@ const StructurePanel: React.FC<StructurePanelProps> = ({ editorState, setEditorS
 };
 
 const TopBar = ({ onSave, onPublish }: { onSave: () => void, onPublish: () => void }) => (
-  <div className="h-[60px] bg-white border-b border-slate-100 flex items-center justify-between px-6 z-20">
+  <div className="h-[60px] bg-surface border-b border-border/30 flex items-center justify-between px-6 z-20">
     <div className="flex flex-col">
-      <h2 className="text-base font-bold text-slate-800">Editor de Módulos</h2>
-      <p className="text-xs font-normal text-slate-300 uppercase tracking-wider">Añade módulos para construir tu página</p>
+      <h2 className="text-base font-bold text-text">Editor de Módulos</h2>
+      <p className="text-xs font-normal text-text/20 uppercase tracking-wider">Añade módulos para construir tu página</p>
     </div>
 
     <div className="flex items-center gap-4">
-      <div className="flex items-center gap-3 border-r border-slate-100 pr-4">
-        <button className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-slate-50 rounded-lg transition-all"><RotateCcw size={16} /></button>
-        <div className="flex items-center gap-1.5 bg-slate-50 p-1 rounded-xl">
-          <button className="p-1.5 text-blue-600 bg-white shadow-sm rounded-lg transition-all"><Monitor size={14} /></button>
-          <button className="p-1.5 text-slate-400 hover:text-blue-600 transition-all"><Smartphone size={14} /></button>
+      <div className="flex items-center gap-3 border-r border-border/30 pr-4">
+        <button className="p-1.5 text-text/40 hover:text-primary hover:bg-secondary rounded-lg transition-all"><RotateCcw size={16} /></button>
+        <div className="flex items-center gap-1.5 bg-secondary p-1 rounded-xl">
+          <button className="p-1.5 text-primary bg-surface shadow-sm rounded-lg transition-all"><Monitor size={14} /></button>
+          <button className="p-1.5 text-text/40 hover:text-primary transition-all"><Smartphone size={14} /></button>
         </div>
-        <button className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-slate-50 rounded-lg transition-all"><Maximize size={16} /></button>
+        <button className="p-1.5 text-text/40 hover:text-primary hover:bg-secondary rounded-lg transition-all"><Maximize size={16} /></button>
       </div>
 
       <div className="flex items-center gap-2">
         <button 
           onClick={onSave}
-          className="flex items-center gap-2 px-4 py-2 text-slate-600 font-bold text-xs hover:bg-slate-50 rounded-xl transition-all"
+          className="flex items-center gap-2 px-4 py-2 text-text/60 font-bold text-xs hover:bg-secondary rounded-xl transition-all"
         >
           <Save size={16} />
           Guardar Borrador
         </button>
         <button 
           onClick={onPublish}
-          className="flex items-center gap-2 px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-lg shadow-blue-100 transition-all"
+          className="flex items-center gap-2 px-5 py-2 bg-primary hover:bg-primary/90 text-white font-bold text-xs rounded-xl shadow-lg shadow-primary/20 transition-all"
         >
           <Send size={16} />
           Publicar
@@ -970,76 +1037,94 @@ const Canvas: React.FC<{
   onAddModule: (module: WebModule) => void,
   products: Product[],
   isDevMode: boolean
-}> = ({ editorState, onAddModule, products, isDevMode }) => (
-  <div className="flex-1 bg-slate-50 p-12 overflow-y-auto flex flex-col items-center">
-    {/* Preview Window */}
-    <div className="w-full max-w-5xl bg-white shadow-2xl rounded-2xl overflow-hidden border border-slate-200/50 min-h-[800px] flex flex-col">
-      {/* Dynamic Modules */}
-      {editorState.addedModules.map(module => {
-        if (module.type === 'products') {
-          return (
-            <ProductsModule 
-              key={module.id} 
-              moduleId={module.id}
-              settingsValues={editorState.settingsValues}
-              products={products}
-              isDevMode={isDevMode}
-            />
-          );
-        }
-        if (module.type === 'hero') {
-          return (
-            <HeroModule 
-              key={module.id} 
-              moduleId={module.id}
-              settingsValues={editorState.settingsValues}
-            />
-          );
-        }
-        if (module.type === 'features') {
-          return (
-            <FeaturesModule 
-              key={module.id} 
-              moduleId={module.id}
-              settingsValues={editorState.settingsValues}
-            />
-          );
-        }
-        return null;
-      })}
+}> = ({ editorState, onAddModule, products, isDevMode }) => {
+  const lastModuleRef = React.useRef<HTMLDivElement>(null);
+  const prevModulesLength = React.useRef(editorState.addedModules.length);
 
-      {/* Empty State if no modules */}
-      {editorState.addedModules.length === 0 && (
-        <div className="flex-1 flex flex-col items-center justify-center p-20 text-center border-t border-slate-50">
-          <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-6">
-            <Plus size={32} className="text-slate-200" />
-          </div>
-          <h3 className="text-xl font-bold text-slate-800 mb-2">Tu página está vacía</h3>
-          <p className="text-slate-400 max-w-xs">Selecciona un módulo en el panel de la izquierda para empezar a construir.</p>
+  React.useEffect(() => {
+    if (editorState.addedModules.length > prevModulesLength.current) {
+      // Use requestAnimationFrame to ensure the DOM has updated and height is calculated
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          lastModuleRef.current?.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'start' 
+          });
+        }, 100);
+      });
+    }
+    prevModulesLength.current = editorState.addedModules.length;
+  }, [editorState.addedModules.length]);
+
+  return (
+    <div className="flex-1 bg-secondary p-12 overflow-y-auto flex flex-col items-center">
+      {/* Preview Window */}
+      <div className="w-full max-w-5xl bg-surface shadow-2xl rounded-2xl border border-border/50 min-h-[800px] flex flex-col mb-32 transition-all duration-500">
+        {/* Dynamic Modules */}
+        <div className="flex flex-col w-full">
+          {editorState.addedModules.map((module, index) => {
+            const isLast = index === editorState.addedModules.length - 1;
+            
+            return (
+              <div key={module.id} ref={isLast ? lastModuleRef : null} className="w-full">
+                {module.type === 'products' && (
+                  <ProductsModule 
+                    moduleId={module.id}
+                    settingsValues={editorState.settingsValues}
+                    products={products}
+                    isDevMode={isDevMode}
+                  />
+                )}
+                {module.type === 'hero' && (
+                  <HeroModule 
+                    moduleId={module.id}
+                    settingsValues={editorState.settingsValues}
+                  />
+                )}
+                {module.type === 'features' && (
+                  <FeaturesModule 
+                    moduleId={module.id}
+                    settingsValues={editorState.settingsValues}
+                  />
+                )}
+              </div>
+            );
+          })}
         </div>
-      )}
 
-      {/* Add Module Button */}
-      <div className="p-12 flex justify-center bg-white border-t border-slate-50">
-        <button 
-          onClick={() => onAddModule(PRODUCTS_MODULE)}
-          className="flex items-center gap-3 px-8 py-4 border-2 border-dashed border-slate-100 rounded-2xl text-slate-400 font-bold hover:border-blue-200 hover:text-blue-500 transition-all group"
-        >
-          <Plus size={20} className="group-hover:scale-110 transition-transform" />
-          Añadir Módulo
-        </button>
+        {/* Empty State if no modules */}
+        {editorState.addedModules.length === 0 && (
+          <div className="flex-1 flex flex-col items-center justify-center p-20 text-center border-t border-border/30">
+            <div className="w-20 h-20 bg-secondary rounded-full flex items-center justify-center mb-6">
+              <Plus size={32} className="text-text/20" />
+            </div>
+            <h3 className="text-xl font-bold text-text mb-2">Tu página está vacía</h3>
+            <p className="text-text/40 max-w-xs">Selecciona un módulo en el panel de la izquierda para empezar a construir.</p>
+          </div>
+        )}
+
+        {/* Add Module Button inside Preview */}
+        <div className="p-12 flex justify-center bg-surface border-t border-border/30">
+          <button 
+            onClick={() => onAddModule(PRODUCTS_MODULE)}
+            className="flex items-center gap-3 px-8 py-4 border-2 border-dashed border-border rounded-2xl text-text/40 font-bold hover:border-primary/40 hover:text-primary transition-all group"
+          >
+            <Plus size={20} className="group-hover:scale-110 transition-transform" />
+            Añadir Módulo
+          </button>
+        </div>
+      </div>
+
+      {/* Bottom Status Bar */}
+      <div className="fixed bottom-8 right-8 flex items-center gap-3 bg-surface px-4 py-2.5 rounded-xl shadow-xl border border-border/30">
+        <div className="w-5 h-5 bg-emerald-50 rounded-full flex items-center justify-center">
+          <CheckCircle2 className="text-emerald-500 w-3.5 h-3.5" />
+        </div>
+        <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Configuración Recibida</span>
       </div>
     </div>
-
-    {/* Bottom Status Bar */}
-    <div className="fixed bottom-8 right-8 flex items-center gap-3 bg-white px-4 py-2.5 rounded-xl shadow-xl border border-slate-100">
-      <div className="w-5 h-5 bg-emerald-50 rounded-full flex items-center justify-center">
-        <CheckCircle2 className="text-emerald-500 w-3.5 h-3.5" />
-      </div>
-      <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Configuración Recibida</span>
-    </div>
-  </div>
-);
+  );
+};
 
 const DeleteConfirmationModal: React.FC<{ 
   moduleName: string, 
@@ -1052,33 +1137,33 @@ const DeleteConfirmationModal: React.FC<{
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       onClick={onCancel}
-      className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+      className="absolute inset-0 bg-text/40 backdrop-blur-sm"
     />
     <motion.div 
       initial={{ scale: 0.9, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
       exit={{ scale: 0.9, opacity: 0 }}
-      className="relative w-full max-w-sm bg-white rounded-3xl shadow-2xl overflow-hidden"
+      className="relative w-full max-w-sm bg-surface rounded-3xl shadow-2xl overflow-hidden"
     >
       <div className="p-8 text-center">
-        <div className="w-16 h-16 bg-rose-50 rounded-2xl flex items-center justify-center mx-auto mb-6">
-          <Trash2 className="text-rose-500 w-8 h-8" />
+        <div className="w-16 h-16 bg-error/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
+          <Trash2 className="text-error w-8 h-8" />
         </div>
-        <h3 className="text-xl font-bold text-slate-800 mb-2 font-sans">¿Eliminar módulo?</h3>
-        <p className="text-slate-500 text-sm leading-relaxed mb-8">
-          Estás a punto de eliminar el módulo <span className="font-bold text-slate-700">"{moduleName}"</span>. 
+        <h3 className="text-xl font-bold text-text mb-2 font-sans">¿Eliminar módulo?</h3>
+        <p className="text-text/60 text-sm leading-relaxed mb-8">
+          Estás a punto de eliminar el módulo <span className="font-bold text-text/80">"{moduleName}"</span>. 
           Esta acción no se puede deshacer.
         </p>
         <div className="flex gap-3">
           <button 
             onClick={onCancel}
-            className="flex-1 py-3 px-4 bg-slate-50 hover:bg-slate-100 text-slate-600 font-bold rounded-xl transition-all"
+            className="flex-1 py-3 px-4 bg-secondary hover:bg-secondary/80 text-text/60 font-bold rounded-xl transition-all"
           >
             Cancelar
           </button>
           <button 
             onClick={onConfirm}
-            className="flex-1 py-3 px-4 bg-rose-500 hover:bg-rose-600 text-white font-bold rounded-xl shadow-lg shadow-rose-200 transition-all"
+            className="flex-1 py-3 px-4 bg-error hover:bg-error/90 text-white font-bold rounded-xl shadow-lg shadow-error/20 transition-all"
           >
             Eliminar
           </button>
@@ -1146,7 +1231,14 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     if (module.globalSettings) {
       Object.values(module.globalSettings).forEach(groupSettings => {
         groupSettings.forEach(setting => {
-          initialValues[`${moduleId}_global_${setting.id}`] = setting.defaultValue;
+          let val = setting.defaultValue;
+          if (setting.type === 'product_selection') {
+            const availableProducts = products.length > 0 ? products : (projectId === 'dev-project-id' ? MOCK_PRODUCTS : []);
+            if (availableProducts.length > 0) {
+              val = availableProducts.slice(0, 8).map(p => p.id);
+            }
+          }
+          initialValues[`${moduleId}_global_${setting.id}`] = val;
         });
       });
     }
@@ -1297,7 +1389,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   };
 
   return (
-    <div className="h-screen w-screen flex overflow-hidden bg-white font-sans antialiased">
+    <div className="h-screen w-screen flex overflow-hidden bg-surface font-sans antialiased">
       <MainSidebar 
         activeTab={activeTab} 
         onTabChange={setActiveTab} 
@@ -1316,6 +1408,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
               onSettingChange={handleSettingChange}
               onRemoveModule={removeModule}
               projectId={projectId}
+              products={products}
             />
             <div className="flex-1 flex flex-col h-full">
               <TopBar onSave={handleSaveDraft} onPublish={handlePublish} />
@@ -1330,11 +1423,11 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         )}
 
         {activeTab === 'datos' && (
-          <div className="flex-1 h-full overflow-auto bg-[#F8FAFC]">
+          <div className="flex-1 h-full overflow-auto bg-secondary">
             <div className="p-8">
               <div className="flex flex-col mb-8">
-                <h2 className="text-3xl font-bold text-slate-800">Gestión de Datos</h2>
-                <p className="text-sm text-slate-400 font-medium">Administra la información de tu proyecto de forma profesional.</p>
+                <h2 className="text-3xl font-bold text-text">Gestión de Datos</h2>
+                <p className="text-sm text-text/40 font-medium">Administra la información de tu proyecto de forma profesional.</p>
               </div>
               <DataTab projectId={projectId || ''} currentUserId={currentUserId || ''} />
             </div>
@@ -1342,13 +1435,13 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         )}
 
         {activeTab === 'settings' && (
-          <div className="flex-1 h-full overflow-auto bg-[#F8FAFC] flex items-center justify-center">
+          <div className="flex-1 h-full overflow-auto bg-secondary flex items-center justify-center">
             <div className="text-center space-y-4">
-              <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto">
-                <Settings className="text-slate-400 w-8 h-8" />
+              <div className="w-16 h-16 bg-surface rounded-full flex items-center justify-center mx-auto shadow-sm border border-border">
+                <Settings className="text-text/20 w-8 h-8" />
               </div>
-              <h2 className="text-xl font-bold text-slate-800">Ajustes del Proyecto</h2>
-              <p className="text-slate-400 max-w-xs mx-auto">Configura los parámetros generales de tu sitio web.</p>
+              <h2 className="text-xl font-bold text-text">Ajustes del Proyecto</h2>
+              <p className="text-text/40 max-w-xs mx-auto">Configura los parámetros generales de tu sitio web.</p>
             </div>
           </div>
         )}

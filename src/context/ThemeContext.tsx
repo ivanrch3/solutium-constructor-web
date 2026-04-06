@@ -104,19 +104,26 @@ interface ThemeContextProps {
 const ThemeContext = createContext<ThemeContextProps | undefined>(undefined);
 
 const loadGoogleFont = (fontFamily: string) => {
-  if (!fontFamily || fontFamily.includes(',') || fontFamily.includes('sans-serif') || fontFamily.includes('serif') || fontFamily.includes('monospace')) {
+  if (!fontFamily) return;
+
+  // Extraer el primer nombre si es una lista (ej: "Open Sans, sans-serif")
+  const mainFont = fontFamily.split(',')[0].trim().replace(/['"]/g, '');
+  
+  // No cargar si es una fuente genérica del sistema
+  const genericFonts = ['sans-serif', 'serif', 'monospace', 'cursive', 'fantasy', 'system-ui', 'inter'];
+  if (genericFonts.includes(mainFont.toLowerCase())) {
     return;
   }
 
-  const fontId = `google-font-${fontFamily.replace(/\s+/g, '-').toLowerCase()}`;
+  const fontId = `google-font-${mainFont.replace(/\s+/g, '-').toLowerCase()}`;
   if (document.getElementById(fontId)) return;
 
   const link = document.createElement('link');
   link.id = fontId;
   link.rel = 'stylesheet';
-  link.href = `https://fonts.googleapis.com/css2?family=${fontFamily.replace(/\s+/g, '+')}:wght@300;400;500;600;700&display=swap`;
+  link.href = `https://fonts.googleapis.com/css2?family=${mainFont.replace(/\s+/g, '+')}:wght@300;400;500;600;700&display=swap`;
   document.head.appendChild(link);
-  console.log(`[THEME] Cargando Google Font: ${fontFamily}`);
+  console.log(`[THEME] Cargando Google Font: ${mainFont}`);
 };
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -162,31 +169,35 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const theme = themeData;
     console.log('[THEME] Aplicando tema calculado:', theme);
 
-    if (theme.primary) root.style.setProperty('--primary-color', theme.primary);
-    if (theme.secondary) root.style.setProperty('--secondary-color', theme.secondary);
-    if (theme.accent) root.style.setProperty('--accent-color', theme.accent);
-    if (theme.background) root.style.setProperty('--background-color', theme.background);
-    if (theme.card || theme.surface) root.style.setProperty('--card-color', theme.card || theme.surface);
-    if (theme.text || theme.foreground) root.style.setProperty('--foreground-color', theme.text || theme.foreground);
-    if (theme.border) root.style.setProperty('--border-color', theme.border);
+    if (theme.primary || theme.primaryColor) root.style.setProperty('--primary-color', theme.primary || theme.primaryColor);
+    if (theme.secondary || theme.secondaryColor) root.style.setProperty('--secondary-color', theme.secondary || theme.secondaryColor);
+    if (theme.accent || theme.accentColor) root.style.setProperty('--accent-color', theme.accent || theme.accentColor);
+    if (theme.background || theme.backgroundColor) root.style.setProperty('--background-color', theme.background || theme.backgroundColor);
+    if (theme.card || theme.surface || theme.cardColor) root.style.setProperty('--card-color', theme.card || theme.surface || theme.cardColor);
+    if (theme.text || theme.foreground || theme.textColor) root.style.setProperty('--foreground-color', theme.text || theme.foreground || theme.textColor);
+    if (theme.border || theme.borderColor) root.style.setProperty('--border-color', theme.border || theme.borderColor);
     
     // Contraste Crítico
     if (theme.dark) root.style.setProperty('--solutium-dark', theme.dark);
 
-    // Sidebar variables
-    if (theme.sidebar_bg) root.style.setProperty('--sidebar-bg', theme.sidebar_bg);
-    if (theme.sidebar_foreground) root.style.setProperty('--sidebar-foreground', theme.sidebar_foreground);
-    if (theme.sidebar_accent) root.style.setProperty('--sidebar-accent', theme.sidebar_accent);
-    if (theme.sidebar_border) root.style.setProperty('--sidebar-border', theme.sidebar_border);
+    // Sidebar variables - Robustez en nombres de claves
+    const sidebarBg = theme.sidebar_bg || theme.sidebarBg || theme.sidebarBackground || theme.primary || theme.primaryColor;
+    const sidebarFg = theme.sidebar_foreground || theme.sidebarForeground || theme.sidebarText || '#FFFFFF';
+    const sidebarAccent = theme.sidebar_accent || theme.sidebarAccent || 'rgba(255, 255, 255, 0.1)';
+    const sidebarBorder = theme.sidebar_border || theme.sidebarBorder || 'rgba(255, 255, 255, 0.1)';
+
+    root.style.setProperty('--sidebar-bg', sidebarBg);
+    root.style.setProperty('--sidebar-foreground', sidebarFg);
+    root.style.setProperty('--sidebar-accent', sidebarAccent);
+    root.style.setProperty('--sidebar-border', sidebarBorder);
 
     // Tipografía
-    const font = theme.fontFamily || theme.font_family;
+    const font = theme.fontFamily || theme.font_family || theme.font;
     if (font) {
       console.log('[THEME] Aplicando fontFamily:', font);
-      const cleanFont = font.split(',')[0].trim().replace(/['"]/g, '');
-      loadGoogleFont(cleanFont);
+      loadGoogleFont(font);
       
-      // Asegurar que si el nombre tiene espacios, esté entre comillas para el CSS
+      const cleanFont = font.split(',')[0].trim().replace(/['"]/g, '');
       const formattedFont = cleanFont.includes(' ') ? `'${cleanFont}'` : cleanFont;
       const fontValue = font.includes(',') ? font : `${formattedFont}, sans-serif`;
       

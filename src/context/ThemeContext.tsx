@@ -191,8 +191,8 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     root.style.setProperty('--sidebar-accent', sidebarAccent);
     root.style.setProperty('--sidebar-border', sidebarBorder);
 
-    // Tipografía
-    const font = theme.fontFamily || theme.font_family || theme.font;
+    // Tipografía - Máxima robustez en detección de claves
+    const font = theme.fontFamily || theme.font_family || theme.font || theme.font_family_base || theme.fontFamilyBase || theme.typography?.fontFamily || theme.typography?.font_family;
     if (font) {
       console.log('[THEME] Aplicando fontFamily:', font);
       loadGoogleFont(font);

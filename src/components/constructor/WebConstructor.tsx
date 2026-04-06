@@ -363,8 +363,8 @@ const MainSidebar = ({
               <div className="space-y-2">
                 <button 
                   onClick={() => toggleCategory('navegacion')}
-                  className={`w-full flex items-center justify-between px-4 py-1 text-xs text-primary uppercase tracking-widest transition-all ${
-                    expandedCategory === 'navegacion' ? 'font-bold' : 'font-normal'
+                  className={`w-full flex items-center justify-between px-4 py-1 text-xs uppercase tracking-widest transition-all ${
+                    expandedCategory === 'navegacion' ? 'font-bold text-sidebar-foreground' : 'font-normal text-sidebar-foreground/60'
                   }`}
                 >
                   Navegación
@@ -384,8 +384,8 @@ const MainSidebar = ({
               <div className="space-y-2">
                 <button 
                   onClick={() => toggleCategory('contenido')}
-                  className={`w-full flex items-center justify-between px-4 py-1 text-xs text-primary uppercase tracking-widest transition-all ${
-                    expandedCategory === 'contenido' ? 'font-bold' : 'font-normal'
+                  className={`w-full flex items-center justify-between px-4 py-1 text-xs uppercase tracking-widest transition-all ${
+                    expandedCategory === 'contenido' ? 'font-bold text-sidebar-foreground' : 'font-normal text-sidebar-foreground/60'
                   }`}
                 >
                   Contenido
@@ -415,8 +415,8 @@ const MainSidebar = ({
               <div className="space-y-2">
                 <button 
                   onClick={() => toggleCategory('confianza')}
-                  className={`w-full flex items-center justify-between px-4 py-1 text-xs text-primary uppercase tracking-widest transition-all ${
-                    expandedCategory === 'confianza' ? 'font-bold' : 'font-normal'
+                  className={`w-full flex items-center justify-between px-4 py-1 text-xs uppercase tracking-widest transition-all ${
+                    expandedCategory === 'confianza' ? 'font-bold text-sidebar-foreground' : 'font-normal text-sidebar-foreground/60'
                   }`}
                 >
                   Confianza
@@ -436,8 +436,8 @@ const MainSidebar = ({
               <div className="space-y-2">
                 <button 
                   onClick={() => toggleCategory('ventas')}
-                  className={`w-full flex items-center justify-between px-4 py-1 text-xs text-primary uppercase tracking-widest transition-all ${
-                    expandedCategory === 'ventas' ? 'font-bold' : 'font-normal'
+                  className={`w-full flex items-center justify-between px-4 py-1 text-xs uppercase tracking-widest transition-all ${
+                    expandedCategory === 'ventas' ? 'font-bold text-sidebar-foreground' : 'font-normal text-sidebar-foreground/60'
                   }`}
                 >
                   Ventas
@@ -460,8 +460,8 @@ const MainSidebar = ({
               <div className="space-y-2">
                 <button 
                   onClick={() => toggleCategory('contacto')}
-                  className={`w-full flex items-center justify-between px-4 py-1 text-xs text-primary uppercase tracking-widest transition-all ${
-                    expandedCategory === 'contacto' ? 'font-bold' : 'font-normal'
+                  className={`w-full flex items-center justify-between px-4 py-1 text-xs uppercase tracking-widest transition-all ${
+                    expandedCategory === 'contacto' ? 'font-bold text-sidebar-foreground' : 'font-normal text-sidebar-foreground/60'
                   }`}
                 >
                   Contacto

@@ -68,16 +68,26 @@ const AppContent: React.FC = () => {
           payload.session_token
         );
 
-        // Extraer fontFamily con prioridad: payload directo > project > activeThemeData > profile
+        // Extraer fontFamily con máxima cobertura de claves posibles
         const handshakeFont = 
           payload.fontFamily || 
           (payload as any).font_family || 
+          (payload as any).font ||
           payload.project?.fontFamily || 
           payload.project?.font_family ||
+          payload.project?.font ||
           payload.activeThemeData?.fontFamily ||
           payload.activeThemeData?.font_family ||
+          payload.activeThemeData?.font ||
+          payload.activeThemeData?.theme?.fontFamily ||
+          payload.activeThemeData?.theme?.font_family ||
+          (payload as any).theme?.fontFamily ||
+          (payload as any).theme?.font_family ||
+          (payload as any).theme_data?.fontFamily ||
+          (payload as any).theme_data?.font_family ||
           payload.profile?.fontFamily ||
           payload.profile?.font_family ||
+          payload.profile?.font ||
           '';
 
         console.log('[HANDSHAKE] fontFamily detectada:', handshakeFont || 'NINGUNA (vacia)');

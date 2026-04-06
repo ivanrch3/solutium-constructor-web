@@ -426,7 +426,7 @@ export const publishWebBuilderSite = async (site: Partial<PublishedSite>): Promi
 
     const dbData: any = {
       project_id: site.projectId,
-      app_id: 'web-builder',
+      app_id: '11111111-1111-1111-1111-111111111111',
       content: site.content,
       metadata: site.metadata,
       subdomain_id: site.subdomainId,

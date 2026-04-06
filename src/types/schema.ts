@@ -164,32 +164,18 @@ export interface RenderingContract {
   };
   sections: Array<{
     id: string;
-    type: 'hero' | 'features' | 'pricing' | 'contact' | 'footer' | 'products';
-    content: {
-      title?: string;
-      subtitle?: string;
-      imageUrl?: string;
-      buttonText?: string;
-      items?: Array<{ title: string; description: string; icon?: string }>;
-      email?: string;
-      phone?: string;
-      address?: string;
-      plans?: Array<{ name: string; price: string; features: string[]; featured: boolean }>;
-    };
+    type: string;
+    content: any;
+    settings?: any;
   }>;
 }
 
 export interface PublishedSite {
   id: string;
   projectId: string;
-  appId: 'web-builder';
+  appId: string;
   content: RenderingContract;
-  metadata: {
-    title?: string;
-    description?: string;
-    favicon?: string;
-    ogImage?: string;
-  };
+  metadata: any;
   subdomainId?: string;
   createdAt?: string;
   updatedAt?: string;

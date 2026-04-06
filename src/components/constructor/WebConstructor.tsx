@@ -1308,6 +1308,68 @@ const DeleteConfirmationModal: React.FC<{
   </div>
 );
 
+const PublishModal: React.FC<{
+  siteName: string,
+  setSiteName: (name: string) => void,
+  onPublish: () => void,
+  onCancel: () => void,
+  isSaving: boolean
+}> = ({ siteName, setSiteName, onPublish, onCancel, isSaving }) => (
+  <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      onClick={onCancel}
+      className="absolute inset-0 bg-text/40 backdrop-blur-sm"
+    />
+    <motion.div 
+      initial={{ scale: 0.9, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      exit={{ scale: 0.9, opacity: 0 }}
+      className="relative w-full max-w-md bg-surface rounded-3xl p-8 shadow-2xl border border-border"
+    >
+      <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mb-6">
+        <Send className="text-primary w-8 h-8" />
+      </div>
+      <h3 className="text-xl font-bold text-text mb-2">Publicar Sitio</h3>
+      <p className="text-sm text-text/60 mb-6 leading-relaxed">
+        Asigna un nombre a tu página para identificarla en tu panel de Solutium.
+      </p>
+      
+      <div className="space-y-4 mb-8">
+        <div className="space-y-2">
+          <label className="text-[10px] font-bold text-text/40 uppercase tracking-wider">Nombre de la Página</label>
+          <input 
+            type="text"
+            value={siteName}
+            onChange={(e) => setSiteName(e.target.value)}
+            placeholder="Ej: Página de Inicio, Landing de Ventas..."
+            className="w-full px-4 py-3 bg-secondary border border-border rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+            autoFocus
+          />
+        </div>
+      </div>
+
+      <div className="flex gap-3">
+        <button 
+          onClick={onCancel}
+          className="flex-1 px-6 py-3 bg-secondary hover:bg-secondary/80 text-text font-bold rounded-2xl transition-all"
+        >
+          Cancelar
+        </button>
+        <button 
+          onClick={onPublish}
+          disabled={!siteName || isSaving}
+          className="flex-1 px-6 py-3 bg-primary hover:bg-primary/90 text-white font-bold rounded-2xl shadow-lg shadow-primary/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {isSaving ? 'Publicando...' : 'Publicar Ahora'}
+        </button>
+      </div>
+    </motion.div>
+  </div>
+);
+
 // --- MAIN COMPONENT ---
 
 interface WebConstructorProps {
@@ -1328,6 +1390,9 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   const [activeTab, setActiveTab] = useState('constructor');
   const [products, setProducts] = useState<Product[]>([]);
   const [moduleToDelete, setModuleToDelete] = useState<WebModule | null>(null);
+  const [showPublishModal, setShowPublishModal] = useState(false);
+  const [siteName, setSiteName] = useState(project?.name || '');
+  const [isSaving, setIsSaving] = useState(false);
   const [editorState, setEditorState] = useState<EditorState>({
     addedModules: [],
     expandedModuleId: null,
@@ -1453,79 +1518,110 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
 
   const handleSaveDraft = async () => {
     if (!projectId) return;
+    setIsSaving(true);
     
-    const siteData = {
-      projectId,
-      name: 'Mi Sitio Web',
-      contentDraft: editorState,
-      status: 'draft' as const,
-    };
-    
-    const result = await saveWebBuilderSiteDraft(siteData);
-    if (result) {
-      console.log('Borrador guardado con éxito');
+    try {
+      const siteId = project?.id || `site_${Date.now()}`;
+      
+      const payload = {
+        data: editorState,
+        metadata: {
+          siteId: siteId,
+          siteName: siteName || 'Borrador sin nombre',
+          action: 'save' as const,
+          isPublish: false,
+          timestamp: Date.now()
+        }
+      };
+
+      const siteData = {
+        projectId,
+        name: payload.metadata.siteName,
+        contentDraft: payload.data,
+        status: 'draft' as const,
+      };
+      
+      const result = await saveWebBuilderSiteDraft(siteData);
+      if (result) {
+        console.log('Borrador guardado con éxito (SIP v4.0)');
+      }
+    } finally {
+      setIsSaving(false);
     }
   };
 
   const handlePublish = async () => {
     if (!projectId) return;
+    if (!siteName) {
+      setShowPublishModal(true);
+      return;
+    }
 
-    // Helper to get setting value with fallback
-    const getSetting = (moduleId: string, settingId: string, defaultValue: any) => {
-      const key = `${moduleId}_global_${settingId}`;
-      return editorState.settingsValues[key] !== undefined ? editorState.settingsValues[key] : defaultValue;
-    };
+    setIsSaving(true);
+    try {
+      // Helper to get setting value with fallback
+      const getSetting = (moduleId: string, settingId: string, defaultValue: any) => {
+        const key = `${moduleId}_global_${settingId}`;
+        return editorState.settingsValues[key] !== undefined ? editorState.settingsValues[key] : defaultValue;
+      };
 
-    // 1. Determine Global Theme
-    // We take the primary color from the first module's global settings or project default
-    const firstModuleId = editorState.addedModules[0]?.id;
-    const primaryColor = firstModuleId 
-      ? getSetting(firstModuleId, 'primary_color', project?.brandColors?.primary || '#2563EB')
-      : (project?.brandColors?.primary || '#2563EB');
+      // 1. Determine Global Theme
+      const firstModuleId = editorState.addedModules[0]?.id;
+      const primaryColor = firstModuleId 
+        ? getSetting(firstModuleId, 'primary_color', project?.brandColors?.primary || '#2563EB')
+        : (project?.brandColors?.primary || '#2563EB');
 
-    const renderingContract: RenderingContract = {
-      theme: {
-        primaryColor,
-        fontFamily: project?.fontFamily || 'Inter',
-      },
-      sections: editorState.addedModules.map(module => {
-        // Map module settings to the rendering contract content structure
-        const content: any = {
-          title: getSetting(module.id, 'section_title', ''),
-          subtitle: getSetting(module.id, 'section_desc', ''),
-        };
+      const renderingContract: RenderingContract = {
+        theme: {
+          primaryColor,
+          fontFamily: project?.fontFamily || 'Inter',
+        },
+        sections: editorState.addedModules.map(module => {
+          const content: any = {
+            title: getSetting(module.id, 'section_title', ''),
+            subtitle: getSetting(module.id, 'section_desc', ''),
+          };
 
-        // Specific mapping based on module type
-        if (module.type === 'products') {
-          // For products, the renderer usually fetches them by projectId, 
-          // but we can pass layout hints in metadata if the contract allows, 
-          // or just the basic title/subtitle.
+          if (module.type === 'products') {
+            content.productIds = getSetting(module.id, 'select_products', []);
+          }
+          if (module.type === 'clients') {
+            content.customerIds = getSetting(module.id, 'select_customers', []);
+          }
+
+          return {
+            id: module.id,
+            type: module.type as any,
+            content
+          };
+        })
+      };
+
+      const siteId = project?.id || `site_${Date.now()}`;
+
+      const payload = {
+        data: renderingContract,
+        metadata: {
+          siteId: siteId,
+          siteName: siteName,
+          action: 'publish' as const,
+          isPublish: true,
+          timestamp: Date.now()
         }
+      };
 
-        return {
-          id: module.id,
-          type: module.type as any,
-          content
-        };
-      })
-    };
+      const result = await publishWebBuilderSite({
+        projectId,
+        content: payload.data,
+        metadata: payload.metadata
+      });
 
-    const publishData = {
-      projectId,
-      appId: 'web-builder' as const,
-      content: renderingContract,
-      metadata: {
-        title: project?.webConfig?.seoTitle || project?.name || 'Mi Sitio Web',
-        description: project?.webConfig?.seoDescription || 'Construido con Solutium Web Builder',
-        ogImage: project?.logoUrl || undefined,
+      if (result) {
+        console.log('Sitio publicado con éxito (SIP v4.0)');
+        setShowPublishModal(false);
       }
-    };
-
-    const result = await publishWebBuilderSite(publishData);
-    if (result) {
-      console.log('Sitio publicado con éxito');
-      // In a real app, we would show a success modal with the URL:
-      // https://[subdomain].solutium.app
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -1588,13 +1684,22 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         )}
       </div>
 
-      {/* Modal de Confirmación de Eliminación */}
+      {/* Modals */}
       <AnimatePresence>
         {moduleToDelete && (
           <DeleteConfirmationModal 
             moduleName={moduleToDelete.name}
             onConfirm={confirmRemoveModule}
             onCancel={() => setModuleToDelete(null)}
+          />
+        )}
+        {showPublishModal && (
+          <PublishModal 
+            siteName={siteName}
+            setSiteName={setSiteName}
+            onPublish={handlePublish}
+            onCancel={() => setShowPublishModal(false)}
+            isSaving={isSaving}
           />
         )}
       </AnimatePresence>

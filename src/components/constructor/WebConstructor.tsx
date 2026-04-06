@@ -1123,11 +1123,21 @@ const StructurePanel: React.FC<StructurePanelProps> = ({
   );
 };
 
-const TopBar = ({ onSave, onPublish }: { onSave: () => void, onPublish: () => void }) => (
+const TopBar = ({ onSave, onPublish, logoUrl }: { onSave: () => void, onPublish: () => void, logoUrl: string | null }) => (
   <div className="h-[60px] bg-surface border-b border-border/30 flex items-center justify-between px-6 z-20">
-    <div className="flex flex-col">
-      <h2 className="text-base font-bold text-text">Editor de Módulos</h2>
-      <p className="text-xs font-normal text-text/20 uppercase tracking-wider">Añade módulos para construir tu página</p>
+    <div className="flex items-center gap-4">
+      {logoUrl && (
+        <img 
+          src={logoUrl} 
+          alt="Logo" 
+          className="h-8 w-auto object-contain mr-2" 
+          referrerPolicy="no-referrer" 
+        />
+      )}
+      <div className="flex flex-col">
+        <h2 className="text-base font-bold text-text">Editor de Módulos</h2>
+        <p className="text-xs font-normal text-text/20 uppercase tracking-wider">Añade módulos para construir tu página</p>
+      </div>
     </div>
 
     <div className="flex items-center gap-4">
@@ -1164,8 +1174,10 @@ const Canvas: React.FC<{
   editorState: EditorState, 
   onAddModule: (module: WebModule) => void,
   products: Product[],
-  isDevMode: boolean
-}> = ({ editorState, onAddModule, products, isDevMode }) => {
+  isDevMode: boolean,
+  logoUrl?: string | null,
+  logoWhiteUrl?: string | null
+}> = ({ editorState, onAddModule, products, isDevMode, logoUrl, logoWhiteUrl }) => {
   const lastModuleRef = React.useRef<HTMLDivElement>(null);
   const prevModulesLength = React.useRef(editorState.addedModules.length);
 
@@ -1207,6 +1219,8 @@ const Canvas: React.FC<{
                   <HeroModule 
                     moduleId={module.id}
                     settingsValues={editorState.settingsValues}
+                    logoUrl={logoUrl}
+                    logoWhiteUrl={logoWhiteUrl}
                   />
                 )}
                 {module.type === 'features' && (
@@ -1377,6 +1391,7 @@ interface WebConstructorProps {
   projectId: string | null;
   currentUserId: string | null;
   logoUrl: string | null;
+  logoWhiteUrl: string | null;
   project: Project | null;
 }
 
@@ -1385,6 +1400,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   projectId, 
   currentUserId,
   logoUrl,
+  logoWhiteUrl,
   project
 }) => {
   const [activeTab, setActiveTab] = useState('constructor');
@@ -1655,12 +1671,18 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
               products={products}
             />
             <div className="flex-1 flex flex-col h-full">
-              <TopBar onSave={handleSaveDraft} onPublish={handlePublish} />
+              <TopBar 
+                onSave={handleSaveDraft} 
+                onPublish={handlePublish} 
+                logoUrl={logoUrl}
+              />
               <Canvas 
                 editorState={editorState} 
                 onAddModule={addModule} 
                 products={products}
                 isDevMode={projectId === 'dev-project-id'}
+                logoUrl={logoUrl}
+                logoWhiteUrl={logoWhiteUrl}
               />
             </div>
           </div>

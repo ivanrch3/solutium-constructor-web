@@ -2,8 +2,10 @@ import React from 'react';
 
 export const HeroModule: React.FC<{ 
   moduleId: string, 
-  settingsValues: Record<string, any> 
-}> = ({ moduleId, settingsValues }) => {
+  settingsValues: Record<string, any>,
+  logoUrl?: string | null,
+  logoWhiteUrl?: string | null
+}> = ({ moduleId, settingsValues, logoUrl, logoWhiteUrl }) => {
   const getVal = (elementId: string | null, settingId: string, defaultValue: any) => {
     const key = elementId ? `${elementId}_${settingId}` : `${moduleId}_global_${settingId}`;
     return settingsValues[key] !== undefined ? settingsValues[key] : defaultValue;
@@ -14,6 +16,9 @@ export const HeroModule: React.FC<{
   const height = getVal(null, 'height', 80);
   const overlayOpacity = getVal(null, 'overlay_opacity', 50);
   const bgImage = getVal(null, 'bg_image', '');
+  const showLogo = getVal(null, 'show_logo', true);
+
+  const displayLogo = logoWhiteUrl || logoUrl;
 
   return (
     <section 
@@ -34,6 +39,16 @@ export const HeroModule: React.FC<{
       ></div>
       
       <div className="relative z-10 text-center px-6 max-w-4xl">
+        {showLogo && displayLogo && (
+          <div className="flex justify-center mb-8">
+            <img 
+              src={displayLogo} 
+              alt="Logo" 
+              className="h-16 w-auto object-contain" 
+              referrerPolicy="no-referrer" 
+            />
+          </div>
+        )}
         <h1 className="text-4xl md:text-6xl font-black text-white mb-6 leading-tight">
           {title}
         </h1>

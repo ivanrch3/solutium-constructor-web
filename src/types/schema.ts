@@ -83,6 +83,7 @@ export interface Project {
   address?: string;
   website?: string;
   logoUrl?: string;
+  logoWhiteUrl?: string;
   isoUrl?: string;
   projectIconUrl?: string;
   fontFamily?: string;

@@ -28,12 +28,16 @@ const AppContent: React.FC = () => {
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const [loadingLogoError, setLoadingLogoError] = useState(false);
   const [urlLogo, setUrlLogo] = useState<string | null>(null);
+  const [urlLogoWhite, setUrlLogoWhite] = useState<string | null>(null);
   const { applyTheme } = useTheme();
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const logo = params.get('logoUrl') || params.get('logo_url') || params.get('isoUrl') || params.get('iso_url');
     if (logo) setUrlLogo(logo);
+
+    const logoWhite = params.get('logoWhiteUrl') || params.get('logo_white_url');
+    if (logoWhite) setUrlLogoWhite(logoWhite);
     
     const fontParam = params.get('fontFamily') || params.get('font_family');
     if (fontParam) {
@@ -125,9 +129,17 @@ const AppContent: React.FC = () => {
           
           if (payload.project) {
             setProject(payload.project);
+            if (payload.project.logoWhiteUrl || payload.project.logo_white_url) {
+              setUrlLogoWhite(payload.project.logoWhiteUrl || payload.project.logo_white_url);
+            }
           } else {
             const projectData = await getProject(payload.satellite_id);
-            if (projectData) setProject(projectData);
+            if (projectData) {
+              setProject(projectData);
+              if (projectData.logoWhiteUrl) {
+                setUrlLogoWhite(projectData.logoWhiteUrl);
+              }
+            }
           }
 
           // Fetch assets for the project
@@ -278,6 +290,7 @@ const AppContent: React.FC = () => {
             onNewPage={handleNewPage} 
             onSelectAsset={handleSelectAsset}
             logoUrl={urlLogo}
+            logoWhiteUrl={urlLogoWhite}
           />
         );
       case 'selection-method':
@@ -323,6 +336,7 @@ const AppContent: React.FC = () => {
             projectId={projectId} 
             currentUserId={profile?.id || null}
             logoUrl={urlLogo}
+            logoWhiteUrl={urlLogoWhite}
             project={project}
           />
         );

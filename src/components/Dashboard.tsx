@@ -8,17 +8,27 @@ interface DashboardProps {
   onNewPage: () => void;
   onSelectAsset: (asset: Asset) => void;
   logoUrl?: string | null;
+  logoWhiteUrl?: string | null;
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ assets, onNewPage, onSelectAsset, logoUrl }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ assets, onNewPage, onSelectAsset, logoUrl, logoWhiteUrl }) => {
   return (
     <div className="min-h-screen bg-secondary p-8 flex flex-col items-center">
       {/* Header Logo */}
       <div className="flex flex-col items-center mb-12">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
-            <FileText className="text-white w-7 h-7" />
-          </div>
+          {logoUrl ? (
+            <img 
+              src={logoUrl} 
+              alt="Logo" 
+              className="h-12 w-auto object-contain" 
+              referrerPolicy="no-referrer" 
+            />
+          ) : (
+            <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
+              <FileText className="text-white w-7 h-7" />
+            </div>
+          )}
           <div className="flex flex-col">
             <h1 className="text-2xl font-bold text-text leading-tight">Constructor</h1>
             <div className="flex items-center gap-1">

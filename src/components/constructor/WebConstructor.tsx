@@ -38,10 +38,11 @@ import { WebModule, ModuleElement, SettingGroupType, EditorState, SettingDefinit
 import { ProductsModule } from './modules/ProductsModule';
 import { HeroModule } from './modules/HeroModule';
 import { FeaturesModule } from './modules/FeaturesModule';
+import { ClientsModule } from './modules/ClientsModule';
 import { saveWebBuilderSiteDraft, publishWebBuilderSite, getProducts } from '../../services/dataService';
 import { syncAsset } from '../../services/assetService';
-import { Product } from '../../types/schema';
-import { MOCK_PRODUCTS } from '../../constants/mockData';
+import { Product, Customer } from '../../types/schema';
+import { MOCK_PRODUCTS, MOCK_CUSTOMERS } from '../../constants/mockData';
 
 // --- CONSTANTS ---
 
@@ -240,6 +241,122 @@ const FEATURES_MODULE: WebModule = {
   elements: []
 };
 
+const CLIENTS_MODULE: WebModule = {
+  id: 'mod_clients_1',
+  type: 'clients',
+  name: 'Clientes',
+  globalGroups: ['contenido', 'estructura', 'estilo', 'interaccion'],
+  globalSettings: {
+    contenido: [
+      { id: 'select_customers', label: 'Selección de Clientes', type: 'customer_selection', defaultValue: [] }
+    ],
+    estructura: [
+      { id: 'layout', label: 'Diseño', type: 'select', defaultValue: 'grid', options: [
+        { label: 'Grilla', value: 'grid' },
+        { label: 'Carrusel', value: 'carousel' },
+        { label: 'Marquee (Cinta)', value: 'marquee' }
+      ]},
+      { id: 'alignment', label: 'Alineación de Sección', type: 'select', defaultValue: 'center', options: [
+        { label: 'Izquierda', value: 'left' },
+        { label: 'Centro', value: 'center' },
+        { label: 'Derecha', value: 'right' }
+      ]},
+      { id: 'columns', label: 'Columnas (Desktop)', type: 'range', defaultValue: 5, min: 1, max: 8 },
+      { id: 'gap', label: 'Espaciado', type: 'range', defaultValue: 40, min: 0, max: 100, unit: 'px' },
+      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 60, min: 0, max: 200, unit: 'px' }
+    ],
+    estilo: [
+      { id: 'bg_color', label: 'Color de Fondo', type: 'color', defaultValue: 'transparent' }
+    ],
+    interaccion: [
+      { id: 'animation_speed', label: 'Velocidad de Animación', type: 'range', defaultValue: 30, min: 5, max: 100, unit: 's' }
+    ],
+    tipografia: [],
+    multimedia: []
+  },
+  elements: [
+    {
+      id: 'el_clients_title',
+      name: 'Título de la Sección',
+      type: 'text',
+      groups: ['contenido', 'tipografia', 'estructura'],
+      settings: {
+        contenido: [
+          { id: 'title_text', label: 'Texto del Título', type: 'text', defaultValue: 'Empresas que confían en nosotros' }
+        ],
+        tipografia: [
+          { id: 'title_size', label: 'Tamaño de Fuente', type: 'range', defaultValue: 24, min: 16, max: 48, unit: 'px' },
+          { id: 'title_weight', label: 'Grosor', type: 'select', defaultValue: 'bold', options: [
+            { label: 'Normal', value: 'normal' },
+            { label: 'Medio', value: 'medium' },
+            { label: 'Negrita', value: 'bold' }
+          ]},
+          { id: 'title_color', label: 'Color', type: 'color', defaultValue: 'var(--foreground-color)' }
+        ],
+        estructura: [
+          { id: 'title_margin_bottom', label: 'Margen Inferior', type: 'range', defaultValue: 16, min: 0, max: 100, unit: 'px' }
+        ],
+        estilo: [],
+        multimedia: [],
+        interaccion: []
+      }
+    },
+    {
+      id: 'el_clients_subtitle',
+      name: 'Subtítulo de la Sección',
+      type: 'text',
+      groups: ['contenido', 'tipografia', 'estructura'],
+      settings: {
+        contenido: [
+          { id: 'subtitle_text', label: 'Texto del Subtítulo', type: 'text', defaultValue: 'Trabajamos con los mejores para ofrecerte lo mejor.' }
+        ],
+        tipografia: [
+          { id: 'subtitle_size', label: 'Tamaño de Fuente', type: 'range', defaultValue: 16, min: 12, max: 24, unit: 'px' },
+          { id: 'subtitle_color', label: 'Color', type: 'color', defaultValue: 'var(--foreground-color)' }
+        ],
+        estructura: [
+          { id: 'subtitle_margin_bottom', label: 'Margen Inferior', type: 'range', defaultValue: 40, min: 0, max: 100, unit: 'px' }
+        ],
+        estilo: [],
+        multimedia: [],
+        interaccion: []
+      }
+    },
+    {
+      id: 'el_client_logo',
+      name: 'Logotipo del Cliente',
+      type: 'image',
+      groups: ['multimedia', 'estilo', 'interaccion'],
+      settings: {
+        multimedia: [
+          { id: 'logo_height', label: 'Altura Máxima', type: 'range', defaultValue: 40, min: 20, max: 100, unit: 'px' },
+          { id: 'logo_fit', label: 'Ajuste', type: 'select', defaultValue: 'contain', options: [
+            { label: 'Contener', value: 'contain' },
+            { label: 'Cubrir', value: 'cover' }
+          ]}
+        ],
+        estilo: [
+          { id: 'logo_filter', label: 'Filtro de Color', type: 'select', defaultValue: 'grayscale', options: [
+            { label: 'Original', value: 'none' },
+            { label: 'Escala de Grises', value: 'grayscale' },
+            { label: 'Blanco', value: 'brightness(0) invert(1)' }
+          ]},
+          { id: 'logo_opacity', label: 'Opacidad', type: 'range', defaultValue: 60, min: 0, max: 100, unit: '%' },
+          { id: 'logo_border_radius', label: 'Radio de Borde', type: 'range', defaultValue: 0, min: 0, max: 50, unit: 'px' }
+        ],
+        interaccion: [
+          { id: 'hover_effect', label: 'Efecto Hover', type: 'boolean', defaultValue: true },
+          { id: 'hover_scale', label: 'Escala al pasar el mouse', type: 'range', defaultValue: 110, min: 100, max: 150, unit: '%' },
+          { id: 'enable_links', label: 'Habilitar Enlaces', type: 'boolean', defaultValue: false }
+        ],
+        contenido: [],
+        estructura: [],
+        tipografia: []
+      }
+    }
+  ]
+};
+
 const GROUP_LABELS: Record<SettingGroupType, string> = {
   contenido: 'Contenido',
   estructura: 'Estructura',
@@ -425,7 +542,11 @@ const MainSidebar = ({
                 {expandedCategory === 'confianza' && (
                   <div className="space-y-0.5 px-2">
                     <ModuleItem icon={<FileText size={18} />} label="Testimonios" />
-                    <ModuleItem icon={<CheckCircle2 size={18} />} label="Clientes" />
+                    <ModuleItem 
+                      icon={<CheckCircle2 size={18} />} 
+                      label="Clientes" 
+                      onClick={() => onAddModule(CLIENTS_MODULE)}
+                    />
                     <ModuleItem icon={<Database size={18} />} label="Estadísticas" />
                     <ModuleItem icon={<User size={18} />} label="Equipo" />
                   </div>
@@ -571,22 +692,27 @@ const SettingControl: React.FC<{
 
   switch (setting.type) {
     case 'product_selection':
-      const availableProducts = (products && products.length > 0) ? products : (projectId === 'dev-project-id' ? MOCK_PRODUCTS : []);
+    case 'customer_selection':
+      const isProduct = setting.type === 'product_selection';
+      const availableItems = isProduct 
+        ? ((products && products.length > 0) ? products : (projectId === 'dev-project-id' ? MOCK_PRODUCTS : []))
+        : (projectId === 'dev-project-id' ? MOCK_CUSTOMERS : []);
       
       return (
         <div className="space-y-3">
           <label className="text-[10px] font-bold text-text/40 uppercase tracking-wider">{setting.label}</label>
           <div className="grid grid-cols-1 gap-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-            {availableProducts.map(product => {
-              const isSelected = Array.isArray(currentValue) && currentValue.includes(product.id);
+            {availableItems.map((item: any) => {
+              const isSelected = Array.isArray(currentValue) && currentValue.includes(item.id);
+              const imageUrl = isProduct ? item.imageUrl : item.companyLogoUrl;
               
               return (
                 <div 
-                  key={product.id}
+                  key={item.id}
                   onClick={() => {
                     const newValue = isSelected 
-                      ? (currentValue as string[]).filter(id => id !== product.id)
-                      : [...(currentValue as string[] || []), product.id];
+                      ? (currentValue as string[]).filter(id => id !== item.id)
+                      : [...(currentValue as string[] || []), item.id];
                     onChange(newValue);
                   }}
                   className={`flex items-center gap-3 p-2 rounded-xl border transition-all cursor-pointer group ${
@@ -596,8 +722,8 @@ const SettingControl: React.FC<{
                   }`}
                 >
                   <div className="w-12 h-12 rounded-lg overflow-hidden bg-secondary flex-shrink-0 border border-border/30">
-                    {product.imageUrl ? (
-                      <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                    {imageUrl ? (
+                      <img src={imageUrl} alt={item.name} className={`w-full h-full ${isProduct ? 'object-cover' : 'object-contain p-1'}`} referrerPolicy="no-referrer" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-text/20">
                         <ImageIcon size={16} />
@@ -606,9 +732,11 @@ const SettingControl: React.FC<{
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className={`text-[11px] font-bold truncate ${isSelected ? 'text-primary' : 'text-text'}`}>
-                      {product.name}
+                      {item.name}
                     </p>
-                    <p className="text-[10px] text-text/40 font-medium">${product.price}</p>
+                    <p className="text-[10px] text-text/40 font-medium">
+                      {isProduct ? `$${item.price}` : (item.company || 'Cliente')}
+                    </p>
                   </div>
                   <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${
                     isSelected ? 'bg-primary border-primary' : 'bg-surface border-border group-hover:border-border/80'
@@ -618,9 +746,9 @@ const SettingControl: React.FC<{
                 </div>
               );
             })}
-            {availableProducts.length === 0 && (
+            {availableItems.length === 0 && (
               <div className="p-6 text-center bg-secondary rounded-xl border border-dashed border-border">
-                <p className="text-[10px] text-text/40 font-medium">No hay productos disponibles.</p>
+                <p className="text-[10px] text-text/40 font-medium">No hay {isProduct ? 'productos' : 'clientes'} disponibles.</p>
               </div>
             )}
           </div>
@@ -1087,6 +1215,13 @@ const Canvas: React.FC<{
                     settingsValues={editorState.settingsValues}
                   />
                 )}
+                {module.type === 'clients' && (
+                  <ClientsModule 
+                    moduleId={module.id}
+                    settingsValues={editorState.settingsValues}
+                    isDevMode={isDevMode}
+                  />
+                )}
               </div>
             );
           })}
@@ -1236,6 +1371,12 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
             const availableProducts = products.length > 0 ? products : (projectId === 'dev-project-id' ? MOCK_PRODUCTS : []);
             if (availableProducts.length > 0) {
               val = availableProducts.slice(0, 8).map(p => p.id);
+            }
+          }
+          if (setting.type === 'customer_selection') {
+            const availableCustomers = projectId === 'dev-project-id' ? MOCK_CUSTOMERS : [];
+            if (availableCustomers.length > 0) {
+              val = availableCustomers.slice(0, 6).map(c => c.id);
             }
           }
           initialValues[`${moduleId}_global_${setting.id}`] = val;

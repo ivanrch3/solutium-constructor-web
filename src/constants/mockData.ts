@@ -1,4 +1,13 @@
-import { Product } from '../types/schema';
+import { Product, Customer } from '../types/schema';
+
+export const MOCK_CUSTOMERS: Customer[] = [
+  { id: 'c1', name: 'TechFlow Solutions', companyLogoUrl: 'https://cdn.worldvectorlogo.com/logos/slack-new-logo.svg' },
+  { id: 'c2', name: 'Global Logistics', companyLogoUrl: 'https://cdn.worldvectorlogo.com/logos/fedex-logo.svg' },
+  { id: 'c3', name: 'Creative Agency', companyLogoUrl: 'https://cdn.worldvectorlogo.com/logos/adobe-2.svg' },
+  { id: 'c4', name: 'HealthFirst Inc.', companyLogoUrl: 'https://cdn.worldvectorlogo.com/logos/spotify-1.svg' },
+  { id: 'c5', name: 'Future Systems', companyLogoUrl: 'https://cdn.worldvectorlogo.com/logos/microsoft-5.svg' },
+  { id: 'c6', name: 'EcoEnergy Co.', companyLogoUrl: 'https://cdn.worldvectorlogo.com/logos/tesla-9.svg' }
+];
 
 export const MOCK_PRODUCTS: Product[] = [
   {

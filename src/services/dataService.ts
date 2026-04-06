@@ -385,6 +385,7 @@ export const saveWebBuilderSiteDraft = async (site: Partial<WebBuilderSite>): Pr
 
     const dbData: any = {
       project_id: site.projectId,
+      user_id: site.userId,
       name: site.name,
       content_draft: site.contentDraft,
       status: site.status || 'draft',

@@ -1536,6 +1536,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
 
       const siteData = {
         projectId,
+        userId: currentUserId || undefined,
         name: payload.metadata.siteName,
         contentDraft: payload.data,
         status: 'draft' as const,

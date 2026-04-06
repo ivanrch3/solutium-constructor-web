@@ -149,6 +149,7 @@ export interface Product {
 export interface WebBuilderSite {
   id: string;
   projectId: string;
+  userId?: string;
   name: string;
   contentDraft: any; // EditorState or internal structure
   status: 'draft' | 'published';

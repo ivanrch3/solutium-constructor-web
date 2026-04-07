@@ -183,7 +183,7 @@ export interface PublishedSite {
   siteName?: string;
   isPublish?: boolean;
   content: RenderingContract;
-  metadata: any;
+  metadata?: any;
   subdomainId?: string;
   createdAt?: string;
   updatedAt?: string;

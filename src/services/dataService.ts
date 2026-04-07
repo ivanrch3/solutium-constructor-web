@@ -399,7 +399,7 @@ export const saveWebBuilderSiteDraft = async (site: Partial<WebBuilderSite>): Pr
 
     const { data, error } = await supabase
       .from('web_builder_sites')
-      .upsert(dbData)
+      .upsert(dbData, { onConflict: 'site_id' })
       .select()
       .single();
 
@@ -443,7 +443,7 @@ export const publishWebBuilderSite = async (site: Partial<PublishedSite>): Promi
 
     const { data, error } = await supabase
       .from('published_sites')
-      .upsert(dbData, { onConflict: 'project_id, app_id' })
+      .upsert(dbData, { onConflict: 'site_id' })
       .select()
       .single();
 
@@ -464,6 +464,81 @@ export const publishWebBuilderSite = async (site: Partial<PublishedSite>): Promi
   } catch (err) {
     console.error('Error in publishWebBuilderSite:', err);
     return null;
+  }
+};
+
+export const getWebBuilderSites = async (projectId: string): Promise<WebBuilderSite[]> => {
+  try {
+    const supabase = getSupabase();
+    if (!supabase) return [];
+
+    const { data, error } = await supabase
+      .from('web_builder_sites')
+      .select('*')
+      .eq('project_id', projectId)
+      .order('updated_at', { ascending: false });
+
+    if (error) throw error;
+    if (!data) return [];
+
+    const mappedData = data.map((item: any) => ({
+      id: item.id,
+      projectId: item.project_id,
+      userId: item.user_id,
+      siteId: item.site_id,
+      siteName: item.site_name,
+      isPublish: item.is_publish,
+      name: item.name,
+      contentDraft: item.content_draft,
+      status: item.status,
+      subdomain: item.subdomain,
+      createdAt: item.created_at,
+      updatedAt: item.updated_at,
+    }));
+
+    return mappedData
+      .map(item => validateData(webBuilderSiteSchema, item, 'getWebBuilderSites'))
+      .filter((item): item is WebBuilderSite => item !== null);
+  } catch (err) {
+    console.error('Error in getWebBuilderSites:', err);
+    return [];
+  }
+};
+
+export const getPublishedSites = async (projectId: string): Promise<PublishedSite[]> => {
+  try {
+    const supabase = getSupabase();
+    if (!supabase) return [];
+
+    const { data, error } = await supabase
+      .from('published_sites')
+      .select('*')
+      .eq('project_id', projectId)
+      .order('updated_at', { ascending: false });
+
+    if (error) throw error;
+    if (!data) return [];
+
+    const mappedData = data.map((item: any) => ({
+      id: item.id,
+      projectId: item.project_id,
+      appId: item.app_id,
+      siteId: item.site_id,
+      siteName: item.site_name,
+      isPublish: item.is_publish,
+      content: item.content,
+      metadata: item.metadata,
+      subdomainId: item.subdomain_id,
+      createdAt: item.created_at,
+      updatedAt: item.updated_at,
+    }));
+
+    return mappedData
+      .map(item => validateData(publishedSiteSchema, item, 'getPublishedSites'))
+      .filter((item): item is PublishedSite => item !== null);
+  } catch (err) {
+    console.error('Error in getPublishedSites:', err);
+    return [];
   }
 };
 

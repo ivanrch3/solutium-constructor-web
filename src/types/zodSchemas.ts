@@ -128,6 +128,10 @@ export const productSchema = z.object({
 export const webBuilderSiteSchema = z.object({
   id: z.string(),
   projectId: z.string(),
+  userId: z.string().optional().nullable(),
+  siteId: z.string().optional().nullable(),
+  siteName: z.string().optional().nullable(),
+  isPublish: z.boolean().optional().nullable(),
   name: z.string(),
   contentDraft: z.any(),
   status: z.enum(['draft', 'published']),
@@ -139,14 +143,12 @@ export const webBuilderSiteSchema = z.object({
 export const publishedSiteSchema = z.object({
   id: z.string(),
   projectId: z.string(),
-  appId: z.literal('web-builder'),
+  appId: z.string(),
+  siteId: z.string().optional().nullable(),
+  siteName: z.string().optional().nullable(),
+  isPublish: z.boolean().optional().nullable(),
   content: z.any(), // RenderingContract
-  metadata: z.object({
-    title: z.string().optional().nullable(),
-    description: z.string().optional().nullable(),
-    favicon: z.string().optional().nullable(),
-    ogImage: z.string().optional().nullable(),
-  }),
+  metadata: z.any().optional().nullable(),
   subdomainId: z.string().optional().nullable(),
   createdAt: z.string().optional().nullable(),
   updatedAt: z.string().optional().nullable(),

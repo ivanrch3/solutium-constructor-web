@@ -33,7 +33,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { DataTab } from '../DataTab';
-import { Project, RenderingContract } from '../../types/schema';
+import { Project, RenderingContract, WebBuilderSite, PublishedSite } from '../../types/schema';
 import { WebModule, ModuleElement, SettingGroupType, EditorState, SettingDefinition } from '../../types/constructor';
 import { ProductsModule } from './modules/ProductsModule';
 import { HeroModule } from './modules/HeroModule';
@@ -394,6 +394,7 @@ const MainSidebar = ({
   onTabChange, 
   onBackToDashboard,
   logoUrl,
+  logoWhiteUrl,
   project,
   onAddModule
 }: { 
@@ -401,6 +402,7 @@ const MainSidebar = ({
   onTabChange: (tab: string) => void, 
   onBackToDashboard: () => void,
   logoUrl: string | null,
+  logoWhiteUrl: string | null,
   project: Project | null,
   onAddModule: (module: WebModule) => void
 }) => {
@@ -415,14 +417,16 @@ const MainSidebar = ({
     setExpandedCategory(expandedCategory === category ? null : category);
   };
 
+  const displayLogo = logoWhiteUrl || logoUrl;
+
   return (
     <div className="w-64 bg-sidebar-bg flex flex-col z-40 h-full border-r border-sidebar-border">
       {/* Logo Section */}
       <div className="p-6">
         <div className="flex items-center justify-center">
           <div className="h-12 w-full flex items-center justify-center">
-            {logoUrl ? (
-              <img src={logoUrl} alt="Logo" className="h-full w-auto object-contain" referrerPolicy="no-referrer" />
+            {displayLogo ? (
+              <img src={displayLogo} alt="Logo" className="h-full w-auto object-contain" referrerPolicy="no-referrer" />
             ) : (
               <FileText className="text-sidebar-foreground/20 w-10 h-10" />
             )}
@@ -1393,6 +1397,7 @@ interface WebConstructorProps {
   logoUrl: string | null;
   logoWhiteUrl: string | null;
   project: Project | null;
+  initialPage?: WebBuilderSite | PublishedSite | null;
 }
 
 export const WebConstructor: React.FC<WebConstructorProps> = ({ 
@@ -1401,20 +1406,26 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   currentUserId,
   logoUrl,
   logoWhiteUrl,
-  project
+  project,
+  initialPage
 }) => {
   const [activeTab, setActiveTab] = useState('constructor');
   const [products, setProducts] = useState<Product[]>([]);
   const [moduleToDelete, setModuleToDelete] = useState<WebModule | null>(null);
   const [showPublishModal, setShowPublishModal] = useState(false);
-  const [siteName, setSiteName] = useState(project?.name || '');
+  const [siteName, setSiteName] = useState(initialPage?.siteName || project?.name || '');
   const [isSaving, setIsSaving] = useState(false);
-  const [editorState, setEditorState] = useState<EditorState>({
-    addedModules: [],
-    expandedModuleId: null,
-    selectedElementId: null,
-    expandedGroupsByElement: {},
-    settingsValues: {}
+  const [editorState, setEditorState] = useState<EditorState>(() => {
+    if (initialPage && 'contentDraft' in initialPage && initialPage.contentDraft) {
+      return initialPage.contentDraft as EditorState;
+    }
+    return {
+      addedModules: [],
+      expandedModuleId: null,
+      selectedElementId: null,
+      expandedGroupsByElement: {},
+      settingsValues: {}
+    };
   });
 
   React.useEffect(() => {
@@ -1537,7 +1548,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     setIsSaving(true);
     
     try {
-      const siteId = project?.id || `site_${Date.now()}`;
+      const siteId = initialPage?.siteId || project?.id || `site_${Date.now()}`;
       
       const payload = {
         data: editorState,
@@ -1551,6 +1562,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       };
 
       const siteData = {
+        id: initialPage && 'contentDraft' in initialPage ? initialPage.id : undefined,
         projectId,
         userId: currentUserId || undefined,
         siteId: payload.metadata.siteId,
@@ -1617,7 +1629,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         })
       };
 
-      const siteId = project?.id || `site_${Date.now()}`;
+      const siteId = initialPage?.siteId || project?.id || `site_${Date.now()}`;
 
       const payload = {
         data: renderingContract,
@@ -1631,6 +1643,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       };
 
       const result = await publishWebBuilderSite({
+        id: initialPage && !('contentDraft' in initialPage) ? initialPage.id : undefined,
         projectId,
         siteId: payload.metadata.siteId,
         siteName: payload.metadata.siteName,
@@ -1655,6 +1668,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         onTabChange={setActiveTab} 
         onBackToDashboard={onBackToDashboard} 
         logoUrl={logoUrl}
+        logoWhiteUrl={logoWhiteUrl}
         project={project}
         onAddModule={addModule}
       />

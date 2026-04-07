@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { listenForHandshake } from './services/handshakeService';
 import { initSupabase } from './services/supabaseClient';
 import { initDOClient } from './services/doService';
-import { getProfile, getProject } from './services/dataService';
+import { getProfile, getProject, getWebBuilderSites, getPublishedSites } from './services/dataService';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { Sidebar } from './components/Sidebar';
 import { DataTab } from './components/DataTab';
@@ -10,7 +10,7 @@ import { Dashboard } from './components/Dashboard';
 import { MethodSelection, CreationMethod } from './components/MethodSelection';
 import { ProjectForm, ProjectFormData } from './components/ProjectForm';
 import { WebConstructor } from './components/constructor/WebConstructor';
-import { Profile, Project, Asset } from './types/schema';
+import { Profile, Project, Asset, WebBuilderSite, PublishedSite } from './types/schema';
 import { getAssets } from './services/dataService';
 
 type View = 'dashboard' | 'selection-method' | 'form' | 'generator' | 'constructor';
@@ -21,11 +21,13 @@ const AppContent: React.FC = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [project, setProject] = useState<Project | null>(null);
   const [assets, setAssets] = useState<Asset[]>([]);
+  const [pages, setPages] = useState<(WebBuilderSite | PublishedSite)[]>([]);
   const [activeTab, setActiveTab] = useState('home');
   const [currentView, setCurrentView] = useState<View>('dashboard');
   const [selectedMethod, setSelectedMethod] = useState<CreationMethod | null>(null);
   const [formData, setFormData] = useState<ProjectFormData | null>(null);
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
+  const [selectedPage, setSelectedPage] = useState<WebBuilderSite | PublishedSite | null>(null);
   const [loadingLogoError, setLoadingLogoError] = useState(false);
   const [urlLogo, setUrlLogo] = useState<string | null>(null);
   const [urlLogoWhite, setUrlLogoWhite] = useState<string | null>(null);
@@ -145,6 +147,20 @@ const AppContent: React.FC = () => {
           // Fetch assets for the project
           const projectAssets = await getAssets(payload.satellite_id, 'web_page');
           setAssets(projectAssets);
+
+          // Fetch pages (drafts and published)
+          const [drafts, published] = await Promise.all([
+            getWebBuilderSites(payload.satellite_id),
+            getPublishedSites(payload.satellite_id)
+          ]);
+          
+          // Combine and sort by updatedAt
+          const allPages = [...drafts, ...published].sort((a, b) => {
+            const dateA = new Date(a.updatedAt || 0).getTime();
+            const dateB = new Date(b.updatedAt || 0).getTime();
+            return dateB - dateA;
+          });
+          setPages(allPages);
         }
 
         // Fetch user
@@ -223,6 +239,8 @@ const AppContent: React.FC = () => {
   };
 
   if (!isHandshakeComplete) {
+    const isDevOrAIStudio = window.location.hostname.includes('run.app') || window.location.hostname.includes('localhost');
+
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center text-text p-6">
         <div className="flex flex-col items-center space-y-12">
@@ -234,11 +252,7 @@ const AppContent: React.FC = () => {
               referrerPolicy="no-referrer" 
               onError={() => setLoadingLogoError(true)}
             />
-          ) : (
-            <div className="w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center text-primary font-bold text-3xl animate-pulse">
-              S
-            </div>
-          )}
+          ) : null}
           
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
           <div className="text-center space-y-2">
@@ -248,35 +262,37 @@ const AppContent: React.FC = () => {
         </div>
 
         {/* Botón de Emergencia para Desarrollo */}
-        <div className="absolute bottom-10">
-          <button 
-            onClick={() => {
-              // Inicialización de emergencia con datos de prueba
-              initSupabase(
-                'https://placeholder-project.supabase.co',
-                'placeholder-key',
-                'placeholder-token'
-              );
-              initDOClient(
-                'https://nyc3.digitaloceanspaces.com',
-                'mock-key',
-                'mock-secret',
-                'mock-bucket'
-              );
-              setProjectId('dev-project-id');
-              setProfile({
-                id: 'dev-user-id',
-                email: 'admin@solutium.com',
-                role: 'superadmin',
-                activeTheme: 'blue-light'
-              });
-              setIsHandshakeComplete(true);
-            }}
-            className="px-6 py-2 bg-secondary hover:bg-secondary/80 text-text/40 rounded-xl text-sm font-medium transition-all border border-border shadow-sm"
-          >
-            Saltar Handshake (Modo Dev)
-          </button>
-        </div>
+        {isDevOrAIStudio && (
+          <div className="absolute bottom-10">
+            <button 
+              onClick={() => {
+                // Inicialización de emergencia con datos de prueba
+                initSupabase(
+                  'https://placeholder-project.supabase.co',
+                  'placeholder-key',
+                  'placeholder-token'
+                );
+                initDOClient(
+                  'https://nyc3.digitaloceanspaces.com',
+                  'mock-key',
+                  'mock-secret',
+                  'mock-bucket'
+                );
+                setProjectId('dev-project-id');
+                setProfile({
+                  id: 'dev-user-id',
+                  email: 'admin@solutium.com',
+                  role: 'superadmin',
+                  activeTheme: 'blue-light'
+                });
+                setIsHandshakeComplete(true);
+              }}
+              className="px-6 py-2 bg-secondary hover:bg-secondary/80 text-text/40 rounded-xl text-sm font-medium transition-all border border-border shadow-sm"
+            >
+              Saltar Handshake (Modo Dev)
+            </button>
+          </div>
+        )}
       </div>
     );
   }
@@ -287,8 +303,16 @@ const AppContent: React.FC = () => {
         return (
           <Dashboard 
             assets={assets} 
-            onNewPage={handleNewPage} 
+            pages={pages}
+            onNewPage={() => {
+              setSelectedPage(null);
+              handleNewPage();
+            }} 
             onSelectAsset={handleSelectAsset}
+            onSelectPage={(page) => {
+              setSelectedPage(page);
+              setCurrentView('constructor');
+            }}
             logoUrl={urlLogo}
             logoWhiteUrl={urlLogoWhite}
           />
@@ -332,12 +356,16 @@ const AppContent: React.FC = () => {
       case 'constructor':
         return (
           <WebConstructor 
-            onBackToDashboard={() => setCurrentView('dashboard')} 
+            onBackToDashboard={() => {
+              setSelectedPage(null);
+              setCurrentView('dashboard');
+            }} 
             projectId={projectId} 
             currentUserId={profile?.id || null}
             logoUrl={urlLogo}
             logoWhiteUrl={urlLogoWhite}
             project={project}
+            initialPage={selectedPage}
           />
         );
       default:

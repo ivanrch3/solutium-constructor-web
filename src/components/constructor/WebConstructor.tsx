@@ -1201,9 +1201,9 @@ const Canvas: React.FC<{
   }, [editorState.addedModules.length]);
 
   return (
-    <div className="flex-1 bg-secondary p-12 overflow-y-auto flex flex-col items-center">
+    <div className="flex-1 bg-secondary p-12 overflow-y-auto flex flex-col items-center custom-scrollbar">
       {/* Preview Window */}
-      <div className="w-full max-w-5xl bg-surface shadow-2xl rounded-2xl border border-border/50 min-h-[800px] flex flex-col mb-32 transition-all duration-500">
+      <div className="w-full max-w-5xl bg-surface shadow-2xl rounded-2xl border border-border/50 min-h-[800px] flex flex-col mb-32 relative">
         {/* Dynamic Modules */}
         <div className="flex flex-col w-full">
           {editorState.addedModules.map((module, index) => {

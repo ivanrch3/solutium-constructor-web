@@ -74,7 +74,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                               {isPublished ? 'Publicado' : 'Borrador'}
                             </span>
                           </div>
-                          <p className="text-xs text-text/40 font-medium">
+                          <p className="text-xs text-text/60 font-medium">
                             Actualizado el {new Date(page.updatedAt || '').toLocaleDateString()}
                           </p>
                         </div>
@@ -85,9 +85,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 })}
               </div>
             ) : (
-              <div className="h-full border-2 border-dashed border-border rounded-2xl flex flex-col items-center justify-center text-text/40 space-y-3">
+              <div className="h-full border-2 border-dashed border-border rounded-2xl flex flex-col items-center justify-center text-text/60 space-y-3">
                 <div className="w-12 h-12 bg-secondary rounded-full flex items-center justify-center">
-                  <FileText className="w-6 h-6 text-text/20" />
+                  <FileText className="w-6 h-6 text-text/30" />
                 </div>
                 <p className="text-base font-medium">No existen páginas.</p>
               </div>
@@ -109,7 +109,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           
           <button 
             onClick={onNewPage}
-            className="flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-white font-bold py-3 px-6 rounded-xl transition-all shadow-lg shadow-primary/10 w-fit group"
+            className="flex items-center justify-center gap-2 bg-solutium-dark hover:opacity-90 text-white font-bold py-3 px-6 rounded-xl transition-all shadow-lg shadow-primary/20 w-fit group border border-black/5"
           >
             <PlusSquare className="w-5 h-5 group-hover:scale-110 transition-transform" />
             <span className="text-base">Crear nuevo</span>

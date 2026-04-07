@@ -7,25 +7,22 @@ export type CreationMethod = 'ai' | 'template' | 'scratch';
 interface MethodSelectionProps {
   onSelect: (method: CreationMethod) => void;
   onBack: () => void;
+  logoUrl?: string | null;
 }
 
-export const MethodSelection: React.FC<MethodSelectionProps> = ({ onSelect, onBack }) => {
+export const MethodSelection: React.FC<MethodSelectionProps> = ({ onSelect, onBack, logoUrl }) => {
   return (
     <div className="min-h-screen bg-secondary p-8 flex flex-col items-center">
       {/* Header Logo */}
-      <div className="flex flex-col items-center mb-12">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
-            <FileText className="text-white w-7 h-7" />
-          </div>
-          <div className="flex flex-col">
-            <h1 className="text-2xl font-bold text-text leading-tight">Constructor</h1>
-            <div className="flex items-center gap-1">
-              <span className="text-2xl font-bold text-text">Web</span>
-              <span className="text-xs text-text/60 font-medium mt-1">by Solutium</span>
-            </div>
-          </div>
-        </div>
+      <div className="flex flex-col items-center mb-16">
+        {logoUrl && (
+          <img 
+            src={logoUrl} 
+            alt="Logo" 
+            className="h-20 w-auto object-contain" 
+            referrerPolicy="no-referrer" 
+          />
+        )}
       </div>
 
       <h2 className="text-2xl font-bold text-text mb-12 text-center">¿Cómo quieres crear tu página?</h2>
@@ -37,13 +34,13 @@ export const MethodSelection: React.FC<MethodSelectionProps> = ({ onSelect, onBa
           whileHover={{ y: -5 }}
           whileTap={{ scale: 0.98 }}
           onClick={() => onSelect('ai')}
-          className="bg-primary rounded-3xl p-8 text-left flex flex-col h-[400px] shadow-xl shadow-primary/10 group transition-all"
+          className="bg-solutium-dark rounded-3xl p-8 text-left flex flex-col h-[400px] shadow-xl shadow-primary/10 group transition-all border border-black/5"
         >
           <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center mb-6">
             <Sparkles className="text-white w-6 h-6" />
           </div>
           <h3 className="text-xl font-bold text-white mb-4">Generar con IA</h3>
-          <p className="text-white/80 text-sm leading-relaxed">
+          <p className="text-white/90 text-sm leading-relaxed">
             Describe tu negocio y deja que nuestra inteligencia artificial cree la estructura, textos e imágenes por ti en segundos.
           </p>
         </motion.button>

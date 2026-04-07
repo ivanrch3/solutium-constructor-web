@@ -23,7 +23,7 @@ export const HeroModule: React.FC<{
   return (
     <section 
       className="relative flex items-center justify-center overflow-hidden bg-slate-900"
-      style={{ height: `${height}vh` }}
+      style={{ minHeight: `${height}vh` }}
     >
       {bgImage && (
         <img 

@@ -407,7 +407,7 @@ const MainSidebar = ({
   onAddModule: (module: WebModule) => void
 }) => {
   const [expandedSection, setExpandedSection] = useState<string | null>('constructor');
-  const [expandedCategory, setExpandedCategory] = useState<string | null>('ventas');
+  const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
 
   const toggleSection = (section: string) => {
     setExpandedSection(expandedSection === section ? null : section);
@@ -634,7 +634,7 @@ const MainSidebar = ({
             <span className="text-base font-bold text-sidebar-foreground leading-none truncate max-w-[160px]">
               {project?.name || 'Proyecto'}
             </span>
-            <span className="text-xs text-sidebar-foreground/40 font-normal mt-1 uppercase tracking-wider">Proyecto Activo</span>
+            <span className="text-xs text-sidebar-foreground/40 font-normal mt-1 tracking-wider">Proyecto Activo</span>
           </div>
         </div>
       </div>
@@ -1155,20 +1155,24 @@ const TopBar = ({ onSave, onPublish, logoUrl }: { onSave: () => void, onPublish:
       </div>
 
       <div className="flex items-center gap-2">
-        <button 
+        <motion.button 
+          whileHover={{ scale: 1.02, backgroundColor: 'var(--secondary-color)' }}
+          whileTap={{ scale: 0.98 }}
           onClick={onSave}
-          className="flex items-center gap-2 px-4 py-2 text-text/60 font-bold text-xs hover:bg-secondary rounded-xl transition-all"
+          className="flex items-center gap-2 px-4 py-2 text-text/60 font-bold text-xs rounded-xl transition-all"
         >
           <Save size={16} />
           Guardar Borrador
-        </button>
-        <button 
+        </motion.button>
+        <motion.button 
+          whileHover={{ scale: 1.02, y: -1 }}
+          whileTap={{ scale: 0.98 }}
           onClick={onPublish}
-          className="flex items-center gap-2 px-5 py-2 bg-primary hover:bg-primary/90 text-white font-bold text-xs rounded-xl shadow-lg shadow-primary/20 transition-all"
+          className="flex items-center gap-2 px-5 py-2 bg-primary text-white font-bold text-xs rounded-xl shadow-lg shadow-primary/20 transition-all"
         >
           <Send size={16} />
           Publicar
-        </button>
+        </motion.button>
       </div>
     </div>
   </div>
@@ -1201,12 +1205,13 @@ const Canvas: React.FC<{
   }, [editorState.addedModules.length]);
 
   return (
-    <div className="flex-1 bg-secondary p-12 overflow-y-auto flex flex-col items-center custom-scrollbar">
-      {/* Preview Window */}
-      <div className="w-full max-w-5xl bg-surface shadow-2xl rounded-2xl border border-border/50 min-h-[800px] flex flex-col mb-32 relative">
-        {/* Dynamic Modules */}
-        <div className="flex flex-col w-full">
-          {editorState.addedModules.map((module, index) => {
+    <div className="flex-1 bg-secondary overflow-y-auto custom-scrollbar">
+      <div className="p-12 flex justify-center min-h-full">
+        {/* Preview Window */}
+        <div className="w-full max-w-5xl bg-surface shadow-2xl rounded-2xl border border-border/50 min-h-[800px] mb-32 relative overflow-hidden">
+          {/* Dynamic Modules */}
+          <div className="w-full">
+            {editorState.addedModules.map((module, index) => {
             const isLast = index === editorState.addedModules.length - 1;
             
             return (
@@ -1252,7 +1257,7 @@ const Canvas: React.FC<{
               <Plus size={32} className="text-text/20" />
             </div>
             <h3 className="text-xl font-bold text-text mb-2">Tu página está vacía</h3>
-            <p className="text-text/40 max-w-xs">Selecciona un módulo en el panel de la izquierda para empezar a construir.</p>
+            <p className="text-text/60 max-w-xs">Selecciona un módulo en el panel de la izquierda para empezar a construir.</p>
           </div>
         )}
 
@@ -1260,7 +1265,7 @@ const Canvas: React.FC<{
         <div className="p-12 flex justify-center bg-surface border-t border-border/30">
           <button 
             onClick={() => onAddModule(PRODUCTS_MODULE)}
-            className="flex items-center gap-3 px-8 py-4 border-2 border-dashed border-border rounded-2xl text-text/40 font-bold hover:border-primary/40 hover:text-primary transition-all group"
+            className="flex items-center gap-3 px-8 py-4 border-2 border-dashed border-border rounded-2xl text-text/60 font-bold hover:border-primary/60 hover:text-primary transition-all group"
           >
             <Plus size={20} className="group-hover:scale-110 transition-transform" />
             Añadir Módulo
@@ -1276,7 +1281,8 @@ const Canvas: React.FC<{
         <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Configuración Recibida</span>
       </div>
     </div>
-  );
+  </div>
+);
 };
 
 const DeleteConfirmationModal: React.FC<{ 

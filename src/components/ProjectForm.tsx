@@ -216,10 +216,10 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, onCancel, on
               <button
                 disabled={step === 1 ? !isStep1Valid : !isStep2Valid}
                 onClick={handleNext}
-                className={`px-8 py-3 rounded-xl font-bold text-base transition-all shadow-lg ${
+                className={`px-8 py-3 rounded-xl font-bold text-base transition-all shadow-lg border ${
                   (step === 1 ? isStep1Valid : isStep2Valid)
-                    ? 'bg-primary text-white shadow-primary/10 hover:bg-primary/90' 
-                    : 'bg-primary/30 text-white cursor-not-allowed shadow-none'
+                    ? 'bg-solutium-dark text-white shadow-primary/10 hover:opacity-90 border-black/5' 
+                    : 'bg-solutium-dark/30 text-white cursor-not-allowed shadow-none border-transparent'
                 }`}
               >
                 {step === 1 ? 'Siguiente' : 'Comenzar'}

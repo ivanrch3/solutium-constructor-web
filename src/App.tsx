@@ -322,6 +322,7 @@ const AppContent: React.FC = () => {
           <MethodSelection 
             onSelect={handleSelectMethod}
             onBack={() => setCurrentView('dashboard')}
+            logoUrl={urlLogo}
           />
         );
       case 'form':
@@ -330,6 +331,7 @@ const AppContent: React.FC = () => {
             <MethodSelection 
               onSelect={handleSelectMethod}
               onBack={() => setCurrentView('dashboard')}
+              logoUrl={urlLogo}
             />
             <ProjectForm 
               onSubmit={handleFormSubmit}

@@ -208,12 +208,12 @@ export const ClientsModule: React.FC<{
         {displayCustomers.length > 0 ? (
           renderLogos()
         ) : (
-          <div className="py-12 text-center border-2 border-dashed border-sidebar-border rounded-3xl bg-sidebar-foreground/5">
-            <div className="w-16 h-16 bg-sidebar-foreground/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <Users className="text-sidebar-foreground/40 w-8 h-8" />
+          <div className="py-12 text-center border-2 border-dashed border-border rounded-3xl bg-secondary/30">
+            <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <Users className="text-primary w-8 h-8" />
             </div>
-            <h3 className="text-lg font-bold mb-2 text-sidebar-foreground">No hay clientes seleccionados</h3>
-            <p className="text-sm text-sidebar-foreground/60">
+            <h3 className="text-lg font-bold mb-2 text-text">No hay clientes seleccionados</h3>
+            <p className="text-sm text-text/60">
               Selecciona los logotipos de clientes en la Configuración Global para mostrarlos aquí.
             </p>
           </div>

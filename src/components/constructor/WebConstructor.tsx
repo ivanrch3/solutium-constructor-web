@@ -39,7 +39,7 @@ import { ProductsModule } from './modules/ProductsModule';
 import { HeroModule } from './modules/HeroModule';
 import { FeaturesModule } from './modules/FeaturesModule';
 import { ClientsModule } from './modules/ClientsModule';
-import { saveWebBuilderSiteDraft, publishWebBuilderSite, getProducts } from '../../services/dataService';
+import { saveWebBuilderSiteDraft, publishWebBuilderSite, getProducts, getCustomers } from '../../services/dataService';
 import { syncAsset } from '../../services/assetService';
 import { Product, Customer } from '../../types/schema';
 import { MOCK_PRODUCTS, MOCK_CUSTOMERS } from '../../constants/mockData';
@@ -659,6 +659,7 @@ interface StructurePanelProps {
   onRemoveModule: (moduleId: string) => void;
   projectId: string | null;
   products: Product[];
+  customers: Customer[];
 }
 
 const SettingControl: React.FC<{ 
@@ -666,8 +667,9 @@ const SettingControl: React.FC<{
   value: any, 
   onChange: (value: any) => void,
   projectId: string | null,
-  products?: Product[]
-}> = ({ setting, value, onChange, projectId, products }) => {
+  products?: Product[],
+  customers?: Customer[]
+}> = ({ setting, value, onChange, projectId, products, customers }) => {
   const [isUploading, setIsUploading] = useState(false);
   const currentValue = value !== undefined ? value : setting.defaultValue;
 
@@ -700,7 +702,7 @@ const SettingControl: React.FC<{
       const isProduct = setting.type === 'product_selection';
       const availableItems = isProduct 
         ? ((products && products.length > 0) ? products : (projectId === 'dev-project-id' ? MOCK_PRODUCTS : []))
-        : (projectId === 'dev-project-id' ? MOCK_CUSTOMERS : []);
+        : ((customers && customers.length > 0) ? customers : (projectId === 'dev-project-id' ? MOCK_CUSTOMERS : []));
       
       return (
         <div className="space-y-3">
@@ -891,7 +893,8 @@ const StructurePanel: React.FC<StructurePanelProps> = ({
   onSettingChange, 
   onRemoveModule, 
   projectId,
-  products
+  products,
+  customers
 }) => {
   const toggleModule = (moduleId: string) => {
     setEditorState(prev => ({
@@ -1084,6 +1087,7 @@ const StructurePanel: React.FC<StructurePanelProps> = ({
                                                     onChange={(val) => onSettingChange(`${module.id}_global`, setting.id, val)}
                                                     projectId={projectId}
                                                     products={products}
+                                                    customers={customers}
                                                   />
                                                 ))
                                               ) : (
@@ -1182,10 +1186,11 @@ const Canvas: React.FC<{
   editorState: EditorState, 
   onAddModule: (module: WebModule) => void,
   products: Product[],
+  customers: Customer[],
   isDevMode: boolean,
   logoUrl?: string | null,
   logoWhiteUrl?: string | null
-}> = ({ editorState, onAddModule, products, isDevMode, logoUrl, logoWhiteUrl }) => {
+}> = ({ editorState, onAddModule, products, customers, isDevMode, logoUrl, logoWhiteUrl }) => {
   const lastModuleRef = React.useRef<HTMLDivElement>(null);
   const prevModulesLength = React.useRef(editorState.addedModules.length);
 
@@ -1242,6 +1247,7 @@ const Canvas: React.FC<{
                   <ClientsModule 
                     moduleId={module.id}
                     settingsValues={editorState.settingsValues}
+                    customers={customers}
                     isDevMode={isDevMode}
                   />
                 )}
@@ -1417,6 +1423,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState('constructor');
   const [products, setProducts] = useState<Product[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [moduleToDelete, setModuleToDelete] = useState<WebModule | null>(null);
   const [showPublishModal, setShowPublishModal] = useState(false);
   const [siteName, setSiteName] = useState(initialPage?.siteName || project?.name || '');
@@ -1438,6 +1445,9 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     if (projectId) {
       getProducts(0, 12, projectId).then(data => {
         setProducts(data || []);
+      });
+      getCustomers(0, 50, projectId).then(data => {
+        setCustomers(data || []);
       });
     }
   }, [projectId]);
@@ -1689,6 +1699,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
               onRemoveModule={removeModule}
               projectId={projectId}
               products={products}
+              customers={customers}
             />
             <div className="flex-1 flex flex-col h-full">
               <TopBar 
@@ -1700,6 +1711,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
                 editorState={editorState} 
                 onAddModule={addModule} 
                 products={products}
+                customers={customers}
                 isDevMode={projectId === 'dev-project-id'}
                 logoUrl={logoUrl}
                 logoWhiteUrl={logoWhiteUrl}

@@ -38,6 +38,12 @@ import { WebModule, ModuleElement, SettingGroupType, EditorState, SettingDefinit
 import { ProductsModule } from './modules/ProductsModule';
 import { HeroModule } from './modules/HeroModule';
 import { FeaturesModule } from './modules/FeaturesModule';
+import { AboutModule } from './modules/AboutModule';
+import { ProcessModule } from './modules/ProcessModule';
+import { GalleryModule } from './modules/GalleryModule';
+import { VideoModule } from './modules/VideoModule';
+import { TestimonialsModule } from './modules/TestimonialsModule';
+import { StatsModule } from './modules/StatsModule';
 import { ClientsModule } from './modules/ClientsModule';
 import { saveWebBuilderSiteDraft, publishWebBuilderSite, getProducts, getCustomers } from '../../services/dataService';
 import { syncAsset } from '../../services/assetService';
@@ -197,48 +203,555 @@ const PRODUCTS_MODULE: WebModule = {
 const HERO_MODULE: WebModule = {
   id: 'mod_hero_1',
   type: 'hero',
-  name: 'Portada / Hero',
-  globalGroups: ['contenido', 'estructura', 'estilo', 'multimedia', 'interaccion'],
+  name: 'Portada / Hero Premium',
+  globalGroups: ['estructura', 'estilo', 'multimedia', 'interaccion'],
   globalSettings: {
-    contenido: [
-      { id: 'title', label: 'Título Principal', type: 'text', defaultValue: 'Construye tu futuro hoy' },
-      { id: 'subtitle', label: 'Subtítulo', type: 'text', defaultValue: 'La plataforma más completa para gestionar tu negocio.' }
-    ],
     estructura: [
-      { id: 'height', label: 'Altura (vh)', type: 'range', defaultValue: 80, min: 40, max: 100, unit: 'vh' }
+      { id: 'layout', label: 'Layout de Portada', type: 'select', defaultValue: 'split', options: [
+        { label: 'Dividido (Texto/Imagen)', value: 'split' },
+        { label: 'Centrado', value: 'centered' },
+        { label: 'Fondo Completo', value: 'full' }
+      ]},
+      { id: 'padding_y', label: 'Espaciado Vertical', type: 'range', defaultValue: 100, min: 40, max: 200, unit: 'px' },
+      { id: 'content_width', label: 'Ancho de Contenido', type: 'range', defaultValue: 1200, min: 800, max: 1400, unit: 'px' }
     ],
     estilo: [
-      { id: 'overlay_opacity', label: 'Opacidad del Overlay', type: 'range', defaultValue: 50, min: 0, max: 100, unit: '%' }
+      { id: 'bg_color', label: 'Color de Fondo', type: 'color', defaultValue: '#FFFFFF' },
+      { id: 'overlay_opacity', label: 'Opacidad del Overlay', type: 'range', defaultValue: 0, min: 0, max: 100, unit: '%' }
     ],
     multimedia: [
-      { id: 'bg_image', label: 'Imagen de Fondo', type: 'image', defaultValue: '' }
+      { id: 'bg_image', label: 'Imagen de Fondo', type: 'image', defaultValue: '' },
+      { id: 'bg_video', label: 'URL Video de Fondo (MP4)', type: 'text', defaultValue: '' }
     ],
-    interaccion: [],
+    interaccion: [
+      { id: 'entrance_anim', label: 'Animación de Entrada', type: 'boolean', defaultValue: true },
+      { id: 'parallax', label: 'Efecto Parallax', type: 'boolean', defaultValue: false }
+    ],
+    contenido: [],
     tipografia: []
   },
-  elements: []
+  elements: [
+    { id: 'el_hero_eyebrow', name: 'Eyebrow (Pre-título)', type: 'text', groups: ['contenido', 'tipografia', 'estructura'], settings: {
+      contenido: [{ id: 'text', label: 'Texto', type: 'text', defaultValue: 'NUEVA FUNCIÓN' }],
+      tipografia: [
+        { id: 'size', label: 'Tamaño', type: 'range', defaultValue: 14, min: 10, max: 20 },
+        { id: 'weight', label: 'Grosor', type: 'select', defaultValue: 'bold', options: [{label:'Normal', value:'normal'}, {label:'Medio', value:'medium'}, {label:'Negrita', value:'bold'}]},
+        { id: 'color', label: 'Color', type: 'color', defaultValue: 'var(--primary-color)' },
+        { id: 'uppercase', label: 'Mayúsculas', type: 'boolean', defaultValue: true }
+      ],
+      estructura: [{ id: 'margin_b', label: 'Margen Inferior', type: 'range', defaultValue: 12, min: 0, max: 40 }],
+      estilo: [], multimedia: [], interaccion: []
+    }},
+    { id: 'el_hero_title', name: 'Título Principal', type: 'text', groups: ['contenido', 'tipografia', 'estilo'], settings: {
+      contenido: [{ id: 'text', label: 'Texto', type: 'text', defaultValue: 'Construye tu futuro digital' }],
+      tipografia: [
+        { id: 'size', label: 'Tamaño', type: 'range', defaultValue: 56, min: 32, max: 120 },
+        { id: 'weight', label: 'Grosor', type: 'select', defaultValue: 'bold', options: [{label:'Normal', value:'normal'}, {label:'Medio', value:'medium'}, {label:'Negrita', value:'bold'}]},
+        { id: 'color', label: 'Color de Texto', type: 'color', defaultValue: '#0F172A' }
+      ],
+      estilo: [
+        { id: 'use_gradient', label: 'Usar Gradiente', type: 'boolean', defaultValue: false },
+        { id: 'gradient_color', label: 'Color Final Gradiente', type: 'color', defaultValue: 'var(--primary-color)' }
+      ],
+      estructura: [], multimedia: [], interaccion: []
+    }},
+    { id: 'el_hero_visual', name: 'Imagen/Video Principal', type: 'image', groups: ['multimedia', 'estructura', 'interaccion'], settings: {
+      multimedia: [
+        { id: 'url', label: 'Imagen', type: 'image', defaultValue: 'https://picsum.photos/seed/hero/800/600' },
+        { id: 'fit', label: 'Ajuste', type: 'select', defaultValue: 'contain', options: [{label:'Contener', value:'contain'}, {label:'Cubrir', value:'cover'}]}
+      ],
+      estructura: [
+        { id: 'max_width', label: 'Ancho Máximo', type: 'range', defaultValue: 600, min: 200, max: 1000 },
+        { id: 'radius', label: 'Radio de Borde', type: 'range', defaultValue: 24, min: 0, max: 100 }
+      ],
+      interaccion: [
+        { id: 'floating', label: 'Efecto Flotante', type: 'boolean', defaultValue: true }
+      ],
+      contenido: [], tipografia: [], estilo: []
+    }}
+  ]
 };
 
 const FEATURES_MODULE: WebModule = {
   id: 'mod_features_1',
   type: 'features',
-  name: 'Características',
-  globalGroups: ['contenido', 'estructura', 'estilo', 'multimedia', 'interaccion'],
+  name: 'Características Avanzadas',
+  globalGroups: ['estructura', 'estilo', 'interaccion'],
   globalSettings: {
-    contenido: [
-      { id: 'title', label: 'Título', type: 'text', defaultValue: 'Nuestras Ventajas' }
-    ],
     estructura: [
-      { id: 'columns', label: 'Columnas', type: 'range', defaultValue: 3, min: 1, max: 4 }
+      { id: 'layout', label: 'Diseño de Grilla', type: 'select', defaultValue: 'grid', options: [
+        { label: 'Grilla Estándar', value: 'grid' },
+        { label: 'Lista (Icono Lateral)', value: 'list' },
+        { label: 'Bento (Asimétrico)', value: 'bento' }
+      ]},
+      { id: 'columns', label: 'Columnas (Desktop)', type: 'range', defaultValue: 3, min: 1, max: 4 },
+      { id: 'gap', label: 'Espacio entre tarjetas', type: 'range', defaultValue: 32, min: 16, max: 64, unit: 'px' },
+      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 80, min: 40, max: 160, unit: 'px' }
     ],
-    estilo: [],
-    multimedia: [
-      { id: 'section_icon', label: 'Icono de Sección', type: 'image', defaultValue: '' }
+    estilo: [
+      { id: 'bg_color', label: 'Fondo de Sección', type: 'color', defaultValue: 'transparent' }
     ],
-    interaccion: [],
-    tipografia: []
+    interaccion: [
+      { id: 'stagger_anim', label: 'Entrada Escalonada', type: 'boolean', defaultValue: true }
+    ],
+    contenido: [], tipografia: [], multimedia: []
   },
-  elements: []
+  elements: [
+    { id: 'el_features_header', name: 'Encabezado de Sección', type: 'text', groups: ['contenido', 'tipografia', 'estructura'], settings: {
+      contenido: [
+        { id: 'title', label: 'Título', type: 'text', defaultValue: '¿Por qué elegirnos?' },
+        { id: 'subtitle', label: 'Subtítulo', type: 'text', defaultValue: 'Soluciones diseñadas para escalar tu negocio al siguiente nivel.' }
+      ],
+      tipografia: [
+        { id: 'align', label: 'Alineación', type: 'select', defaultValue: 'center', options: [{label:'Izquierda', value:'left'}, {label:'Centro', value:'center'}]},
+        { id: 'title_size', label: 'Tamaño Título', type: 'range', defaultValue: 32, min: 24, max: 48 }
+      ],
+      estructura: [{ id: 'margin_b', label: 'Margen Inferior', type: 'range', defaultValue: 60, min: 20, max: 100 }],
+      estilo: [], multimedia: [], interaccion: []
+    }},
+    { id: 'el_feature_card', name: 'Estilo de Tarjeta', type: 'style', groups: ['estilo', 'estructura', 'interaccion'], settings: {
+      estilo: [
+        { id: 'card_bg', label: 'Fondo de Tarjeta', type: 'color', defaultValue: '#FFFFFF' },
+        { id: 'card_border', label: 'Color de Borde', type: 'color', defaultValue: 'rgba(0,0,0,0.05)' },
+        { id: 'card_shadow', label: 'Sombra', type: 'select', defaultValue: 'sm', options: [{label:'Ninguna', value:'none'}, {label:'Suave', value:'sm'}, {label:'Fuerte', value:'lg'}]}
+      ],
+      estructura: [
+        { id: 'card_padding', label: 'Padding Interno', type: 'range', defaultValue: 32, min: 16, max: 48 },
+        { id: 'card_radius', label: 'Radio de Borde', type: 'range', defaultValue: 24, min: 0, max: 40 }
+      ],
+      interaccion: [
+        { id: 'hover_lift', label: 'Elevar al pasar mouse', type: 'boolean', defaultValue: true }
+      ],
+      contenido: [], tipografia: [], multimedia: []
+    }},
+    { id: 'el_feature_icon', name: 'Iconografía', type: 'image', groups: ['multimedia', 'estilo', 'estructura'], settings: {
+      multimedia: [{ id: 'icon_size', label: 'Tamaño de Icono', type: 'range', defaultValue: 24, min: 16, max: 48 }],
+      estilo: [
+        { id: 'icon_color', label: 'Color de Icono', type: 'color', defaultValue: 'var(--primary-color)' },
+        { id: 'icon_bg', label: 'Fondo del Icono', type: 'color', defaultValue: 'rgba(var(--primary-rgb), 0.1)' }
+      ],
+      estructura: [{ id: 'icon_radius', label: 'Redondeado Icono', type: 'range', defaultValue: 12, min: 0, max: 24 }],
+      contenido: [], tipografia: [], interaccion: []
+    }}
+  ]
+};
+
+const ABOUT_MODULE: WebModule = {
+  id: 'mod_about_1',
+  type: 'about',
+  name: 'Sobre Nosotros Premium',
+  globalGroups: ['estructura', 'estilo', 'interaccion'],
+  globalSettings: {
+    estructura: [
+      { id: 'layout', label: 'Layout de Sección', type: 'select', defaultValue: 'split_right', options: [
+        { label: 'Imagen Izquierda / Texto Derecha', value: 'split_left' },
+        { label: 'Texto Izquierda / Imagen Derecha', value: 'split_right' },
+        { label: 'Centrado (Narrativo)', value: 'centered' }
+      ]},
+      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 100, min: 40, max: 200, unit: 'px' },
+      { id: 'content_width', label: 'Ancho de Contenido', type: 'range', defaultValue: 1200, min: 800, max: 1400, unit: 'px' }
+    ],
+    estilo: [
+      { id: 'bg_color', label: 'Fondo de Sección', type: 'color', defaultValue: '#FFFFFF' }
+    ],
+    interaccion: [
+      { id: 'entrance_anim', label: 'Animación de Entrada', type: 'boolean', defaultValue: true }
+    ],
+    contenido: [], tipografia: [], multimedia: []
+  },
+  elements: [
+    { id: 'el_about_narrative', name: 'Bloque Narrativo', type: 'text', groups: ['contenido', 'tipografia', 'estructura'], settings: {
+      contenido: [
+        { id: 'eyebrow', label: 'Pre-título', type: 'text', defaultValue: 'NUESTRA HISTORIA' },
+        { id: 'title', label: 'Título Principal', type: 'text', defaultValue: 'Innovación con propósito humano' },
+        { id: 'description', label: 'Descripción', type: 'text', defaultValue: 'Desde 2015, hemos transformado la manera en que las empresas interactúan con la tecnología, poniendo siempre a las personas en el centro de cada solución.' }
+      ],
+      tipografia: [
+        { id: 'title_size', label: 'Tamaño Título', type: 'range', defaultValue: 48, min: 32, max: 72 },
+        { id: 'title_color', label: 'Color Título', type: 'color', defaultValue: '#0F172A' },
+        { id: 'desc_size', label: 'Tamaño Descripción', type: 'range', defaultValue: 18, min: 14, max: 24 }
+      ],
+      estructura: [
+        { id: 'align', label: 'Alineación de Texto', type: 'select', defaultValue: 'left', options: [{label:'Izquierda', value:'left'}, {label:'Centro', value:'center'}, {label:'Derecha', value:'right'}]}
+      ],
+      estilo: [], multimedia: [], interaccion: []
+    }},
+    { id: 'el_about_visual', name: 'Elemento Visual', type: 'image', groups: ['multimedia', 'estilo', 'interaccion'], settings: {
+      multimedia: [
+        { id: 'image_url', label: 'Imagen / Video', type: 'image', defaultValue: 'https://picsum.photos/seed/about/800/600' },
+        { id: 'visual_fit', label: 'Ajuste', type: 'select', defaultValue: 'cover', options: [{label:'Cubrir', value:'cover'}, {label:'Contener', value:'contain'}]}
+      ],
+      estilo: [
+        { id: 'radius', label: 'Redondeado', type: 'range', defaultValue: 24, min: 0, max: 60 },
+        { id: 'show_frame', label: 'Marco Decorativo', type: 'boolean', defaultValue: false }
+      ],
+      interaccion: [
+        { id: 'floating', label: 'Efecto Flotante', type: 'boolean', defaultValue: false }
+      ],
+      contenido: [], tipografia: [], estructura: []
+    }},
+    { id: 'el_about_stats', name: 'Estadísticas (Stats)', type: 'style', groups: ['contenido', 'estilo', 'estructura'], settings: {
+      contenido: [
+        { id: 'show_stats', label: 'Mostrar Estadísticas', type: 'boolean', defaultValue: true }
+      ],
+      estilo: [
+        { id: 'stat_color', label: 'Color de Números', type: 'color', defaultValue: 'var(--primary-color)' }
+      ],
+      estructura: [
+        { id: 'columns', label: 'Columnas', type: 'range', defaultValue: 3, min: 2, max: 4 }
+      ],
+      tipografia: [], multimedia: [], interaccion: []
+    }}
+  ]
+};
+
+const PROCESS_MODULE: WebModule = {
+  id: 'mod_process_1',
+  type: 'process',
+  name: 'Proceso / Roadmap Premium',
+  globalGroups: ['estructura', 'estilo', 'interaccion'],
+  globalSettings: {
+    estructura: [
+      { id: 'layout', label: 'Diseño de Proceso', type: 'select', defaultValue: 'horizontal', options: [
+        { label: 'Pasos Horizontales', value: 'horizontal' },
+        { label: 'Timeline Vertical', value: 'vertical' },
+        { label: 'Lista Alternada', value: 'alternating' }
+      ]},
+      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 100, min: 40, max: 200, unit: 'px' },
+      { id: 'gap', label: 'Espacio entre pasos', type: 'range', defaultValue: 40, min: 20, max: 100, unit: 'px' }
+    ],
+    estilo: [
+      { id: 'bg_color', label: 'Fondo de Sección', type: 'color', defaultValue: '#F8FAFC' },
+      { id: 'connector_style', label: 'Estilo de Conector', type: 'select', defaultValue: 'dashed', options: [
+        { label: 'Sólido', value: 'solid' },
+        { label: 'Punteado', value: 'dashed' },
+        { label: 'Oculto', value: 'none' }
+      ]}
+    ],
+    interaccion: [
+      { id: 'entrance_anim', label: 'Animación de Entrada', type: 'boolean', defaultValue: true },
+      { id: 'draw_connectors', label: 'Dibujar Conectores', type: 'boolean', defaultValue: true }
+    ],
+    contenido: [], tipografia: [], multimedia: []
+  },
+  elements: [
+    { id: 'el_process_header', name: 'Encabezado', type: 'text', groups: ['contenido', 'tipografia', 'estructura'], settings: {
+      contenido: [
+        { id: 'title', label: 'Título', type: 'text', defaultValue: 'Nuestro Proceso' },
+        { id: 'subtitle', label: 'Subtítulo', type: 'text', defaultValue: 'Cómo trabajamos para hacer realidad tus ideas.' }
+      ],
+      tipografia: [
+        { id: 'align', label: 'Alineación', type: 'select', defaultValue: 'center', options: [{label:'Izquierda', value:'left'}, {label:'Centro', value:'center'}]},
+        { id: 'title_size', label: 'Tamaño Título', type: 'range', defaultValue: 32, min: 24, max: 48 }
+      ],
+      estructura: [{ id: 'margin_b', label: 'Margen Inferior', type: 'range', defaultValue: 60, min: 20, max: 100 }],
+      estilo: [], multimedia: [], interaccion: []
+    }},
+    { id: 'el_process_step', name: 'Estilo de Paso', type: 'style', groups: ['estilo', 'estructura', 'interaccion'], settings: {
+      estilo: [
+        { id: 'card_bg', label: 'Fondo de Tarjeta', type: 'color', defaultValue: '#FFFFFF' },
+        { id: 'card_border', label: 'Color de Borde', type: 'color', defaultValue: 'rgba(0,0,0,0.05)' },
+        { id: 'card_radius', label: 'Radio de Borde', type: 'range', defaultValue: 24, min: 0, max: 40 }
+      ],
+      estructura: [
+        { id: 'card_padding', label: 'Padding Interno', type: 'range', defaultValue: 32, min: 16, max: 48 }
+      ],
+      interaccion: [
+        { id: 'hover_lift', label: 'Elevar al pasar mouse', type: 'boolean', defaultValue: true }
+      ],
+      contenido: [], tipografia: [], multimedia: []
+    }},
+    { id: 'el_process_indicator', name: 'Indicador (Número/Icono)', type: 'style', groups: ['estilo', 'multimedia'], settings: {
+      estilo: [
+        { id: 'indicator_bg', label: 'Fondo Indicador', type: 'color', defaultValue: 'var(--primary-color)' },
+        { id: 'indicator_color', label: 'Color Texto/Icono', type: 'color', defaultValue: '#FFFFFF' }
+      ],
+      multimedia: [
+        { id: 'use_icons', label: 'Usar Iconos en vez de Números', type: 'boolean', defaultValue: false }
+      ],
+      contenido: [], tipografia: [], estructura: [], interaccion: []
+    }}
+  ]
+};
+
+const GALLERY_MODULE: WebModule = {
+  id: 'mod_gallery_1',
+  type: 'gallery',
+  name: 'Galería Visual Premium',
+  globalGroups: ['estructura', 'estilo', 'interaccion'],
+  globalSettings: {
+    estructura: [
+      { id: 'layout', label: 'Diseño de Grilla', type: 'select', defaultValue: 'grid', options: [
+        { label: 'Grilla Uniforme', value: 'grid' },
+        { label: 'Masonry (Dinámico)', value: 'masonry' },
+        { label: 'Bento (Editorial)', value: 'bento' }
+      ]},
+      { id: 'columns', label: 'Columnas (Desktop)', type: 'range', defaultValue: 3, min: 2, max: 5 },
+      { id: 'gap', label: 'Espacio entre Imágenes', type: 'range', defaultValue: 20, min: 0, max: 60, unit: 'px' },
+      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 100, min: 40, max: 200, unit: 'px' }
+    ],
+    estilo: [
+      { id: 'bg_color', label: 'Fondo de Sección', type: 'color', defaultValue: '#FFFFFF' }
+    ],
+    interaccion: [
+      { id: 'entrance_anim', label: 'Animación de Entrada', type: 'boolean', defaultValue: true },
+      { id: 'enable_lightbox', label: 'Habilitar Lightbox (Zoom)', type: 'boolean', defaultValue: true }
+    ],
+    contenido: [], tipografia: [], multimedia: []
+  },
+  elements: [
+    { id: 'el_gallery_header', name: 'Encabezado', type: 'text', groups: ['contenido', 'tipografia', 'estructura'], settings: {
+      contenido: [
+        { id: 'title', label: 'Título', type: 'text', defaultValue: 'Nuestra Galería' },
+        { id: 'subtitle', label: 'Subtítulo', type: 'text', defaultValue: 'Momentos capturados que cuentan nuestra historia.' }
+      ],
+      tipografia: [
+        { id: 'align', label: 'Alineación', type: 'select', defaultValue: 'center', options: [{label:'Izquierda', value:'left'}, {label:'Centro', value:'center'}]},
+        { id: 'title_size', label: 'Tamaño Título', type: 'range', defaultValue: 32, min: 24, max: 48 }
+      ],
+      estructura: [{ id: 'margin_b', label: 'Margen Inferior', type: 'range', defaultValue: 60, min: 20, max: 100 }],
+      estilo: [], multimedia: [], interaccion: []
+    }},
+    { id: 'el_gallery_item', name: 'Estilo de Imagen', type: 'image', groups: ['estilo', 'estructura', 'interaccion'], settings: {
+      estilo: [
+        { id: 'radius', label: 'Redondeado', type: 'range', defaultValue: 16, min: 0, max: 40 },
+        { id: 'overlay_color', label: 'Color de Overlay (Hover)', type: 'color', defaultValue: 'rgba(0,0,0,0.4)' }
+      ],
+      estructura: [
+        { id: 'aspect_ratio', label: 'Relación de Aspecto', type: 'select', defaultValue: 'square', options: [
+          { label: 'Original', value: 'auto' },
+          { label: 'Cuadrado (1:1)', value: '1/1' },
+          { label: 'Video (16:9)', value: '16/9' },
+          { label: 'Retrato (3:4)', value: '3/4' }
+        ]}
+      ],
+      interaccion: [
+        { id: 'hover_effect', label: 'Efecto al pasar mouse', type: 'select', defaultValue: 'zoom', options: [
+          { label: 'Zoom Suave', value: 'zoom' },
+          { label: 'Levantar', value: 'lift' },
+          { label: 'Ninguno', value: 'none' }
+        ]}
+      ],
+      contenido: [], tipografia: [], multimedia: []
+    }},
+    { id: 'el_gallery_captions', name: 'Textos (Captions)', type: 'text', groups: ['contenido', 'tipografia', 'estilo'], settings: {
+      contenido: [
+        { id: 'show_captions', label: 'Mostrar Títulos en Imágenes', type: 'boolean', defaultValue: true }
+      ],
+      tipografia: [
+        { id: 'caption_size', label: 'Tamaño Título', type: 'range', defaultValue: 16, min: 12, max: 24 },
+        { id: 'caption_color', label: 'Color de Texto', type: 'color', defaultValue: '#FFFFFF' }
+      ],
+      estilo: [
+        { id: 'caption_position', label: 'Posición', type: 'select', defaultValue: 'bottom', options: [
+          { label: 'Inferior', value: 'bottom' },
+          { label: 'Centro', value: 'center' }
+        ]}
+      ],
+      estructura: [], multimedia: [], interaccion: []
+    }}
+  ]
+};
+
+const VIDEO_MODULE: WebModule = {
+  id: 'mod_video_1',
+  type: 'video',
+  name: 'Video Showcase Premium',
+  globalGroups: ['estructura', 'estilo', 'interaccion'],
+  globalSettings: {
+    estructura: [
+      { id: 'layout', label: 'Diseño de Video', type: 'select', defaultValue: 'centered', options: [
+        { label: 'Ancho Completo (Inmersivo)', value: 'full' },
+        { label: 'Tarjeta Centrada', value: 'centered' },
+        { label: 'Split (Texto + Video)', value: 'split' }
+      ]},
+      { id: 'aspect_ratio', label: 'Relación de Aspecto', type: 'select', defaultValue: '16/9', options: [
+        { label: 'Cinematográfico (16:9)', value: '16/9' },
+        { label: 'Vertical (9:16)', value: '9/16' },
+        { label: 'Estándar (4:3)', value: '4/3' }
+      ]},
+      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 100, min: 0, max: 200, unit: 'px' },
+      { id: 'max_width', label: 'Ancho Máximo', type: 'range', defaultValue: 1000, min: 600, max: 1400, unit: 'px' }
+    ],
+    estilo: [
+      { id: 'bg_color', label: 'Fondo de Sección', type: 'color', defaultValue: '#FFFFFF' },
+      { id: 'overlay_color', label: 'Color de Overlay', type: 'color', defaultValue: 'rgba(0,0,0,0.2)' }
+    ],
+    interaccion: [
+      { id: 'entrance_anim', label: 'Animación de Entrada', type: 'boolean', defaultValue: true }
+    ],
+    contenido: [], tipografia: [], multimedia: []
+  },
+  elements: [
+    { id: 'el_video_player', name: 'Reproductor de Video', type: 'video', groups: ['multimedia', 'estilo', 'interaccion'], settings: {
+      multimedia: [
+        { id: 'video_url', label: 'URL del Video (YouTube/Vimeo/MP4)', type: 'text', defaultValue: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' },
+        { id: 'poster_url', label: 'Imagen de Portada (Poster)', type: 'image', defaultValue: 'https://picsum.photos/seed/video/1280/720' },
+        { id: 'autoplay', label: 'Autoplay (Silenciado)', type: 'boolean', defaultValue: false },
+        { id: 'loop', label: 'Bucle (Loop)', type: 'boolean', defaultValue: true },
+        { id: 'controls', label: 'Mostrar Controles', type: 'boolean', defaultValue: true }
+      ],
+      estilo: [
+        { id: 'radius', label: 'Redondeado', type: 'range', defaultValue: 24, min: 0, max: 60 },
+        { id: 'shadow', label: 'Sombra Profunda', type: 'boolean', defaultValue: true }
+      ],
+      interaccion: [
+        { id: 'lightbox', label: 'Abrir en Lightbox', type: 'boolean', defaultValue: false },
+        { id: 'play_button_style', label: 'Estilo de Botón Play', type: 'select', defaultValue: 'pulse', options: [
+          { label: 'Pulso Magnético', value: 'pulse' },
+          { label: 'Minimalista', value: 'minimal' },
+          { label: 'Oculto', value: 'none' }
+        ]}
+      ],
+      contenido: [], tipografia: [], estructura: []
+    }},
+    { id: 'el_video_text', name: 'Textos de Apoyo', type: 'text', groups: ['contenido', 'tipografia'], settings: {
+      contenido: [
+        { id: 'show_text', label: 'Mostrar Textos', type: 'boolean', defaultValue: true },
+        { id: 'title', label: 'Título del Video', type: 'text', defaultValue: 'Descubre nuestra visión' },
+        { id: 'subtitle', label: 'Subtítulo', type: 'text', defaultValue: 'Un recorrido visual por lo que nos hace únicos.' }
+      ],
+      tipografia: [
+        { id: 'align', label: 'Alineación', type: 'select', defaultValue: 'center', options: [{label:'Izquierda', value:'left'}, {label:'Centro', value:'center'}]},
+        { id: 'title_size', label: 'Tamaño Título', type: 'range', defaultValue: 32, min: 24, max: 48 }
+      ],
+      estilo: [], multimedia: [], estructura: [], interaccion: []
+    }}
+  ]
+};
+
+const TESTIMONIALS_MODULE: WebModule = {
+  id: 'mod_testimonials_1',
+  type: 'testimonials',
+  name: 'Testimonios Premium',
+  globalGroups: ['estructura', 'estilo', 'interaccion'],
+  globalSettings: {
+    estructura: [
+      { id: 'layout', label: 'Diseño de Testimonios', type: 'select', defaultValue: 'carousel', options: [
+        { label: 'Carrusel (Deslizante)', value: 'carousel' },
+        { label: 'Grilla (Grid)', value: 'grid' },
+        { label: 'Masonry (Dinámico)', value: 'masonry' }
+      ]},
+      { id: 'columns', label: 'Columnas (Desktop)', type: 'range', defaultValue: 3, min: 1, max: 4 },
+      { id: 'gap', label: 'Espacio entre tarjetas', type: 'range', defaultValue: 30, min: 10, max: 60, unit: 'px' },
+      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 100, min: 40, max: 200, unit: 'px' }
+    ],
+    estilo: [
+      { id: 'bg_color', label: 'Fondo de Sección', type: 'color', defaultValue: '#F8FAFC' }
+    ],
+    interaccion: [
+      { id: 'autoplay', label: 'Reproducción Automática', type: 'boolean', defaultValue: true },
+      { id: 'entrance_anim', label: 'Animación de Entrada', type: 'boolean', defaultValue: true }
+    ],
+    contenido: [], tipografia: [], multimedia: []
+  },
+  elements: [
+    { id: 'el_testimonials_header', name: 'Encabezado', type: 'text', groups: ['contenido', 'tipografia', 'estructura'], settings: {
+      contenido: [
+        { id: 'title', label: 'Título', type: 'text', defaultValue: 'Lo que dicen nuestros clientes' },
+        { id: 'subtitle', label: 'Subtítulo', type: 'text', defaultValue: 'Historias reales de personas que confían en nosotros.' }
+      ],
+      tipografia: [
+        { id: 'align', label: 'Alineación', type: 'select', defaultValue: 'center', options: [{label:'Izquierda', value:'left'}, {label:'Centro', value:'center'}]},
+        { id: 'title_size', label: 'Tamaño Título', type: 'range', defaultValue: 32, min: 24, max: 48 }
+      ],
+      estructura: [{ id: 'margin_b', label: 'Margen Inferior', type: 'range', defaultValue: 60, min: 20, max: 100 }],
+      estilo: [], multimedia: [], interaccion: []
+    }},
+    { id: 'el_testimonial_card', name: 'Estilo de Tarjeta', type: 'style', groups: ['estilo', 'estructura', 'interaccion'], settings: {
+      estilo: [
+        { id: 'card_bg', label: 'Fondo de Tarjeta', type: 'color', defaultValue: '#FFFFFF' },
+        { id: 'card_radius', label: 'Radio de Borde', type: 'range', defaultValue: 24, min: 0, max: 40 },
+        { id: 'show_shadow', label: 'Mostrar Sombra', type: 'boolean', defaultValue: true }
+      ],
+      estructura: [
+        { id: 'card_padding', label: 'Padding Interno', type: 'range', defaultValue: 32, min: 16, max: 48 }
+      ],
+      interaccion: [
+        { id: 'hover_lift', label: 'Elevar al pasar mouse', type: 'boolean', defaultValue: true }
+      ],
+      contenido: [], tipografia: [], multimedia: []
+    }},
+    { id: 'el_testimonial_author', name: 'Estilo de Autor', type: 'style', groups: ['estilo', 'multimedia'], settings: {
+      estilo: [
+        { id: 'author_color', label: 'Color Nombre', type: 'color', defaultValue: '#0F172A' },
+        { id: 'role_color', label: 'Color Cargo', type: 'color', defaultValue: '#64748B' }
+      ],
+      multimedia: [
+        { id: 'show_avatar', label: 'Mostrar Avatar', type: 'boolean', defaultValue: true },
+        { id: 'show_stars', label: 'Mostrar Calificación (Estrellas)', type: 'boolean', defaultValue: true }
+      ],
+      contenido: [], tipografia: [], estructura: [], interaccion: []
+    }}
+  ]
+};
+
+const STATS_MODULE: WebModule = {
+  id: 'mod_stats_1',
+  type: 'stats',
+  name: 'Estadísticas de Impacto',
+  globalGroups: ['estructura', 'estilo', 'interaccion'],
+  globalSettings: {
+    estructura: [
+      { id: 'layout', label: 'Diseño de Grilla', type: 'select', defaultValue: 'grid', options: [
+        { label: 'Grilla Clásica', value: 'grid' },
+        { label: 'Bento (Destacado)', value: 'bento' },
+        { label: 'Minimalista', value: 'minimal' }
+      ]},
+      { id: 'columns', label: 'Columnas (Desktop)', type: 'range', defaultValue: 4, min: 1, max: 5 },
+      { id: 'gap', label: 'Espaciado', type: 'range', defaultValue: 30, min: 0, max: 80, unit: 'px' },
+      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 80, min: 20, max: 200, unit: 'px' }
+    ],
+    estilo: [
+      { id: 'bg_color', label: 'Fondo de Sección', type: 'color', defaultValue: '#FFFFFF' }
+    ],
+    interaccion: [
+      { id: 'entrance_anim', label: 'Animación de Entrada', type: 'boolean', defaultValue: true },
+      { id: 'count_speed', label: 'Velocidad de Conteo', type: 'range', defaultValue: 2, min: 1, max: 5, unit: 's' }
+    ],
+    contenido: [], tipografia: [], multimedia: []
+  },
+  elements: [
+    { id: 'el_stats_header', name: 'Encabezado', type: 'text', groups: ['contenido', 'tipografia', 'estructura'], settings: {
+      contenido: [
+        { id: 'show_header', label: 'Mostrar Encabezado', type: 'boolean', defaultValue: false },
+        { id: 'title', label: 'Título', type: 'text', defaultValue: 'Nuestros Logros' },
+        { id: 'subtitle', label: 'Subtítulo', type: 'text', defaultValue: 'Números que respaldan nuestra trayectoria.' }
+      ],
+      tipografia: [
+        { id: 'align', label: 'Alineación', type: 'select', defaultValue: 'center', options: [{label:'Izquierda', value:'left'}, {label:'Centro', value:'center'}]},
+        { id: 'title_size', label: 'Tamaño Título', type: 'range', defaultValue: 32, min: 24, max: 48 }
+      ],
+      estructura: [{ id: 'margin_b', label: 'Margen Inferior', type: 'range', defaultValue: 60, min: 20, max: 100 }],
+      estilo: [], multimedia: [], interaccion: []
+    }},
+    { id: 'el_stat_item', name: 'Estilo de Métrica', type: 'style', groups: ['estilo', 'tipografia', 'interaccion'], settings: {
+      estilo: [
+        { id: 'card_bg', label: 'Fondo de Item', type: 'color', defaultValue: 'transparent' },
+        { id: 'card_radius', label: 'Radio de Borde', type: 'range', defaultValue: 16, min: 0, max: 40 },
+        { id: 'show_border', label: 'Mostrar Borde', type: 'boolean', defaultValue: false }
+      ],
+      tipografia: [
+        { id: 'number_color', label: 'Color del Número', type: 'color', defaultValue: 'var(--primary-color)' },
+        { id: 'label_color', label: 'Color de Etiqueta', type: 'color', defaultValue: '#64748B' },
+        { id: 'number_size', label: 'Tamaño del Número', type: 'range', defaultValue: 48, min: 32, max: 80 }
+      ],
+      interaccion: [
+        { id: 'hover_scale', label: 'Escalar al pasar mouse', type: 'boolean', defaultValue: true }
+      ],
+      contenido: [], multimedia: [], estructura: []
+    }},
+    { id: 'el_stat_icon', name: 'Iconografía', type: 'style', groups: ['multimedia', 'estilo'], settings: {
+      multimedia: [
+        { id: 'show_icons', label: 'Mostrar Iconos', type: 'boolean', defaultValue: true }
+      ],
+      estilo: [
+        { id: 'icon_color', label: 'Color de Icono', type: 'color', defaultValue: 'var(--primary-color)' },
+        { id: 'icon_bg', label: 'Fondo de Icono', type: 'color', defaultValue: 'rgba(59, 130, 246, 0.1)' }
+      ],
+      contenido: [], tipografia: [], estructura: [], interaccion: []
+    }}
+  ]
 };
 
 const CLIENTS_MODULE: WebModule = {
@@ -269,7 +782,9 @@ const CLIENTS_MODULE: WebModule = {
       { id: 'bg_color', label: 'Color de Fondo', type: 'color', defaultValue: 'transparent' }
     ],
     interaccion: [
-      { id: 'animation_speed', label: 'Velocidad de Animación', type: 'range', defaultValue: 30, min: 5, max: 100, unit: 's' }
+      { id: 'animation_speed', label: 'Velocidad de Animación', type: 'range', defaultValue: 30, min: 5, max: 100, unit: 's' },
+      { id: 'show_tooltips', label: 'Mostrar Tooltips', type: 'boolean', defaultValue: true },
+      { id: 'entrance_animation', label: 'Animación de Entrada', type: 'boolean', defaultValue: true }
     ],
     tipografia: [],
     multimedia: []
@@ -524,10 +1039,26 @@ const MainSidebar = ({
                       label="Características" 
                       onClick={() => onAddModule(FEATURES_MODULE)}
                     />
-                    <ModuleItem icon={<User size={18} />} label="Sobre Nosotros" />
-                    <ModuleItem icon={<Layers size={18} />} label="Proceso" />
-                    <ModuleItem icon={<PlusCircle size={18} />} label="Galería" />
-                    <ModuleItem icon={<Monitor size={18} />} label="Video" />
+                    <ModuleItem 
+                      icon={<User size={18} />} 
+                      label="Sobre Nosotros" 
+                      onClick={() => onAddModule(ABOUT_MODULE)}
+                    />
+                    <ModuleItem 
+                      icon={<Layers size={18} />} 
+                      label="Proceso" 
+                      onClick={() => onAddModule(PROCESS_MODULE)}
+                    />
+                    <ModuleItem 
+                      icon={<PlusCircle size={18} />} 
+                      label="Galería" 
+                      onClick={() => onAddModule(GALLERY_MODULE)}
+                    />
+                    <ModuleItem 
+                      icon={<Monitor size={18} />} 
+                      label="Video" 
+                      onClick={() => onAddModule(VIDEO_MODULE)}
+                    />
                   </div>
                 )}
               </div>
@@ -545,13 +1076,21 @@ const MainSidebar = ({
                 </button>
                 {expandedCategory === 'confianza' && (
                   <div className="space-y-0.5 px-2">
-                    <ModuleItem icon={<FileText size={18} />} label="Testimonios" />
+                    <ModuleItem 
+                      icon={<FileText size={18} />} 
+                      label="Testimonios" 
+                      onClick={() => onAddModule(TESTIMONIALS_MODULE)}
+                    />
                     <ModuleItem 
                       icon={<CheckCircle2 size={18} />} 
                       label="Clientes" 
                       onClick={() => onAddModule(CLIENTS_MODULE)}
                     />
-                    <ModuleItem icon={<Database size={18} />} label="Estadísticas" />
+                    <ModuleItem 
+                      icon={<Database size={18} />} 
+                      label="Estadísticas" 
+                      onClick={() => onAddModule(STATS_MODULE)}
+                    />
                     <ModuleItem icon={<User size={18} />} label="Equipo" />
                   </div>
                 )}
@@ -1239,6 +1778,42 @@ const Canvas: React.FC<{
                 )}
                 {module.type === 'features' && (
                   <FeaturesModule 
+                    moduleId={module.id}
+                    settingsValues={editorState.settingsValues}
+                  />
+                )}
+                {module.type === 'about' && (
+                  <AboutModule 
+                    moduleId={module.id}
+                    settingsValues={editorState.settingsValues}
+                  />
+                )}
+                {module.type === 'process' && (
+                  <ProcessModule 
+                    moduleId={module.id}
+                    settingsValues={editorState.settingsValues}
+                  />
+                )}
+                {module.type === 'gallery' && (
+                  <GalleryModule 
+                    moduleId={module.id}
+                    settingsValues={editorState.settingsValues}
+                  />
+                )}
+                {module.type === 'video' && (
+                  <VideoModule 
+                    moduleId={module.id}
+                    settingsValues={editorState.settingsValues}
+                  />
+                )}
+                {module.type === 'testimonials' && (
+                  <TestimonialsModule 
+                    moduleId={module.id}
+                    settingsValues={editorState.settingsValues}
+                  />
+                )}
+                {module.type === 'stats' && (
+                  <StatsModule 
                     moduleId={module.id}
                     settingsValues={editorState.settingsValues}
                   />

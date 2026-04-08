@@ -1,5 +1,75 @@
 import React from 'react';
-import { CheckCircle2 } from 'lucide-react';
+import { motion } from 'motion/react';
+import { CheckCircle2, Zap, Shield, Headphones, Smartphone, Layout, TrendingUp, Star, Globe, Clock, Heart, Zap as ZapIcon } from 'lucide-react';
+
+const ICON_MAP: Record<string, any> = {
+  zap: Zap,
+  shield: Shield,
+  headphones: Headphones,
+  smartphone: Smartphone,
+  layout: Layout,
+  trending: TrendingUp,
+  star: Star,
+  globe: Globe,
+  clock: Clock,
+  heart: Heart,
+  check: CheckCircle2
+};
+
+const FeatureCard = ({ 
+  feature, 
+  index, 
+  layout, 
+  staggerAnim, 
+  itemVariants, 
+  hoverLift, 
+  cardBg, 
+  cardPadding, 
+  cardRadius, 
+  cardBorder, 
+  cardShadow, 
+  getShadowClass, 
+  iconSize, 
+  iconBg, 
+  iconRadius, 
+  iconColor 
+}: any) => {
+  const IconComponent = ICON_MAP[feature.icon] || CheckCircle2;
+  const isBento = layout === 'bento';
+  const bentoClass = isBento ? (index === 0 || index === 3 ? 'md:col-span-2' : 'md:col-span-1') : '';
+
+  return (
+    <motion.div
+      variants={staggerAnim ? itemVariants : {}}
+      whileHover={hoverLift ? { y: -8, transition: { duration: 0.3 } } : {}}
+      className={`group transition-all duration-300 ${bentoClass} flex ${layout === 'list' ? 'flex-row gap-6' : 'flex-col'}`}
+      style={{ 
+        backgroundColor: cardBg,
+        padding: `${cardPadding}px`,
+        borderRadius: `${cardRadius}px`,
+        border: `1px solid ${cardBorder}`,
+        boxShadow: getShadowClass(cardShadow) === 'shadow-none' ? 'none' : undefined
+      }}
+    >
+      <div 
+        className={`flex items-center justify-center flex-shrink-0 ${layout === 'list' ? 'mb-0' : 'mb-6'}`}
+        style={{ 
+          width: `${iconSize * 2}px`, 
+          height: `${iconSize * 2}px`, 
+          backgroundColor: iconBg,
+          borderRadius: `${iconRadius}px`
+        }}
+      >
+        <IconComponent size={iconSize} style={{ color: iconColor }} />
+      </div>
+      
+      <div className="flex-1">
+        <h3 className="text-xl font-bold text-slate-900 mb-2">{feature.title}</h3>
+        <p className="text-slate-500 leading-relaxed text-sm">{feature.desc}</p>
+      </div>
+    </motion.div>
+  );
+};
 
 export const FeaturesModule: React.FC<{ 
   moduleId: string, 
@@ -10,53 +80,133 @@ export const FeaturesModule: React.FC<{
     return settingsValues[key] !== undefined ? settingsValues[key] : defaultValue;
   };
 
-  const title = getVal(null, 'title', 'Nuestras Ventajas');
+  // Global Settings
+  const layout = getVal(null, 'layout', 'grid');
   const columns = getVal(null, 'columns', 3);
-  const sectionIcon = getVal(null, 'section_icon', '');
+  const gap = getVal(null, 'gap', 32);
+  const paddingY = getVal(null, 'padding_y', 80);
+  const bgColor = getVal(null, 'bg_color', 'transparent');
+  const staggerAnim = getVal(null, 'stagger_anim', true);
+
+  // Element: Header
+  const headerTitle = getVal(`${moduleId}_el_features_header`, 'title', '¿Por qué elegirnos?');
+  const headerSubtitle = getVal(`${moduleId}_el_features_header`, 'subtitle', 'Soluciones diseñadas para escalar tu negocio al siguiente nivel.');
+  const headerAlign = getVal(`${moduleId}_el_features_header`, 'align', 'center');
+  const headerTitleSize = getVal(`${moduleId}_el_features_header`, 'title_size', 32);
+  const headerMarginB = getVal(`${moduleId}_el_features_header`, 'margin_b', 60);
+
+  // Element: Card Style
+  const cardBg = getVal(`${moduleId}_el_feature_card`, 'card_bg', '#FFFFFF');
+  const cardBorder = getVal(`${moduleId}_el_feature_card`, 'card_border', 'rgba(0,0,0,0.05)');
+  const cardShadow = getVal(`${moduleId}_el_feature_card`, 'card_shadow', 'sm');
+  const cardPadding = getVal(`${moduleId}_el_feature_card`, 'card_padding', 32);
+  const cardRadius = getVal(`${moduleId}_el_feature_card`, 'card_radius', 24);
+  const hoverLift = getVal(`${moduleId}_el_feature_card`, 'hover_lift', true);
+
+  // Element: Icon Style
+  const iconSize = getVal(`${moduleId}_el_feature_icon`, 'icon_size', 24);
+  const iconColor = getVal(`${moduleId}_el_feature_icon`, 'icon_color', 'var(--primary-color)');
+  const iconBg = getVal(`${moduleId}_el_feature_icon`, 'icon_bg', 'rgba(var(--primary-rgb), 0.1)');
+  const iconRadius = getVal(`${moduleId}_el_feature_icon`, 'icon_radius', 12);
 
   const MOCK_FEATURES = [
-    { title: 'Velocidad Increíble', desc: 'Optimizado para cargar en menos de 1 segundo.' },
-    { title: 'Seguridad Total', desc: 'Protección de datos con los más altos estándares.' },
-    { title: 'Soporte 24/7', desc: 'Estamos aquí para ayudarte en cualquier momento.' },
-    { title: 'Diseño Adaptable', desc: 'Se ve perfecto en cualquier dispositivo.' },
-    { title: 'Fácil de Usar', desc: 'Interfaz intuitiva diseñada para todos.' },
-    { title: 'Escalabilidad', desc: 'Crece con tu negocio sin complicaciones.' }
+    { title: 'Velocidad Increíble', desc: 'Optimizado para cargar en menos de 1 segundo.', icon: 'zap' },
+    { title: 'Seguridad Total', desc: 'Protección de datos con los más altos estándares.', icon: 'shield' },
+    { title: 'Soporte 24/7', desc: 'Estamos aquí para ayudarte en cualquier momento.', icon: 'headphones' },
+    { title: 'Diseño Adaptable', desc: 'Se ve perfecto en cualquier dispositivo.', icon: 'smartphone' },
+    { title: 'Fácil de Usar', desc: 'Interfaz intuitiva diseñada para todos.', icon: 'layout' },
+    { title: 'Escalabilidad', desc: 'Crece con tu negocio sin complicaciones.', icon: 'trending' }
   ];
 
+  const getShadowClass = (s: string) => {
+    switch (s) {
+      case 'sm': return 'shadow-sm';
+      case 'lg': return 'shadow-xl';
+      default: return 'shadow-none';
+    }
+  };
+
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.15
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: { y: 0, opacity: 1, transition: { duration: 0.5, ease: "easeOut" } }
+  };
+
+
   return (
-    <section className="py-20 px-8 bg-white">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex flex-col items-center text-center mb-16">
-          {sectionIcon && (
-            <img 
-              src={sectionIcon} 
-              alt="Section Icon" 
-              className="w-16 h-16 object-contain mb-6"
-              referrerPolicy="no-referrer"
-            />
-          )}
-          <h2 className="text-3xl md:text-4xl font-black text-slate-900 mb-4">
-            {title}
+    <section 
+      className="w-full relative overflow-hidden"
+      style={{ 
+        backgroundColor: bgColor,
+        paddingTop: `${paddingY}px`,
+        paddingBottom: `${paddingY}px`
+      }}
+    >
+      <div className="max-w-7xl mx-auto px-8">
+        {/* Header */}
+        <div 
+          className={`flex flex-col mb-12 ${headerAlign === 'center' ? 'items-center text-center' : 'items-start text-left'}`}
+          style={{ marginBottom: `${headerMarginB}px` }}
+        >
+          <h2 
+            className="font-black text-slate-900 mb-4 leading-tight"
+            style={{ fontSize: `${headerTitleSize}px` }}
+          >
+            {headerTitle}
           </h2>
-          <div className="w-20 h-1.5 bg-blue-600 rounded-full"></div>
+          {headerSubtitle && (
+            <p className="text-slate-500 max-w-2xl text-lg">
+              {headerSubtitle}
+            </p>
+          )}
+          {headerAlign === 'center' && (
+            <div className="w-16 h-1.5 bg-primary rounded-full mt-6"></div>
+          )}
         </div>
 
-        <div 
-          className="grid gap-8"
+        {/* Grid */}
+        <motion.div 
+          variants={staggerAnim ? containerVariants : {}}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: false, amount: 0.2 }}
+          className={`grid gap-8 ${layout === 'list' ? 'grid-cols-1' : ''}`}
           style={{ 
-            gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` 
+            gridTemplateColumns: layout === 'grid' ? `repeat(${columns}, minmax(0, 1fr))` : undefined,
+            gap: `${gap}px`
           }}
         >
-          {MOCK_FEATURES.slice(0, columns * 2).map((feature, i) => (
-            <div key={i} className="p-8 rounded-3xl bg-slate-50 border border-slate-100 hover:shadow-xl hover:shadow-slate-200/50 transition-all group">
-              <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white mb-6 group-hover:scale-110 transition-transform shadow-lg shadow-blue-200">
-                <CheckCircle2 size={24} />
-              </div>
-              <h3 className="text-xl font-bold text-slate-900 mb-3">{feature.title}</h3>
-              <p className="text-slate-500 leading-relaxed">{feature.desc}</p>
-            </div>
+          {MOCK_FEATURES.map((feature, i) => (
+            <FeatureCard 
+              key={i} 
+              feature={feature} 
+              index={i} 
+              layout={layout}
+              staggerAnim={staggerAnim}
+              itemVariants={itemVariants}
+              hoverLift={hoverLift}
+              cardBg={cardBg}
+              cardPadding={cardPadding}
+              cardRadius={cardRadius}
+              cardBorder={cardBorder}
+              cardShadow={cardShadow}
+              getShadowClass={getShadowClass}
+              iconSize={iconSize}
+              iconBg={iconBg}
+              iconRadius={iconRadius}
+              iconColor={iconColor}
+            />
           ))}
-        </div>
+        </motion.div>
       </div>
     </section>
   );

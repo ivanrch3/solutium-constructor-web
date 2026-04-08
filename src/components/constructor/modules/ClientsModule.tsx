@@ -4,6 +4,72 @@ import { Customer } from '../../../types/schema';
 import { MOCK_CUSTOMERS } from '../../../constants/mockData';
 import { Users } from 'lucide-react';
 
+const LogoItem = ({ 
+  customer, 
+  entranceAnimation, 
+  itemVariants, 
+  hoverEffect, 
+  hoverScale, 
+  logoHeight, 
+  logoOpacity, 
+  logoFilter, 
+  getFilterStyle, 
+  logoBorderRadius, 
+  logoFit, 
+  showTooltips, 
+  enableLinks 
+}: any) => {
+  const itemVariantsActual = {
+    hidden: { y: 20, opacity: 0 },
+    visible: { y: 0, opacity: 1, transition: { duration: 0.5 } }
+  };
+
+  const content = (
+    <motion.div
+      variants={entranceAnimation ? itemVariantsActual : {}}
+      whileHover={hoverEffect ? { 
+        scale: hoverScale / 100,
+        filter: 'none',
+        opacity: 1
+      } : {}}
+      className="relative flex items-center justify-center transition-all duration-500 group"
+      style={{ 
+        height: `${logoHeight}px`,
+        opacity: logoOpacity / 100,
+        filter: getFilterStyle(logoFilter),
+        borderRadius: `${logoBorderRadius}px`,
+        overflow: logoBorderRadius > 0 ? 'hidden' : 'visible'
+      }}
+    >
+      <img 
+        src={customer.companyLogoUrl || 'https://picsum.photos/seed/logo/150/50'} 
+        alt={customer.name}
+        className="max-w-full max-h-full transition-all duration-500"
+        style={{ objectFit: logoFit as any }}
+        referrerPolicy="no-referrer"
+      />
+      
+      {/* Tooltip */}
+      {showTooltips && (
+        <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 px-3 py-1 bg-text text-surface text-[10px] font-bold rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 shadow-xl">
+          {customer.name}
+          <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-text rotate-45" />
+        </div>
+      )}
+    </motion.div>
+  );
+
+  if (enableLinks && (customer as any).websiteUrl) {
+    return (
+      <a href={(customer as any).websiteUrl} target="_blank" rel="noopener noreferrer">
+        {content}
+      </a>
+    );
+  }
+
+  return content;
+};
+
 export const ClientsModule: React.FC<{ 
   moduleId: string, 
   settingsValues: Record<string, any>,
@@ -31,6 +97,8 @@ export const ClientsModule: React.FC<{
   const paddingY = getVal(null, 'padding_y', 60);
   const bgColor = getVal(null, 'bg_color', 'transparent');
   const animationSpeed = getVal(null, 'animation_speed', 30);
+  const showTooltips = getVal(null, 'show_tooltips', true);
+  const entranceAnimation = getVal(null, 'entrance_animation', true);
 
   // Element Settings: Title
   const titleText = getVal(`${moduleId}_el_clients_title`, 'title_text', 'Empresas que confían en nosotros');
@@ -88,9 +156,23 @@ export const ClientsModule: React.FC<{
   };
 
   const renderLogos = () => {
+    const containerVariants = {
+      hidden: { opacity: 0 },
+      visible: {
+        opacity: 1,
+        transition: {
+          staggerChildren: 0.1
+        }
+      }
+    };
+
     if (layout === 'grid') {
       return (
-        <div 
+        <motion.div 
+          variants={entranceAnimation ? containerVariants : {}}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: false, amount: 0.1 }}
           className={`grid ${getJustifyClass(alignment)}`}
           style={{ 
             gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
@@ -98,75 +180,97 @@ export const ClientsModule: React.FC<{
           }}
         >
           {displayCustomers.map((customer) => (
-            <LogoItem key={customer.id} customer={customer} />
+            <LogoItem 
+              key={customer.id} 
+              customer={customer}
+              entranceAnimation={entranceAnimation}
+              hoverEffect={hoverEffect}
+              hoverScale={hoverScale}
+              logoHeight={logoHeight}
+              logoOpacity={logoOpacity}
+              logoFilter={logoFilter}
+              getFilterStyle={getFilterStyle}
+              logoBorderRadius={logoBorderRadius}
+              logoFit={logoFit}
+              showTooltips={showTooltips}
+              enableLinks={enableLinks}
+            />
           ))}
-        </div>
+        </motion.div>
       );
     }
 
     if (layout === 'marquee') {
+      // Duplicate logos to ensure infinite loop
+      const marqueeLogos = [...displayCustomers, ...displayCustomers, ...displayCustomers, ...displayCustomers];
+      
       return (
-        <div className="overflow-hidden relative py-4">
+        <div className="overflow-hidden relative py-8 -mx-8">
+          {/* Gradient masks for smooth edges */}
+          <div className="absolute inset-y-0 left-0 w-32 bg-gradient-to-r from-inherit to-transparent z-10 pointer-events-none" style={{ backgroundColor: bgColor === 'transparent' ? 'white' : bgColor }} />
+          <div className="absolute inset-y-0 right-0 w-32 bg-gradient-to-l from-inherit to-transparent z-10 pointer-events-none" style={{ backgroundColor: bgColor === 'transparent' ? 'white' : bgColor }} />
+          
           <motion.div 
-            className="flex items-center gap-20 whitespace-nowrap"
-            animate={{ x: [0, -1000] }}
+            className="flex items-center gap-20 whitespace-nowrap w-max"
+            animate={{ x: [0, -1500] }}
             transition={{ 
               repeat: Infinity, 
               duration: animationSpeed, 
               ease: "linear" 
             }}
           >
-            {[...displayCustomers, ...displayCustomers, ...displayCustomers].map((customer, idx) => (
-              <LogoItem key={`${customer.id}-${idx}`} customer={customer} />
+            {marqueeLogos.map((customer, idx) => (
+              <LogoItem 
+                key={`${customer.id}-${idx}`} 
+                customer={customer}
+                entranceAnimation={false} // No entrance animation in marquee
+                hoverEffect={hoverEffect}
+                hoverScale={hoverScale}
+                logoHeight={logoHeight}
+                logoOpacity={logoOpacity}
+                logoFilter={logoFilter}
+                getFilterStyle={getFilterStyle}
+                logoBorderRadius={logoBorderRadius}
+                logoFit={logoFit}
+                showTooltips={showTooltips}
+                enableLinks={enableLinks}
+              />
             ))}
           </motion.div>
         </div>
       );
     }
 
-    // Carousel (Simple horizontal scroll for now)
+    // Carousel
     return (
-      <div className={`flex items-center ${getJustifyClass(alignment)} gap-12 overflow-x-auto pb-4 no-scrollbar`}>
-        {displayCustomers.map((customer) => (
-          <LogoItem key={customer.id} customer={customer} />
-        ))}
-      </div>
-    );
-  };
-
-  const LogoItem = ({ customer }: { customer: Customer, key?: any }) => {
-    const content = (
-      <motion.div
-        whileHover={hoverEffect ? { scale: hoverScale / 100 } : {}}
-        className="flex items-center justify-center transition-all duration-300"
-        style={{ 
-          height: `${logoHeight}px`,
-          opacity: logoOpacity / 100,
-          filter: getFilterStyle(logoFilter),
-          borderRadius: `${logoBorderRadius}px`,
-          overflow: logoBorderRadius > 0 ? 'hidden' : 'visible'
-        }}
+      <motion.div 
+        variants={entranceAnimation ? containerVariants : {}}
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: false, amount: 0.1 }}
+        className={`flex items-center ${getJustifyClass(alignment)} gap-12 overflow-x-auto pb-8 no-scrollbar`}
       >
-        <img 
-          src={customer.companyLogoUrl || 'https://via.placeholder.com/150x50?text=Logo'} 
-          alt={customer.name}
-          className="max-w-full max-h-full transition-all duration-300 hover:filter-none hover:opacity-100"
-          style={{ objectFit: logoFit as any }}
-          referrerPolicy="no-referrer"
-        />
+        {displayCustomers.map((customer) => (
+          <LogoItem 
+            key={customer.id} 
+            customer={customer}
+            entranceAnimation={entranceAnimation}
+            hoverEffect={hoverEffect}
+            hoverScale={hoverScale}
+            logoHeight={logoHeight}
+            logoOpacity={logoOpacity}
+            logoFilter={logoFilter}
+            getFilterStyle={getFilterStyle}
+            logoBorderRadius={logoBorderRadius}
+            logoFit={logoFit}
+            showTooltips={showTooltips}
+            enableLinks={enableLinks}
+          />
+        ))}
       </motion.div>
     );
-
-    if (enableLinks && (customer as any).websiteUrl) {
-      return (
-        <a href={(customer as any).websiteUrl} target="_blank" rel="noopener noreferrer">
-          {content}
-        </a>
-      );
-    }
-
-    return content;
   };
+
 
   return (
     <section 

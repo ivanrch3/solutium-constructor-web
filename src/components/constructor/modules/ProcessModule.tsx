@@ -92,11 +92,11 @@ const StepItem = ({
   return (
     <motion.div
       variants={staggerAnim ? itemVariants : {}}
-      className={`relative flex ${isHorizontal ? 'flex-col items-center text-center' : isVertical ? 'flex-row gap-8 items-start' : 'flex-row gap-8 items-start'}`}
+      className={`relative flex flex-col items-center text-center @md:flex-row @md:gap-8 @md:items-start ${isHorizontal ? '@md:flex-col @md:items-center @md:text-center' : '@md:text-left'}`}
     >
       {renderConnector()}
       
-      <div className={`${isHorizontal ? 'mb-6' : 'mt-1'}`}>
+      <div className={`${isHorizontal ? 'mb-6 @md:mb-6' : 'mb-6 @md:mb-0 @md:mt-1'}`}>
         {renderIndicator()}
       </div>
 
@@ -178,11 +178,9 @@ export const ProcessModule: React.FC<{
 
   return (
     <section 
-      className="w-full relative overflow-hidden"
+      className="w-full relative overflow-hidden py-12 @md:py-20 @lg:py-24"
       style={{ 
-        backgroundColor: bgColor,
-        paddingTop: `${paddingY}px`,
-        paddingBottom: `${paddingY}px`
+        backgroundColor: bgColor
       }}
     >
       <div className="max-w-7xl mx-auto px-8">
@@ -192,8 +190,7 @@ export const ProcessModule: React.FC<{
           style={{ marginBottom: `${headerMarginB}px` }}
         >
           <h2 
-            className="font-black text-slate-900 mb-4 leading-tight"
-            style={{ fontSize: `${headerTitleSize}px` }}
+            className="font-black text-slate-900 mb-4 leading-tight text-3xl @md:text-4xl @lg:text-5xl"
           >
             {headerTitle}
           </h2>
@@ -210,7 +207,7 @@ export const ProcessModule: React.FC<{
           initial="hidden"
           whileInView="visible"
           viewport={{ once: false, amount: 0.2 }}
-          className={`grid ${layout === 'horizontal' ? 'grid-cols-1 md:grid-cols-4' : 'grid-cols-1 max-w-3xl mx-auto'}`}
+          className={`grid ${layout === 'horizontal' ? 'grid-cols-1 @md:grid-cols-4' : 'grid-cols-1 max-w-3xl mx-auto'}`}
           style={{ gap: `${gap}px` }}
         >
           {MOCK_STEPS.map((step, i) => (

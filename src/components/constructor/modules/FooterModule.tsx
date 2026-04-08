@@ -53,7 +53,7 @@ export const FooterModule: React.FC<{
 
   return (
     <footer 
-      className="w-full"
+      className="w-full py-12 @md:py-16 @lg:py-20"
       style={{ 
         backgroundColor: bgColor, 
         color: textColor,
@@ -63,14 +63,12 @@ export const FooterModule: React.FC<{
       <div 
         className="mx-auto px-6" 
         style={{ 
-          maxWidth: `${maxWidth}px`,
-          paddingTop: `${paddingY}px`,
-          paddingBottom: `${paddingY / 2}px`
+          maxWidth: `${maxWidth}px`
         }}
       >
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-12 mb-16">
+        <div className="grid grid-cols-1 @md:grid-cols-12 gap-12 mb-16">
           {/* Brand Column */}
-          <div className="md:col-span-4 space-y-6">
+          <div className="@md:col-span-4 space-y-6">
             {showLogo && (
               <div className="flex-shrink-0">
                 {logoImg ? (
@@ -111,7 +109,7 @@ export const FooterModule: React.FC<{
           </div>
 
           {/* Navigation Columns */}
-          <div className="md:col-span-8 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-8">
+          <div className="@md:col-span-8 grid grid-cols-2 @sm:grid-cols-3 @lg:grid-cols-4 gap-8">
             {columns.map((col: any, colIdx: number) => (
               <div key={colIdx} className="space-y-5">
                 <h4 
@@ -140,7 +138,7 @@ export const FooterModule: React.FC<{
 
         {/* Bottom Bar */}
         <div 
-          className="pt-8 border-t border-current opacity-10 flex flex-col md:flex-row items-center justify-between gap-4"
+          className="pt-8 border-t border-current opacity-10 flex flex-col @md:flex-row items-center justify-between gap-4"
           style={{ backgroundColor: bottomBg }}
         >
           <p className="text-xs font-medium">

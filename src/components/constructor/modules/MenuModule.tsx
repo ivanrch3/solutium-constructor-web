@@ -47,7 +47,7 @@ export const MenuModule: React.FC<{
   const containerClasses = {
     horizontal: 'flex flex-row flex-wrap',
     vertical: 'flex flex-col',
-    grid: 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4'
+    grid: 'grid grid-cols-2 @md:grid-cols-3 @lg:grid-cols-4'
   };
 
   const alignmentClasses = {

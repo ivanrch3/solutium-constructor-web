@@ -63,8 +63,6 @@ export const NewsletterModule: React.FC<{
   const containerStyle: React.CSSProperties = {
     maxWidth: `${maxWidth}px`,
     borderRadius: `${borderRadius}px`,
-    paddingTop: `${paddingY}px`,
-    paddingBottom: `${paddingY}px`,
     boxShadow: showShadow ? '0 20px 50px -12px rgba(0,0,0,0.08)' : 'none',
   };
 
@@ -83,13 +81,13 @@ export const NewsletterModule: React.FC<{
     <section className="w-full px-8 py-12">
       <motion.div 
         {...animProps}
-        className={`mx-auto px-8 md:px-12 relative overflow-hidden transition-all duration-500`}
+        className={`mx-auto px-8 @md:px-12 relative overflow-hidden transition-all duration-500 py-12 @md:py-16 @lg:py-20`}
         style={containerStyle}
       >
-        <div className={`flex flex-col ${layout === 'horizontal' ? 'lg:flex-row lg:items-center lg:gap-12' : 'items-center text-center'}`}>
+        <div className={`flex flex-col ${layout === 'horizontal' ? '@lg:flex-row @lg:items-center @lg:gap-12' : 'items-center text-center'}`}>
           
           {/* Header Content */}
-          <div className={`${layout === 'horizontal' ? 'lg:flex-1 lg:text-left' : 'w-full'}`} style={{ marginBottom: layout === 'horizontal' ? 0 : `${marginB}px` }}>
+          <div className={`${layout === 'horizontal' ? '@lg:flex-1 @lg:text-left' : 'w-full'}`} style={{ marginBottom: layout === 'horizontal' ? 0 : `${marginB}px` }}>
             <div className={`flex items-center gap-3 mb-4 ${layout === 'horizontal' ? 'justify-start' : 'justify-center'}`}>
               <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
                 <Bell size={20} />
@@ -97,8 +95,8 @@ export const NewsletterModule: React.FC<{
               <span className="text-[10px] font-black uppercase tracking-widest text-primary/60">Newsletter</span>
             </div>
             <h2 
-              className="font-black leading-tight mb-4"
-              style={{ fontSize: `${titleSize}px`, color: textColor, textAlign: layout === 'horizontal' ? 'left' : (align as any) }}
+              className="font-black leading-tight mb-4 text-2xl @md:text-3xl @lg:text-4xl"
+              style={{ color: textColor, textAlign: layout === 'horizontal' ? 'left' : (align as any) }}
             >
               {title}
             </h2>
@@ -111,7 +109,7 @@ export const NewsletterModule: React.FC<{
           </div>
 
           {/* Form Area */}
-          <div className={`${layout === 'horizontal' ? 'lg:w-[400px]' : 'w-full max-w-md mt-4'}`}>
+          <div className={`${layout === 'horizontal' ? '@lg:w-[400px]' : 'w-full max-w-md mt-4'}`}>
             <AnimatePresence mode="wait">
               {isSubscribed ? (
                 <motion.div 
@@ -131,7 +129,7 @@ export const NewsletterModule: React.FC<{
                 <motion.form 
                   key="form"
                   onSubmit={handleSubmit}
-                  className={`flex flex-col gap-3 ${layout === 'minimal' ? '' : 'sm:flex-row sm:items-stretch sm:p-1.5 sm:bg-white sm:shadow-xl sm:shadow-slate-200/50'}`}
+                  className={`flex flex-col gap-3 ${layout === 'minimal' ? '' : '@sm:flex-row @sm:items-stretch @sm:p-1.5 @sm:bg-white @sm:shadow-xl @sm:shadow-slate-200/50'}`}
                   style={{ borderRadius: `${inputRadius}px` }}
                 >
                   <div className="relative flex-1">

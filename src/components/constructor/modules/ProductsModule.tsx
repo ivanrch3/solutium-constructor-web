@@ -83,7 +83,7 @@ export const ProductsModule: React.FC<{
 
   return (
     <section 
-      className={`py-16 px-8 w-full transition-colors duration-300 relative ${darkMode ? 'bg-slate-900' : ''}`}
+      className="py-12 @md:py-20 @lg:py-24 px-8 w-full transition-colors duration-300 relative"
       style={{ 
         backgroundColor: darkMode ? undefined : bgColor,
         backgroundImage: sectionBgImage ? `url(${sectionBgImage})` : undefined,
@@ -95,7 +95,7 @@ export const ProductsModule: React.FC<{
       <div className="max-w-7xl mx-auto relative z-10">
         {/* Header del Módulo */}
         <div className="flex flex-col items-center text-center mb-12">
-          <h2 className={`text-3xl font-black mb-4 ${darkMode ? 'text-white' : 'text-slate-900'}`}>
+          <h2 className={`font-black mb-4 text-3xl @md:text-4xl @lg:text-5xl ${darkMode ? 'text-white' : 'text-slate-900'}`}>
             {sectionTitle}
           </h2>
           <div className="w-20 h-1.5 bg-blue-600 rounded-full mb-6"></div>
@@ -107,9 +107,12 @@ export const ProductsModule: React.FC<{
         {/* Grid de Productos */}
         {displayProducts.length > 0 ? (
           <div 
-            className="grid"
+            className={`grid ${
+              columns === 4 ? 'grid-cols-1 @sm:grid-cols-2 @lg:grid-cols-4' :
+              columns === 3 ? 'grid-cols-1 @sm:grid-cols-2 @lg:grid-cols-3' :
+              columns === 2 ? 'grid-cols-1 @sm:grid-cols-2' : 'grid-cols-1'
+            }`}
             style={{ 
-              gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
               gap: `${gap}px`
             }}
           >

@@ -11,6 +11,7 @@ import {
   Save, 
   Smartphone, 
   Monitor, 
+  Tablet,
   RotateCcw, 
   Maximize, 
   Plus, 
@@ -1568,7 +1569,22 @@ const FAQ_MODULE: WebModule = {
       ],
       tipografia: [], estructura: [], multimedia: [], interaccion: []
     }},
-    { id: 'el_faq_item', name: 'Estilo de Acordeón', type: 'style', groups: ['estilo', 'tipografia', 'multimedia'], settings: {
+    { id: 'el_faq_item', name: 'Estilo de Acordeón', type: 'style', groups: ['contenido', 'estilo', 'tipografia', 'multimedia'], settings: {
+      contenido: [
+        { 
+          id: 'faqs', 
+          label: 'Lista de Preguntas', 
+          type: 'repeater', 
+          defaultValue: [
+            { question: '¿Cómo puedo empezar con la plataforma?', answer: 'Es muy sencillo. Solo tienes que registrarte con tu correo electrónico, elegir una plantilla que te guste y empezar a personalizarla con nuestro editor visual. No necesitas conocimientos de programación.' },
+            { question: '¿Ofrecen soporte técnico personalizado?', answer: 'Sí, todos nuestros planes incluyen soporte. Los planes Pro y Enterprise cuentan con soporte prioritario 24/7 a través de chat y correo electrónico para resolver cualquier duda técnica.' }
+          ],
+          fields: [
+            { id: 'question', label: 'Pregunta', type: 'text', defaultValue: 'Nueva Pregunta' },
+            { id: 'answer', label: 'Respuesta', type: 'text', defaultValue: 'Descripción de la respuesta...' }
+          ]
+        }
+      ],
       estilo: [
         { id: 'item_bg', label: 'Fondo de Item', type: 'color', defaultValue: 'transparent' },
         { id: 'active_bg', label: 'Fondo al Expandir', type: 'color', defaultValue: '#F8FAFC' },
@@ -1584,7 +1600,7 @@ const FAQ_MODULE: WebModule = {
       multimedia: [
         { id: 'icon_type', label: 'Icono de Estado', type: 'select', defaultValue: 'plus', options: [{label:'Plus/Minus', value:'plus'}, {label:'Chevron', value:'chevron'}]}
       ],
-      contenido: [], estructura: [], interaccion: []
+      estructura: [], interaccion: []
     }},
     { id: 'el_faq_cta', name: 'CTA de Soporte', type: 'text', groups: ['contenido', 'estilo', 'interaccion'], settings: {
       contenido: [
@@ -2025,7 +2041,11 @@ const MainSidebar = ({
                       label="Newsletter" 
                       onClick={() => onAddModule(NEWSLETTER_MODULE)}
                     />
-                    <ModuleItem icon={<Settings size={18} />} label="FAQ" />
+                    <ModuleItem 
+                      icon={<HelpCircle size={18} />} 
+                      label="FAQ" 
+                      onClick={() => onAddModule(FAQ_MODULE)}
+                    />
                   </div>
                 )}
               </div>
@@ -2685,7 +2705,23 @@ const StructurePanel: React.FC<StructurePanelProps> = ({
   );
 };
 
-const TopBar = ({ onSave, onPublish, logoUrl }: { onSave: () => void, onPublish: () => void, logoUrl: string | null }) => (
+const TopBar = ({ 
+  onSave, 
+  onPublish, 
+  logoUrl,
+  viewport,
+  setViewport,
+  isFullscreen,
+  setIsFullscreen
+}: { 
+  onSave: () => void, 
+  onPublish: () => void, 
+  logoUrl: string | null,
+  viewport: 'desktop' | 'tablet' | 'mobile',
+  setViewport: (v: 'desktop' | 'tablet' | 'mobile') => void,
+  isFullscreen: boolean,
+  setIsFullscreen: (f: boolean) => void
+}) => (
   <div className="h-[60px] bg-surface border-b border-border/60 flex items-center justify-between px-6 z-20">
     <div className="flex items-center gap-4">
       {logoUrl && (
@@ -2704,12 +2740,46 @@ const TopBar = ({ onSave, onPublish, logoUrl }: { onSave: () => void, onPublish:
 
     <div className="flex items-center gap-4">
       <div className="flex items-center gap-3 border-r border-border/60 pr-4">
-        <button className="p-1.5 text-text/60 hover:text-primary hover:bg-secondary rounded-lg transition-all"><RotateCcw size={16} /></button>
+        <button 
+          onClick={() => {
+            // Reset to default desktop view
+            setViewport('desktop');
+          }}
+          className="p-1.5 text-text/60 hover:text-primary hover:bg-secondary rounded-lg transition-all"
+          title="Restablecer vista"
+        >
+          <RotateCcw size={16} />
+        </button>
         <div className="flex items-center gap-1.5 bg-secondary p-1 rounded-xl">
-          <button className="p-1.5 text-primary bg-surface shadow-sm rounded-lg transition-all"><Monitor size={14} /></button>
-          <button className="p-1.5 text-text/60 hover:text-primary transition-all"><Smartphone size={14} /></button>
+          <button 
+            onClick={() => setViewport('desktop')}
+            className={`p-1.5 rounded-lg transition-all ${viewport === 'desktop' ? 'text-primary bg-surface shadow-sm' : 'text-text/60 hover:text-primary'}`}
+            title="Vista de Escritorio"
+          >
+            <Monitor size={14} />
+          </button>
+          <button 
+            onClick={() => setViewport('tablet')}
+            className={`p-1.5 rounded-lg transition-all ${viewport === 'tablet' ? 'text-primary bg-surface shadow-sm' : 'text-text/60 hover:text-primary'}`}
+            title="Vista de Tablet"
+          >
+            <Tablet size={14} />
+          </button>
+          <button 
+            onClick={() => setViewport('mobile')}
+            className={`p-1.5 rounded-lg transition-all ${viewport === 'mobile' ? 'text-primary bg-surface shadow-sm' : 'text-text/60 hover:text-primary'}`}
+            title="Vista de Móvil"
+          >
+            <Smartphone size={14} />
+          </button>
         </div>
-        <button className="p-1.5 text-text/60 hover:text-primary hover:bg-secondary rounded-lg transition-all"><Maximize size={16} /></button>
+        <button 
+          onClick={() => setIsFullscreen(!isFullscreen)}
+          className={`p-1.5 rounded-lg transition-all ${isFullscreen ? 'text-primary bg-primary/10' : 'text-text/60 hover:text-primary hover:bg-secondary'}`}
+          title="Pantalla Completa"
+        >
+          <Maximize size={16} />
+        </button>
       </div>
 
       <div className="flex items-center gap-2">
@@ -2743,10 +2813,20 @@ const Canvas: React.FC<{
   customers: Customer[],
   isDevMode: boolean,
   logoUrl?: string | null,
-  logoWhiteUrl?: string | null
-}> = ({ editorState, onAddModule, products, customers, isDevMode, logoUrl, logoWhiteUrl }) => {
+  logoWhiteUrl?: string | null,
+  viewport: 'desktop' | 'tablet' | 'mobile',
+  setViewport: (v: 'desktop' | 'tablet' | 'mobile') => void,
+  isFullscreen: boolean,
+  setIsFullscreen: (f: boolean) => void
+}> = ({ editorState, onAddModule, products, customers, isDevMode, logoUrl, logoWhiteUrl, viewport, setViewport, isFullscreen, setIsFullscreen }) => {
   const lastModuleRef = React.useRef<HTMLDivElement>(null);
   const prevModulesLength = React.useRef(editorState.addedModules.length);
+
+  const viewportWidths = {
+    desktop: '100%',
+    tablet: '768px',
+    mobile: '375px'
+  };
 
   React.useEffect(() => {
     if (editorState.addedModules.length > prevModulesLength.current) {
@@ -2776,10 +2856,60 @@ const Canvas: React.FC<{
   }, [editorState.expandedModuleId]);
 
   return (
-    <div className="flex-1 bg-secondary overflow-y-auto custom-scrollbar">
-      <div className="p-12 flex justify-center min-h-full">
+    <div className={`flex-1 bg-secondary/50 overflow-y-auto custom-scrollbar transition-all duration-500 ${isFullscreen ? 'fixed inset-0 z-[100] bg-secondary' : ''}`}>
+      {isFullscreen && (
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[110] flex items-center gap-2 bg-surface/80 backdrop-blur-md border border-border/50 p-1.5 rounded-2xl shadow-2xl">
+          <div className="flex items-center gap-1 bg-secondary/50 p-1 rounded-xl">
+            <button 
+              onClick={() => setViewport('desktop')}
+              className={`p-2 rounded-lg transition-all ${viewport === 'desktop' ? 'text-primary bg-surface shadow-sm' : 'text-text/40 hover:text-primary'}`}
+              title="Escritorio"
+            >
+              <Monitor size={16} />
+            </button>
+            <button 
+              onClick={() => setViewport('tablet')}
+              className={`p-2 rounded-lg transition-all ${viewport === 'tablet' ? 'text-primary bg-surface shadow-sm' : 'text-text/40 hover:text-primary'}`}
+              title="Tablet"
+            >
+              <Tablet size={16} />
+            </button>
+            <button 
+              onClick={() => setViewport('mobile')}
+              className={`p-2 rounded-lg transition-all ${viewport === 'mobile' ? 'text-primary bg-surface shadow-sm' : 'text-text/40 hover:text-primary'}`}
+              title="Móvil"
+            >
+              <Smartphone size={16} />
+            </button>
+          </div>
+          <div className="w-px h-4 bg-border/50 mx-1" />
+          <button 
+            onClick={() => setIsFullscreen(false)}
+            className="p-2 text-text/40 hover:text-rose-500 transition-all"
+            title="Salir de Pantalla Completa"
+          >
+            <RotateCcw size={16} />
+          </button>
+        </div>
+      )}
+      <div className={`p-12 flex justify-center min-h-full transition-all duration-500 ${isFullscreen ? 'p-12 pt-24' : ''}`}>
         {/* Preview Window */}
-        <div className="w-full max-w-5xl bg-surface shadow-2xl rounded-2xl border border-border/50 min-h-[800px] mb-32 relative overflow-hidden">
+        <div 
+          className={`bg-surface shadow-2xl relative overflow-hidden transition-all duration-500 ease-in-out @container ${
+            isFullscreen ? 'rounded-3xl border border-border/50' : 'rounded-2xl border border-border/50'
+          } ${viewport === 'mobile' ? 'rounded-[3rem] border-[8px] border-slate-900 shadow-[0_0_0_2px_rgba(0,0,0,0.1)]' : ''} ${viewport === 'tablet' ? 'rounded-[2rem] border-[12px] border-slate-900 shadow-[0_0_0_2px_rgba(0,0,0,0.1)]' : ''}`}
+          style={{ 
+            width: viewportWidths[viewport], 
+            maxWidth: viewport === 'desktop' ? '1200px' : viewportWidths[viewport],
+            minHeight: viewport === 'mobile' ? '667px' : viewport === 'tablet' ? '1024px' : '800px'
+          }}
+        >
+          {/* Device Notch for Mobile */}
+          {viewport === 'mobile' && (
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-6 bg-slate-900 rounded-b-2xl z-50 flex items-center justify-center">
+              <div className="w-10 h-1 bg-slate-800 rounded-full" />
+            </div>
+          )}
           {/* Dynamic Modules */}
           <div className="w-full">
             {editorState.addedModules.map((module, index) => {
@@ -3080,9 +3210,11 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [moduleToDelete, setModuleToDelete] = useState<WebModule | null>(null);
   const [showPublishModal, setShowPublishModal] = useState(false);
-  const [siteName, setSiteName] = useState(initialPage?.siteName || project?.name || '');
+  const [siteName, setSiteName] = useState(initialPage?.siteName || '');
   const [isSaving, setIsSaving] = useState(false);
   const [structurePanelCollapsed, setStructurePanelCollapsed] = useState(false);
+  const [viewport, setViewport] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [editorState, setEditorState] = useState<EditorState>(() => {
     if (initialPage && 'contentDraft' in initialPage && initialPage.contentDraft) {
       return initialPage.contentDraft as EditorState;
@@ -3236,18 +3368,39 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     }));
   };
 
+  const formatTimestampName = () => {
+    const now = new Date();
+    const yy = now.getFullYear().toString().slice(-2);
+    const mm = (now.getMonth() + 1).toString().padStart(2, '0');
+    const dd = now.getDate().toString().padStart(2, '0');
+    
+    let hours = now.getHours();
+    const ampm = hours >= 12 ? 'pm' : 'am';
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    const hh = hours.toString().padStart(2, '0');
+    
+    const min = now.getMinutes().toString().padStart(2, '0');
+    const ss = now.getSeconds().toString().padStart(2, '0');
+    
+    return `${yy}-${mm}-${dd}_${hh}-${min}-${ss}-${ampm}`;
+  };
+
   const handleSaveDraft = async () => {
     if (!projectId) return;
     setIsSaving(true);
     
     try {
+      const finalSiteName = siteName || formatTimestampName();
+      if (!siteName) setSiteName(finalSiteName);
+
       const siteId = initialPage?.siteId || project?.id || `site_${Date.now()}`;
       
       const payload = {
         data: editorState,
         metadata: {
           siteId: siteId,
-          siteName: siteName || 'Borrador sin nombre',
+          siteName: finalSiteName,
           action: 'saveDraft' as const,
           isPublish: false,
           timestamp: Date.now()
@@ -3277,7 +3430,10 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
 
   const handlePublish = async () => {
     if (!projectId) return;
+    
+    const finalSiteName = siteName || formatTimestampName();
     if (!siteName) {
+      // If still empty, we show the modal to confirm the name (even if it's the timestamped one)
       setShowPublishModal(true);
       return;
     }
@@ -3356,14 +3512,15 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         })
       };
 
+      const finalSiteName = siteName || formatTimestampName();
       const siteId = initialPage?.siteId || project?.id || `site_${Date.now()}`;
 
       const payload = {
         data: renderingContract,
         metadata: {
           siteId: siteId,
-          siteName: siteName,
-          title: siteName, // Using siteName as title for now
+          siteName: finalSiteName,
+          title: finalSiteName,
           description: project?.industry || 'Sitio web creado con Web Builder',
           logoUrl: logoUrl || '',
           action: 'publishSite' as const,
@@ -3423,6 +3580,10 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
                 onSave={handleSaveDraft} 
                 onPublish={handlePublish} 
                 logoUrl={logoUrl}
+                viewport={viewport}
+                setViewport={setViewport}
+                isFullscreen={isFullscreen}
+                setIsFullscreen={setIsFullscreen}
               />
               <Canvas 
                 editorState={editorState} 
@@ -3432,6 +3593,10 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
                 isDevMode={projectId === 'dev-project-id'}
                 logoUrl={logoUrl}
                 logoWhiteUrl={logoWhiteUrl}
+                viewport={viewport}
+                setViewport={setViewport}
+                isFullscreen={isFullscreen}
+                setIsFullscreen={setIsFullscreen}
               />
             </div>
           </div>

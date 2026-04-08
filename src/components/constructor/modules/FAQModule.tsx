@@ -59,6 +59,7 @@ export const FAQModule: React.FC<{
   const searchRadius = getVal(`${moduleId}_el_faq_search`, 'search_radius', 16);
 
   // Element: Item
+  const faqs = getVal(`${moduleId}_el_faq_item`, 'faqs', DEFAULT_FAQS);
   const itemBg = getVal(`${moduleId}_el_faq_item`, 'item_bg', 'transparent');
   const activeBg = getVal(`${moduleId}_el_faq_item`, 'active_bg', '#F8FAFC');
   const borderColor = getVal(`${moduleId}_el_faq_item`, 'border_color', '#E2E8F0');
@@ -76,12 +77,12 @@ export const FAQModule: React.FC<{
   const btnBg = getVal(`${moduleId}_el_faq_cta`, 'btn_bg', 'var(--primary-color)');
 
   const filteredFaqs = useMemo(() => {
-    if (!searchQuery) return DEFAULT_FAQS;
-    return DEFAULT_FAQS.filter(faq => 
+    if (!searchQuery) return faqs;
+    return faqs.filter((faq: any) => 
       faq.question.toLowerCase().includes(searchQuery.toLowerCase()) ||
       faq.answer.toLowerCase().includes(searchQuery.toLowerCase())
     );
-  }, [searchQuery]);
+  }, [searchQuery, faqs]);
 
   const toggleItem = (index: number) => {
     if (singleOpen) {
@@ -104,11 +105,9 @@ export const FAQModule: React.FC<{
 
   return (
     <section 
-      className="w-full relative overflow-hidden"
+      className="w-full relative overflow-hidden py-12 @md:py-20 @lg:py-24"
       style={{ 
-        backgroundColor: bgColor,
-        paddingTop: `${paddingY}px`,
-        paddingBottom: `${paddingY}px`
+        backgroundColor: bgColor
       }}
     >
       <div 
@@ -121,8 +120,7 @@ export const FAQModule: React.FC<{
           style={{ marginBottom: `${headerMarginB}px` }}
         >
           <h2 
-            className="font-black text-slate-900 mb-4 leading-tight"
-            style={{ fontSize: `${headerTitleSize}px` }}
+            className="font-black text-slate-900 mb-4 leading-tight text-3xl @md:text-4xl @lg:text-5xl"
           >
             {headerTitle}
           </h2>
@@ -155,7 +153,7 @@ export const FAQModule: React.FC<{
           initial={entranceAnim ? "hidden" : false}
           whileInView="visible"
           viewport={{ once: true }}
-          className={`grid gap-4 ${layout === 'double' ? 'md:grid-cols-2' : 'grid-cols-1'}`}
+          className={`grid gap-4 ${layout === 'double' ? '@md:grid-cols-2' : 'grid-cols-1'}`}
         >
           {filteredFaqs.length > 0 ? (
             filteredFaqs.map((faq, index) => {
@@ -227,7 +225,7 @@ export const FAQModule: React.FC<{
             initial={entranceAnim ? { opacity: 0, y: 20 } : {}}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="mt-16 p-8 rounded-3xl bg-slate-50 border border-slate-100 flex flex-col md:flex-row items-center justify-between gap-6 text-center md:text-left"
+            className="mt-16 p-8 rounded-3xl bg-slate-50 border border-slate-100 flex flex-col @md:flex-row items-center justify-between gap-6 text-center @md:text-left"
           >
             <div>
               <h4 className="text-xl font-black text-slate-900 mb-1">{ctaText}</h4>

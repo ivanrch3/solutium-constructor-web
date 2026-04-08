@@ -128,7 +128,7 @@ export const ContactModule: React.FC<{
   );
 
   const renderForm = () => (
-    <div className="bg-white p-8 md:p-10 rounded-[32px] shadow-2xl shadow-slate-200/50 border border-slate-100">
+    <div className="bg-white p-6 @md:p-10 rounded-[32px] shadow-2xl shadow-slate-200/50 border border-slate-100">
       {isSubmitted ? (
         <motion.div 
           initial={{ opacity: 0, scale: 0.9 }}
@@ -220,19 +220,19 @@ export const ContactModule: React.FC<{
 
   return (
     <section 
-      className="w-full relative overflow-hidden"
-      style={{ backgroundColor: bgColor, paddingTop: `${paddingY}px`, paddingBottom: `${paddingY}px` }}
+      className="w-full relative overflow-hidden py-12 @md:py-20 @lg:py-24"
+      style={{ backgroundColor: bgColor }}
     >
       <div className="mx-auto px-8" style={{ maxWidth: `${maxWidth}px` }}>
         <motion.div {...animProps}>
           {/* Header */}
           <div 
-            className={`flex flex-col mb-16 ${headerAlign === 'center' ? 'items-center text-center' : 'items-start text-left'}`}
+            className={`flex flex-col mb-12 @md:mb-16 ${headerAlign === 'center' ? 'items-center text-center' : 'items-start text-left'}`}
             style={{ marginBottom: `${headerMarginB}px` }}
           >
             <h2 
-              className="font-black leading-tight mb-4"
-              style={{ fontSize: `${headerTitleSize}px`, color: headerTitleColor }}
+              className="font-black leading-tight mb-4 text-3xl @md:text-4xl @lg:text-5xl"
+              style={{ color: headerTitleColor }}
             >
               {headerTitle}
             </h2>
@@ -243,7 +243,7 @@ export const ContactModule: React.FC<{
 
           {/* Layouts */}
           {layout === 'split' && (
-            <div className="grid lg:grid-cols-2 gap-16 items-start">
+            <div className="grid @lg:grid-cols-2 gap-16 items-start">
               {renderInfo()}
               {renderForm()}
             </div>
@@ -259,7 +259,7 @@ export const ContactModule: React.FC<{
           )}
 
           {layout === 'map_side' && (
-            <div className="grid lg:grid-cols-2 gap-12 items-stretch">
+            <div className="grid @lg:grid-cols-2 gap-12 items-stretch">
               {renderForm()}
               {renderMap()}
             </div>
@@ -268,7 +268,7 @@ export const ContactModule: React.FC<{
           {layout === 'map_top' && (
             <div className="space-y-12">
               {renderMap()}
-              <div className="grid lg:grid-cols-2 gap-16 items-start">
+              <div className="grid @lg:grid-cols-2 gap-16 items-start">
                 {renderInfo()}
                 {renderForm()}
               </div>

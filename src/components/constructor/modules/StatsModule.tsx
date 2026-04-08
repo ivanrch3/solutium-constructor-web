@@ -64,7 +64,7 @@ const StatItem = ({
   const isMinimal = layout === 'minimal';
   const isBento = layout === 'bento';
   
-  const bentoClass = isBento ? (index === 0 ? 'md:col-span-2 md:row-span-2' : 'md:col-span-1 md:row-span-1') : '';
+  const bentoClass = isBento ? (index === 0 ? '@md:col-span-2 @md:row-span-2' : '@md:col-span-1 @md:row-span-1') : '';
 
   return (
     <motion.div
@@ -159,11 +159,9 @@ export const StatsModule: React.FC<{
 
   return (
     <section 
-      className="w-full relative overflow-hidden"
+      className="w-full relative overflow-hidden py-12 @md:py-20 @lg:py-24"
       style={{ 
-        backgroundColor: bgColor,
-        paddingTop: `${paddingY}px`,
-        paddingBottom: `${paddingY}px`
+        backgroundColor: bgColor
       }}
     >
       <div className="max-w-7xl mx-auto px-8">
@@ -174,8 +172,7 @@ export const StatsModule: React.FC<{
             style={{ marginBottom: `${headerMarginB}px` }}
           >
             <h2 
-              className="font-black text-slate-900 mb-4 leading-tight"
-              style={{ fontSize: `${headerTitleSize}px` }}
+              className="font-black text-slate-900 mb-4 leading-tight text-3xl @md:text-4xl @lg:text-5xl"
             >
               {headerTitle}
             </h2>
@@ -193,9 +190,12 @@ export const StatsModule: React.FC<{
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, amount: 0.1 }}
-          className={`grid ${layout === 'bento' ? 'md:grid-flow-dense' : ''}`}
+          className={`grid ${layout === 'bento' ? '@md:grid-flow-dense' : ''} ${
+            columns === 4 ? 'grid-cols-2 @sm:grid-cols-3 @lg:grid-cols-4' :
+            columns === 3 ? 'grid-cols-2 @sm:grid-cols-3' :
+            columns === 2 ? 'grid-cols-2' : 'grid-cols-1'
+          }`}
           style={{ 
-            gridTemplateColumns: layout !== 'minimal' ? `repeat(${columns}, minmax(0, 1fr))` : `repeat(${columns}, minmax(0, 1fr))`,
             gap: `${gap}px`
           }}
         >

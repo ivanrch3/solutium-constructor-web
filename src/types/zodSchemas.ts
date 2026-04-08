@@ -160,7 +160,7 @@ export const assetSchema = z.object({
   name: z.string(),
   url: z.string(),
   type: z.string(),
-  originApp: z.literal('web-builder'),
+  originApp: z.literal('solutium constructor web'),
   metadata: z.any().optional().nullable(),
   size: z.number().optional().nullable(),
   updatedAt: z.any().optional().nullable(),

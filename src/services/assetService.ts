@@ -2,7 +2,7 @@ import { getSupabase } from './supabaseClient';
 import { Asset } from '../types/schema';
 import { uploadToDO } from './doService';
 
-const APP_NAME = 'Solutium Satellite Base';
+const APP_NAME = 'solutium constructor web';
 
 /**
  * Sincroniza un activo con Digital Ocean y Supabase siguiendo el estándar de Solutium.
@@ -44,10 +44,10 @@ export const syncAsset = async (
       ? `${type.charAt(0).toUpperCase() + type.slice(1)}: ${assetDisplayName}` 
       : `${type}: ${entity.id}`;
 
-    const assetData: Asset = {
+    const assetData: any = {
       id: entity.id,
-      projectId: entity.projectId,
-      originApp: 'web-builder',
+      project_id: entity.projectId,
+      origin_app: APP_NAME,
       name: assetName,
       type: type,
       url: url,
@@ -56,7 +56,7 @@ export const syncAsset = async (
         assetName: assetName,
         ...entity.metadata
       },
-      updatedAt: new Date().toISOString()
+      updated_at: new Date().toISOString()
     };
 
     // 3. Registrar en Supabase

@@ -173,9 +173,13 @@ export const ClientsModule: React.FC<{
           initial="hidden"
           whileInView="visible"
           viewport={{ once: false, amount: 0.1 }}
-          className={`grid ${getJustifyClass(alignment)}`}
+          className={`grid gap-8 ${getJustifyClass(alignment)} ${
+            columns >= 5 ? 'grid-cols-2 @sm:grid-cols-3 @md:grid-cols-4 @lg:grid-cols-5' :
+            columns === 4 ? 'grid-cols-2 @sm:grid-cols-3 @md:grid-cols-4' :
+            columns === 3 ? 'grid-cols-2 @sm:grid-cols-3' :
+            columns === 2 ? 'grid-cols-2' : 'grid-cols-1'
+          }`}
           style={{ 
-            gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
             gap: `${gap}px`
           }}
         >
@@ -274,20 +278,17 @@ export const ClientsModule: React.FC<{
 
   return (
     <section 
-      className="w-full relative overflow-hidden"
+      className="w-full relative overflow-hidden py-12 @md:py-16 @lg:py-20"
       style={{ 
-        backgroundColor: bgColor,
-        paddingTop: `${paddingY}px`,
-        paddingBottom: `${paddingY}px`
+        backgroundColor: bgColor
       }}
     >
       <div className="max-w-7xl mx-auto px-8">
         {/* Header */}
         <div className={`flex flex-col ${getAlignmentClass(alignment)}`}>
           <h2 
-            className={`mb-2 ${getFontWeightClass(titleWeight)}`}
+            className={`mb-2 ${getFontWeightClass(titleWeight)} text-2xl @md:text-3xl @lg:text-4xl`}
             style={{ 
-              fontSize: `${titleSize}px`, 
               color: titleColor,
               marginBottom: `${titleMarginBottom}px`
             }}

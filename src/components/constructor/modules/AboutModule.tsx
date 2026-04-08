@@ -140,11 +140,9 @@ export const AboutModule: React.FC<{
 
   return (
     <section 
-      className="w-full relative overflow-hidden"
+      className="w-full relative overflow-hidden py-12 @md:py-20 @lg:py-24"
       style={{ 
-        backgroundColor: bgColor,
-        paddingTop: `${paddingY}px`,
-        paddingBottom: `${paddingY}px`
+        backgroundColor: bgColor
       }}
     >
       <div 
@@ -152,20 +150,110 @@ export const AboutModule: React.FC<{
         style={{ maxWidth: `${contentWidth}px` }}
       >
         {layout === 'centered' ? (
-          <div className="flex flex-col items-center gap-16">
+          <div className="flex flex-col items-center gap-12 @md:gap-16">
             <div className="max-w-3xl">
-              {renderNarrative()}
+              <motion.div 
+                variants={entranceAnim ? containerVariants : {}}
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: false, amount: 0.3 }}
+                className={`flex flex-col ${textAlign === 'center' ? 'items-center text-center' : textAlign === 'right' ? 'items-end text-right' : 'items-start text-left'}`}
+              >
+                {eyebrow && (
+                  <motion.span 
+                    variants={entranceAnim ? itemVariants : {}}
+                    className="text-primary font-bold tracking-widest text-xs uppercase mb-4"
+                  >
+                    {eyebrow}
+                  </motion.span>
+                )}
+                <motion.h2 
+                  variants={entranceAnim ? itemVariants : {}}
+                  className="font-black leading-tight mb-6 text-3xl @md:text-4xl @lg:text-5xl"
+                  style={{ color: titleColor }}
+                >
+                  {title}
+                </motion.h2>
+                <motion.p 
+                  variants={entranceAnim ? itemVariants : {}}
+                  className="text-slate-500 leading-relaxed mb-8 text-base @md:text-lg"
+                >
+                  {description}
+                </motion.p>
+
+                {showStats && (
+                  <motion.div 
+                    variants={entranceAnim ? itemVariants : {}}
+                    className={`grid gap-6 @md:gap-8 w-full mt-4 ${
+                      statColumns === 3 ? 'grid-cols-1 @sm:grid-cols-3' :
+                      statColumns === 2 ? 'grid-cols-1 @sm:grid-cols-2' : 'grid-cols-1'
+                    }`}
+                  >
+                    {MOCK_STATS.slice(0, statColumns).map((stat, i) => (
+                      <div key={i} className="flex flex-col">
+                        <span className="text-3xl font-black mb-1" style={{ color: statColor }}>{stat.value}</span>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{stat.label}</span>
+                      </div>
+                    ))}
+                  </motion.div>
+                )}
+              </motion.div>
             </div>
             <div className="w-full max-w-4xl">
               {renderVisual()}
             </div>
           </div>
         ) : (
-          <div className={`grid grid-cols-1 lg:grid-cols-2 gap-16 items-center ${layout === 'split_left' ? 'lg:direction-rtl' : ''}`}>
-            <div className={layout === 'split_left' ? 'lg:order-2' : 'lg:order-1'}>
-              {renderNarrative()}
+          <div className={`grid grid-cols-1 @lg:grid-cols-2 gap-12 @md:gap-16 items-center ${layout === 'split_left' ? '@lg:direction-rtl' : ''}`}>
+            <div className={layout === 'split_left' ? '@lg:order-2' : '@lg:order-1'}>
+              <motion.div 
+                variants={entranceAnim ? containerVariants : {}}
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: false, amount: 0.3 }}
+                className={`flex flex-col ${textAlign === 'center' ? 'items-center text-center' : textAlign === 'right' ? 'items-end text-right' : 'items-start text-left'}`}
+              >
+                {eyebrow && (
+                  <motion.span 
+                    variants={entranceAnim ? itemVariants : {}}
+                    className="text-primary font-bold tracking-widest text-xs uppercase mb-4"
+                  >
+                    {eyebrow}
+                  </motion.span>
+                )}
+                <motion.h2 
+                  variants={entranceAnim ? itemVariants : {}}
+                  className="font-black leading-tight mb-6 text-3xl @md:text-4xl @lg:text-5xl"
+                  style={{ color: titleColor }}
+                >
+                  {title}
+                </motion.h2>
+                <motion.p 
+                  variants={entranceAnim ? itemVariants : {}}
+                  className="text-slate-500 leading-relaxed mb-8 text-base @md:text-lg"
+                >
+                  {description}
+                </motion.p>
+
+                {showStats && (
+                  <motion.div 
+                    variants={entranceAnim ? itemVariants : {}}
+                    className={`grid gap-6 @md:gap-8 w-full mt-4 ${
+                      statColumns === 3 ? 'grid-cols-1 @sm:grid-cols-3' :
+                      statColumns === 2 ? 'grid-cols-1 @sm:grid-cols-2' : 'grid-cols-1'
+                    }`}
+                  >
+                    {MOCK_STATS.slice(0, statColumns).map((stat, i) => (
+                      <div key={i} className="flex flex-col">
+                        <span className="text-3xl font-black mb-1" style={{ color: statColor }}>{stat.value}</span>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{stat.label}</span>
+                      </div>
+                    ))}
+                  </motion.div>
+                )}
+              </motion.div>
             </div>
-            <div className={layout === 'split_left' ? 'lg:order-1' : 'lg:order-2'}>
+            <div className={layout === 'split_left' ? '@lg:order-1' : '@lg:order-2'}>
               {renderVisual()}
             </div>
           </div>

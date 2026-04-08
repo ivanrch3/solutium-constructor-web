@@ -104,11 +104,9 @@ export const TeamModule: React.FC<{
 
   return (
     <section 
-      className="w-full relative overflow-hidden"
+      className="w-full relative overflow-hidden py-12 @md:py-20 @lg:py-24"
       style={{ 
-        backgroundColor: bgColor,
-        paddingTop: `${paddingY}px`,
-        paddingBottom: `${paddingY}px`
+        backgroundColor: bgColor
       }}
     >
       <div className="max-w-7xl mx-auto px-8">
@@ -118,8 +116,7 @@ export const TeamModule: React.FC<{
           style={{ marginBottom: `${headerMarginB}px` }}
         >
           <h2 
-            className="font-black text-slate-900 mb-4 leading-tight"
-            style={{ fontSize: `${headerTitleSize}px` }}
+            className="font-black text-slate-900 mb-4 leading-tight text-3xl @md:text-4xl @lg:text-5xl"
           >
             {headerTitle}
           </h2>
@@ -136,8 +133,10 @@ export const TeamModule: React.FC<{
           viewport={{ once: true }}
           className={`grid gap-8 ${
             layout === 'list' ? 'grid-cols-1' : 
-            layout === 'bento' ? 'grid-cols-1 md:grid-cols-4' :
-            `grid-cols-1 md:grid-cols-2 lg:grid-cols-${columns}`
+            layout === 'bento' ? 'grid-cols-1 @md:grid-cols-4' :
+            columns === 4 ? 'grid-cols-1 @sm:grid-cols-2 @lg:grid-cols-4' :
+            columns === 3 ? 'grid-cols-1 @sm:grid-cols-2 @lg:grid-cols-3' :
+            columns === 2 ? 'grid-cols-1 @sm:grid-cols-2' : 'grid-cols-1'
           }`}
           style={{ gap: `${gap}px` }}
         >
@@ -150,8 +149,8 @@ export const TeamModule: React.FC<{
                 variants={itemVariants}
                 whileHover={hoverEffect === 'lift' ? { y: -10 } : {}}
                 className={`group relative overflow-hidden transition-all duration-300 ${
-                  layout === 'list' ? 'flex flex-col md:flex-row items-center gap-8' : ''
-                } ${isBentoFirst ? 'md:col-span-2 md:row-span-2' : ''}`}
+                  layout === 'list' ? 'flex flex-col @md:flex-row items-center gap-8' : ''
+                } ${isBentoFirst ? '@md:col-span-2 @md:row-span-2' : ''}`}
                 style={{
                   backgroundColor: cardBg,
                   borderRadius: `${cardRadius}px`,
@@ -163,7 +162,7 @@ export const TeamModule: React.FC<{
                 {/* Image Container */}
                 <div 
                   className={`relative overflow-hidden ${getAspect(imgAspect)} ${
-                    layout === 'list' ? 'w-full md:w-64 flex-shrink-0' : 'w-full'
+                    layout === 'list' ? 'w-full @md:w-64 flex-shrink-0' : 'w-full'
                   }`}
                   style={{ 
                     borderRadius: imgAspect === 'circle' ? '50%' : `${imgRadius}px`,

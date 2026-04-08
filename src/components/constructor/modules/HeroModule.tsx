@@ -105,9 +105,8 @@ export const HeroModule: React.FC<{
       
       <motion.h1 
         variants={entranceAnim ? itemVariants : {}}
-        className="leading-[1.1] mb-6"
+        className="leading-[1.1] mb-6 text-4xl @md:text-5xl @lg:text-6xl @xl:text-7xl"
         style={{ 
-          fontSize: `${titleSize}px`, 
           fontWeight: getFontWeight(titleWeight),
           color: useGradient ? 'transparent' : titleColor,
           backgroundImage: useGradient ? `linear-gradient(to right, ${titleColor}, ${gradientColor})` : 'none',
@@ -180,11 +179,9 @@ export const HeroModule: React.FC<{
 
   return (
     <section 
-      className="relative w-full overflow-hidden flex items-center justify-center"
+      className="relative w-full overflow-hidden flex items-center justify-center py-12 @md:py-20 @lg:py-32"
       style={{ 
         backgroundColor: bgColor,
-        paddingTop: `${paddingY}px`,
-        paddingBottom: `${paddingY}px`,
         minHeight: layout === 'full' ? '100vh' : 'auto'
       }}
     >
@@ -223,7 +220,7 @@ export const HeroModule: React.FC<{
         style={{ maxWidth: `${contentWidth}px` }}
       >
         {layout === 'split' && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+          <div className="grid grid-cols-1 @lg:grid-cols-2 gap-16 items-center">
             {renderContent()}
             {renderVisual()}
           </div>

@@ -112,7 +112,7 @@ export const HeaderModule: React.FC<{
         </div>
 
         {/* Desktop Nav */}
-        <nav className="hidden md:flex items-center gap-8">
+        <nav className="hidden @md:flex items-center gap-8">
           {links.map((link: any, idx: number) => (
             <a
               key={idx}
@@ -147,7 +147,7 @@ export const HeaderModule: React.FC<{
             <motion.button
               whileHover={btnHover === 'scale' ? { scale: 1.05 } : { boxShadow: `0 0 20px ${btnBg}40` }}
               whileTap={{ scale: 0.95 }}
-              className="hidden md:flex items-center gap-2 px-6 py-2.5 text-sm font-bold transition-all shadow-sm"
+              className="hidden @md:flex items-center gap-2 px-6 py-2.5 text-sm font-bold transition-all shadow-sm"
               style={{ 
                 backgroundColor: btnStyle === 'solid' ? btnBg : 'transparent',
                 color: btnStyle === 'solid' ? btnColor : btnBg,
@@ -162,7 +162,7 @@ export const HeaderModule: React.FC<{
 
           {/* Mobile Toggle */}
           <button 
-            className="md:hidden p-2"
+            className="@md:hidden p-2"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             style={{ color: linkColor }}
           >
@@ -178,7 +178,8 @@ export const HeaderModule: React.FC<{
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="absolute top-full left-0 right-0 bg-white border-b border-slate-100 overflow-hidden md:hidden shadow-xl"
+            className="absolute top-full left-0 right-0 border-b border-slate-100 overflow-hidden @md:hidden shadow-xl"
+            style={{ backgroundColor: bgColor }}
           >
             <div className="flex flex-col p-6 gap-4">
               {links.map((link: any, idx: number) => (

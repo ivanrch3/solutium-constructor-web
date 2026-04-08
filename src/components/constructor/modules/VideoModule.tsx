@@ -161,18 +161,29 @@ export const VideoModule: React.FC<{
 
   return (
     <section 
-      className="w-full relative overflow-hidden"
+      className="w-full relative overflow-hidden py-12 @md:py-20 @lg:py-24"
       style={{ 
-        backgroundColor: bgColor,
-        paddingTop: `${paddingY}px`,
-        paddingBottom: `${paddingY}px`
+        backgroundColor: bgColor
       }}
     >
       <div className="mx-auto px-8" style={{ maxWidth: layout === 'full' ? '100%' : `${maxWidth}px` }}>
         {layout === 'split' ? (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+          <div className="grid grid-cols-1 @lg:grid-cols-2 gap-12 @md:gap-16 items-center">
             <div>
-              {showText && renderText()}
+              {showText && (
+                <div className={`flex flex-col ${textAlign === 'center' ? 'items-center text-center' : 'items-start text-left'} mb-12`}>
+                  <h2 
+                    className="font-black text-slate-900 mb-4 leading-tight text-3xl @md:text-4xl @lg:text-5xl"
+                  >
+                    {title}
+                  </h2>
+                  {subtitle && (
+                    <p className="text-slate-500 max-w-2xl text-lg">
+                      {subtitle}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
             <motion.div
               initial={entranceAnim ? { opacity: 0, x: 30 } : {}}
@@ -185,7 +196,20 @@ export const VideoModule: React.FC<{
           </div>
         ) : (
           <div className="flex flex-col items-center">
-            {showText && renderText()}
+            {showText && (
+              <div className={`flex flex-col ${textAlign === 'center' ? 'items-center text-center' : 'items-start text-left'} mb-12`}>
+                <h2 
+                  className="font-black text-slate-900 mb-4 leading-tight text-3xl @md:text-4xl @lg:text-5xl"
+                >
+                  {title}
+                </h2>
+                {subtitle && (
+                  <p className="text-slate-500 max-w-2xl text-lg">
+                    {subtitle}
+                  </p>
+                )}
+              </div>
+            )}
             <motion.div
               initial={entranceAnim ? { opacity: 0, y: 30 } : {}}
               whileInView={{ opacity: 1, y: 0 }}

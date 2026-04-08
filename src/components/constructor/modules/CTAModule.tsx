@@ -162,7 +162,7 @@ export const CTAModule: React.FC<{
   };
 
   return (
-    <section className="w-full relative overflow-hidden" style={bgStyle}>
+    <section className="w-full relative overflow-hidden py-12 @md:py-20 @lg:py-24" style={bgStyle}>
       {bgType === 'image' && (
         <div 
           className="absolute inset-0 bg-black" 
@@ -173,14 +173,33 @@ export const CTAModule: React.FC<{
       <div className="relative z-10 mx-auto px-8" style={{ maxWidth: `${maxWidth}px` }}>
         <motion.div {...animProps}>
           {layout === 'split' ? (
-            <div className="grid md:grid-cols-2 gap-12 items-center">
+            <div className="grid grid-cols-1 @md:grid-cols-2 gap-12 items-center">
               <div>
-                {renderContent()}
+                <div 
+                  className={`flex flex-col ${layout === 'centered' ? 'items-center text-center' : 'items-start text-left'}`}
+                  style={{ marginBottom: `${marginB}px` }}
+                >
+                  <h2 
+                    className="leading-tight mb-6 text-3xl @md:text-4xl @lg:text-5xl"
+                    style={{ 
+                      fontWeight: titleWeight === 'black' ? 900 : 700,
+                      color: textColor 
+                    }}
+                  >
+                    {title}
+                  </h2>
+                  <p 
+                    className="text-lg opacity-80 max-w-2xl leading-relaxed"
+                    style={{ color: textColor }}
+                  >
+                    {subtitle}
+                  </p>
+                </div>
                 {renderActions()}
                 {renderTrust()}
               </div>
               <div className="relative">
-                <div className="aspect-video rounded-3xl overflow-hidden shadow-2xl rotate-2 hover:rotate-0 transition-transform duration-500">
+                <div className="aspect-video rounded-3xl overflow-hidden shadow-2xl @md:rotate-2 hover:rotate-0 transition-transform duration-500">
                   <img 
                     src="https://picsum.photos/seed/cta-side/800/600" 
                     alt="CTA Visual" 
@@ -194,7 +213,26 @@ export const CTAModule: React.FC<{
             </div>
           ) : (
             <>
-              {renderContent()}
+              <div 
+                className={`flex flex-col ${layout === 'centered' ? 'items-center text-center' : 'items-start text-left'}`}
+                style={{ marginBottom: `${marginB}px` }}
+              >
+                <h2 
+                  className="leading-tight mb-6 text-3xl @md:text-4xl @lg:text-5xl"
+                  style={{ 
+                    fontWeight: titleWeight === 'black' ? 900 : 700,
+                    color: textColor 
+                  }}
+                >
+                  {title}
+                </h2>
+                <p 
+                  className="text-lg opacity-80 max-w-2xl leading-relaxed"
+                  style={{ color: textColor }}
+                >
+                  {subtitle}
+                </p>
+              </div>
               {renderActions()}
               {renderTrust()}
             </>

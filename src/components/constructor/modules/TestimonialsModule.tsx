@@ -54,11 +54,10 @@ const TestimonialCard = ({
   <motion.div
     variants={entranceAnim ? itemVariants : {}}
     whileHover={hoverLift ? { y: -8, transition: { duration: 0.3 } } : {}}
-    className={`flex flex-col h-full transition-all duration-300 ${showShadow ? 'shadow-xl shadow-slate-200/50' : ''}`}
+    className={`flex flex-col h-full transition-all duration-300 ${showShadow ? 'shadow-xl shadow-slate-200/50' : ''} p-6 @md:p-8`}
     style={{ 
       backgroundColor: cardBg, 
-      borderRadius: `${cardRadius}px`,
-      padding: `${cardPadding}px`
+      borderRadius: `${cardRadius}px`
     }}
   >
     <div className="mb-6 text-primary/20">
@@ -158,11 +157,9 @@ export const TestimonialsModule: React.FC<{
 
   return (
     <section 
-      className="w-full relative overflow-hidden"
+      className="w-full relative overflow-hidden py-12 @md:py-20 @lg:py-24"
       style={{ 
-        backgroundColor: bgColor,
-        paddingTop: `${paddingY}px`,
-        paddingBottom: `${paddingY}px`
+        backgroundColor: bgColor
       }}
     >
       <div className="max-w-7xl mx-auto px-8">
@@ -172,8 +169,7 @@ export const TestimonialsModule: React.FC<{
           style={{ marginBottom: `${headerMarginB}px` }}
         >
           <h2 
-            className="font-black text-slate-900 mb-4 leading-tight"
-            style={{ fontSize: `${headerTitleSize}px` }}
+            className="font-black text-slate-900 mb-4 leading-tight text-3xl @md:text-4xl @lg:text-5xl"
           >
             {headerTitle}
           </h2>
@@ -245,10 +241,13 @@ export const TestimonialsModule: React.FC<{
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, amount: 0.1 }}
-            className={`grid ${layout === 'masonry' ? 'columns-1 md:columns-2 lg:columns-3' : 'grid-cols-1'}`}
+            className={`grid ${layout === 'masonry' ? 'columns-1 @md:columns-2 @lg:columns-3' : (
+              columns === 4 ? 'grid-cols-1 @sm:grid-cols-2 @lg:grid-cols-4' :
+              columns === 3 ? 'grid-cols-1 @sm:grid-cols-2 @lg:grid-cols-3' :
+              columns === 2 ? 'grid-cols-1 @sm:grid-cols-2' : 'grid-cols-1'
+            )}`}
             style={{ 
               display: layout === 'masonry' ? 'block' : 'grid',
-              gridTemplateColumns: layout !== 'masonry' ? `repeat(${columns}, minmax(0, 1fr))` : undefined,
               gap: `${gap}px`
             }}
           >

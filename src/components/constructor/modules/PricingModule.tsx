@@ -119,11 +119,9 @@ export const PricingModule: React.FC<{
 
   return (
     <section 
-      className="w-full relative overflow-hidden"
+      className="w-full relative overflow-hidden py-12 @md:py-20 @lg:py-24"
       style={{ 
-        backgroundColor: bgColor,
-        paddingTop: `${paddingY}px`,
-        paddingBottom: `${paddingY}px`
+        backgroundColor: bgColor
       }}
     >
       <div className="max-w-7xl mx-auto px-8">
@@ -133,8 +131,7 @@ export const PricingModule: React.FC<{
           style={{ marginBottom: `${headerMarginB}px` }}
         >
           <h2 
-            className="font-black text-slate-900 mb-4 leading-tight"
-            style={{ fontSize: `${headerTitleSize}px` }}
+            className="font-black text-slate-900 mb-4 leading-tight text-3xl @md:text-4xl @lg:text-5xl"
           >
             {headerTitle}
           </h2>
@@ -184,7 +181,7 @@ export const PricingModule: React.FC<{
           initial={entranceAnim ? "hidden" : false}
           whileInView="visible"
           viewport={{ once: true, margin: "-100px" }}
-          className={`grid gap-8 grid-cols-1 md:grid-cols-2 lg:grid-cols-${columns} items-center`}
+          className={`grid gap-8 grid-cols-1 @md:grid-cols-2 @lg:grid-cols-${columns} items-center`}
           style={{ gap: `${gap}px` }}
         >
           {MOCK_PLANS.map((plan) => (
@@ -192,15 +189,12 @@ export const PricingModule: React.FC<{
               key={plan.id}
               variants={itemVariants}
               whileHover={hoverEffect === 'lift' ? { y: -15 } : hoverEffect === 'glow' ? { boxShadow: `0 0 40px ${highlightColor}30` } : {}}
-              className="relative flex flex-col h-full transition-all duration-500 group"
+              className={`relative flex flex-col h-full transition-all duration-500 group p-6 @md:p-10 ${plan.highlight ? 'z-10' : 'z-1'}`}
               style={{
                 backgroundColor: cardBg,
                 borderRadius: `${cardRadius}px`,
-                padding: `${cardPadding}px`,
                 boxShadow: showShadow ? (plan.highlight ? `0 25px 60px -15px ${highlightColor}25` : '0 10px 40px -10px rgba(0,0,0,0.04)') : 'none',
                 border: plan.highlight ? `2px solid ${highlightColor}` : '1px solid rgba(0,0,0,0.05)',
-                transform: plan.highlight ? `scale(${featuredScale})` : 'scale(1)',
-                zIndex: plan.highlight ? 10 : 1
               }}
             >
               {plan.badge && (

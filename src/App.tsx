@@ -174,7 +174,10 @@ const AppContent: React.FC = () => {
         const mappedProfile = await getProfile(user.id);
         const handshakeThemeData = payload.activeThemeData;
         const handshakeThemeName = payload.profile?.activeTheme || payload.project?.activeTheme;
-        const themeToApply = handshakeThemeData || handshakeThemeName || mappedProfile?.activeTheme || 'blue-light';
+        
+        // Solo usamos handshakeThemeData si tiene propiedades, de lo contrario preferimos el nombre o el perfil
+        const hasThemeData = handshakeThemeData && Object.keys(handshakeThemeData).length > 0;
+        const themeToApply = (hasThemeData ? handshakeThemeData : null) || handshakeThemeName || mappedProfile?.activeTheme || 'blue-light';
 
         if (mappedProfile) {
           setProfile(mappedProfile);
@@ -257,7 +260,7 @@ const AppContent: React.FC = () => {
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
           <div className="text-center space-y-2">
             <h2 className="text-2xl font-bold tracking-tight">Iniciando Constructor Web</h2>
-            <p className="text-text/60">Sincronizando con Solutium...</p>
+            <p className="text-text/80">Sincronizando con Solutium...</p>
           </div>
         </div>
 

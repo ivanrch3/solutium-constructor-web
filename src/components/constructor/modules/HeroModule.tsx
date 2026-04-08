@@ -40,6 +40,18 @@ export const HeroModule: React.FC<{
   const useGradient = getVal(`${moduleId}_el_hero_title`, 'use_gradient', false);
   const gradientColor = getVal(`${moduleId}_el_hero_title`, 'gradient_color', 'var(--primary-color)');
 
+  // Element: Subtitle
+  const subtitleText = getVal(`${moduleId}_el_hero_subtitle`, 'text', 'La plataforma todo-en-uno para gestionar tu presencia online con elegancia y potencia.');
+  const subtitleSize = getVal(`${moduleId}_el_hero_subtitle`, 'size', 18);
+  const subtitleColor = getVal(`${moduleId}_el_hero_subtitle`, 'color', '#64748B');
+  const subtitleMarginB = getVal(`${moduleId}_el_hero_subtitle`, 'margin_b', 32);
+
+  // Element: CTA
+  const ctaText = getVal(`${moduleId}_el_hero_cta`, 'text', 'Empezar ahora');
+  const ctaBg = getVal(`${moduleId}_el_hero_cta`, 'bg_color', 'var(--primary-color)');
+  const ctaTextColor = getVal(`${moduleId}_el_hero_cta`, 'text_color', '#FFFFFF');
+  const ctaHoverScale = getVal(`${moduleId}_el_hero_cta`, 'hover_scale', true);
+
   // Element: Visual
   const visualUrl = getVal(`${moduleId}_el_hero_visual`, 'url', 'https://picsum.photos/seed/hero/800/600');
   const visualFit = getVal(`${moduleId}_el_hero_visual`, 'fit', 'contain');
@@ -106,13 +118,32 @@ export const HeroModule: React.FC<{
         {titleText}
       </motion.h1>
 
-      <motion.div variants={entranceAnim ? itemVariants : {}} className="flex flex-wrap gap-4 mt-4">
-        <button className="px-8 py-4 bg-primary text-white font-bold rounded-2xl shadow-xl shadow-primary/20 hover:scale-105 transition-transform">
-          Empezar ahora
-        </button>
-        <button className="px-8 py-4 bg-surface border border-border text-text font-bold rounded-2xl hover:bg-secondary transition-colors">
-          Saber más
-        </button>
+      {subtitleText && (
+        <motion.p
+          variants={entranceAnim ? itemVariants : {}}
+          className="max-w-xl leading-relaxed"
+          style={{ 
+            fontSize: `${subtitleSize}px`, 
+            color: subtitleColor,
+            marginBottom: `${subtitleMarginB}px`
+          }}
+        >
+          {subtitleText}
+        </motion.p>
+      )}
+
+      <motion.div variants={entranceAnim ? itemVariants : {}} className="flex flex-wrap gap-4">
+        <motion.button 
+          whileHover={ctaHoverScale ? { scale: 1.05 } : {}}
+          whileTap={{ scale: 0.95 }}
+          className="px-8 py-4 font-bold rounded-2xl shadow-xl shadow-primary/20 transition-all"
+          style={{ 
+            backgroundColor: ctaBg,
+            color: ctaTextColor
+          }}
+        >
+          {ctaText}
+        </motion.button>
       </motion.div>
     </motion.div>
   );

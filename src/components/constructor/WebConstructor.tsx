@@ -14,8 +14,12 @@ import {
   RotateCcw, 
   Maximize, 
   Plus, 
+  Mail,
+  Users,
   ChevronDown, 
   ChevronRight, 
+  ChevronLeft,
+  ChevronUp,
   Sparkles, 
   Trash2, 
   Link as LinkIcon, 
@@ -26,8 +30,10 @@ import {
   Image as ImageIcon,
   Star,
   MousePointer2,
+  HelpCircle,
   Box,
   Send,
+  CreditCard,
   Upload,
   Loader2
 } from 'lucide-react';
@@ -44,13 +50,329 @@ import { GalleryModule } from './modules/GalleryModule';
 import { VideoModule } from './modules/VideoModule';
 import { TestimonialsModule } from './modules/TestimonialsModule';
 import { StatsModule } from './modules/StatsModule';
+import { TeamModule } from './modules/TeamModule';
+import { PricingModule } from './modules/PricingModule';
+import { FAQModule } from './modules/FAQModule';
+import { ContactModule } from './modules/ContactModule';
 import { ClientsModule } from './modules/ClientsModule';
+import { CTAModule } from './modules/CTAModule';
+import { NewsletterModule } from './modules/NewsletterModule';
+import { HeaderModule } from './modules/HeaderModule';
+import { MenuModule } from './modules/MenuModule';
+import { FooterModule } from './modules/FooterModule';
+import { SpacerModule } from './modules/SpacerModule';
 import { saveWebBuilderSiteDraft, publishWebBuilderSite, getProducts, getCustomers } from '../../services/dataService';
 import { syncAsset } from '../../services/assetService';
 import { Product, Customer } from '../../types/schema';
 import { MOCK_PRODUCTS, MOCK_CUSTOMERS } from '../../constants/mockData';
 
 // --- CONSTANTS ---
+
+const HEADER_MODULE: WebModule = {
+  id: 'mod_header_1',
+  type: 'header',
+  name: 'Barra Superior (Header)',
+  globalGroups: ['estructura', 'estilo', 'interaccion'],
+  globalSettings: {
+    estructura: [
+      { id: 'position', label: 'Posición', type: 'select', defaultValue: 'sticky', options: [
+        { label: 'Fijo al Scroll (Sticky)', value: 'sticky' },
+        { label: 'Fijo Superior (Fixed)', value: 'fixed' },
+        { label: 'Estático', value: 'static' }
+      ]},
+      { id: 'height', label: 'Altura de Barra', type: 'range', defaultValue: 80, min: 60, max: 120, unit: 'px' },
+      { id: 'max_width', label: 'Ancho Máximo', type: 'range', defaultValue: 1400, min: 1000, max: 1920, unit: 'px' }
+    ],
+    estilo: [
+      { id: 'bg_type', label: 'Tipo de Fondo', type: 'select', defaultValue: 'glass', options: [
+        { label: 'Sólido', value: 'solid' },
+        { label: 'Glassmorphism', value: 'glass' },
+        { label: 'Transparente', value: 'transparent' }
+      ]},
+      { id: 'bg_color', label: 'Color de Fondo', type: 'color', defaultValue: '#FFFFFF' },
+      { id: 'border_color', label: 'Color de Borde Inferior', type: 'color', defaultValue: 'rgba(0,0,0,0.05)' },
+      { id: 'shadow', label: 'Sombra', type: 'select', defaultValue: 'sm', options: [
+        { label: 'Ninguna', value: 'none' },
+        { label: 'Suave', value: 'sm' },
+        { label: 'Fuerte', value: 'lg' }
+      ]}
+    ],
+    interaccion: [
+      { id: 'shrink_on_scroll', label: 'Reducir al hacer Scroll', type: 'boolean', defaultValue: true },
+      { id: 'entrance_anim', label: 'Animación de Entrada', type: 'boolean', defaultValue: true }
+    ],
+    contenido: [], tipografia: [], multimedia: []
+  },
+  elements: [
+    { id: 'el_header_logo', name: 'Identidad (Logo)', type: 'multimedia', groups: ['contenido', 'multimedia', 'estructura'], settings: {
+      contenido: [
+        { id: 'logo_type', label: 'Tipo de Logo', type: 'select', defaultValue: 'image', options: [{label:'Imagen', value:'image'}, {label:'Texto', value:'text'}]},
+        { id: 'logo_text', label: 'Texto del Logo', type: 'text', defaultValue: 'MI MARCA' }
+      ],
+      multimedia: [
+        { id: 'logo_img', label: 'Imagen de Logo', type: 'image', defaultValue: '' }
+      ],
+      estructura: [
+        { id: 'logo_width', label: 'Ancho del Logo', type: 'range', defaultValue: 120, min: 40, max: 240, unit: 'px' }
+      ],
+      estilo: [], tipografia: [], interaccion: []
+    }},
+    { id: 'el_header_nav', name: 'Navegación Principal', type: 'text', groups: ['contenido', 'tipografia', 'estilo'], settings: {
+      contenido: [
+        { 
+          id: 'links', 
+          label: 'Enlaces', 
+          type: 'repeater', 
+          defaultValue: [
+            {label: "Inicio", url: "#"},
+            {label: "Servicios", url: "#servicios"},
+            {label: "Nosotros", url: "#nosotros"},
+            {label: "Contacto", url: "#contacto"}
+          ],
+          fields: [
+            { id: 'label', label: 'Etiqueta', type: 'text', defaultValue: 'Enlace' },
+            { id: 'url', label: 'URL', type: 'text', defaultValue: '#' }
+          ]
+        }
+      ],
+      tipografia: [
+        { id: 'font_size', label: 'Tamaño Fuente', type: 'range', defaultValue: 15, min: 12, max: 20 },
+        { id: 'font_weight', label: 'Grosor', type: 'select', defaultValue: 'medium', options: [{label:'Regular', value:'normal'}, {label:'Medium', value:'medium'}, {label:'Bold', value:'bold'}]},
+        { id: 'link_color', label: 'Color de Enlaces', type: 'color', defaultValue: '#0F172A' }
+      ],
+      estilo: [
+        { id: 'active_style', label: 'Estilo Activo', type: 'select', defaultValue: 'underline', options: [{label:'Línea Inferior', value:'underline'}, {label:'Fondo Suave', value:'pill'}, {label:'Punto', value:'dot'}]},
+        { id: 'active_color', label: 'Color Activo', type: 'color', defaultValue: 'var(--primary-color)' }
+      ],
+      estructura: [], multimedia: [], interaccion: []
+    }},
+    { id: 'el_header_actions', name: 'Botón de Acción', type: 'style', groups: ['contenido', 'estilo', 'interaccion'], settings: {
+      contenido: [
+        { id: 'show_btn', label: 'Mostrar Botón', type: 'boolean', defaultValue: true },
+        { id: 'btn_text', label: 'Texto del Botón', type: 'text', defaultValue: 'Empezar' }
+      ],
+      estilo: [
+        { id: 'btn_style', label: 'Estilo', type: 'select', defaultValue: 'solid', options: [{label:'Sólido', value:'solid'}, {label:'Contorno', value:'outline'}]},
+        { id: 'btn_bg', label: 'Fondo Botón', type: 'color', defaultValue: 'var(--primary-color)' },
+        { id: 'btn_color', label: 'Color Texto', type: 'color', defaultValue: '#FFFFFF' },
+        { id: 'btn_radius', label: 'Redondeado', type: 'range', defaultValue: 12, min: 0, max: 40 }
+      ],
+      interaccion: [
+        { id: 'btn_hover', label: 'Efecto Hover', type: 'select', defaultValue: 'scale', options: [{label:'Escala', value:'scale'}, {label:'Brillo', value:'glow'}]}
+      ],
+      estructura: [], tipografia: [], multimedia: []
+    }}
+  ]
+};
+
+const MENU_MODULE: WebModule = {
+  id: 'mod_menu_1',
+  type: 'menu',
+  name: 'Menú de Navegación',
+  globalGroups: ['estructura', 'estilo', 'interaccion'],
+  globalSettings: {
+    estructura: [
+      { id: 'layout', label: 'Diseño', type: 'select', defaultValue: 'horizontal', options: [
+        { label: 'Horizontal (Barra)', value: 'horizontal' },
+        { label: 'Vertical (Lista)', value: 'vertical' },
+        { label: 'Grilla (Mega-menú)', value: 'grid' }
+      ]},
+      { id: 'align', label: 'Alineación', type: 'select', defaultValue: 'center', options: [
+        { label: 'Inicio', value: 'start' },
+        { label: 'Centro', value: 'center' },
+        { label: 'Fin', value: 'end' }
+      ]},
+      { id: 'gap', label: 'Espaciado entre items', type: 'range', defaultValue: 24, min: 0, max: 64, unit: 'px' },
+      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 20, min: 0, max: 100, unit: 'px' }
+    ],
+    estilo: [
+      { id: 'bg_color', label: 'Fondo del Contenedor', type: 'color', defaultValue: 'transparent' },
+      { id: 'border_radius', label: 'Redondeado', type: 'range', defaultValue: 12, min: 0, max: 40 }
+    ],
+    interaccion: [
+      { id: 'entrance_anim', label: 'Animación de Entrada', type: 'boolean', defaultValue: true }
+    ],
+    contenido: [], tipografia: [], multimedia: []
+  },
+  elements: [
+    { id: 'el_menu_items', name: 'Lista de Enlaces', type: 'text', groups: ['contenido', 'tipografia', 'multimedia'], settings: {
+      contenido: [
+        { 
+          id: 'links', 
+          label: 'Enlaces', 
+          type: 'repeater', 
+          defaultValue: [
+            {label: "Inicio", url: "#", icon: "Home"},
+            {label: "Servicios", url: "#servicios", badge: "Nuevo"},
+            {label: "Portafolio", url: "#portafolio"},
+            {label: "Contacto", url: "#contacto"}
+          ],
+          fields: [
+            { id: 'label', label: 'Etiqueta', type: 'text', defaultValue: 'Enlace' },
+            { id: 'url', label: 'URL', type: 'text', defaultValue: '#' },
+            { id: 'icon', label: 'Icono (Lucide)', type: 'text', defaultValue: '' },
+            { id: 'badge', label: 'Badge', type: 'text', defaultValue: '' }
+          ]
+        }
+      ],
+      tipografia: [
+        { id: 'font_size', label: 'Tamaño Fuente', type: 'range', defaultValue: 15, min: 12, max: 24 },
+        { id: 'font_weight', label: 'Grosor', type: 'select', defaultValue: 'medium', options: [{label:'Regular', value:'normal'}, {label:'Medium', value:'medium'}, {label:'Bold', value:'bold'}]},
+        { id: 'text_color', label: 'Color de Texto', type: 'color', defaultValue: '#0F172A' }
+      ],
+      multimedia: [
+        { id: 'show_icons', label: 'Mostrar Iconos', type: 'boolean', defaultValue: true },
+        { id: 'icon_size', label: 'Tamaño Iconos', type: 'range', defaultValue: 18, min: 14, max: 24 }
+      ],
+      estilo: [], estructura: [], interaccion: []
+    }},
+    { id: 'el_menu_style', name: 'Estilo de Interacción', type: 'style', groups: ['estilo', 'interaccion'], settings: {
+      estilo: [
+        { id: 'hover_style', label: 'Estilo Hover', type: 'select', defaultValue: 'pill', options: [
+          { label: 'Fondo (Pill)', value: 'pill' },
+          { label: 'Línea Inferior', value: 'underline' },
+          { label: 'Texto Color', value: 'color' }
+        ]},
+        { id: 'hover_bg', label: 'Color Fondo Hover', type: 'color', defaultValue: 'rgba(0,0,0,0.05)' },
+        { id: 'active_color', label: 'Color Activo', type: 'color', defaultValue: 'var(--primary-color)' }
+      ],
+      interaccion: [
+        { id: 'hover_scale', label: 'Efecto Escala', type: 'boolean', defaultValue: true }
+      ],
+      contenido: [], tipografia: [], multimedia: [], estructura: []
+    }}
+  ]
+};
+
+const FOOTER_MODULE: WebModule = {
+  id: 'mod_footer_1',
+  type: 'footer',
+  name: 'Pie de Página (Footer)',
+  globalGroups: ['estructura', 'estilo'],
+  globalSettings: {
+    estructura: [
+      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 80, min: 40, max: 160, unit: 'px' },
+      { id: 'max_width', label: 'Ancho Máximo', type: 'range', defaultValue: 1400, min: 1000, max: 1920, unit: 'px' }
+    ],
+    estilo: [
+      { id: 'bg_color', label: 'Color de Fondo', type: 'color', defaultValue: '#F8FAFC' },
+      { id: 'text_color', label: 'Color de Texto', type: 'color', defaultValue: '#475569' },
+      { id: 'border_top', label: 'Borde Superior', type: 'boolean', defaultValue: true },
+      { id: 'border_color', label: 'Color de Borde', type: 'color', defaultValue: '#E2E8F0' }
+    ],
+    contenido: [], tipografia: [], multimedia: [], interaccion: []
+  },
+  elements: [
+    { id: 'el_footer_brand', name: 'Identidad y Bio', type: 'multimedia', groups: ['contenido', 'multimedia', 'estructura'], settings: {
+      contenido: [
+        { id: 'show_logo', label: 'Mostrar Logo', type: 'boolean', defaultValue: true },
+        { id: 'bio', label: 'Biografía / Descripción', type: 'text', defaultValue: 'Creamos soluciones digitales innovadoras para impulsar el crecimiento de tu negocio en la era moderna.' }
+      ],
+      multimedia: [
+        { id: 'logo_img', label: 'Imagen de Logo', type: 'image', defaultValue: '' }
+      ],
+      estructura: [
+        { id: 'logo_width', label: 'Ancho del Logo', type: 'range', defaultValue: 120, min: 40, max: 240, unit: 'px' }
+      ],
+      estilo: [], tipografia: [], interaccion: []
+    }},
+    { id: 'el_footer_nav', name: 'Columnas de Navegación', type: 'text', groups: ['contenido', 'tipografia'], settings: {
+      contenido: [
+        { 
+          id: 'columns', 
+          label: 'Columnas', 
+          type: 'repeater', 
+          defaultValue: [
+            { title: 'Producto', links: [{label: 'Características', url: '#'}, {label: 'Precios', url: '#'}] },
+            { title: 'Compañía', links: [{label: 'Sobre Nosotros', url: '#'}, {label: 'Carreras', url: '#'}] }
+          ],
+          fields: [
+            { id: 'title', label: 'Título de Columna', type: 'text', defaultValue: 'Categoría' },
+            { 
+              id: 'links', 
+              label: 'Enlaces', 
+              type: 'repeater', 
+              defaultValue: [{label: 'Enlace', url: '#'}],
+              fields: [
+                { id: 'label', label: 'Etiqueta', type: 'text', defaultValue: 'Enlace' },
+                { id: 'url', label: 'URL', type: 'text', defaultValue: '#' }
+              ]
+            }
+          ]
+        }
+      ],
+      tipografia: [
+        { id: 'title_size', label: 'Tamaño Título', type: 'range', defaultValue: 14, min: 12, max: 20 },
+        { id: 'link_size', label: 'Tamaño Enlaces', type: 'range', defaultValue: 14, min: 12, max: 18 }
+      ],
+      estilo: [], estructura: [], multimedia: [], interaccion: []
+    }},
+    { id: 'el_footer_social', name: 'Redes Sociales', type: 'multimedia', groups: ['contenido', 'estilo'], settings: {
+      contenido: [
+        { 
+          id: 'social_links', 
+          label: 'Redes Sociales', 
+          type: 'repeater', 
+          defaultValue: [
+            {icon: 'Twitter', url: '#'},
+            {icon: 'Instagram', url: '#'},
+            {icon: 'Linkedin', url: '#'}
+          ],
+          fields: [
+            { id: 'icon', label: 'Icono (Lucide)', type: 'text', defaultValue: 'Link' },
+            { id: 'url', label: 'URL', type: 'text', defaultValue: '#' }
+          ]
+        }
+      ],
+      estilo: [
+        { id: 'icon_color', label: 'Color de Iconos', type: 'color', defaultValue: '#64748B' },
+        { id: 'icon_hover', label: 'Color Hover', type: 'color', defaultValue: 'var(--primary-color)' }
+      ],
+      estructura: [], tipografia: [], multimedia: [], interaccion: []
+    }},
+    { id: 'el_footer_bottom', name: 'Barra Inferior', type: 'text', groups: ['contenido', 'estilo'], settings: {
+      contenido: [
+        { id: 'copyright', label: 'Texto Copyright', type: 'text', defaultValue: '© 2026 Mi Marca. Todos los derechos reservados.' }
+      ],
+      estilo: [
+        { id: 'bottom_bg', label: 'Fondo Barra Inferior', type: 'color', defaultValue: 'transparent' }
+      ],
+      estructura: [], tipografia: [], multimedia: [], interaccion: []
+    }}
+  ]
+};
+
+const SPACER_MODULE: WebModule = {
+  id: 'mod_spacer_1',
+  type: 'spacer',
+  name: 'Espaciador y Divisor',
+  globalGroups: ['estructura', 'estilo'],
+  globalSettings: {
+    estructura: [
+      { id: 'height_desktop', label: 'Altura (Escritorio)', type: 'range', defaultValue: 60, min: 0, max: 200, unit: 'px' },
+      { id: 'height_mobile', label: 'Altura (Móvil)', type: 'range', defaultValue: 40, min: 0, max: 200, unit: 'px' },
+      { id: 'width', label: 'Ancho del Divisor', type: 'range', defaultValue: 100, min: 5, max: 100, unit: '%' },
+      { id: 'align', label: 'Alineación', type: 'select', defaultValue: 'center', options: [
+        { label: 'Inicio', value: 'start' },
+        { label: 'Centro', value: 'center' },
+        { label: 'Fin', value: 'end' }
+      ]}
+    ],
+    estilo: [
+      { id: 'type', label: 'Tipo de Divisor', type: 'select', defaultValue: 'none', options: [
+        { label: 'Solo Espacio', value: 'none' },
+        { label: 'Línea Sólida', value: 'solid' },
+        { label: 'Línea Punteada', value: 'dotted' },
+        { label: 'Línea con Guiones', value: 'dashed' }
+      ]},
+      { id: 'thickness', label: 'Grosor de Línea', type: 'range', defaultValue: 1, min: 1, max: 10, unit: 'px' },
+      { id: 'color', label: 'Color de Línea', type: 'color', defaultValue: '#E2E8F0' },
+      { id: 'bg_color', label: 'Color de Fondo de Bloque', type: 'color', defaultValue: 'transparent' }
+    ],
+    contenido: [], tipografia: [], multimedia: [], interaccion: []
+  },
+  elements: []
+};
 
 const PRODUCTS_MODULE: WebModule = {
   id: 'mod_products_1',
@@ -254,6 +576,29 @@ const HERO_MODULE: WebModule = {
         { id: 'gradient_color', label: 'Color Final Gradiente', type: 'color', defaultValue: 'var(--primary-color)' }
       ],
       estructura: [], multimedia: [], interaccion: []
+    }},
+    { id: 'el_hero_subtitle', name: 'Subtítulo', type: 'text', groups: ['contenido', 'tipografia'], settings: {
+      contenido: [{ id: 'text', label: 'Texto', type: 'text', defaultValue: 'La plataforma todo-en-uno para gestionar tu presencia online con elegancia y potencia.' }],
+      tipografia: [
+        { id: 'size', label: 'Tamaño', type: 'range', defaultValue: 18, min: 14, max: 24 },
+        { id: 'color', label: 'Color', type: 'color', defaultValue: '#64748B' }
+      ],
+      estructura: [{ id: 'margin_b', label: 'Margen Inferior', type: 'range', defaultValue: 32, min: 0, max: 60 }],
+      estilo: [], multimedia: [], interaccion: []
+    }},
+    { id: 'el_hero_cta', name: 'Botón Principal', type: 'button', groups: ['contenido', 'estilo', 'interaccion'], settings: {
+      contenido: [
+        { id: 'text', label: 'Texto del Botón', type: 'text', defaultValue: 'Empezar ahora' },
+        { id: 'link', label: 'Enlace (URL)', type: 'text', defaultValue: '#' }
+      ],
+      estilo: [
+        { id: 'bg_color', label: 'Color de Fondo', type: 'color', defaultValue: 'var(--primary-color)' },
+        { id: 'text_color', label: 'Color de Texto', type: 'color', defaultValue: '#FFFFFF' }
+      ],
+      interaccion: [
+        { id: 'hover_scale', label: 'Efecto al pasar mouse', type: 'boolean', defaultValue: true }
+      ],
+      tipografia: [], estructura: [], multimedia: []
     }},
     { id: 'el_hero_visual', name: 'Imagen/Video Principal', type: 'image', groups: ['multimedia', 'estructura', 'interaccion'], settings: {
       multimedia: [
@@ -754,6 +1099,510 @@ const STATS_MODULE: WebModule = {
   ]
 };
 
+const NEWSLETTER_MODULE: WebModule = {
+  id: 'mod_newsletter_1',
+  type: 'newsletter',
+  name: 'Newsletter Premium',
+  globalGroups: ['estructura', 'estilo', 'interaccion'],
+  globalSettings: {
+    estructura: [
+      { id: 'layout', label: 'Diseño', type: 'select', defaultValue: 'centered', options: [
+        { label: 'Centrado', value: 'centered' },
+        { label: 'Horizontal', value: 'horizontal' },
+        { label: 'Minimalista', value: 'minimal' }
+      ]},
+      { id: 'max_width', label: 'Ancho Máximo', type: 'range', defaultValue: 800, min: 600, max: 1200, unit: 'px' },
+      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 80, min: 40, max: 160, unit: 'px' }
+    ],
+    estilo: [
+      { id: 'bg_type', label: 'Tipo de Fondo', type: 'select', defaultValue: 'color', options: [
+        { label: 'Color Sólido', value: 'color' },
+        { label: 'Gradiente', value: 'gradient' },
+        { label: 'Transparente', value: 'transparent' }
+      ]},
+      { id: 'bg_color', label: 'Color de Fondo', type: 'color', defaultValue: '#FFFFFF' },
+      { id: 'bg_gradient', label: 'Gradiente', type: 'text', defaultValue: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)' },
+      { id: 'border_radius', label: 'Redondeado Bloque', type: 'range', defaultValue: 32, min: 0, max: 60 },
+      { id: 'show_shadow', label: 'Mostrar Sombra', type: 'boolean', defaultValue: true }
+    ],
+    interaccion: [
+      { id: 'entrance_anim', label: 'Animación de Entrada', type: 'boolean', defaultValue: true }
+    ],
+    contenido: [], tipografia: [], multimedia: []
+  },
+  elements: [
+    { id: 'el_news_header', name: 'Encabezado', type: 'text', groups: ['contenido', 'tipografia', 'estructura'], settings: {
+      contenido: [
+        { id: 'title', label: 'Título', type: 'text', defaultValue: 'Suscríbete a nuestra Newsletter' },
+        { id: 'subtitle', label: 'Subtítulo', type: 'text', defaultValue: 'Recibe las últimas noticias, consejos y ofertas exclusivas directamente en tu bandeja de entrada.' }
+      ],
+      tipografia: [
+        { id: 'align', label: 'Alineación', type: 'select', defaultValue: 'center', options: [{label:'Izquierda', value:'left'}, {label:'Centro', value:'center'}]},
+        { id: 'title_size', label: 'Tamaño Título', type: 'range', defaultValue: 28, min: 20, max: 42 },
+        { id: 'text_color', label: 'Color de Texto', type: 'color', defaultValue: '#0F172A' }
+      ],
+      estructura: [
+        { id: 'margin_b', label: 'Margen Inferior', type: 'range', defaultValue: 32, min: 16, max: 64 }
+      ],
+      estilo: [], multimedia: [], interaccion: []
+    }},
+    { id: 'el_news_form', name: 'Formulario', type: 'style', groups: ['contenido', 'estilo', 'interaccion'], settings: {
+      contenido: [
+        { id: 'placeholder', label: 'Placeholder', type: 'text', defaultValue: 'tu@email.com' },
+        { id: 'button_text', label: 'Texto Botón', type: 'text', defaultValue: 'Suscribirse' }
+      ],
+      estilo: [
+        { id: 'input_bg', label: 'Fondo Input', type: 'color', defaultValue: '#F8FAFC' },
+        { id: 'btn_bg', label: 'Fondo Botón', type: 'color', defaultValue: 'var(--primary-color)' },
+        { id: 'btn_color', label: 'Color Texto Botón', type: 'color', defaultValue: '#FFFFFF' },
+        { id: 'input_radius', label: 'Redondeado', type: 'range', defaultValue: 16, min: 0, max: 40 }
+      ],
+      interaccion: [
+        { id: 'hover_effect', label: 'Efecto Hover', type: 'select', defaultValue: 'scale', options: [{label:'Escala', value:'scale'}, {label:'Brillo', value:'glow'}]}
+      ],
+      tipografia: [], estructura: [], multimedia: []
+    }},
+    { id: 'el_news_trust', name: 'Confianza', type: 'style', groups: ['contenido', 'tipografia', 'multimedia'], settings: {
+      contenido: [
+        { id: 'privacy_text', label: 'Nota de Privacidad', type: 'text', defaultValue: 'Respetamos tu privacidad. Sin spam, solo valor.' },
+        { id: 'subscriber_count', label: 'Contador (Opcional)', type: 'text', defaultValue: 'Únete a +2,000 suscriptores' }
+      ],
+      tipografia: [
+        { id: 'text_size', label: 'Tamaño Texto', type: 'range', defaultValue: 12, min: 10, max: 16 },
+        { id: 'text_color', label: 'Color Texto', type: 'color', defaultValue: '#64748B' }
+      ],
+      multimedia: [
+        { id: 'show_icon', label: 'Mostrar Icono', type: 'boolean', defaultValue: true }
+      ],
+      estructura: [], estilo: [], interaccion: []
+    }}
+  ]
+};
+
+const CONTACT_MODULE: WebModule = {
+  id: 'mod_contact_1',
+  type: 'contact',
+  name: 'Contacto Premium',
+  globalGroups: ['estructura', 'estilo', 'interaccion'],
+  globalSettings: {
+    estructura: [
+      { id: 'layout', label: 'Diseño', type: 'select', defaultValue: 'split', options: [
+        { label: 'Dividido (Info / Form)', value: 'split' },
+        { label: 'Centrado', value: 'centered' },
+        { label: 'Mapa Lateral', value: 'map_side' },
+        { label: 'Mapa Superior (Full)', value: 'map_top' }
+      ]},
+      { id: 'max_width', label: 'Ancho Máximo', type: 'range', defaultValue: 1200, min: 800, max: 1600, unit: 'px' },
+      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 100, min: 40, max: 200, unit: 'px' }
+    ],
+    estilo: [
+      { id: 'bg_color', label: 'Fondo de Sección', type: 'color', defaultValue: '#F8FAFC' }
+    ],
+    interaccion: [
+      { id: 'entrance_anim', label: 'Animación de Entrada', type: 'boolean', defaultValue: true }
+    ],
+    contenido: [], tipografia: [], multimedia: []
+  },
+  elements: [
+    { id: 'el_contact_header', name: 'Encabezado de Sección', type: 'text', groups: ['contenido', 'tipografia', 'estructura'], settings: {
+      contenido: [
+        { id: 'title', label: 'Título', type: 'text', defaultValue: 'Ponte en contacto' },
+        { id: 'subtitle', label: 'Subtítulo', type: 'text', defaultValue: 'Estamos aquí para ayudarte. Envíanos un mensaje y te responderemos lo antes posible.' }
+      ],
+      tipografia: [
+        { id: 'align', label: 'Alineación', type: 'select', defaultValue: 'left', options: [{label:'Izquierda', value:'left'}, {label:'Centro', value:'center'}]},
+        { id: 'title_size', label: 'Tamaño Título', type: 'range', defaultValue: 32, min: 24, max: 48 },
+        { id: 'title_color', label: 'Color Título', type: 'color', defaultValue: '#0F172A' }
+      ],
+      estructura: [
+        { id: 'margin_b', label: 'Margen Inferior', type: 'range', defaultValue: 60, min: 20, max: 100 }
+      ],
+      estilo: [], multimedia: [], interaccion: []
+    }},
+    { id: 'el_contact_info', name: 'Información de Contacto', type: 'text', groups: ['contenido', 'tipografia', 'estilo'], settings: {
+      contenido: [
+        { id: 'email', label: 'Email', type: 'text', defaultValue: 'hola@tuempresa.com' },
+        { id: 'phone', label: 'Teléfono', type: 'text', defaultValue: '+34 900 000 000' },
+        { id: 'address', label: 'Dirección', type: 'text', defaultValue: 'Calle Innovación 123, Madrid, España' }
+      ],
+      tipografia: [
+        { id: 'info_size', label: 'Tamaño Texto', type: 'range', defaultValue: 16, min: 14, max: 20 },
+        { id: 'info_color', label: 'Color Texto', type: 'color', defaultValue: '#475569' }
+      ],
+      estilo: [
+        { id: 'icon_color', label: 'Color de Iconos', type: 'color', defaultValue: 'var(--primary-color)' },
+        { id: 'card_bg', label: 'Fondo de Bloque', type: 'color', defaultValue: 'transparent' }
+      ],
+      multimedia: [], estructura: [], interaccion: []
+    }},
+    { id: 'el_contact_form', name: 'Formulario de Mensaje', type: 'style', groups: ['contenido', 'estilo', 'interaccion'], settings: {
+      contenido: [
+        { id: 'button_text', label: 'Texto del Botón', type: 'text', defaultValue: 'Enviar Mensaje' },
+        { id: 'whatsapp_number', label: 'Número WhatsApp (Opcional)', type: 'text', defaultValue: '' }
+      ],
+      estilo: [
+        { id: 'input_bg', label: 'Fondo de Inputs', type: 'color', defaultValue: '#FFFFFF' },
+        { id: 'input_radius', label: 'Redondeado Inputs', type: 'range', defaultValue: 12, min: 0, max: 30 },
+        { id: 'btn_bg', label: 'Color de Botón', type: 'color', defaultValue: 'var(--primary-color)' },
+        { id: 'btn_color', label: 'Color Texto Botón', type: 'color', defaultValue: '#FFFFFF' }
+      ],
+      interaccion: [
+        { id: 'hover_effect', label: 'Efecto Hover', type: 'select', defaultValue: 'lift', options: [{label:'Ninguno', value:'none'}, {label:'Elevar', value:'lift'}, {label:'Brillo', value:'glow'}]}
+      ],
+      tipografia: [], estructura: [], multimedia: []
+    }},
+    { id: 'el_contact_map', name: 'Mapa de Ubicación', type: 'style', groups: ['contenido', 'estructura', 'estilo'], settings: {
+      contenido: [
+        { id: 'show_map', label: 'Mostrar Mapa', type: 'boolean', defaultValue: true },
+        { id: 'map_url', label: 'URL de Google Maps (Embed)', type: 'text', defaultValue: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3037.615174415891!2d-3.7037902!3d40.4167754!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0xd42287e00000001%3A0x0!2zUHVlcnRhIGRlbCBTb2w!5e0!3m2!1ses!2ses!4v1625123456789!5m2!1ses!2ses' }
+      ],
+      estructura: [
+        { id: 'map_height', label: 'Altura del Mapa', type: 'range', defaultValue: 400, min: 200, max: 600, unit: 'px' }
+      ],
+      estilo: [
+        { id: 'grayscale', label: 'Mapa en Grises', type: 'boolean', defaultValue: false },
+        { id: 'map_radius', label: 'Redondeado Mapa', type: 'range', defaultValue: 24, min: 0, max: 60 }
+      ],
+      tipografia: [], multimedia: [], interaccion: []
+    }}
+  ]
+};
+
+const TEAM_MODULE: WebModule = {
+  id: 'mod_team_1',
+  type: 'team',
+  name: 'Nuestro Equipo Premium',
+  globalGroups: ['estructura', 'estilo', 'interaccion'],
+  globalSettings: {
+    estructura: [
+      { id: 'layout', label: 'Diseño de Grilla', type: 'select', defaultValue: 'grid', options: [
+        { label: 'Grilla Clásica', value: 'grid' },
+        { label: 'Lista (Fila)', value: 'list' },
+        { label: 'Bento (Asimétrico)', value: 'bento' }
+      ]},
+      { id: 'columns', label: 'Columnas (Desktop)', type: 'range', defaultValue: 3, min: 1, max: 4 },
+      { id: 'gap', label: 'Espacio entre miembros', type: 'range', defaultValue: 32, min: 16, max: 64, unit: 'px' },
+      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 100, min: 40, max: 200, unit: 'px' }
+    ],
+    estilo: [
+      { id: 'bg_color', label: 'Fondo de Sección', type: 'color', defaultValue: '#FFFFFF' }
+    ],
+    interaccion: [
+      { id: 'entrance_anim', label: 'Animación de Entrada', type: 'boolean', defaultValue: true },
+      { id: 'stagger_anim', label: 'Entrada Escalonada', type: 'boolean', defaultValue: true }
+    ],
+    contenido: [], tipografia: [], multimedia: []
+  },
+  elements: [
+    { id: 'el_team_header', name: 'Encabezado de Sección', type: 'text', groups: ['contenido', 'tipografia', 'estructura'], settings: {
+      contenido: [
+        { id: 'title', label: 'Título', type: 'text', defaultValue: 'Conoce a nuestro equipo' },
+        { id: 'subtitle', label: 'Subtítulo', type: 'text', defaultValue: 'Expertos apasionados dedicados a llevar tu visión a la realidad.' }
+      ],
+      tipografia: [
+        { id: 'align', label: 'Alineación', type: 'select', defaultValue: 'center', options: [{label:'Izquierda', value:'left'}, {label:'Centro', value:'center'}]},
+        { id: 'title_size', label: 'Tamaño Título', type: 'range', defaultValue: 32, min: 24, max: 48 }
+      ],
+      estructura: [{ id: 'margin_b', label: 'Margen Inferior', type: 'range', defaultValue: 60, min: 20, max: 100 }],
+      estilo: [], multimedia: [], interaccion: []
+    }},
+    { id: 'el_team_card', name: 'Estilo de Tarjeta', type: 'style', groups: ['estilo', 'estructura', 'interaccion'], settings: {
+      estilo: [
+        { id: 'card_bg', label: 'Fondo de Tarjeta', type: 'color', defaultValue: '#FFFFFF' },
+        { id: 'card_radius', label: 'Radio de Borde', type: 'range', defaultValue: 24, min: 0, max: 48 },
+        { id: 'show_border', label: 'Mostrar Borde', type: 'boolean', defaultValue: false },
+        { id: 'card_shadow', label: 'Sombra', type: 'select', defaultValue: 'sm', options: [{label:'Ninguna', value:'none'}, {label:'Suave', value:'sm'}, {label:'Fuerte', value:'lg'}]}
+      ],
+      estructura: [
+        { id: 'card_padding', label: 'Padding Interno', type: 'range', defaultValue: 24, min: 12, max: 48 }
+      ],
+      interaccion: [
+        { id: 'hover_effect', label: 'Efecto al pasar mouse', type: 'select', defaultValue: 'lift', options: [
+          { label: 'Ninguno', value: 'none' },
+          { label: 'Elevar', value: 'lift' },
+          { label: 'Zoom Imagen', value: 'zoom' }
+        ]}
+      ],
+      contenido: [], tipografia: [], multimedia: []
+    }},
+    { id: 'el_team_image', name: 'Estilo de Imagen', type: 'style', groups: ['estilo', 'estructura'], settings: {
+      estilo: [
+        { id: 'img_radius', label: 'Redondeado Imagen', type: 'range', defaultValue: 20, min: 0, max: 100 },
+        { id: 'img_aspect', label: 'Relación de Aspecto', type: 'select', defaultValue: 'portrait', options: [
+          { label: 'Cuadrada (1:1)', value: 'square' },
+          { label: 'Retrato (3:4)', value: 'portrait' },
+          { label: 'Circular', value: 'circle' }
+        ]}
+      ],
+      estructura: [
+        { id: 'img_margin_b', label: 'Margen Inferior', type: 'range', defaultValue: 20, min: 0, max: 40 }
+      ],
+      contenido: [], tipografia: [], multimedia: [], interaccion: []
+    }},
+    { id: 'el_team_info', name: 'Tipografía de Miembro', type: 'text', groups: ['tipografia'], settings: {
+      tipografia: [
+        { id: 'name_size', label: 'Tamaño Nombre', type: 'range', defaultValue: 18, min: 14, max: 24 },
+        { id: 'name_color', label: 'Color Nombre', type: 'color', defaultValue: '#0F172A' },
+        { id: 'role_size', label: 'Tamaño Cargo', type: 'range', defaultValue: 14, min: 12, max: 18 },
+        { id: 'role_color', label: 'Color Cargo', type: 'color', defaultValue: 'var(--primary-color)' }
+      ],
+      contenido: [], estilo: [], estructura: [], multimedia: [], interaccion: []
+    }}
+  ]
+};
+
+const CTA_MODULE: WebModule = {
+  id: 'mod_cta_1',
+  type: 'cta',
+  name: 'Llamada a la Acción (CTA)',
+  globalGroups: ['estructura', 'estilo', 'interaccion'],
+  globalSettings: {
+    estructura: [
+      { id: 'layout', label: 'Diseño', type: 'select', defaultValue: 'centered', options: [
+        { label: 'Centrado', value: 'centered' },
+        { label: 'Dividido (Texto/Imagen)', value: 'split' },
+        { label: 'Minimalista', value: 'minimal' }
+      ]},
+      { id: 'max_width', label: 'Ancho Máximo', type: 'range', defaultValue: 1000, min: 600, max: 1400, unit: 'px' },
+      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 100, min: 40, max: 200, unit: 'px' }
+    ],
+    estilo: [
+      { id: 'bg_type', label: 'Tipo de Fondo', type: 'select', defaultValue: 'color', options: [
+        { label: 'Color Sólido', value: 'color' },
+        { label: 'Gradiente', value: 'gradient' },
+        { label: 'Imagen', value: 'image' }
+      ]},
+      { id: 'bg_color', label: 'Color de Fondo', type: 'color', defaultValue: '#FFFFFF' },
+      { id: 'bg_gradient', label: 'Gradiente', type: 'text', defaultValue: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)' },
+      { id: 'overlay_opacity', label: 'Opacidad Overlay', type: 'range', defaultValue: 50, min: 0, max: 100, unit: '%' }
+    ],
+    interaccion: [
+      { id: 'entrance_anim', label: 'Animación de Entrada', type: 'boolean', defaultValue: true }
+    ],
+    contenido: [], tipografia: [], multimedia: []
+  },
+  elements: [
+    { id: 'el_cta_content', name: 'Contenido de Texto', type: 'text', groups: ['contenido', 'tipografia', 'estructura'], settings: {
+      contenido: [
+        { id: 'title', label: 'Título de Impacto', type: 'text', defaultValue: '¿Listo para transformar tu negocio?' },
+        { id: 'subtitle', label: 'Descripción Persuasiva', type: 'text', defaultValue: 'Únete a miles de profesionales que ya están escalando sus resultados con nuestra plataforma.' }
+      ],
+      tipografia: [
+        { id: 'title_size', label: 'Tamaño Título', type: 'range', defaultValue: 42, min: 24, max: 64 },
+        { id: 'title_weight', label: 'Grosor Título', type: 'select', defaultValue: 'black', options: [{label:'Bold', value:'bold'}, {label:'Black', value:'black'}]},
+        { id: 'text_color', label: 'Color de Texto', type: 'color', defaultValue: '#0F172A' }
+      ],
+      estructura: [
+        { id: 'margin_b', label: 'Margen Inferior', type: 'range', defaultValue: 40, min: 0, max: 100 }
+      ],
+      estilo: [], multimedia: [], interaccion: []
+    }},
+    { id: 'el_cta_actions', name: 'Botones de Acción', type: 'style', groups: ['contenido', 'estilo', 'interaccion'], settings: {
+      contenido: [
+        { id: 'primary_text', label: 'Texto Botón Principal', type: 'text', defaultValue: 'Empezar Ahora' },
+        { id: 'secondary_text', label: 'Texto Botón Secundario', type: 'text', defaultValue: 'Saber Más' },
+        { id: 'show_secondary', label: 'Mostrar Secundario', type: 'boolean', defaultValue: true }
+      ],
+      estilo: [
+        { id: 'btn_primary_bg', label: 'Fondo Principal', type: 'color', defaultValue: 'var(--primary-color)' },
+        { id: 'btn_primary_color', label: 'Texto Principal', type: 'color', defaultValue: '#FFFFFF' },
+        { id: 'btn_radius', label: 'Redondeado', type: 'range', defaultValue: 16, min: 0, max: 40 }
+      ],
+      interaccion: [
+        { id: 'hover_effect', label: 'Efecto Hover', type: 'select', defaultValue: 'scale', options: [{label:'Escala', value:'scale'}, {label:'Brillo', value:'glow'}]}
+      ],
+      estructura: [], tipografia: [], multimedia: []
+    }},
+    { id: 'el_cta_trust', name: 'Prueba Social', type: 'style', groups: ['contenido', 'tipografia', 'multimedia'], settings: {
+      contenido: [
+        { id: 'show_trust', label: 'Mostrar Prueba Social', type: 'boolean', defaultValue: true },
+        { id: 'trust_text', label: 'Texto de Confianza', type: 'text', defaultValue: 'Únete a +5,000 usuarios activos' }
+      ],
+      tipografia: [
+        { id: 'trust_size', label: 'Tamaño Texto', type: 'range', defaultValue: 14, min: 12, max: 18 },
+        { id: 'trust_color', label: 'Color Texto', type: 'color', defaultValue: '#64748B' }
+      ],
+      multimedia: [
+        { id: 'show_avatars', label: 'Mostrar Avatares', type: 'boolean', defaultValue: true }
+      ],
+      estructura: [], estilo: [], interaccion: []
+    }}
+  ]
+};
+
+const PRICING_MODULE: WebModule = {
+  id: 'mod_pricing_1',
+  type: 'pricing',
+  name: 'Planes y Precios Premium',
+  globalGroups: ['estructura', 'estilo', 'interaccion'],
+  globalSettings: {
+    estructura: [
+      { id: 'columns', label: 'Columnas (Desktop)', type: 'range', defaultValue: 3, min: 1, max: 4 },
+      { id: 'gap', label: 'Espacio entre tarjetas', type: 'range', defaultValue: 32, min: 16, max: 64, unit: 'px' },
+      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 100, min: 40, max: 200, unit: 'px' }
+    ],
+    estilo: [
+      { id: 'bg_color', label: 'Fondo de Sección', type: 'color', defaultValue: '#F8FAFC' }
+    ],
+    interaccion: [
+      { id: 'entrance_anim', label: 'Animación de Entrada', type: 'boolean', defaultValue: true },
+      { id: 'stagger_anim', label: 'Entrada Escalonada', type: 'boolean', defaultValue: true }
+    ],
+    contenido: [], tipografia: [], multimedia: []
+  },
+  elements: [
+    { id: 'el_pricing_header', name: 'Encabezado de Sección', type: 'text', groups: ['contenido', 'tipografia', 'estructura'], settings: {
+      contenido: [
+        { id: 'title', label: 'Título', type: 'text', defaultValue: 'Planes diseñados para tu éxito' },
+        { id: 'subtitle', label: 'Subtítulo', type: 'text', defaultValue: 'Elige el plan que mejor se adapte a tus necesidades actuales.' }
+      ],
+      tipografia: [
+        { id: 'align', label: 'Alineación', type: 'select', defaultValue: 'center', options: [{label:'Izquierda', value:'left'}, {label:'Centro', value:'center'}]},
+        { id: 'title_size', label: 'Tamaño Título', type: 'range', defaultValue: 32, min: 24, max: 48 }
+      ],
+      estructura: [{ id: 'margin_b', label: 'Margen Inferior', type: 'range', defaultValue: 60, min: 20, max: 100 }],
+      estilo: [], multimedia: [], interaccion: []
+    }},
+    { id: 'el_pricing_toggle', name: 'Selector de Tiempo', type: 'style', groups: ['contenido', 'estilo', 'interaccion'], settings: {
+      contenido: [
+        { id: 'show_toggle', label: 'Mostrar Selector', type: 'boolean', defaultValue: true },
+        { id: 'discount_label', label: 'Etiqueta de Descuento', type: 'text', defaultValue: '-20%' }
+      ],
+      estilo: [
+        { id: 'toggle_bg', label: 'Fondo Selector', type: 'color', defaultValue: '#F1F5F9' },
+        { id: 'active_bg', label: 'Fondo Activo', type: 'color', defaultValue: '#FFFFFF' },
+        { id: 'active_color', label: 'Color Texto Activo', type: 'color', defaultValue: '#0F172A' }
+      ],
+      interaccion: [
+        { id: 'toggle_type', label: 'Tipo de Cambio', type: 'select', defaultValue: 'switch', options: [{label:'Switch', value:'switch'}, {label:'Tabs', value:'tabs'}]}
+      ],
+      estructura: [], tipografia: [], multimedia: []
+    }},
+    { id: 'el_pricing_card', name: 'Estilo de Tarjeta', type: 'style', groups: ['estilo', 'estructura', 'interaccion'], settings: {
+      estilo: [
+        { id: 'card_bg', label: 'Fondo de Tarjeta', type: 'color', defaultValue: '#FFFFFF' },
+        { id: 'card_radius', label: 'Radio de Borde', type: 'range', defaultValue: 32, min: 0, max: 60 },
+        { id: 'highlight_color', label: 'Color de Acento', type: 'color', defaultValue: 'var(--primary-color)' },
+        { id: 'show_shadow', label: 'Mostrar Sombra', type: 'boolean', defaultValue: true }
+      ],
+      estructura: [
+        { id: 'card_padding', label: 'Padding Interno', type: 'range', defaultValue: 40, min: 20, max: 60 },
+        { id: 'featured_scale', label: 'Escala de Plan Destacado', type: 'range', defaultValue: 105, min: 100, max: 115, unit: '%' }
+      ],
+      interaccion: [
+        { id: 'hover_effect', label: 'Efecto Hover', type: 'select', defaultValue: 'lift', options: [{label:'Ninguno', value:'none'}, {label:'Elevar', value:'lift'}, {label:'Brillo', value:'glow'}]}
+      ],
+      contenido: [], tipografia: [], multimedia: []
+    }},
+    { id: 'el_pricing_price', name: 'Tipografía de Precio', type: 'text', groups: ['tipografia', 'estilo'], settings: {
+      tipografia: [
+        { id: 'price_size', label: 'Tamaño Precio', type: 'range', defaultValue: 48, min: 32, max: 72 },
+        { id: 'price_weight', label: 'Grosor', type: 'select', defaultValue: 'black', options: [{label:'Bold', value:'bold'}, {label:'Black', value:'black'}]},
+        { id: 'currency_symbol', label: 'Símbolo', type: 'text', defaultValue: '$' }
+      ],
+      estilo: [
+        { id: 'price_color', label: 'Color de Precio', type: 'color', defaultValue: '#0F172A' }
+      ],
+      contenido: [], estructura: [], multimedia: [], interaccion: []
+    }},
+    { id: 'el_pricing_features', name: 'Lista de Características', type: 'style', groups: ['tipografia', 'multimedia', 'estilo'], settings: {
+      tipografia: [
+        { id: 'feat_size', label: 'Tamaño Texto', type: 'range', defaultValue: 14, min: 12, max: 18 },
+        { id: 'feat_color', label: 'Color Texto', type: 'color', defaultValue: '#475569' }
+      ],
+      multimedia: [
+        { id: 'icon_type', label: 'Icono de Check', type: 'select', defaultValue: 'check', options: [{label:'Check', value:'check'}, {label:'Estrella', value:'star'}, {label:'Rayo', value:'zap'}]}
+      ],
+      estilo: [
+        { id: 'icon_color', label: 'Color de Icono', type: 'color', defaultValue: 'var(--primary-color)' }
+      ],
+      contenido: [], estructura: [], interaccion: []
+    }}
+  ]
+};
+
+const FAQ_MODULE: WebModule = {
+  id: 'mod_faq_1',
+  type: 'faq',
+  name: 'Preguntas Frecuentes (FAQ)',
+  globalGroups: ['estructura', 'estilo', 'interaccion'],
+  globalSettings: {
+    estructura: [
+      { id: 'layout', label: 'Diseño de Lista', type: 'select', defaultValue: 'single', options: [
+        { label: 'Columna Única', value: 'single' },
+        { label: 'Dos Columnas', value: 'double' }
+      ]},
+      { id: 'max_width', label: 'Ancho Máximo', type: 'range', defaultValue: 800, min: 600, max: 1200, unit: 'px' },
+      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 100, min: 40, max: 200, unit: 'px' }
+    ],
+    estilo: [
+      { id: 'bg_color', label: 'Fondo de Sección', type: 'color', defaultValue: '#FFFFFF' }
+    ],
+    interaccion: [
+      { id: 'entrance_anim', label: 'Animación de Entrada', type: 'boolean', defaultValue: true },
+      { id: 'single_open', label: 'Solo uno abierto a la vez', type: 'boolean', defaultValue: true }
+    ],
+    contenido: [], tipografia: [], multimedia: []
+  },
+  elements: [
+    { id: 'el_faq_header', name: 'Encabezado de Sección', type: 'text', groups: ['contenido', 'tipografia', 'estructura'], settings: {
+      contenido: [
+        { id: 'title', label: 'Título', type: 'text', defaultValue: 'Preguntas Frecuentes' },
+        { id: 'subtitle', label: 'Subtítulo', type: 'text', defaultValue: 'Todo lo que necesitas saber sobre nuestro servicio.' }
+      ],
+      tipografia: [
+        { id: 'align', label: 'Alineación', type: 'select', defaultValue: 'center', options: [{label:'Izquierda', value:'left'}, {label:'Centro', value:'center'}]},
+        { id: 'title_size', label: 'Tamaño Título', type: 'range', defaultValue: 32, min: 24, max: 48 }
+      ],
+      estructura: [{ id: 'margin_b', label: 'Margen Inferior', type: 'range', defaultValue: 60, min: 20, max: 100 }],
+      estilo: [], multimedia: [], interaccion: []
+    }},
+    { id: 'el_faq_search', name: 'Barra de Búsqueda', type: 'style', groups: ['contenido', 'estilo'], settings: {
+      contenido: [
+        { id: 'show_search', label: 'Mostrar Buscador', type: 'boolean', defaultValue: true },
+        { id: 'placeholder', label: 'Placeholder', type: 'text', defaultValue: 'Buscar una pregunta...' }
+      ],
+      estilo: [
+        { id: 'search_bg', label: 'Fondo Buscador', type: 'color', defaultValue: '#F1F5F9' },
+        { id: 'search_radius', label: 'Redondeado', type: 'range', defaultValue: 16, min: 0, max: 40 }
+      ],
+      tipografia: [], estructura: [], multimedia: [], interaccion: []
+    }},
+    { id: 'el_faq_item', name: 'Estilo de Acordeón', type: 'style', groups: ['estilo', 'tipografia', 'multimedia'], settings: {
+      estilo: [
+        { id: 'item_bg', label: 'Fondo de Item', type: 'color', defaultValue: 'transparent' },
+        { id: 'active_bg', label: 'Fondo al Expandir', type: 'color', defaultValue: '#F8FAFC' },
+        { id: 'border_color', label: 'Color de Borde', type: 'color', defaultValue: '#E2E8F0' },
+        { id: 'show_border', label: 'Mostrar Borde', type: 'boolean', defaultValue: true }
+      ],
+      tipografia: [
+        { id: 'q_size', label: 'Tamaño Pregunta', type: 'range', defaultValue: 16, min: 14, max: 20 },
+        { id: 'q_color', label: 'Color Pregunta', type: 'color', defaultValue: '#0F172A' },
+        { id: 'a_size', label: 'Tamaño Respuesta', type: 'range', defaultValue: 15, min: 13, max: 18 },
+        { id: 'a_color', label: 'Color Respuesta', type: 'color', defaultValue: '#64748B' }
+      ],
+      multimedia: [
+        { id: 'icon_type', label: 'Icono de Estado', type: 'select', defaultValue: 'plus', options: [{label:'Plus/Minus', value:'plus'}, {label:'Chevron', value:'chevron'}]}
+      ],
+      contenido: [], estructura: [], interaccion: []
+    }},
+    { id: 'el_faq_cta', name: 'CTA de Soporte', type: 'text', groups: ['contenido', 'estilo', 'interaccion'], settings: {
+      contenido: [
+        { id: 'show_cta', label: 'Mostrar CTA Final', type: 'boolean', defaultValue: true },
+        { id: 'cta_text', label: 'Texto de Ayuda', type: 'text', defaultValue: '¿Aún tienes dudas?' },
+        { id: 'btn_text', label: 'Texto Botón', type: 'text', defaultValue: 'Contactar Soporte' }
+      ],
+      estilo: [
+        { id: 'btn_bg', label: 'Color Botón', type: 'color', defaultValue: 'var(--primary-color)' }
+      ],
+      interaccion: [
+        { id: 'btn_link', label: 'Enlace', type: 'text', defaultValue: '#' }
+      ],
+      tipografia: [], estructura: [], multimedia: []
+    }}
+  ]
+};
+
 const CLIENTS_MODULE: WebModule = {
   id: 'mod_clients_1',
   type: 'clients',
@@ -943,7 +1792,7 @@ const MainSidebar = ({
             {displayLogo ? (
               <img src={displayLogo} alt="Logo" className="h-full w-auto object-contain" referrerPolicy="no-referrer" />
             ) : (
-              <FileText className="text-sidebar-foreground/20 w-10 h-10" />
+              <FileText className="text-sidebar-foreground/40 w-10 h-10" />
             )}
           </div>
         </div>
@@ -956,7 +1805,7 @@ const MainSidebar = ({
           <button 
             onClick={() => toggleSection('diseno')}
             className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all ${
-              expandedSection === 'diseno' ? 'text-sidebar-foreground font-bold' : 'text-sidebar-foreground/60 hover:text-sidebar-foreground'
+              expandedSection === 'diseno' ? 'text-sidebar-foreground font-bold' : 'text-sidebar-foreground/80 hover:text-sidebar-foreground'
             }`}
           >
             <div className="flex items-center gap-3">
@@ -982,7 +1831,7 @@ const MainSidebar = ({
             className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all ${
               expandedSection === 'constructor' 
                 ? 'text-sidebar-foreground font-bold' 
-                : 'text-sidebar-foreground/60 hover:text-sidebar-foreground'
+                : 'text-sidebar-foreground/80 hover:text-sidebar-foreground'
             }`}
           >
             <div className="flex items-center gap-3">
@@ -1000,7 +1849,7 @@ const MainSidebar = ({
                 <button 
                   onClick={() => toggleCategory('navegacion')}
                   className={`w-full flex items-center justify-between px-4 py-1 text-xs uppercase tracking-widest transition-all ${
-                    expandedCategory === 'navegacion' ? 'font-bold text-sidebar-foreground' : 'font-normal text-sidebar-foreground/60'
+                    expandedCategory === 'navegacion' ? 'font-bold text-sidebar-foreground' : 'font-normal text-sidebar-foreground/80'
                   }`}
                 >
                   Navegación
@@ -1008,10 +1857,26 @@ const MainSidebar = ({
                 </button>
                 {expandedCategory === 'navegacion' && (
                   <div className="space-y-0.5 px-2">
-                    <ModuleItem icon={<Monitor size={18} />} label="Barra superior" />
-                    <ModuleItem icon={<FileText size={18} />} label="Menú" />
-                    <ModuleItem icon={<Layout size={18} />} label="Pie de página" />
-                    <ModuleItem icon={<RotateCcw size={18} className="rotate-90" />} label="Espaciadores" />
+                    <ModuleItem 
+                      icon={<Monitor size={18} />} 
+                      label="Barra superior" 
+                      onClick={() => onAddModule(HEADER_MODULE)}
+                    />
+                    <ModuleItem 
+                      icon={<FileText size={18} />} 
+                      label="Menú" 
+                      onClick={() => onAddModule(MENU_MODULE)}
+                    />
+                    <ModuleItem 
+                      icon={<Layout size={18} />} 
+                      label="Pie de página" 
+                      onClick={() => onAddModule(FOOTER_MODULE)}
+                    />
+                    <ModuleItem 
+                      icon={<RotateCcw size={18} className="rotate-90" />} 
+                      label="Espaciadores" 
+                      onClick={() => onAddModule(SPACER_MODULE)}
+                    />
                   </div>
                 )}
               </div>
@@ -1021,7 +1886,7 @@ const MainSidebar = ({
                 <button 
                   onClick={() => toggleCategory('contenido')}
                   className={`w-full flex items-center justify-between px-4 py-1 text-xs uppercase tracking-widest transition-all ${
-                    expandedCategory === 'contenido' ? 'font-bold text-sidebar-foreground' : 'font-normal text-sidebar-foreground/60'
+                    expandedCategory === 'contenido' ? 'font-bold text-sidebar-foreground' : 'font-normal text-sidebar-foreground/80'
                   }`}
                 >
                   Contenido
@@ -1068,7 +1933,7 @@ const MainSidebar = ({
                 <button 
                   onClick={() => toggleCategory('confianza')}
                   className={`w-full flex items-center justify-between px-4 py-1 text-xs uppercase tracking-widest transition-all ${
-                    expandedCategory === 'confianza' ? 'font-bold text-sidebar-foreground' : 'font-normal text-sidebar-foreground/60'
+                    expandedCategory === 'confianza' ? 'font-bold text-sidebar-foreground' : 'font-normal text-sidebar-foreground/80'
                   }`}
                 >
                   Confianza
@@ -1091,7 +1956,16 @@ const MainSidebar = ({
                       label="Estadísticas" 
                       onClick={() => onAddModule(STATS_MODULE)}
                     />
-                    <ModuleItem icon={<User size={18} />} label="Equipo" />
+                    <ModuleItem 
+                      icon={<HelpCircle size={18} />} 
+                      label="FAQ" 
+                      onClick={() => onAddModule(FAQ_MODULE)}
+                    />
+                    <ModuleItem 
+                      icon={<Users size={18} />} 
+                      label="Equipo" 
+                      onClick={() => onAddModule(TEAM_MODULE)}
+                    />
                   </div>
                 )}
               </div>
@@ -1101,7 +1975,7 @@ const MainSidebar = ({
                 <button 
                   onClick={() => toggleCategory('ventas')}
                   className={`w-full flex items-center justify-between px-4 py-1 text-xs uppercase tracking-widest transition-all ${
-                    expandedCategory === 'ventas' ? 'font-bold text-sidebar-foreground' : 'font-normal text-sidebar-foreground/60'
+                    expandedCategory === 'ventas' ? 'font-bold text-sidebar-foreground' : 'font-normal text-sidebar-foreground/80'
                   }`}
                 >
                   Ventas
@@ -1114,8 +1988,16 @@ const MainSidebar = ({
                       label="Productos" 
                       onClick={() => onAddModule(PRODUCTS_MODULE)}
                     />
-                    <ModuleItem icon={<Settings size={18} />} label="Planes" />
-                    <ModuleItem icon={<PlusCircle size={18} />} label="Call to Action (C...)" />
+                    <ModuleItem 
+                      icon={<CreditCard size={18} />} 
+                      label="Precios" 
+                      onClick={() => onAddModule(PRICING_MODULE)}
+                    />
+                    <ModuleItem 
+                      icon={<PlusCircle size={18} />} 
+                      label="Call to Action (CTA)" 
+                      onClick={() => onAddModule(CTA_MODULE)}
+                    />
                   </div>
                 )}
               </div>
@@ -1125,7 +2007,7 @@ const MainSidebar = ({
                 <button 
                   onClick={() => toggleCategory('contacto')}
                   className={`w-full flex items-center justify-between px-4 py-1 text-xs uppercase tracking-widest transition-all ${
-                    expandedCategory === 'contacto' ? 'font-bold text-sidebar-foreground' : 'font-normal text-sidebar-foreground/60'
+                    expandedCategory === 'contacto' ? 'font-bold text-sidebar-foreground' : 'font-normal text-sidebar-foreground/80'
                   }`}
                 >
                   Contacto
@@ -1133,8 +2015,16 @@ const MainSidebar = ({
                 </button>
                 {expandedCategory === 'contacto' && (
                   <div className="space-y-0.5 px-2">
-                    <ModuleItem icon={<Home size={18} />} label="Contacto" />
-                    <ModuleItem icon={<FileText size={18} />} label="Newsletter" />
+                    <ModuleItem 
+                      icon={<Mail size={18} />} 
+                      label="Contacto" 
+                      onClick={() => onAddModule(CONTACT_MODULE)}
+                    />
+                    <ModuleItem 
+                      icon={<Mail size={18} />} 
+                      label="Newsletter" 
+                      onClick={() => onAddModule(NEWSLETTER_MODULE)}
+                    />
                     <ModuleItem icon={<Settings size={18} />} label="FAQ" />
                   </div>
                 )}
@@ -1184,18 +2074,44 @@ const MainSidebar = ({
 const ModuleItem = ({ icon, label, onClick }: { icon: React.ReactNode, label: string, onClick?: () => void }) => (
   <button 
     onClick={onClick}
-    className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-foreground/5 transition-all group"
+    className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sidebar-foreground/80 hover:text-sidebar-foreground hover:bg-sidebar-foreground/5 transition-all group"
   >
-    <div className="text-sidebar-foreground/40 group-hover:text-sidebar-foreground transition-colors">{icon}</div>
+    <div className="text-sidebar-foreground/60 group-hover:text-sidebar-foreground transition-colors">{icon}</div>
     <span className="text-sm font-medium">{label}</span>
   </button>
 );
+
+const MODULE_INFO: Record<string, { icon: React.ReactNode, label: string }> = {
+  header: { icon: <Monitor size={18} />, label: 'Barra superior' },
+  menu: { icon: <FileText size={18} />, label: 'Menú' },
+  footer: { icon: <Layout size={18} />, label: 'Pie de página' },
+  spacer: { icon: <RotateCcw size={18} className="rotate-90" />, label: 'Espaciadores' },
+  hero: { icon: <Sparkles size={18} />, label: 'Portada' },
+  features: { icon: <Type size={18} />, label: 'Características' },
+  about: { icon: <User size={18} />, label: 'Sobre Nosotros' },
+  process: { icon: <Layers size={18} />, label: 'Proceso' },
+  gallery: { icon: <PlusCircle size={18} />, label: 'Galería' },
+  video: { icon: <Monitor size={18} />, label: 'Video' },
+  testimonials: { icon: <FileText size={18} />, label: 'Testimonios' },
+  clients: { icon: <CheckCircle2 size={18} />, label: 'Clientes' },
+  stats: { icon: <Database size={18} />, label: 'Estadísticas' },
+  faq: { icon: <HelpCircle size={18} />, label: 'FAQ' },
+  team: { icon: <Users size={18} />, label: 'Equipo' },
+  products: { icon: <Layout size={18} />, label: 'Productos' },
+  pricing: { icon: <CreditCard size={18} />, label: 'Precios' },
+  cta: { icon: <PlusCircle size={18} />, label: 'Call to Action (CTA)' },
+  contact: { icon: <Mail size={18} />, label: 'Contacto' },
+  newsletter: { icon: <Mail size={18} />, label: 'Newsletter' },
+};
 
 interface StructurePanelProps {
   editorState: EditorState;
   setEditorState: React.Dispatch<React.SetStateAction<EditorState>>;
   onSettingChange: (elementOrModuleId: string, settingId: string, value: any) => void;
   onRemoveModule: (moduleId: string) => void;
+  onMoveModule: (moduleId: string, direction: 'up' | 'down') => void;
+  isCollapsed: boolean;
+  onToggleCollapse: () => void;
   projectId: string | null;
   products: Product[];
   customers: Customer[];
@@ -1402,6 +2318,61 @@ const SettingControl: React.FC<{
           </div>
         </div>
       );
+    case 'repeater':
+      const items = Array.isArray(currentValue) ? currentValue : [];
+      return (
+        <div className="space-y-3">
+          <label className="text-[10px] font-bold text-text/40 uppercase tracking-wider">{setting.label}</label>
+          <div className="space-y-2">
+            {items.map((item: any, index: number) => (
+              <div key={index} className="p-3 bg-secondary/30 border border-border rounded-xl space-y-3 relative group">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold text-text/40">Item #{index + 1}</span>
+                  <button 
+                    onClick={() => {
+                      const newItems = [...items];
+                      newItems.splice(index, 1);
+                      onChange(newItems);
+                    }}
+                    className="text-text/40 hover:text-red-500 transition-colors"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+                <div className="space-y-3">
+                  {setting.fields?.map(field => (
+                    <SettingControl 
+                      key={field.id}
+                      setting={field}
+                      value={item[field.id]}
+                      projectId={projectId}
+                      products={products}
+                      customers={customers}
+                      onChange={(val) => {
+                        const newItems = [...items];
+                        newItems[index] = { ...item, [field.id]: val };
+                        onChange(newItems);
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))}
+            <button 
+              onClick={() => {
+                const newItem: any = {};
+                setting.fields?.forEach(f => {
+                  newItem[f.id] = f.defaultValue;
+                });
+                onChange([...items, newItem]);
+              }}
+              className="w-full py-2 bg-surface border border-dashed border-border rounded-xl text-[10px] font-bold text-primary hover:bg-primary/5 hover:border-primary/20 transition-all flex items-center justify-center gap-2"
+            >
+              <Plus size={14} /> Agregar Item
+            </button>
+          </div>
+        </div>
+      );
     case 'button':
       return (
         <div className="p-2 bg-primary/5 border border-primary/10 rounded-lg">
@@ -1431,6 +2402,9 @@ const StructurePanel: React.FC<StructurePanelProps> = ({
   setEditorState, 
   onSettingChange, 
   onRemoveModule, 
+  onMoveModule,
+  isCollapsed,
+  onToggleCollapse,
   projectId,
   products,
   customers
@@ -1473,31 +2447,39 @@ const StructurePanel: React.FC<StructurePanelProps> = ({
   };
 
   return (
-    <div className="w-64 bg-surface border-r border-border flex flex-col z-30 shadow-xl shadow-text/5 overflow-hidden">
-      <div className="p-4 flex items-center justify-between border-b border-border/30">
+    <div className={`h-full bg-surface border-r border-border flex flex-col z-30 shadow-xl shadow-text/10 overflow-hidden transition-all duration-300 ${isCollapsed ? 'w-[70px]' : 'w-64'}`}>
+      <div className={`p-4 flex items-center border-b border-border/60 ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 bg-primary rounded-lg flex items-center justify-center">
             <Layers className="text-white w-3.5 h-3.5" />
           </div>
-          <span className="text-sm font-bold text-text">Estructura</span>
+          {!isCollapsed && <span className="text-sm font-bold text-text">Estructura</span>}
         </div>
-        <button className="text-primary hover:bg-primary/10 p-1.5 rounded-lg transition-colors">
-          <RotateCcw size={14} />
+        <button 
+          onClick={onToggleCollapse}
+          className="text-text/40 hover:text-primary hover:bg-primary/10 p-1.5 rounded-lg transition-colors"
+        >
+          {isCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto custom-scrollbar">
+      <div className="flex-1 overflow-y-auto custom-scrollbar overflow-x-hidden">
         {editorState.addedModules.length === 0 && (
-          <div className="p-8 text-center space-y-4">
+          <div className={`p-8 text-center space-y-4 ${isCollapsed ? 'px-2' : ''}`}>
             <div className="w-12 h-12 bg-secondary rounded-full flex items-center justify-center mx-auto">
-              <Layout className="text-text/20 w-6 h-6" />
+              <Layout className="text-text/40 w-6 h-6" />
             </div>
-            <p className="text-[11px] font-medium text-text/40">No hay módulos añadidos aún.</p>
+            {!isCollapsed && <p className="text-[11px] font-semibold text-text/60">No hay módulos añadidos aún.</p>}
           </div>
         )}
 
-        {editorState.addedModules.map(module => {
+        {editorState.addedModules.map((module, index) => {
           const isModuleExpanded = editorState.expandedModuleId === module.id;
+          const canMoveUp = index > 0;
+          const canMoveDown = index < editorState.addedModules.length - 1;
+          const hasMultipleModules = editorState.addedModules.length > 1;
+          
+          const moduleInfo = MODULE_INFO[module.type] || { icon: <Layout size={12} />, label: module.name };
           
           // Virtual element for global configuration
           const globalElement: ModuleElement = {
@@ -1510,39 +2492,72 @@ const StructurePanel: React.FC<StructurePanelProps> = ({
           const allElements = [globalElement, ...module.elements];
 
           return (
-            <div key={module.id} className="p-3 border-b border-border/30 last:border-0">
+            <div key={module.id} className={`p-3 border-b border-border/30 last:border-0 ${isCollapsed ? 'px-2' : ''}`}>
               <div 
-                onClick={() => toggleModule(module.id)}
+                onClick={() => !isCollapsed && toggleModule(module.id)}
                 className={`flex items-center gap-2.5 p-2.5 rounded-xl border transition-all cursor-pointer group ${
-                  isModuleExpanded 
+                  isModuleExpanded && !isCollapsed
                     ? 'bg-primary/10 border-primary/20' 
                     : 'bg-secondary/50 border-border/50 hover:border-border'
-                }`}
+                } ${isCollapsed ? 'justify-center' : ''}`}
+                title={isCollapsed ? moduleInfo.label : undefined}
               >
-                <GripVertical className={isModuleExpanded ? 'text-primary/30' : 'text-text/20'} size={14} />
-                <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${
-                  isModuleExpanded ? 'bg-primary' : 'bg-surface border border-border/50'
-                }`}>
-                  <Layout className={isModuleExpanded ? 'text-white' : 'text-text/40'} size={12} />
-                </div>
-                <span className={`text-[14px] font-bold flex-1 ${
-                  isModuleExpanded ? 'text-primary' : 'text-text'
-                }`}>
-                  {module.name}
-                </span>
+                {!isCollapsed && (
+                  <>
+                    {hasMultipleModules ? (
+                      <div className="flex flex-col gap-0.5">
+                        <button 
+                          disabled={!canMoveUp}
+                          onClick={(e) => { e.stopPropagation(); onMoveModule(module.id, 'up'); }}
+                          className={`p-0.5 rounded hover:bg-primary/20 transition-colors ${!canMoveUp ? 'opacity-10 text-text/10' : 'text-text/40 hover:text-primary'}`}
+                        >
+                          <ChevronUp size={12} />
+                        </button>
+                        <button 
+                          disabled={!canMoveDown}
+                          onClick={(e) => { e.stopPropagation(); onMoveModule(module.id, 'down'); }}
+                          className={`p-0.5 rounded hover:bg-primary/20 transition-colors ${!canMoveDown ? 'opacity-10 text-text/10' : 'text-text/40 hover:text-primary'}`}
+                        >
+                          <ChevronDown size={12} />
+                        </button>
+                      </div>
+                    ) : (
+                      <GripVertical className={isModuleExpanded ? 'text-primary/30' : 'text-text/20'} size={14} />
+                    )}
+                  </>
+                )}
                 
-                <button 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onRemoveModule(module.id);
-                  }}
-                  className="p-1.5 text-text/20 hover:text-error hover:bg-error/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"
-                  title="Eliminar módulo"
-                >
-                  <Trash2 size={14} />
-                </button>
+                <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+                  isModuleExpanded && !isCollapsed ? 'bg-primary' : 'bg-surface border border-border/50'
+                }`}>
+                  {React.cloneElement(moduleInfo.icon as React.ReactElement, { 
+                    size: 12, 
+                    className: isModuleExpanded && !isCollapsed ? 'text-white' : 'text-text/40' 
+                  })}
+                </div>
+                
+                {!isCollapsed && (
+                  <>
+                    <span className={`text-[14px] font-bold flex-1 truncate ${
+                      isModuleExpanded ? 'text-primary' : 'text-text'
+                    }`}>
+                      {moduleInfo.label}
+                    </span>
+                    
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onRemoveModule(module.id);
+                      }}
+                      className="p-1.5 text-text/20 hover:text-error hover:bg-error/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                      title="Eliminar módulo"
+                    >
+                      <Trash2 size={14} />
+                    </button>
 
-                <ChevronDown size={14} className={`text-text/20 transition-transform ${isModuleExpanded ? 'rotate-180 text-primary' : ''}`} />
+                    <ChevronDown size={14} className={`text-text/20 transition-transform ${isModuleExpanded ? 'rotate-180 text-primary' : ''}`} />
+                  </>
+                )}
               </div>
 
               {/* Elements List */}
@@ -1671,7 +2686,7 @@ const StructurePanel: React.FC<StructurePanelProps> = ({
 };
 
 const TopBar = ({ onSave, onPublish, logoUrl }: { onSave: () => void, onPublish: () => void, logoUrl: string | null }) => (
-  <div className="h-[60px] bg-surface border-b border-border/30 flex items-center justify-between px-6 z-20">
+  <div className="h-[60px] bg-surface border-b border-border/60 flex items-center justify-between px-6 z-20">
     <div className="flex items-center gap-4">
       {logoUrl && (
         <img 
@@ -1683,18 +2698,18 @@ const TopBar = ({ onSave, onPublish, logoUrl }: { onSave: () => void, onPublish:
       )}
       <div className="flex flex-col">
         <h2 className="text-base font-bold text-text">Editor de Módulos</h2>
-        <p className="text-xs font-normal text-text/20 uppercase tracking-wider">Añade módulos para construir tu página</p>
+        <p className="text-xs font-semibold text-text/50 uppercase tracking-wider">Añade módulos para construir tu página</p>
       </div>
     </div>
 
     <div className="flex items-center gap-4">
-      <div className="flex items-center gap-3 border-r border-border/30 pr-4">
-        <button className="p-1.5 text-text/40 hover:text-primary hover:bg-secondary rounded-lg transition-all"><RotateCcw size={16} /></button>
+      <div className="flex items-center gap-3 border-r border-border/60 pr-4">
+        <button className="p-1.5 text-text/60 hover:text-primary hover:bg-secondary rounded-lg transition-all"><RotateCcw size={16} /></button>
         <div className="flex items-center gap-1.5 bg-secondary p-1 rounded-xl">
           <button className="p-1.5 text-primary bg-surface shadow-sm rounded-lg transition-all"><Monitor size={14} /></button>
-          <button className="p-1.5 text-text/40 hover:text-primary transition-all"><Smartphone size={14} /></button>
+          <button className="p-1.5 text-text/60 hover:text-primary transition-all"><Smartphone size={14} /></button>
         </div>
-        <button className="p-1.5 text-text/40 hover:text-primary hover:bg-secondary rounded-lg transition-all"><Maximize size={16} /></button>
+        <button className="p-1.5 text-text/60 hover:text-primary hover:bg-secondary rounded-lg transition-all"><Maximize size={16} /></button>
       </div>
 
       <div className="flex items-center gap-2">
@@ -1702,7 +2717,7 @@ const TopBar = ({ onSave, onPublish, logoUrl }: { onSave: () => void, onPublish:
           whileHover={{ scale: 1.02, backgroundColor: 'var(--secondary-color)' }}
           whileTap={{ scale: 0.98 }}
           onClick={onSave}
-          className="flex items-center gap-2 px-4 py-2 text-text/60 font-bold text-xs rounded-xl transition-all"
+          className="flex items-center gap-2 px-4 py-2 text-text/80 font-bold text-xs rounded-xl transition-all"
         >
           <Save size={16} />
           Guardar Borrador
@@ -1748,6 +2763,18 @@ const Canvas: React.FC<{
     prevModulesLength.current = editorState.addedModules.length;
   }, [editorState.addedModules.length]);
 
+  React.useEffect(() => {
+    if (editorState.expandedModuleId) {
+      const element = document.getElementById(`module-${editorState.expandedModuleId}`);
+      if (element) {
+        element.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'center' 
+        });
+      }
+    }
+  }, [editorState.expandedModuleId]);
+
   return (
     <div className="flex-1 bg-secondary overflow-y-auto custom-scrollbar">
       <div className="p-12 flex justify-center min-h-full">
@@ -1759,7 +2786,7 @@ const Canvas: React.FC<{
             const isLast = index === editorState.addedModules.length - 1;
             
             return (
-              <div key={module.id} ref={isLast ? lastModuleRef : null} className="w-full">
+              <div key={module.id} id={`module-${module.id}`} ref={isLast ? lastModuleRef : null} className="w-full">
                 {module.type === 'products' && (
                   <ProductsModule 
                     moduleId={module.id}
@@ -1818,6 +2845,66 @@ const Canvas: React.FC<{
                     settingsValues={editorState.settingsValues}
                   />
                 )}
+                {module.type === 'team' && (
+                  <TeamModule 
+                    moduleId={module.id}
+                    settingsValues={editorState.settingsValues}
+                  />
+                )}
+                {module.type === 'pricing' && (
+                  <PricingModule 
+                    moduleId={module.id}
+                    settingsValues={editorState.settingsValues}
+                  />
+                )}
+                {module.type === 'cta' && (
+                  <CTAModule 
+                    moduleId={module.id}
+                    settingsValues={editorState.settingsValues}
+                  />
+                )}
+                {module.type === 'faq' && (
+                  <FAQModule 
+                    moduleId={module.id}
+                    settingsValues={editorState.settingsValues}
+                  />
+                )}
+                {module.type === 'contact' && (
+                  <ContactModule 
+                    moduleId={module.id}
+                    settingsValues={editorState.settingsValues}
+                  />
+                )}
+                {module.type === 'newsletter' && (
+                  <NewsletterModule 
+                    moduleId={module.id}
+                    settingsValues={editorState.settingsValues}
+                  />
+                )}
+                {module.type === 'header' && (
+                  <HeaderModule 
+                    moduleId={module.id}
+                    settingsValues={editorState.settingsValues}
+                  />
+                )}
+                {module.type === 'menu' && (
+                  <MenuModule 
+                    moduleId={module.id}
+                    settingsValues={editorState.settingsValues}
+                  />
+                )}
+                {module.type === 'footer' && (
+                  <FooterModule 
+                    moduleId={module.id}
+                    settingsValues={editorState.settingsValues}
+                  />
+                )}
+                {module.type === 'spacer' && (
+                  <SpacerModule 
+                    moduleId={module.id}
+                    settingsValues={editorState.settingsValues}
+                  />
+                )}
                 {module.type === 'clients' && (
                   <ClientsModule 
                     moduleId={module.id}
@@ -1852,14 +2939,6 @@ const Canvas: React.FC<{
             Añadir Módulo
           </button>
         </div>
-      </div>
-
-      {/* Bottom Status Bar */}
-      <div className="fixed bottom-8 right-8 flex items-center gap-3 bg-surface px-4 py-2.5 rounded-xl shadow-xl border border-border/30">
-        <div className="w-5 h-5 bg-emerald-50 rounded-full flex items-center justify-center">
-          <CheckCircle2 className="text-emerald-500 w-3.5 h-3.5" />
-        </div>
-        <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Configuración Recibida</span>
       </div>
     </div>
   </div>
@@ -2003,6 +3082,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   const [showPublishModal, setShowPublishModal] = useState(false);
   const [siteName, setSiteName] = useState(initialPage?.siteName || project?.name || '');
   const [isSaving, setIsSaving] = useState(false);
+  const [structurePanelCollapsed, setStructurePanelCollapsed] = useState(false);
   const [editorState, setEditorState] = useState<EditorState>(() => {
     if (initialPage && 'contentDraft' in initialPage && initialPage.contentDraft) {
       return initialPage.contentDraft as EditorState;
@@ -2028,6 +3108,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   }, [projectId]);
 
   const addModule = (module: WebModule) => {
+    console.log('Adding module:', module.type);
     const moduleId = `${module.id}_${Date.now()}`;
     
     // Prefix element IDs to ensure uniqueness
@@ -2096,6 +3177,27 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     if (module) {
       setModuleToDelete(module);
     }
+  };
+
+  const moveModule = (moduleId: string, direction: 'up' | 'down') => {
+    setEditorState(prev => {
+      const index = prev.addedModules.findIndex(m => m.id === moduleId);
+      if (index === -1) return prev;
+      
+      const newModules = [...prev.addedModules];
+      const targetIndex = direction === 'up' ? index - 1 : index + 1;
+      
+      if (targetIndex < 0 || targetIndex >= newModules.length) return prev;
+      
+      const temp = newModules[index];
+      newModules[index] = newModules[targetIndex];
+      newModules[targetIndex] = temp;
+      
+      return {
+        ...prev,
+        addedModules: newModules
+      };
+    });
   };
 
   const confirmRemoveModule = () => {
@@ -2183,15 +3285,15 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     setIsSaving(true);
     try {
       // Helper to get setting value with fallback
-      const getSetting = (moduleId: string, settingId: string, defaultValue: any) => {
-        const key = `${moduleId}_global_${settingId}`;
+      const getVal = (moduleId: string, elementId: string | null, settingId: string, defaultValue: any) => {
+        const key = elementId ? `${moduleId}_${elementId}_${settingId}` : `${moduleId}_global_${settingId}`;
         return editorState.settingsValues[key] !== undefined ? editorState.settingsValues[key] : defaultValue;
       };
 
       // 1. Determine Global Theme
       const firstModuleId = editorState.addedModules[0]?.id;
       const primaryColor = firstModuleId 
-        ? getSetting(firstModuleId, 'primary_color', project?.brandColors?.primary || '#2563EB')
+        ? getVal(firstModuleId, null, 'primary_color', project?.brandColors?.primary || '#2563EB')
         : (project?.brandColors?.primary || '#2563EB');
 
       const renderingContract: RenderingContract = {
@@ -2200,16 +3302,50 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
           fontFamily: project?.fontFamily || 'Inter',
         },
         sections: editorState.addedModules.map(module => {
-          const content: any = {
-            title: getSetting(module.id, 'section_title', ''),
-            subtitle: getSetting(module.id, 'section_desc', ''),
-          };
+          const content: any = {};
+
+          if (module.type === 'hero') {
+            content.title = getVal(module.id, 'el_hero_title', 'text', '');
+            content.subtitle = getVal(module.id, 'el_hero_subtitle', 'text', '');
+            content.buttonText = getVal(module.id, 'el_hero_cta', 'text', '');
+            content.imageUrl = getVal(module.id, 'el_hero_visual', 'url', '');
+          } else if (module.type === 'features') {
+            content.title = getVal(module.id, 'el_features_header', 'title', '');
+            content.subtitle = getVal(module.id, 'el_features_header', 'subtitle', '');
+          } else if (module.type === 'contact') {
+            content.title = getVal(module.id, 'el_contact_info', 'title', '');
+            content.subtitle = getVal(module.id, 'el_contact_info', 'subtitle', '');
+            content.buttonText = getVal(module.id, 'el_contact_form', 'button_text', '');
+          } else if (module.type === 'team') {
+            content.title = getVal(module.id, 'el_team_header', 'title', '');
+            content.subtitle = getVal(module.id, 'el_team_header', 'subtitle', '');
+          } else if (module.type === 'pricing') {
+            content.title = getVal(module.id, 'el_pricing_header', 'title', '');
+            content.subtitle = getVal(module.id, 'el_pricing_header', 'subtitle', '');
+          } else if (module.type === 'faq') {
+            content.title = getVal(module.id, 'el_faq_header', 'title', '');
+            content.subtitle = getVal(module.id, 'el_faq_header', 'subtitle', '');
+          } else {
+            // Fallback for other modules
+            content.title = getVal(module.id, 'el_testimonials_header', 'title', 
+                            getVal(module.id, 'el_process_header', 'title', 
+                            getVal(module.id, 'el_stats_header', 'title', 
+                            getVal(module.id, 'el_team_header', 'title', 
+                            getVal(module.id, 'el_pricing_header', 'title', 
+                            getVal(module.id, 'el_faq_header', 'title', ''))))));
+            content.subtitle = getVal(module.id, 'el_testimonials_header', 'subtitle', 
+                               getVal(module.id, 'el_process_header', 'subtitle', 
+                               getVal(module.id, 'el_stats_header', 'subtitle', 
+                               getVal(module.id, 'el_team_header', 'subtitle', 
+                               getVal(module.id, 'el_pricing_header', 'subtitle', 
+                               getVal(module.id, 'el_faq_header', 'subtitle', ''))))));
+          }
 
           if (module.type === 'products') {
-            content.productIds = getSetting(module.id, 'select_products', []);
+            content.productIds = getVal(module.id, null, 'select_products', []);
           }
           if (module.type === 'clients') {
-            content.customerIds = getSetting(module.id, 'select_customers', []);
+            content.customerIds = getVal(module.id, null, 'select_customers', []);
           }
 
           return {
@@ -2227,6 +3363,9 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         metadata: {
           siteId: siteId,
           siteName: siteName,
+          title: siteName, // Using siteName as title for now
+          description: project?.industry || 'Sitio web creado con Web Builder',
+          logoUrl: logoUrl || '',
           action: 'publishSite' as const,
           isPublish: true,
           timestamp: Date.now()
@@ -2272,6 +3411,9 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
               setEditorState={setEditorState} 
               onSettingChange={handleSettingChange}
               onRemoveModule={removeModule}
+              onMoveModule={moveModule}
+              isCollapsed={structurePanelCollapsed}
+              onToggleCollapse={() => setStructurePanelCollapsed(!structurePanelCollapsed)}
               projectId={projectId}
               products={products}
               customers={customers}

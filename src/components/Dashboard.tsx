@@ -74,20 +74,20 @@ export const Dashboard: React.FC<DashboardProps> = ({
                               {isPublished ? 'Publicado' : 'Borrador'}
                             </span>
                           </div>
-                          <p className="text-xs text-text/60 font-medium">
+                          <p className="text-xs text-text/80 font-medium">
                             Actualizado el {new Date(page.updatedAt || '').toLocaleDateString()}
                           </p>
                         </div>
                       </div>
-                      <ExternalLink className="w-4 h-4 text-text/20 group-hover:text-primary transition-colors" />
+                      <ExternalLink className="w-4 h-4 text-text/50 group-hover:text-primary transition-colors" />
                     </button>
                   );
                 })}
               </div>
             ) : (
-              <div className="h-full border-2 border-dashed border-border rounded-2xl flex flex-col items-center justify-center text-text/60 space-y-3">
+              <div className="h-full border-2 border-dashed border-border rounded-2xl flex flex-col items-center justify-center text-text/80 space-y-3">
                 <div className="w-12 h-12 bg-secondary rounded-full flex items-center justify-center">
-                  <FileText className="w-6 h-6 text-text/30" />
+                  <FileText className="w-6 h-6 text-text/60" />
                 </div>
                 <p className="text-base font-medium">No existen páginas.</p>
               </div>

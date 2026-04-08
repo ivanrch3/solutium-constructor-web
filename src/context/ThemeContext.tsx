@@ -5,9 +5,9 @@ export const SOLUTIUM_COLORS = {
   green: '#004D61',
   violet: '#700AB1',
   blue: '#3D248B',
-  deepGray: '#1E2128',
-  darkGray: '#4A4A4E',
-  lightGray: '#F8FAFC',
+  deepGray: '#0F172A', // Más oscuro para mejor contraste
+  darkGray: '#334155',
+  lightGray: '#F1F5F9', // Un poco más oscuro que F8FAFC para mejor distinción
 };
 
 export const SOLUTIUM_THEMES: Theme[] = [
@@ -18,10 +18,10 @@ export const SOLUTIUM_THEMES: Theme[] = [
       primary: SOLUTIUM_COLORS.green,
       secondary: SOLUTIUM_COLORS.lightGray,
       accent: SOLUTIUM_COLORS.violet,
-      background: '#FFFFFF',
+      background: '#F8FAFC',
       text: SOLUTIUM_COLORS.deepGray,
       card: '#FFFFFF',
-      border: '#E2E8F0',
+      border: '#CBD5E1',
       sidebar_bg: SOLUTIUM_COLORS.green,
       sidebar_foreground: '#FFFFFF',
       sidebar_accent: 'rgba(255, 255, 255, 0.1)',
@@ -39,10 +39,10 @@ export const SOLUTIUM_THEMES: Theme[] = [
       primary: SOLUTIUM_COLORS.violet,
       secondary: SOLUTIUM_COLORS.lightGray,
       accent: SOLUTIUM_COLORS.green,
-      background: '#FFFFFF',
+      background: '#F8FAFC',
       text: SOLUTIUM_COLORS.deepGray,
       card: '#FFFFFF',
-      border: '#E2E8F0',
+      border: '#CBD5E1',
       sidebar_bg: SOLUTIUM_COLORS.violet,
       sidebar_foreground: '#FFFFFF',
       sidebar_accent: 'rgba(255, 255, 255, 0.1)',
@@ -60,10 +60,10 @@ export const SOLUTIUM_THEMES: Theme[] = [
       primary: SOLUTIUM_COLORS.blue,
       secondary: SOLUTIUM_COLORS.lightGray,
       accent: SOLUTIUM_COLORS.violet,
-      background: '#FFFFFF',
+      background: '#F8FAFC',
       text: SOLUTIUM_COLORS.deepGray,
       card: '#FFFFFF',
-      border: '#E2E8F0',
+      border: '#CBD5E1',
       sidebar_bg: SOLUTIUM_COLORS.blue,
       sidebar_foreground: '#FFFFFF',
       sidebar_accent: 'rgba(255, 255, 255, 0.1)',
@@ -81,10 +81,10 @@ export const SOLUTIUM_THEMES: Theme[] = [
       primary: SOLUTIUM_COLORS.deepGray,
       secondary: SOLUTIUM_COLORS.lightGray,
       accent: SOLUTIUM_COLORS.green,
-      background: '#FFFFFF',
+      background: '#F8FAFC',
       text: SOLUTIUM_COLORS.deepGray,
       card: '#FFFFFF',
-      border: '#E2E8F0',
+      border: '#CBD5E1',
       sidebar_bg: SOLUTIUM_COLORS.deepGray,
       sidebar_foreground: '#FFFFFF',
       sidebar_accent: 'rgba(255, 255, 255, 0.1)',
@@ -144,6 +144,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       root.style.setProperty('--card-color', theme.colors.card);
       root.style.setProperty('--foreground-color', theme.colors.text);
       root.style.setProperty('--border-color', theme.colors.border);
+      root.style.setProperty('--solutium-dark', theme.colors.text);
       
       // Sidebar variables
       root.style.setProperty('--sidebar-bg', theme.colors.sidebar_bg || theme.colors.card);
@@ -166,19 +167,29 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
 
     // Si recibimos un objeto de tema calculado por la App Madre
-    const theme = themeData;
+    const theme = themeData || {};
     console.log('[THEME] Aplicando tema calculado:', theme);
 
-    if (theme.primary || theme.primaryColor) root.style.setProperty('--primary-color', theme.primary || theme.primaryColor);
-    if (theme.secondary || theme.secondaryColor) root.style.setProperty('--secondary-color', theme.secondary || theme.secondaryColor);
-    if (theme.accent || theme.accentColor) root.style.setProperty('--accent-color', theme.accent || theme.accentColor);
-    if (theme.background || theme.backgroundColor) root.style.setProperty('--background-color', theme.background || theme.backgroundColor);
-    if (theme.card || theme.surface || theme.cardColor) root.style.setProperty('--card-color', theme.card || theme.surface || theme.cardColor);
-    if (theme.text || theme.foreground || theme.textColor) root.style.setProperty('--foreground-color', theme.text || theme.foreground || theme.textColor);
-    if (theme.border || theme.borderColor) root.style.setProperty('--border-color', theme.border || theme.borderColor);
+    // Detección robusta de colores con fallbacks seguros
+    const primary = theme.primary || theme.primaryColor || SOLUTIUM_COLORS.blue;
+    const secondary = theme.secondary || theme.secondaryColor || SOLUTIUM_COLORS.lightGray;
+    const accent = theme.accent || theme.accentColor || SOLUTIUM_COLORS.violet;
+    const background = theme.background || theme.backgroundColor || '#F8FAFC';
+    const card = theme.card || theme.surface || theme.cardColor || '#FFFFFF';
+    const text = theme.text || theme.foreground || theme.textColor || SOLUTIUM_COLORS.deepGray;
+    const border = theme.border || theme.borderColor || '#E2E8F0';
+
+    root.style.setProperty('--primary-color', primary);
+    root.style.setProperty('--secondary-color', secondary);
+    root.style.setProperty('--accent-color', accent);
+    root.style.setProperty('--background-color', background);
+    root.style.setProperty('--card-color', card);
+    root.style.setProperty('--foreground-color', text);
+    root.style.setProperty('--border-color', border);
     
-    // Contraste Crítico
-    if (theme.dark) root.style.setProperty('--solutium-dark', theme.dark);
+    // Contraste Crítico - Aseguramos que siempre haya un color oscuro para botones y textos importantes
+    const solutiumDark = theme.dark || theme.solutiumDark || theme.primaryDark || SOLUTIUM_COLORS.deepGray;
+    root.style.setProperty('--solutium-dark', solutiumDark);
 
     // Sidebar variables - Robustez en nombres de claves
     const sidebarBg = theme.sidebar_bg || theme.sidebarBg || theme.sidebarBackground || theme.primary || theme.primaryColor;

@@ -1242,7 +1242,7 @@ const TESTIMONIALS_MODULE: WebModule = {
 const STATS_MODULE: WebModule = {
   id: 'mod_stats_1',
   type: 'stats',
-  name: 'Estadísticas de Impacto',
+  name: 'Estadísticas Premium',
   globalGroups: ['contenido', 'estructura', 'estilo', 'interaccion'],
   globalSettings: {
     contenido: [
@@ -1251,16 +1251,17 @@ const STATS_MODULE: WebModule = {
         label: 'Métricas',
         type: 'repeater',
         defaultValue: [
-          { value: 500, prefix: '', suffix: '+', label: 'Clientes Felices', icon: 'Users' },
-          { value: 120, prefix: '', suffix: 'k', label: 'Líneas de Código', icon: 'Zap' },
-          { value: 15, prefix: '', suffix: '', label: 'Premios Ganados', icon: 'Award' },
-          { value: 99, prefix: '', suffix: '%', label: 'Satisfacción', icon: 'Heart' }
+          { value: 500, prefix: '', suffix: '+', label: 'Clientes Felices', description: 'Empresas que confían en nuestra tecnología.', icon: 'Users' },
+          { value: 120, prefix: '', suffix: 'k', label: 'Líneas de Código', description: 'Desarrollo robusto y escalable.', icon: 'Zap' },
+          { value: 15, prefix: '', suffix: '', label: 'Premios Ganados', description: 'Reconocimientos a la excelencia.', icon: 'Award' },
+          { value: 99, prefix: '', suffix: '%', label: 'Satisfacción', description: 'Nuestros clientes nos recomiendan.', icon: 'Heart' }
         ],
         fields: [
           { id: 'label', label: 'Etiqueta', type: 'text', defaultValue: 'Métrica' },
           { id: 'value', label: 'Valor Numérico', type: 'range', defaultValue: 100, min: 0, max: 10000 },
           { id: 'prefix', label: 'Prefijo', type: 'text', defaultValue: '' },
           { id: 'suffix', label: 'Sufijo', type: 'text', defaultValue: '+' },
+          { id: 'description', label: 'Descripción Corta', type: 'text', defaultValue: '' },
           { id: 'icon', label: 'Icono', type: 'icon', defaultValue: 'Star' }
         ]
       }
@@ -1269,18 +1270,24 @@ const STATS_MODULE: WebModule = {
       { id: 'layout', label: 'Diseño de Grilla', type: 'select', defaultValue: 'grid', options: [
         { label: 'Grilla Clásica', value: 'grid' },
         { label: 'Bento (Destacado)', value: 'bento' },
-        { label: 'Minimalista', value: 'minimal' }
+        { label: 'Minimalista', value: 'minimal' },
+        { label: 'En Línea (Horizontal)', value: 'inline' }
       ]},
-      { id: 'columns', label: 'Columnas (Desktop)', type: 'range', defaultValue: 4, min: 1, max: 5 },
+      { id: 'columns', label: 'Columnas (Grid)', type: 'range', defaultValue: 4, min: 1, max: 5 },
       { id: 'gap', label: 'Espaciado', type: 'range', defaultValue: 30, min: 0, max: 80, unit: 'px' },
-      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 80, min: 20, max: 200, unit: 'px' }
+      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 100, min: 20, max: 200, unit: 'px' }
     ],
     estilo: [
-      { id: 'bg_color', label: 'Fondo de Sección', type: 'color', defaultValue: '#FFFFFF' }
+      { id: 'bg_color', label: 'Fondo de Sección', type: 'color', defaultValue: '#FFFFFF' },
+      { id: 'section_gradient', label: 'Gradiente de Fondo', type: 'boolean', defaultValue: false }
     ],
     interaccion: [
       { id: 'entrance_anim', label: 'Animación de Entrada', type: 'boolean', defaultValue: true },
-      { id: 'count_speed', label: 'Velocidad de Conteo', type: 'range', defaultValue: 2, min: 1, max: 5, unit: 's' }
+      { id: 'count_speed', label: 'Velocidad de Conteo', type: 'range', defaultValue: 2, min: 1, max: 5, unit: 's' },
+      { id: 'count_easing', label: 'Efecto de Conteo', type: 'select', defaultValue: 'spring', options: [
+        { label: 'Suave (Spring)', value: 'spring' },
+        { label: 'Lineal', value: 'linear' }
+      ]}
     ],
     tipografia: [], multimedia: []
   },
@@ -1288,12 +1295,14 @@ const STATS_MODULE: WebModule = {
     { id: 'el_stats_header', name: 'Encabezado', type: 'text', groups: ['contenido', 'tipografia', 'estructura'], settings: {
       contenido: [
         { id: 'show_header', label: 'Mostrar Encabezado', type: 'boolean', defaultValue: false },
-        { id: 'title', label: 'Título', type: 'text', defaultValue: 'Nuestros Logros' },
-        { id: 'subtitle', label: 'Subtítulo', type: 'text', defaultValue: 'Números que respaldan nuestra trayectoria.' }
+        { id: 'eyebrow', label: 'Eyebrow (Pre-título)', type: 'text', defaultValue: 'NUESTRO IMPACTO' },
+        { id: 'title', label: 'Título', type: 'text', defaultValue: 'Números que hablan por nosotros' },
+        { id: 'subtitle', label: 'Subtítulo', type: 'text', defaultValue: 'Resultados tangibles que respaldan nuestra trayectoria.' }
       ],
       tipografia: [
         { id: 'align', label: 'Alineación', type: 'select', defaultValue: 'center', options: [{label:'Izquierda', value:'left'}, {label:'Centro', value:'center'}]},
-        { id: 'title_size', label: 'Tamaño Título', type: 'range', defaultValue: 32, min: 24, max: 48 }
+        { id: 'title_size', label: 'Tamaño Título', type: 'range', defaultValue: 32, min: 24, max: 48 },
+        { id: 'eyebrow_color', label: 'Color Eyebrow', type: 'color', defaultValue: 'var(--primary-color)' }
       ],
       estructura: [{ id: 'margin_b', label: 'Margen Inferior', type: 'range', defaultValue: 60, min: 20, max: 100 }],
       estilo: [], multimedia: [], interaccion: []
@@ -1301,24 +1310,41 @@ const STATS_MODULE: WebModule = {
     { id: 'el_stat_item', name: 'Estilo de Métrica', type: 'style', groups: ['estilo', 'tipografia', 'interaccion'], settings: {
       estilo: [
         { id: 'card_bg', label: 'Fondo de Item', type: 'color', defaultValue: 'transparent' },
-        { id: 'card_radius', label: 'Radio de Borde', type: 'range', defaultValue: 16, min: 0, max: 40 },
-        { id: 'show_border', label: 'Mostrar Borde', type: 'boolean', defaultValue: false }
+        { id: 'card_radius', label: 'Radio de Borde', type: 'range', defaultValue: 24, min: 0, max: 60 },
+        { id: 'show_border', label: 'Mostrar Borde', type: 'boolean', defaultValue: false },
+        { id: 'card_shadow', label: 'Sombra', type: 'select', defaultValue: 'none', options: [
+          { label: 'Ninguna', value: 'none' },
+          { label: 'Suave', value: 'soft' },
+          { label: 'Color (Glow)', value: 'glow' }
+        ]}
       ],
       tipografia: [
-        { id: 'number_color', label: 'Color del Número', type: 'color', defaultValue: 'var(--primary-color)' },
+        { id: 'number_color', label: 'Color del Número', type: 'color', defaultValue: '#0F172A' },
         { id: 'label_color', label: 'Color de Etiqueta', type: 'color', defaultValue: '#64748B' },
+        { id: 'desc_color', label: 'Color de Descripción', type: 'color', defaultValue: '#94A3B8' },
         { id: 'number_size', label: 'Tamaño del Número', type: 'range', defaultValue: 48, min: 32, max: 80 }
       ],
       interaccion: [
-        { id: 'hover_scale', label: 'Escalar al pasar mouse', type: 'boolean', defaultValue: true }
+        { id: 'hover_effect', label: 'Efecto Hover', type: 'select', defaultValue: 'scale', options: [
+          { label: 'Ninguno', value: 'none' },
+          { label: 'Escalar', value: 'scale' },
+          { label: 'Elevar', value: 'lift' }
+        ]}
       ],
       contenido: [], multimedia: [], estructura: []
     }},
     { id: 'el_stat_icon', name: 'Iconografía', type: 'style', groups: ['multimedia', 'estilo'], settings: {
       multimedia: [
-        { id: 'show_icons', label: 'Mostrar Iconos', type: 'boolean', defaultValue: true }
+        { id: 'show_icons', label: 'Mostrar Iconos', type: 'boolean', defaultValue: true },
+        { id: 'icon_size', label: 'Tamaño Icono', type: 'range', defaultValue: 24, min: 16, max: 48 }
       ],
       estilo: [
+        { id: 'icon_shape', label: 'Forma del Contenedor', type: 'select', defaultValue: 'squircle', options: [
+          { label: 'Círculo', value: 'circle' },
+          { label: 'Squircle', value: 'squircle' },
+          { label: 'Blob', value: 'blob' },
+          { label: 'Sin Fondo', value: 'none' }
+        ]},
         { id: 'icon_color', label: 'Color de Icono', type: 'color', defaultValue: 'var(--primary-color)' },
         { id: 'icon_bg', label: 'Fondo de Icono', type: 'color', defaultValue: 'rgba(59, 130, 246, 0.1)' }
       ],
@@ -3626,7 +3652,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     // 2. Si es una página NUEVA, generamos un ID único para que sea independiente y no sobreescriba otras.
     // Solo usamos el ID del proyecto si no hay ninguna otra página, para facilitar la configuración inicial,
     // pero el usuario ha pedido independencia total para nuevos sitios.
-    return `site_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    return crypto.randomUUID();
   });
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');

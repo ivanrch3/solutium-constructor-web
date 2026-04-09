@@ -148,7 +148,6 @@ export const publishedSiteSchema = z.object({
   isActive: z.boolean().optional().nullable(),
   content: z.any(), // RenderingContract
   metadata: z.any().optional().nullable(),
-  subdomainId: z.string().optional().nullable(),
   createdAt: z.string().optional().nullable(),
   updatedAt: z.string().optional().nullable(),
 });

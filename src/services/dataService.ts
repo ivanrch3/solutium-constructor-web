@@ -438,7 +438,6 @@ export const publishWebBuilderSite = async (site: Partial<PublishedSite>): Promi
       is_active: site.isActive !== undefined ? site.isActive : true,
       content: site.content,
       metadata: site.metadata,
-      subdomain_id: site.subdomainId,
     };
 
     if (site.id) dbData.id = site.id;
@@ -460,7 +459,6 @@ export const publishWebBuilderSite = async (site: Partial<PublishedSite>): Promi
       isActive: data.is_active,
       content: data.content,
       metadata: data.metadata,
-      subdomainId: data.subdomain_id,
       createdAt: data.created_at,
       updatedAt: data.updated_at,
     };
@@ -533,7 +531,6 @@ export const getPublishedSites = async (projectId: string): Promise<PublishedSit
       isActive: item.is_active,
       content: item.content,
       metadata: item.metadata,
-      subdomainId: item.subdomain_id,
       createdAt: item.created_at,
       updatedAt: item.updated_at,
     }));

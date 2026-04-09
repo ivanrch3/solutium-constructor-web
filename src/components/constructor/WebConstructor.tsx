@@ -4062,11 +4062,6 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       // Notify Mother App
       window.parent.postMessage(payload, '*');
 
-      // Preserve subdomain/subdomainId to avoid breaking domain links
-      const subdomainId = initialPage 
-        ? ('subdomainId' in initialPage ? initialPage.subdomainId : (initialPage as any).subdomain)
-        : undefined;
-
       const result = await publishWebBuilderSite({
         id: initialPage && !('contentDraft' in initialPage) ? initialPage.id : undefined,
         projectId,
@@ -4079,8 +4074,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
           siteId,
           siteName: finalSiteName,
           action: 'publishSite'
-        },
-        subdomainId: subdomainId
+        }
       });
 
       if (result) {

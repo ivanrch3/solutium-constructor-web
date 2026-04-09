@@ -3304,6 +3304,15 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   const [moduleToDelete, setModuleToDelete] = useState<WebModule | null>(null);
   const [showPublishModal, setShowPublishModal] = useState(false);
   const [siteName, setSiteName] = useState(initialPage?.siteName || '');
+  const [currentSiteId] = useState(() => {
+    // 1. Si estamos editando una página existente (Borrador o Publicada), usamos su siteId.
+    if (initialPage?.siteId) return initialPage.siteId;
+    
+    // 2. Si es una página NUEVA, generamos un ID único para que sea independiente y no sobreescriba otras.
+    // Solo usamos el ID del proyecto si no hay ninguna otra página, para facilitar la configuración inicial,
+    // pero el usuario ha pedido independencia total para nuevos sitios.
+    return `site_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+  });
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [publishStatus, setPublishStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
@@ -3530,7 +3539,8 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       const finalSiteName = siteName || formatTimestampName();
       if (!siteName) setSiteName(finalSiteName);
 
-      const siteId = initialPage?.siteId || project?.webConfig?.siteId || project?.id || `site_${Date.now()}`;
+      // Use the stable currentSiteId
+      const siteId = currentSiteId;
       
       console.log(`[SAVE DRAFT] Usando siteId: ${siteId} para el proyecto: ${projectId}`);
 
@@ -3549,26 +3559,33 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       }
 
       const payload = {
-        data: editorState,
-        metadata: {
-          siteId: siteId,
-          siteName: finalSiteName,
-          action: 'saveDraft' as const,
-          isPublish: false,
-          timestamp: Date.now()
+        type: 'SOLUTIUM_SAVE',
+        payload: {
+          projectId,
+          appId: '11111111-1111-1111-1111-111111111111',
+          data: editorState,
+          metadata: {
+            siteId: siteId,
+            siteName: finalSiteName,
+            status: newStatus
+          }
         }
       };
+
+      // Notify Mother App
+      window.parent.postMessage(payload, '*');
 
       const siteData = {
         id: initialPage && 'contentDraft' in initialPage ? initialPage.id : undefined,
         projectId,
         userId: currentUserId || undefined,
-        siteId: payload.metadata.siteId,
-        siteName: payload.metadata.siteName,
+        siteId: siteId,
+        siteName: finalSiteName,
         isPublish: false,
-        name: payload.metadata.siteName,
-        contentDraft: payload.data,
+        name: finalSiteName,
+        contentDraft: editorState,
         status: newStatus,
+        subdomain: initialPage && 'subdomain' in initialPage ? (initialPage as any).subdomain : undefined
       };
       
       const result = await saveWebBuilderSiteDraft(siteData);
@@ -3688,34 +3705,43 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
 
       const finalSiteName = siteName || formatTimestampName();
       
-      // CRITICAL: Prioritize siteId from project config if it exists, as it's likely what the domain is linked to
-      const siteId = initialPage?.siteId || project?.webConfig?.siteId || project?.id || `site_${Date.now()}`;
+      // Use the stable currentSiteId
+      const siteId = currentSiteId;
 
       console.log(`[PUBLISH] Usando siteId: ${siteId} para el proyecto: ${projectId}`);
 
       const payload = {
-        data: renderingContract,
-        metadata: {
-          siteId: siteId,
-          siteName: finalSiteName,
-          title: finalSiteName,
-          description: project?.industry || 'Sitio web creado con Web Builder',
-          logoUrl: logoUrl || '',
-          action: 'publishSite' as const,
-          isPublish: true,
-          timestamp: Date.now()
+        type: 'SOLUTIUM_PUBLISH',
+        payload: {
+          projectId,
+          appId: '11111111-1111-1111-1111-111111111111',
+          siteId: siteId
         }
       };
+
+      // Notify Mother App
+      window.parent.postMessage(payload, '*');
+
+      // Preserve subdomain/subdomainId to avoid breaking domain links
+      const subdomainId = initialPage 
+        ? ('subdomainId' in initialPage ? initialPage.subdomainId : (initialPage as any).subdomain)
+        : undefined;
 
       const result = await publishWebBuilderSite({
         id: initialPage && !('contentDraft' in initialPage) ? initialPage.id : undefined,
         projectId,
-        siteId: payload.metadata.siteId,
-        siteName: payload.metadata.siteName,
+        siteId: siteId,
+        siteName: finalSiteName,
         isPublish: true,
         isActive: true, // Default to true on publish
-        content: payload.data,
-        metadata: payload.metadata
+        content: renderingContract,
+        metadata: {
+          ...renderingContract.theme,
+          siteId,
+          siteName: finalSiteName,
+          action: 'publishSite'
+        },
+        subdomainId: subdomainId
       });
 
       if (result) {

@@ -155,12 +155,31 @@ const AppContent: React.FC = () => {
             getPublishedSites(payload.satellite_id)
           ]);
           
-          // Combine and sort by updatedAt
-          const allPages = [...drafts, ...published].sort((a, b) => {
+          // Group by siteId to show unique websites (SIP v5.0)
+          // We want to show one entry per website, prioritizing the draft if it exists
+          const sitesMap = new Map<string, WebBuilderSite | PublishedSite>();
+          
+          // 1. Add published sites first
+          published.forEach(p => {
+            if (p.siteId) sitesMap.set(p.siteId, p);
+          });
+          
+          // 2. Add drafts, overwriting published entries for the same siteId
+          // This ensures the dashboard shows the "latest working version"
+          drafts.forEach(d => {
+            if (d.siteId) sitesMap.set(d.siteId, d);
+          });
+
+          const allPages = Array.from(sitesMap.values()).sort((a, b) => {
             const dateA = new Date(a.updatedAt || 0).getTime();
             const dateB = new Date(b.updatedAt || 0).getTime();
             return dateB - dateA;
           });
+          
+          console.log(`[APP] Cargados ${allPages.length} sitios únicos para el proyecto ${payload.satellite_id}:`, 
+            allPages.map(p => ({ id: p.id, siteId: p.siteId, type: 'contentDraft' in p ? 'draft' : 'published' }))
+          );
+          
           setPages(allPages);
         }
 

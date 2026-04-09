@@ -7,11 +7,12 @@ export const VideoModule: React.FC<{
   settingsValues: Record<string, any> 
 }> = ({ moduleId, settingsValues }) => {
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   const getVal = (elementId: string | null, settingId: string, defaultValue: any) => {
     const key = elementId ? `${elementId}_${settingId}` : `${moduleId}_global_${settingId}`;
-    return settingsValues[key] !== undefined ? settingsValues[key] : defaultValue;
+    return settingsValues && settingsValues[key] !== undefined ? settingsValues[key] : defaultValue;
   };
 
   // Global Settings
@@ -50,32 +51,48 @@ export const VideoModule: React.FC<{
     }
   };
 
-  const isYouTube = videoUrl.includes('youtube.com') || videoUrl.includes('youtu.be');
-  const isVimeo = videoUrl.includes('vimeo.com');
+  const isYouTube = typeof videoUrl === 'string' && (videoUrl.includes('youtube.com') || videoUrl.includes('youtu.be'));
+  const isVimeo = typeof videoUrl === 'string' && videoUrl.includes('vimeo.com');
 
-  const getEmbedUrl = (url: string) => {
+  const getEmbedUrl = (url: any, forceAutoplay = false) => {
+    if (typeof url !== 'string' || !url) return '';
+    const shouldAutoplay = forceAutoplay || autoplay;
+    
     if (isYouTube) {
       const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
       const match = url.match(regExp);
       const id = (match && match[2].length === 11) ? match[2] : null;
-      return `https://www.youtube.com/embed/${id}?autoplay=${autoplay ? 1 : 0}&loop=${loop ? 1 : 0}&controls=${controls ? 1 : 0}&mute=${autoplay ? 1 : 0}`;
+      if (!id) return url;
+      return `https://www.youtube.com/embed/${id}?autoplay=${shouldAutoplay ? 1 : 0}&loop=${loop ? 1 : 0}&controls=${controls ? 1 : 0}&mute=${shouldAutoplay ? 1 : 0}&playlist=${id}`;
     }
     if (isVimeo) {
-      const id = url.split('/').pop();
-      return `https://player.vimeo.com/video/${id}?autoplay=${autoplay ? 1 : 0}&loop=${loop ? 1 : 0}&muted=${autoplay ? 1 : 0}`;
+      const id = url.split('/').filter(p => p).pop()?.split('?')[0];
+      return `https://player.vimeo.com/video/${id}?autoplay=${shouldAutoplay ? 1 : 0}&loop=${loop ? 1 : 0}&muted=${shouldAutoplay ? 1 : 0}`;
     }
     return url;
+  };
+
+  const handlePlayClick = () => {
+    if (useLightbox) {
+      setIsLightboxOpen(true);
+    } else {
+      setIsPlaying(true);
+      if (videoRef.current) {
+        videoRef.current.play().catch(err => console.error("Error playing video:", err));
+      }
+    }
   };
 
   const renderVideo = (inLightbox = false) => {
     if (isYouTube || isVimeo) {
       return (
         <iframe
-          src={getEmbedUrl(videoUrl)}
+          key={`${videoUrl}-${inLightbox || isPlaying}`}
+          src={getEmbedUrl(videoUrl, inLightbox || isPlaying)}
           className="absolute inset-0 w-full h-full border-0"
-          allow="autoplay; fullscreen; picture-in-picture"
-          allowFullScreen
+          allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; gyroscope"
           title="Video Player"
+          loading="lazy"
         />
       );
     }
@@ -83,11 +100,11 @@ export const VideoModule: React.FC<{
     return (
       <video
         ref={videoRef}
-        src={videoUrl}
-        poster={posterUrl}
-        autoPlay={autoplay}
+        src={typeof videoUrl === 'string' ? videoUrl : ''}
+        poster={typeof posterUrl === 'string' ? posterUrl : ''}
+        autoPlay={autoplay || isPlaying}
         loop={loop}
-        muted={autoplay}
+        muted={autoplay && !isPlaying}
         controls={controls}
         className="absolute inset-0 w-full h-full object-cover"
       />
@@ -101,7 +118,7 @@ export const VideoModule: React.FC<{
       <motion.button
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
-        onClick={() => useLightbox ? setIsLightboxOpen(true) : null}
+        onClick={handlePlayClick}
         className="absolute inset-0 m-auto w-20 h-20 bg-white rounded-full flex items-center justify-center shadow-2xl z-20 group"
       >
         {playButtonStyle === 'pulse' && (
@@ -140,30 +157,34 @@ export const VideoModule: React.FC<{
         paddingBottom: getAspectRatioPadding(aspectRatio)
       }}
     >
-      {/* Poster Overlay (if not autoplaying) */}
-      {!autoplay && !isLightboxOpen && (
+      {/* Poster Overlay (if not autoplaying and not playing) */}
+      {!autoplay && !isPlaying && !isLightboxOpen && (
         <div className="absolute inset-0 z-10">
-          <img 
-            src={posterUrl} 
-            alt="Video Poster" 
-            className="w-full h-full object-cover"
-            referrerPolicy="no-referrer"
-          />
+          {posterUrl && (
+            <img 
+              src={posterUrl} 
+              alt="Video Poster" 
+              className="w-full h-full object-cover"
+              referrerPolicy="no-referrer"
+            />
+          )}
           <div className="absolute inset-0" style={{ backgroundColor: overlayColor }} />
           {renderPlayButton()}
         </div>
       )}
 
-      {/* Actual Video (if not using lightbox or if autoplaying) */}
-      {(autoplay || !useLightbox) && renderVideo()}
+      {/* Actual Video (if not using lightbox or if autoplaying or if playing) */}
+      {(autoplay || isPlaying || !useLightbox) && renderVideo()}
     </div>
   );
 
   return (
     <section 
-      className="w-full relative overflow-hidden py-12 @md:py-20 @lg:py-24"
+      className="w-full relative overflow-hidden py-12 @md:py-20 @lg:py-24 @container"
       style={{ 
-        backgroundColor: bgColor
+        backgroundColor: bgColor,
+        paddingTop: `${paddingY}px`,
+        paddingBottom: `${paddingY}px`
       }}
     >
       <div className="mx-auto px-8" style={{ maxWidth: layout === 'full' ? '100%' : `${maxWidth}px` }}>

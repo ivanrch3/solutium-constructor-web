@@ -1768,7 +1768,8 @@ const MainSidebar = ({
   logoUrl,
   logoWhiteUrl,
   project,
-  onAddModule
+  onAddModule,
+  onLogoClick
 }: { 
   activeTab: string, 
   onTabChange: (tab: string) => void, 
@@ -1776,7 +1777,8 @@ const MainSidebar = ({
   logoUrl: string | null,
   logoWhiteUrl: string | null,
   project: Project | null,
-  onAddModule: (module: WebModule) => void
+  onAddModule: (module: WebModule) => void,
+  onLogoClick?: () => void
 }) => {
   const [expandedSection, setExpandedSection] = useState<string | null>('constructor');
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
@@ -1795,13 +1797,17 @@ const MainSidebar = ({
     <div className="w-64 bg-sidebar-bg flex flex-col z-40 h-full border-r border-sidebar-border">
       {/* Logo Section */}
       <div className="p-6">
-        <div className="flex items-center justify-center">
-          <div className="h-12 w-full flex items-center justify-center">
+        <div 
+          className="flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity group"
+          onClick={onLogoClick}
+        >
+          <div className="h-12 w-full flex items-center justify-center relative">
             {displayLogo ? (
               <img src={displayLogo} alt="Logo" className="h-full w-auto object-contain" referrerPolicy="no-referrer" />
             ) : (
               <FileText className="text-sidebar-foreground/40 w-10 h-10" />
             )}
+            <div className="absolute inset-0 bg-sidebar-foreground/5 opacity-0 group-hover:opacity-100 rounded-xl transition-opacity" />
           </div>
         </div>
       </div>
@@ -2710,8 +2716,7 @@ const TopBar = ({
   isFullscreen,
   setIsFullscreen,
   saveStatus,
-  publishStatus,
-  onLogoClick
+  publishStatus
 }: { 
   onSave: () => void, 
   onPublish: () => void, 
@@ -2721,24 +2726,20 @@ const TopBar = ({
   isFullscreen: boolean,
   setIsFullscreen: (f: boolean) => void,
   saveStatus: 'idle' | 'loading' | 'success' | 'error',
-  publishStatus: 'idle' | 'loading' | 'success' | 'error',
-  onLogoClick: () => void
+  publishStatus: 'idle' | 'loading' | 'success' | 'error'
 }) => (
   <div className="h-[60px] bg-surface border-b border-border/60 flex items-center justify-between px-6 z-20">
-    <div 
-      className="flex items-center gap-4 cursor-pointer group"
-      onClick={onLogoClick}
-    >
+    <div className="flex items-center gap-4">
       {logoUrl && (
         <img 
           src={logoUrl} 
           alt="Logo" 
-          className="h-8 w-auto object-contain mr-2 group-hover:scale-105 transition-transform" 
+          className="h-8 w-auto object-contain mr-2" 
           referrerPolicy="no-referrer" 
         />
       )}
       <div className="flex flex-col">
-        <h2 className="text-base font-bold text-text group-hover:text-primary transition-colors">Editor de Módulos</h2>
+        <h2 className="text-base font-bold text-text">Editor de Módulos</h2>
         <p className="text-xs font-semibold text-text/50 uppercase tracking-wider">Añade módulos para construir tu página</p>
       </div>
     </div>
@@ -3535,13 +3536,15 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
 
       // Determine new status based on SIP v5.0 logic
       let newStatus: 'draft' | 'published' | 'modified' = 'draft';
-      if (forcedStatus) {
+      
+      // CRITICAL: Ensure forcedStatus is a valid status string and not a React event object
+      if (typeof forcedStatus === 'string' && ['draft', 'published', 'modified'].includes(forcedStatus)) {
         newStatus = forcedStatus;
       } else if (initialPage && 'status' in initialPage) {
         if (initialPage.status === 'published') {
           newStatus = 'modified';
         } else {
-          newStatus = initialPage.status;
+          newStatus = initialPage.status as any;
         }
       }
 
@@ -3773,7 +3776,6 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
                 setIsFullscreen={setIsFullscreen}
                 saveStatus={saveStatus}
                 publishStatus={publishStatus}
-                onLogoClick={handleLogoClick}
               />
               <Canvas 
                 editorState={editorState} 

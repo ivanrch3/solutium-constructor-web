@@ -260,7 +260,6 @@ const AppContent: React.FC = () => {
           
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
           <div className="text-center space-y-2">
-            <h2 className="text-2xl font-bold tracking-tight">Iniciando Constructor Web</h2>
             <p className="text-text/80">Sincronizando con Solutium...</p>
           </div>
         </div>

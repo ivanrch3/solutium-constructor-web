@@ -1,26 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, useInView, useSpring, useTransform } from 'motion/react';
-import { Users, Briefcase, Award, Globe, Zap, Heart, Star, Rocket, Shield, Clock } from 'lucide-react';
-
-const ICON_MAP: Record<string, any> = {
-  users: Users,
-  briefcase: Briefcase,
-  award: Award,
-  globe: Globe,
-  zap: Zap,
-  heart: Heart,
-  star: Star,
-  rocket: Rocket,
-  shield: Shield,
-  clock: Clock
-};
-
-const MOCK_STATS = [
-  { value: 500, prefix: '', suffix: '+', label: 'Clientes Felices', icon: 'users' },
-  { value: 120, prefix: '', suffix: 'k', label: 'Líneas de Código', icon: 'zap' },
-  { value: 15, prefix: '', suffix: '', label: 'Premios Ganados', icon: 'award' },
-  { value: 99, prefix: '', suffix: '%', label: 'Satisfacción', icon: 'heart' }
-];
+import * as LucideIcons from 'lucide-react';
+import { Star } from 'lucide-react';
 
 const CountUp = ({ value, duration = 2 }: { value: number, duration?: number }) => {
   const ref = useRef(null);
@@ -60,7 +41,7 @@ const StatItem = ({
   iconBg,
   countSpeed
 }: any) => {
-  const IconComponent = ICON_MAP[stat.icon] || Star;
+  const IconComponent = (LucideIcons as any)[stat.icon] || Star;
   const isMinimal = layout === 'minimal';
   const isBento = layout === 'bento';
   
@@ -144,6 +125,13 @@ export const StatsModule: React.FC<{
   const iconColor = getVal(`${moduleId}_el_stat_icon`, 'icon_color', 'var(--primary-color)');
   const iconBg = getVal(`${moduleId}_el_stat_icon`, 'icon_bg', 'rgba(59, 130, 246, 0.1)');
 
+  const stats = getVal(null, 'stats', [
+    { value: 500, prefix: '', suffix: '+', label: 'Clientes Felices', icon: 'Users' },
+    { value: 120, prefix: '', suffix: 'k', label: 'Líneas de Código', icon: 'Zap' },
+    { value: 15, prefix: '', suffix: '', label: 'Premios Ganados', icon: 'Award' },
+    { value: 99, prefix: '', suffix: '%', label: 'Satisfacción', icon: 'Heart' }
+  ]);
+
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -199,7 +187,7 @@ export const StatsModule: React.FC<{
             gap: `${gap}px`
           }}
         >
-          {MOCK_STATS.map((stat, i) => (
+          {stats.map((stat: any, i: number) => (
             <StatItem 
               key={i} 
               stat={stat} 

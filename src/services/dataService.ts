@@ -388,7 +388,7 @@ export const saveWebBuilderSiteDraft = async (site: Partial<WebBuilderSite>): Pr
       user_id: site.userId,
       site_id: site.siteId,
       site_name: site.siteName,
-      is_publish: site.isPublish || false,
+      is_active: site.isActive || false,
       name: site.name,
       content_draft: site.contentDraft,
       status: site.status || 'draft',
@@ -411,7 +411,7 @@ export const saveWebBuilderSiteDraft = async (site: Partial<WebBuilderSite>): Pr
       userId: data.user_id,
       siteId: data.site_id,
       siteName: data.site_name,
-      isPublish: data.is_publish,
+      isActive: data.is_active,
       name: data.name,
       contentDraft: data.content_draft,
       status: data.status,
@@ -437,7 +437,6 @@ export const publishWebBuilderSite = async (site: Partial<PublishedSite>): Promi
       app_id: '11111111-1111-1111-1111-111111111111',
       site_id: site.siteId,
       site_name: site.siteName,
-      is_publish: site.isPublish !== undefined ? site.isPublish : true,
       is_active: site.isActive !== undefined ? site.isActive : true,
       content: site.content,
       metadata: site.metadata,
@@ -460,7 +459,6 @@ export const publishWebBuilderSite = async (site: Partial<PublishedSite>): Promi
       appId: data.app_id,
       siteId: data.site_id,
       siteName: data.site_name,
-      isPublish: data.is_publish,
       isActive: data.is_active,
       content: data.content,
       metadata: data.metadata,
@@ -496,7 +494,7 @@ export const getWebBuilderSites = async (projectId: string): Promise<WebBuilderS
       userId: item.user_id,
       siteId: item.site_id,
       siteName: item.site_name,
-      isPublish: item.is_publish,
+      isActive: item.is_active,
       name: item.name,
       contentDraft: item.content_draft,
       status: item.status,
@@ -534,7 +532,6 @@ export const getPublishedSites = async (projectId: string): Promise<PublishedSit
       appId: item.app_id,
       siteId: item.site_id,
       siteName: item.site_name,
-      isPublish: item.is_publish,
       isActive: item.is_active,
       content: item.content,
       metadata: item.metadata,
@@ -549,6 +546,27 @@ export const getPublishedSites = async (projectId: string): Promise<PublishedSit
   } catch (err) {
     console.error('Error in getPublishedSites:', err);
     return [];
+  }
+};
+
+export const linkSubdomain = async (subdomain: string, publishedSiteId: string): Promise<boolean> => {
+  try {
+    const supabase = getSupabase();
+    if (!supabase) return false;
+
+    const { error } = await supabase
+      .from('subdomains')
+      .upsert({
+        subdomain: subdomain,
+        published_site_id: publishedSiteId,
+        is_active: true
+      }, { onConflict: 'subdomain' });
+
+    if (error) throw error;
+    return true;
+  } catch (err) {
+    console.error('Error in linkSubdomain:', err);
+    return false;
   }
 };
 

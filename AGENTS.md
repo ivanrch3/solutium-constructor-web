@@ -12,8 +12,8 @@ Usted debe seguir estrictamente el **PROTOCOLO ESTÁNDAR PARA LA CREACIÓN DE M�
 - **appId:** `11111111-1111-1111-1111-111111111111`.
 - **Identificación de Páginas:** Cada página DEBE tener un `siteId` (UUID) y un `siteName` (Nombre amigable). Estos campos deben enviarse en el objeto `metadata`.
 - **Acciones de Persistencia:**
-    - **GUARDAR BORRADOR:** Usa la acción `saveDraft`. Esto guarda el contenido en `web_builder_sites` con `is_publish = FALSE`.
-    - **PUBLICAR:** Usa la acción `publishSite`. Esto copia el contenido a `published_sites` con `is_publish = TRUE`. Solo estos son visibles en dominios personalizados.
+    - **GUARDAR BORRADOR:** Usa la acción `saveDraft`. Esto guarda el contenido en `web_builder_sites` con `is_active = FALSE`.
+    - **PUBLICAR:** Usa la acción `publishSite`. Esto copia el contenido a `published_sites` con `is_active = TRUE`. Solo estos son visibles en dominios personalizados.
 - **Estructura del Contenido (content):** El objeto `content` debe seguir el contrato: `{ "theme": { ... }, "sections": [ ... ] }`.
 - **Gestión de Activos:** Al subir archivos, el campo `origin_app` debe ser obligatoriamente `'solutium constructor web'`.
 - **Flujo de Usuario:** Antes de publicar por primera vez, solicita al usuario un `siteName`. Informa que la página podrá ser vinculada a un dominio desde el panel de "Dominios" en la App Madre.

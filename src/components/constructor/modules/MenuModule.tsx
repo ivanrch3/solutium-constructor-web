@@ -78,61 +78,84 @@ export const MenuModule: React.FC<{
         className={`${containerClasses[layout as keyof typeof containerClasses]} ${alignmentClasses[align as keyof typeof alignmentClasses]} w-full mx-auto`}
         style={{ gap: `${gap}px` }}
       >
-        {links.map((link: any, idx: number) => (
-          <motion.a
-            key={idx}
-            href={link.url}
-            whileHover={hoverScale ? { scale: 1.05 } : {}}
-            className={`relative flex items-center gap-3 px-4 py-2.5 transition-all group no-underline`}
-            style={{ 
-              fontSize: `${fontSize}px`,
-              fontWeight: fontWeight === 'bold' ? 700 : fontWeight === 'medium' ? 500 : 400,
-              color: textColor
-            }}
-          >
-            {/* Hover Effect Background */}
-            {hoverStyle === 'pill' && (
-              <span 
-                className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                style={{ backgroundColor: hoverBg, borderRadius: '12px' }}
-              />
-            )}
+        {links.map((link: any, idx: number) => {
+          const isTitle = link.is_title;
+          
+          if (isTitle) {
+            return (
+              <div 
+                key={idx}
+                className="px-4 py-2 mt-2 first:mt-0"
+                style={{ 
+                  fontSize: `${fontSize * 0.8}px`,
+                  fontWeight: 800,
+                  color: textColor,
+                  opacity: 0.5,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em'
+                }}
+              >
+                {link.label}
+              </div>
+            );
+          }
 
-            {/* Content */}
-            <div className="relative flex items-center gap-2.5 z-10">
-              {showIcons && link.icon && (
-                <span className="opacity-70 group-hover:opacity-100 transition-opacity">
-                  {getIcon(link.icon)}
-                </span>
-              )}
-              <span>{link.label}</span>
-              
-              {link.badge && (
+          return (
+            <motion.a
+              key={idx}
+              href={link.url}
+              whileHover={hoverScale ? { scale: 1.05 } : {}}
+              className={`relative flex items-center gap-3 px-4 py-2.5 transition-all group no-underline`}
+              style={{ 
+                fontSize: `${fontSize}px`,
+                fontWeight: fontWeight === 'bold' ? 700 : fontWeight === 'medium' ? 500 : 400,
+                color: textColor
+              }}
+            >
+              {/* Hover Effect Background */}
+              {hoverStyle === 'pill' && (
                 <span 
-                  className="px-1.5 py-0.5 text-[9px] font-black uppercase tracking-tighter rounded-md text-white shadow-sm"
-                  style={{ backgroundColor: activeColor }}
-                >
-                  {link.badge}
-                </span>
+                  className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                  style={{ backgroundColor: hoverBg, borderRadius: '12px' }}
+                />
               )}
-            </div>
 
-            {/* Underline Effect */}
-            {hoverStyle === 'underline' && (
-              <span 
-                className="absolute bottom-0 left-4 right-4 h-0.5 scale-x-0 group-hover:scale-x-100 transition-transform origin-left"
-                style={{ backgroundColor: activeColor }}
-              />
-            )}
+              {/* Content */}
+              <div className="relative flex items-center gap-2.5 z-10">
+                {showIcons && link.icon && (
+                  <span className="opacity-70 group-hover:opacity-100 transition-opacity">
+                    {getIcon(link.icon)}
+                  </span>
+                )}
+                <span>{link.label}</span>
+                
+                {link.badge && (
+                  <span 
+                    className="px-1.5 py-0.5 text-[9px] font-black uppercase tracking-tighter rounded-md text-white shadow-sm"
+                    style={{ backgroundColor: activeColor }}
+                  >
+                    {link.badge}
+                  </span>
+                )}
+              </div>
 
-            {/* Color Effect */}
-            {hoverStyle === 'color' && (
-              <style>{`
-                .group:hover { color: ${activeColor} !important; }
-              `}</style>
-            )}
-          </motion.a>
-        ))}
+              {/* Underline Effect */}
+              {hoverStyle === 'underline' && (
+                <span 
+                  className="absolute bottom-0 left-4 right-4 h-0.5 scale-x-0 group-hover:scale-x-100 transition-transform origin-left"
+                  style={{ backgroundColor: activeColor }}
+                />
+              )}
+
+              {/* Color Effect */}
+              {hoverStyle === 'color' && (
+                <style>{`
+                  .group:hover { color: ${activeColor} !important; }
+                `}</style>
+              )}
+            </motion.a>
+          );
+        })}
       </motion.div>
     </nav>
   );

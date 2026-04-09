@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import * as LucideIcons from 'lucide-react';
 import { 
   Home, 
   PlusCircle, 
@@ -64,7 +65,7 @@ import { HeaderModule } from './modules/HeaderModule';
 import { MenuModule } from './modules/MenuModule';
 import { FooterModule } from './modules/FooterModule';
 import { SpacerModule } from './modules/SpacerModule';
-import { saveWebBuilderSiteDraft, publishWebBuilderSite, getProducts, getCustomers } from '../../services/dataService';
+import { saveWebBuilderSiteDraft, publishWebBuilderSite, linkSubdomain, getProducts, getCustomers } from '../../services/dataService';
 import { syncAsset } from '../../services/assetService';
 import { Product, Customer } from '../../types/schema';
 import { MOCK_PRODUCTS, MOCK_CUSTOMERS } from '../../constants/mockData';
@@ -84,7 +85,12 @@ const HEADER_MODULE: WebModule = {
         { label: 'Estático', value: 'static' }
       ]},
       { id: 'height', label: 'Altura de Barra', type: 'range', defaultValue: 80, min: 60, max: 120, unit: 'px' },
-      { id: 'max_width', label: 'Ancho Máximo', type: 'range', defaultValue: 1400, min: 1000, max: 1920, unit: 'px' }
+      { id: 'max_width', label: 'Ancho Máximo', type: 'range', defaultValue: 1400, min: 1000, max: 1920, unit: 'px' },
+      { id: 'menu_alignment', label: 'Alineación Menú', type: 'select', defaultValue: 'center', options: [
+        { label: 'Izquierda', value: 'left' },
+        { label: 'Centro', value: 'center' },
+        { label: 'Derecha', value: 'right' }
+      ]}
     ],
     estilo: [
       { id: 'bg_type', label: 'Tipo de Fondo', type: 'select', defaultValue: 'glass', options: [
@@ -113,7 +119,8 @@ const HEADER_MODULE: WebModule = {
         { id: 'logo_text', label: 'Texto del Logo', type: 'text', defaultValue: 'MI MARCA' }
       ],
       multimedia: [
-        { id: 'logo_img', label: 'Imagen de Logo', type: 'image', defaultValue: '' }
+        { id: 'logo_img', label: 'Imagen de Logo', type: 'image', defaultValue: '' },
+        { id: 'logo_img_alt', label: 'Logo Secundario (Modo Transparente)', type: 'image', defaultValue: '' }
       ],
       estructura: [
         { id: 'logo_width', label: 'Ancho del Logo', type: 'range', defaultValue: 120, min: 40, max: 240, unit: 'px' }
@@ -134,7 +141,9 @@ const HEADER_MODULE: WebModule = {
           ],
           fields: [
             { id: 'label', label: 'Etiqueta', type: 'text', defaultValue: 'Enlace' },
-            { id: 'url', label: 'URL', type: 'text', defaultValue: '#' }
+            { id: 'url', label: 'URL', type: 'text', defaultValue: '#' },
+            { id: 'has_dropdown', label: '¿Tiene Submenú?', type: 'boolean', defaultValue: false },
+            { id: 'submenu_items', label: 'Items Submenú (JSON)', type: 'text', defaultValue: '[]' }
           ]
         }
       ],
@@ -213,8 +222,9 @@ const MENU_MODULE: WebModule = {
           fields: [
             { id: 'label', label: 'Etiqueta', type: 'text', defaultValue: 'Enlace' },
             { id: 'url', label: 'URL', type: 'text', defaultValue: '#' },
-            { id: 'icon', label: 'Icono (Lucide)', type: 'text', defaultValue: '' },
-            { id: 'badge', label: 'Badge', type: 'text', defaultValue: '' }
+            { id: 'icon', label: 'Icono', type: 'icon', defaultValue: '' },
+            { id: 'badge', label: 'Badge', type: 'text', defaultValue: '' },
+            { id: 'is_title', label: '¿Es Título de Sección?', type: 'boolean', defaultValue: false }
           ]
         }
       ],
@@ -322,7 +332,7 @@ const FOOTER_MODULE: WebModule = {
             {icon: 'Linkedin', url: '#'}
           ],
           fields: [
-            { id: 'icon', label: 'Icono (Lucide)', type: 'text', defaultValue: 'Link' },
+            { id: 'icon', label: 'Icono', type: 'icon', defaultValue: 'Link' },
             { id: 'url', label: 'URL', type: 'text', defaultValue: '#' }
           ]
         }
@@ -333,9 +343,53 @@ const FOOTER_MODULE: WebModule = {
       ],
       estructura: [], tipografia: [], multimedia: [], interaccion: []
     }},
+    { id: 'el_footer_contact', name: 'Información de Contacto', type: 'text', groups: ['contenido', 'estilo'], settings: {
+      contenido: [
+        { id: 'show_contact', label: 'Mostrar Contacto', type: 'boolean', defaultValue: true },
+        { id: 'address', label: 'Dirección', type: 'text', defaultValue: 'Calle Innovación 123, Ciudad Digital' },
+        { id: 'phone', label: 'Teléfono', type: 'text', defaultValue: '+1 (555) 000-0000' },
+        { id: 'email', label: 'Email', type: 'text', defaultValue: 'hola@mimarca.com' }
+      ],
+      estilo: [
+        { id: 'icon_color', label: 'Color de Iconos', type: 'color', defaultValue: 'var(--primary-color)' }
+      ],
+      estructura: [], tipografia: [], multimedia: [], interaccion: []
+    }},
+    { id: 'el_footer_newsletter', name: 'Newsletter', type: 'text', groups: ['contenido', 'estilo', 'interaccion'], settings: {
+      contenido: [
+        { id: 'show_newsletter', label: 'Mostrar Newsletter', type: 'boolean', defaultValue: true },
+        { id: 'news_title', label: 'Título', type: 'text', defaultValue: 'Suscríbete' },
+        { id: 'news_desc', label: 'Descripción', type: 'text', defaultValue: 'Recibe las últimas noticias y ofertas.' },
+        { id: 'placeholder', label: 'Placeholder', type: 'text', defaultValue: 'Tu email' },
+        { id: 'btn_text', label: 'Texto Botón', type: 'text', defaultValue: 'Unirse' }
+      ],
+      estilo: [
+        { id: 'input_bg', label: 'Fondo Input', type: 'color', defaultValue: '#FFFFFF' },
+        { id: 'btn_bg', label: 'Fondo Botón', type: 'color', defaultValue: 'var(--primary-color)' },
+        { id: 'btn_color', label: 'Color Texto Botón', type: 'color', defaultValue: '#FFFFFF' }
+      ],
+      interaccion: [
+        { id: 'success_msg', label: 'Mensaje de Éxito', type: 'text', defaultValue: '¡Gracias por suscribirte!' }
+      ],
+      estructura: [], tipografia: [], multimedia: []
+    }},
     { id: 'el_footer_bottom', name: 'Barra Inferior', type: 'text', groups: ['contenido', 'estilo'], settings: {
       contenido: [
-        { id: 'copyright', label: 'Texto Copyright', type: 'text', defaultValue: '© 2026 Mi Marca. Todos los derechos reservados.' }
+        { id: 'copyright', label: 'Texto Copyright', type: 'text', defaultValue: '© 2026 Mi Marca. Todos los derechos reservados.' },
+        { 
+          id: 'legal_links', 
+          label: 'Enlaces Legales', 
+          type: 'repeater', 
+          defaultValue: [
+            {label: 'Privacidad', url: '#'},
+            {label: 'Términos', url: '#'},
+            {label: 'Cookies', url: '#'}
+          ],
+          fields: [
+            { id: 'label', label: 'Etiqueta', type: 'text', defaultValue: 'Enlace' },
+            { id: 'url', label: 'URL', type: 'text', defaultValue: '#' }
+          ]
+        }
       ],
       estilo: [
         { id: 'bottom_bg', label: 'Fondo Barra Inferior', type: 'color', defaultValue: 'transparent' }
@@ -368,9 +422,18 @@ const SPACER_MODULE: WebModule = {
         { label: 'Línea Punteada', value: 'dotted' },
         { label: 'Línea con Guiones', value: 'dashed' }
       ]},
-      { id: 'thickness', label: 'Grosor de Línea', type: 'range', defaultValue: 1, min: 1, max: 10, unit: 'px' },
+      { id: 'thickness', label: 'Grosor de Línea', type: 'range', defaultValue: 2, min: 1, max: 10, unit: 'px' },
       { id: 'color', label: 'Color de Línea', type: 'color', defaultValue: '#E2E8F0' },
-      { id: 'bg_color', label: 'Color de Fondo de Bloque', type: 'color', defaultValue: 'transparent' }
+      { id: 'bg_color', label: 'Color de Fondo de Bloque', type: 'color', defaultValue: 'transparent' },
+      { id: 'show_content', label: 'Mostrar Icono/Texto', type: 'boolean', defaultValue: false },
+      { id: 'content_type', label: 'Tipo de Contenido', type: 'select', defaultValue: 'icon', options: [
+        { label: 'Icono', value: 'icon' },
+        { label: 'Texto', value: 'text' }
+      ]},
+      { id: 'icon', label: 'Icono', type: 'icon', defaultValue: 'Star' },
+      { id: 'text', label: 'Texto Central', type: 'text', defaultValue: 'SECCIÓN' },
+      { id: 'content_size', label: 'Tamaño Contenido', type: 'range', defaultValue: 18, min: 10, max: 40, unit: 'px' },
+      { id: 'content_color', label: 'Color Contenido', type: 'color', defaultValue: '#94A3B8' }
     ],
     contenido: [], tipografia: [], multimedia: [], interaccion: []
   },
@@ -614,8 +677,30 @@ const FEATURES_MODULE: WebModule = {
   id: 'mod_features_1',
   type: 'features',
   name: 'Características Avanzadas',
-  globalGroups: ['estructura', 'estilo', 'interaccion'],
+  globalGroups: ['contenido', 'estructura', 'estilo', 'interaccion'],
   globalSettings: {
+    contenido: [
+      { 
+        id: 'features', 
+        label: 'Lista de Características', 
+        type: 'repeater', 
+        defaultValue: [
+          { title: 'Velocidad Increíble', desc: 'Optimizado para cargar en menos de 1 segundo.', icon: 'Zap', badge: 'Popular' },
+          { title: 'Seguridad Total', desc: 'Protección de datos con los más altos estándares.', icon: 'Shield', badge: '' },
+          { title: 'Soporte 24/7', desc: 'Estamos aquí para ayudarte en cualquier momento.', icon: 'Headphones', badge: '' },
+          { title: 'Diseño Adaptable', desc: 'Se ve perfecto en cualquier dispositivo.', icon: 'Smartphone', badge: '' },
+          { title: 'Fácil de Usar', desc: 'Interfaz intuitiva diseñada para todos.', icon: 'Layout', badge: '' },
+          { title: 'Escalabilidad', desc: 'Crece con tu negocio sin complicaciones.', icon: 'TrendingUp', badge: 'Nuevo' }
+        ],
+        fields: [
+          { id: 'title', label: 'Título', type: 'text', defaultValue: 'Nueva Característica' },
+          { id: 'desc', label: 'Descripción', type: 'text', defaultValue: 'Descripción de la característica...' },
+          { id: 'icon', label: 'Icono', type: 'icon', defaultValue: 'Check' },
+          { id: 'badge', label: 'Etiqueta (Badge)', type: 'text', defaultValue: '' },
+          { id: 'link', label: 'Enlace (URL)', type: 'text', defaultValue: '' }
+        ]
+      }
+    ],
     estructura: [
       { id: 'layout', label: 'Diseño de Grilla', type: 'select', defaultValue: 'grid', options: [
         { label: 'Grilla Estándar', value: 'grid' },
@@ -624,34 +709,42 @@ const FEATURES_MODULE: WebModule = {
       ]},
       { id: 'columns', label: 'Columnas (Desktop)', type: 'range', defaultValue: 3, min: 1, max: 4 },
       { id: 'gap', label: 'Espacio entre tarjetas', type: 'range', defaultValue: 32, min: 16, max: 64, unit: 'px' },
-      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 80, min: 40, max: 160, unit: 'px' }
+      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 100, min: 40, max: 160, unit: 'px' }
     ],
     estilo: [
-      { id: 'bg_color', label: 'Fondo de Sección', type: 'color', defaultValue: 'transparent' }
+      { id: 'bg_color', label: 'Fondo de Sección', type: 'color', defaultValue: 'transparent' },
+      { id: 'show_divider', label: 'Mostrar Divisor', type: 'boolean', defaultValue: false }
     ],
     interaccion: [
       { id: 'stagger_anim', label: 'Entrada Escalonada', type: 'boolean', defaultValue: true }
     ],
-    contenido: [], tipografia: [], multimedia: []
+    tipografia: [], multimedia: []
   },
   elements: [
     { id: 'el_features_header', name: 'Encabezado de Sección', type: 'text', groups: ['contenido', 'tipografia', 'estructura'], settings: {
       contenido: [
+        { id: 'eyebrow', label: 'Pre-título', type: 'text', defaultValue: 'CARACTERÍSTICAS' },
         { id: 'title', label: 'Título', type: 'text', defaultValue: '¿Por qué elegirnos?' },
         { id: 'subtitle', label: 'Subtítulo', type: 'text', defaultValue: 'Soluciones diseñadas para escalar tu negocio al siguiente nivel.' }
       ],
       tipografia: [
         { id: 'align', label: 'Alineación', type: 'select', defaultValue: 'center', options: [{label:'Izquierda', value:'left'}, {label:'Centro', value:'center'}]},
-        { id: 'title_size', label: 'Tamaño Título', type: 'range', defaultValue: 32, min: 24, max: 48 }
+        { id: 'title_size', label: 'Tamaño Título', type: 'range', defaultValue: 40, min: 24, max: 64 },
+        { id: 'title_color', label: 'Color Título', type: 'color', defaultValue: '#0F172A' },
+        { id: 'eyebrow_color', label: 'Color Pre-título', type: 'color', defaultValue: 'var(--primary-color)' }
       ],
-      estructura: [{ id: 'margin_b', label: 'Margen Inferior', type: 'range', defaultValue: 60, min: 20, max: 100 }],
+      estructura: [{ id: 'margin_b', label: 'Margen Inferior', type: 'range', defaultValue: 80, min: 20, max: 120 }],
       estilo: [], multimedia: [], interaccion: []
     }},
-    { id: 'el_feature_card', name: 'Estilo de Tarjeta', type: 'style', groups: ['estilo', 'estructura', 'interaccion'], settings: {
+    { id: 'el_feature_card', name: 'Estilo de Tarjeta', type: 'style', groups: ['estilo', 'estructura', 'tipografia', 'interaccion'], settings: {
       estilo: [
         { id: 'card_bg', label: 'Fondo de Tarjeta', type: 'color', defaultValue: '#FFFFFF' },
         { id: 'card_border', label: 'Color de Borde', type: 'color', defaultValue: 'rgba(0,0,0,0.05)' },
         { id: 'card_shadow', label: 'Sombra', type: 'select', defaultValue: 'sm', options: [{label:'Ninguna', value:'none'}, {label:'Suave', value:'sm'}, {label:'Fuerte', value:'lg'}]}
+      ],
+      tipografia: [
+        { id: 'card_title_size', label: 'Tamaño Título Card', type: 'range', defaultValue: 20, min: 16, max: 28 },
+        { id: 'card_desc_size', label: 'Tamaño Desc Card', type: 'range', defaultValue: 15, min: 12, max: 20 }
       ],
       estructura: [
         { id: 'card_padding', label: 'Padding Interno', type: 'range', defaultValue: 32, min: 16, max: 48 },
@@ -660,7 +753,7 @@ const FEATURES_MODULE: WebModule = {
       interaccion: [
         { id: 'hover_lift', label: 'Elevar al pasar mouse', type: 'boolean', defaultValue: true }
       ],
-      contenido: [], tipografia: [], multimedia: []
+      contenido: [], multimedia: []
     }},
     { id: 'el_feature_icon', name: 'Iconografía', type: 'image', groups: ['multimedia', 'estilo', 'estructura'], settings: {
       multimedia: [{ id: 'icon_size', label: 'Tamaño de Icono', type: 'range', defaultValue: 24, min: 16, max: 48 }],
@@ -684,13 +777,15 @@ const ABOUT_MODULE: WebModule = {
       { id: 'layout', label: 'Layout de Sección', type: 'select', defaultValue: 'split_right', options: [
         { label: 'Imagen Izquierda / Texto Derecha', value: 'split_left' },
         { label: 'Texto Izquierda / Imagen Derecha', value: 'split_right' },
-        { label: 'Centrado (Narrativo)', value: 'centered' }
+        { label: 'Centrado (Narrativo)', value: 'centered' },
+        { label: 'Superposición (Overlapping)', value: 'overlapping' }
       ]},
-      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 100, min: 40, max: 200, unit: 'px' },
+      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 120, min: 40, max: 240, unit: 'px' },
       { id: 'content_width', label: 'Ancho de Contenido', type: 'range', defaultValue: 1200, min: 800, max: 1400, unit: 'px' }
     ],
     estilo: [
-      { id: 'bg_color', label: 'Fondo de Sección', type: 'color', defaultValue: '#FFFFFF' }
+      { id: 'bg_color', label: 'Fondo de Sección', type: 'color', defaultValue: '#FFFFFF' },
+      { id: 'show_decor', label: 'Elementos Decorativos', type: 'boolean', defaultValue: true }
     ],
     interaccion: [
       { id: 'entrance_anim', label: 'Animación de Entrada', type: 'boolean', defaultValue: true }
@@ -702,12 +797,17 @@ const ABOUT_MODULE: WebModule = {
       contenido: [
         { id: 'eyebrow', label: 'Pre-título', type: 'text', defaultValue: 'NUESTRA HISTORIA' },
         { id: 'title', label: 'Título Principal', type: 'text', defaultValue: 'Innovación con propósito humano' },
-        { id: 'description', label: 'Descripción', type: 'text', defaultValue: 'Desde 2015, hemos transformado la manera en que las empresas interactúan con la tecnología, poniendo siempre a las personas en el centro de cada solución.' }
+        { id: 'description', label: 'Descripción', type: 'text', defaultValue: 'Desde 2015, hemos transformado la manera en que las empresas interactúan con la tecnología, poniendo siempre a las personas en el centro de cada solución.' },
+        { id: 'quote', label: 'Cita (Quote)', type: 'text', defaultValue: '' },
+        { id: 'signature_url', label: 'Imagen de Firma', type: 'image', defaultValue: '' },
+        { id: 'button_text', label: 'Texto Botón', type: 'text', defaultValue: 'Saber más' },
+        { id: 'button_link', label: 'Enlace Botón', type: 'text', defaultValue: '#' }
       ],
       tipografia: [
         { id: 'title_size', label: 'Tamaño Título', type: 'range', defaultValue: 48, min: 32, max: 72 },
         { id: 'title_color', label: 'Color Título', type: 'color', defaultValue: '#0F172A' },
-        { id: 'desc_size', label: 'Tamaño Descripción', type: 'range', defaultValue: 18, min: 14, max: 24 }
+        { id: 'desc_size', label: 'Tamaño Descripción', type: 'range', defaultValue: 18, min: 14, max: 24 },
+        { id: 'eyebrow_color', label: 'Color Pre-título', type: 'color', defaultValue: 'var(--primary-color)' }
       ],
       estructura: [
         { id: 'align', label: 'Alineación de Texto', type: 'select', defaultValue: 'left', options: [{label:'Izquierda', value:'left'}, {label:'Centro', value:'center'}, {label:'Derecha', value:'right'}]}
@@ -721,22 +821,39 @@ const ABOUT_MODULE: WebModule = {
       ],
       estilo: [
         { id: 'radius', label: 'Redondeado', type: 'range', defaultValue: 24, min: 0, max: 60 },
+        { id: 'mask_type', label: 'Máscara de Imagen', type: 'select', defaultValue: 'none', options: [
+          { label: 'Ninguna', value: 'none' },
+          { label: 'Círculo', value: 'circle' },
+          { label: 'Orgánica (Blob)', value: 'organic' },
+          { label: 'Arco Superior', value: 'arch' }
+        ]},
         { id: 'show_frame', label: 'Marco Decorativo', type: 'boolean', defaultValue: false }
       ],
       interaccion: [
-        { id: 'floating', label: 'Efecto Flotante', type: 'boolean', defaultValue: false }
+        { id: 'floating', label: 'Efecto Flotante', type: 'boolean', defaultValue: false },
+        { id: 'parallax', label: 'Efecto Parallax', type: 'boolean', defaultValue: false }
       ],
       contenido: [], tipografia: [], estructura: []
     }},
     { id: 'el_about_stats', name: 'Estadísticas (Stats)', type: 'style', groups: ['contenido', 'estilo', 'estructura'], settings: {
       contenido: [
-        { id: 'show_stats', label: 'Mostrar Estadísticas', type: 'boolean', defaultValue: true }
+        { id: 'show_stats', label: 'Mostrar Estadísticas', type: 'boolean', defaultValue: true },
+        { id: 'stats_list', label: 'Lista de Stats', type: 'repeater', defaultValue: [
+          { value: '10+', label: 'Años de Experiencia', icon: 'Clock' },
+          { value: '500+', label: 'Proyectos Exitosos', icon: 'CheckCircle' },
+          { value: '24/7', label: 'Soporte Dedicado', icon: 'Headphones' }
+        ], fields: [
+          { id: 'value', label: 'Valor', type: 'text', defaultValue: '0' },
+          { id: 'label', label: 'Etiqueta', type: 'text', defaultValue: 'Etiqueta' },
+          { id: 'icon', label: 'Icono', type: 'icon', defaultValue: 'Star' }
+        ]}
       ],
       estilo: [
-        { id: 'stat_color', label: 'Color de Números', type: 'color', defaultValue: 'var(--primary-color)' }
+        { id: 'stat_color', label: 'Color de Números', type: 'color', defaultValue: 'var(--primary-color)' },
+        { id: 'stat_bg', label: 'Fondo de Bloque Stats', type: 'color', defaultValue: 'transparent' }
       ],
       estructura: [
-        { id: 'columns', label: 'Columnas', type: 'range', defaultValue: 3, min: 2, max: 4 }
+        { id: 'columns', label: 'Columnas', type: 'range', defaultValue: 3, min: 1, max: 4 }
       ],
       tipografia: [], multimedia: [], interaccion: []
     }}
@@ -747,15 +864,36 @@ const PROCESS_MODULE: WebModule = {
   id: 'mod_process_1',
   type: 'process',
   name: 'Proceso / Roadmap Premium',
-  globalGroups: ['estructura', 'estilo', 'interaccion'],
+  globalGroups: ['contenido', 'estructura', 'estilo', 'interaccion'],
   globalSettings: {
+    contenido: [
+      {
+        id: 'steps',
+        label: 'Pasos del Proceso',
+        type: 'repeater',
+        defaultValue: [
+          { title: 'Descubrimiento', desc: 'Analizamos tus necesidades y definimos los objetivos del proyecto.', icon: 'Search', badge: 'Fase 1' },
+          { title: 'Diseño', desc: 'Creamos prototipos visuales enfocados en la experiencia del usuario.', icon: 'PenTool', badge: 'Fase 2' },
+          { title: 'Desarrollo', desc: 'Construimos la solución utilizando las tecnologías más modernas.', icon: 'Code', badge: 'Fase 3' },
+          { title: 'Lanzamiento', desc: 'Desplegamos tu proyecto y aseguramos un inicio exitoso.', icon: 'Rocket', badge: 'Final' }
+        ],
+        fields: [
+          { id: 'title', label: 'Título', type: 'text', defaultValue: 'Nuevo Paso' },
+          { id: 'desc', label: 'Descripción', type: 'text', defaultValue: 'Descripción del paso...' },
+          { id: 'icon', label: 'Icono', type: 'icon', defaultValue: 'Check' },
+          { id: 'badge', label: 'Etiqueta (Badge)', type: 'text', defaultValue: '' },
+          { id: 'link', label: 'Enlace (URL)', type: 'text', defaultValue: '' }
+        ]
+      }
+    ],
     estructura: [
       { id: 'layout', label: 'Diseño de Proceso', type: 'select', defaultValue: 'horizontal', options: [
         { label: 'Pasos Horizontales', value: 'horizontal' },
         { label: 'Timeline Vertical', value: 'vertical' },
         { label: 'Lista Alternada', value: 'alternating' }
       ]},
-      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 100, min: 40, max: 200, unit: 'px' },
+      { id: 'columns', label: 'Columnas (Desktop)', type: 'range', defaultValue: 4, min: 2, max: 5 },
+      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 120, min: 40, max: 240, unit: 'px' },
       { id: 'gap', label: 'Espacio entre pasos', type: 'range', defaultValue: 40, min: 20, max: 100, unit: 'px' }
     ],
     estilo: [
@@ -763,33 +901,43 @@ const PROCESS_MODULE: WebModule = {
       { id: 'connector_style', label: 'Estilo de Conector', type: 'select', defaultValue: 'dashed', options: [
         { label: 'Sólido', value: 'solid' },
         { label: 'Punteado', value: 'dashed' },
+        { label: 'Gradiente', value: 'gradient' },
         { label: 'Oculto', value: 'none' }
-      ]}
+      ]},
+      { id: 'connector_color', label: 'Color de Conector', type: 'color', defaultValue: 'rgba(var(--primary-rgb), 0.2)' }
     ],
     interaccion: [
       { id: 'entrance_anim', label: 'Animación de Entrada', type: 'boolean', defaultValue: true },
-      { id: 'draw_connectors', label: 'Dibujar Conectores', type: 'boolean', defaultValue: true }
+      { id: 'draw_connectors', label: 'Dibujar Conectores', type: 'boolean', defaultValue: true },
+      { id: 'hover_glow', label: 'Brillo al pasar mouse', type: 'boolean', defaultValue: true }
     ],
-    contenido: [], tipografia: [], multimedia: []
+    tipografia: [], multimedia: []
   },
   elements: [
     { id: 'el_process_header', name: 'Encabezado', type: 'text', groups: ['contenido', 'tipografia', 'estructura'], settings: {
       contenido: [
+        { id: 'eyebrow', label: 'Pre-título', type: 'text', defaultValue: 'METODOLOGÍA' },
         { id: 'title', label: 'Título', type: 'text', defaultValue: 'Nuestro Proceso' },
         { id: 'subtitle', label: 'Subtítulo', type: 'text', defaultValue: 'Cómo trabajamos para hacer realidad tus ideas.' }
       ],
       tipografia: [
         { id: 'align', label: 'Alineación', type: 'select', defaultValue: 'center', options: [{label:'Izquierda', value:'left'}, {label:'Centro', value:'center'}]},
-        { id: 'title_size', label: 'Tamaño Título', type: 'range', defaultValue: 32, min: 24, max: 48 }
+        { id: 'title_size', label: 'Tamaño Título', type: 'range', defaultValue: 40, min: 24, max: 64 },
+        { id: 'title_color', label: 'Color Título', type: 'color', defaultValue: '#0F172A' },
+        { id: 'eyebrow_color', label: 'Color Pre-título', type: 'color', defaultValue: 'var(--primary-color)' }
       ],
-      estructura: [{ id: 'margin_b', label: 'Margen Inferior', type: 'range', defaultValue: 60, min: 20, max: 100 }],
+      estructura: [{ id: 'margin_b', label: 'Margen Inferior', type: 'range', defaultValue: 80, min: 20, max: 120 }],
       estilo: [], multimedia: [], interaccion: []
     }},
-    { id: 'el_process_step', name: 'Estilo de Paso', type: 'style', groups: ['estilo', 'estructura', 'interaccion'], settings: {
+    { id: 'el_process_step', name: 'Estilo de Paso', type: 'style', groups: ['estilo', 'estructura', 'tipografia', 'interaccion'], settings: {
       estilo: [
         { id: 'card_bg', label: 'Fondo de Tarjeta', type: 'color', defaultValue: '#FFFFFF' },
         { id: 'card_border', label: 'Color de Borde', type: 'color', defaultValue: 'rgba(0,0,0,0.05)' },
         { id: 'card_radius', label: 'Radio de Borde', type: 'range', defaultValue: 24, min: 0, max: 40 }
+      ],
+      tipografia: [
+        { id: 'step_title_size', label: 'Tamaño Título Paso', type: 'range', defaultValue: 20, min: 16, max: 28 },
+        { id: 'step_desc_size', label: 'Tamaño Desc Paso', type: 'range', defaultValue: 15, min: 12, max: 20 }
       ],
       estructura: [
         { id: 'card_padding', label: 'Padding Interno', type: 'range', defaultValue: 32, min: 16, max: 48 }
@@ -797,17 +945,21 @@ const PROCESS_MODULE: WebModule = {
       interaccion: [
         { id: 'hover_lift', label: 'Elevar al pasar mouse', type: 'boolean', defaultValue: true }
       ],
-      contenido: [], tipografia: [], multimedia: []
+      contenido: [], multimedia: []
     }},
-    { id: 'el_process_indicator', name: 'Indicador (Número/Icono)', type: 'style', groups: ['estilo', 'multimedia'], settings: {
+    { id: 'el_process_indicator', name: 'Indicador (Número/Icono)', type: 'style', groups: ['estilo', 'estructura', 'multimedia'], settings: {
       estilo: [
         { id: 'indicator_bg', label: 'Fondo Indicador', type: 'color', defaultValue: 'var(--primary-color)' },
-        { id: 'indicator_color', label: 'Color Texto/Icono', type: 'color', defaultValue: '#FFFFFF' }
+        { id: 'indicator_color', label: 'Color Texto/Icono', type: 'color', defaultValue: '#FFFFFF' },
+        { id: 'indicator_glow', label: 'Efecto de Brillo', type: 'boolean', defaultValue: true }
+      ],
+      estructura: [
+        { id: 'indicator_size', label: 'Tamaño Indicador', type: 'range', defaultValue: 48, min: 32, max: 64 }
       ],
       multimedia: [
-        { id: 'use_icons', label: 'Usar Iconos en vez de Números', type: 'boolean', defaultValue: false }
+        { id: 'use_icons', label: 'Usar Iconos en vez de Números', type: 'boolean', defaultValue: true }
       ],
-      contenido: [], tipografia: [], estructura: [], interaccion: []
+      contenido: [], tipografia: [], interaccion: []
     }}
   ]
 };
@@ -1028,8 +1180,28 @@ const STATS_MODULE: WebModule = {
   id: 'mod_stats_1',
   type: 'stats',
   name: 'Estadísticas de Impacto',
-  globalGroups: ['estructura', 'estilo', 'interaccion'],
+  globalGroups: ['contenido', 'estructura', 'estilo', 'interaccion'],
   globalSettings: {
+    contenido: [
+      {
+        id: 'stats',
+        label: 'Métricas',
+        type: 'repeater',
+        defaultValue: [
+          { value: 500, prefix: '', suffix: '+', label: 'Clientes Felices', icon: 'Users' },
+          { value: 120, prefix: '', suffix: 'k', label: 'Líneas de Código', icon: 'Zap' },
+          { value: 15, prefix: '', suffix: '', label: 'Premios Ganados', icon: 'Award' },
+          { value: 99, prefix: '', suffix: '%', label: 'Satisfacción', icon: 'Heart' }
+        ],
+        fields: [
+          { id: 'label', label: 'Etiqueta', type: 'text', defaultValue: 'Métrica' },
+          { id: 'value', label: 'Valor Numérico', type: 'range', defaultValue: 100, min: 0, max: 10000 },
+          { id: 'prefix', label: 'Prefijo', type: 'text', defaultValue: '' },
+          { id: 'suffix', label: 'Sufijo', type: 'text', defaultValue: '+' },
+          { id: 'icon', label: 'Icono', type: 'icon', defaultValue: 'Star' }
+        ]
+      }
+    ],
     estructura: [
       { id: 'layout', label: 'Diseño de Grilla', type: 'select', defaultValue: 'grid', options: [
         { label: 'Grilla Clásica', value: 'grid' },
@@ -1047,7 +1219,7 @@ const STATS_MODULE: WebModule = {
       { id: 'entrance_anim', label: 'Animación de Entrada', type: 'boolean', defaultValue: true },
       { id: 'count_speed', label: 'Velocidad de Conteo', type: 'range', defaultValue: 2, min: 1, max: 5, unit: 's' }
     ],
-    contenido: [], tipografia: [], multimedia: []
+    tipografia: [], multimedia: []
   },
   elements: [
     { id: 'el_stats_header', name: 'Encabezado', type: 'text', groups: ['contenido', 'tipografia', 'estructura'], settings: {
@@ -1427,8 +1599,59 @@ const PRICING_MODULE: WebModule = {
   id: 'mod_pricing_1',
   type: 'pricing',
   name: 'Planes y Precios Premium',
-  globalGroups: ['estructura', 'estilo', 'interaccion'],
+  globalGroups: ['contenido', 'estructura', 'estilo', 'interaccion'],
   globalSettings: {
+    contenido: [
+      {
+        id: 'plans',
+        label: 'Planes de Precios',
+        type: 'repeater',
+        defaultValue: [
+          {
+            name: 'Básico',
+            description: 'Ideal para individuos y proyectos pequeños.',
+            monthlyPrice: 0,
+            yearlyPrice: 0,
+            features: '5 Proyectos\n1GB Almacenamiento\nSoporte por Email\nDominio Personalizado',
+            cta: 'Empezar Gratis',
+            icon: 'Rocket',
+            highlight: false
+          },
+          {
+            name: 'Profesional',
+            description: 'Para equipos que necesitan escalar rápido.',
+            monthlyPrice: 29,
+            yearlyPrice: 24,
+            features: 'Proyectos Ilimitados\n20GB Almacenamiento\nSoporte Prioritario\nAnalíticas Avanzadas\nColaboradores (hasta 5)',
+            cta: 'Prueba Pro Gratis',
+            icon: 'Zap',
+            highlight: true,
+            badge: 'MÁS POPULAR'
+          },
+          {
+            name: 'Empresa',
+            description: 'Seguridad y control para grandes organizaciones.',
+            monthlyPrice: 99,
+            yearlyPrice: 89,
+            features: 'Todo en Pro\nAlmacenamiento Ilimitado\nSoporte 24/7\nSSO & Seguridad\nGestor de Cuenta',
+            cta: 'Contactar Ventas',
+            icon: 'Shield',
+            highlight: false
+          }
+        ],
+        fields: [
+          { id: 'name', label: 'Nombre del Plan', type: 'text', defaultValue: 'Nuevo Plan' },
+          { id: 'description', label: 'Descripción', type: 'text', defaultValue: 'Breve descripción...' },
+          { id: 'monthlyPrice', label: 'Precio Mensual', type: 'range', defaultValue: 10, min: 0, max: 1000 },
+          { id: 'yearlyPrice', label: 'Precio Anual (Mes)', type: 'range', defaultValue: 8, min: 0, max: 1000 },
+          { id: 'features', label: 'Características (una por línea)', type: 'text', defaultValue: 'Característica 1\nCaracterística 2' },
+          { id: 'cta', label: 'Texto Botón', type: 'text', defaultValue: 'Comprar' },
+          { id: 'icon', label: 'Icono', type: 'icon', defaultValue: 'Check' },
+          { id: 'highlight', label: 'Destacar Plan', type: 'boolean', defaultValue: false },
+          { id: 'badge', label: 'Etiqueta (Badge)', type: 'text', defaultValue: '' }
+        ]
+      }
+    ],
     estructura: [
       { id: 'columns', label: 'Columnas (Desktop)', type: 'range', defaultValue: 3, min: 1, max: 4 },
       { id: 'gap', label: 'Espacio entre tarjetas', type: 'range', defaultValue: 32, min: 16, max: 64, unit: 'px' },
@@ -1441,7 +1664,7 @@ const PRICING_MODULE: WebModule = {
       { id: 'entrance_anim', label: 'Animación de Entrada', type: 'boolean', defaultValue: true },
       { id: 'stagger_anim', label: 'Entrada Escalonada', type: 'boolean', defaultValue: true }
     ],
-    contenido: [], tipografia: [], multimedia: []
+    tipografia: [], multimedia: []
   },
   elements: [
     { id: 'el_pricing_header', name: 'Encabezado de Sección', type: 'text', groups: ['contenido', 'tipografia', 'estructura'], settings: {
@@ -2334,6 +2557,54 @@ const SettingControl: React.FC<{
               className="w-5 h-5 rounded-md border border-border shadow-sm p-0 overflow-hidden cursor-pointer"
             />
           </div>
+        </div>
+      );
+    case 'icon':
+      const POPULAR_ICONS = [
+        'Home', 'User', 'Settings', 'Mail', 'Phone', 'MapPin', 'Calendar', 'Clock', 'Search', 'Bell',
+        'Camera', 'Video', 'Image', 'Music', 'Mic', 'Headphones', 'Play', 'Pause', 'Star', 'Heart',
+        'ThumbsUp', 'Share2', 'Link', 'ExternalLink', 'Download', 'Upload', 'Trash2', 'Edit3', 'Plus', 'Check', 'X',
+        'AlertCircle', 'Info', 'HelpCircle', 'Lock', 'Shield', 'ShoppingCart', 'CreditCard', 'Tag', 'Gift',
+        'Briefcase', 'GraduationCap', 'Book', 'FileText', 'Globe', 'Wifi', 'Smartphone', 'Monitor',
+        'Server', 'Database', 'Code', 'Terminal', 'Cpu', 'Zap', 'Flame', 'Droplet', 'Sun', 'Moon',
+        'Twitter', 'Instagram', 'Facebook', 'Linkedin', 'Github', 'Youtube', 'Slack', 'Send', 'MessageSquare', 'ArrowRight'
+      ];
+      
+      return (
+        <div className="space-y-2">
+          <label className="text-[10px] font-bold text-text/40 uppercase tracking-wider">{setting.label}</label>
+          <div className="flex flex-wrap gap-1.5 p-2 bg-secondary/50 rounded-xl border border-border/50 max-h-[160px] overflow-y-auto custom-scrollbar">
+            {POPULAR_ICONS.map(iconName => {
+              const IconComp = (LucideIcons as any)[iconName];
+              const isSelected = currentValue === iconName;
+              return (
+                <button
+                  key={iconName}
+                  onClick={() => onChange(iconName)}
+                  title={iconName}
+                  className={`w-8 h-8 flex items-center justify-center rounded-lg transition-all ${
+                    isSelected 
+                      ? 'bg-primary text-white shadow-md shadow-primary/20 scale-110 z-10' 
+                      : 'bg-surface text-text/60 hover:text-primary hover:bg-primary/5 border border-border/50'
+                  }`}
+                >
+                  {IconComp ? <IconComp size={14} /> : <span className="text-[8px]">{iconName}</span>}
+                </button>
+              );
+            })}
+          </div>
+          {currentValue && (
+            <div className="flex items-center gap-2 px-2 py-1 bg-primary/5 rounded-lg border border-primary/10">
+              <span className="text-[9px] font-bold text-primary uppercase tracking-tighter">Seleccionado:</span>
+              <span className="text-[10px] font-medium text-text/80">{currentValue}</span>
+              <button 
+                onClick={() => onChange('')}
+                className="ml-auto text-text/40 hover:text-red-500 transition-colors"
+              >
+                <X size={10} />
+              </button>
+            </div>
+          )}
         </div>
       );
     case 'repeater':
@@ -3581,7 +3852,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         userId: currentUserId || undefined,
         siteId: siteId,
         siteName: finalSiteName,
-        isPublish: false,
+        isActive: false,
         name: finalSiteName,
         contentDraft: editorState,
         status: newStatus,
@@ -3732,7 +4003,6 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         projectId,
         siteId: siteId,
         siteName: finalSiteName,
-        isPublish: true,
         isActive: true, // Default to true on publish
         content: renderingContract,
         metadata: {
@@ -3746,6 +4016,14 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
 
       if (result) {
         console.log('Sitio publicado con éxito (SIP v5.0)');
+        
+        // SIP v5.0: Link subdomain if exists
+        const subdomain = initialPage && 'subdomain' in initialPage ? (initialPage as any).subdomain : undefined;
+        if (subdomain && result.id) {
+          console.log(`[SIP v5.0] Vinculando subdominio: ${subdomain} con published_site_id: ${result.id}`);
+          await linkSubdomain(subdomain, result.id);
+        }
+
         setPublishStatus('success');
         // Also save a draft to keep them in sync and update status to 'published'
         await handleSaveDraft('published');

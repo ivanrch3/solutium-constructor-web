@@ -26,6 +26,7 @@ export const HeaderModule: React.FC<{
   const position = getVal(null, 'position', 'sticky');
   const height = getVal(null, 'height', 80);
   const maxWidth = getVal(null, 'max_width', 1400);
+  const menuAlignment = getVal(null, 'menu_alignment', 'center');
   const bgType = getVal(null, 'bg_type', 'glass');
   const bgColor = getVal(null, 'bg_color', '#FFFFFF');
   const borderColor = getVal(null, 'border_color', 'rgba(0,0,0,0.05)');
@@ -37,6 +38,7 @@ export const HeaderModule: React.FC<{
   const logoType = getVal(`${moduleId}_el_header_logo`, 'logo_type', 'image');
   const logoText = getVal(`${moduleId}_el_header_logo`, 'logo_text', 'MI MARCA');
   const logoImg = getVal(`${moduleId}_el_header_logo`, 'logo_img', '');
+  const logoImgAlt = getVal(`${moduleId}_el_header_logo`, 'logo_img_alt', '');
   const logoWidth = getVal(`${moduleId}_el_header_logo`, 'logo_width', 120);
 
   // Element: Nav
@@ -90,59 +92,88 @@ export const HeaderModule: React.FC<{
 
   const positionClass = position === 'sticky' ? 'sticky top-0' : position === 'fixed' ? 'fixed top-0 left-0 right-0' : 'relative';
 
+  // Logo selection logic (SIP v5.1)
+  const isTransparentMode = bgType === 'transparent' && !isScrolled;
+  const activeLogo = (isTransparentMode && logoImgAlt) ? logoImgAlt : logoImg;
+
   return (
     <header className={`${positionClass} w-full z-[100] flex items-center`} style={headerStyle}>
-      <div className="mx-auto px-6 w-full flex items-center justify-between" style={{ maxWidth: `${maxWidth}px` }}>
+      <div className="mx-auto px-6 w-full flex items-center justify-between gap-8" style={{ maxWidth: `${maxWidth}px` }}>
         
         {/* Logo */}
-        <div className="flex-shrink-0">
-          {logoType === 'image' && logoImg ? (
+        <div className="flex-shrink-0 z-10">
+          {logoType === 'image' && activeLogo ? (
             <img 
-              src={logoImg} 
+              src={activeLogo} 
               alt="Logo" 
               style={{ width: `${logoWidth}px` }} 
-              className="h-auto object-contain"
+              className="h-auto object-contain transition-all duration-300"
               referrerPolicy="no-referrer"
             />
           ) : (
-            <span className="font-black tracking-tighter text-xl" style={{ color: linkColor }}>
+            <span className="font-black tracking-tighter text-xl" style={{ color: isTransparentMode ? '#FFFFFF' : linkColor }}>
               {logoText}
             </span>
           )}
         </div>
 
         {/* Desktop Nav */}
-        <nav className="hidden @md:flex items-center gap-8">
-          {links.map((link: any, idx: number) => (
-            <a
-              key={idx}
-              href={link.url}
-              className="relative group py-2 transition-colors"
-              style={{ 
-                fontSize: `${fontSize}px`, 
-                fontWeight: fontWeight === 'bold' ? 700 : fontWeight === 'medium' ? 500 : 400,
-                color: linkColor 
-              }}
-            >
-              {link.label}
-              {activeStyle === 'underline' && (
-                <span 
-                  className="absolute bottom-0 left-0 w-0 h-0.5 transition-all group-hover:w-full"
-                  style={{ backgroundColor: activeColor }}
-                />
-              )}
-              {activeStyle === 'dot' && (
-                <span 
-                  className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                  style={{ backgroundColor: activeColor }}
-                />
-              )}
-            </a>
-          ))}
+        <nav className={`hidden @md:flex items-center gap-8 flex-1 ${
+          menuAlignment === 'center' ? 'justify-center' : 
+          menuAlignment === 'right' ? 'justify-end' : 'justify-start'
+        }`}>
+          {links.map((link: any, idx: number) => {
+            const hasDropdown = link.has_dropdown;
+            let submenuItems = [];
+            try {
+              submenuItems = typeof link.submenu_items === 'string' ? JSON.parse(link.submenu_items) : (link.submenu_items || []);
+            } catch (e) {
+              submenuItems = [];
+            }
+
+            return (
+              <div key={idx} className="relative group py-4">
+                <a
+                  href={link.url}
+                  className="flex items-center gap-1 transition-colors"
+                  style={{ 
+                    fontSize: `${fontSize}px`, 
+                    fontWeight: fontWeight === 'bold' ? 700 : fontWeight === 'medium' ? 500 : 400,
+                    color: isTransparentMode ? '#FFFFFF' : linkColor 
+                  }}
+                >
+                  {link.label}
+                  {hasDropdown && <Menu size={12} className="opacity-50" />}
+                  {activeStyle === 'underline' && (
+                    <span 
+                      className="absolute bottom-3 left-0 w-0 h-0.5 transition-all group-hover:w-full"
+                      style={{ backgroundColor: activeColor }}
+                    />
+                  )}
+                </a>
+
+                {hasDropdown && submenuItems.length > 0 && (
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 pt-2 opacity-0 translate-y-2 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto transition-all duration-200 z-50">
+                    <div className="bg-surface border border-border rounded-xl shadow-xl p-2 min-w-[200px]">
+                      {submenuItems.map((sub: any, sIdx: number) => (
+                        <a
+                          key={sIdx}
+                          href={sub.url}
+                          className="block px-4 py-2.5 text-sm rounded-lg hover:bg-secondary transition-colors text-text/80 hover:text-primary font-medium"
+                        >
+                          {sub.label}
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </nav>
 
         {/* Actions */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 z-10">
           {showBtn && (
             <motion.button
               whileHover={btnHover === 'scale' ? { scale: 1.05 } : { boxShadow: `0 0 20px ${btnBg}40` }}

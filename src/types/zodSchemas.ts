@@ -134,7 +134,7 @@ export const webBuilderSiteSchema = z.object({
   isPublish: z.boolean().optional().nullable(),
   name: z.string(),
   contentDraft: z.any(),
-  status: z.enum(['draft', 'published']),
+  status: z.enum(['draft', 'published', 'modified']),
   subdomain: z.string().optional().nullable(),
   createdAt: z.string().optional().nullable(),
   updatedAt: z.string().optional().nullable(),
@@ -147,6 +147,7 @@ export const publishedSiteSchema = z.object({
   siteId: z.string().optional().nullable(),
   siteName: z.string().optional().nullable(),
   isPublish: z.boolean().optional().nullable(),
+  isActive: z.boolean().optional().nullable(),
   content: z.any(), // RenderingContract
   metadata: z.any().optional().nullable(),
   subdomainId: z.string().optional().nullable(),

@@ -3424,7 +3424,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     return `${yy}-${mm}-${dd}_${hh}-${min}-${ss}-${ampm}`;
   };
 
-  const handleSaveDraft = async () => {
+  const handleSaveDraft = async (forcedStatus?: 'draft' | 'published' | 'modified') => {
     if (!projectId) return;
     setSaveStatus('loading');
     setIsSaving(true);
@@ -3436,6 +3436,18 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       const siteId = initialPage?.siteId || project?.webConfig?.siteId || project?.id || `site_${Date.now()}`;
       
       console.log(`[SAVE DRAFT] Usando siteId: ${siteId} para el proyecto: ${projectId}`);
+
+      // Determine new status based on SIP v5.0 logic
+      let newStatus: 'draft' | 'published' | 'modified' = 'draft';
+      if (forcedStatus) {
+        newStatus = forcedStatus;
+      } else if (initialPage && 'status' in initialPage) {
+        if (initialPage.status === 'published') {
+          newStatus = 'modified';
+        } else {
+          newStatus = initialPage.status;
+        }
+      }
 
       const payload = {
         data: editorState,
@@ -3457,12 +3469,12 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         isPublish: false,
         name: payload.metadata.siteName,
         contentDraft: payload.data,
-        status: 'draft' as const,
+        status: newStatus,
       };
       
       const result = await saveWebBuilderSiteDraft(siteData);
       if (result) {
-        console.log('Borrador guardado con éxito (SIP v4.0)');
+        console.log(`Borrador guardado con éxito (Status: ${newStatus}) (SIP v5.0)`);
         setSaveStatus('success');
         setTimeout(() => setSaveStatus('idle'), 3000);
       } else {
@@ -3601,15 +3613,16 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         siteId: payload.metadata.siteId,
         siteName: payload.metadata.siteName,
         isPublish: true,
+        isActive: true, // Default to true on publish
         content: payload.data,
         metadata: payload.metadata
       });
 
       if (result) {
-        console.log('Sitio publicado con éxito (SIP v4.0)');
+        console.log('Sitio publicado con éxito (SIP v5.0)');
         setPublishStatus('success');
-        // Also save a draft to keep them in sync
-        await handleSaveDraft();
+        // Also save a draft to keep them in sync and update status to 'published'
+        await handleSaveDraft('published');
         setTimeout(() => setPublishStatus('idle'), 3000);
         setShowPublishModal(false);
       } else {

@@ -156,7 +156,7 @@ export interface WebBuilderSite {
   isPublish?: boolean;
   name: string;
   contentDraft: any; 
-  status: 'draft' | 'published';
+  status: 'draft' | 'published' | 'modified';
   subdomain?: string;
   createdAt?: string;
   updatedAt?: string;
@@ -182,6 +182,7 @@ export interface PublishedSite {
   siteId?: string;
   siteName?: string;
   isPublish?: boolean;
+  isActive?: boolean;
   content: RenderingContract;
   metadata?: any;
   subdomainId?: string;

@@ -10,10 +10,11 @@ import { Dashboard } from './components/Dashboard';
 import { MethodSelection, CreationMethod } from './components/MethodSelection';
 import { ProjectForm, ProjectFormData } from './components/ProjectForm';
 import { WebConstructor } from './components/constructor/WebConstructor';
+import { Viewer } from './components/Viewer';
 import { Profile, Project, Asset, WebBuilderSite, PublishedSite } from './types/schema';
 import { getAssets } from './services/dataService';
 
-type View = 'dashboard' | 'selection-method' | 'form' | 'generator' | 'constructor';
+type View = 'dashboard' | 'selection-method' | 'form' | 'generator' | 'constructor' | 'viewer';
 
 const AppContent: React.FC = () => {
   const [isHandshakeComplete, setIsHandshakeComplete] = useState(false);
@@ -314,7 +315,11 @@ const AppContent: React.FC = () => {
             onSelectAsset={handleSelectAsset}
             onSelectPage={(page) => {
               setSelectedPage(page);
-              setCurrentView('constructor');
+              if (!('contentDraft' in page)) {
+                setCurrentView('viewer');
+              } else {
+                setCurrentView('constructor');
+              }
             }}
             logoUrl={urlLogo}
             logoWhiteUrl={urlLogoWhite}
@@ -371,6 +376,16 @@ const AppContent: React.FC = () => {
             logoWhiteUrl={urlLogoWhite}
             project={project}
             initialPage={selectedPage}
+          />
+        );
+      case 'viewer':
+        return (
+          <Viewer 
+            site={selectedPage as PublishedSite}
+            onBack={() => {
+              setSelectedPage(null);
+              setCurrentView('dashboard');
+            }}
           />
         );
       default:

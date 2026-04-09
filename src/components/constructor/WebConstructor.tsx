@@ -2710,7 +2710,8 @@ const TopBar = ({
   isFullscreen,
   setIsFullscreen,
   saveStatus,
-  publishStatus
+  publishStatus,
+  onLogoClick
 }: { 
   onSave: () => void, 
   onPublish: () => void, 
@@ -2720,20 +2721,24 @@ const TopBar = ({
   isFullscreen: boolean,
   setIsFullscreen: (f: boolean) => void,
   saveStatus: 'idle' | 'loading' | 'success' | 'error',
-  publishStatus: 'idle' | 'loading' | 'success' | 'error'
+  publishStatus: 'idle' | 'loading' | 'success' | 'error',
+  onLogoClick: () => void
 }) => (
   <div className="h-[60px] bg-surface border-b border-border/60 flex items-center justify-between px-6 z-20">
-    <div className="flex items-center gap-4">
+    <div 
+      className="flex items-center gap-4 cursor-pointer group"
+      onClick={onLogoClick}
+    >
       {logoUrl && (
         <img 
           src={logoUrl} 
           alt="Logo" 
-          className="h-8 w-auto object-contain mr-2" 
+          className="h-8 w-auto object-contain mr-2 group-hover:scale-105 transition-transform" 
           referrerPolicy="no-referrer" 
         />
       )}
       <div className="flex flex-col">
-        <h2 className="text-base font-bold text-text">Editor de Módulos</h2>
+        <h2 className="text-base font-bold text-text group-hover:text-primary transition-colors">Editor de Módulos</h2>
         <p className="text-xs font-semibold text-text/50 uppercase tracking-wider">Añade módulos para construir tu página</p>
       </div>
     </div>
@@ -2839,6 +2844,57 @@ const TopBar = ({
         </motion.button>
       </div>
     </div>
+  </div>
+);
+
+const UnsavedChangesModal = ({ 
+  onCancel, 
+  onSaveAndExit, 
+  onExitWithoutSaving 
+}: { 
+  onCancel: () => void, 
+  onSaveAndExit: () => void, 
+  onExitWithoutSaving: () => void 
+}) => (
+  <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[100] p-6">
+    <motion.div 
+      initial={{ opacity: 0, scale: 0.95, y: 20 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      className="bg-surface rounded-3xl p-8 max-w-md w-full shadow-2xl border border-border"
+    >
+      <div className="flex flex-col items-center text-center">
+        <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mb-6">
+          <HelpCircle className="w-8 h-8 text-amber-600" />
+        </div>
+        <h2 className="text-2xl font-bold text-text mb-3">Cambios sin guardar</h2>
+        <p className="text-text/60 mb-8 leading-relaxed">
+          Tienes cambios en el diseño que no han sido guardados. ¿Qué deseas hacer antes de salir?
+        </p>
+        
+        <div className="flex flex-col gap-3 w-full">
+          <button 
+            onClick={onSaveAndExit}
+            className="w-full py-3.5 bg-primary text-white font-bold rounded-xl shadow-lg shadow-primary/20 hover:opacity-90 transition-all flex items-center justify-center gap-2"
+          >
+            <Save size={18} />
+            Guardar cambios y salir
+          </button>
+          <button 
+            onClick={onExitWithoutSaving}
+            className="w-full py-3.5 bg-secondary text-text/80 font-bold rounded-xl hover:bg-border/40 transition-all flex items-center justify-center gap-2"
+          >
+            <Trash2 size={18} />
+            Salir sin guardar
+          </button>
+          <button 
+            onClick={onCancel}
+            className="w-full py-3.5 text-text/40 font-bold hover:text-text/60 transition-all"
+          >
+            Cancelar y seguir editando
+          </button>
+        </div>
+      </div>
+    </motion.div>
   </div>
 );
 
@@ -3253,6 +3309,8 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   const [structurePanelCollapsed, setStructurePanelCollapsed] = useState(false);
   const [viewport, setViewport] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [showUnsavedModal, setShowUnsavedModal] = useState(false);
   const [editorState, setEditorState] = useState<EditorState>(() => {
     if (initialPage && 'contentDraft' in initialPage && initialPage.contentDraft) {
       return initialPage.contentDraft as EditorState;
@@ -3276,6 +3334,27 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       });
     }
   }, [projectId]);
+
+  // Track unsaved changes
+  React.useEffect(() => {
+    // We skip the first render by checking if editorState has modules or if it's different from initial
+    // But a simpler way is to just set it to true after any change
+    // For now, let's assume any change to editorState or siteName after mount makes it dirty
+  }, [editorState, siteName]);
+
+  // We need to wrap setEditorState and setSiteName to set hasUnsavedChanges
+  const updateEditorState = (updater: (prev: EditorState) => EditorState) => {
+    setEditorState(prev => {
+      const next = updater(prev);
+      if (next !== prev) setHasUnsavedChanges(true);
+      return next;
+    });
+  };
+
+  const updateSiteName = (name: string) => {
+    setSiteName(name);
+    setHasUnsavedChanges(true);
+  };
 
   const addModule = (module: WebModule) => {
     console.log('Adding module:', module.type);
@@ -3330,7 +3409,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       }
     });
     
-    setEditorState(prev => ({
+    updateEditorState(prev => ({
       ...prev,
       addedModules: [...prev.addedModules, newModule],
       expandedModuleId: null,
@@ -3374,7 +3453,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     if (!moduleToDelete) return;
     
     const moduleId = moduleToDelete.id;
-    setEditorState(prev => {
+    updateEditorState(prev => {
       const newModules = prev.addedModules.filter(m => m.id !== moduleId);
       
       // Clean up settings for this module
@@ -3397,7 +3476,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   };
 
   const handleSettingChange = (elementOrModuleId: string, settingId: string, value: any) => {
-    setEditorState(prev => ({
+    updateEditorState(prev => ({
       ...prev,
       settingsValues: {
         ...prev.settingsValues,
@@ -3422,6 +3501,23 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     const ss = now.getSeconds().toString().padStart(2, '0');
     
     return `${yy}-${mm}-${dd}_${hh}-${min}-${ss}-${ampm}`;
+  };
+
+  const handleLogoClick = () => {
+    if (hasUnsavedChanges) {
+      setShowUnsavedModal(true);
+    } else {
+      onBackToDashboard();
+    }
+  };
+
+  const handleSaveAndExit = async () => {
+    await handleSaveDraft();
+    onBackToDashboard();
+  };
+
+  const handleExitWithoutSaving = () => {
+    onBackToDashboard();
   };
 
   const handleSaveDraft = async (forcedStatus?: 'draft' | 'published' | 'modified') => {
@@ -3476,6 +3572,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       if (result) {
         console.log(`Borrador guardado con éxito (Status: ${newStatus}) (SIP v5.0)`);
         setSaveStatus('success');
+        setHasUnsavedChanges(false);
         setTimeout(() => setSaveStatus('idle'), 3000);
       } else {
         setSaveStatus('error');
@@ -3676,6 +3773,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
                 setIsFullscreen={setIsFullscreen}
                 saveStatus={saveStatus}
                 publishStatus={publishStatus}
+                onLogoClick={handleLogoClick}
               />
               <Canvas 
                 editorState={editorState} 
@@ -3690,6 +3788,14 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
                 isFullscreen={isFullscreen}
                 setIsFullscreen={setIsFullscreen}
               />
+              
+              {showUnsavedModal && (
+                <UnsavedChangesModal 
+                  onCancel={() => setShowUnsavedModal(false)}
+                  onSaveAndExit={handleSaveAndExit}
+                  onExitWithoutSaving={handleExitWithoutSaving}
+                />
+              )}
             </div>
           </div>
         )}

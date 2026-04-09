@@ -968,7 +968,7 @@ const GALLERY_MODULE: WebModule = {
   id: 'mod_gallery_1',
   type: 'gallery',
   name: 'Galería Visual Premium',
-  globalGroups: ['estructura', 'estilo', 'interaccion'],
+  globalGroups: ['estructura', 'estilo', 'interaccion', 'multimedia'],
   globalSettings: {
     estructura: [
       { id: 'layout', label: 'Diseño de Grilla', type: 'select', defaultValue: 'grid', options: [
@@ -981,13 +981,25 @@ const GALLERY_MODULE: WebModule = {
       { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 100, min: 40, max: 200, unit: 'px' }
     ],
     estilo: [
-      { id: 'bg_color', label: 'Fondo de Sección', type: 'color', defaultValue: '#FFFFFF' }
+      { id: 'bg_color', label: 'Fondo de Sección', type: 'color', defaultValue: '#FFFFFF' },
+      { id: 'image_filter', label: 'Filtro de Imagen', type: 'select', defaultValue: 'none', options: [
+        { label: 'Ninguno', value: 'none' },
+        { label: 'Escala de Grises', value: 'grayscale' },
+        { label: 'Sepia', value: 'sepia' },
+        { label: 'Desenfocado', value: 'blur' }
+      ]},
+      { id: 'filter_on_hover', label: 'Quitar filtro al pasar mouse', type: 'boolean', defaultValue: true }
     ],
     interaccion: [
       { id: 'entrance_anim', label: 'Animación de Entrada', type: 'boolean', defaultValue: true },
-      { id: 'enable_lightbox', label: 'Habilitar Lightbox (Zoom)', type: 'boolean', defaultValue: true }
+      { id: 'enable_lightbox', label: 'Habilitar Lightbox (Zoom)', type: 'boolean', defaultValue: true },
+      { id: 'lightbox_nav', label: 'Navegación en Lightbox', type: 'boolean', defaultValue: true }
     ],
-    contenido: [], tipografia: [], multimedia: []
+    multimedia: [
+      { id: 'show_filters', label: 'Mostrar Filtros de Categoría', type: 'boolean', defaultValue: true },
+      { id: 'categories', label: 'Categorías (Separadas por coma)', type: 'text', defaultValue: 'Todos, Diseño, Arquitectura, Naturaleza' }
+    ],
+    contenido: [], tipografia: []
   },
   elements: [
     { id: 'el_gallery_header', name: 'Encabezado', type: 'text', groups: ['contenido', 'tipografia', 'estructura'], settings: {
@@ -1005,7 +1017,9 @@ const GALLERY_MODULE: WebModule = {
     { id: 'el_gallery_item', name: 'Estilo de Imagen', type: 'image', groups: ['estilo', 'estructura', 'interaccion'], settings: {
       estilo: [
         { id: 'radius', label: 'Redondeado', type: 'range', defaultValue: 16, min: 0, max: 40 },
-        { id: 'overlay_color', label: 'Color de Overlay (Hover)', type: 'color', defaultValue: 'rgba(0,0,0,0.4)' }
+        { id: 'overlay_color', label: 'Color de Overlay (Hover)', type: 'color', defaultValue: 'rgba(0,0,0,0.4)' },
+        { id: 'border_width', label: 'Ancho de Borde', type: 'range', defaultValue: 0, min: 0, max: 10, unit: 'px' },
+        { id: 'border_color', label: 'Color de Borde', type: 'color', defaultValue: 'var(--primary-color)' }
       ],
       estructura: [
         { id: 'aspect_ratio', label: 'Relación de Aspecto', type: 'select', defaultValue: 'square', options: [
@@ -1019,6 +1033,7 @@ const GALLERY_MODULE: WebModule = {
         { id: 'hover_effect', label: 'Efecto al pasar mouse', type: 'select', defaultValue: 'zoom', options: [
           { label: 'Zoom Suave', value: 'zoom' },
           { label: 'Levantar', value: 'lift' },
+          { label: 'Brillo', value: 'glow' },
           { label: 'Ninguno', value: 'none' }
         ]}
       ],
@@ -1035,7 +1050,8 @@ const GALLERY_MODULE: WebModule = {
       estilo: [
         { id: 'caption_position', label: 'Posición', type: 'select', defaultValue: 'bottom', options: [
           { label: 'Inferior', value: 'bottom' },
-          { label: 'Centro', value: 'center' }
+          { label: 'Centro', value: 'center' },
+          { label: 'Superior', value: 'top' }
         ]}
       ],
       estructura: [], multimedia: [], interaccion: []
@@ -1047,13 +1063,14 @@ const VIDEO_MODULE: WebModule = {
   id: 'mod_video_1',
   type: 'video',
   name: 'Video Showcase Premium',
-  globalGroups: ['estructura', 'estilo', 'interaccion'],
+  globalGroups: ['estructura', 'estilo', 'interaccion', 'multimedia'],
   globalSettings: {
     estructura: [
       { id: 'layout', label: 'Diseño de Video', type: 'select', defaultValue: 'centered', options: [
         { label: 'Ancho Completo (Inmersivo)', value: 'full' },
         { label: 'Tarjeta Centrada', value: 'centered' },
-        { label: 'Split (Texto + Video)', value: 'split' }
+        { label: 'Split (Texto + Video)', value: 'split' },
+        { label: 'Fondo de Sección (Background)', value: 'background' }
       ]},
       { id: 'aspect_ratio', label: 'Relación de Aspecto', type: 'select', defaultValue: '16/9', options: [
         { label: 'Cinematográfico (16:9)', value: '16/9' },
@@ -1065,12 +1082,27 @@ const VIDEO_MODULE: WebModule = {
     ],
     estilo: [
       { id: 'bg_color', label: 'Fondo de Sección', type: 'color', defaultValue: '#FFFFFF' },
-      { id: 'overlay_color', label: 'Color de Overlay', type: 'color', defaultValue: 'rgba(0,0,0,0.2)' }
+      { id: 'overlay_color', label: 'Color de Capa (Overlay)', type: 'color', defaultValue: 'rgba(0,0,0,0.2)' },
+      { id: 'video_filter', label: 'Filtro de Video', type: 'select', defaultValue: 'none', options: [
+        { label: 'Ninguno', value: 'none' },
+        { label: 'Escala de Grises', value: 'grayscale' },
+        { label: 'Sepia', value: 'sepia' },
+        { label: 'Desenfocado', value: 'blur' }
+      ]}
     ],
     interaccion: [
-      { id: 'entrance_anim', label: 'Animación de Entrada', type: 'boolean', defaultValue: true }
+      { id: 'entrance_anim', label: 'Animación de Entrada', type: 'boolean', defaultValue: true },
+      { id: 'parallax_effect', label: 'Efecto Parallax', type: 'boolean', defaultValue: false },
+      { id: 'hover_to_play', label: 'Reproducir al pasar mouse', type: 'boolean', defaultValue: false }
     ],
-    contenido: [], tipografia: [], multimedia: []
+    multimedia: [
+      { id: 'mask_shape', label: 'Forma de Máscara', type: 'select', defaultValue: 'none', options: [
+        { label: 'Ninguna', value: 'none' },
+        { label: 'Orgánica (Blob)', value: 'blob' },
+        { label: 'Círculo', value: 'circle' }
+      ]}
+    ],
+    contenido: [], tipografia: []
   },
   elements: [
     { id: 'el_video_player', name: 'Reproductor de Video', type: 'video', groups: ['multimedia', 'estilo', 'interaccion'], settings: {
@@ -1083,7 +1115,8 @@ const VIDEO_MODULE: WebModule = {
       ],
       estilo: [
         { id: 'radius', label: 'Redondeado', type: 'range', defaultValue: 24, min: 0, max: 60 },
-        { id: 'shadow', label: 'Sombra Profunda', type: 'boolean', defaultValue: true }
+        { id: 'shadow', label: 'Sombra Profunda', type: 'boolean', defaultValue: true },
+        { id: 'border_color', label: 'Color de Borde', type: 'color', defaultValue: 'rgba(var(--primary-rgb), 0.3)' }
       ],
       interaccion: [
         { id: 'lightbox', label: 'Abrir en Lightbox', type: 'boolean', defaultValue: false },
@@ -1095,17 +1128,24 @@ const VIDEO_MODULE: WebModule = {
       ],
       contenido: [], tipografia: [], estructura: []
     }},
-    { id: 'el_video_text', name: 'Textos de Apoyo', type: 'text', groups: ['contenido', 'tipografia'], settings: {
+    { id: 'el_video_text', name: 'Textos de Apoyo', type: 'text', groups: ['contenido', 'tipografia', 'estructura'], settings: {
       contenido: [
         { id: 'show_text', label: 'Mostrar Textos', type: 'boolean', defaultValue: true },
-        { id: 'title', label: 'Título del Video', type: 'text', defaultValue: 'Descubre nuestra visión' },
-        { id: 'subtitle', label: 'Subtítulo', type: 'text', defaultValue: 'Un recorrido visual por lo que nos hace únicos.' }
+        { id: 'eyebrow', label: 'Pre-título', type: 'text', defaultValue: 'SHOWCASE' },
+        { id: 'title', label: 'Título', type: 'text', defaultValue: 'Descubre nuestra visión' },
+        { id: 'subtitle', label: 'Subtítulo', type: 'text', defaultValue: 'Un recorrido visual por lo que nos hace únicos.' },
+        { id: 'cta_text', label: 'Texto Botón (Opcional)', type: 'text', defaultValue: '' }
       ],
       tipografia: [
         { id: 'align', label: 'Alineación', type: 'select', defaultValue: 'center', options: [{label:'Izquierda', value:'left'}, {label:'Centro', value:'center'}]},
-        { id: 'title_size', label: 'Tamaño Título', type: 'range', defaultValue: 32, min: 24, max: 48 }
+        { id: 'title_size', label: 'Tamaño Título', type: 'range', defaultValue: 40, min: 24, max: 64 },
+        { id: 'title_color', label: 'Color Título', type: 'color', defaultValue: '#0F172A' },
+        { id: 'eyebrow_color', label: 'Color Pre-título', type: 'color', defaultValue: 'var(--primary-color)' }
       ],
-      estilo: [], multimedia: [], estructura: [], interaccion: []
+      estructura: [
+        { id: 'margin_b', label: 'Margen Inferior', type: 'range', defaultValue: 40, min: 0, max: 100 }
+      ],
+      estilo: [], multimedia: [], interaccion: []
     }}
   ]
 };
@@ -1120,17 +1160,20 @@ const TESTIMONIALS_MODULE: WebModule = {
       { id: 'layout', label: 'Diseño de Testimonios', type: 'select', defaultValue: 'carousel', options: [
         { label: 'Carrusel (Deslizante)', value: 'carousel' },
         { label: 'Grilla (Grid)', value: 'grid' },
-        { label: 'Masonry (Dinámico)', value: 'masonry' }
+        { label: 'Masonry (Wall of Love)', value: 'masonry' },
+        { label: 'Enfocado (Single Focus)', value: 'focus' }
       ]},
       { id: 'columns', label: 'Columnas (Desktop)', type: 'range', defaultValue: 3, min: 1, max: 4 },
       { id: 'gap', label: 'Espacio entre tarjetas', type: 'range', defaultValue: 30, min: 10, max: 60, unit: 'px' },
       { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 100, min: 40, max: 200, unit: 'px' }
     ],
     estilo: [
-      { id: 'bg_color', label: 'Fondo de Sección', type: 'color', defaultValue: '#F8FAFC' }
+      { id: 'bg_color', label: 'Fondo de Sección', type: 'color', defaultValue: '#F8FAFC' },
+      { id: 'section_gradient', label: 'Gradiente de Fondo', type: 'boolean', defaultValue: false }
     ],
     interaccion: [
       { id: 'autoplay', label: 'Reproducción Automática', type: 'boolean', defaultValue: true },
+      { id: 'autoplay_speed', label: 'Velocidad (ms)', type: 'range', defaultValue: 5000, min: 2000, max: 10000, step: 500 },
       { id: 'entrance_anim', label: 'Animación de Entrada', type: 'boolean', defaultValue: true }
     ],
     contenido: [], tipografia: [], multimedia: []
@@ -1138,12 +1181,15 @@ const TESTIMONIALS_MODULE: WebModule = {
   elements: [
     { id: 'el_testimonials_header', name: 'Encabezado', type: 'text', groups: ['contenido', 'tipografia', 'estructura'], settings: {
       contenido: [
+        { id: 'eyebrow', label: 'Pre-título', type: 'text', defaultValue: 'TESTIMONIOS' },
         { id: 'title', label: 'Título', type: 'text', defaultValue: 'Lo que dicen nuestros clientes' },
         { id: 'subtitle', label: 'Subtítulo', type: 'text', defaultValue: 'Historias reales de personas que confían en nosotros.' }
       ],
       tipografia: [
         { id: 'align', label: 'Alineación', type: 'select', defaultValue: 'center', options: [{label:'Izquierda', value:'left'}, {label:'Centro', value:'center'}]},
-        { id: 'title_size', label: 'Tamaño Título', type: 'range', defaultValue: 32, min: 24, max: 48 }
+        { id: 'title_size', label: 'Tamaño Título', type: 'range', defaultValue: 40, min: 24, max: 64 },
+        { id: 'title_color', label: 'Color Título', type: 'color', defaultValue: '#0F172A' },
+        { id: 'eyebrow_color', label: 'Color Pre-título', type: 'color', defaultValue: 'var(--primary-color)' }
       ],
       estructura: [{ id: 'margin_b', label: 'Margen Inferior', type: 'range', defaultValue: 60, min: 20, max: 100 }],
       estilo: [], multimedia: [], interaccion: []
@@ -1152,26 +1198,43 @@ const TESTIMONIALS_MODULE: WebModule = {
       estilo: [
         { id: 'card_bg', label: 'Fondo de Tarjeta', type: 'color', defaultValue: '#FFFFFF' },
         { id: 'card_radius', label: 'Radio de Borde', type: 'range', defaultValue: 24, min: 0, max: 40 },
-        { id: 'show_shadow', label: 'Mostrar Sombra', type: 'boolean', defaultValue: true }
+        { id: 'show_shadow', label: 'Mostrar Sombra', type: 'boolean', defaultValue: true },
+        { id: 'border_color', label: 'Color de Borde', type: 'color', defaultValue: 'transparent' },
+        { id: 'quote_style', label: 'Estilo de Comillas', type: 'select', defaultValue: 'top-left', options: [
+          { label: 'Esquina Superior', value: 'top-left' },
+          { label: 'Fondo (Grande)', value: 'background' },
+          { label: 'Oculto', value: 'none' }
+        ]}
       ],
       estructura: [
         { id: 'card_padding', label: 'Padding Interno', type: 'range', defaultValue: 32, min: 16, max: 48 }
       ],
       interaccion: [
-        { id: 'hover_lift', label: 'Elevar al pasar mouse', type: 'boolean', defaultValue: true }
+        { id: 'hover_lift', label: 'Elevar al pasar mouse', type: 'boolean', defaultValue: true },
+        { id: 'hover_glow', label: 'Brillo al pasar mouse', type: 'boolean', defaultValue: false }
       ],
       contenido: [], tipografia: [], multimedia: []
     }},
-    { id: 'el_testimonial_author', name: 'Estilo de Autor', type: 'style', groups: ['estilo', 'multimedia'], settings: {
+    { id: 'el_testimonial_author', name: 'Estilo de Autor', type: 'style', groups: ['estilo', 'multimedia', 'tipografia'], settings: {
       estilo: [
         { id: 'author_color', label: 'Color Nombre', type: 'color', defaultValue: '#0F172A' },
-        { id: 'role_color', label: 'Color Cargo', type: 'color', defaultValue: '#64748B' }
+        { id: 'role_color', label: 'Color Cargo', type: 'color', defaultValue: '#64748B' },
+        { id: 'star_color', label: 'Color de Estrellas', type: 'color', defaultValue: '#FBBF24' }
       ],
       multimedia: [
         { id: 'show_avatar', label: 'Mostrar Avatar', type: 'boolean', defaultValue: true },
-        { id: 'show_stars', label: 'Mostrar Calificación (Estrellas)', type: 'boolean', defaultValue: true }
+        { id: 'avatar_shape', label: 'Forma de Avatar', type: 'select', defaultValue: 'circle', options: [
+          { label: 'Círculo', value: 'circle' },
+          { label: 'Squircle (Suave)', value: 'squircle' },
+          { label: 'Cuadrado', value: 'square' }
+        ]},
+        { id: 'show_stars', label: 'Mostrar Calificación', type: 'boolean', defaultValue: true },
+        { id: 'show_company_logo', label: 'Mostrar Logo Empresa', type: 'boolean', defaultValue: false }
       ],
-      contenido: [], tipografia: [], estructura: [], interaccion: []
+      tipografia: [
+        { id: 'quote_size', label: 'Tamaño de Testimonio', type: 'range', defaultValue: 18, min: 14, max: 24 }
+      ],
+      contenido: [], estructura: [], interaccion: []
     }}
   ]
 };
@@ -1837,7 +1900,7 @@ const FAQ_MODULE: WebModule = {
 const CLIENTS_MODULE: WebModule = {
   id: 'mod_clients_1',
   type: 'clients',
-  name: 'Clientes',
+  name: 'Clientes Premium',
   globalGroups: ['contenido', 'estructura', 'estilo', 'interaccion'],
   globalSettings: {
     contenido: [
@@ -1845,25 +1908,30 @@ const CLIENTS_MODULE: WebModule = {
     ],
     estructura: [
       { id: 'layout', label: 'Diseño', type: 'select', defaultValue: 'grid', options: [
-        { label: 'Grilla', value: 'grid' },
-        { label: 'Carrusel', value: 'carousel' },
-        { label: 'Marquee (Cinta)', value: 'marquee' }
+        { label: 'Grilla Clásica', value: 'grid' },
+        { label: 'Carrusel Suave', value: 'carousel' },
+        { label: 'Marquee Infinito', value: 'marquee' }
       ]},
       { id: 'alignment', label: 'Alineación de Sección', type: 'select', defaultValue: 'center', options: [
         { label: 'Izquierda', value: 'left' },
         { label: 'Centro', value: 'center' },
         { label: 'Derecha', value: 'right' }
       ]},
-      { id: 'columns', label: 'Columnas (Desktop)', type: 'range', defaultValue: 5, min: 1, max: 8 },
-      { id: 'gap', label: 'Espaciado', type: 'range', defaultValue: 40, min: 0, max: 100, unit: 'px' },
-      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 60, min: 0, max: 200, unit: 'px' }
+      { id: 'columns', label: 'Columnas (Grid)', type: 'range', defaultValue: 5, min: 1, max: 8 },
+      { id: 'gap', label: 'Espaciado', type: 'range', defaultValue: 40, min: 0, max: 120, unit: 'px' },
+      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 80, min: 20, max: 200, unit: 'px' }
     ],
     estilo: [
-      { id: 'bg_color', label: 'Color de Fondo', type: 'color', defaultValue: 'transparent' }
+      { id: 'bg_color', label: 'Color de Fondo', type: 'color', defaultValue: '#FFFFFF' },
+      { id: 'section_gradient', label: 'Gradiente de Fondo', type: 'boolean', defaultValue: false }
     ],
     interaccion: [
-      { id: 'animation_speed', label: 'Velocidad de Animación', type: 'range', defaultValue: 30, min: 5, max: 100, unit: 's' },
-      { id: 'show_tooltips', label: 'Mostrar Tooltips', type: 'boolean', defaultValue: true },
+      { id: 'animation_speed', label: 'Velocidad (Marquee)', type: 'range', defaultValue: 30, min: 5, max: 100, unit: 's' },
+      { id: 'marquee_direction', label: 'Dirección Marquee', type: 'select', defaultValue: 'left', options: [
+        { label: 'Izquierda', value: 'left' },
+        { label: 'Derecha', value: 'right' }
+      ]},
+      { id: 'pause_on_hover', label: 'Pausar al pasar mouse', type: 'boolean', defaultValue: true },
       { id: 'entrance_animation', label: 'Animación de Entrada', type: 'boolean', defaultValue: true }
     ],
     tipografia: [],
@@ -1871,82 +1939,58 @@ const CLIENTS_MODULE: WebModule = {
   },
   elements: [
     {
-      id: 'el_clients_title',
-      name: 'Título de la Sección',
+      id: 'el_clients_header',
+      name: 'Encabezado de Sección',
       type: 'text',
       groups: ['contenido', 'tipografia', 'estructura'],
       settings: {
         contenido: [
-          { id: 'title_text', label: 'Texto del Título', type: 'text', defaultValue: 'Empresas que confían en nosotros' }
+          { id: 'eyebrow', label: 'Eyebrow (Pre-título)', type: 'text', defaultValue: 'TRUSTED BY' },
+          { id: 'title_text', label: 'Título', type: 'text', defaultValue: 'Empresas que confían en nosotros' },
+          { id: 'subtitle_text', label: 'Subtítulo', type: 'text', defaultValue: 'Trabajamos con los mejores para ofrecerte lo mejor.' }
         ],
         tipografia: [
-          { id: 'title_size', label: 'Tamaño de Fuente', type: 'range', defaultValue: 24, min: 16, max: 48, unit: 'px' },
-          { id: 'title_weight', label: 'Grosor', type: 'select', defaultValue: 'bold', options: [
-            { label: 'Normal', value: 'normal' },
-            { label: 'Medio', value: 'medium' },
-            { label: 'Negrita', value: 'bold' }
-          ]},
-          { id: 'title_color', label: 'Color', type: 'color', defaultValue: 'var(--foreground-color)' }
+          { id: 'align', label: 'Alineación', type: 'select', defaultValue: 'center', options: [{label:'Izquierda', value:'left'}, {label:'Centro', value:'center'}]},
+          { id: 'title_size', label: 'Tamaño Título', type: 'range', defaultValue: 32, min: 24, max: 48 },
+          { id: 'title_color', label: 'Color Título', type: 'color', defaultValue: '#0F172A' },
+          { id: 'eyebrow_color', label: 'Color Eyebrow', type: 'color', defaultValue: 'var(--primary-color)' }
         ],
         estructura: [
-          { id: 'title_margin_bottom', label: 'Margen Inferior', type: 'range', defaultValue: 16, min: 0, max: 100, unit: 'px' }
+          { id: 'margin_b', label: 'Margen Inferior', type: 'range', defaultValue: 60, min: 20, max: 100 }
         ],
-        estilo: [],
-        multimedia: [],
-        interaccion: []
-      }
-    },
-    {
-      id: 'el_clients_subtitle',
-      name: 'Subtítulo de la Sección',
-      type: 'text',
-      groups: ['contenido', 'tipografia', 'estructura'],
-      settings: {
-        contenido: [
-          { id: 'subtitle_text', label: 'Texto del Subtítulo', type: 'text', defaultValue: 'Trabajamos con los mejores para ofrecerte lo mejor.' }
-        ],
-        tipografia: [
-          { id: 'subtitle_size', label: 'Tamaño de Fuente', type: 'range', defaultValue: 16, min: 12, max: 24, unit: 'px' },
-          { id: 'subtitle_color', label: 'Color', type: 'color', defaultValue: 'var(--foreground-color)' }
-        ],
-        estructura: [
-          { id: 'subtitle_margin_bottom', label: 'Margen Inferior', type: 'range', defaultValue: 40, min: 0, max: 100, unit: 'px' }
-        ],
-        estilo: [],
-        multimedia: [],
-        interaccion: []
+        estilo: [], multimedia: [], interaccion: []
       }
     },
     {
       id: 'el_client_logo',
-      name: 'Logotipo del Cliente',
+      name: 'Estilo de Logotipo',
       type: 'image',
       groups: ['multimedia', 'estilo', 'interaccion'],
       settings: {
         multimedia: [
           { id: 'logo_height', label: 'Altura Máxima', type: 'range', defaultValue: 40, min: 20, max: 100, unit: 'px' },
-          { id: 'logo_fit', label: 'Ajuste', type: 'select', defaultValue: 'contain', options: [
+          { id: 'logo_fit', label: 'Ajuste de Imagen', type: 'select', defaultValue: 'contain', options: [
             { label: 'Contener', value: 'contain' },
             { label: 'Cubrir', value: 'cover' }
           ]}
         ],
         estilo: [
-          { id: 'logo_filter', label: 'Filtro de Color', type: 'select', defaultValue: 'grayscale', options: [
+          { id: 'logo_filter', label: 'Filtro Inicial', type: 'select', defaultValue: 'grayscale', options: [
             { label: 'Original', value: 'none' },
             { label: 'Escala de Grises', value: 'grayscale' },
-            { label: 'Blanco', value: 'brightness(0) invert(1)' }
+            { label: 'Invertido (Blanco)', value: 'invert' }
           ]},
-          { id: 'logo_opacity', label: 'Opacidad', type: 'range', defaultValue: 60, min: 0, max: 100, unit: '%' },
+          { id: 'logo_opacity', label: 'Opacidad Inicial', type: 'range', defaultValue: 60, min: 0, max: 100, unit: '%' },
           { id: 'logo_border_radius', label: 'Radio de Borde', type: 'range', defaultValue: 0, min: 0, max: 50, unit: 'px' }
         ],
         interaccion: [
-          { id: 'hover_effect', label: 'Efecto Hover', type: 'boolean', defaultValue: true },
-          { id: 'hover_scale', label: 'Escala al pasar el mouse', type: 'range', defaultValue: 110, min: 100, max: 150, unit: '%' },
+          { id: 'hover_reveal', label: 'Revelar Color al Hover', type: 'boolean', defaultValue: true },
+          { id: 'hover_scale', label: 'Escala al Hover', type: 'range', defaultValue: 110, min: 100, max: 150, unit: '%' },
+          { id: 'hover_glow', label: 'Brillo al Hover', type: 'boolean', defaultValue: false },
+          { id: 'show_tooltips', label: 'Mostrar Tooltips', type: 'boolean', defaultValue: true },
           { id: 'enable_links', label: 'Habilitar Enlaces', type: 'boolean', defaultValue: false }
         ],
-        contenido: [],
-        estructura: [],
-        tipografia: []
+        contenido: [], estructura: [], tipografia: []
       }
     }
   ]
@@ -3852,7 +3896,6 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         userId: currentUserId || undefined,
         siteId: siteId,
         siteName: finalSiteName,
-        isActive: false,
         name: finalSiteName,
         contentDraft: editorState,
         status: newStatus,

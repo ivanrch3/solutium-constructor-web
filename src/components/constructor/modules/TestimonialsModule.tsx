@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Quote, Star, ChevronLeft, ChevronRight } from 'lucide-react';
 
@@ -9,6 +9,7 @@ const MOCK_TESTIMONIALS = [
     author: "Elena Rodríguez",
     role: "CEO en TechFlow",
     avatar: "https://i.pravatar.cc/150?u=elena",
+    logo: "https://picsum.photos/seed/logo1/100/40",
     stars: 5
   },
   {
@@ -17,6 +18,7 @@ const MOCK_TESTIMONIALS = [
     author: "Marcos Pérez",
     role: "Director Creativo",
     avatar: "https://i.pravatar.cc/150?u=marcos",
+    logo: "https://picsum.photos/seed/logo2/100/40",
     stars: 5
   },
   {
@@ -25,6 +27,7 @@ const MOCK_TESTIMONIALS = [
     author: "Sofía Martínez",
     role: "Product Manager",
     avatar: "https://i.pravatar.cc/150?u=sofia",
+    logo: "https://picsum.photos/seed/logo3/100/40",
     stars: 4
   },
   {
@@ -33,6 +36,7 @@ const MOCK_TESTIMONIALS = [
     author: "Javier López",
     role: "Fundador de StartupX",
     avatar: "https://i.pravatar.cc/150?u=javier",
+    logo: "https://picsum.photos/seed/logo4/100/40",
     stars: 5
   }
 ];
@@ -42,56 +46,99 @@ const TestimonialCard = ({
   entranceAnim, 
   itemVariants, 
   hoverLift, 
+  hoverGlow,
   showShadow, 
   cardBg, 
   cardRadius, 
   cardPadding, 
+  borderColor,
+  quoteStyle,
   showAvatar, 
+  avatarShape,
   authorColor, 
   roleColor, 
-  showStars 
-}: any) => (
-  <motion.div
-    variants={entranceAnim ? itemVariants : {}}
-    whileHover={hoverLift ? { y: -8, transition: { duration: 0.3 } } : {}}
-    className={`flex flex-col h-full transition-all duration-300 ${showShadow ? 'shadow-xl shadow-slate-200/50' : ''} p-6 @md:p-8`}
-    style={{ 
-      backgroundColor: cardBg, 
-      borderRadius: `${cardRadius}px`
-    }}
-  >
-    <div className="mb-6 text-primary/20">
-      <Quote size={40} fill="currentColor" />
-    </div>
-    
-    <p className="text-slate-600 leading-relaxed mb-8 italic flex-grow">
-      "{testimonial.text}"
-    </p>
+  showStars,
+  starColor,
+  quoteSize,
+  showCompanyLogo
+}: any) => {
+  const avatarClass = useMemo(() => {
+    switch (avatarShape) {
+      case 'squircle': return 'rounded-2xl';
+      case 'square': return 'rounded-lg';
+      default: return 'rounded-full';
+    }
+  }, [avatarShape]);
 
-    <div className="flex items-center gap-4 mt-auto">
-      {showAvatar && (
-        <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-primary/10 flex-shrink-0">
-          <img src={testimonial.avatar} alt={testimonial.author} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+  return (
+    <motion.div
+      variants={entranceAnim ? itemVariants : {}}
+      whileHover={{ 
+        y: hoverLift ? -8 : 0,
+        boxShadow: hoverGlow ? `0 20px 40px -10px ${starColor}33` : undefined,
+        transition: { duration: 0.3 } 
+      }}
+      className={`flex flex-col h-full relative transition-all duration-300 overflow-hidden ${showShadow ? 'shadow-xl shadow-slate-200/50' : ''}`}
+      style={{ 
+        backgroundColor: cardBg, 
+        borderRadius: `${cardRadius}px`,
+        padding: `${cardPadding}px`,
+        border: `1px solid ${borderColor}`
+      }}
+    >
+      {quoteStyle === 'background' && (
+        <div className="absolute -top-4 -right-4 text-primary/5 opacity-10 pointer-events-none">
+          <Quote size={160} fill="currentColor" />
         </div>
       )}
-      <div className="flex flex-col overflow-hidden">
-        <span className="font-bold truncate" style={{ color: authorColor }}>{testimonial.author}</span>
-        <span className="text-xs truncate" style={{ color: roleColor }}>{testimonial.role}</span>
-        {showStars && (
-          <div className="flex gap-0.5 mt-1">
-            {[...Array(5)].map((_, i) => (
-              <Star 
-                key={i} 
-                size={12} 
-                className={i < testimonial.stars ? "text-amber-400 fill-amber-400" : "text-slate-200"} 
-              />
-            ))}
+
+      {quoteStyle === 'top-left' && (
+        <div className="mb-6 text-primary/20">
+          <Quote size={40} fill="currentColor" />
+        </div>
+      )}
+      
+      <p 
+        className="text-slate-600 leading-relaxed mb-8 italic flex-grow relative z-10"
+        style={{ fontSize: `${quoteSize}px` }}
+      >
+        "{testimonial.text}"
+      </p>
+
+      <div className="flex items-center justify-between gap-4 mt-auto relative z-10">
+        <div className="flex items-center gap-4 overflow-hidden">
+          {showAvatar && (
+            <div className={`w-12 h-12 overflow-hidden border-2 border-primary/10 flex-shrink-0 ${avatarClass}`}>
+              <img src={testimonial.avatar} alt={testimonial.author} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+            </div>
+          )}
+          <div className="flex flex-col min-w-0">
+            <span className="font-bold truncate" style={{ color: authorColor }}>{testimonial.author}</span>
+            <span className="text-xs truncate" style={{ color: roleColor }}>{testimonial.role}</span>
+            {showStars && (
+              <div className="flex gap-0.5 mt-1">
+                {[...Array(5)].map((_, i) => (
+                  <Star 
+                    key={i} 
+                    size={12} 
+                    className={i < testimonial.stars ? "" : "text-slate-200"} 
+                    style={{ color: i < testimonial.stars ? starColor : undefined, fill: i < testimonial.stars ? starColor : 'transparent' }}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+        
+        {showCompanyLogo && testimonial.logo && (
+          <div className="h-8 w-20 flex-shrink-0 opacity-40 grayscale hover:grayscale-0 transition-all">
+            <img src={testimonial.logo} alt="Company Logo" className="h-full w-full object-contain" referrerPolicy="no-referrer" />
           </div>
         )}
       </div>
-    </div>
-  </motion.div>
-);
+    </motion.div>
+  );
+};
 
 export const TestimonialsModule: React.FC<{ 
   moduleId: string, 
@@ -110,37 +157,49 @@ export const TestimonialsModule: React.FC<{
   const gap = getVal(null, 'gap', 30);
   const paddingY = getVal(null, 'padding_y', 100);
   const bgColor = getVal(null, 'bg_color', '#F8FAFC');
+  const sectionGradient = getVal(null, 'section_gradient', false);
   const autoplay = getVal(null, 'autoplay', true);
+  const autoplaySpeed = getVal(null, 'autoplay_speed', 5000);
   const entranceAnim = getVal(null, 'entrance_anim', true);
 
   // Element: Header
+  const eyebrow = getVal(`${moduleId}_el_testimonials_header`, 'eyebrow', 'TESTIMONIOS');
   const headerTitle = getVal(`${moduleId}_el_testimonials_header`, 'title', 'Lo que dicen nuestros clientes');
   const headerSubtitle = getVal(`${moduleId}_el_testimonials_header`, 'subtitle', 'Historias reales de personas que confían en nosotros.');
   const headerAlign = getVal(`${moduleId}_el_testimonials_header`, 'align', 'center');
-  const headerTitleSize = getVal(`${moduleId}_el_testimonials_header`, 'title_size', 32);
+  const headerTitleSize = getVal(`${moduleId}_el_testimonials_header`, 'title_size', 40);
+  const headerTitleColor = getVal(`${moduleId}_el_testimonials_header`, 'title_color', '#0F172A');
+  const eyebrowColor = getVal(`${moduleId}_el_testimonials_header`, 'eyebrow_color', 'var(--primary-color)');
   const headerMarginB = getVal(`${moduleId}_el_testimonials_header`, 'margin_b', 60);
 
   // Element: Card Style
   const cardBg = getVal(`${moduleId}_el_testimonial_card`, 'card_bg', '#FFFFFF');
   const cardRadius = getVal(`${moduleId}_el_testimonial_card`, 'card_radius', 24);
   const showShadow = getVal(`${moduleId}_el_testimonial_card`, 'show_shadow', true);
+  const borderColor = getVal(`${moduleId}_el_testimonial_card`, 'border_color', 'transparent');
+  const quoteStyle = getVal(`${moduleId}_el_testimonial_card`, 'quote_style', 'top-left');
   const cardPadding = getVal(`${moduleId}_el_testimonial_card`, 'card_padding', 32);
   const hoverLift = getVal(`${moduleId}_el_testimonial_card`, 'hover_lift', true);
+  const hoverGlow = getVal(`${moduleId}_el_testimonial_card`, 'hover_glow', false);
 
   // Element: Author Style
   const authorColor = getVal(`${moduleId}_el_testimonial_author`, 'author_color', '#0F172A');
   const roleColor = getVal(`${moduleId}_el_testimonial_author`, 'role_color', '#64748B');
+  const starColor = getVal(`${moduleId}_el_testimonial_author`, 'star_color', '#FBBF24');
   const showAvatar = getVal(`${moduleId}_el_testimonial_author`, 'show_avatar', true);
+  const avatarShape = getVal(`${moduleId}_el_testimonial_author`, 'avatar_shape', 'circle');
   const showStars = getVal(`${moduleId}_el_testimonial_author`, 'show_stars', true);
+  const showCompanyLogo = getVal(`${moduleId}_el_testimonial_author`, 'show_company_logo', false);
+  const quoteSize = getVal(`${moduleId}_el_testimonial_author`, 'quote_size', 18);
 
   useEffect(() => {
-    if (autoplay && layout === 'carousel') {
+    if (autoplay && (layout === 'carousel' || layout === 'focus')) {
       const interval = setInterval(() => {
         setActiveIndex((prev) => (prev + 1) % MOCK_TESTIMONIALS.length);
-      }, 5000);
+      }, autoplaySpeed);
       return () => clearInterval(interval);
     }
-  }, [autoplay, layout]);
+  }, [autoplay, layout, autoplaySpeed]);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -155,11 +214,35 @@ export const TestimonialsModule: React.FC<{
     visible: { y: 0, opacity: 1, transition: { duration: 0.5, ease: "easeOut" } }
   };
 
+  const cardProps = {
+    entranceAnim,
+    itemVariants,
+    hoverLift,
+    hoverGlow,
+    showShadow,
+    cardBg,
+    cardRadius,
+    cardPadding,
+    borderColor,
+    quoteStyle,
+    showAvatar,
+    avatarShape,
+    authorColor,
+    roleColor,
+    showStars,
+    starColor,
+    quoteSize,
+    showCompanyLogo
+  };
+
   return (
     <section 
-      className="w-full relative overflow-hidden py-12 @md:py-20 @lg:py-24"
+      className="w-full relative overflow-hidden"
       style={{ 
-        backgroundColor: bgColor
+        backgroundColor: bgColor,
+        backgroundImage: sectionGradient ? `linear-gradient(to bottom, ${bgColor}, white)` : 'none',
+        paddingTop: `${paddingY}px`,
+        paddingBottom: `${paddingY}px`
       }}
     >
       <div className="max-w-7xl mx-auto px-8">
@@ -168,8 +251,17 @@ export const TestimonialsModule: React.FC<{
           className={`flex flex-col mb-12 ${headerAlign === 'center' ? 'items-center text-center' : 'items-start text-left'}`}
           style={{ marginBottom: `${headerMarginB}px` }}
         >
+          {eyebrow && (
+            <span 
+              className="text-sm font-bold tracking-widest mb-3 uppercase"
+              style={{ color: eyebrowColor }}
+            >
+              {eyebrow}
+            </span>
+          )}
           <h2 
-            className="font-black text-slate-900 mb-4 leading-tight text-3xl @md:text-4xl @lg:text-5xl"
+            className="font-black mb-4 leading-tight text-3xl @md:text-4xl @lg:text-5xl"
+            style={{ fontSize: `${headerTitleSize}px`, color: headerTitleColor }}
           >
             {headerTitle}
           </h2>
@@ -181,30 +273,20 @@ export const TestimonialsModule: React.FC<{
         </div>
 
         {/* Content */}
-        {layout === 'carousel' ? (
-          <div className="relative max-w-4xl mx-auto">
+        {layout === 'carousel' || layout === 'focus' ? (
+          <div className={`relative mx-auto ${layout === 'focus' ? 'max-w-2xl' : 'max-w-4xl'}`}>
             <div className="overflow-hidden px-4 py-8">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={activeIndex}
-                  initial={{ opacity: 0, x: 50 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -50 }}
+                  initial={{ opacity: 0, x: 50, scale: 0.95 }}
+                  animate={{ opacity: 1, x: 0, scale: 1 }}
+                  exit={{ opacity: 0, x: -50, scale: 0.95 }}
                   transition={{ duration: 0.5, ease: "easeInOut" }}
                 >
                   <TestimonialCard 
                     testimonial={MOCK_TESTIMONIALS[activeIndex]} 
-                    entranceAnim={entranceAnim}
-                    itemVariants={itemVariants}
-                    hoverLift={hoverLift}
-                    showShadow={showShadow}
-                    cardBg={cardBg}
-                    cardRadius={cardRadius}
-                    cardPadding={cardPadding}
-                    showAvatar={showAvatar}
-                    authorColor={authorColor}
-                    roleColor={roleColor}
-                    showStars={showStars}
+                    {...cardProps}
                   />
                 </motion.div>
               </AnimatePresence>
@@ -255,17 +337,7 @@ export const TestimonialsModule: React.FC<{
               <div key={testimonial.id} className={layout === 'masonry' ? 'mb-8 break-inside-avoid' : ''}>
                 <TestimonialCard 
                   testimonial={testimonial} 
-                  entranceAnim={entranceAnim}
-                  itemVariants={itemVariants}
-                  hoverLift={hoverLift}
-                  showShadow={showShadow}
-                  cardBg={cardBg}
-                  cardRadius={cardRadius}
-                  cardPadding={cardPadding}
-                  showAvatar={showAvatar}
-                  authorColor={authorColor}
-                  roleColor={roleColor}
-                  showStars={showStars}
+                  {...cardProps}
                 />
               </div>
             ))}

@@ -153,7 +153,6 @@ export interface WebBuilderSite {
   userId?: string;
   siteId?: string;
   siteName?: string;
-  isActive?: boolean;
   name: string;
   contentDraft: any; 
   status: 'draft' | 'published' | 'modified';

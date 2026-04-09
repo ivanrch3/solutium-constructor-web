@@ -131,7 +131,6 @@ export const webBuilderSiteSchema = z.object({
   userId: z.string().optional().nullable(),
   siteId: z.string().optional().nullable(),
   siteName: z.string().optional().nullable(),
-  isActive: z.boolean().optional().nullable(),
   name: z.string(),
   contentDraft: z.any(),
   status: z.enum(['draft', 'published', 'modified']),

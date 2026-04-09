@@ -1,6 +1,6 @@
-import React, { useState, useRef } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { Play, X, Maximize2 } from 'lucide-react';
+import React, { useState, useRef, useMemo } from 'react';
+import { motion, AnimatePresence, useScroll, useTransform } from 'motion/react';
+import { Play, X, Maximize2, ArrowRight } from 'lucide-react';
 
 export const VideoModule: React.FC<{ 
   moduleId: string, 
@@ -8,7 +8,14 @@ export const VideoModule: React.FC<{
 }> = ({ moduleId, settingsValues }) => {
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const { scrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ["start end", "end start"]
+  });
 
   const getVal = (elementId: string | null, settingId: string, defaultValue: any) => {
     const key = elementId ? `${elementId}_${settingId}` : `${moduleId}_global_${settingId}`;
@@ -22,7 +29,11 @@ export const VideoModule: React.FC<{
   const maxWidth = getVal(null, 'max_width', 1000);
   const bgColor = getVal(null, 'bg_color', '#FFFFFF');
   const overlayColor = getVal(null, 'overlay_color', 'rgba(0,0,0,0.2)');
+  const videoFilter = getVal(null, 'video_filter', 'none');
   const entranceAnim = getVal(null, 'entrance_anim', true);
+  const parallaxEffect = getVal(null, 'parallax_effect', false);
+  const hoverToPlay = getVal(null, 'hover_to_play', false);
+  const maskShape = getVal(null, 'mask_shape', 'none');
 
   // Element: Video Player
   const videoUrl = getVal(`${moduleId}_el_video_player`, 'video_url', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ');
@@ -32,15 +43,40 @@ export const VideoModule: React.FC<{
   const controls = getVal(`${moduleId}_el_video_player`, 'controls', true);
   const radius = getVal(`${moduleId}_el_video_player`, 'radius', 24);
   const shadow = getVal(`${moduleId}_el_video_player`, 'shadow', true);
+  const borderColor = getVal(`${moduleId}_el_video_player`, 'border_color', 'rgba(0,0,0,0.1)');
   const useLightbox = getVal(`${moduleId}_el_video_player`, 'lightbox', false);
   const playButtonStyle = getVal(`${moduleId}_el_video_player`, 'play_button_style', 'pulse');
 
   // Element: Text
   const showText = getVal(`${moduleId}_el_video_text`, 'show_text', true);
+  const eyebrow = getVal(`${moduleId}_el_video_text`, 'eyebrow', 'SHOWCASE');
   const title = getVal(`${moduleId}_el_video_text`, 'title', 'Descubre nuestra visión');
   const subtitle = getVal(`${moduleId}_el_video_text`, 'subtitle', 'Un recorrido visual por lo que nos hace únicos.');
+  const ctaText = getVal(`${moduleId}_el_video_text`, 'cta_text', '');
   const textAlign = getVal(`${moduleId}_el_video_text`, 'align', 'center');
-  const titleSize = getVal(`${moduleId}_el_video_text`, 'title_size', 32);
+  const titleSize = getVal(`${moduleId}_el_video_text`, 'title_size', 40);
+  const titleColor = getVal(`${moduleId}_el_video_text`, 'title_color', '#0F172A');
+  const eyebrowColor = getVal(`${moduleId}_el_video_text`, 'eyebrow_color', 'var(--primary-color)');
+  const marginB = getVal(`${moduleId}_el_video_text`, 'margin_b', 40);
+
+  const y = useTransform(scrollYProgress, [0, 1], [0, parallaxEffect ? 100 : 0]);
+
+  const filterClass = useMemo(() => {
+    switch (videoFilter) {
+      case 'grayscale': return 'grayscale';
+      case 'sepia': return 'sepia';
+      case 'blur': return 'blur-sm';
+      default: return '';
+    }
+  }, [videoFilter]);
+
+  const maskClass = useMemo(() => {
+    switch (maskShape) {
+      case 'blob': return 'mask-blob'; // Requires CSS or SVG mask
+      case 'circle': return 'rounded-full';
+      default: return '';
+    }
+  }, [maskShape]);
 
   const getAspectRatioPadding = (ratio: string) => {
     switch (ratio) {
@@ -56,14 +92,14 @@ export const VideoModule: React.FC<{
 
   const getEmbedUrl = (url: any, forceAutoplay = false) => {
     if (typeof url !== 'string' || !url) return '';
-    const shouldAutoplay = forceAutoplay || autoplay;
+    const shouldAutoplay = forceAutoplay || autoplay || (hoverToPlay && isHovered);
     
     if (isYouTube) {
       const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
       const match = url.match(regExp);
       const id = (match && match[2].length === 11) ? match[2] : null;
       if (!id) return url;
-      return `https://www.youtube.com/embed/${id}?autoplay=${shouldAutoplay ? 1 : 0}&loop=${loop ? 1 : 0}&controls=${controls ? 1 : 0}&mute=${shouldAutoplay ? 1 : 0}&playlist=${id}`;
+      return `https://www.youtube.com/embed/${id}?autoplay=${shouldAutoplay ? 1 : 0}&loop=${loop ? 1 : 0}&controls=${controls ? 1 : 0}&mute=${shouldAutoplay ? 1 : 0}&playlist=${id}&rel=0`;
     }
     if (isVimeo) {
       const id = url.split('/').filter(p => p).pop()?.split('?')[0];
@@ -87,9 +123,9 @@ export const VideoModule: React.FC<{
     if (isYouTube || isVimeo) {
       return (
         <iframe
-          key={`${videoUrl}-${inLightbox || isPlaying}`}
+          key={`${videoUrl}-${inLightbox || isPlaying || (hoverToPlay && isHovered)}`}
           src={getEmbedUrl(videoUrl, inLightbox || isPlaying)}
-          className="absolute inset-0 w-full h-full border-0"
+          className={`absolute inset-0 w-full h-full border-0 transition-all duration-700 ${filterClass}`}
           allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; gyroscope"
           title="Video Player"
           loading="lazy"
@@ -102,11 +138,11 @@ export const VideoModule: React.FC<{
         ref={videoRef}
         src={typeof videoUrl === 'string' ? videoUrl : ''}
         poster={typeof posterUrl === 'string' ? posterUrl : ''}
-        autoPlay={autoplay || isPlaying}
+        autoPlay={autoplay || isPlaying || (hoverToPlay && isHovered)}
         loop={loop}
-        muted={autoplay && !isPlaying}
+        muted={(autoplay || hoverToPlay) && !isPlaying}
         controls={controls}
-        className="absolute inset-0 w-full h-full object-cover"
+        className={`absolute inset-0 w-full h-full object-cover transition-all duration-700 ${filterClass}`}
       />
     );
   };
@@ -133,32 +169,59 @@ export const VideoModule: React.FC<{
     );
   };
 
-  const renderText = () => (
-    <div className={`flex flex-col ${textAlign === 'center' ? 'items-center text-center' : 'items-start text-left'} mb-12`}>
-      <h2 
-        className="font-black text-slate-900 mb-4 leading-tight"
-        style={{ fontSize: `${titleSize}px` }}
+  const renderTextContent = (isOverlay = false) => {
+    if (!showText) return null;
+    const colorClass = isOverlay ? 'text-white' : '';
+    const subColorClass = isOverlay ? 'text-white/80' : 'text-slate-500';
+
+    return (
+      <div 
+        className={`flex flex-col ${textAlign === 'center' ? 'items-center text-center' : 'items-start text-left'}`}
+        style={{ marginBottom: isOverlay ? 0 : `${marginB}px` }}
       >
-        {title}
-      </h2>
-      {subtitle && (
-        <p className="text-slate-500 max-w-2xl text-lg">
-          {subtitle}
-        </p>
-      )}
-    </div>
-  );
+        {eyebrow && (
+          <span 
+            className="text-sm font-bold tracking-widest mb-3 uppercase"
+            style={{ color: isOverlay ? 'white' : eyebrowColor }}
+          >
+            {eyebrow}
+          </span>
+        )}
+        <h2 
+          className={`font-black leading-tight mb-4 ${colorClass}`}
+          style={{ fontSize: `${titleSize}px`, color: isOverlay ? 'white' : titleColor }}
+        >
+          {title}
+        </h2>
+        {subtitle && (
+          <p className={`max-w-2xl text-lg mb-8 ${subColorClass}`}>
+            {subtitle}
+          </p>
+        )}
+        {ctaText && (
+          <button className="px-8 py-3 bg-primary text-white rounded-full font-bold flex items-center gap-2 hover:gap-4 transition-all group">
+            {ctaText}
+            <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
+          </button>
+        )}
+      </div>
+    );
+  };
 
   const videoContainer = (
-    <div 
-      className={`relative overflow-hidden group ${shadow ? 'shadow-2xl' : ''}`}
+    <motion.div 
+      className={`relative overflow-hidden group ${shadow ? 'shadow-2xl' : ''} ${maskClass}`}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
       style={{ 
-        borderRadius: `${radius}px`,
-        paddingBottom: getAspectRatioPadding(aspectRatio)
+        y,
+        borderRadius: maskShape === 'circle' ? '50%' : `${radius}px`,
+        paddingBottom: getAspectRatioPadding(aspectRatio),
+        border: `1px solid ${borderColor}`
       }}
     >
-      {/* Poster Overlay (if not autoplaying and not playing) */}
-      {!autoplay && !isPlaying && !isLightboxOpen && (
+      {/* Poster Overlay */}
+      {(!autoplay && !isPlaying && !isLightboxOpen && (!hoverToPlay || !isHovered)) && (
         <div className="absolute inset-0 z-10">
           {posterUrl && (
             <img 
@@ -173,14 +236,39 @@ export const VideoModule: React.FC<{
         </div>
       )}
 
-      {/* Actual Video (if not using lightbox or if autoplaying or if playing) */}
-      {(autoplay || isPlaying || !useLightbox) && renderVideo()}
-    </div>
+      {/* Actual Video */}
+      {(autoplay || isPlaying || !useLightbox || (hoverToPlay && isHovered)) && renderVideo()}
+    </motion.div>
   );
+
+  if (layout === 'background') {
+    return (
+      <section 
+        ref={containerRef}
+        className="w-full relative overflow-hidden min-h-[600px] flex items-center justify-center py-20"
+      >
+        <div className="absolute inset-0 z-0">
+          {renderVideo()}
+          <div className="absolute inset-0" style={{ backgroundColor: overlayColor }} />
+        </div>
+        <div className="relative z-10 max-w-4xl mx-auto px-8">
+          <motion.div
+            initial={entranceAnim ? { opacity: 0, y: 30 } : {}}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+            viewport={{ once: true }}
+          >
+            {renderTextContent(true)}
+          </motion.div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section 
-      className="w-full relative overflow-hidden py-12 @md:py-20 @lg:py-24 @container"
+      ref={containerRef}
+      className="w-full relative overflow-hidden @container"
       style={{ 
         backgroundColor: bgColor,
         paddingTop: `${paddingY}px`,
@@ -190,22 +278,14 @@ export const VideoModule: React.FC<{
       <div className="mx-auto px-8" style={{ maxWidth: layout === 'full' ? '100%' : `${maxWidth}px` }}>
         {layout === 'split' ? (
           <div className="grid grid-cols-1 @lg:grid-cols-2 gap-12 @md:gap-16 items-center">
-            <div>
-              {showText && (
-                <div className={`flex flex-col ${textAlign === 'center' ? 'items-center text-center' : 'items-start text-left'} mb-12`}>
-                  <h2 
-                    className="font-black text-slate-900 mb-4 leading-tight text-3xl @md:text-4xl @lg:text-5xl"
-                  >
-                    {title}
-                  </h2>
-                  {subtitle && (
-                    <p className="text-slate-500 max-w-2xl text-lg">
-                      {subtitle}
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
+            <motion.div
+              initial={entranceAnim ? { opacity: 0, x: -30 } : {}}
+              whileInView={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.8 }}
+              viewport={{ once: true }}
+            >
+              {renderTextContent()}
+            </motion.div>
             <motion.div
               initial={entranceAnim ? { opacity: 0, x: 30 } : {}}
               whileInView={{ opacity: 1, x: 0 }}
@@ -217,20 +297,15 @@ export const VideoModule: React.FC<{
           </div>
         ) : (
           <div className="flex flex-col items-center">
-            {showText && (
-              <div className={`flex flex-col ${textAlign === 'center' ? 'items-center text-center' : 'items-start text-left'} mb-12`}>
-                <h2 
-                  className="font-black text-slate-900 mb-4 leading-tight text-3xl @md:text-4xl @lg:text-5xl"
-                >
-                  {title}
-                </h2>
-                {subtitle && (
-                  <p className="text-slate-500 max-w-2xl text-lg">
-                    {subtitle}
-                  </p>
-                )}
-              </div>
-            )}
+            <motion.div
+              initial={entranceAnim ? { opacity: 0, y: -30 } : {}}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8 }}
+              viewport={{ once: true }}
+              className="w-full"
+            >
+              {renderTextContent()}
+            </motion.div>
             <motion.div
               initial={entranceAnim ? { opacity: 0, y: 30 } : {}}
               whileInView={{ opacity: 1, y: 0 }}
@@ -255,10 +330,10 @@ export const VideoModule: React.FC<{
             onClick={() => setIsLightboxOpen(false)}
           >
             <button 
-              className="absolute top-8 right-8 text-white/50 hover:text-white transition-colors z-[110]"
+              className="absolute top-8 right-8 text-white/50 hover:text-white transition-colors z-[110] bg-white/10 p-2 rounded-full backdrop-blur-md"
               onClick={() => setIsLightboxOpen(false)}
             >
-              <X size={32} />
+              <X size={24} />
             </button>
             
             <motion.div 

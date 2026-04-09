@@ -36,7 +36,9 @@ import {
   Send,
   CreditCard,
   Upload,
-  Loader2
+  Loader2,
+  Check,
+  X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { DataTab } from '../DataTab';
@@ -411,7 +413,7 @@ const PRODUCTS_MODULE: WebModule = {
       id: 'el_img', 
       name: 'Imagen del Producto', 
       type: 'image', 
-      groups: ['contenido', 'estructura', 'estilo', 'multimedia', 'interaccion'],
+      groups: ['multimedia', 'estilo'],
       settings: {
         multimedia: [
           { id: 'aspect_ratio', label: 'Proporción', type: 'select', defaultValue: '1:1', options: [
@@ -423,17 +425,14 @@ const PRODUCTS_MODULE: WebModule = {
         estilo: [
           { id: 'border_radius', label: 'Redondeo', type: 'range', defaultValue: 16, min: 0, max: 50, unit: 'px' }
         ],
-        contenido: [],
-        estructura: [],
-        tipografia: [],
-        interaccion: []
+        contenido: [], estructura: [], tipografia: [], interaccion: []
       }
     },
     { 
       id: 'el_title', 
       name: 'Título del Producto', 
       type: 'text', 
-      groups: ['contenido', 'estructura', 'tipografia', 'interaccion'],
+      groups: ['tipografia'],
       settings: {
         tipografia: [
           { id: 'font_size', label: 'Tamaño de Fuente', type: 'range', defaultValue: 16, min: 12, max: 24, unit: 'px' },
@@ -444,18 +443,14 @@ const PRODUCTS_MODULE: WebModule = {
             { label: 'Extra Negrita', value: 'black' }
           ]}
         ],
-        contenido: [],
-        estructura: [],
-        estilo: [],
-        multimedia: [],
-        interaccion: []
+        contenido: [], estructura: [], estilo: [], multimedia: [], interaccion: []
       }
     },
     { 
       id: 'el_price', 
       name: 'Precio', 
       type: 'price', 
-      groups: ['contenido', 'estructura', 'estilo', 'tipografia'],
+      groups: ['contenido', 'tipografia'],
       settings: {
         contenido: [
           { id: 'currency', label: 'Moneda', type: 'text', defaultValue: '$' }
@@ -463,10 +458,7 @@ const PRODUCTS_MODULE: WebModule = {
         tipografia: [
           { id: 'price_size', label: 'Tamaño del Precio', type: 'range', defaultValue: 18, min: 14, max: 32, unit: 'px' }
         ],
-        estructura: [],
-        estilo: [],
-        multimedia: [],
-        interaccion: []
+        estructura: [], estilo: [], multimedia: [], interaccion: []
       }
     },
     { id: 'el_badge', name: 'Etiquetas / Badges', type: 'badge', groups: ['contenido', 'estilo'], settings: {
@@ -2626,7 +2618,11 @@ const StructurePanel: React.FC<StructurePanelProps> = ({
                               >
                                 {(['contenido', 'estructura', 'estilo', 'tipografia', 'multimedia', 'interaccion'] as SettingGroupType[]).map(group => {
                                   const isAvailable = element.groups.includes(group);
-                                  if (!isAvailable) return null;
+                                  const hasSettings = element.type === 'global' 
+                                    ? !!module.globalSettings?.[group]?.length 
+                                    : !!element.settings?.[group]?.length;
+                                  
+                                  if (!isAvailable || !hasSettings) return null;
 
                                   const isGroupExpanded = editorState.expandedGroupsByElement[element.id] === group;
 
@@ -2712,7 +2708,9 @@ const TopBar = ({
   viewport,
   setViewport,
   isFullscreen,
-  setIsFullscreen
+  setIsFullscreen,
+  saveStatus,
+  publishStatus
 }: { 
   onSave: () => void, 
   onPublish: () => void, 
@@ -2720,7 +2718,9 @@ const TopBar = ({
   viewport: 'desktop' | 'tablet' | 'mobile',
   setViewport: (v: 'desktop' | 'tablet' | 'mobile') => void,
   isFullscreen: boolean,
-  setIsFullscreen: (f: boolean) => void
+  setIsFullscreen: (f: boolean) => void,
+  saveStatus: 'idle' | 'loading' | 'success' | 'error',
+  publishStatus: 'idle' | 'loading' | 'success' | 'error'
 }) => (
   <div className="h-[60px] bg-surface border-b border-border/60 flex items-center justify-between px-6 z-20">
     <div className="flex items-center gap-4">
@@ -2784,22 +2784,58 @@ const TopBar = ({
 
       <div className="flex items-center gap-2">
         <motion.button 
-          whileHover={{ scale: 1.02, backgroundColor: 'var(--secondary-color)' }}
-          whileTap={{ scale: 0.98 }}
-          onClick={onSave}
-          className="flex items-center gap-2 px-4 py-2 text-text/80 font-bold text-xs rounded-xl transition-all"
+          whileHover={saveStatus === 'idle' ? { scale: 1.02, backgroundColor: 'var(--secondary-color)' } : {}}
+          whileTap={saveStatus === 'idle' ? { scale: 0.98 } : {}}
+          onClick={saveStatus === 'idle' ? onSave : undefined}
+          disabled={saveStatus !== 'idle'}
+          className={`flex items-center gap-2 px-4 py-2 font-bold text-xs rounded-xl transition-all ${
+            saveStatus === 'success' ? 'bg-green-500/10 text-green-600' : 
+            saveStatus === 'error' ? 'bg-red-500/10 text-red-600' : 
+            'text-text/80'
+          }`}
         >
-          <Save size={16} />
-          Guardar Borrador
+          {saveStatus === 'loading' ? (
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+            >
+              <RotateCcw size={16} />
+            </motion.div>
+          ) : saveStatus === 'success' ? (
+            <Check size={16} />
+          ) : saveStatus === 'error' ? (
+            <X size={16} />
+          ) : (
+            <Save size={16} />
+          )}
+          {saveStatus === 'loading' ? 'Guardando...' : saveStatus === 'success' ? 'Guardado' : saveStatus === 'error' ? 'Error' : 'Guardar Borrador'}
         </motion.button>
         <motion.button 
-          whileHover={{ scale: 1.02, y: -1 }}
-          whileTap={{ scale: 0.98 }}
-          onClick={onPublish}
-          className="flex items-center gap-2 px-5 py-2 bg-primary text-white font-bold text-xs rounded-xl shadow-lg shadow-primary/20 transition-all"
+          whileHover={publishStatus === 'idle' ? { scale: 1.02, y: -1 } : {}}
+          whileTap={publishStatus === 'idle' ? { scale: 0.98 } : {}}
+          onClick={publishStatus === 'idle' ? onPublish : undefined}
+          disabled={publishStatus !== 'idle'}
+          className={`flex items-center gap-2 px-5 py-2 font-bold text-xs rounded-xl shadow-lg transition-all ${
+            publishStatus === 'success' ? 'bg-green-500 text-white shadow-green-500/20' : 
+            publishStatus === 'error' ? 'bg-red-500 text-white shadow-red-500/20' : 
+            'bg-primary text-white shadow-primary/20'
+          }`}
         >
-          <Send size={16} />
-          Publicar
+          {publishStatus === 'loading' ? (
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+            >
+              <RotateCcw size={16} />
+            </motion.div>
+          ) : publishStatus === 'success' ? (
+            <Check size={16} />
+          ) : publishStatus === 'error' ? (
+            <X size={16} />
+          ) : (
+            <Send size={16} />
+          )}
+          {publishStatus === 'loading' ? 'Publicando...' : publishStatus === 'success' ? 'Publicado' : publishStatus === 'error' ? 'Error' : 'Publicar'}
         </motion.button>
       </div>
     </div>
@@ -3212,6 +3248,8 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   const [showPublishModal, setShowPublishModal] = useState(false);
   const [siteName, setSiteName] = useState(initialPage?.siteName || '');
   const [isSaving, setIsSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [publishStatus, setPublishStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [structurePanelCollapsed, setStructurePanelCollapsed] = useState(false);
   const [viewport, setViewport] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -3388,14 +3426,17 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
 
   const handleSaveDraft = async () => {
     if (!projectId) return;
+    setSaveStatus('loading');
     setIsSaving(true);
     
     try {
       const finalSiteName = siteName || formatTimestampName();
       if (!siteName) setSiteName(finalSiteName);
 
-      const siteId = initialPage?.siteId || project?.id || `site_${Date.now()}`;
+      const siteId = initialPage?.siteId || project?.webConfig?.siteId || project?.id || `site_${Date.now()}`;
       
+      console.log(`[SAVE DRAFT] Usando siteId: ${siteId} para el proyecto: ${projectId}`);
+
       const payload = {
         data: editorState,
         metadata: {
@@ -3422,7 +3463,16 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       const result = await saveWebBuilderSiteDraft(siteData);
       if (result) {
         console.log('Borrador guardado con éxito (SIP v4.0)');
+        setSaveStatus('success');
+        setTimeout(() => setSaveStatus('idle'), 3000);
+      } else {
+        setSaveStatus('error');
+        setTimeout(() => setSaveStatus('idle'), 3000);
       }
+    } catch (error) {
+      console.error('Error saving draft:', error);
+      setSaveStatus('error');
+      setTimeout(() => setSaveStatus('idle'), 3000);
     } finally {
       setIsSaving(false);
     }
@@ -3438,6 +3488,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       return;
     }
 
+    setPublishStatus('loading');
     setIsSaving(true);
     try {
       // Helper to get setting value with fallback
@@ -3460,6 +3511,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         sections: editorState.addedModules.map(module => {
           const content: any = {};
 
+          // Extract specific content fields for the mother app's expected structure
           if (module.type === 'hero') {
             content.title = getVal(module.id, 'el_hero_title', 'text', '');
             content.subtitle = getVal(module.id, 'el_hero_subtitle', 'text', '');
@@ -3504,16 +3556,30 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
             content.customerIds = getVal(module.id, null, 'select_customers', []);
           }
 
+          // Extract ALL settings for this module to preserve styling
+          const settings: any = {};
+          Object.entries(editorState.settingsValues).forEach(([key, value]) => {
+            if (key.startsWith(module.id)) {
+              const relativeKey = key.replace(`${module.id}_`, '');
+              settings[relativeKey] = value;
+            }
+          });
+
           return {
             id: module.id,
             type: module.type as any,
-            content
+            content,
+            settings
           };
         })
       };
 
       const finalSiteName = siteName || formatTimestampName();
-      const siteId = initialPage?.siteId || project?.id || `site_${Date.now()}`;
+      
+      // CRITICAL: Prioritize siteId from project config if it exists, as it's likely what the domain is linked to
+      const siteId = initialPage?.siteId || project?.webConfig?.siteId || project?.id || `site_${Date.now()}`;
+
+      console.log(`[PUBLISH] Usando siteId: ${siteId} para el proyecto: ${projectId}`);
 
       const payload = {
         data: renderingContract,
@@ -3541,8 +3607,19 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
 
       if (result) {
         console.log('Sitio publicado con éxito (SIP v4.0)');
+        setPublishStatus('success');
+        // Also save a draft to keep them in sync
+        await handleSaveDraft();
+        setTimeout(() => setPublishStatus('idle'), 3000);
         setShowPublishModal(false);
+      } else {
+        setPublishStatus('error');
+        setTimeout(() => setPublishStatus('idle'), 3000);
       }
+    } catch (error) {
+      console.error('Error publishing site:', error);
+      setPublishStatus('error');
+      setTimeout(() => setPublishStatus('idle'), 3000);
     } finally {
       setIsSaving(false);
     }
@@ -3584,6 +3661,8 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
                 setViewport={setViewport}
                 isFullscreen={isFullscreen}
                 setIsFullscreen={setIsFullscreen}
+                saveStatus={saveStatus}
+                publishStatus={publishStatus}
               />
               <Canvas 
                 editorState={editorState} 

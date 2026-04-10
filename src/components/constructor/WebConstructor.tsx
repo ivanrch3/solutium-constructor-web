@@ -67,6 +67,7 @@ import { FooterModule } from './modules/FooterModule';
 import { SpacerModule } from './modules/SpacerModule';
 import { saveWebBuilderSiteDraft, publishWebBuilderSite, getProducts, getCustomers } from '../../services/dataService';
 import { syncAsset } from '../../services/assetService';
+import { sendToMother } from '../../services/handshakeService';
 import { Product, Customer } from '../../types/schema';
 import { MOCK_PRODUCTS, MOCK_CUSTOMERS } from '../../constants/mockData';
 
@@ -443,59 +444,97 @@ const SPACER_MODULE: WebModule = {
 const PRODUCTS_MODULE: WebModule = {
   id: 'mod_products_1',
   type: 'products',
-  name: 'Productos',
-  globalGroups: ['contenido', 'estructura', 'estilo', 'multimedia', 'interaccion'],
+  name: 'Productos Premium',
+  globalGroups: ['contenido', 'estructura', 'estilo', 'interaccion'],
   globalSettings: {
     contenido: [
       { id: 'section_title', label: 'Título de la Sección', type: 'text', defaultValue: 'Nuestros Productos' },
       { id: 'section_desc', label: 'Descripción', type: 'text', defaultValue: 'Descubre nuestra selección exclusiva de productos.' },
-      { id: 'select_products', label: 'Selección de Productos', type: 'product_selection', defaultValue: [] }
+      { id: 'select_products', label: 'Selección de Productos', type: 'product_selection', defaultValue: [] },
+      { id: 'show_tabs', label: 'Mostrar Pestañas de Categoría', type: 'boolean', defaultValue: true }
     ],
     estructura: [
-      { id: 'columns', label: 'Columnas', type: 'range', defaultValue: 4, min: 1, max: 6 },
-      { id: 'gap', label: 'Espaciado', type: 'range', defaultValue: 24, min: 0, max: 100, unit: 'px' }
+      { id: 'layout', label: 'Diseño de Visualización', type: 'select', defaultValue: 'grid', options: [
+        { label: 'Grilla Clásica', value: 'grid' },
+        { label: 'Carrusel (Slider)', value: 'carousel' },
+        { label: 'Lista Detallada', value: 'list' }
+      ]},
+      { id: 'columns', label: 'Columnas (Desktop)', type: 'range', defaultValue: 4, min: 1, max: 6 },
+      { id: 'gap', label: 'Espaciado entre productos', type: 'range', defaultValue: 24, min: 0, max: 80, unit: 'px' },
+      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 100, min: 40, max: 200, unit: 'px' }
     ],
     estilo: [
-      { id: 'dark_mode', label: 'Modo Oscuro', type: 'boolean', defaultValue: false },
-      { id: 'bg_color', label: 'Color de Fondo', type: 'color', defaultValue: '#FFFFFF' }
+      { id: 'bg_color', label: 'Color de Fondo', type: 'color', defaultValue: '#FFFFFF' },
+      { id: 'section_gradient', label: 'Gradiente de Fondo', type: 'boolean', defaultValue: false },
+      { id: 'dark_mode', label: 'Modo Oscuro', type: 'boolean', defaultValue: false }
     ],
     interaccion: [
-      { id: 'hover_effect', label: 'Efecto al pasar el mouse', type: 'select', defaultValue: 'zoom', options: [
-        { label: 'Ninguno', value: 'none' },
-        { label: 'Zoom', value: 'zoom' },
-        { label: 'Levantar', value: 'lift' }
-      ]}
+      { id: 'entrance_anim', label: 'Animación de Entrada', type: 'boolean', defaultValue: true },
+      { id: 'enable_quickview', label: 'Habilitar Vista Rápida', type: 'boolean', defaultValue: true },
+      { id: 'show_urgency', label: 'Mostrar Indicadores de Urgencia', type: 'boolean', defaultValue: false }
     ],
     tipografia: [],
-    multimedia: [
-      { id: 'section_bg_image', label: 'Imagen de Fondo de Sección', type: 'image', defaultValue: '' }
-    ]
+    multimedia: []
   },
   elements: [
     { 
       id: 'el_img', 
       name: 'Imagen del Producto', 
       type: 'image', 
-      groups: ['multimedia', 'estilo'],
+      groups: ['multimedia', 'estilo', 'interaccion'],
       settings: {
         multimedia: [
           { id: 'aspect_ratio', label: 'Proporción', type: 'select', defaultValue: '1:1', options: [
             { label: '1:1 (Cuadrado)', value: '1:1' },
             { label: '4:5 (Retrato)', value: '4:5' },
             { label: '16:9 (Panorámico)', value: '16:9' }
-          ]}
+          ]},
+          { id: 'hover_swap', label: 'Cambiar imagen en hover', type: 'boolean', defaultValue: true }
         ],
         estilo: [
           { id: 'border_radius', label: 'Redondeo', type: 'range', defaultValue: 16, min: 0, max: 50, unit: 'px' }
         ],
-        contenido: [], estructura: [], tipografia: [], interaccion: []
+        interaccion: [
+          { id: 'hover_effect', label: 'Efecto Hover', type: 'select', defaultValue: 'zoom', options: [
+            { label: 'Zoom Suave', value: 'zoom' },
+            { label: 'Lupa (Scale)', value: 'scale' },
+            { label: 'Ninguno', value: 'none' }
+          ]}
+        ],
+        contenido: [], estructura: [], tipografia: []
+      }
+    },
+    { 
+      id: 'el_product_card', 
+      name: 'Estilo de Tarjeta', 
+      type: 'style', 
+      groups: ['estilo', 'interaccion'],
+      settings: {
+        estilo: [
+          { id: 'card_style', label: 'Estilo Visual', type: 'select', defaultValue: 'solid', options: [
+            { label: 'Sólido', value: 'solid' },
+            { label: 'Glassmorphism', value: 'glass' },
+            { label: 'Minimalista', value: 'minimal' },
+            { label: 'Bordeado', value: 'bordered' }
+          ]},
+          { id: 'card_bg', label: 'Fondo de Tarjeta', type: 'color', defaultValue: '#FFFFFF' },
+          { id: 'card_shadow', label: 'Sombra', type: 'select', defaultValue: 'sm', options: [
+            { label: 'Ninguna', value: 'none' },
+            { label: 'Suave', value: 'sm' },
+            { label: 'Fuerte', value: 'lg' }
+          ]}
+        ],
+        interaccion: [
+          { id: 'hover_lift', label: 'Elevar al pasar mouse', type: 'boolean', defaultValue: true }
+        ],
+        contenido: [], estructura: [], tipografia: [], multimedia: []
       }
     },
     { 
       id: 'el_title', 
       name: 'Título del Producto', 
       type: 'text', 
-      groups: ['tipografia'],
+      groups: ['tipografia', 'estilo'],
       settings: {
         tipografia: [
           { id: 'font_size', label: 'Tamaño de Fuente', type: 'range', defaultValue: 16, min: 12, max: 24, unit: 'px' },
@@ -506,75 +545,47 @@ const PRODUCTS_MODULE: WebModule = {
             { label: 'Extra Negrita', value: 'black' }
           ]}
         ],
-        contenido: [], estructura: [], estilo: [], multimedia: [], interaccion: []
+        estilo: [
+          { id: 'title_color', label: 'Color de Título', type: 'color', defaultValue: '#0F172A' }
+        ],
+        contenido: [], estructura: [], multimedia: [], interaccion: []
       }
     },
     { 
       id: 'el_price', 
-      name: 'Precio', 
+      name: 'Precio y Ofertas', 
       type: 'price', 
-      groups: ['contenido', 'tipografia'],
+      groups: ['contenido', 'tipografia', 'estilo'],
       settings: {
         contenido: [
-          { id: 'currency', label: 'Moneda', type: 'text', defaultValue: '$' }
+          { id: 'currency', label: 'Moneda', type: 'text', defaultValue: '$' },
+          { id: 'show_savings', label: 'Mostrar % de Ahorro', type: 'boolean', defaultValue: true }
         ],
         tipografia: [
           { id: 'price_size', label: 'Tamaño del Precio', type: 'range', defaultValue: 18, min: 14, max: 32, unit: 'px' }
         ],
-        estructura: [], estilo: [], multimedia: [], interaccion: []
+        estilo: [
+          { id: 'price_color', label: 'Color de Precio', type: 'color', defaultValue: '#0F172A' },
+          { id: 'sale_color', label: 'Color de Oferta', type: 'color', defaultValue: '#EF4444' }
+        ],
+        estructura: [], multimedia: [], interaccion: []
       }
     },
-    { id: 'el_badge', name: 'Etiquetas / Badges', type: 'badge', groups: ['contenido', 'estilo'], settings: {
+    { id: 'el_cta', name: 'Botón de Compra', type: 'button', groups: ['contenido', 'estilo', 'interaccion'], settings: {
       contenido: [
-        { id: 'show_badge', label: 'Mostrar Etiquetas', type: 'boolean', defaultValue: true }
+        { id: 'cta_text', label: 'Texto del Botón', type: 'text', defaultValue: 'Añadir' },
+        { id: 'show_icon', label: 'Mostrar Icono Carrito', type: 'boolean', defaultValue: true }
       ],
       estilo: [
-        { id: 'badge_bg', label: 'Color de Fondo', type: 'color', defaultValue: '#2563EB' }
-      ],
-      estructura: [],
-      tipografia: [],
-      multimedia: [],
-      interaccion: []
-    }},
-    { id: 'el_rating', name: 'Valoración', type: 'rating', groups: ['contenido', 'estilo'], settings: {
-      contenido: [
-        { id: 'show_rating', label: 'Mostrar Valoración', type: 'boolean', defaultValue: true }
-      ],
-      estilo: [
-        { id: 'star_color', label: 'Color de Estrellas', type: 'color', defaultValue: '#FBBF24' }
-      ],
-      estructura: [],
-      tipografia: [],
-      multimedia: [],
-      interaccion: []
-    }},
-    { id: 'el_cta', name: 'Botón de Acción', type: 'button', groups: ['contenido', 'estilo', 'interaccion'], settings: {
-      contenido: [
-        { id: 'cta_text', label: 'Texto del Botón', type: 'text', defaultValue: 'Añadir' }
-      ],
-      estilo: [
-        { id: 'cta_bg', label: 'Color de Fondo', type: 'color', defaultValue: '#0F172A' },
-        { id: 'cta_color', label: 'Color de Texto', type: 'color', defaultValue: '#FFFFFF' }
+        { id: 'cta_bg', label: 'Fondo Botón', type: 'color', defaultValue: '#0F172A' },
+        { id: 'cta_color', label: 'Color Texto', type: 'color', defaultValue: '#FFFFFF' },
+        { id: 'cta_radius', label: 'Redondeado', type: 'range', defaultValue: 12, min: 0, max: 30 }
       ],
       interaccion: [
-        { id: 'cta_hover_bg', label: 'Color al pasar el mouse', type: 'color', defaultValue: '#2563EB' }
+        { id: 'cta_hover_bg', label: 'Fondo Hover', type: 'color', defaultValue: '#2563EB' }
       ],
-      estructura: [],
-      tipografia: [],
-      multimedia: []
-    }},
-    { id: 'el_desc', name: 'Descripción Corta', type: 'text', groups: ['contenido', 'tipografia'], settings: {
-      contenido: [
-        { id: 'show_desc', label: 'Mostrar Descripción', type: 'boolean', defaultValue: false }
-      ],
-      tipografia: [
-        { id: 'desc_size', label: 'Tamaño de Fuente', type: 'range', defaultValue: 12, min: 10, max: 16, unit: 'px' }
-      ],
-      estructura: [],
-      estilo: [],
-      multimedia: [],
-      interaccion: []
-    }},
+      estructura: [], tipografia: [], multimedia: []
+    }}
   ]
 };
 
@@ -1526,26 +1537,53 @@ const TEAM_MODULE: WebModule = {
   id: 'mod_team_1',
   type: 'team',
   name: 'Nuestro Equipo Premium',
-  globalGroups: ['estructura', 'estilo', 'interaccion'],
+  globalGroups: ['contenido', 'estructura', 'estilo', 'interaccion'],
   globalSettings: {
+    contenido: [
+      {
+        id: 'members',
+        label: 'Miembros del Equipo',
+        type: 'repeater',
+        defaultValue: [
+          { name: 'Alex Rivera', role: 'CEO & Fundador', category: 'Dirección', image: 'https://picsum.photos/seed/alex/400/500', bio: 'Líder visionario con más de 10 años de experiencia.', linkedin: '#', twitter: '#', web: '#' },
+          { name: 'Elena Santos', role: 'Directora Creativa', category: 'Diseño', image: 'https://picsum.photos/seed/elena/400/500', bio: 'Experta en branding y diseño de experiencias.', linkedin: '#', twitter: '#', web: '#' },
+          { name: 'Marcus Chen', role: 'Head of Engineering', category: 'Tecnología', image: 'https://picsum.photos/seed/marcus/400/500', bio: 'Arquitecto de software apasionado por la escalabilidad.', linkedin: '#', twitter: '#', web: '#' }
+        ],
+        fields: [
+          { id: 'name', label: 'Nombre', type: 'text', defaultValue: 'Nombre' },
+          { id: 'role', label: 'Cargo', type: 'text', defaultValue: 'Cargo' },
+          { id: 'category', label: 'Categoría/Dpto', type: 'text', defaultValue: 'General' },
+          { id: 'image', label: 'Imagen Principal', type: 'image', defaultValue: '' },
+          { id: 'image_hover', label: 'Imagen Hover (Opcional)', type: 'image', defaultValue: '' },
+          { id: 'bio', label: 'Biografía Corta', type: 'text', defaultValue: '' },
+          { id: 'linkedin', label: 'LinkedIn URL', type: 'text', defaultValue: '#' },
+          { id: 'twitter', label: 'Twitter URL', type: 'text', defaultValue: '#' },
+          { id: 'web', label: 'Sitio Web URL', type: 'text', defaultValue: '#' }
+        ]
+      }
+    ],
     estructura: [
       { id: 'layout', label: 'Diseño de Grilla', type: 'select', defaultValue: 'grid', options: [
         { label: 'Grilla Clásica', value: 'grid' },
         { label: 'Lista (Fila)', value: 'list' },
+        { label: 'Carrusel', value: 'carousel' },
         { label: 'Bento (Asimétrico)', value: 'bento' }
       ]},
+      { id: 'show_filters', label: 'Mostrar Filtros de Categoría', type: 'boolean', defaultValue: true },
       { id: 'columns', label: 'Columnas (Desktop)', type: 'range', defaultValue: 3, min: 1, max: 4 },
       { id: 'gap', label: 'Espacio entre miembros', type: 'range', defaultValue: 32, min: 16, max: 64, unit: 'px' },
       { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 100, min: 40, max: 200, unit: 'px' }
     ],
     estilo: [
-      { id: 'bg_color', label: 'Fondo de Sección', type: 'color', defaultValue: '#FFFFFF' }
+      { id: 'bg_color', label: 'Fondo de Sección', type: 'color', defaultValue: '#FFFFFF' },
+      { id: 'section_gradient', label: 'Gradiente de Fondo', type: 'boolean', defaultValue: false }
     ],
     interaccion: [
       { id: 'entrance_anim', label: 'Animación de Entrada', type: 'boolean', defaultValue: true },
-      { id: 'stagger_anim', label: 'Entrada Escalonada', type: 'boolean', defaultValue: true }
+      { id: 'stagger_anim', label: 'Entrada Escalonada', type: 'boolean', defaultValue: true },
+      { id: 'enable_modal', label: 'Ver Bio en Modal', type: 'boolean', defaultValue: false }
     ],
-    contenido: [], tipografia: [], multimedia: []
+    tipografia: [], multimedia: []
   },
   elements: [
     { id: 'el_team_header', name: 'Encabezado de Sección', type: 'text', groups: ['contenido', 'tipografia', 'estructura'], settings: {
@@ -1555,13 +1593,19 @@ const TEAM_MODULE: WebModule = {
       ],
       tipografia: [
         { id: 'align', label: 'Alineación', type: 'select', defaultValue: 'center', options: [{label:'Izquierda', value:'left'}, {label:'Centro', value:'center'}]},
-        { id: 'title_size', label: 'Tamaño Título', type: 'range', defaultValue: 32, min: 24, max: 48 }
+        { id: 'title_size', label: 'Tamaño Título', type: 'range', defaultValue: 32, min: 24, max: 48 },
+        { id: 'title_color', label: 'Color Título', type: 'color', defaultValue: '#0F172A' }
       ],
       estructura: [{ id: 'margin_b', label: 'Margen Inferior', type: 'range', defaultValue: 60, min: 20, max: 100 }],
       estilo: [], multimedia: [], interaccion: []
     }},
     { id: 'el_team_card', name: 'Estilo de Tarjeta', type: 'style', groups: ['estilo', 'estructura', 'interaccion'], settings: {
       estilo: [
+        { id: 'card_style', label: 'Estilo Visual', type: 'select', defaultValue: 'solid', options: [
+          { label: 'Sólido', value: 'solid' },
+          { label: 'Glassmorphism', value: 'glass' },
+          { label: 'Minimalista (Sin Fondo)', value: 'minimal' }
+        ]},
         { id: 'card_bg', label: 'Fondo de Tarjeta', type: 'color', defaultValue: '#FFFFFF' },
         { id: 'card_radius', label: 'Radio de Borde', type: 'range', defaultValue: 24, min: 0, max: 48 },
         { id: 'show_border', label: 'Mostrar Borde', type: 'boolean', defaultValue: false },
@@ -1574,12 +1618,12 @@ const TEAM_MODULE: WebModule = {
         { id: 'hover_effect', label: 'Efecto al pasar mouse', type: 'select', defaultValue: 'lift', options: [
           { label: 'Ninguno', value: 'none' },
           { label: 'Elevar', value: 'lift' },
-          { label: 'Zoom Imagen', value: 'zoom' }
+          { label: 'Brillo (Glow)', value: 'glow' }
         ]}
       ],
       contenido: [], tipografia: [], multimedia: []
     }},
-    { id: 'el_team_image', name: 'Estilo de Imagen', type: 'style', groups: ['estilo', 'estructura'], settings: {
+    { id: 'el_team_image', name: 'Estilo de Imagen', type: 'style', groups: ['estilo', 'multimedia'], settings: {
       estilo: [
         { id: 'img_radius', label: 'Redondeado Imagen', type: 'range', defaultValue: 20, min: 0, max: 100 },
         { id: 'img_aspect', label: 'Relación de Aspecto', type: 'select', defaultValue: 'portrait', options: [
@@ -1588,19 +1632,29 @@ const TEAM_MODULE: WebModule = {
           { label: 'Circular', value: 'circle' }
         ]}
       ],
-      estructura: [
-        { id: 'img_margin_b', label: 'Margen Inferior', type: 'range', defaultValue: 20, min: 0, max: 40 }
+      multimedia: [
+        { id: 'hover_image_swap', label: 'Cambiar imagen al pasar mouse', type: 'boolean', defaultValue: true },
+        { id: 'img_mask', label: 'Máscara de Forma', type: 'select', defaultValue: 'none', options: [
+          { label: 'Ninguna', value: 'none' },
+          { label: 'Squircle', value: 'squircle' },
+          { label: 'Blob', value: 'blob' }
+        ]}
       ],
-      contenido: [], tipografia: [], multimedia: [], interaccion: []
+      contenido: [], tipografia: [], estructura: [], interaccion: []
     }},
-    { id: 'el_team_info', name: 'Tipografía de Miembro', type: 'text', groups: ['tipografia'], settings: {
+    { id: 'el_team_info', name: 'Tipografía de Miembro', type: 'text', groups: ['tipografia', 'estilo'], settings: {
       tipografia: [
         { id: 'name_size', label: 'Tamaño Nombre', type: 'range', defaultValue: 18, min: 14, max: 24 },
-        { id: 'name_color', label: 'Color Nombre', type: 'color', defaultValue: '#0F172A' },
+        { id: 'name_weight', label: 'Grosor Nombre', type: 'select', defaultValue: 'black', options: [{label:'Bold', value:'bold'}, {label:'Black', value:'black'}]},
         { id: 'role_size', label: 'Tamaño Cargo', type: 'range', defaultValue: 14, min: 12, max: 18 },
-        { id: 'role_color', label: 'Color Cargo', type: 'color', defaultValue: 'var(--primary-color)' }
+        { id: 'role_weight', label: 'Grosor Cargo', type: 'select', defaultValue: 'bold', options: [{label:'Medium', value:'medium'}, {label:'Bold', value:'bold'}]}
       ],
-      contenido: [], estilo: [], estructura: [], multimedia: [], interaccion: []
+      estilo: [
+        { id: 'name_color', label: 'Color Nombre', type: 'color', defaultValue: '#0F172A' },
+        { id: 'role_color', label: 'Color Cargo', type: 'color', defaultValue: 'var(--primary-color)' },
+        { id: 'bio_color', label: 'Color Biografía', type: 'color', defaultValue: '#64748B' }
+      ],
+      contenido: [], estructura: [], multimedia: [], interaccion: []
     }}
   ]
 };
@@ -3924,13 +3978,6 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
 
   // --- HELPERS ---
 
-const sendToMother = (message: any) => {
-  const target = window.opener || window.parent;
-  if (target && target !== window) {
-    target.postMessage(message, '*');
-  }
-};
-
 const formatTimestampName = () => {
     const now = new Date();
     const yy = now.getFullYear().toString().slice(-2);
@@ -3969,8 +4016,12 @@ const formatTimestampName = () => {
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === 'SOLUTIUM_PUBLISH_SUCCESS') {
-        console.log('[PUBLISH] Confirmación recibida de App Madre: SOLUTIUM_PUBLISH_SUCCESS');
+        console.log('[SIP v5.1] Confirmación recibida de App Madre: SOLUTIUM_PUBLISH_SUCCESS');
         setPublishStatus('success');
+        
+        // SIP v5.1: Tras éxito en publicación, actualizamos el estado local a 'published'
+        setHasUnsavedChanges(false);
+        
         setTimeout(() => setPublishStatus('idle'), 3000);
       }
     };
@@ -4012,6 +4063,7 @@ const formatTimestampName = () => {
         payload: {
           projectId,
           appId: '11111111-1111-1111-1111-111111111111',
+          siteId: siteId, // SIP v5.1: siteId en el payload principal
           data: editorState,
           metadata: {
             siteId: siteId,

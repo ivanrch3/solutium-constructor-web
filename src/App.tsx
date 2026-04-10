@@ -181,6 +181,20 @@ const AppContent: React.FC = () => {
           );
           
           setPages(allPages);
+
+          // SIP v5.1: Si la Madre provee un site_id, intentamos abrir ese sitio directamente
+          if (payload.site_id) {
+            console.log(`[SIP v5.1] Detectado site_id en handshake: ${payload.site_id}. Intentando abrir...`);
+            const existingPage = allPages.find(p => p.siteId === payload.site_id);
+            if (existingPage) {
+              setSelectedPage(existingPage);
+              setCurrentView('constructor');
+            } else {
+              // Si no existe, preparamos un objeto mínimo para que el constructor lo reconozca como nuevo con ese ID
+              setSelectedPage({ siteId: payload.site_id, name: 'Nuevo Sitio' } as any);
+              setCurrentView('constructor');
+            }
+          }
         }
 
         // Fetch user

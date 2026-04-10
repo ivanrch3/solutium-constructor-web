@@ -13,14 +13,29 @@ export interface HandshakePayload {
   activeThemeData?: any;
   favicon_url?: string;
   faviconUrl?: string;
+  site_id?: string; // SIP v5.1: site_id provided by Mother
 }
+
+let motherWindow: any = window.opener || window.parent;
+
+/**
+ * SIP v5.1: Captura de Madre y Envío Robusto
+ */
+export const sendToMother = (message: any) => {
+  if (motherWindow && motherWindow !== window) {
+    motherWindow.postMessage(message, '*');
+  } else {
+    console.warn("[SIP v5.1] No se detectó ventana Madre estable. Intentando con window.opener...");
+    if (window.opener) window.opener.postMessage(message, '*');
+  }
+};
 
 export const listenForHandshake = (
   onHandshake: (payload: HandshakePayload) => void
 ) => {
-  console.log("[DIAGNOSTICO] Listener de handshake inicializado.");
+  console.log("[SIP v5.1] Protocolo Handshake (Toc-Toc) inicializado.");
 
-  const validateAndProcess = (data: any) => {
+  const validateAndProcess = (data: any, source?: any) => {
     if (!data) return false;
     
     // Soporte para el formato inyectado o el formato plano
@@ -31,49 +46,66 @@ export const listenForHandshake = (
     const missing = required.filter(field => !payload[field]);
 
     if (missing.length > 0) {
-      console.warn("[DIAGNOSTICO] Payload incompleto en URL:", missing);
+      // Si es un mensaje de configuración pero faltan campos, no lo procesamos como handshake completo
+      if (data.type === 'SOLUTIUM_CONFIG') {
+        console.warn("[SIP v5.1] SOLUTIUM_CONFIG recibido pero incompleto:", missing);
+      }
       return false;
     }
 
-    console.log("[DIAGNOSTICO] Handshake válido detectado. Payload completo:", payload);
+    // CAPTURA CRÍTICA: Si viene de un evento message, capturamos el source como la Madre real
+    if (source) {
+      motherWindow = source;
+      console.log("[SIP v5.1] CAPTURA CRÍTICA: Ventana Madre vinculada via event.source");
+    }
+
+    console.log("[SIP v5.1] Handshake válido detectado. Payload:", payload);
     onHandshake(payload as HandshakePayload);
+
+    // Confirmar recepción (ACK)
+    sendToMother({ type: 'SOLUTIUM_ACK', status: 'success' });
+    
     return true;
   };
 
-  // ESTRATEGIA PRIORITARIA: Leer de la URL (Fat URL)
+  // 1. ESTRATEGIA: Fat URL (Prioridad alta para carga rápida)
   const urlParams = new URLSearchParams(window.location.search);
   const urlPayload: any = {};
-  
   urlParams.forEach((val, key) => {
-    try {
-      // Intenta parsear si es JSON (para objetos complejos como project o activeThemeData)
-      urlPayload[key] = JSON.parse(val);
-    } catch (e) {
-      urlPayload[key] = val;
-    }
+    try { urlPayload[key] = JSON.parse(val); } catch (e) { urlPayload[key] = val; }
   });
 
-  if (Object.keys(urlPayload).length > 0) {
-    console.log("[DIAGNOSTICO] Detectada Fat URL. Intentando validar...");
-    if (validateAndProcess(urlPayload)) {
-      return () => {}; // Handshake completado por URL
-    }
+  if (Object.keys(urlPayload).length > 0 && validateAndProcess(urlPayload)) {
+    return () => {}; 
   }
 
-  // ESTRATEGIA DE RESPALDO: window.name e inyección postMessage
+  // 2. ESTRATEGIA: Zero-Latency window.name
   if (window.name) {
     try {
       const nameData = JSON.parse(window.name);
-      validateAndProcess(nameData);
+      if (validateAndProcess(nameData)) return () => {};
     } catch (e) { /* No es JSON */ }
   }
 
+  // 3. ESTRATEGIA: Protocolo Toc-Toc (Polling)
+  const tocTocInterval = setInterval(() => {
+    console.log("[SIP v5.1] Toc-Toc... Enviando SOLUTIUM_GET_CONFIG");
+    sendToMother({ type: 'SOLUTIUM_GET_CONFIG' });
+  }, 2000);
+
   const handler = (event: MessageEvent) => {
     if (!event.data) return;
-    validateAndProcess(event.data);
+    
+    if (event.data.type === 'SOLUTIUM_CONFIG') {
+      clearInterval(tocTocInterval);
+      validateAndProcess(event.data, event.source);
+    }
   };
 
   window.addEventListener('message', handler);
   
-  return () => window.removeEventListener('message', handler);
+  return () => {
+    clearInterval(tocTocInterval);
+    window.removeEventListener('message', handler);
+  };
 };

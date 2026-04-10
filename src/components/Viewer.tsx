@@ -13,6 +13,13 @@ import { FAQModule } from './constructor/modules/FAQModule';
 import { ContactModule } from './constructor/modules/ContactModule';
 import { ProductsModule } from './constructor/modules/ProductsModule';
 import { ClientsModule } from './constructor/modules/ClientsModule';
+import { CTAModule } from './constructor/modules/CTAModule';
+import { HeaderModule } from './constructor/modules/HeaderModule';
+import { FooterModule } from './constructor/modules/FooterModule';
+import { NewsletterModule } from './constructor/modules/NewsletterModule';
+import { VideoModule } from './constructor/modules/VideoModule';
+import { SpacerModule } from './constructor/modules/SpacerModule';
+import { MenuModule } from './constructor/modules/MenuModule';
 import { AlertCircle } from 'lucide-react';
 
 interface ViewerProps {
@@ -73,112 +80,46 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
         }, {} as Record<string, any>);
 
         switch (type) {
+          case 'header':
+            return <HeaderModule key={moduleId} moduleId={moduleId} settingsValues={settingsValues} />;
           case 'hero':
-            return (
-              <HeroModule 
-                key={moduleId}
-                moduleId={moduleId}
-                settingsValues={settingsValues}
-              />
-            );
+            return <HeroModule key={moduleId} moduleId={moduleId} settingsValues={settingsValues} />;
           case 'features':
-            return (
-              <FeaturesModule 
-                key={moduleId}
-                moduleId={moduleId}
-                settingsValues={settingsValues}
-              />
-            );
+            return <FeaturesModule key={moduleId} moduleId={moduleId} settingsValues={settingsValues} />;
           case 'about':
-            return (
-              <AboutModule 
-                key={moduleId}
-                moduleId={moduleId}
-                settingsValues={settingsValues}
-              />
-            );
+            return <AboutModule key={moduleId} moduleId={moduleId} settingsValues={settingsValues} />;
           case 'process':
-            return (
-              <ProcessModule 
-                key={moduleId}
-                moduleId={moduleId}
-                settingsValues={settingsValues}
-              />
-            );
+            return <ProcessModule key={moduleId} moduleId={moduleId} settingsValues={settingsValues} />;
           case 'gallery':
-            return (
-              <GalleryModule 
-                key={moduleId}
-                moduleId={moduleId}
-                settingsValues={settingsValues}
-              />
-            );
+            return <GalleryModule key={moduleId} moduleId={moduleId} settingsValues={settingsValues} />;
           case 'testimonials':
-            return (
-              <TestimonialsModule 
-                key={moduleId}
-                moduleId={moduleId}
-                settingsValues={settingsValues}
-              />
-            );
+            return <TestimonialsModule key={moduleId} moduleId={moduleId} settingsValues={settingsValues} />;
           case 'stats':
-            return (
-              <StatsModule 
-                key={moduleId}
-                moduleId={moduleId}
-                settingsValues={settingsValues}
-              />
-            );
+            return <StatsModule key={moduleId} moduleId={moduleId} settingsValues={settingsValues} />;
           case 'team':
-            return (
-              <TeamModule 
-                key={moduleId}
-                moduleId={moduleId}
-                settingsValues={settingsValues}
-              />
-            );
+            return <TeamModule key={moduleId} moduleId={moduleId} settingsValues={settingsValues} />;
           case 'pricing':
-            return (
-              <PricingModule 
-                key={moduleId}
-                moduleId={moduleId}
-                settingsValues={settingsValues}
-              />
-            );
+            return <PricingModule key={moduleId} moduleId={moduleId} settingsValues={settingsValues} />;
           case 'faq':
-            return (
-              <FAQModule 
-                key={moduleId}
-                moduleId={moduleId}
-                settingsValues={settingsValues}
-              />
-            );
+            return <FAQModule key={moduleId} moduleId={moduleId} settingsValues={settingsValues} />;
           case 'contact':
-            return (
-              <ContactModule 
-                key={moduleId}
-                moduleId={moduleId}
-                settingsValues={settingsValues}
-              />
-            );
+            return <ContactModule key={moduleId} moduleId={moduleId} settingsValues={settingsValues} />;
           case 'products':
-            return (
-              <ProductsModule 
-                key={moduleId}
-                moduleId={moduleId}
-                settingsValues={settingsValues}
-                products={[]} 
-              />
-            );
+            return <ProductsModule key={moduleId} moduleId={moduleId} settingsValues={settingsValues} products={[]} />;
           case 'clients':
-            return (
-              <ClientsModule 
-                key={moduleId}
-                moduleId={moduleId}
-                settingsValues={settingsValues}
-                customers={[]} 
-              />
-            );
+            return <ClientsModule key={moduleId} moduleId={moduleId} settingsValues={settingsValues} customers={[]} />;
+          case 'cta':
+            return <CTAModule key={moduleId} moduleId={moduleId} settingsValues={settingsValues} />;
+          case 'newsletter':
+            return <NewsletterModule key={moduleId} moduleId={moduleId} settingsValues={settingsValues} />;
+          case 'video':
+            return <VideoModule key={moduleId} moduleId={moduleId} settingsValues={settingsValues} />;
+          case 'spacer':
+            return <SpacerModule key={moduleId} moduleId={moduleId} settingsValues={settingsValues} />;
+          case 'menu':
+            return <MenuModule key={moduleId} moduleId={moduleId} settingsValues={settingsValues} />;
+          case 'footer':
+            return <FooterModule key={moduleId} moduleId={moduleId} settingsValues={settingsValues} />;
           default:
             return null;
         }

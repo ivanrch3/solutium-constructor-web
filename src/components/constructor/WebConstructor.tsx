@@ -1669,7 +1669,8 @@ const CTA_MODULE: WebModule = {
       { id: 'layout', label: 'Diseño', type: 'select', defaultValue: 'centered', options: [
         { label: 'Centrado', value: 'centered' },
         { label: 'Dividido (Texto/Imagen)', value: 'split' },
-        { label: 'Minimalista', value: 'minimal' }
+        { label: 'Minimalista', value: 'minimal' },
+        { label: 'Bento Box (Premium)', value: 'bento' }
       ]},
       { id: 'max_width', label: 'Ancho Máximo', type: 'range', defaultValue: 1000, min: 600, max: 1400, unit: 'px' },
       { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 100, min: 40, max: 200, unit: 'px' }
@@ -1678,16 +1679,29 @@ const CTA_MODULE: WebModule = {
       { id: 'bg_type', label: 'Tipo de Fondo', type: 'select', defaultValue: 'color', options: [
         { label: 'Color Sólido', value: 'color' },
         { label: 'Gradiente', value: 'gradient' },
-        { label: 'Imagen', value: 'image' }
+        { label: 'Imagen', value: 'image' },
+        { label: 'Video (MP4)', value: 'video' }
       ]},
       { id: 'bg_color', label: 'Color de Fondo', type: 'color', defaultValue: '#FFFFFF' },
       { id: 'bg_gradient', label: 'Gradiente', type: 'text', defaultValue: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)' },
+      { id: 'bg_video', label: 'URL Video (MP4)', type: 'text', defaultValue: '' },
       { id: 'overlay_opacity', label: 'Opacidad Overlay', type: 'range', defaultValue: 50, min: 0, max: 100, unit: '%' }
     ],
     interaccion: [
-      { id: 'entrance_anim', label: 'Animación de Entrada', type: 'boolean', defaultValue: true }
+      { id: 'entrance_anim', label: 'Animación de Entrada', type: 'boolean', defaultValue: true },
+      { id: 'enable_shimmer', label: 'Efecto Brillo (Shimmer)', type: 'boolean', defaultValue: true },
+      { id: 'magnetic_button', label: 'Botón Magnético', type: 'boolean', defaultValue: false }
     ],
-    contenido: [], tipografia: [], multimedia: []
+    contenido: [
+      { id: 'enable_countdown', label: 'Habilitar Cuenta Regresiva', type: 'boolean', defaultValue: false },
+      { id: 'countdown_date', label: 'Fecha Límite (YYYY-MM-DD)', type: 'text', defaultValue: '2026-12-31' }
+    ],
+    multimedia: [
+      { id: 'show_floating_assets', label: 'Mostrar Elementos Flotantes', type: 'boolean', defaultValue: false },
+      { id: 'floating_icon_1', label: 'Icono Flotante 1', type: 'icon', defaultValue: 'Sparkles' },
+      { id: 'floating_icon_2', label: 'Icono Flotante 2', type: 'icon', defaultValue: 'Zap' }
+    ],
+    tipografia: []
   },
   elements: [
     { id: 'el_cta_content', name: 'Contenido de Texto', type: 'text', groups: ['contenido', 'tipografia', 'estructura'], settings: {
@@ -1707,7 +1721,12 @@ const CTA_MODULE: WebModule = {
     }},
     { id: 'el_cta_actions', name: 'Botones de Acción', type: 'style', groups: ['contenido', 'estilo', 'interaccion'], settings: {
       contenido: [
+        { id: 'mode', label: 'Modo de Acción', type: 'select', defaultValue: 'buttons', options: [
+          { label: 'Botones Estándar', value: 'buttons' },
+          { label: 'Captura de Email (Lead)', value: 'lead_capture' }
+        ]},
         { id: 'primary_text', label: 'Texto Botón Principal', type: 'text', defaultValue: 'Empezar Ahora' },
+        { id: 'placeholder', label: 'Placeholder Email', type: 'text', defaultValue: 'tu@email.com' },
         { id: 'secondary_text', label: 'Texto Botón Secundario', type: 'text', defaultValue: 'Saber Más' },
         { id: 'show_secondary', label: 'Mostrar Secundario', type: 'boolean', defaultValue: true }
       ],
@@ -1731,7 +1750,9 @@ const CTA_MODULE: WebModule = {
         { id: 'trust_color', label: 'Color Texto', type: 'color', defaultValue: '#64748B' }
       ],
       multimedia: [
-        { id: 'show_avatars', label: 'Mostrar Avatares', type: 'boolean', defaultValue: true }
+        { id: 'show_avatars', label: 'Mostrar Avatares', type: 'boolean', defaultValue: true },
+        { id: 'show_logos', label: 'Mostrar Logos de Empresas', type: 'boolean', defaultValue: false },
+        { id: 'company_logos', label: 'Logos (URLs)', type: 'repeater', defaultValue: [] }
       ],
       estructura: [], estilo: [], interaccion: []
     }}
@@ -4063,6 +4084,91 @@ const formatTimestampName = () => {
     return () => window.removeEventListener('message', handleMessage);
   }, []);
 
+  const generateRenderingContract = (finalSiteName: string): RenderingContract => {
+    // Helper to get setting value with fallback
+    const getVal = (moduleId: string, elementId: string | null, settingId: string, defaultValue: any) => {
+      const key = elementId ? `${moduleId}_${elementId}_${settingId}` : `${moduleId}_global_${settingId}`;
+      return editorState.settingsValues[key] !== undefined ? editorState.settingsValues[key] : defaultValue;
+    };
+
+    // 1. Determine Global Theme
+    const firstModuleId = editorState.addedModules[0]?.id;
+    const primaryColor = firstModuleId 
+      ? getVal(firstModuleId, null, 'primary_color', project?.brandColors?.primary || '#2563EB')
+      : (project?.brandColors?.primary || '#2563EB');
+
+    return {
+      theme: {
+        primaryColor,
+        fontFamily: project?.fontFamily || 'Inter',
+      },
+      sections: editorState.addedModules.map(module => {
+        const content: any = {};
+
+        // Extract specific content fields for the mother app's expected structure
+        if (module.type === 'hero') {
+          content.title = getVal(module.id, 'el_hero_title', 'text', '');
+          content.subtitle = getVal(module.id, 'el_hero_subtitle', 'text', '');
+          content.buttonText = getVal(module.id, 'el_hero_cta', 'text', '');
+          content.imageUrl = getVal(module.id, 'el_hero_visual', 'url', '');
+        } else if (module.type === 'features') {
+          content.title = getVal(module.id, 'el_features_header', 'title', '');
+          content.subtitle = getVal(module.id, 'el_features_header', 'subtitle', '');
+        } else if (module.type === 'contact') {
+          content.title = getVal(module.id, 'el_contact_info', 'title', '');
+          content.subtitle = getVal(module.id, 'el_contact_info', 'subtitle', '');
+          content.buttonText = getVal(module.id, 'el_contact_form', 'button_text', '');
+        } else if (module.type === 'team') {
+          content.title = getVal(module.id, 'el_team_header', 'title', '');
+          content.subtitle = getVal(module.id, 'el_team_header', 'subtitle', '');
+        } else if (module.type === 'pricing') {
+          content.title = getVal(module.id, 'el_pricing_header', 'title', '');
+          content.subtitle = getVal(module.id, 'el_pricing_header', 'subtitle', '');
+        } else if (module.type === 'faq') {
+          content.title = getVal(module.id, 'el_faq_header', 'title', '');
+          content.subtitle = getVal(module.id, 'el_faq_header', 'subtitle', '');
+        } else {
+          // Fallback for other modules
+          content.title = getVal(module.id, 'el_testimonials_header', 'title', 
+                          getVal(module.id, 'el_process_header', 'title', 
+                          getVal(module.id, 'el_stats_header', 'title', 
+                          getVal(module.id, 'el_team_header', 'title', 
+                          getVal(module.id, 'el_pricing_header', 'title', 
+                          getVal(module.id, 'el_faq_header', 'title', ''))))));
+          content.subtitle = getVal(module.id, 'el_testimonials_header', 'subtitle', 
+                             getVal(module.id, 'el_process_header', 'subtitle', 
+                             getVal(module.id, 'el_stats_header', 'subtitle', 
+                             getVal(module.id, 'el_team_header', 'subtitle', 
+                             getVal(module.id, 'el_pricing_header', 'subtitle', 
+                             getVal(module.id, 'el_faq_header', 'subtitle', ''))))));
+        }
+
+        if (module.type === 'products') {
+          content.productIds = getVal(module.id, null, 'select_products', []);
+        }
+        if (module.type === 'clients') {
+          content.customerIds = getVal(module.id, null, 'select_customers', []);
+        }
+
+        // Extract ALL settings for this module to preserve styling
+        const settings: any = {};
+        Object.entries(editorState.settingsValues).forEach(([key, value]) => {
+          if (key.startsWith(module.id)) {
+            const relativeKey = key.replace(`${module.id}_`, '');
+            settings[relativeKey] = value;
+          }
+        });
+
+        return {
+          id: module.id,
+          type: module.type as any,
+          content,
+          settings
+        };
+      })
+    };
+  };
+
   const handleSaveDraft = async (forcedStatus?: 'draft' | 'published' | 'modified') => {
     if (!projectId) return;
     setSaveStatus('loading');
@@ -4070,12 +4176,8 @@ const formatTimestampName = () => {
     
     try {
       const finalSiteName = siteName || formatTimestampName();
-      if (!siteName) setSiteName(finalSiteName);
-
-      // Use the stable currentSiteId
       const siteId = currentSiteId;
-      
-      console.log(`[SAVE DRAFT] Usando siteId: ${siteId} para el proyecto: ${projectId}`);
+      const renderingContract = generateRenderingContract(finalSiteName);
 
       // Determine new status based on SIP v5.1 logic
       let newStatus: 'draft' | 'published' | 'modified' = currentStatus;
@@ -4091,15 +4193,13 @@ const formatTimestampName = () => {
       const payload = {
         type: 'SOLUTIUM_SAVE',
         payload: {
+          siteId: siteId,
+          siteName: finalSiteName,
+          status: newStatus,
+          content: renderingContract, // SIP v4.0 contract
+          editorState: editorState, // Extra for resuming
           projectId,
-          appId: '11111111-1111-1111-1111-111111111111',
-          siteId: siteId, // SIP v5.1: siteId en el payload principal
-          data: editorState,
-          metadata: {
-            siteId: siteId,
-            siteName: finalSiteName,
-            status: newStatus
-          }
+          appId: '11111111-1111-1111-1111-111111111111'
         }
       };
 
@@ -4123,7 +4223,7 @@ const formatTimestampName = () => {
       
       const result = await saveWebBuilderSiteDraft(siteData);
       if (result) {
-        console.log(`Borrador guardado con éxito (Status: ${newStatus}) (SIP v5.0)`);
+        console.log(`Borrador guardado con éxito (Status: ${newStatus}) (SIP v5.2)`);
         setSaveStatus('success');
         setHasUnsavedChanges(false);
         setTimeout(() => setSaveStatus('idle'), 3000);
@@ -4153,92 +4253,7 @@ const formatTimestampName = () => {
     setPublishStatus('loading');
     setIsSaving(true);
     try {
-      // Helper to get setting value with fallback
-      const getVal = (moduleId: string, elementId: string | null, settingId: string, defaultValue: any) => {
-        const key = elementId ? `${moduleId}_${elementId}_${settingId}` : `${moduleId}_global_${settingId}`;
-        return editorState.settingsValues[key] !== undefined ? editorState.settingsValues[key] : defaultValue;
-      };
-
-      // 1. Determine Global Theme
-      const firstModuleId = editorState.addedModules[0]?.id;
-      const primaryColor = firstModuleId 
-        ? getVal(firstModuleId, null, 'primary_color', project?.brandColors?.primary || '#2563EB')
-        : (project?.brandColors?.primary || '#2563EB');
-
-      const renderingContract: RenderingContract = {
-        theme: {
-          primaryColor,
-          fontFamily: project?.fontFamily || 'Inter',
-        },
-        sections: editorState.addedModules.map(module => {
-          const content: any = {};
-
-          // Extract specific content fields for the mother app's expected structure
-          if (module.type === 'hero') {
-            content.title = getVal(module.id, 'el_hero_title', 'text', '');
-            content.subtitle = getVal(module.id, 'el_hero_subtitle', 'text', '');
-            content.buttonText = getVal(module.id, 'el_hero_cta', 'text', '');
-            content.imageUrl = getVal(module.id, 'el_hero_visual', 'url', '');
-          } else if (module.type === 'features') {
-            content.title = getVal(module.id, 'el_features_header', 'title', '');
-            content.subtitle = getVal(module.id, 'el_features_header', 'subtitle', '');
-          } else if (module.type === 'contact') {
-            content.title = getVal(module.id, 'el_contact_info', 'title', '');
-            content.subtitle = getVal(module.id, 'el_contact_info', 'subtitle', '');
-            content.buttonText = getVal(module.id, 'el_contact_form', 'button_text', '');
-          } else if (module.type === 'team') {
-            content.title = getVal(module.id, 'el_team_header', 'title', '');
-            content.subtitle = getVal(module.id, 'el_team_header', 'subtitle', '');
-          } else if (module.type === 'pricing') {
-            content.title = getVal(module.id, 'el_pricing_header', 'title', '');
-            content.subtitle = getVal(module.id, 'el_pricing_header', 'subtitle', '');
-          } else if (module.type === 'faq') {
-            content.title = getVal(module.id, 'el_faq_header', 'title', '');
-            content.subtitle = getVal(module.id, 'el_faq_header', 'subtitle', '');
-          } else {
-            // Fallback for other modules
-            content.title = getVal(module.id, 'el_testimonials_header', 'title', 
-                            getVal(module.id, 'el_process_header', 'title', 
-                            getVal(module.id, 'el_stats_header', 'title', 
-                            getVal(module.id, 'el_team_header', 'title', 
-                            getVal(module.id, 'el_pricing_header', 'title', 
-                            getVal(module.id, 'el_faq_header', 'title', ''))))));
-            content.subtitle = getVal(module.id, 'el_testimonials_header', 'subtitle', 
-                               getVal(module.id, 'el_process_header', 'subtitle', 
-                               getVal(module.id, 'el_stats_header', 'subtitle', 
-                               getVal(module.id, 'el_team_header', 'subtitle', 
-                               getVal(module.id, 'el_pricing_header', 'subtitle', 
-                               getVal(module.id, 'el_faq_header', 'subtitle', ''))))));
-          }
-
-          if (module.type === 'products') {
-            content.productIds = getVal(module.id, null, 'select_products', []);
-          }
-          if (module.type === 'clients') {
-            content.customerIds = getVal(module.id, null, 'select_customers', []);
-          }
-
-          // Extract ALL settings for this module to preserve styling
-          const settings: any = {};
-          Object.entries(editorState.settingsValues).forEach(([key, value]) => {
-            if (key.startsWith(module.id)) {
-              const relativeKey = key.replace(`${module.id}_`, '');
-              settings[relativeKey] = value;
-            }
-          });
-
-          return {
-            id: module.id,
-            type: module.type as any,
-            content,
-            settings
-          };
-        })
-      };
-
-      const finalSiteName = siteName || formatTimestampName();
-      
-      // Use the stable currentSiteId
+      const renderingContract = generateRenderingContract(finalSiteName);
       const siteId = currentSiteId;
 
       console.log(`[PUBLISH] Usando siteId: ${siteId} para el proyecto: ${projectId}`);
@@ -4246,22 +4261,21 @@ const formatTimestampName = () => {
       const payload = {
         type: 'SOLUTIUM_PUBLISH',
         payload: {
-          projectId,
-          appId: '11111111-1111-1111-1111-111111111111',
           siteId: siteId,
           siteName: finalSiteName,
-          data: renderingContract // El JSON completo del sitio
+          renderingContract: renderingContract, // Exact name from prompt
+          projectId,
+          appId: '11111111-1111-1111-1111-111111111111'
         }
       };
 
       // Notify Mother App using robust pattern
       sendToMother(payload);
 
-      // SIP v5.1: We delegate persistence to the Mother App via SOLUTIUM_PUBLISH.
+      // SIP v5.2: We delegate persistence to the Mother App via SOLUTIUM_PUBLISH.
       console.log('[PUBLISH] Evento SOLUTIUM_PUBLISH enviado. Delegando persistencia a App Madre.');
 
       // We wait for SOLUTIUM_PUBLISH_SUCCESS to update status (handled in useEffect)
-      // but we set loading state here
       setPublishStatus('loading');
       
       // Also save a draft to keep them in sync

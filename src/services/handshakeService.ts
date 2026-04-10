@@ -1,131 +1,121 @@
 export interface HandshakePayload {
-  satellite_id: string;
+  projectId: string;
   supabase_url: string;
   supabase_anon_key: string;
   session_token: string;
-  do_endpoint?: string;
-  do_access_key?: string;
-  do_secret_key?: string;
-  do_bucket?: string;
-  fontFamily?: string;
-  profile?: any;
-  project?: any;
-  activeThemeData?: any;
-  favicon_url?: string;
-  faviconUrl?: string;
-  site_id?: string; // SIP v5.1: site_id provided by Mother
+  appId: string;
+  site_id?: string;
+  siteName?: string;
+  [key: string]: any;
 }
 
 let motherWindow: any = window.opener || window.parent;
 let isStable = false;
 
 /**
- * SIP v5.1: Captura de Madre y Envío Robusto con Estabilización
+ * SIP v5.2: Envío Robusto con Estabilización
  */
 export const sendToMother = (message: any) => {
   if (motherWindow && motherWindow !== window) {
-    if (!isStable) console.warn("⚠️ [SIP] Enviando mensaje vía canal inestable (opener).");
     motherWindow.postMessage(message, '*');
   } else {
-    console.error("❌ [SIP] No se detectó ventana Madre.");
+    // Silencioso si no hay conexión aún
   }
 };
 
-export const listenForHandshake = (
-  onHandshake: (payload: HandshakePayload) => void
+/**
+ * SIP v5.2: Protocolo de Arranque y Comunicación
+ */
+export const startHandshake = (
+  onConfig: (payload: HandshakePayload) => void
 ) => {
-  console.log("[SIP v5.1] Protocolo Handshake (Toc-Toc) inicializado.");
+  console.log("🛠️ [SIP v5.2] Iniciando protocolo de arranque...");
 
-  const validateAndProcess = (data: any, source?: any) => {
-    if (!data) return false;
-    
-    // Soporte para el formato inyectado o el formato plano
-    const payload = (data.type === 'SOLUTIUM_DIRECT_INJECTION' || data.type === 'SOLUTIUM_CONFIG') ? data.payload : data;
-    if (!payload) return false;
+  const processConfig = (payload: any) => {
+    if (!payload) return;
 
-    const required = ['satellite_id', 'supabase_url', 'supabase_anon_key', 'session_token'];
-    const missing = required.filter(field => !payload[field]);
+    // Mapeo de nombres si vienen con prefijos distintos
+    const config: HandshakePayload = {
+      projectId: payload.projectId || payload.satellite_id,
+      supabase_url: payload.supabase_url,
+      supabase_anon_key: payload.supabase_anon_key,
+      session_token: payload.session_token,
+      appId: payload.appId || payload.app_id || '11111111-1111-1111-1111-111111111111',
+      site_id: payload.site_id,
+      siteName: payload.siteName
+    };
 
-    if (missing.length > 0) {
-      if (data.type === 'SOLUTIUM_CONFIG') {
-        console.warn("[SIP v5.1] SOLUTIUM_CONFIG recibido pero incompleto:", missing);
+    // Copiar el resto de propiedades
+    Object.keys(payload).forEach(key => {
+      if (!(key in config)) {
+        (config as any)[key] = payload[key];
       }
-      return false;
-    }
+    });
 
-    // CAPTURA CRÍTICA: event.source es la conexión viva y directa
-    if (source && source !== window) {
-      motherWindow = source;
-      isStable = true;
-      console.log("✅ [SIP] Conexión estabilizada con la App Madre.");
-    }
-
-    console.log("[SIP v5.1] Handshake válido detectado. Payload:", payload);
-    onHandshake(payload as HandshakePayload);
-
-    // Confirmar recepción (ACK)
-    sendToMother({ type: 'SOLUTIUM_ACK', status: 'success' });
-    
-    return true;
+    onConfig(config);
   };
 
-  // --- RESILIENCIA ANTE REFRESCOS (F5 Safe) ---
-  
-  // 1. Prioridad 1: URL (supabase_url y session_token presentes)
+  const setupMessageListener = () => {
+    window.addEventListener('message', (event) => {
+      if (event.data && event.data.type) {
+        // Estabilizar conexión capturando la fuente
+        if (event.source && event.source !== window) {
+          motherWindow = event.source;
+          isStable = true;
+          console.log("✅ [SIP v5.2] Conexión estabilizada con la App Madre.");
+        }
+
+        if (event.data.type === 'SOLUTIUM_CONFIG') {
+          console.log("✅ [SIP v5.2] Configuración recibida vía Heartbeat.");
+          processConfig(event.data.payload);
+          sendToMother({ type: 'SOLUTIUM_ACK', status: 'success' });
+        }
+      }
+    });
+  };
+
   const urlParams = new URLSearchParams(window.location.search);
-  const configFromUrl: any = {};
-  urlParams.forEach((val, key) => {
-    try { configFromUrl[key] = JSON.parse(val); } catch (e) { configFromUrl[key] = val; }
-  });
+  
+  // PRIORIDAD 1: URL (Fat URL) - Sobrevive a todo
+  const configFromUrl = {
+    supabase_url: urlParams.get('supabase_url'),
+    supabase_anon_key: urlParams.get('supabase_anon_key'),
+    session_token: urlParams.get('session_token'),
+    projectId: urlParams.get('satellite_id'),
+    appId: urlParams.get('app_id'),
+    site_id: urlParams.get('site_id'),
+    siteName: urlParams.get('site_name')
+  };
 
   if (configFromUrl.supabase_url && configFromUrl.session_token) {
-    console.log("✅ [SIP] Recuperado desde URL (F5 Safe)");
-    if (validateAndProcess(configFromUrl)) {
-      // Aunque carguemos de URL, necesitamos estabilizar el postMessage para guardar/publicar
-      // Así que no retornamos aquí, dejamos que el Toc-Toc o el listener capturen el source
-    }
+    console.log("🚀 [SIP v5.2] Configuración recuperada desde URL.");
+    processConfig(configFromUrl);
+    setupMessageListener(); // Solo para escuchar futuras órdenes
+    return;
   }
 
-  // 2. Prioridad 2: window.name (Zero-Latency)
+  // PRIORIDAD 2: window.name (Cajón persistente)
   if (window.name) {
     try {
-      const nameData = JSON.parse(window.name);
-      console.log("✅ [SIP] Recuperado desde window.name");
-      validateAndProcess(nameData);
-    } catch (e) { /* No es JSON */ }
+      const data = JSON.parse(window.name);
+      if (data.type === 'SOLUTIUM_DIRECT_INJECTION' || data.type === 'SOLUTIUM_CONFIG') {
+        console.log("📦 [SIP v5.2] Configuración recuperada desde window.name.");
+        processConfig(data.payload);
+        setupMessageListener();
+        return;
+      }
+    } catch(e) {}
   }
 
-  // 3. Prioridad 3: Protocolo Toc-Toc (Gritar hasta que respondan)
-  const tocTocInterval = setInterval(() => {
-    if (isStable) {
-      clearInterval(tocTocInterval);
-      return;
+  // PRIORIDAD 3: Escucha Pasiva (Esperar a la Madre)
+  console.log("⏳ [SIP v5.2] Esperando latido de la App Madre...");
+  setupMessageListener();
+
+  // Opcional: Toc-Toc si no recibimos nada en 5 segundos
+  setTimeout(() => {
+    if (!isStable) {
+      console.log("🔔 [SIP v5.2] Toc-Toc... Solicitando config.");
+      sendToMother({ type: 'SOLUTIUM_GET_CONFIG' });
     }
-    console.log("[SIP v5.1] Toc-Toc... Enviando SOLUTIUM_GET_CONFIG");
-    sendToMother({ type: 'SOLUTIUM_GET_CONFIG' });
-  }, 2000);
-
-  const handler = (event: MessageEvent) => {
-    // Validar que el mensaje venga de Solutium
-    if (event.data && event.data.type) {
-      // Estabilización por CUALQUIER mensaje de la Madre
-      if (event.source && event.source !== window) {
-        motherWindow = event.source;
-        isStable = true;
-        console.log("✅ [SIP] Conexión estabilizada con la App Madre.");
-      }
-
-      if (event.data.type === 'SOLUTIUM_CONFIG') {
-        clearInterval(tocTocInterval);
-        validateAndProcess(event.data, event.source);
-      }
-    }
-  };
-
-  window.addEventListener('message', handler);
-  
-  return () => {
-    clearInterval(tocTocInterval);
-    window.removeEventListener('message', handler);
-  };
+  }, 5000);
 };

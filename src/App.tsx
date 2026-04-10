@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { listenForHandshake } from './services/handshakeService';
+import { startHandshake } from './services/handshakeService';
 import { initSupabase } from './services/supabaseClient';
 import { initDOClient } from './services/doService';
 import { getProfile, getProject, getWebBuilderSites, getPublishedSites } from './services/dataService';
@@ -58,7 +58,7 @@ const AppContent: React.FC = () => {
       link.href = favicon;
     }
     
-    console.log("--- DIAGNÓSTICO DE EMERGENCIA ---");
+    console.log("--- DIAGNÓSTICO SIP v5.2 ---");
     console.log("1. window.name contenido:", window.name ? (window.name.substring(0, 50) + "...") : "VACÍO");
     console.log("2. ¿Tiene abridor (window.opener)?:", !!window.opener);
     console.log("3. ¿Está en iframe?:", window.parent !== window);
@@ -67,7 +67,7 @@ const AppContent: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    const cleanup = listenForHandshake(async (payload) => {
+    startHandshake(async (payload) => {
       try {
         const supabase = initSupabase(
           payload.supabase_url,
@@ -127,8 +127,8 @@ const AppContent: React.FC = () => {
           );
         }
 
-        if (payload.satellite_id) {
-          setProjectId(payload.satellite_id);
+        if (payload.projectId) {
+          setProjectId(payload.projectId);
           
           if (payload.project) {
             setProject(payload.project);
@@ -136,7 +136,7 @@ const AppContent: React.FC = () => {
               setUrlLogoWhite(payload.project.logoWhiteUrl || payload.project.logo_white_url);
             }
           } else {
-            const projectData = await getProject(payload.satellite_id);
+            const projectData = await getProject(payload.projectId);
             if (projectData) {
               setProject(projectData);
               if (projectData.logoWhiteUrl) {
@@ -146,13 +146,13 @@ const AppContent: React.FC = () => {
           }
 
           // Fetch assets for the project
-          const projectAssets = await getAssets(payload.satellite_id, 'web_page');
+          const projectAssets = await getAssets(payload.projectId, 'web_page');
           setAssets(projectAssets);
 
           // Fetch pages (drafts and published)
           const [drafts, published] = await Promise.all([
-            getWebBuilderSites(payload.satellite_id),
-            getPublishedSites(payload.satellite_id)
+            getWebBuilderSites(payload.projectId),
+            getPublishedSites(payload.projectId)
           ]);
           
           // Group by siteId to show unique websites (SIP v5.0)
@@ -176,7 +176,7 @@ const AppContent: React.FC = () => {
             return dateB - dateA;
           });
           
-          console.log(`[APP] Cargados ${allPages.length} sitios únicos para el proyecto ${payload.satellite_id}:`, 
+          console.log(`[APP] Cargados ${allPages.length} sitios únicos para el proyecto ${payload.projectId}:`, 
             allPages.map(p => ({ id: p.id, siteId: p.siteId, type: 'contentDraft' in p ? 'draft' : 'published' }))
           );
           
@@ -191,7 +191,7 @@ const AppContent: React.FC = () => {
               setCurrentView('constructor');
             } else {
               // Si no existe, preparamos un objeto mínimo para que el constructor lo reconozca como nuevo con ese ID
-              setSelectedPage({ siteId: payload.site_id, name: 'Nuevo Sitio' } as any);
+              setSelectedPage({ siteId: payload.site_id, name: payload.siteName || 'Nuevo Sitio' } as any);
               setCurrentView('constructor');
             }
           }
@@ -248,8 +248,6 @@ const AppContent: React.FC = () => {
         console.error('Handshake processing error:', err);
       }
     });
-
-    return cleanup;
   }, [applyTheme]);
 
   const handleNewPage = () => {

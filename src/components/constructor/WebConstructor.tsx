@@ -4057,49 +4057,24 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
           appId: '11111111-1111-1111-1111-111111111111',
           siteId: siteId,
           siteName: finalSiteName,
-          content: renderingContract // Send full content for immediate update
+          content: renderingContract,
+          data: renderingContract, // Atomic Publication support
+          subdomain: initialPage && 'subdomain' in initialPage ? (initialPage as any).subdomain : undefined
         }
       };
 
       // Notify Mother App
       window.parent.postMessage(payload, '*');
 
-      const result = await publishWebBuilderSite({
-        id: initialPage && !('contentDraft' in initialPage) ? initialPage.id : undefined,
-        projectId,
-        siteId: siteId,
-        siteName: finalSiteName,
-        isActive: true, // Default to true on publish
-        content: renderingContract,
-        metadata: {
-          ...renderingContract.theme,
-          siteId,
-          siteName: finalSiteName,
-          action: 'publishSite',
-          publishedAt: new Date().toISOString(),
-          cacheControl: 'no-cache, no-store, must-revalidate' // Suggest no-cache to mother app
-        }
-      });
+      // SIP v5.1: We delegate persistence to the Mother App via SOLUTIUM_PUBLISH.
+      // The Mother App now handles Atomic Publication including subdomain linking.
+      console.log('[PUBLISH] Evento SOLUTIUM_PUBLISH enviado. Delegando persistencia a App Madre.');
 
-      if (result) {
-        console.log('Sitio publicado con éxito (SIP v5.0)');
-        
-        // SIP v5.0: Link subdomain if exists
-        const subdomain = initialPage && 'subdomain' in initialPage ? (initialPage as any).subdomain : undefined;
-        if (subdomain && result.id) {
-          console.log(`[SIP v5.0] Vinculando subdominio: ${subdomain} con published_site_id: ${result.id}`);
-          await linkSubdomain(subdomain, result.id);
-        }
-
-        setPublishStatus('success');
-        // Also save a draft to keep them in sync and update status to 'published'
-        await handleSaveDraft('published');
-        setTimeout(() => setPublishStatus('idle'), 3000);
-        setShowPublishModal(false);
-      } else {
-        setPublishStatus('error');
-        setTimeout(() => setPublishStatus('idle'), 3000);
-      }
+      setPublishStatus('success');
+      // Also save a draft to keep them in sync and update status to 'published'
+      await handleSaveDraft('published');
+      setTimeout(() => setPublishStatus('idle'), 3000);
+      setShowPublishModal(false);
     } catch (error) {
       console.error('Error publishing site:', error);
       setPublishStatus('error');

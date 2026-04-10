@@ -128,6 +128,7 @@ export const productSchema = z.object({
 export const webBuilderSiteSchema = z.object({
   id: z.string(),
   projectId: z.string(),
+  appId: z.string(),
   userId: z.string().optional().nullable(),
   siteId: z.string().optional().nullable(),
   siteName: z.string().optional().nullable(),

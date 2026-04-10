@@ -4,8 +4,10 @@ import * as LucideIcons from 'lucide-react';
 
 export const FooterModule: React.FC<{ 
   moduleId: string, 
-  settingsValues: Record<string, any> 
-}> = ({ moduleId, settingsValues }) => {
+  settingsValues: Record<string, any>,
+  logoUrl?: string | null,
+  logoWhiteUrl?: string | null
+}> = ({ moduleId, settingsValues, logoUrl, logoWhiteUrl }) => {
   const getVal = (elementId: string | null, settingId: string, defaultValue: any) => {
     const key = elementId ? `${elementId}_${settingId}` : `${moduleId}_global_${settingId}`;
     return settingsValues[key] !== undefined ? settingsValues[key] : defaultValue;
@@ -94,9 +96,9 @@ export const FooterModule: React.FC<{
             <div className="space-y-6">
               {showLogo && (
                 <div className="flex-shrink-0">
-                  {logoImg ? (
+                  {(logoUrl || logoImg) ? (
                     <img 
-                      src={logoImg} 
+                      src={logoUrl || logoImg} 
                       alt="Logo" 
                       style={{ width: `${logoWidth}px` }} 
                       className="h-auto object-contain"

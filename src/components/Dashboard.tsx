@@ -1,5 +1,5 @@
 import React from 'react';
-import { PlusSquare, FileText, ExternalLink } from 'lucide-react';
+import { PlusSquare, FileText, ExternalLink, Eye } from 'lucide-react';
 import { Asset, WebBuilderSite, PublishedSite } from '../types/schema';
 import { motion } from 'motion/react';
 
@@ -22,6 +22,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
   logoUrl, 
   logoWhiteUrl 
 }) => {
+  const handlePreview = (e: React.MouseEvent, siteId: string) => {
+    e.stopPropagation();
+    const url = new URL(window.location.href);
+    url.searchParams.set('mode', 'preview');
+    url.searchParams.set('site_id', siteId);
+    window.open(url.toString(), '_blank');
+  };
+
   return (
     <div className="min-h-screen bg-secondary p-8 flex flex-col items-center">
       {/* Header Logo */}
@@ -44,7 +52,18 @@ export const Dashboard: React.FC<DashboardProps> = ({
           animate={{ opacity: 1, y: 0 }}
           className="bg-surface rounded-3xl p-8 shadow-sm border border-border flex flex-col h-[380px]"
         >
-          <h2 className="text-xl font-bold text-text mb-6">Páginas creadas</h2>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-bold text-text">Páginas creadas</h2>
+            {pages.length > 0 && (
+              <button 
+                onClick={(e) => handlePreview(e, pages[0].siteId || '')}
+                className="p-2 text-text/40 hover:text-primary transition-all"
+                title="Previsualizar último sitio"
+              >
+                <Eye className="w-5 h-5" />
+              </button>
+            )}
+          </div>
           
           <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
             {pages.length > 0 ? (
@@ -79,7 +98,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
                           </p>
                         </div>
                       </div>
-                      <ExternalLink className="w-4 h-4 text-text/50 group-hover:text-primary transition-colors" />
+                      <div className="flex items-center gap-2">
+                        <button 
+                          onClick={(e) => handlePreview(e, page.siteId || '')}
+                          className="p-2 text-text/30 hover:text-primary transition-all"
+                          title="Previsualizar"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                        <ExternalLink className="w-4 h-4 text-text/50 group-hover:text-primary transition-colors" />
+                      </div>
                     </button>
                   );
                 })}

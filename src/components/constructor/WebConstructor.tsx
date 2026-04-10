@@ -1374,7 +1374,9 @@ const NEWSLETTER_MODULE: WebModule = {
       { id: 'layout', label: 'Diseño', type: 'select', defaultValue: 'centered', options: [
         { label: 'Centrado', value: 'centered' },
         { label: 'Horizontal', value: 'horizontal' },
-        { label: 'Minimalista', value: 'minimal' }
+        { label: 'Minimalista', value: 'minimal' },
+        { label: 'Lead Magnet (Imagen)', value: 'lead_magnet' },
+        { label: 'Barra Flotante', value: 'floating_bar' }
       ]},
       { id: 'max_width', label: 'Ancho Máximo', type: 'range', defaultValue: 800, min: 600, max: 1200, unit: 'px' },
       { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 80, min: 40, max: 160, unit: 'px' }
@@ -1387,6 +1389,12 @@ const NEWSLETTER_MODULE: WebModule = {
       ]},
       { id: 'bg_color', label: 'Color de Fondo', type: 'color', defaultValue: '#FFFFFF' },
       { id: 'bg_gradient', label: 'Gradiente', type: 'text', defaultValue: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)' },
+      { id: 'bg_pattern', label: 'Patrón de Fondo', type: 'select', defaultValue: 'none', options: [
+        { label: 'Ninguno', value: 'none' },
+        { label: 'Puntos (Dots)', value: 'dots' },
+        { label: 'Rejilla (Grid)', value: 'grid' }
+      ]},
+      { id: 'backdrop_blur', label: 'Desenfoque (Blur)', type: 'range', defaultValue: 0, min: 0, max: 20, unit: 'px' },
       { id: 'border_radius', label: 'Redondeado Bloque', type: 'range', defaultValue: 32, min: 0, max: 60 },
       { id: 'show_shadow', label: 'Mostrar Sombra', type: 'boolean', defaultValue: true }
     ],
@@ -1413,8 +1421,11 @@ const NEWSLETTER_MODULE: WebModule = {
     }},
     { id: 'el_news_form', name: 'Formulario', type: 'style', groups: ['contenido', 'estilo', 'interaccion'], settings: {
       contenido: [
-        { id: 'placeholder', label: 'Placeholder', type: 'text', defaultValue: 'tu@email.com' },
-        { id: 'button_text', label: 'Texto Botón', type: 'text', defaultValue: 'Suscribirse' }
+        { id: 'show_name', label: 'Pedir Nombre', type: 'boolean', defaultValue: false },
+        { id: 'placeholder', label: 'Placeholder Email', type: 'text', defaultValue: 'tu@email.com' },
+        { id: 'button_text', label: 'Texto Botón', type: 'text', defaultValue: 'Suscribirse' },
+        { id: 'show_gdpr', label: 'Checkbox GDPR', type: 'boolean', defaultValue: true },
+        { id: 'gdpr_text', label: 'Texto Legal', type: 'text', defaultValue: 'Acepto recibir comunicaciones comerciales y la política de privacidad.' }
       ],
       estilo: [
         { id: 'input_bg', label: 'Fondo Input', type: 'color', defaultValue: '#F8FAFC' },
@@ -1423,9 +1434,19 @@ const NEWSLETTER_MODULE: WebModule = {
         { id: 'input_radius', label: 'Redondeado', type: 'range', defaultValue: 16, min: 0, max: 40 }
       ],
       interaccion: [
-        { id: 'hover_effect', label: 'Efecto Hover', type: 'select', defaultValue: 'scale', options: [{label:'Escala', value:'scale'}, {label:'Brillo', value:'glow'}]}
+        { id: 'hover_effect', label: 'Efecto Hover', type: 'select', defaultValue: 'scale', options: [{label:'Escala', value:'scale'}, {label:'Brillo', value:'glow'}]},
+        { id: 'show_confetti', label: 'Efecto Confetti', type: 'boolean', defaultValue: true }
       ],
       tipografia: [], estructura: [], multimedia: []
+    }},
+    { id: 'el_news_magnet', name: 'Lead Magnet', type: 'multimedia', groups: ['contenido', 'multimedia'], settings: {
+      contenido: [
+        { id: 'badge_text', label: 'Etiqueta (Badge)', type: 'text', defaultValue: 'GRATIS' }
+      ],
+      multimedia: [
+        { id: 'image', label: 'Imagen del Recurso', type: 'url', defaultValue: 'https://picsum.photos/seed/ebook/600/800' }
+      ],
+      tipografia: [], estructura: [], estilo: [], interaccion: []
     }},
     { id: 'el_news_trust', name: 'Confianza', type: 'style', groups: ['contenido', 'tipografia', 'multimedia'], settings: {
       contenido: [
@@ -1455,13 +1476,16 @@ const CONTACT_MODULE: WebModule = {
         { label: 'Dividido (Info / Form)', value: 'split' },
         { label: 'Centrado', value: 'centered' },
         { label: 'Mapa Lateral', value: 'map_side' },
-        { label: 'Mapa Superior (Full)', value: 'map_top' }
+        { label: 'Mapa Superior (Full)', value: 'map_top' },
+        { label: 'Bento Box (Moderno)', value: 'bento' }
       ]},
       { id: 'max_width', label: 'Ancho Máximo', type: 'range', defaultValue: 1200, min: 800, max: 1600, unit: 'px' },
       { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 100, min: 40, max: 200, unit: 'px' }
     ],
     estilo: [
-      { id: 'bg_color', label: 'Fondo de Sección', type: 'color', defaultValue: '#F8FAFC' }
+      { id: 'bg_color', label: 'Fondo de Sección', type: 'color', defaultValue: '#F8FAFC' },
+      { id: 'bg_image', label: 'Imagen de Fondo', type: 'url', defaultValue: '' },
+      { id: 'bg_overlay', label: 'Opacidad Overlay', type: 'range', defaultValue: 0, min: 0, max: 100 }
     ],
     interaccion: [
       { id: 'entrance_anim', label: 'Animación de Entrada', type: 'boolean', defaultValue: true }
@@ -1488,7 +1512,14 @@ const CONTACT_MODULE: WebModule = {
       contenido: [
         { id: 'email', label: 'Email', type: 'text', defaultValue: 'hola@tuempresa.com' },
         { id: 'phone', label: 'Teléfono', type: 'text', defaultValue: '+34 900 000 000' },
-        { id: 'address', label: 'Dirección', type: 'text', defaultValue: 'Calle Innovación 123, Madrid, España' }
+        { id: 'address', label: 'Dirección', type: 'text', defaultValue: 'Calle Innovación 123, Madrid, España' },
+        { id: 'show_availability', label: 'Mostrar Disponibilidad', type: 'boolean', defaultValue: true },
+        { id: 'availability_text', label: 'Texto Disponibilidad', type: 'text', defaultValue: 'Disponible ahora (9:00 - 18:00)' },
+        { id: 'social_links', label: 'Redes Sociales', type: 'repeater', defaultValue: [
+          { platform: 'linkedin', url: '#' },
+          { platform: 'twitter', url: '#' },
+          { platform: 'instagram', url: '#' }
+        ]}
       ],
       tipografia: [
         { id: 'info_size', label: 'Tamaño Texto', type: 'range', defaultValue: 16, min: 14, max: 20 },
@@ -1496,25 +1527,43 @@ const CONTACT_MODULE: WebModule = {
       ],
       estilo: [
         { id: 'icon_color', label: 'Color de Iconos', type: 'color', defaultValue: 'var(--primary-color)' },
-        { id: 'card_bg', label: 'Fondo de Bloque', type: 'color', defaultValue: 'transparent' }
+        { id: 'card_bg', label: 'Fondo de Bloque', type: 'color', defaultValue: 'transparent' },
+        { id: 'show_copy_buttons', label: 'Botones de Copiado', type: 'boolean', defaultValue: true }
       ],
       multimedia: [], estructura: [], interaccion: []
     }},
     { id: 'el_contact_form', name: 'Formulario de Mensaje', type: 'style', groups: ['contenido', 'estilo', 'interaccion'], settings: {
       contenido: [
         { id: 'button_text', label: 'Texto del Botón', type: 'text', defaultValue: 'Enviar Mensaje' },
-        { id: 'whatsapp_number', label: 'Número WhatsApp (Opcional)', type: 'text', defaultValue: '' }
+        { id: 'whatsapp_number', label: 'Número WhatsApp (Opcional)', type: 'text', defaultValue: '' },
+        { id: 'custom_fields', label: 'Campos del Formulario', type: 'repeater', defaultValue: [
+          { label: 'Nombre Completo', type: 'text', placeholder: 'Ej: Juan Pérez', required: true },
+          { label: 'Correo Electrónico', type: 'email', placeholder: 'juan@ejemplo.com', required: true },
+          { label: 'Mensaje', type: 'textarea', placeholder: '¿En qué podemos ayudarte?', required: true }
+        ]}
       ],
       estilo: [
         { id: 'input_bg', label: 'Fondo de Inputs', type: 'color', defaultValue: '#FFFFFF' },
         { id: 'input_radius', label: 'Redondeado Inputs', type: 'range', defaultValue: 12, min: 0, max: 30 },
         { id: 'btn_bg', label: 'Color de Botón', type: 'color', defaultValue: 'var(--primary-color)' },
-        { id: 'btn_color', label: 'Color Texto Botón', type: 'color', defaultValue: '#FFFFFF' }
+        { id: 'btn_color', label: 'Color Texto Botón', type: 'color', defaultValue: '#FFFFFF' },
+        { id: 'shimmer', label: 'Efecto Shimmer', type: 'boolean', defaultValue: false }
       ],
       interaccion: [
-        { id: 'hover_effect', label: 'Efecto Hover', type: 'select', defaultValue: 'lift', options: [{label:'Ninguno', value:'none'}, {label:'Elevar', value:'lift'}, {label:'Brillo', value:'glow'}]}
+        { id: 'hover_effect', label: 'Efecto Hover', type: 'select', defaultValue: 'lift', options: [{label:'Ninguno', value:'none'}, {label:'Elevar', value:'lift'}, {label:'Brillo', value:'glow'}, {label:'Magnético', value:'magnetic'}]}
       ],
       tipografia: [], estructura: [], multimedia: []
+    }},
+    { id: 'el_contact_integrations', name: 'Integraciones (Calendly)', type: 'style', groups: ['contenido', 'estilo'], settings: {
+      contenido: [
+        { id: 'show_calendly', label: 'Mostrar Calendly', type: 'boolean', defaultValue: false },
+        { id: 'calendly_url', label: 'URL de Calendly', type: 'text', defaultValue: '' },
+        { id: 'calendly_text', label: 'Texto de Cita', type: 'text', defaultValue: '¿Prefieres una videollamada? Reserva aquí' }
+      ],
+      estilo: [
+        { id: 'calendly_bg', label: 'Fondo de Bloque', type: 'color', defaultValue: '#F1F5F9' }
+      ],
+      tipografia: [], multimedia: [], estructura: [], interaccion: []
     }},
     { id: 'el_contact_map', name: 'Mapa de Ubicación', type: 'style', groups: ['contenido', 'estructura', 'estilo'], settings: {
       contenido: [
@@ -2466,11 +2515,6 @@ const MainSidebar = ({
                       label="Newsletter" 
                       onClick={() => onAddModule(NEWSLETTER_MODULE)}
                     />
-                    <ModuleItem 
-                      icon={<HelpCircle size={18} />} 
-                      label="FAQ" 
-                      onClick={() => onAddModule(FAQ_MODULE)}
-                    />
                   </div>
                 )}
               </div>
@@ -3189,6 +3233,7 @@ const StructurePanel: React.FC<StructurePanelProps> = ({
 const TopBar = ({ 
   onSave, 
   onPublish, 
+  onPreview,
   logoUrl,
   viewport,
   setViewport,
@@ -3196,10 +3241,12 @@ const TopBar = ({
   setIsFullscreen,
   saveStatus,
   publishStatus,
-  isMobile
+  isMobile,
+  isPreviewMode
 }: { 
   onSave: () => void, 
   onPublish: () => void, 
+  onPreview: () => void,
   logoUrl: string | null,
   viewport: 'desktop' | 'tablet' | 'mobile',
   setViewport: (v: 'desktop' | 'tablet' | 'mobile') => void,
@@ -3207,7 +3254,8 @@ const TopBar = ({
   setIsFullscreen: (f: boolean) => void,
   saveStatus: 'idle' | 'loading' | 'success' | 'error',
   publishStatus: 'idle' | 'loading' | 'success' | 'error',
-  isMobile: boolean
+  isMobile: boolean,
+  isPreviewMode: boolean
 }) => (
   <div className={`bg-surface border-b border-border/60 flex items-center justify-between px-4 md:px-6 z-20 ${isMobile ? 'h-[70px]' : 'h-[60px]'}`}>
     <div className="flex items-center gap-3 md:gap-4">
@@ -3220,15 +3268,37 @@ const TopBar = ({
         />
       )}
       <div className="flex flex-col">
-        <h2 className={`${isMobile ? 'text-sm' : 'text-base'} font-bold text-text`}>
-          {isMobile ? 'Constructor Web' : 'Editor de Módulos'}
-        </h2>
+        <div className="flex items-center gap-2">
+          <h2 className={`${isMobile ? 'text-sm' : 'text-base'} font-bold text-text`}>
+            {isMobile ? 'Constructor Web' : 'Editor de Módulos'}
+          </h2>
+          {saveStatus === 'loading' && (
+            <div className="flex items-center gap-1.5 px-2 py-0.5 bg-primary/10 rounded-full">
+              <motion.div 
+                animate={{ rotate: 360 }} 
+                transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+              >
+                <RotateCcw size={10} className="text-primary" />
+              </motion.div>
+              <span className="text-[9px] font-bold text-primary uppercase tracking-tighter">Sincronizando...</span>
+            </div>
+          )}
+        </div>
         {!isMobile && <p className="text-xs font-semibold text-text/50 uppercase tracking-wider">Añade módulos para construir tu página</p>}
       </div>
     </div>
 
     <div className="flex items-center gap-2 md:gap-4">
       <div className="flex items-center gap-2 md:gap-3 border-r border-border/60 pr-2 md:pr-4">
+        {!isMobile && (
+          <button 
+            onClick={onPreview}
+            className="p-1.5 text-text/60 hover:text-primary hover:bg-secondary rounded-lg transition-all"
+            title="Previsualizar en pestaña nueva"
+          >
+            <Eye size={16} />
+          </button>
+        )}
         {!isMobile && (
           <button 
             onClick={() => setViewport('desktop')}
@@ -3253,10 +3323,6 @@ const TopBar = ({
           >
             <Tablet size={isMobile ? 16 : 14} />
           </button>
-          {/* Hide mobile viewport option if we are already on mobile device to avoid confusion, 
-              but the user asked for desktop/ipad option in mobile view. 
-              Actually, the user said: "opción de cambiar la vista a escritorio iPad" 
-          */}
         </div>
         {!isMobile && (
           <button 
@@ -3411,8 +3477,22 @@ const Canvas: React.FC<{
   viewport: 'desktop' | 'tablet' | 'mobile',
   setViewport: (v: 'desktop' | 'tablet' | 'mobile') => void,
   isFullscreen: boolean,
-  setIsFullscreen: (f: boolean) => void
-}> = ({ editorState, onAddModule, products, customers, isDevMode, logoUrl, logoWhiteUrl, viewport, setViewport, isFullscreen, setIsFullscreen }) => {
+  setIsFullscreen: (f: boolean) => void,
+  isPreviewMode: boolean
+}> = ({ 
+  editorState, 
+  onAddModule, 
+  products, 
+  customers, 
+  isDevMode, 
+  logoUrl, 
+  logoWhiteUrl, 
+  viewport, 
+  setViewport, 
+  isFullscreen, 
+  setIsFullscreen,
+  isPreviewMode
+}) => {
   const lastModuleRef = React.useRef<HTMLDivElement>(null);
   const prevModulesLength = React.useRef(editorState.addedModules.length);
 
@@ -3450,8 +3530,8 @@ const Canvas: React.FC<{
   }, [editorState.expandedModuleId]);
 
   return (
-    <div className={`flex-1 bg-secondary/50 overflow-y-auto custom-scrollbar transition-all duration-500 ${isFullscreen ? 'fixed inset-0 z-[100] bg-secondary' : ''}`}>
-      {isFullscreen && (
+    <div className={`flex-1 bg-secondary/50 overflow-y-auto custom-scrollbar transition-all duration-500 ${isFullscreen ? 'fixed inset-0 z-[100] bg-secondary' : ''} ${isPreviewMode ? 'bg-surface p-0' : ''}`}>
+      {isFullscreen && !isPreviewMode && (
         <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[110] flex items-center gap-2 bg-surface/80 backdrop-blur-md border border-border/50 p-1.5 rounded-2xl shadow-2xl">
           <div className="flex items-center gap-1 bg-secondary/50 p-1 rounded-xl">
             <button 
@@ -3486,187 +3566,182 @@ const Canvas: React.FC<{
           </button>
         </div>
       )}
-      <div className={`p-12 flex justify-center min-h-full transition-all duration-500 ${isFullscreen ? 'p-12 pt-24' : ''}`}>
+      <div className={`flex justify-center min-h-full transition-all duration-500 ${isFullscreen ? 'p-12 pt-24' : isPreviewMode ? 'p-0' : 'p-12'}`}>
         {/* Preview Window */}
         <div 
-          className={`bg-surface shadow-2xl relative overflow-hidden transition-all duration-500 ease-in-out @container ${
-            isFullscreen ? 'rounded-3xl border border-border/50' : 'rounded-2xl border border-border/50'
-          } ${viewport === 'mobile' ? 'rounded-[3rem] border-[8px] border-slate-900 shadow-[0_0_0_2px_rgba(0,0,0,0.1)]' : ''} ${viewport === 'tablet' ? 'rounded-[2rem] border-[12px] border-slate-900 shadow-[0_0_0_2px_rgba(0,0,0,0.1)]' : ''}`}
+          className={`bg-surface relative overflow-hidden transition-all duration-500 ease-in-out @container ${
+            isPreviewMode ? 'w-full max-w-none border-none rounded-none shadow-none' : 
+            isFullscreen ? 'rounded-3xl border border-border/50 shadow-2xl' : 'rounded-2xl border border-border/50 shadow-2xl'
+          } ${viewport === 'mobile' && !isPreviewMode ? 'rounded-[3rem] border-[8px] border-slate-900 shadow-[0_0_0_2px_rgba(0,0,0,0.1)]' : ''} ${viewport === 'tablet' && !isPreviewMode ? 'rounded-[2rem] border-[12px] border-slate-900 shadow-[0_0_0_2px_rgba(0,0,0,0.1)]' : ''}`}
           style={{ 
-            width: viewportWidths[viewport], 
-            maxWidth: viewport === 'desktop' ? '1200px' : viewportWidths[viewport],
-            minHeight: viewport === 'mobile' ? '667px' : viewport === 'tablet' ? '1024px' : '800px'
+            width: isPreviewMode ? '100%' : viewportWidths[viewport], 
+            maxWidth: isPreviewMode ? 'none' : viewport === 'desktop' ? '1200px' : viewportWidths[viewport],
+            minHeight: isPreviewMode ? '100vh' : viewport === 'mobile' ? '667px' : viewport === 'tablet' ? '1024px' : '800px'
           }}
         >
           {/* Device Notch for Mobile */}
-          {viewport === 'mobile' && (
+          {viewport === 'mobile' && !isPreviewMode && (
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-6 bg-slate-900 rounded-b-2xl z-50 flex items-center justify-center">
               <div className="w-10 h-1 bg-slate-800 rounded-full" />
             </div>
           )}
           {/* Dynamic Modules */}
           <div className="w-full">
-            {editorState.addedModules.map((module, index) => {
-            const isLast = index === editorState.addedModules.length - 1;
-            
-            return (
-              <div key={module.id} id={`module-${module.id}`} ref={isLast ? lastModuleRef : null} className="w-full">
-                {module.type === 'products' && (
-                  <ProductsModule 
-                    moduleId={module.id}
-                    settingsValues={editorState.settingsValues}
-                    products={products}
-                    isDevMode={isDevMode}
-                  />
-                )}
-                {module.type === 'hero' && (
-                  <HeroModule 
-                    moduleId={module.id}
-                    settingsValues={editorState.settingsValues}
-                    logoUrl={logoUrl}
-                    logoWhiteUrl={logoWhiteUrl}
-                  />
-                )}
-                {module.type === 'features' && (
-                  <FeaturesModule 
-                    moduleId={module.id}
-                    settingsValues={editorState.settingsValues}
-                  />
-                )}
-                {module.type === 'about' && (
-                  <AboutModule 
-                    moduleId={module.id}
-                    settingsValues={editorState.settingsValues}
-                  />
-                )}
-                {module.type === 'process' && (
-                  <ProcessModule 
-                    moduleId={module.id}
-                    settingsValues={editorState.settingsValues}
-                  />
-                )}
-                {module.type === 'gallery' && (
-                  <GalleryModule 
-                    moduleId={module.id}
-                    settingsValues={editorState.settingsValues}
-                  />
-                )}
-                {module.type === 'video' && (
-                  <VideoModule 
-                    moduleId={module.id}
-                    settingsValues={editorState.settingsValues}
-                  />
-                )}
-                {module.type === 'testimonials' && (
-                  <TestimonialsModule 
-                    moduleId={module.id}
-                    settingsValues={editorState.settingsValues}
-                  />
-                )}
-                {module.type === 'stats' && (
-                  <StatsModule 
-                    moduleId={module.id}
-                    settingsValues={editorState.settingsValues}
-                  />
-                )}
-                {module.type === 'team' && (
-                  <TeamModule 
-                    moduleId={module.id}
-                    settingsValues={editorState.settingsValues}
-                  />
-                )}
-                {module.type === 'pricing' && (
-                  <PricingModule 
-                    moduleId={module.id}
-                    settingsValues={editorState.settingsValues}
-                  />
-                )}
-                {module.type === 'cta' && (
-                  <CTAModule 
-                    moduleId={module.id}
-                    settingsValues={editorState.settingsValues}
-                  />
-                )}
-                {module.type === 'faq' && (
-                  <FAQModule 
-                    moduleId={module.id}
-                    settingsValues={editorState.settingsValues}
-                  />
-                )}
-                {module.type === 'contact' && (
-                  <ContactModule 
-                    moduleId={module.id}
-                    settingsValues={editorState.settingsValues}
-                  />
-                )}
-                {module.type === 'newsletter' && (
-                  <NewsletterModule 
-                    moduleId={module.id}
-                    settingsValues={editorState.settingsValues}
-                  />
-                )}
-                {module.type === 'header' && (
-                  <HeaderModule 
-                    moduleId={module.id}
-                    settingsValues={editorState.settingsValues}
-                  />
-                )}
-                {module.type === 'menu' && (
-                  <MenuModule 
-                    moduleId={module.id}
-                    settingsValues={editorState.settingsValues}
-                  />
-                )}
-                {module.type === 'footer' && (
-                  <FooterModule 
-                    moduleId={module.id}
-                    settingsValues={editorState.settingsValues}
-                  />
-                )}
-                {module.type === 'spacer' && (
-                  <SpacerModule 
-                    moduleId={module.id}
-                    settingsValues={editorState.settingsValues}
-                  />
-                )}
-                {module.type === 'clients' && (
-                  <ClientsModule 
-                    moduleId={module.id}
-                    settingsValues={editorState.settingsValues}
-                    customers={customers}
-                    isDevMode={isDevMode}
-                  />
-                )}
+            {editorState.addedModules.length === 0 && !isPreviewMode ? (
+              <div className="flex flex-col items-center justify-center py-32 px-6 text-center">
+                <div className="w-20 h-20 bg-secondary rounded-3xl flex items-center justify-center mb-6 text-text/20">
+                  <PlusCircle size={40} />
+                </div>
+                <h3 className="text-xl font-bold text-text mb-2">Tu página está vacía</h3>
+                <p className="text-text/40 max-w-xs mx-auto mb-8">
+                  Empieza añadiendo módulos desde el catálogo lateral para construir tu sitio web.
+                </p>
               </div>
-            );
-          })}
-        </div>
-
-        {/* Empty State if no modules */}
-        {editorState.addedModules.length === 0 && (
-          <div className="flex-1 flex flex-col items-center justify-center p-20 text-center border-t border-border/30">
-            <div className="w-20 h-20 bg-secondary rounded-full flex items-center justify-center mb-6">
-              <Plus size={32} className="text-text/20" />
-            </div>
-            <h3 className="text-xl font-bold text-text mb-2">Tu página está vacía</h3>
-            <p className="text-text/60 max-w-xs">Selecciona un módulo en el panel de la izquierda para empezar a construir.</p>
+            ) : (
+              editorState.addedModules.map((module, index) => {
+                const isLast = index === editorState.addedModules.length - 1;
+                
+                return (
+                  <div key={module.id} id={`module-${module.id}`} ref={isLast ? lastModuleRef : null} className="w-full">
+                    {module.type === 'products' && (
+                      <ProductsModule 
+                        moduleId={module.id}
+                        settingsValues={editorState.settingsValues}
+                        products={products}
+                        isDevMode={isDevMode}
+                      />
+                    )}
+                    {module.type === 'hero' && (
+                      <HeroModule 
+                        moduleId={module.id}
+                        settingsValues={editorState.settingsValues}
+                        logoUrl={logoUrl}
+                        logoWhiteUrl={logoWhiteUrl}
+                      />
+                    )}
+                    {module.type === 'features' && (
+                      <FeaturesModule 
+                        moduleId={module.id}
+                        settingsValues={editorState.settingsValues}
+                      />
+                    )}
+                    {module.type === 'about' && (
+                      <AboutModule 
+                        moduleId={module.id}
+                        settingsValues={editorState.settingsValues}
+                      />
+                    )}
+                    {module.type === 'process' && (
+                      <ProcessModule 
+                        moduleId={module.id}
+                        settingsValues={editorState.settingsValues}
+                      />
+                    )}
+                    {module.type === 'gallery' && (
+                      <GalleryModule 
+                        moduleId={module.id}
+                        settingsValues={editorState.settingsValues}
+                      />
+                    )}
+                    {module.type === 'video' && (
+                      <VideoModule 
+                        moduleId={module.id}
+                        settingsValues={editorState.settingsValues}
+                      />
+                    )}
+                    {module.type === 'testimonials' && (
+                      <TestimonialsModule 
+                        moduleId={module.id}
+                        settingsValues={editorState.settingsValues}
+                      />
+                    )}
+                    {module.type === 'stats' && (
+                      <StatsModule 
+                        moduleId={module.id}
+                        settingsValues={editorState.settingsValues}
+                      />
+                    )}
+                    {module.type === 'team' && (
+                      <TeamModule 
+                        moduleId={module.id}
+                        settingsValues={editorState.settingsValues}
+                      />
+                    )}
+                    {module.type === 'pricing' && (
+                      <PricingModule 
+                        moduleId={module.id}
+                        settingsValues={editorState.settingsValues}
+                      />
+                    )}
+                    {module.type === 'faq' && (
+                      <FAQModule 
+                        moduleId={module.id}
+                        settingsValues={editorState.settingsValues}
+                      />
+                    )}
+                    {module.type === 'contact' && (
+                      <ContactModule 
+                        moduleId={module.id}
+                        settingsValues={editorState.settingsValues}
+                      />
+                    )}
+                    {module.type === 'clients' && (
+                      <ClientsModule 
+                        moduleId={module.id}
+                        settingsValues={editorState.settingsValues}
+                        customers={customers}
+                        isDevMode={isDevMode}
+                      />
+                    )}
+                    {module.type === 'cta' && (
+                      <CTAModule 
+                        moduleId={module.id}
+                        settingsValues={editorState.settingsValues}
+                      />
+                    )}
+                    {module.type === 'newsletter' && (
+                      <NewsletterModule 
+                        moduleId={module.id}
+                        settingsValues={editorState.settingsValues}
+                      />
+                    )}
+                    {module.type === 'header' && (
+                      <HeaderModule 
+                        moduleId={module.id}
+                        settingsValues={editorState.settingsValues}
+                        logoUrl={logoUrl}
+                        logoWhiteUrl={logoWhiteUrl}
+                      />
+                    )}
+                    {module.type === 'menu' && (
+                      <MenuModule 
+                        moduleId={module.id}
+                        settingsValues={editorState.settingsValues}
+                      />
+                    )}
+                    {module.type === 'footer' && (
+                      <FooterModule 
+                        moduleId={module.id}
+                        settingsValues={editorState.settingsValues}
+                        logoUrl={logoUrl}
+                        logoWhiteUrl={logoWhiteUrl}
+                      />
+                    )}
+                    {module.type === 'spacer' && (
+                      <SpacerModule 
+                        moduleId={module.id}
+                        settingsValues={editorState.settingsValues}
+                      />
+                    )}
+                  </div>
+                );
+              })
+            )}
           </div>
-        )}
-
-        {/* Add Module Button inside Preview */}
-        <div className="p-12 flex justify-center bg-surface border-t border-border/30">
-          <button 
-            onClick={() => onAddModule(PRODUCTS_MODULE)}
-            className="flex items-center gap-3 px-8 py-4 border-2 border-dashed border-border rounded-2xl text-text/60 font-bold hover:border-primary/60 hover:text-primary transition-all group"
-          >
-            <Plus size={20} className="group-hover:scale-110 transition-transform" />
-            Añadir Módulo
-          </button>
         </div>
       </div>
     </div>
-  </div>
-);
+  );
 };
 
 const DeleteConfirmationModal: React.FC<{ 
@@ -3783,6 +3858,7 @@ const PublishModal: React.FC<{
 interface WebConstructorProps {
   onBackToDashboard: () => void;
   projectId: string | null;
+  appId: string | null;
   currentUserId: string | null;
   logoUrl: string | null;
   logoWhiteUrl: string | null;
@@ -3793,6 +3869,7 @@ interface WebConstructorProps {
 export const WebConstructor: React.FC<WebConstructorProps> = ({ 
   onBackToDashboard, 
   projectId, 
+  appId,
   currentUserId,
   logoUrl,
   logoWhiteUrl,
@@ -3830,6 +3907,10 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   const [structurePanelCollapsed, setStructurePanelCollapsed] = useState(false);
   const [viewport, setViewport] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isPreviewMode] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('mode') === 'preview';
+  });
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [showUnsavedModal, setShowUnsavedModal] = useState(false);
   const [editorState, setEditorState] = useState<EditorState>(() => {
@@ -4066,24 +4147,6 @@ const formatTimestampName = () => {
     onBackToDashboard();
   };
 
-  useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      if (event.data?.type === 'SOLUTIUM_PUBLISH_SUCCESS') {
-        console.log('[SIP v5.1] Confirmación recibida de App Madre: SOLUTIUM_PUBLISH_SUCCESS');
-        setPublishStatus('success');
-        
-        // SIP v5.1: Tras éxito en publicación, actualizamos el estado local a 'published'
-        setCurrentStatus('published');
-        setHasUnsavedChanges(false);
-        
-        setTimeout(() => setPublishStatus('idle'), 3000);
-      }
-    };
-
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
-  }, []);
-
   const generateRenderingContract = (finalSiteName: string): RenderingContract => {
     // Helper to get setting value with fallback
     const getVal = (moduleId: string, elementId: string | null, settingId: string, defaultValue: any) => {
@@ -4170,49 +4233,26 @@ const formatTimestampName = () => {
   };
 
   const handleSaveDraft = async (forcedStatus?: 'draft' | 'published' | 'modified') => {
-    if (!projectId) return;
+    if (!projectId || isPreviewMode) return;
     setSaveStatus('loading');
     setIsSaving(true);
     
     try {
       const finalSiteName = siteName || formatTimestampName();
       const siteId = currentSiteId;
-      const renderingContract = generateRenderingContract(finalSiteName);
 
       // Determine new status based on SIP v5.1 logic
       let newStatus: 'draft' | 'published' | 'modified' = currentStatus;
       
-      // CRITICAL: Ensure forcedStatus is a valid status string and not a React event object
       if (typeof forcedStatus === 'string' && ['draft', 'published', 'modified'].includes(forcedStatus)) {
         newStatus = forcedStatus;
       } else if (currentStatus === 'published') {
-        // SIP v5.1: Edición tras publicar -> modified
         newStatus = 'modified';
       }
 
-      const payload = {
-        type: 'SOLUTIUM_SAVE',
-        payload: {
-          siteId: siteId,
-          siteName: finalSiteName,
-          status: newStatus,
-          content: renderingContract, // SIP v4.0 contract
-          editorState: editorState, // Extra for resuming
-          projectId,
-          appId: '11111111-1111-1111-1111-111111111111'
-        }
-      };
-
-      // Notify Mother App using robust pattern
-      sendToMother(payload);
-
-      // Actualizar estado local tras guardado exitoso
-      setCurrentStatus(newStatus);
-      setSaveStatus('success');
-
-      const siteData = {
-        id: initialPage && 'contentDraft' in initialPage ? initialPage.id : undefined,
+      const siteData: Partial<WebBuilderSite> = {
         projectId,
+        appId: appId || '11111111-1111-1111-1111-111111111111',
         userId: currentUserId || undefined,
         siteId: siteId,
         siteName: finalSiteName,
@@ -4220,16 +4260,29 @@ const formatTimestampName = () => {
         contentDraft: editorState,
         status: newStatus
       };
+
+      if (initialPage && 'id' in initialPage) {
+        siteData.id = initialPage.id;
+      }
       
       const result = await saveWebBuilderSiteDraft(siteData);
       if (result) {
-        console.log(`Borrador guardado con éxito (Status: ${newStatus}) (SIP v5.2)`);
+        console.log(`[SIP v5.3] Borrador guardado con éxito (Status: ${newStatus})`);
         setSaveStatus('success');
         setHasUnsavedChanges(false);
+        setCurrentStatus(newStatus);
+
+        // Notificar a la Madre (Opcional pero recomendado para UI de la Madre)
+        sendToMother('SOLUTIUM_SAVE', {
+          site_id: siteId,
+          site_name: finalSiteName,
+          status: newStatus,
+          timestamp: new Date().toISOString()
+        });
+
         setTimeout(() => setSaveStatus('idle'), 3000);
       } else {
-        setSaveStatus('error');
-        setTimeout(() => setSaveStatus('idle'), 3000);
+        throw new Error('Error al guardar el borrador');
       }
     } catch (error) {
       console.error('Error saving draft:', error);
@@ -4241,11 +4294,10 @@ const formatTimestampName = () => {
   };
 
   const handlePublish = async () => {
-    if (!projectId) return;
+    if (!projectId || isPreviewMode) return;
     
     const finalSiteName = siteName || formatTimestampName();
     if (!siteName) {
-      // If still empty, we show the modal to confirm the name (even if it's the timestamped one)
       setShowPublishModal(true);
       return;
     }
@@ -4256,32 +4308,40 @@ const formatTimestampName = () => {
       const renderingContract = generateRenderingContract(finalSiteName);
       const siteId = currentSiteId;
 
-      console.log(`[PUBLISH] Usando siteId: ${siteId} para el proyecto: ${projectId}`);
-
-      const payload = {
-        type: 'SOLUTIUM_PUBLISH',
-        payload: {
-          siteId: siteId,
-          siteName: finalSiteName,
-          renderingContract: renderingContract, // Exact name from prompt
-          projectId,
-          appId: '11111111-1111-1111-1111-111111111111'
+      const publishData: Partial<PublishedSite> = {
+        projectId,
+        appId: appId || '11111111-1111-1111-1111-111111111111',
+        siteId: siteId,
+        siteName: finalSiteName,
+        content: renderingContract,
+        isActive: true,
+        metadata: {
+          publishedAt: new Date().toISOString(),
+          editorVersion: '2.0'
         }
       };
 
-      // Notify Mother App using robust pattern
-      sendToMother(payload);
-
-      // SIP v5.2: We delegate persistence to the Mother App via SOLUTIUM_PUBLISH.
-      console.log('[PUBLISH] Evento SOLUTIUM_PUBLISH enviado. Delegando persistencia a App Madre.');
-
-      // We wait for SOLUTIUM_PUBLISH_SUCCESS to update status (handled in useEffect)
-      setPublishStatus('loading');
+      const result = await publishWebBuilderSite(publishData);
       
-      // Also save a draft to keep them in sync
-      await handleSaveDraft('published');
-      
-      setShowPublishModal(false);
+      if (result) {
+        console.log('[SIP v5.3] Sitio publicado con éxito.');
+        setPublishStatus('success');
+        setCurrentStatus('published');
+        setHasUnsavedChanges(false);
+        setShowPublishModal(false);
+
+        // Notificar a la Madre (Opcional pero recomendado)
+        sendToMother('SOLUTIUM_PUBLISH', {
+          site_id: siteId,
+          site_name: finalSiteName,
+          status: 'published',
+          timestamp: new Date().toISOString()
+        });
+
+        setTimeout(() => setPublishStatus('idle'), 3000);
+      } else {
+        throw new Error('Error al publicar el sitio');
+      }
     } catch (error) {
       console.error('Error publishing site:', error);
       setPublishStatus('error');
@@ -4291,10 +4351,17 @@ const formatTimestampName = () => {
     }
   };
 
+  const handlePreview = () => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('mode', 'preview');
+    url.searchParams.set('site_id', currentSiteId);
+    window.open(url.toString(), '_blank');
+  };
+
   return (
-    <div className="h-screen w-screen flex overflow-hidden bg-surface font-sans antialiased">
+    <div className={`h-screen w-screen flex overflow-hidden bg-surface font-sans antialiased ${isPreviewMode ? 'p-0' : ''}`}>
       {/* Desktop Sidebar */}
-      {!isMobile && (
+      {!isMobile && !isPreviewMode && (
         <MainSidebar 
           activeTab={activeTab} 
           onTabChange={setActiveTab} 
@@ -4313,21 +4380,25 @@ const formatTimestampName = () => {
             {/* Mobile Layout */}
             {isMobile ? (
               <div className="flex flex-col flex-1 h-full overflow-hidden pb-[80px]">
-                <TopBar 
-                  onSave={handleSaveDraft} 
-                  onPublish={handlePublish} 
-                  logoUrl={logoUrl}
-                  viewport={viewport}
-                  setViewport={setViewport}
-                  isFullscreen={isFullscreen}
-                  setIsFullscreen={setIsFullscreen}
-                  saveStatus={saveStatus}
-                  publishStatus={publishStatus}
-                  isMobile={true}
-                />
+                {!isPreviewMode && (
+                  <TopBar 
+                    onSave={handleSaveDraft} 
+                    onPublish={handlePublish} 
+                    onPreview={handlePreview}
+                    logoUrl={logoUrl}
+                    viewport={viewport}
+                    setViewport={setViewport}
+                    isFullscreen={isFullscreen}
+                    setIsFullscreen={setIsFullscreen}
+                    saveStatus={saveStatus}
+                    publishStatus={publishStatus}
+                    isMobile={true}
+                    isPreviewMode={isPreviewMode}
+                  />
+                )}
                 
                 <div className="flex-1 overflow-hidden relative">
-                  {mobileTab === 'constructor' && (
+                  {mobileTab === 'constructor' && !isPreviewMode && (
                     <div className="h-full overflow-y-auto bg-sidebar-bg">
                       <div className="p-4">
                         <h3 className="text-xs font-bold text-sidebar-foreground/40 uppercase tracking-widest mb-4">Catálogo de Módulos</h3>
@@ -4375,7 +4446,7 @@ const formatTimestampName = () => {
                     </div>
                   )}
                   
-                  {mobileTab === 'preview' && (
+                  {mobileTab === 'preview' || isPreviewMode ? (
                     <div className="h-full overflow-hidden">
                       <Canvas 
                         editorState={editorState} 
@@ -4389,41 +4460,48 @@ const formatTimestampName = () => {
                         setViewport={setViewport}
                         isFullscreen={false}
                         setIsFullscreen={() => {}}
+                        isPreviewMode={isPreviewMode}
                       />
                     </div>
-                  )}
+                  ) : null}
                 </div>
                 
-                <MobileBottomNav activeTab={mobileTab} onTabChange={handleMobileTabChange} />
+                {!isPreviewMode && <MobileBottomNav activeTab={mobileTab} onTabChange={handleMobileTabChange} />}
               </div>
             ) : (
               /* Desktop Layout */
               <>
-                <StructurePanel 
-                  editorState={editorState} 
-                  setEditorState={setEditorState} 
-                  onSettingChange={handleSettingChange}
-                  onRemoveModule={removeModule}
-                  onMoveModule={moveModule}
-                  isCollapsed={structurePanelCollapsed}
-                  onToggleCollapse={() => setStructurePanelCollapsed(!structurePanelCollapsed)}
-                  projectId={projectId}
-                  products={products}
-                  customers={customers}
-                />
-                <div className="flex-1 flex flex-col h-full">
-                  <TopBar 
-                    onSave={handleSaveDraft} 
-                    onPublish={handlePublish} 
-                    logoUrl={logoUrl}
-                    viewport={viewport}
-                    setViewport={setViewport}
-                    isFullscreen={isFullscreen}
-                    setIsFullscreen={setIsFullscreen}
-                    saveStatus={saveStatus}
-                    publishStatus={publishStatus}
-                    isMobile={false}
+                {!isPreviewMode && (
+                  <StructurePanel 
+                    editorState={editorState} 
+                    setEditorState={setEditorState} 
+                    onSettingChange={handleSettingChange}
+                    onRemoveModule={removeModule}
+                    onMoveModule={moveModule}
+                    isCollapsed={structurePanelCollapsed}
+                    onToggleCollapse={() => setStructurePanelCollapsed(!structurePanelCollapsed)}
+                    projectId={projectId}
+                    products={products}
+                    customers={customers}
                   />
+                )}
+                <div className="flex-1 flex flex-col h-full">
+                  {!isPreviewMode && (
+                    <TopBar 
+                      onSave={handleSaveDraft} 
+                      onPublish={handlePublish} 
+                      onPreview={handlePreview}
+                      logoUrl={logoUrl}
+                      viewport={viewport}
+                      setViewport={setViewport}
+                      isFullscreen={isFullscreen}
+                      setIsFullscreen={setIsFullscreen}
+                      saveStatus={saveStatus}
+                      publishStatus={publishStatus}
+                      isMobile={false}
+                      isPreviewMode={isPreviewMode}
+                    />
+                  )}
                   <Canvas 
                     editorState={editorState} 
                     onAddModule={addModule} 
@@ -4436,6 +4514,7 @@ const formatTimestampName = () => {
                     setViewport={setViewport}
                     isFullscreen={isFullscreen}
                     setIsFullscreen={setIsFullscreen}
+                    isPreviewMode={isPreviewMode}
                   />
                 </div>
               </>

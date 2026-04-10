@@ -19,6 +19,7 @@ type View = 'dashboard' | 'selection-method' | 'form' | 'generator' | 'construct
 const AppContent: React.FC = () => {
   const [isHandshakeComplete, setIsHandshakeComplete] = useState(false);
   const [projectId, setProjectId] = useState<string | null>(null);
+  const [appId, setAppId] = useState<string | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [project, setProject] = useState<Project | null>(null);
   const [assets, setAssets] = useState<Asset[]>([]);
@@ -129,6 +130,10 @@ const AppContent: React.FC = () => {
 
         if (payload.projectId) {
           setProjectId(payload.projectId);
+          
+          // Extraer appId (con fallback al ID estándar si no viene)
+          const handshakeAppId = payload.appId || (payload as any).app_id || '11111111-1111-1111-1111-111111111111';
+          setAppId(handshakeAppId);
           
           if (payload.project) {
             setProject(payload.project);
@@ -401,6 +406,7 @@ const AppContent: React.FC = () => {
               setCurrentView('dashboard');
             }} 
             projectId={projectId} 
+            appId={appId}
             currentUserId={profile?.id || null}
             logoUrl={urlLogo}
             logoWhiteUrl={urlLogoWhite}

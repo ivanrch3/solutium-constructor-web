@@ -383,21 +383,25 @@ export const saveWebBuilderSiteDraft = async (site: Partial<WebBuilderSite>): Pr
     const supabase = getSupabase();
     if (!supabase) return null;
 
+    const { data: userData } = await supabase.auth.getUser();
+
     const dbData: any = {
       project_id: site.projectId,
-      user_id: site.userId,
+      app_id: site.appId || '11111111-1111-1111-1111-111111111111',
+      user_id: site.userId || userData.user?.id,
       site_id: site.siteId,
-      site_name: site.siteName,
-      name: site.name,
+      site_name: site.siteName || 'Mi Sitio Web',
+      name: site.name || site.siteName || 'Mi Sitio Web',
       content_draft: site.contentDraft,
       status: site.status || 'draft',
+      updated_at: new Date().toISOString()
     };
 
     if (site.id) dbData.id = site.id;
 
     const { data, error } = await supabase
       .from('web_builder_sites')
-      .upsert(dbData, { onConflict: 'site_id' })
+      .upsert(dbData, { onConflict: 'project_id,app_id,site_id' })
       .select()
       .single();
 
@@ -406,6 +410,7 @@ export const saveWebBuilderSiteDraft = async (site: Partial<WebBuilderSite>): Pr
     const mapped = {
       id: data.id,
       projectId: data.project_id,
+      appId: data.app_id,
       userId: data.user_id,
       siteId: data.site_id,
       siteName: data.site_name,
@@ -428,21 +433,45 @@ export const publishWebBuilderSite = async (site: Partial<PublishedSite>): Promi
     const supabase = getSupabase();
     if (!supabase) return null;
 
+    const { data: userData } = await supabase.auth.getUser();
+    const now = new Date().toISOString();
+
+    // 1. Actualizar estado y contenido publicado en web_builder_sites
+    const { data: siteRecord, error: upsertError } = await supabase
+      .from('web_builder_sites')
+      .upsert({
+        project_id: site.projectId,
+        app_id: site.appId || '11111111-1111-1111-1111-111111111111',
+        site_id: site.siteId,
+        site_name: site.siteName || 'Mi Sitio Web',
+        content_published: site.content,
+        content_draft: site.content, // Sincronizar borrador con lo publicado
+        status: 'published',
+        updated_at: now
+      }, { onConflict: 'project_id,app_id,site_id' })
+      .select()
+      .single();
+
+    if (upsertError) throw upsertError;
+
+    // 2. Registrar en published_sites (para el renderizador global)
     const dbData: any = {
       project_id: site.projectId,
-      app_id: '11111111-1111-1111-1111-111111111111',
+      app_id: site.appId || '11111111-1111-1111-1111-111111111111',
       site_id: site.siteId,
-      site_name: site.siteName,
+      site_name: site.siteName || 'Mi Sitio Web',
+      user_id: userData.user?.id,
       is_active: site.isActive !== undefined ? site.isActive : true,
       content: site.content,
       metadata: site.metadata,
+      updated_at: now
     };
 
     if (site.id) dbData.id = site.id;
 
     const { data, error } = await supabase
       .from('published_sites')
-      .upsert(dbData, { onConflict: 'site_id' })
+      .upsert(dbData, { onConflict: 'project_id,app_id,site_id' })
       .select()
       .single();
 
@@ -485,6 +514,7 @@ export const getWebBuilderSites = async (projectId: string): Promise<WebBuilderS
     const mappedData = data.map((item: any) => ({
       id: item.id,
       projectId: item.project_id,
+      appId: item.app_id,
       userId: item.user_id,
       siteId: item.site_id,
       siteName: item.site_name,

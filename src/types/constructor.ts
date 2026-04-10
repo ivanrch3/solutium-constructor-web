@@ -1,7 +1,7 @@
 
 export type SettingGroupType = 'contenido' | 'estructura' | 'estilo' | 'tipografia' | 'multimedia' | 'interaccion';
 
-export type SettingType = 'text' | 'number' | 'color' | 'select' | 'boolean' | 'range' | 'button' | 'image' | 'icon' | 'product_selection' | 'customer_selection' | 'repeater';
+export type SettingType = 'text' | 'number' | 'color' | 'select' | 'boolean' | 'range' | 'button' | 'image' | 'icon' | 'product_selection' | 'customer_selection' | 'repeater' | 'url';
 
 export interface SettingDefinition {
   id: string;

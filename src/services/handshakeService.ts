@@ -13,17 +13,6 @@ let motherWindow: any = window.opener || window.parent;
 let isStable = false;
 
 /**
- * SIP v5.2: Envío Robusto con Estabilización
- */
-export const sendToMother = (message: any) => {
-  if (motherWindow && motherWindow !== window) {
-    motherWindow.postMessage(message, '*');
-  } else {
-    // Silencioso si no hay conexión aún
-  }
-};
-
-/**
  * SIP v5.2: Protocolo de Arranque y Comunicación
  */
 export const startHandshake = (
@@ -34,7 +23,6 @@ export const startHandshake = (
   const processConfig = (payload: any) => {
     if (!payload) return;
 
-    // Mapeo de nombres si vienen con prefijos distintos
     const config: HandshakePayload = {
       projectId: payload.projectId || payload.satellite_id,
       supabase_url: payload.supabase_url,
@@ -110,12 +98,17 @@ export const startHandshake = (
   // PRIORIDAD 3: Escucha Pasiva (Esperar a la Madre)
   console.log("⏳ [SIP v5.2] Esperando latido de la App Madre...");
   setupMessageListener();
+};
 
-  // Opcional: Toc-Toc si no recibimos nada en 5 segundos
-  setTimeout(() => {
-    if (!isStable) {
-      console.log("🔔 [SIP v5.2] Toc-Toc... Solicitando config.");
-      sendToMother({ type: 'SOLUTIUM_GET_CONFIG' });
-    }
-  }, 5000);
+/**
+ * SIP v5.2: Envío Robusto con Estabilización
+ */
+export const sendToMother = (typeOrMessage: any, payload?: any) => {
+  if (motherWindow && motherWindow !== window) {
+    const message = payload !== undefined 
+      ? { type: typeOrMessage, payload } 
+      : typeOrMessage;
+      
+    motherWindow.postMessage(message, '*');
+  }
 };

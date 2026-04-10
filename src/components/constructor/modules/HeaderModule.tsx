@@ -4,8 +4,10 @@ import { Menu, X, ArrowRight } from 'lucide-react';
 
 export const HeaderModule: React.FC<{ 
   moduleId: string, 
-  settingsValues: Record<string, any> 
-}> = ({ moduleId, settingsValues }) => {
+  settingsValues: Record<string, any>,
+  logoUrl?: string | null,
+  logoWhiteUrl?: string | null
+}> = ({ moduleId, settingsValues, logoUrl, logoWhiteUrl }) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -94,7 +96,7 @@ export const HeaderModule: React.FC<{
 
   // Logo selection logic (SIP v5.1)
   const isTransparentMode = bgType === 'transparent' && !isScrolled;
-  const activeLogo = (isTransparentMode && logoImgAlt) ? logoImgAlt : logoImg;
+  const activeLogo = (isTransparentMode && (logoWhiteUrl || logoImgAlt)) ? (logoWhiteUrl || logoImgAlt) : (logoUrl || logoImg);
 
   return (
     <header className={`${positionClass} w-full z-[100] flex items-center`} style={headerStyle}>

@@ -150,6 +150,7 @@ export interface Product {
 export interface WebBuilderSite {
   id: string;
   projectId: string;
+  appId: string;
   userId?: string;
   siteId?: string;
   siteName?: string;

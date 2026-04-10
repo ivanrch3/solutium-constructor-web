@@ -2426,6 +2426,7 @@ interface StructurePanelProps {
   projectId: string | null;
   products: Product[];
   customers: Customer[];
+  isMobile?: boolean;
 }
 
 const SettingControl: React.FC<{ 
@@ -2766,7 +2767,8 @@ const StructurePanel: React.FC<StructurePanelProps> = ({
   onToggleCollapse,
   projectId,
   products,
-  customers
+  customers,
+  isMobile
 }) => {
   const toggleModule = (moduleId: string) => {
     setEditorState(prev => ({
@@ -2806,20 +2808,22 @@ const StructurePanel: React.FC<StructurePanelProps> = ({
   };
 
   return (
-    <div className={`h-full bg-surface border-r border-border flex flex-col z-30 shadow-xl shadow-text/10 overflow-hidden transition-all duration-300 ${isCollapsed ? 'w-[70px]' : 'w-64'}`}>
-      <div className={`p-4 flex items-center border-b border-border/60 ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
+    <div className={`h-full bg-surface border-r border-border flex flex-col z-30 shadow-xl shadow-text/10 overflow-hidden transition-all duration-300 ${isMobile ? 'w-full' : (isCollapsed ? 'w-[70px]' : 'w-64')}`}>
+      <div className={`p-4 flex items-center border-b border-border/60 ${isCollapsed && !isMobile ? 'justify-center' : 'justify-between'}`}>
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 bg-primary rounded-lg flex items-center justify-center">
             <Layers className="text-white w-3.5 h-3.5" />
           </div>
-          {!isCollapsed && <span className="text-sm font-bold text-text">Estructura</span>}
+          {(!isCollapsed || isMobile) && <span className="text-sm font-bold text-text">Estructura</span>}
         </div>
-        <button 
-          onClick={onToggleCollapse}
-          className="text-text/40 hover:text-primary hover:bg-primary/10 p-1.5 rounded-lg transition-colors"
-        >
-          {isCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
-        </button>
+        {!isMobile && (
+          <button 
+            onClick={onToggleCollapse}
+            className="text-text/40 hover:text-primary hover:bg-primary/10 p-1.5 rounded-lg transition-colors"
+          >
+            {isCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+          </button>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto custom-scrollbar overflow-x-hidden">
@@ -3057,7 +3061,8 @@ const TopBar = ({
   isFullscreen,
   setIsFullscreen,
   saveStatus,
-  publishStatus
+  publishStatus,
+  isMobile
 }: { 
   onSave: () => void, 
   onPublish: () => void, 
@@ -3067,11 +3072,12 @@ const TopBar = ({
   isFullscreen: boolean,
   setIsFullscreen: (f: boolean) => void,
   saveStatus: 'idle' | 'loading' | 'success' | 'error',
-  publishStatus: 'idle' | 'loading' | 'success' | 'error'
+  publishStatus: 'idle' | 'loading' | 'success' | 'error',
+  isMobile: boolean
 }) => (
-  <div className="h-[60px] bg-surface border-b border-border/60 flex items-center justify-between px-6 z-20">
-    <div className="flex items-center gap-4">
-      {logoUrl && (
+  <div className={`bg-surface border-b border-border/60 flex items-center justify-between px-4 md:px-6 z-20 ${isMobile ? 'h-[70px]' : 'h-[60px]'}`}>
+    <div className="flex items-center gap-3 md:gap-4">
+      {logoUrl && !isMobile && (
         <img 
           src={logoUrl} 
           alt="Logo" 
@@ -3080,112 +3086,132 @@ const TopBar = ({
         />
       )}
       <div className="flex flex-col">
-        <h2 className="text-base font-bold text-text">Editor de Módulos</h2>
-        <p className="text-xs font-semibold text-text/50 uppercase tracking-wider">Añade módulos para construir tu página</p>
+        <h2 className={`${isMobile ? 'text-sm' : 'text-base'} font-bold text-text`}>
+          {isMobile ? 'Constructor Web' : 'Editor de Módulos'}
+        </h2>
+        {!isMobile && <p className="text-xs font-semibold text-text/50 uppercase tracking-wider">Añade módulos para construir tu página</p>}
       </div>
     </div>
 
-    <div className="flex items-center gap-4">
-      <div className="flex items-center gap-3 border-r border-border/60 pr-4">
-        <button 
-          onClick={() => {
-            // Reset to default desktop view
-            setViewport('desktop');
-          }}
-          className="p-1.5 text-text/60 hover:text-primary hover:bg-secondary rounded-lg transition-all"
-          title="Restablecer vista"
-        >
-          <RotateCcw size={16} />
-        </button>
-        <div className="flex items-center gap-1.5 bg-secondary p-1 rounded-xl">
+    <div className="flex items-center gap-2 md:gap-4">
+      <div className="flex items-center gap-2 md:gap-3 border-r border-border/60 pr-2 md:pr-4">
+        {!isMobile && (
+          <button 
+            onClick={() => setViewport('desktop')}
+            className="p-1.5 text-text/60 hover:text-primary hover:bg-secondary rounded-lg transition-all"
+            title="Restablecer vista"
+          >
+            <RotateCcw size={16} />
+          </button>
+        )}
+        <div className="flex items-center gap-1 bg-secondary p-1 rounded-xl">
           <button 
             onClick={() => setViewport('desktop')}
             className={`p-1.5 rounded-lg transition-all ${viewport === 'desktop' ? 'text-primary bg-surface shadow-sm' : 'text-text/60 hover:text-primary'}`}
             title="Vista de Escritorio"
           >
-            <Monitor size={14} />
+            <Monitor size={isMobile ? 16 : 14} />
           </button>
           <button 
             onClick={() => setViewport('tablet')}
             className={`p-1.5 rounded-lg transition-all ${viewport === 'tablet' ? 'text-primary bg-surface shadow-sm' : 'text-text/60 hover:text-primary'}`}
             title="Vista de Tablet"
           >
-            <Tablet size={14} />
+            <Tablet size={isMobile ? 16 : 14} />
           </button>
-          <button 
-            onClick={() => setViewport('mobile')}
-            className={`p-1.5 rounded-lg transition-all ${viewport === 'mobile' ? 'text-primary bg-surface shadow-sm' : 'text-text/60 hover:text-primary'}`}
-            title="Vista de Móvil"
-          >
-            <Smartphone size={14} />
-          </button>
+          {/* Hide mobile viewport option if we are already on mobile device to avoid confusion, 
+              but the user asked for desktop/ipad option in mobile view. 
+              Actually, the user said: "opción de cambiar la vista a escritorio iPad" 
+          */}
         </div>
-        <button 
-          onClick={() => setIsFullscreen(!isFullscreen)}
-          className={`p-1.5 rounded-lg transition-all ${isFullscreen ? 'text-primary bg-primary/10' : 'text-text/60 hover:text-primary hover:bg-secondary'}`}
-          title="Pantalla Completa"
-        >
-          <Maximize size={16} />
-        </button>
+        {!isMobile && (
+          <button 
+            onClick={() => setIsFullscreen(!isFullscreen)}
+            className={`p-1.5 rounded-lg transition-all ${isFullscreen ? 'text-primary bg-primary/10' : 'text-text/60 hover:text-primary hover:bg-secondary'}`}
+            title="Pantalla Completa"
+          >
+            <Maximize size={16} />
+          </button>
+        )}
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5 md:gap-2">
         <motion.button 
-          whileHover={saveStatus === 'idle' ? { scale: 1.02, backgroundColor: 'var(--secondary-color)' } : {}}
+          whileHover={saveStatus === 'idle' ? { scale: 1.02 } : {}}
           whileTap={saveStatus === 'idle' ? { scale: 0.98 } : {}}
           onClick={saveStatus === 'idle' ? onSave : undefined}
           disabled={saveStatus !== 'idle'}
-          className={`flex items-center gap-2 px-4 py-2 font-bold text-xs rounded-xl transition-all ${
+          className={`flex items-center gap-2 px-3 md:px-4 py-2 font-bold text-[10px] md:text-xs rounded-xl transition-all ${
             saveStatus === 'success' ? 'bg-green-500/10 text-green-600' : 
             saveStatus === 'error' ? 'bg-red-500/10 text-red-600' : 
-            'text-text/80'
+            'bg-secondary text-text/80'
           }`}
         >
           {saveStatus === 'loading' ? (
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
-            >
-              <RotateCcw size={16} />
+            <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: "linear" }}>
+              <RotateCcw size={14} />
             </motion.div>
-          ) : saveStatus === 'success' ? (
-            <Check size={16} />
-          ) : saveStatus === 'error' ? (
-            <X size={16} />
-          ) : (
-            <Save size={16} />
-          )}
-          {saveStatus === 'loading' ? 'Guardando...' : saveStatus === 'success' ? 'Guardado' : saveStatus === 'error' ? 'Error' : 'Guardar Borrador'}
+          ) : saveStatus === 'success' ? <Check size={14} /> : saveStatus === 'error' ? <X size={14} /> : <Save size={14} />}
+          {isMobile ? 'Guardar' : (saveStatus === 'loading' ? 'Guardando...' : saveStatus === 'success' ? 'Guardado' : saveStatus === 'error' ? 'Error' : 'Guardar Borrador')}
         </motion.button>
         <motion.button 
-          whileHover={publishStatus === 'idle' ? { scale: 1.02, y: -1 } : {}}
+          whileHover={publishStatus === 'idle' ? { scale: 1.02 } : {}}
           whileTap={publishStatus === 'idle' ? { scale: 0.98 } : {}}
           onClick={publishStatus === 'idle' ? onPublish : undefined}
           disabled={publishStatus !== 'idle'}
-          className={`flex items-center gap-2 px-5 py-2 font-bold text-xs rounded-xl shadow-lg transition-all ${
+          className={`flex items-center gap-2 px-3 md:px-5 py-2 font-bold text-[10px] md:text-xs rounded-xl shadow-lg transition-all ${
             publishStatus === 'success' ? 'bg-green-500 text-white shadow-green-500/20' : 
             publishStatus === 'error' ? 'bg-red-500 text-white shadow-red-500/20' : 
             'bg-primary text-white shadow-primary/20'
           }`}
         >
           {publishStatus === 'loading' ? (
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
-            >
-              <RotateCcw size={16} />
+            <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: "linear" }}>
+              <RotateCcw size={14} />
             </motion.div>
-          ) : publishStatus === 'success' ? (
-            <Check size={16} />
-          ) : publishStatus === 'error' ? (
-            <X size={16} />
-          ) : (
-            <Send size={16} />
-          )}
-          {publishStatus === 'loading' ? 'Publicando...' : publishStatus === 'success' ? 'Publicado' : publishStatus === 'error' ? 'Error' : 'Publicar'}
+          ) : publishStatus === 'success' ? <Check size={14} /> : publishStatus === 'error' ? <X size={14} /> : <Send size={14} />}
+          {isMobile ? 'Publicar' : (publishStatus === 'loading' ? 'Publicando...' : publishStatus === 'success' ? 'Publicado' : publishStatus === 'error' ? 'Error' : 'Publicar')}
         </motion.button>
       </div>
     </div>
+  </div>
+);
+
+const MobileBottomNav = ({ 
+  activeTab, 
+  onTabChange 
+}: { 
+  activeTab: 'constructor' | 'structure' | 'preview', 
+  onTabChange: (tab: 'constructor' | 'structure' | 'preview') => void 
+}) => (
+  <div className="fixed bottom-0 left-0 right-0 h-[80px] bg-surface border-t border-border/60 flex items-center justify-around px-4 z-[60] pb-safe shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
+    <button 
+      onClick={() => onTabChange('constructor')}
+      className={`flex flex-col items-center gap-1.5 transition-all ${activeTab === 'constructor' ? 'text-primary' : 'text-text/40'}`}
+    >
+      <div className={`p-2 rounded-xl transition-all ${activeTab === 'constructor' ? 'bg-primary/10' : ''}`}>
+        <Plus size={24} />
+      </div>
+      <span className="text-[10px] font-bold uppercase tracking-wider">Constructor</span>
+    </button>
+    <button 
+      onClick={() => onTabChange('structure')}
+      className={`flex flex-col items-center gap-1.5 transition-all ${activeTab === 'structure' ? 'text-primary' : 'text-text/40'}`}
+    >
+      <div className={`p-2 rounded-xl transition-all ${activeTab === 'structure' ? 'bg-primary/10' : ''}`}>
+        <Layers size={24} />
+      </div>
+      <span className="text-[10px] font-bold uppercase tracking-wider">Estructura</span>
+    </button>
+    <button 
+      onClick={() => onTabChange('preview')}
+      className={`flex flex-col items-center gap-1.5 transition-all ${activeTab === 'preview' ? 'text-primary' : 'text-text/40'}`}
+    >
+      <div className={`p-2 rounded-xl transition-all ${activeTab === 'preview' ? 'bg-primary/10' : ''}`}>
+        <Eye size={24} />
+      </div>
+      <span className="text-[10px] font-bold uppercase tracking-wider">Preview</span>
+    </button>
   </div>
 );
 
@@ -3640,6 +3666,8 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   initialPage
 }) => {
   const [activeTab, setActiveTab] = useState('constructor');
+  const [mobileTab, setMobileTab] = useState<'constructor' | 'structure' | 'preview'>('constructor');
+  const [isMobile, setIsMobile] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [moduleToDelete, setModuleToDelete] = useState<WebModule | null>(null);
@@ -3674,6 +3702,15 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       settingsValues: {}
     };
   });
+
+  React.useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   React.useEffect(() => {
     if (projectId) {
@@ -3763,13 +3800,20 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     updateEditorState(prev => ({
       ...prev,
       addedModules: [...prev.addedModules, newModule],
-      expandedModuleId: null,
-      selectedElementId: null,
+      expandedModuleId: moduleId,
+      selectedElementId: `${moduleId}_global`,
+      expandedGroupsByElement: {
+        ...prev.expandedGroupsByElement,
+        [`${moduleId}_global`]: 'contenido'
+      },
       settingsValues: {
         ...prev.settingsValues,
         ...initialValues
       }
     }));
+
+    // Mobile flow: jump to structure tab and show groups
+    setMobileTab('structure');
   };
 
   const removeModule = (moduleId: string) => {
@@ -3834,6 +3878,13 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         [`${elementOrModuleId}_${settingId}`]: value
       }
     }));
+  };
+
+  const handleMobileTabChange = (tab: 'constructor' | 'structure' | 'preview') => {
+    setMobileTab(tab);
+    if (tab === 'preview') {
+      setViewport('mobile');
+    }
   };
 
   const formatTimestampName = () => {
@@ -4084,65 +4135,161 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
 
   return (
     <div className="h-screen w-screen flex overflow-hidden bg-surface font-sans antialiased">
-      <MainSidebar 
-        activeTab={activeTab} 
-        onTabChange={setActiveTab} 
-        onBackToDashboard={onBackToDashboard} 
-        logoUrl={logoUrl}
-        logoWhiteUrl={logoWhiteUrl}
-        project={project}
-        onAddModule={addModule}
-      />
+      {/* Desktop Sidebar */}
+      {!isMobile && (
+        <MainSidebar 
+          activeTab={activeTab} 
+          onTabChange={setActiveTab} 
+          onBackToDashboard={onBackToDashboard} 
+          logoUrl={logoUrl}
+          logoWhiteUrl={logoWhiteUrl}
+          project={project}
+          onAddModule={addModule}
+          onLogoClick={handleLogoClick}
+        />
+      )}
       
       <div className="flex-1 flex flex-col h-full overflow-hidden">
         {activeTab === 'constructor' && (
-          <div className="flex flex-1 h-full overflow-hidden">
-            <StructurePanel 
-              editorState={editorState} 
-              setEditorState={setEditorState} 
-              onSettingChange={handleSettingChange}
-              onRemoveModule={removeModule}
-              onMoveModule={moveModule}
-              isCollapsed={structurePanelCollapsed}
-              onToggleCollapse={() => setStructurePanelCollapsed(!structurePanelCollapsed)}
-              projectId={projectId}
-              products={products}
-              customers={customers}
-            />
-            <div className="flex-1 flex flex-col h-full">
-              <TopBar 
-                onSave={handleSaveDraft} 
-                onPublish={handlePublish} 
-                logoUrl={logoUrl}
-                viewport={viewport}
-                setViewport={setViewport}
-                isFullscreen={isFullscreen}
-                setIsFullscreen={setIsFullscreen}
-                saveStatus={saveStatus}
-                publishStatus={publishStatus}
-              />
-              <Canvas 
-                editorState={editorState} 
-                onAddModule={addModule} 
-                products={products}
-                customers={customers}
-                isDevMode={projectId === 'dev-project-id'}
-                logoUrl={logoUrl}
-                logoWhiteUrl={logoWhiteUrl}
-                viewport={viewport}
-                setViewport={setViewport}
-                isFullscreen={isFullscreen}
-                setIsFullscreen={setIsFullscreen}
-              />
-              
-              {showUnsavedModal && (
-                <UnsavedChangesModal 
-                  onCancel={() => setShowUnsavedModal(false)}
-                  onSaveAndExit={handleSaveAndExit}
-                  onExitWithoutSaving={handleExitWithoutSaving}
+          <div className="flex flex-1 h-full overflow-hidden relative">
+            {/* Mobile Layout */}
+            {isMobile ? (
+              <div className="flex flex-col flex-1 h-full overflow-hidden pb-[80px]">
+                <TopBar 
+                  onSave={handleSaveDraft} 
+                  onPublish={handlePublish} 
+                  logoUrl={logoUrl}
+                  viewport={viewport}
+                  setViewport={setViewport}
+                  isFullscreen={isFullscreen}
+                  setIsFullscreen={setIsFullscreen}
+                  saveStatus={saveStatus}
+                  publishStatus={publishStatus}
+                  isMobile={true}
                 />
-              )}
-            </div>
+                
+                <div className="flex-1 overflow-hidden relative">
+                  {mobileTab === 'constructor' && (
+                    <div className="h-full overflow-y-auto bg-sidebar-bg">
+                      <div className="p-4">
+                        <h3 className="text-xs font-bold text-sidebar-foreground/40 uppercase tracking-widest mb-4">Catálogo de Módulos</h3>
+                        <div className="grid grid-cols-2 gap-3">
+                          <ModuleItem icon={<Monitor size={18} />} label="Header" onClick={() => addModule(HEADER_MODULE)} />
+                          <ModuleItem icon={<Sparkles size={18} />} label="Hero" onClick={() => addModule(HERO_MODULE)} />
+                          <ModuleItem icon={<Type size={18} />} label="Features" onClick={() => addModule(FEATURES_MODULE)} />
+                          <ModuleItem icon={<Layout size={18} />} label="Products" onClick={() => addModule(PRODUCTS_MODULE)} />
+                          <ModuleItem icon={<User size={18} />} label="About" onClick={() => addModule(ABOUT_MODULE)} />
+                          <ModuleItem icon={<Layers size={18} />} label="Process" onClick={() => addModule(PROCESS_MODULE)} />
+                          <ModuleItem icon={<PlusCircle size={18} />} label="Gallery" onClick={() => addModule(GALLERY_MODULE)} />
+                          <ModuleItem icon={<Monitor size={18} />} label="Video" onClick={() => addModule(VIDEO_MODULE)} />
+                          <ModuleItem icon={<FileText size={18} />} label="Testimonials" onClick={() => addModule(TESTIMONIALS_MODULE)} />
+                          <ModuleItem icon={<CheckCircle2 size={18} />} label="Clients" onClick={() => addModule(CLIENTS_MODULE)} />
+                          <ModuleItem icon={<Database size={18} />} label="Stats" onClick={() => addModule(STATS_MODULE)} />
+                          <ModuleItem icon={<HelpCircle size={18} />} label="FAQ" onClick={() => addModule(FAQ_MODULE)} />
+                          <ModuleItem icon={<Users size={18} />} label="Team" onClick={() => addModule(TEAM_MODULE)} />
+                          <ModuleItem icon={<CreditCard size={18} />} label="Pricing" onClick={() => addModule(PRICING_MODULE)} />
+                          <ModuleItem icon={<PlusCircle size={18} />} label="CTA" onClick={() => addModule(CTA_MODULE)} />
+                          <ModuleItem icon={<Mail size={18} />} label="Contact" onClick={() => addModule(CONTACT_MODULE)} />
+                          <ModuleItem icon={<Mail size={18} />} label="Newsletter" onClick={() => addModule(NEWSLETTER_MODULE)} />
+                          <ModuleItem icon={<RotateCcw size={18} className="rotate-90" />} label="Spacer" onClick={() => addModule(SPACER_MODULE)} />
+                          <ModuleItem icon={<FileText size={18} />} label="Menu" onClick={() => addModule(MENU_MODULE)} />
+                          <ModuleItem icon={<Layout size={18} />} label="Footer" onClick={() => addModule(FOOTER_MODULE)} />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {mobileTab === 'structure' && (
+                    <div className="h-full overflow-hidden bg-surface">
+                      <StructurePanel 
+                        editorState={editorState} 
+                        setEditorState={setEditorState} 
+                        onSettingChange={handleSettingChange}
+                        onRemoveModule={removeModule}
+                        onMoveModule={moveModule}
+                        isCollapsed={false}
+                        onToggleCollapse={() => {}}
+                        projectId={projectId}
+                        products={products}
+                        customers={customers}
+                        isMobile={true}
+                      />
+                    </div>
+                  )}
+                  
+                  {mobileTab === 'preview' && (
+                    <div className="h-full overflow-hidden">
+                      <Canvas 
+                        editorState={editorState} 
+                        onAddModule={addModule} 
+                        products={products}
+                        customers={customers}
+                        isDevMode={projectId === 'dev-project-id'}
+                        logoUrl={logoUrl}
+                        logoWhiteUrl={logoWhiteUrl}
+                        viewport={viewport}
+                        setViewport={setViewport}
+                        isFullscreen={false}
+                        setIsFullscreen={() => {}}
+                      />
+                    </div>
+                  )}
+                </div>
+                
+                <MobileBottomNav activeTab={mobileTab} onTabChange={handleMobileTabChange} />
+              </div>
+            ) : (
+              /* Desktop Layout */
+              <>
+                <StructurePanel 
+                  editorState={editorState} 
+                  setEditorState={setEditorState} 
+                  onSettingChange={handleSettingChange}
+                  onRemoveModule={removeModule}
+                  onMoveModule={moveModule}
+                  isCollapsed={structurePanelCollapsed}
+                  onToggleCollapse={() => setStructurePanelCollapsed(!structurePanelCollapsed)}
+                  projectId={projectId}
+                  products={products}
+                  customers={customers}
+                />
+                <div className="flex-1 flex flex-col h-full">
+                  <TopBar 
+                    onSave={handleSaveDraft} 
+                    onPublish={handlePublish} 
+                    logoUrl={logoUrl}
+                    viewport={viewport}
+                    setViewport={setViewport}
+                    isFullscreen={isFullscreen}
+                    setIsFullscreen={setIsFullscreen}
+                    saveStatus={saveStatus}
+                    publishStatus={publishStatus}
+                    isMobile={false}
+                  />
+                  <Canvas 
+                    editorState={editorState} 
+                    onAddModule={addModule} 
+                    products={products}
+                    customers={customers}
+                    isDevMode={projectId === 'dev-project-id'}
+                    logoUrl={logoUrl}
+                    logoWhiteUrl={logoWhiteUrl}
+                    viewport={viewport}
+                    setViewport={setViewport}
+                    isFullscreen={isFullscreen}
+                    setIsFullscreen={setIsFullscreen}
+                  />
+                </div>
+              </>
+            )}
+            
+            {showUnsavedModal && (
+              <UnsavedChangesModal 
+                onCancel={() => setShowUnsavedModal(false)}
+                onSaveAndExit={handleSaveAndExit}
+                onExitWithoutSaving={handleExitWithoutSaving}
+              />
+            )}
           </div>
         )}
 

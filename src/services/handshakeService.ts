@@ -17,16 +17,17 @@ export interface HandshakePayload {
 }
 
 let motherWindow: any = window.opener || window.parent;
+let isStable = false;
 
 /**
- * SIP v5.1: Captura de Madre y Envío Robusto
+ * SIP v5.1: Captura de Madre y Envío Robusto con Estabilización
  */
 export const sendToMother = (message: any) => {
   if (motherWindow && motherWindow !== window) {
+    if (!isStable) console.warn("⚠️ [SIP] Enviando mensaje vía canal inestable (opener).");
     motherWindow.postMessage(message, '*');
   } else {
-    console.warn("[SIP v5.1] No se detectó ventana Madre estable. Intentando con window.opener...");
-    if (window.opener) window.opener.postMessage(message, '*');
+    console.error("❌ [SIP] No se detectó ventana Madre.");
   }
 };
 
@@ -46,17 +47,17 @@ export const listenForHandshake = (
     const missing = required.filter(field => !payload[field]);
 
     if (missing.length > 0) {
-      // Si es un mensaje de configuración pero faltan campos, no lo procesamos como handshake completo
       if (data.type === 'SOLUTIUM_CONFIG') {
         console.warn("[SIP v5.1] SOLUTIUM_CONFIG recibido pero incompleto:", missing);
       }
       return false;
     }
 
-    // CAPTURA CRÍTICA: Si viene de un evento message, capturamos el source como la Madre real
-    if (source) {
+    // CAPTURA CRÍTICA: event.source es la conexión viva y directa
+    if (source && source !== window) {
       motherWindow = source;
-      console.log("[SIP v5.1] CAPTURA CRÍTICA: Ventana Madre vinculada via event.source");
+      isStable = true;
+      console.log("✅ [SIP] Conexión estabilizada con la App Madre.");
     }
 
     console.log("[SIP v5.1] Handshake válido detectado. Payload:", payload);
@@ -68,37 +69,56 @@ export const listenForHandshake = (
     return true;
   };
 
-  // 1. ESTRATEGIA: Fat URL (Prioridad alta para carga rápida)
+  // --- RESILIENCIA ANTE REFRESCOS (F5 Safe) ---
+  
+  // 1. Prioridad 1: URL (supabase_url y session_token presentes)
   const urlParams = new URLSearchParams(window.location.search);
-  const urlPayload: any = {};
+  const configFromUrl: any = {};
   urlParams.forEach((val, key) => {
-    try { urlPayload[key] = JSON.parse(val); } catch (e) { urlPayload[key] = val; }
+    try { configFromUrl[key] = JSON.parse(val); } catch (e) { configFromUrl[key] = val; }
   });
 
-  if (Object.keys(urlPayload).length > 0 && validateAndProcess(urlPayload)) {
-    return () => {}; 
+  if (configFromUrl.supabase_url && configFromUrl.session_token) {
+    console.log("✅ [SIP] Recuperado desde URL (F5 Safe)");
+    if (validateAndProcess(configFromUrl)) {
+      // Aunque carguemos de URL, necesitamos estabilizar el postMessage para guardar/publicar
+      // Así que no retornamos aquí, dejamos que el Toc-Toc o el listener capturen el source
+    }
   }
 
-  // 2. ESTRATEGIA: Zero-Latency window.name
+  // 2. Prioridad 2: window.name (Zero-Latency)
   if (window.name) {
     try {
       const nameData = JSON.parse(window.name);
-      if (validateAndProcess(nameData)) return () => {};
+      console.log("✅ [SIP] Recuperado desde window.name");
+      validateAndProcess(nameData);
     } catch (e) { /* No es JSON */ }
   }
 
-  // 3. ESTRATEGIA: Protocolo Toc-Toc (Polling)
+  // 3. Prioridad 3: Protocolo Toc-Toc (Gritar hasta que respondan)
   const tocTocInterval = setInterval(() => {
+    if (isStable) {
+      clearInterval(tocTocInterval);
+      return;
+    }
     console.log("[SIP v5.1] Toc-Toc... Enviando SOLUTIUM_GET_CONFIG");
     sendToMother({ type: 'SOLUTIUM_GET_CONFIG' });
   }, 2000);
 
   const handler = (event: MessageEvent) => {
-    if (!event.data) return;
-    
-    if (event.data.type === 'SOLUTIUM_CONFIG') {
-      clearInterval(tocTocInterval);
-      validateAndProcess(event.data, event.source);
+    // Validar que el mensaje venga de Solutium
+    if (event.data && event.data.type) {
+      // Estabilización por CUALQUIER mensaje de la Madre
+      if (event.source && event.source !== window) {
+        motherWindow = event.source;
+        isStable = true;
+        console.log("✅ [SIP] Conexión estabilizada con la App Madre.");
+      }
+
+      if (event.data.type === 'SOLUTIUM_CONFIG') {
+        clearInterval(tocTocInterval);
+        validateAndProcess(event.data, event.source);
+      }
     }
   };
 

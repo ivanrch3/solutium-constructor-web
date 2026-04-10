@@ -1755,7 +1755,7 @@ const PRICING_MODULE: WebModule = {
             description: 'Ideal para individuos y proyectos pequeños.',
             monthlyPrice: 0,
             yearlyPrice: 0,
-            features: '5 Proyectos\n1GB Almacenamiento\nSoporte por Email\nDominio Personalizado',
+            features: '5 Proyectos\n1GB Almacenamiento\nSoporte por Email\n- Dominio Personalizado\n- Analíticas Pro',
             cta: 'Empezar Gratis',
             icon: 'Rocket',
             highlight: false
@@ -1765,7 +1765,7 @@ const PRICING_MODULE: WebModule = {
             description: 'Para equipos que necesitan escalar rápido.',
             monthlyPrice: 29,
             yearlyPrice: 24,
-            features: 'Proyectos Ilimitados\n20GB Almacenamiento\nSoporte Prioritario\nAnalíticas Avanzadas\nColaboradores (hasta 5)',
+            features: 'Proyectos Ilimitados\n20GB Almacenamiento\nSoporte Prioritario\nAnalíticas Avanzadas\n- SSO & Seguridad',
             cta: 'Prueba Pro Gratis',
             icon: 'Zap',
             highlight: true,
@@ -1796,9 +1796,9 @@ const PRICING_MODULE: WebModule = {
       }
     ],
     estructura: [
+      { id: 'layout_mode', label: 'Modo de Diseño', type: 'select', defaultValue: 'grid', options: [{label:'Grilla', value:'grid'}, {label:'Comparativa', value:'comparison'}]},
       { id: 'columns', label: 'Columnas (Desktop)', type: 'range', defaultValue: 3, min: 1, max: 4 },
-      { id: 'gap', label: 'Espacio entre tarjetas', type: 'range', defaultValue: 32, min: 16, max: 64, unit: 'px' },
-      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 100, min: 40, max: 200, unit: 'px' }
+      { id: 'gap', label: 'Espacio entre tarjetas', type: 'range', defaultValue: 32, min: 16, max: 64, unit: 'px' }
     ],
     estilo: [
       { id: 'bg_color', label: 'Fondo de Sección', type: 'color', defaultValue: '#F8FAFC' }
@@ -1842,7 +1842,8 @@ const PRICING_MODULE: WebModule = {
         { id: 'card_bg', label: 'Fondo de Tarjeta', type: 'color', defaultValue: '#FFFFFF' },
         { id: 'card_radius', label: 'Radio de Borde', type: 'range', defaultValue: 32, min: 0, max: 60 },
         { id: 'highlight_color', label: 'Color de Acento', type: 'color', defaultValue: 'var(--primary-color)' },
-        { id: 'show_shadow', label: 'Mostrar Sombra', type: 'boolean', defaultValue: true }
+        { id: 'show_shadow', label: 'Mostrar Sombra', type: 'boolean', defaultValue: true },
+        { id: 'glass_mode', label: 'Efecto Cristal (Glass)', type: 'boolean', defaultValue: false }
       ],
       estructura: [
         { id: 'card_padding', label: 'Padding Interno', type: 'range', defaultValue: 40, min: 20, max: 60 },
@@ -1864,7 +1865,7 @@ const PRICING_MODULE: WebModule = {
       ],
       contenido: [], estructura: [], multimedia: [], interaccion: []
     }},
-    { id: 'el_pricing_features', name: 'Lista de Características', type: 'style', groups: ['tipografia', 'multimedia', 'estilo'], settings: {
+    { id: 'el_pricing_features', name: 'Lista de Características', type: 'style', groups: ['tipografia', 'multimedia', 'estilo', 'contenido'], settings: {
       tipografia: [
         { id: 'feat_size', label: 'Tamaño Texto', type: 'range', defaultValue: 14, min: 12, max: 18 },
         { id: 'feat_color', label: 'Color Texto', type: 'color', defaultValue: '#475569' }
@@ -1875,7 +1876,30 @@ const PRICING_MODULE: WebModule = {
       estilo: [
         { id: 'icon_color', label: 'Color de Icono', type: 'color', defaultValue: 'var(--primary-color)' }
       ],
-      contenido: [], estructura: [], interaccion: []
+      contenido: [
+        { id: 'show_negative', label: 'Mostrar No Incluidos (-)', type: 'boolean', defaultValue: true }
+      ],
+      estructura: [], interaccion: []
+    }},
+    { id: 'el_pricing_trust', name: 'Sección de Confianza', type: 'multimedia', groups: ['contenido', 'estilo', 'multimedia'], settings: {
+      contenido: [
+        { id: 'show_trust', label: 'Mostrar Garantías', type: 'boolean', defaultValue: true },
+        { 
+          id: 'trust_items', 
+          label: 'Items de Confianza', 
+          type: 'repeater', 
+          defaultValue: [
+            { icon: 'ShieldCheck', text: 'Garantía de 30 días' },
+            { icon: 'Clock', text: 'Soporte 24/7' },
+            { icon: 'CreditCard', text: 'Pagos Seguros' }
+          ],
+          fields: [
+            { id: 'icon', label: 'Icono', type: 'icon', defaultValue: 'ShieldCheck' },
+            { id: 'text', label: 'Texto', type: 'text', defaultValue: 'Garantía' }
+          ]
+        }
+      ],
+      estilo: [], estructura: [], tipografia: [], multimedia: [], interaccion: []
     }}
   ]
 };
@@ -3774,6 +3798,14 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [publishStatus, setPublishStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [currentStatus, setCurrentStatus] = useState<'draft' | 'published' | 'modified'>(() => {
+    if (initialPage && 'status' in initialPage) {
+      return (initialPage as any).status || 'draft';
+    }
+    // Si es una PublishedSite (no tiene status field pero existe), asumimos published
+    if (initialPage && !('status' in initialPage)) return 'published';
+    return 'draft';
+  });
   const [structurePanelCollapsed, setStructurePanelCollapsed] = useState(false);
   const [viewport, setViewport] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -4020,6 +4052,7 @@ const formatTimestampName = () => {
         setPublishStatus('success');
         
         // SIP v5.1: Tras éxito en publicación, actualizamos el estado local a 'published'
+        setCurrentStatus('published');
         setHasUnsavedChanges(false);
         
         setTimeout(() => setPublishStatus('idle'), 3000);
@@ -4044,18 +4077,15 @@ const formatTimestampName = () => {
       
       console.log(`[SAVE DRAFT] Usando siteId: ${siteId} para el proyecto: ${projectId}`);
 
-      // Determine new status based on SIP v5.0 logic
-      let newStatus: 'draft' | 'published' | 'modified' = 'draft';
+      // Determine new status based on SIP v5.1 logic
+      let newStatus: 'draft' | 'published' | 'modified' = currentStatus;
       
       // CRITICAL: Ensure forcedStatus is a valid status string and not a React event object
       if (typeof forcedStatus === 'string' && ['draft', 'published', 'modified'].includes(forcedStatus)) {
         newStatus = forcedStatus;
-      } else if (initialPage && 'status' in initialPage) {
-        if (initialPage.status === 'published') {
-          newStatus = 'modified';
-        } else {
-          newStatus = initialPage.status as any;
-        }
+      } else if (currentStatus === 'published') {
+        // SIP v5.1: Edición tras publicar -> modified
+        newStatus = 'modified';
       }
 
       const payload = {
@@ -4075,6 +4105,10 @@ const formatTimestampName = () => {
 
       // Notify Mother App using robust pattern
       sendToMother(payload);
+
+      // Actualizar estado local tras guardado exitoso
+      setCurrentStatus(newStatus);
+      setSaveStatus('success');
 
       const siteData = {
         id: initialPage && 'contentDraft' in initialPage ? initialPage.id : undefined,

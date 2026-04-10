@@ -540,27 +540,6 @@ export const getPublishedSites = async (projectId: string): Promise<PublishedSit
   }
 };
 
-export const linkSubdomain = async (subdomain: string, publishedSiteId: string): Promise<boolean> => {
-  try {
-    const supabase = getSupabase();
-    if (!supabase) return false;
-
-    const { error } = await supabase
-      .from('subdomains')
-      .upsert({
-        subdomain: subdomain,
-        published_site_id: publishedSiteId,
-        is_active: true
-      }, { onConflict: 'subdomain' });
-
-    if (error) throw error;
-    return true;
-  } catch (err) {
-    console.error('Error in linkSubdomain:', err);
-    return false;
-  }
-};
-
 export const registerAsset = async (asset: Partial<Asset>): Promise<Asset | null> => {
   try {
     const supabase = getSupabase();

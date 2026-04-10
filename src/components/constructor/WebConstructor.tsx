@@ -65,7 +65,7 @@ import { HeaderModule } from './modules/HeaderModule';
 import { MenuModule } from './modules/MenuModule';
 import { FooterModule } from './modules/FooterModule';
 import { SpacerModule } from './modules/SpacerModule';
-import { saveWebBuilderSiteDraft, publishWebBuilderSite, linkSubdomain, getProducts, getCustomers } from '../../services/dataService';
+import { saveWebBuilderSiteDraft, publishWebBuilderSite, getProducts, getCustomers } from '../../services/dataService';
 import { syncAsset } from '../../services/assetService';
 import { Product, Customer } from '../../types/schema';
 import { MOCK_PRODUCTS, MOCK_CUSTOMERS } from '../../constants/mockData';
@@ -3924,8 +3924,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         siteName: finalSiteName,
         name: finalSiteName,
         contentDraft: editorState,
-        status: newStatus,
-        subdomain: initialPage && 'subdomain' in initialPage ? (initialPage as any).subdomain : undefined
+        status: newStatus
       };
       
       const result = await saveWebBuilderSiteDraft(siteData);
@@ -4058,8 +4057,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
           siteId: siteId,
           siteName: finalSiteName,
           content: renderingContract,
-          data: renderingContract, // Atomic Publication support
-          subdomain: initialPage && 'subdomain' in initialPage ? (initialPage as any).subdomain : undefined
+          data: renderingContract // Atomic Publication support
         }
       };
 

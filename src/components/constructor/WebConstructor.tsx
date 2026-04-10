@@ -4055,7 +4055,9 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         payload: {
           projectId,
           appId: '11111111-1111-1111-1111-111111111111',
-          siteId: siteId
+          siteId: siteId,
+          siteName: finalSiteName,
+          content: renderingContract // Send full content for immediate update
         }
       };
 
@@ -4073,7 +4075,9 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
           ...renderingContract.theme,
           siteId,
           siteName: finalSiteName,
-          action: 'publishSite'
+          action: 'publishSite',
+          publishedAt: new Date().toISOString(),
+          cacheControl: 'no-cache, no-store, must-revalidate' // Suggest no-cache to mother app
         }
       });
 

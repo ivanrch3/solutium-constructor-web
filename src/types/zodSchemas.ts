@@ -134,7 +134,6 @@ export const webBuilderSiteSchema = z.object({
   name: z.string(),
   contentDraft: z.any(),
   status: z.enum(['draft', 'published', 'modified']),
-  subdomain: z.string().optional().nullable(),
   createdAt: z.string().optional().nullable(),
   updatedAt: z.string().optional().nullable(),
 });

@@ -391,7 +391,6 @@ export const saveWebBuilderSiteDraft = async (site: Partial<WebBuilderSite>): Pr
       name: site.name,
       content_draft: site.contentDraft,
       status: site.status || 'draft',
-      subdomain: site.subdomain,
     };
 
     if (site.id) dbData.id = site.id;
@@ -413,7 +412,6 @@ export const saveWebBuilderSiteDraft = async (site: Partial<WebBuilderSite>): Pr
       name: data.name,
       contentDraft: data.content_draft,
       status: data.status,
-      subdomain: data.subdomain,
       createdAt: data.created_at,
       updatedAt: data.updated_at,
     };
@@ -490,11 +488,9 @@ export const getWebBuilderSites = async (projectId: string): Promise<WebBuilderS
       userId: item.user_id,
       siteId: item.site_id,
       siteName: item.site_name,
-      isActive: item.is_active,
       name: item.name,
       contentDraft: item.content_draft,
       status: item.status,
-      subdomain: item.subdomain,
       createdAt: item.created_at,
       updatedAt: item.updated_at,
     }));

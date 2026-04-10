@@ -156,7 +156,6 @@ export interface WebBuilderSite {
   name: string;
   contentDraft: any; 
   status: 'draft' | 'published' | 'modified';
-  subdomain?: string;
   createdAt?: string;
   updatedAt?: string;
 }

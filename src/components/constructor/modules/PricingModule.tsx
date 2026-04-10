@@ -107,7 +107,7 @@ export const PricingModule: React.FC<{
 
   const itemVariants = {
     hidden: { y: 30, opacity: 0 },
-    visible: { y: 0, opacity: 1, transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] } }
+    visible: { y: 0, opacity: 1, transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] as any } }
   };
 
   return (

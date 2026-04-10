@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import * as LucideIcons from 'lucide-react';
 import { 
   Home, 
@@ -1830,24 +1830,51 @@ const FAQ_MODULE: WebModule = {
   id: 'mod_faq_1',
   type: 'faq',
   name: 'Preguntas Frecuentes (FAQ)',
-  globalGroups: ['estructura', 'estilo', 'interaccion'],
+  globalGroups: ['contenido', 'estructura', 'estilo', 'interaccion'],
   globalSettings: {
+    contenido: [
+      { 
+        id: 'categories', 
+        label: 'Categorías', 
+        type: 'repeater', 
+        defaultValue: [
+          { id: 'all', label: 'Todas' },
+          { id: 'general', label: 'General' },
+          { id: 'pagos', label: 'Pagos' },
+          { id: 'soporte', label: 'Soporte' }
+        ],
+        fields: [
+          { id: 'id', label: 'ID Categoría', type: 'text', defaultValue: 'general' },
+          { id: 'label', label: 'Nombre Visible', type: 'text', defaultValue: 'General' }
+        ]
+      }
+    ],
     estructura: [
       { id: 'layout', label: 'Diseño de Lista', type: 'select', defaultValue: 'single', options: [
         { label: 'Columna Única', value: 'single' },
-        { label: 'Dos Columnas', value: 'double' }
+        { label: 'Dos Columnas', value: 'double' },
+        { label: 'Pestañas Laterales', value: 'tabs_left' },
+        { label: 'Pestañas Superiores', value: 'tabs_top' }
       ]},
-      { id: 'max_width', label: 'Ancho Máximo', type: 'range', defaultValue: 800, min: 600, max: 1200, unit: 'px' },
-      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 100, min: 40, max: 200, unit: 'px' }
+      { id: 'max_width', label: 'Ancho Máximo', type: 'range', defaultValue: 1000, min: 600, max: 1400, unit: 'px' },
+      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 100, min: 40, max: 200, unit: 'px' },
+      { id: 'item_gap', label: 'Espacio entre Items', type: 'range', defaultValue: 16, min: 0, max: 40, unit: 'px' }
     ],
     estilo: [
-      { id: 'bg_color', label: 'Fondo de Sección', type: 'color', defaultValue: '#FFFFFF' }
+      { id: 'bg_color', label: 'Fondo de Sección', type: 'color', defaultValue: '#FFFFFF' },
+      { id: 'glassmorphism', label: 'Efecto Cristal (Glass)', type: 'boolean', defaultValue: false },
+      { id: 'divider_style', label: 'Estilo de Divisor', type: 'select', defaultValue: 'line', options: [
+        { label: 'Línea Sólida', value: 'line' },
+        { label: 'Puntos', value: 'dots' },
+        { label: 'Ninguno', value: 'none' }
+      ]}
     ],
     interaccion: [
       { id: 'entrance_anim', label: 'Animación de Entrada', type: 'boolean', defaultValue: true },
-      { id: 'single_open', label: 'Solo uno abierto a la vez', type: 'boolean', defaultValue: true }
+      { id: 'single_open', label: 'Solo uno abierto a la vez', type: 'boolean', defaultValue: true },
+      { id: 'scroll_to_active', label: 'Scroll al abrir', type: 'boolean', defaultValue: false }
     ],
-    contenido: [], tipografia: [], multimedia: []
+    tipografia: [], multimedia: []
   },
   elements: [
     { id: 'el_faq_header', name: 'Encabezado de Sección', type: 'text', groups: ['contenido', 'tipografia', 'estructura'], settings: {
@@ -1857,7 +1884,8 @@ const FAQ_MODULE: WebModule = {
       ],
       tipografia: [
         { id: 'align', label: 'Alineación', type: 'select', defaultValue: 'center', options: [{label:'Izquierda', value:'left'}, {label:'Centro', value:'center'}]},
-        { id: 'title_size', label: 'Tamaño Título', type: 'range', defaultValue: 32, min: 24, max: 48 }
+        { id: 'title_size', label: 'Tamaño Título', type: 'range', defaultValue: 40, min: 24, max: 64 },
+        { id: 'title_weight', label: 'Grosor Título', type: 'select', defaultValue: '900', options: [{label:'Normal', value:'400'}, {label:'Bold', value:'700'}, {label:'Black', value:'900'}]}
       ],
       estructura: [{ id: 'margin_b', label: 'Margen Inferior', type: 'range', defaultValue: 60, min: 20, max: 100 }],
       estilo: [], multimedia: [], interaccion: []
@@ -1869,7 +1897,8 @@ const FAQ_MODULE: WebModule = {
       ],
       estilo: [
         { id: 'search_bg', label: 'Fondo Buscador', type: 'color', defaultValue: '#F1F5F9' },
-        { id: 'search_radius', label: 'Redondeado', type: 'range', defaultValue: 16, min: 0, max: 40 }
+        { id: 'search_radius', label: 'Redondeado', type: 'range', defaultValue: 16, min: 0, max: 40 },
+        { id: 'search_border', label: 'Borde Enfocado', type: 'color', defaultValue: 'var(--primary-color)' }
       ],
       tipografia: [], estructura: [], multimedia: [], interaccion: []
     }},
@@ -1880,12 +1909,14 @@ const FAQ_MODULE: WebModule = {
           label: 'Lista de Preguntas', 
           type: 'repeater', 
           defaultValue: [
-            { question: '¿Cómo puedo empezar con la plataforma?', answer: 'Es muy sencillo. Solo tienes que registrarte con tu correo electrónico, elegir una plantilla que te guste y empezar a personalizarla con nuestro editor visual. No necesitas conocimientos de programación.' },
-            { question: '¿Ofrecen soporte técnico personalizado?', answer: 'Sí, todos nuestros planes incluyen soporte. Los planes Pro y Enterprise cuentan con soporte prioritario 24/7 a través de chat y correo electrónico para resolver cualquier duda técnica.' }
+            { category: 'general', question: '¿Cómo puedo empezar con la plataforma?', answer: 'Es muy sencillo. Solo tienes que registrarte con tu correo electrónico, elegir una plantilla que te guste y empezar a personalizarla con nuestro editor visual. No necesitas conocimientos de programación.' },
+            { category: 'soporte', question: '¿Ofrecen soporte técnico personalizado?', answer: 'Sí, todos nuestros planes incluyen soporte. Los planes Pro y Enterprise cuentan con soporte prioritario 24/7 a través de chat y correo electrónico para resolver cualquier duda técnica.' }
           ],
           fields: [
+            { id: 'category', label: 'Categoría (ID)', type: 'text', defaultValue: 'general' },
             { id: 'question', label: 'Pregunta', type: 'text', defaultValue: 'Nueva Pregunta' },
-            { id: 'answer', label: 'Respuesta', type: 'text', defaultValue: 'Descripción de la respuesta...' }
+            { id: 'answer', label: 'Respuesta (Markdown)', type: 'text', defaultValue: 'Descripción de la respuesta...' },
+            { id: 'icon', label: 'Icono (Opcional)', type: 'icon', defaultValue: '' }
           ]
         }
       ],
@@ -1893,16 +1924,19 @@ const FAQ_MODULE: WebModule = {
         { id: 'item_bg', label: 'Fondo de Item', type: 'color', defaultValue: 'transparent' },
         { id: 'active_bg', label: 'Fondo al Expandir', type: 'color', defaultValue: '#F8FAFC' },
         { id: 'border_color', label: 'Color de Borde', type: 'color', defaultValue: '#E2E8F0' },
-        { id: 'show_border', label: 'Mostrar Borde', type: 'boolean', defaultValue: true }
+        { id: 'show_border', label: 'Mostrar Borde', type: 'boolean', defaultValue: true },
+        { id: 'active_shadow', label: 'Sombra al abrir', type: 'boolean', defaultValue: true }
       ],
       tipografia: [
-        { id: 'q_size', label: 'Tamaño Pregunta', type: 'range', defaultValue: 16, min: 14, max: 20 },
+        { id: 'q_size', label: 'Tamaño Pregunta', type: 'range', defaultValue: 18, min: 14, max: 24 },
+        { id: 'q_weight', label: 'Grosor Pregunta', type: 'select', defaultValue: '700', options: [{label:'Normal', value:'400'}, {label:'Medium', value:'500'}, {label:'Bold', value:'700'}]},
         { id: 'q_color', label: 'Color Pregunta', type: 'color', defaultValue: '#0F172A' },
-        { id: 'a_size', label: 'Tamaño Respuesta', type: 'range', defaultValue: 15, min: 13, max: 18 },
+        { id: 'a_size', label: 'Tamaño Respuesta', type: 'range', defaultValue: 16, min: 13, max: 20 },
         { id: 'a_color', label: 'Color Respuesta', type: 'color', defaultValue: '#64748B' }
       ],
       multimedia: [
-        { id: 'icon_type', label: 'Icono de Estado', type: 'select', defaultValue: 'plus', options: [{label:'Plus/Minus', value:'plus'}, {label:'Chevron', value:'chevron'}]}
+        { id: 'icon_type', label: 'Icono de Estado', type: 'select', defaultValue: 'plus', options: [{label:'Plus/Minus', value:'plus'}, {label:'Chevron', value:'chevron'}]},
+        { id: 'show_item_icons', label: 'Mostrar Iconos de Item', type: 'boolean', defaultValue: false }
       ],
       estructura: [], interaccion: []
     }},
@@ -1913,7 +1947,8 @@ const FAQ_MODULE: WebModule = {
         { id: 'btn_text', label: 'Texto Botón', type: 'text', defaultValue: 'Contactar Soporte' }
       ],
       estilo: [
-        { id: 'btn_bg', label: 'Color Botón', type: 'color', defaultValue: 'var(--primary-color)' }
+        { id: 'btn_bg', label: 'Color Botón', type: 'color', defaultValue: 'var(--primary-color)' },
+        { id: 'cta_bg', label: 'Fondo Bloque CTA', type: 'color', defaultValue: '#F8FAFC' }
       ],
       interaccion: [
         { id: 'btn_link', label: 'Enlace', type: 'text', defaultValue: '#' }
@@ -2896,7 +2931,7 @@ const StructurePanel: React.FC<StructurePanelProps> = ({
                   {React.cloneElement(moduleInfo.icon as React.ReactElement, { 
                     size: 12, 
                     className: isModuleExpanded && !isCollapsed ? 'text-white' : 'text-text/40' 
-                  })}
+                  } as any)}
                 </div>
                 
                 {!isCollapsed && (
@@ -3887,7 +3922,16 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     }
   };
 
-  const formatTimestampName = () => {
+  // --- HELPERS ---
+
+const sendToMother = (message: any) => {
+  const target = window.opener || window.parent;
+  if (target && target !== window) {
+    target.postMessage(message, '*');
+  }
+};
+
+const formatTimestampName = () => {
     const now = new Date();
     const yy = now.getFullYear().toString().slice(-2);
     const mm = (now.getMonth() + 1).toString().padStart(2, '0');
@@ -3921,6 +3965,19 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   const handleExitWithoutSaving = () => {
     onBackToDashboard();
   };
+
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'SOLUTIUM_PUBLISH_SUCCESS') {
+        console.log('[PUBLISH] Confirmación recibida de App Madre: SOLUTIUM_PUBLISH_SUCCESS');
+        setPublishStatus('success');
+        setTimeout(() => setPublishStatus('idle'), 3000);
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
 
   const handleSaveDraft = async (forcedStatus?: 'draft' | 'published' | 'modified') => {
     if (!projectId) return;
@@ -3964,8 +4021,8 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         }
       };
 
-      // Notify Mother App
-      window.parent.postMessage(payload, '*');
+      // Notify Mother App using robust pattern
+      sendToMother(payload);
 
       const siteData = {
         id: initialPage && 'contentDraft' in initialPage ? initialPage.id : undefined,
@@ -4107,22 +4164,23 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
           appId: '11111111-1111-1111-1111-111111111111',
           siteId: siteId,
           siteName: finalSiteName,
-          content: renderingContract,
-          data: renderingContract // Atomic Publication support
+          data: renderingContract // El JSON completo del sitio
         }
       };
 
-      // Notify Mother App
-      window.parent.postMessage(payload, '*');
+      // Notify Mother App using robust pattern
+      sendToMother(payload);
 
       // SIP v5.1: We delegate persistence to the Mother App via SOLUTIUM_PUBLISH.
-      // The Mother App now handles Atomic Publication including subdomain linking.
       console.log('[PUBLISH] Evento SOLUTIUM_PUBLISH enviado. Delegando persistencia a App Madre.');
 
-      setPublishStatus('success');
-      // Also save a draft to keep them in sync and update status to 'published'
+      // We wait for SOLUTIUM_PUBLISH_SUCCESS to update status (handled in useEffect)
+      // but we set loading state here
+      setPublishStatus('loading');
+      
+      // Also save a draft to keep them in sync
       await handleSaveDraft('published');
-      setTimeout(() => setPublishStatus('idle'), 3000);
+      
       setShowPublishModal(false);
     } catch (error) {
       console.error('Error publishing site:', error);

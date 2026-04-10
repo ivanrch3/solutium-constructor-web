@@ -62,11 +62,15 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
         const type = section.type;
         const settings = section.settings || {};
 
-        // Helper to get setting value from the flat settings object
-        const getVal = (elementId: string | null, settingId: string, defaultValue: any) => {
-          const key = elementId ? `${elementId}_${settingId}` : `global_${settingId}`;
-          return settings[key] !== undefined ? settings[key] : defaultValue;
-        };
+        // SIP v5.0: Adapt settings for modules that expect moduleId prefix
+        const settingsValues = Object.entries(settings).reduce((acc, [key, value]) => {
+          if (key.startsWith('global_')) {
+            acc[`${moduleId}_${key}`] = value;
+          } else {
+            acc[key] = value;
+          }
+          return acc;
+        }, {} as Record<string, any>);
 
         switch (type) {
           case 'hero':
@@ -74,8 +78,7 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
               <HeroModule 
                 key={moduleId}
                 moduleId={moduleId}
-                getVal={getVal}
-                isDevMode={false}
+                settingsValues={settingsValues}
               />
             );
           case 'features':
@@ -83,8 +86,7 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
               <FeaturesModule 
                 key={moduleId}
                 moduleId={moduleId}
-                getVal={getVal}
-                isDevMode={false}
+                settingsValues={settingsValues}
               />
             );
           case 'about':
@@ -92,8 +94,7 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
               <AboutModule 
                 key={moduleId}
                 moduleId={moduleId}
-                getVal={getVal}
-                isDevMode={false}
+                settingsValues={settingsValues}
               />
             );
           case 'process':
@@ -101,8 +102,7 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
               <ProcessModule 
                 key={moduleId}
                 moduleId={moduleId}
-                getVal={getVal}
-                isDevMode={false}
+                settingsValues={settingsValues}
               />
             );
           case 'gallery':
@@ -110,8 +110,7 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
               <GalleryModule 
                 key={moduleId}
                 moduleId={moduleId}
-                getVal={getVal}
-                isDevMode={false}
+                settingsValues={settingsValues}
               />
             );
           case 'testimonials':
@@ -119,8 +118,7 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
               <TestimonialsModule 
                 key={moduleId}
                 moduleId={moduleId}
-                getVal={getVal}
-                isDevMode={false}
+                settingsValues={settingsValues}
               />
             );
           case 'stats':
@@ -128,8 +126,7 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
               <StatsModule 
                 key={moduleId}
                 moduleId={moduleId}
-                getVal={getVal}
-                isDevMode={false}
+                settingsValues={settingsValues}
               />
             );
           case 'team':
@@ -137,8 +134,7 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
               <TeamModule 
                 key={moduleId}
                 moduleId={moduleId}
-                getVal={getVal}
-                isDevMode={false}
+                settingsValues={settingsValues}
               />
             );
           case 'pricing':
@@ -146,8 +142,7 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
               <PricingModule 
                 key={moduleId}
                 moduleId={moduleId}
-                getVal={getVal}
-                isDevMode={false}
+                settingsValues={settingsValues}
               />
             );
           case 'faq':
@@ -155,8 +150,7 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
               <FAQModule 
                 key={moduleId}
                 moduleId={moduleId}
-                getVal={getVal}
-                isDevMode={false}
+                settingsValues={settingsValues}
               />
             );
           case 'contact':
@@ -164,8 +158,7 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
               <ContactModule 
                 key={moduleId}
                 moduleId={moduleId}
-                getVal={getVal}
-                isDevMode={false}
+                settingsValues={settingsValues}
               />
             );
           case 'products':
@@ -173,9 +166,8 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
               <ProductsModule 
                 key={moduleId}
                 moduleId={moduleId}
-                getVal={getVal}
-                isDevMode={false}
-                products={[]} // We would need to fetch these if we were a real standalone renderer
+                settingsValues={settingsValues}
+                products={[]} 
               />
             );
           case 'clients':
@@ -183,9 +175,8 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
               <ClientsModule 
                 key={moduleId}
                 moduleId={moduleId}
-                getVal={getVal}
-                isDevMode={false}
-                customers={[]} // We would need to fetch these if we were a real standalone renderer
+                settingsValues={settingsValues}
+                customers={[]} 
               />
             );
           default:

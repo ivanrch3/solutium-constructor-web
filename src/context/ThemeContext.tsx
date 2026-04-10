@@ -230,9 +230,10 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         const themePayload = event.data.payload.theme || event.data.payload;
         applyTheme(themePayload);
         
-        // Responder con ACK
-        if (window.parent !== window) {
-          window.parent.postMessage({ type: 'SOLUTIUM_THEME_ACK' }, '*');
+        // Responder con ACK usando patrón robusto
+        const target = window.opener || window.parent;
+        if (target && target !== window) {
+          target.postMessage({ type: 'SOLUTIUM_THEME_ACK' }, '*');
         }
       }
     };

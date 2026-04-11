@@ -4318,6 +4318,7 @@ const formatTimestampName = () => {
       // Sincronizar el borrador con el nuevo nombre antes de publicar
       const siteData: Partial<WebBuilderSite> = {
         projectId,
+        appId: appId || '11111111-1111-1111-1111-111111111111',
         siteId: siteId,
         siteName: finalSiteName,
         name: finalSiteName,

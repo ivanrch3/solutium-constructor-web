@@ -387,7 +387,7 @@ export const saveWebBuilderSiteDraft = async (site: Partial<WebBuilderSite>): Pr
 
     const dbData: any = {
       project_id: site.projectId,
-      app_id: site.appId || '11111111-1111-1111-1111-111111111111',
+      // app_id: site.appId || '11111111-1111-1111-1111-111111111111', // Comentado para evitar PGRST204 si la columna no existe
       user_id: site.userId || userData.user?.id,
       site_id: site.siteId,
       site_name: site.siteName || 'Mi Sitio Web',
@@ -401,7 +401,7 @@ export const saveWebBuilderSiteDraft = async (site: Partial<WebBuilderSite>): Pr
 
     const { data, error } = await supabase
       .from('web_builder_sites')
-      .upsert(dbData, { onConflict: 'project_id,app_id,site_id' })
+      .upsert(dbData, { onConflict: 'project_id,site_id' })
       .select()
       .single();
 
@@ -441,14 +441,14 @@ export const publishWebBuilderSite = async (site: Partial<PublishedSite>): Promi
       .from('web_builder_sites')
       .upsert({
         project_id: site.projectId,
-        app_id: site.appId || '11111111-1111-1111-1111-111111111111',
+        // app_id: site.appId || '11111111-1111-1111-1111-111111111111',
         site_id: site.siteId,
         site_name: site.siteName || 'Mi Sitio Web',
         content_published: site.content,
         content_draft: site.content, // Sincronizar borrador con lo publicado
         status: 'published',
         updated_at: now
-      }, { onConflict: 'project_id,app_id,site_id' })
+      }, { onConflict: 'project_id,site_id' })
       .select()
       .single();
 
@@ -457,7 +457,7 @@ export const publishWebBuilderSite = async (site: Partial<PublishedSite>): Promi
     // 2. Registrar en published_sites (para el renderizador global)
     const dbData: any = {
       project_id: site.projectId,
-      app_id: site.appId || '11111111-1111-1111-1111-111111111111',
+      // app_id: site.appId || '11111111-1111-1111-1111-111111111111',
       site_id: site.siteId,
       site_name: site.siteName || 'Mi Sitio Web',
       user_id: userData.user?.id,
@@ -471,7 +471,7 @@ export const publishWebBuilderSite = async (site: Partial<PublishedSite>): Promi
 
     const { data, error } = await supabase
       .from('published_sites')
-      .upsert(dbData, { onConflict: 'project_id,app_id,site_id' })
+      .upsert(dbData, { onConflict: 'project_id,site_id' })
       .select()
       .single();
 
@@ -567,6 +567,41 @@ export const getPublishedSites = async (projectId: string): Promise<PublishedSit
   } catch (err) {
     console.error('Error in getPublishedSites:', err);
     return [];
+  }
+};
+
+export const renameWebBuilderSite = async (projectId: string, siteId: string, newName: string): Promise<boolean> => {
+  try {
+    const supabase = getSupabase();
+    if (!supabase) return false;
+
+    // Actualizar en web_builder_sites
+    const { error: draftError } = await supabase
+      .from('web_builder_sites')
+      .update({ 
+        site_name: newName,
+        name: newName,
+        updated_at: new Date().toISOString()
+      })
+      .eq('project_id', projectId)
+      .eq('site_id', siteId);
+
+    if (draftError) throw draftError;
+
+    // Intentar actualizar en published_sites (si existe)
+    await supabase
+      .from('published_sites')
+      .update({ 
+        site_name: newName,
+        updated_at: new Date().toISOString()
+      })
+      .eq('project_id', projectId)
+      .eq('site_id', siteId);
+
+    return true;
+  } catch (err) {
+    console.error('Error in renameWebBuilderSite:', err);
+    return false;
   }
 };
 

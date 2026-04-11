@@ -1,5 +1,5 @@
-import React from 'react';
-import { PlusSquare, FileText, ExternalLink, Eye } from 'lucide-react';
+import React, { useState } from 'react';
+import { PlusSquare, FileText, ExternalLink, Eye, Edit2, Check, X } from 'lucide-react';
 import { Asset, WebBuilderSite, PublishedSite } from '../types/schema';
 import { motion } from 'motion/react';
 
@@ -9,6 +9,7 @@ interface DashboardProps {
   onNewPage: () => void;
   onSelectAsset: (asset: Asset) => void;
   onSelectPage: (page: WebBuilderSite | PublishedSite) => void;
+  onRenamePage: (siteId: string, newName: string) => Promise<void>;
   logoUrl?: string | null;
   logoWhiteUrl?: string | null;
 }
@@ -19,9 +20,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onNewPage, 
   onSelectAsset, 
   onSelectPage, 
+  onRenamePage,
   logoUrl, 
   logoWhiteUrl 
 }) => {
+  const [editingSiteId, setEditingSiteId] = useState<string | null>(null);
+  const [tempName, setTempName] = useState('');
+
   const handlePreview = (e: React.MouseEvent, siteId: string) => {
     e.stopPropagation();
     const url = new URL(window.location.href);
@@ -84,9 +89,56 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         </div>
                         <div>
                           <div className="flex items-center gap-2">
-                            <h3 className="text-base font-bold text-text group-hover:text-primary transition-colors">
-                              {page.siteName || 'Sin nombre'}
-                            </h3>
+                            {editingSiteId === page.siteId ? (
+                              <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                                <input 
+                                  type="text"
+                                  value={tempName}
+                                  onChange={(e) => setTempName(e.target.value)}
+                                  className="text-sm font-bold bg-secondary border border-primary/30 rounded px-2 py-0.5 outline-none focus:ring-1 focus:ring-primary/50"
+                                  autoFocus
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      onRenamePage(page.siteId || '', tempName);
+                                      setEditingSiteId(null);
+                                    } else if (e.key === 'Escape') {
+                                      setEditingSiteId(null);
+                                    }
+                                  }}
+                                />
+                                <button 
+                                  onClick={() => {
+                                    onRenamePage(page.siteId || '', tempName);
+                                    setEditingSiteId(null);
+                                  }}
+                                  className="p-1 text-green-600 hover:bg-green-50 rounded"
+                                >
+                                  <Check className="w-3.5 h-3.5" />
+                                </button>
+                                <button 
+                                  onClick={() => setEditingSiteId(null)}
+                                  className="p-1 text-red-600 hover:bg-red-50 rounded"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            ) : (
+                              <>
+                                <h3 className="text-base font-bold text-text group-hover:text-primary transition-colors">
+                                  {page.siteName || 'Sin nombre'}
+                                </h3>
+                                <button 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setEditingSiteId(page.siteId || null);
+                                    setTempName(page.siteName || '');
+                                  }}
+                                  className="p-1 text-text/20 hover:text-primary opacity-0 group-hover:opacity-100 transition-all"
+                                >
+                                  <Edit2 className="w-3.5 h-3.5" />
+                                </button>
+                              </>
+                            )}
                             <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold uppercase ${
                               isPublished ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
                             }`}>

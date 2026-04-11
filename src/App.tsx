@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { startHandshake } from './services/handshakeService';
 import { initSupabase } from './services/supabaseClient';
 import { initDOClient } from './services/doService';
-import { getProfile, getProject, getWebBuilderSites, getPublishedSites } from './services/dataService';
+import { getProfile, getProject, getWebBuilderSites, getPublishedSites, renameWebBuilderSite } from './services/dataService';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { Sidebar } from './components/Sidebar';
 import { DataTab } from './components/DataTab';
@@ -278,6 +278,30 @@ const AppContent: React.FC = () => {
     setCurrentView('constructor');
   };
 
+  const handleRenamePage = async (siteId: string, newName: string) => {
+    if (!projectId) return;
+    const success = await renameWebBuilderSite(projectId, siteId, newName);
+    if (success) {
+      // Refresh pages
+      const [drafts, published] = await Promise.all([
+        getWebBuilderSites(projectId),
+        getPublishedSites(projectId)
+      ]);
+      
+      const sitesMap = new Map<string, WebBuilderSite | PublishedSite>();
+      published.forEach(p => { if (p.siteId) sitesMap.set(p.siteId, p); });
+      drafts.forEach(d => { if (d.siteId) sitesMap.set(d.siteId, d); });
+
+      const allPages = Array.from(sitesMap.values()).sort((a, b) => {
+        const dateA = new Date(a.updatedAt || 0).getTime();
+        const dateB = new Date(b.updatedAt || 0).getTime();
+        return dateB - dateA;
+      });
+      
+      setPages(allPages);
+    }
+  };
+
   if (!isHandshakeComplete) {
     const isDevOrAIStudio = window.location.hostname.includes('run.app') || window.location.hostname.includes('localhost');
 
@@ -356,6 +380,7 @@ const AppContent: React.FC = () => {
                 setCurrentView('constructor');
               }
             }}
+            onRenamePage={handleRenamePage}
             logoUrl={urlLogo}
             logoWhiteUrl={urlLogoWhite}
           />

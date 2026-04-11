@@ -4293,20 +4293,39 @@ const formatTimestampName = () => {
     }
   };
 
+  const isDefaultName = (name: string) => {
+    if (!name) return true;
+    const timestampRegex = /^\d{2}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}-(am|pm)$/;
+    return timestampRegex.test(name) || name === 'Mi Sitio Web';
+  };
+
   const handlePublish = async () => {
     if (!projectId || isPreviewMode) return;
     
-    const finalSiteName = siteName || formatTimestampName();
-    if (!siteName) {
+    // Si no tiene nombre real, pedimos uno
+    if (isDefaultName(siteName)) {
       setShowPublishModal(true);
       return;
     }
 
+    const finalSiteName = siteName;
     setPublishStatus('loading');
     setIsSaving(true);
     try {
       const renderingContract = generateRenderingContract(finalSiteName);
       const siteId = currentSiteId;
+
+      // Sincronizar el borrador con el nuevo nombre antes de publicar
+      const siteData: Partial<WebBuilderSite> = {
+        projectId,
+        siteId: siteId,
+        siteName: finalSiteName,
+        name: finalSiteName,
+        contentDraft: editorState,
+        status: 'published'
+      };
+      if (initialPage && 'id' in initialPage) siteData.id = initialPage.id;
+      await saveWebBuilderSiteDraft(siteData);
 
       const publishData: Partial<PublishedSite> = {
         projectId,

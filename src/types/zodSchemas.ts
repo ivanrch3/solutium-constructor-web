@@ -128,7 +128,7 @@ export const productSchema = z.object({
 export const webBuilderSiteSchema = z.object({
   id: z.string(),
   projectId: z.string(),
-  appId: z.string(),
+  appId: z.string().optional().nullable(),
   userId: z.string().optional().nullable(),
   siteId: z.string().optional().nullable(),
   siteName: z.string().optional().nullable(),
@@ -142,7 +142,7 @@ export const webBuilderSiteSchema = z.object({
 export const publishedSiteSchema = z.object({
   id: z.string(),
   projectId: z.string(),
-  appId: z.string(),
+  appId: z.string().optional().nullable(),
   siteId: z.string().optional().nullable(),
   siteName: z.string().optional().nullable(),
   isActive: z.boolean().optional().nullable(),

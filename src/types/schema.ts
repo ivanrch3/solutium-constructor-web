@@ -150,7 +150,7 @@ export interface Product {
 export interface WebBuilderSite {
   id: string;
   projectId: string;
-  appId: string;
+  appId?: string;
   userId?: string;
   siteId?: string;
   siteName?: string;
@@ -177,7 +177,7 @@ export interface RenderingContract {
 export interface PublishedSite {
   id: string;
   projectId: string;
-  appId: string;
+  appId?: string;
   siteId?: string;
   siteName?: string;
   isActive?: boolean;

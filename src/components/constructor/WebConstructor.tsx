@@ -3005,7 +3005,7 @@ const StructurePanel: React.FC<StructurePanelProps> = ({
       </div>
 
       <div className="flex-1 overflow-y-auto custom-scrollbar overflow-x-hidden">
-        {editorState.addedModules.length === 0 && (
+        {(!editorState.addedModules || editorState.addedModules.length === 0) && (
           <div className={`p-8 text-center space-y-4 ${isCollapsed ? 'px-2' : ''}`}>
             <div className="w-12 h-12 bg-secondary rounded-full flex items-center justify-center mx-auto">
               <Layout className="text-text/40 w-6 h-6" />
@@ -3014,11 +3014,11 @@ const StructurePanel: React.FC<StructurePanelProps> = ({
           </div>
         )}
 
-        {editorState.addedModules.map((module, index) => {
+        {(editorState.addedModules || []).map((module, index) => {
           const isModuleExpanded = editorState.expandedModuleId === module.id;
           const canMoveUp = index > 0;
-          const canMoveDown = index < editorState.addedModules.length - 1;
-          const hasMultipleModules = editorState.addedModules.length > 1;
+          const canMoveDown = index < (editorState.addedModules?.length || 0) - 1;
+          const hasMultipleModules = (editorState.addedModules?.length || 0) > 1;
           
           const moduleInfo = MODULE_INFO[module.type] || { icon: <Layout size={12} />, label: module.name };
           
@@ -3494,7 +3494,7 @@ const Canvas: React.FC<{
   isPreviewMode
 }) => {
   const lastModuleRef = React.useRef<HTMLDivElement>(null);
-  const prevModulesLength = React.useRef(editorState.addedModules.length);
+  const prevModulesLength = React.useRef(editorState.addedModules?.length || 0);
 
   const viewportWidths = {
     desktop: '100%',
@@ -3503,7 +3503,7 @@ const Canvas: React.FC<{
   };
 
   React.useEffect(() => {
-    if (editorState.addedModules.length > prevModulesLength.current) {
+    if ((editorState.addedModules?.length || 0) > prevModulesLength.current) {
       // Use requestAnimationFrame to ensure the DOM has updated and height is calculated
       requestAnimationFrame(() => {
         setTimeout(() => {
@@ -3514,8 +3514,8 @@ const Canvas: React.FC<{
         }, 100);
       });
     }
-    prevModulesLength.current = editorState.addedModules.length;
-  }, [editorState.addedModules.length]);
+    prevModulesLength.current = editorState.addedModules?.length || 0;
+  }, [editorState.addedModules?.length]);
 
   React.useEffect(() => {
     if (editorState.expandedModuleId) {
@@ -3587,7 +3587,7 @@ const Canvas: React.FC<{
           )}
           {/* Dynamic Modules */}
           <div className="w-full">
-            {editorState.addedModules.length === 0 && !isPreviewMode ? (
+            {(!editorState.addedModules || editorState.addedModules.length === 0) && !isPreviewMode ? (
               <div className="flex flex-col items-center justify-center py-32 px-6 text-center">
                 <div className="w-20 h-20 bg-secondary rounded-3xl flex items-center justify-center mb-6 text-text/20">
                   <PlusCircle size={40} />
@@ -3598,8 +3598,8 @@ const Canvas: React.FC<{
                 </p>
               </div>
             ) : (
-              editorState.addedModules.map((module, index) => {
-                const isLast = index === editorState.addedModules.length - 1;
+              (editorState.addedModules || []).map((module, index) => {
+                const isLast = index === (editorState.addedModules?.length || 0) - 1;
                 
                 return (
                   <div key={module.id} id={`module-${module.id}`} ref={isLast ? lastModuleRef : null} className="w-full">
@@ -3914,16 +3914,33 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [showUnsavedModal, setShowUnsavedModal] = useState(false);
   const [editorState, setEditorState] = useState<EditorState>(() => {
-    if (initialPage && 'contentDraft' in initialPage && initialPage.contentDraft) {
-      return initialPage.contentDraft as EditorState;
-    }
-    return {
+    const defaultState: EditorState = {
       addedModules: [],
       expandedModuleId: null,
       selectedElementId: null,
       expandedGroupsByElement: {},
       settingsValues: {}
     };
+
+    if (initialPage && 'contentDraft' in initialPage && initialPage.contentDraft) {
+      const draft = initialPage.contentDraft as any;
+      return {
+        ...defaultState,
+        ...draft,
+        addedModules: Array.isArray(draft.addedModules) ? draft.addedModules : [],
+        expandedGroupsByElement: draft.expandedGroupsByElement || {},
+        settingsValues: draft.settingsValues || {}
+      };
+    }
+    
+    // Fallback for PublishedSite if contentDraft is missing but content exists
+    if (initialPage && 'content' in initialPage && (initialPage as any).content) {
+      // If it's a published site, we might need to reconstruct the editor state
+      // but usually we save a draft alongside the publication.
+      // For now, just return default if no draft.
+    }
+
+    return defaultState;
   });
 
   React.useEffect(() => {
@@ -3992,8 +4009,8 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         groupSettings.forEach(setting => {
           let val = setting.defaultValue;
           if (setting.type === 'product_selection') {
-            const availableProducts = products.length > 0 ? products : (projectId === 'dev-project-id' ? MOCK_PRODUCTS : []);
-            if (availableProducts.length > 0) {
+            const availableProducts = (products?.length || 0) > 0 ? products : (projectId === 'dev-project-id' ? MOCK_PRODUCTS : []);
+            if ((availableProducts?.length || 0) > 0) {
               val = availableProducts.slice(0, 8).map(p => p.id);
             }
           }
@@ -4040,7 +4057,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   };
 
   const removeModule = (moduleId: string) => {
-    const module = editorState.addedModules.find(m => m.id === moduleId);
+    const module = (editorState.addedModules || []).find(m => m.id === moduleId);
     if (module) {
       setModuleToDelete(module);
     }
@@ -4048,10 +4065,11 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
 
   const moveModule = (moduleId: string, direction: 'up' | 'down') => {
     setEditorState(prev => {
-      const index = prev.addedModules.findIndex(m => m.id === moduleId);
+      const addedModules = prev.addedModules || [];
+      const index = addedModules.findIndex(m => m.id === moduleId);
       if (index === -1) return prev;
       
-      const newModules = [...prev.addedModules];
+      const newModules = [...addedModules];
       const targetIndex = direction === 'up' ? index - 1 : index + 1;
       
       if (targetIndex < 0 || targetIndex >= newModules.length) return prev;

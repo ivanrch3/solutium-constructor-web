@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Quote, Star, ChevronLeft, ChevronRight } from 'lucide-react';
+import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
+import { TextRenderer } from '../TextRenderer';
 
 const MOCK_TESTIMONIALS = [
   {
@@ -60,7 +62,10 @@ const TestimonialCard = ({
   showStars,
   starColor,
   quoteSize,
-  showCompanyLogo
+  quoteWeight,
+  quoteAlign,
+  showCompanyLogo,
+  darkMode
 }: any) => {
   const avatarClass = useMemo(() => {
     switch (avatarShape) {
@@ -70,6 +75,12 @@ const TestimonialCard = ({
     }
   }, [avatarShape]);
 
+  const finalCardBg = darkMode ? '#1E293B' : cardBg;
+  const finalBorderColor = darkMode ? 'rgba(255,255,255,0.1)' : borderColor;
+  const finalQuoteColor = darkMode ? '#94A3B8' : '#475569';
+  const finalAuthorColor = darkMode ? '#FFFFFF' : authorColor;
+  const finalRoleColor = darkMode ? '#64748B' : roleColor;
+
   return (
     <motion.div
       variants={entranceAnim ? itemVariants : {}}
@@ -78,12 +89,14 @@ const TestimonialCard = ({
         boxShadow: hoverGlow ? `0 20px 40px -10px ${starColor}33` : undefined,
         transition: { duration: 0.3 } 
       }}
-      className={`flex flex-col h-full relative transition-all duration-300 overflow-hidden ${showShadow ? 'shadow-xl shadow-slate-200/50' : ''}`}
+      className={`flex flex-col h-full relative transition-all duration-300 overflow-hidden ${showShadow && !darkMode ? 'shadow-xl shadow-slate-200/50' : ''}`}
       style={{ 
-        backgroundColor: cardBg, 
+        backgroundColor: finalCardBg, 
         borderRadius: `${cardRadius}px`,
         padding: `${cardPadding}px`,
-        border: `1px solid ${borderColor}`
+        borderWidth: '1px',
+        borderStyle: 'solid',
+        borderColor: finalBorderColor
       }}
     >
       {quoteStyle === 'background' && (
@@ -99,22 +112,27 @@ const TestimonialCard = ({
       )}
       
       <p 
-        className="text-slate-600 leading-relaxed mb-8 italic flex-grow relative z-10"
-        style={{ fontSize: `${quoteSize}px` }}
+        className="leading-relaxed mb-8 italic flex-grow relative z-10"
+        style={{ 
+          fontSize: `${TYPOGRAPHY_SCALE[quoteSize as keyof typeof TYPOGRAPHY_SCALE]?.fontSize || 18}px`,
+          fontWeight: FONT_WEIGHTS[quoteWeight as keyof typeof FONT_WEIGHTS]?.value || 400,
+          textAlign: quoteAlign !== 'inherit' ? quoteAlign : undefined,
+          color: finalQuoteColor
+        }}
       >
         "{testimonial.text}"
       </p>
 
       <div className="flex items-center justify-between gap-4 mt-auto relative z-10">
         <div className="flex items-center gap-4 overflow-hidden">
-          {showAvatar && (
+          {showAvatar && testimonial.avatar && (
             <div className={`w-12 h-12 overflow-hidden border-2 border-primary/10 flex-shrink-0 ${avatarClass}`}>
               <img src={testimonial.avatar} alt={testimonial.author} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
             </div>
           )}
           <div className="flex flex-col min-w-0">
-            <span className="font-bold truncate" style={{ color: authorColor }}>{testimonial.author}</span>
-            <span className="text-xs truncate" style={{ color: roleColor }}>{testimonial.role}</span>
+            <span className="font-bold truncate" style={{ color: finalAuthorColor }}>{testimonial.author}</span>
+            <span className="text-xs truncate" style={{ color: finalRoleColor }}>{testimonial.role}</span>
             {showStars && (
               <div className="flex gap-0.5 mt-1">
                 {[...Array(5)].map((_, i) => (
@@ -156,8 +174,10 @@ export const TestimonialsModule: React.FC<{
   const columns = getVal(null, 'columns', 3);
   const gap = getVal(null, 'gap', 30);
   const paddingY = getVal(null, 'padding_y', 100);
-  const bgColor = getVal(null, 'bg_color', '#F8FAFC');
+  const darkMode = getVal(null, 'dark_mode', false);
+  const bgColor = darkMode ? '#0F172A' : getVal(null, 'bg_color', '#F8FAFC');
   const sectionGradient = getVal(null, 'section_gradient', false);
+  const bgGradient = getVal(null, 'bg_gradient', 'linear-gradient(to bottom, #F8FAFC, #FFFFFF)');
   const autoplay = getVal(null, 'autoplay', true);
   const autoplaySpeed = getVal(null, 'autoplay_speed', 5000);
   const entranceAnim = getVal(null, 'entrance_anim', true);
@@ -166,11 +186,25 @@ export const TestimonialsModule: React.FC<{
   const eyebrow = getVal(`${moduleId}_el_testimonials_header`, 'eyebrow', 'TESTIMONIOS');
   const headerTitle = getVal(`${moduleId}_el_testimonials_header`, 'title', 'Lo que dicen nuestros clientes');
   const headerSubtitle = getVal(`${moduleId}_el_testimonials_header`, 'subtitle', 'Historias reales de personas que confían en nosotros.');
+  const headerSubtitleSize = getVal(`${moduleId}_el_testimonials_header`, 'subtitle_size', 'p');
+  const headerSubtitleWeight = getVal(`${moduleId}_el_testimonials_header`, 'subtitle_weight', 'normal');
   const headerAlign = getVal(`${moduleId}_el_testimonials_header`, 'align', 'center');
-  const headerTitleSize = getVal(`${moduleId}_el_testimonials_header`, 'title_size', 40);
-  const headerTitleColor = getVal(`${moduleId}_el_testimonials_header`, 'title_color', '#0F172A');
+  const headerTitleSize = getVal(`${moduleId}_el_testimonials_header`, 'title_size', 't2');
+  const headerTitleWeight = getVal(`${moduleId}_el_testimonials_header`, 'title_weight', 'bold');
+  const headerTitleColor = darkMode ? '#FFFFFF' : getVal(`${moduleId}_el_testimonials_header`, 'title_color', '#0F172A');
   const eyebrowColor = getVal(`${moduleId}_el_testimonials_header`, 'eyebrow_color', 'var(--primary-color)');
   const headerMarginB = getVal(`${moduleId}_el_testimonials_header`, 'margin_b', 60);
+
+  // Highlight Settings
+  const titleHighlightType = getVal(`${moduleId}_el_testimonials_header`, 'title_highlight_type', 'gradient');
+  const titleHighlightColor = getVal(`${moduleId}_el_testimonials_header`, 'title_highlight_color', '#3B82F6');
+  const titleHighlightGradient = getVal(`${moduleId}_el_testimonials_header`, 'title_highlight_gradient', 'linear-gradient(90deg, #3B82F6 0%, #8B5CF6 100%)');
+  const titleHighlightBold = getVal(`${moduleId}_el_testimonials_header`, 'title_highlight_bold', true);
+
+  const subtitleHighlightType = getVal(`${moduleId}_el_testimonials_header`, 'subtitle_highlight_type', 'none');
+  const subtitleHighlightColor = getVal(`${moduleId}_el_testimonials_header`, 'subtitle_highlight_color', '#3B82F6');
+  const subtitleHighlightGradient = getVal(`${moduleId}_el_testimonials_header`, 'subtitle_highlight_gradient', 'linear-gradient(90deg, #3B82F6 0%, #8B5CF6 100%)');
+  const subtitleHighlightBold = getVal(`${moduleId}_el_testimonials_header`, 'subtitle_highlight_bold', true);
 
   // Element: Card Style
   const cardBg = getVal(`${moduleId}_el_testimonial_card`, 'card_bg', '#FFFFFF');
@@ -190,16 +224,22 @@ export const TestimonialsModule: React.FC<{
   const avatarShape = getVal(`${moduleId}_el_testimonial_author`, 'avatar_shape', 'circle');
   const showStars = getVal(`${moduleId}_el_testimonial_author`, 'show_stars', true);
   const showCompanyLogo = getVal(`${moduleId}_el_testimonial_author`, 'show_company_logo', false);
-  const quoteSize = getVal(`${moduleId}_el_testimonial_author`, 'quote_size', 18);
+  const quoteSize = getVal(`${moduleId}_el_testimonial_author`, 'quote_size', 'p');
+  const quoteWeight = getVal(`${moduleId}_el_testimonial_author`, 'quote_weight', 'normal');
+  const quoteAlign = getVal(`${moduleId}_el_testimonial_author`, 'quote_align', 'inherit');
+
+  // Element: Items
+  const userItems = getVal(`${moduleId}_el_testimonial_items`, 'items', []);
+  const testimonials = userItems.length > 0 ? userItems : MOCK_TESTIMONIALS;
 
   useEffect(() => {
     if (autoplay && (layout === 'carousel' || layout === 'focus')) {
       const interval = setInterval(() => {
-        setActiveIndex((prev) => (prev + 1) % MOCK_TESTIMONIALS.length);
+        setActiveIndex((prev) => (prev + 1) % testimonials.length);
       }, autoplaySpeed);
       return () => clearInterval(interval);
     }
-  }, [autoplay, layout, autoplaySpeed]);
+  }, [autoplay, layout, autoplaySpeed, testimonials.length]);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -212,6 +252,18 @@ export const TestimonialsModule: React.FC<{
   const itemVariants = {
     hidden: { y: 20, opacity: 0 },
     visible: { y: 0, opacity: 1, transition: { duration: 0.5, ease: "easeOut" } }
+  };
+
+  const getTypographyStyle = (sizeToken: string, weightToken: string, alignToken?: string) => {
+    const size = TYPOGRAPHY_SCALE[sizeToken as keyof typeof TYPOGRAPHY_SCALE] || TYPOGRAPHY_SCALE.p;
+    const weight = FONT_WEIGHTS[weightToken as keyof typeof FONT_WEIGHTS] || FONT_WEIGHTS.normal;
+    
+    return {
+      fontSize: `${size.fontSize}px`,
+      lineHeight: size.lineHeight,
+      fontWeight: weight.value,
+      textAlign: (alignToken && alignToken !== 'inherit') ? alignToken : undefined
+    } as React.CSSProperties;
   };
 
   const cardProps = {
@@ -232,7 +284,10 @@ export const TestimonialsModule: React.FC<{
     showStars,
     starColor,
     quoteSize,
-    showCompanyLogo
+    quoteWeight,
+    quoteAlign,
+    showCompanyLogo,
+    darkMode
   };
 
   return (
@@ -240,7 +295,7 @@ export const TestimonialsModule: React.FC<{
       className="w-full relative overflow-hidden"
       style={{ 
         backgroundColor: bgColor,
-        backgroundImage: sectionGradient ? `linear-gradient(to bottom, ${bgColor}, white)` : 'none',
+        backgroundImage: sectionGradient ? bgGradient : 'none',
         paddingTop: `${paddingY}px`,
         paddingBottom: `${paddingY}px`
       }}
@@ -248,7 +303,7 @@ export const TestimonialsModule: React.FC<{
       <div className="max-w-7xl mx-auto px-8">
         {/* Header */}
         <div 
-          className={`flex flex-col mb-12 ${headerAlign === 'center' ? 'items-center text-center' : 'items-start text-left'}`}
+          className={`flex flex-col w-full mb-12 ${headerAlign === 'center' ? 'items-center text-center' : headerAlign === 'right' ? 'items-end text-right' : 'items-start text-left'}`}
           style={{ marginBottom: `${headerMarginB}px` }}
         >
           {eyebrow && (
@@ -260,14 +315,35 @@ export const TestimonialsModule: React.FC<{
             </span>
           )}
           <h2 
-            className="font-black mb-4 leading-tight text-3xl @md:text-4xl @lg:text-5xl"
-            style={{ fontSize: `${headerTitleSize}px`, color: headerTitleColor }}
+            className="mb-4 leading-tight"
+            style={{ 
+              ...getTypographyStyle(headerTitleSize as any, headerTitleWeight, headerAlign),
+              color: headerTitleColor 
+            }}
           >
-            {headerTitle}
+            <TextRenderer 
+              text={headerTitle} 
+              highlightType={titleHighlightType}
+              highlightColor={titleHighlightColor}
+              highlightGradient={titleHighlightGradient}
+              highlightBold={titleHighlightBold}
+            />
           </h2>
           {headerSubtitle && (
-            <p className="text-slate-500 max-w-2xl text-lg">
-              {headerSubtitle}
+            <p 
+              className="max-w-2xl text-lg"
+              style={{ 
+                ...getTypographyStyle(headerSubtitleSize as any, headerSubtitleWeight, headerAlign),
+                color: darkMode ? '#94A3B8' : '#64748B' 
+              }}
+            >
+              <TextRenderer 
+                text={headerSubtitle} 
+                highlightType={subtitleHighlightType}
+                highlightColor={subtitleHighlightColor}
+                highlightGradient={subtitleHighlightGradient}
+                highlightBold={subtitleHighlightBold}
+              />
             </p>
           )}
         </div>
@@ -285,7 +361,7 @@ export const TestimonialsModule: React.FC<{
                   transition={{ duration: 0.5, ease: "easeInOut" }}
                 >
                   <TestimonialCard 
-                    testimonial={MOCK_TESTIMONIALS[activeIndex]} 
+                    testimonial={testimonials[activeIndex]} 
                     {...cardProps}
                   />
                 </motion.div>
@@ -295,23 +371,23 @@ export const TestimonialsModule: React.FC<{
             {/* Controls */}
             <div className="flex items-center justify-center gap-4 mt-8">
               <button 
-                onClick={() => setActiveIndex((prev) => (prev - 1 + MOCK_TESTIMONIALS.length) % MOCK_TESTIMONIALS.length)}
-                className="p-3 rounded-full bg-white shadow-md hover:bg-primary hover:text-white transition-all text-slate-400"
+                onClick={() => setActiveIndex((prev) => (prev - 1 + testimonials.length) % testimonials.length)}
+                className={`p-3 rounded-full shadow-md transition-all ${darkMode ? 'bg-slate-800 text-slate-400 hover:bg-primary hover:text-white' : 'bg-white text-slate-400 hover:bg-primary hover:text-white'}`}
               >
                 <ChevronLeft size={20} />
               </button>
               <div className="flex gap-2">
-                {MOCK_TESTIMONIALS.map((_, i) => (
+                {testimonials.map((_, i) => (
                   <button 
                     key={i}
                     onClick={() => setActiveIndex(i)}
-                    className={`w-2.5 h-2.5 rounded-full transition-all ${i === activeIndex ? 'bg-primary w-6' : 'bg-slate-300'}`}
+                    className={`w-2.5 h-2.5 rounded-full transition-all ${i === activeIndex ? 'bg-primary w-6' : (darkMode ? 'bg-slate-700' : 'bg-slate-300')}`}
                   />
                 ))}
               </div>
               <button 
-                onClick={() => setActiveIndex((prev) => (prev + 1) % MOCK_TESTIMONIALS.length)}
-                className="p-3 rounded-full bg-white shadow-md hover:bg-primary hover:text-white transition-all text-slate-400"
+                onClick={() => setActiveIndex((prev) => (prev + 1) % testimonials.length)}
+                className={`p-3 rounded-full shadow-md transition-all ${darkMode ? 'bg-slate-800 text-slate-400 hover:bg-primary hover:text-white' : 'bg-white text-slate-400 hover:bg-primary hover:text-white'}`}
               >
                 <ChevronRight size={20} />
               </button>
@@ -333,8 +409,8 @@ export const TestimonialsModule: React.FC<{
               gap: `${gap}px`
             }}
           >
-            {MOCK_TESTIMONIALS.map((testimonial, i) => (
-              <div key={testimonial.id} className={layout === 'masonry' ? 'mb-8 break-inside-avoid' : ''}>
+            {testimonials.map((testimonial, i) => (
+              <div key={testimonial.id || i} className={layout === 'masonry' ? 'mb-8 break-inside-avoid' : ''}>
                 <TestimonialCard 
                   testimonial={testimonial} 
                   {...cardProps}

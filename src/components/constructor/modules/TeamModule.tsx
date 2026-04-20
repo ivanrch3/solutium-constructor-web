@@ -1,6 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Linkedin, Twitter, Globe, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
+import { TextRenderer } from '../TextRenderer';
 
 export const TeamModule: React.FC<{ 
   moduleId: string, 
@@ -16,29 +18,54 @@ export const TeamModule: React.FC<{
   };
 
   // Global Settings
-  const members = getVal(null, 'members', []);
   const layout = getVal(null, 'layout', 'grid');
   const showFilters = getVal(null, 'show_filters', true);
   const columns = getVal(null, 'columns', 3);
   const gap = getVal(null, 'gap', 32);
   const paddingY = getVal(null, 'padding_y', 100);
-  const bgColor = getVal(null, 'bg_color', '#FFFFFF');
+  const darkMode = getVal(null, 'dark_mode', false);
+  const bgColor = darkMode ? '#0F172A' : getVal(null, 'bg_color', '#FFFFFF');
   const sectionGradient = getVal(null, 'section_gradient', false);
+  const bgGradient = getVal(null, 'bg_gradient', 'linear-gradient(to bottom, #FFFFFF, #F8FAFC)');
   const entranceAnim = getVal(null, 'entrance_anim', true);
   const staggerAnim = getVal(null, 'stagger_anim', true);
-  const enableModal = getVal(null, 'enable_modal', false);
+  const enableModal = getVal(null, 'enable_modal', true);
 
   // Element: Header
+  const eyebrow = getVal(`${moduleId}_el_team_header`, 'eyebrow', 'EQUIPO');
   const headerTitle = getVal(`${moduleId}_el_team_header`, 'title', 'Conoce a nuestro equipo');
   const headerSubtitle = getVal(`${moduleId}_el_team_header`, 'subtitle', 'Expertos apasionados dedicados a llevar tu visión a la realidad.');
+  const headerSubtitleSize = getVal(`${moduleId}_el_team_header`, 'subtitle_size', 'p');
+  const headerSubtitleWeight = getVal(`${moduleId}_el_team_header`, 'subtitle_weight', 'normal');
   const headerAlign = getVal(`${moduleId}_el_team_header`, 'align', 'center');
-  const headerTitleSize = getVal(`${moduleId}_el_team_header`, 'title_size', 32);
-  const headerTitleColor = getVal(`${moduleId}_el_team_header`, 'title_color', '#0F172A');
+  const headerTitleSize = getVal(`${moduleId}_el_team_header`, 'title_size', 't2');
+  const headerTitleWeight = getVal(`${moduleId}_el_team_header`, 'title_weight', 'black');
+  const headerTitleColor = darkMode ? '#FFFFFF' : getVal(`${moduleId}_el_team_header`, 'title_color', '#0F172A');
+  const eyebrowColor = getVal(`${moduleId}_el_team_header`, 'eyebrow_color', 'var(--primary-color)');
   const headerMarginB = getVal(`${moduleId}_el_team_header`, 'margin_b', 60);
+
+  // Highlight Settings
+  const titleHighlightType = getVal(`${moduleId}_el_team_header`, 'title_highlight_type', 'gradient');
+  const titleHighlightColor = getVal(`${moduleId}_el_team_header`, 'title_highlight_color', '#3B82F6');
+  const titleHighlightGradient = getVal(`${moduleId}_el_team_header`, 'title_highlight_gradient', 'linear-gradient(to right, #3B82F6, #2563EB)');
+  const titleHighlightBold = getVal(`${moduleId}_el_team_header`, 'title_highlight_bold', true);
+
+  const subtitleHighlightType = getVal(`${moduleId}_el_team_header`, 'subtitle_highlight_type', 'none');
+  const subtitleHighlightColor = getVal(`${moduleId}_el_team_header`, 'subtitle_highlight_color', '#3B82F6');
+  const subtitleHighlightGradient = getVal(`${moduleId}_el_team_header`, 'subtitle_highlight_gradient', 'linear-gradient(90deg, #3B82F6 0%, #8B5CF6 100%)');
+  const subtitleHighlightBold = getVal(`${moduleId}_el_team_header`, 'subtitle_highlight_bold', true);
+
+  // Element: Items
+  const userMembers = getVal(`${moduleId}_el_team_items`, 'members', []);
+  const members = userMembers.length > 0 ? userMembers : [
+    { name: 'Alex Rivera', role: 'Director Creativo', bio: '10 años de experiencia en diseño.', image: 'https://picsum.photos/seed/team1/400/500', category: 'Diseño', linkedin: '#', twitter: '#', web: '#' },
+    { name: 'Elena Soler', role: 'Lead Developer', bio: 'Experta en arquitecturas escalables.', image: 'https://picsum.photos/seed/team2/400/500', category: 'Ingeniería', linkedin: '#', twitter: '#', web: '#' },
+    { name: 'Marc Costa', role: 'Estratega Digital', bio: 'Especialista en crecimiento de marca.', image: 'https://picsum.photos/seed/team3/400/500', category: 'Marketing', linkedin: '#', twitter: '#', web: '#' }
+  ];
 
   // Element: Card
   const cardStyle = getVal(`${moduleId}_el_team_card`, 'card_style', 'solid');
-  const cardBg = getVal(`${moduleId}_el_team_card`, 'card_bg', '#FFFFFF');
+  const cardBg = darkMode ? '#1E293B' : getVal(`${moduleId}_el_team_card`, 'card_bg', '#FFFFFF');
   const cardRadius = getVal(`${moduleId}_el_team_card`, 'card_radius', 24);
   const showBorder = getVal(`${moduleId}_el_team_card`, 'show_border', false);
   const cardShadow = getVal(`${moduleId}_el_team_card`, 'card_shadow', 'sm');
@@ -52,13 +79,27 @@ export const TeamModule: React.FC<{
   const imgMask = getVal(`${moduleId}_el_team_image`, 'img_mask', 'none');
 
   // Element: Info
-  const nameSize = getVal(`${moduleId}_el_team_info`, 'name_size', 18);
+  const nameSize = getVal(`${moduleId}_el_team_info`, 'name_size', 't3');
   const nameWeight = getVal(`${moduleId}_el_team_info`, 'name_weight', 'black');
-  const nameColor = getVal(`${moduleId}_el_team_info`, 'name_color', '#0F172A');
-  const roleSize = getVal(`${moduleId}_el_team_info`, 'role_size', 14);
+  const nameColor = darkMode ? '#FFFFFF' : getVal(`${moduleId}_el_team_info`, 'name_color', '#0F172A');
+  const roleSize = getVal(`${moduleId}_el_team_info`, 'role_size', 's');
   const roleWeight = getVal(`${moduleId}_el_team_info`, 'role_weight', 'bold');
-  const roleColor = getVal(`${moduleId}_el_team_info`, 'role_color', 'var(--primary-color)');
-  const bioColor = getVal(`${moduleId}_el_team_info`, 'bio_color', '#64748B');
+  const roleColor = getVal(`${moduleId}_el_team_info`, 'role_color', '#3B82F6');
+  const bioSize = getVal(`${moduleId}_el_team_info`, 'bio_size', 'p');
+  const bioWeight = getVal(`${moduleId}_el_team_info`, 'bio_weight', 'normal');
+  const bioColor = darkMode ? '#94A3B8' : getVal(`${moduleId}_el_team_info`, 'bio_color', '#64748B');
+
+  const getTypographyStyle = (sizeToken: string, weightToken: string, alignToken?: string) => {
+    const size = TYPOGRAPHY_SCALE[sizeToken as keyof typeof TYPOGRAPHY_SCALE] || TYPOGRAPHY_SCALE.p;
+    const weight = FONT_WEIGHTS[weightToken as keyof typeof FONT_WEIGHTS] || FONT_WEIGHTS.normal;
+    
+    return {
+      fontSize: `${size.fontSize}px`,
+      lineHeight: size.lineHeight,
+      fontWeight: weight.value,
+      textAlign: (alignToken && alignToken !== 'inherit') ? alignToken : undefined
+    } as React.CSSProperties;
+  };
 
   const categories = useMemo(() => {
     const cats = new Set(members.map((m: any) => m.category).filter(Boolean));
@@ -114,7 +155,7 @@ export const TeamModule: React.FC<{
       className="w-full relative overflow-hidden"
       style={{ 
         backgroundColor: bgColor,
-        backgroundImage: sectionGradient ? `linear-gradient(180deg, ${bgColor} 0%, rgba(0,0,0,0.02) 100%)` : 'none',
+        backgroundImage: sectionGradient ? bgGradient : 'none',
         paddingTop: `${paddingY}px`,
         paddingBottom: `${paddingY}px`
       }}
@@ -122,22 +163,49 @@ export const TeamModule: React.FC<{
       <div className="max-w-7xl mx-auto px-8">
         {/* Header */}
         <div 
-          className={`mb-12 flex flex-col ${headerAlign === 'center' ? 'items-center text-center' : 'items-start text-left'}`}
+          className={`mb-12 flex flex-col w-full ${headerAlign === 'center' ? 'items-center text-center' : headerAlign === 'right' ? 'items-end text-right' : 'items-start text-left'}`}
           style={{ marginBottom: `${headerMarginB}px` }}
         >
+          {eyebrow && (
+            <span 
+              className="text-sm font-bold tracking-widest mb-3 uppercase"
+              style={{ color: eyebrowColor }}
+            >
+              {eyebrow}
+            </span>
+          )}
           <h2 
             className="mb-4 leading-tight"
             style={{ 
-              fontSize: `${headerTitleSize}px`, 
-              color: headerTitleColor,
-              fontWeight: 900
+              ...getTypographyStyle(headerTitleSize as any, headerTitleWeight, headerAlign),
+              color: headerTitleColor
             }}
           >
-            {headerTitle}
+            <TextRenderer 
+              text={headerTitle}
+              highlightType={titleHighlightType}
+              highlightColor={titleHighlightColor}
+              highlightGradient={titleHighlightGradient}
+              highlightBold={titleHighlightBold}
+            />
           </h2>
-          <p className="text-slate-500 text-lg max-w-2xl leading-relaxed">
-            {headerSubtitle}
-          </p>
+          {headerSubtitle && (
+            <p 
+              className="text-lg max-w-2xl leading-relaxed"
+              style={{ 
+                ...getTypographyStyle(headerSubtitleSize as any, headerSubtitleWeight, headerAlign),
+                color: darkMode ? '#94A3B8' : '#64748B' 
+              }}
+            >
+              <TextRenderer 
+                text={headerSubtitle} 
+                highlightType={subtitleHighlightType}
+                highlightColor={subtitleHighlightColor}
+                highlightGradient={subtitleHighlightGradient}
+                highlightBold={subtitleHighlightBold}
+              />
+            </p>
+          )}
         </div>
 
         {/* Filters */}
@@ -153,7 +221,7 @@ export const TeamModule: React.FC<{
                 className={`px-6 py-2 rounded-full text-sm font-bold transition-all ${
                   activeCategory === cat 
                     ? 'bg-primary text-white shadow-lg shadow-primary/20' 
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    : (darkMode ? 'bg-slate-800 text-slate-400 hover:bg-slate-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200')
                 }`}
               >
                 {cat}
@@ -199,14 +267,16 @@ export const TeamModule: React.FC<{
                     className={`group relative overflow-hidden transition-all duration-300 ${
                       layout === 'list' ? 'flex flex-col @md:flex-row items-center gap-8' : 
                       layout === 'carousel' ? `w-full shrink-0 px-[${gap/2}px]` : ''
-                    } ${isBentoFirst ? '@md:col-span-2 @md:row-span-2' : ''} ${enableModal ? 'cursor-pointer' : ''}`}
+                    } ${isBentoFirst ? '@md:col-span-2 @md:row-span-2' : ''} ${enableModal ? 'cursor-pointer' : ''} ${darkMode && cardStyle !== 'minimal' ? 'shadow-none' : ''}`}
                     style={{
-                      backgroundColor: cardStyle === 'glass' ? 'rgba(255,255,255,0.7)' : cardStyle === 'minimal' ? 'transparent' : cardBg,
+                      backgroundColor: cardStyle === 'glass' ? (darkMode ? 'rgba(30,41,59,0.7)' : 'rgba(255,255,255,0.7)') : cardStyle === 'minimal' ? 'transparent' : cardBg,
                       backdropFilter: cardStyle === 'glass' ? 'blur(12px)' : 'none',
                       borderRadius: `${cardRadius}px`,
                       padding: cardStyle === 'minimal' ? '0' : `${cardPadding}px`,
-                      boxShadow: cardStyle === 'minimal' ? 'none' : getShadow(cardShadow),
-                      border: showBorder ? '1px solid rgba(0,0,0,0.05)' : 'none',
+                      boxShadow: cardStyle === 'minimal' ? 'none' : (darkMode ? 'none' : getShadow(cardShadow)),
+                      borderWidth: showBorder ? '1px' : '0px',
+                      borderStyle: showBorder ? 'solid' : 'none',
+                      borderColor: darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
                       width: layout === 'carousel' ? `${100 / columns}%` : 'auto'
                     }}
                   >
@@ -220,12 +290,14 @@ export const TeamModule: React.FC<{
                         marginBottom: layout === 'list' ? '0' : `20px`
                       }}
                     >
-                      <motion.img 
-                        src={member.image} 
-                        alt={member.name}
-                        className="w-full h-full object-cover"
-                        referrerPolicy="no-referrer"
-                      />
+                      {member.image && (
+                        <motion.img 
+                          src={member.image} 
+                          alt={member.name}
+                          className="w-full h-full object-cover"
+                          referrerPolicy="no-referrer"
+                        />
+                      )}
                       
                       {hoverImageSwap && member.image_hover && (
                         <motion.img 
@@ -261,9 +333,9 @@ export const TeamModule: React.FC<{
                       <h3 
                         className="mb-1"
                         style={{ 
-                          fontSize: `${nameSize}px`, 
+                          fontSize: `${TYPOGRAPHY_SCALE[nameSize as keyof typeof TYPOGRAPHY_SCALE]?.fontSize || 18}px`, 
                           color: nameColor,
-                          fontWeight: nameWeight === 'black' ? 900 : 700
+                          fontWeight: FONT_WEIGHTS[nameWeight as keyof typeof FONT_WEIGHTS]?.value || 900
                         }}
                       >
                         {member.name}
@@ -271,9 +343,9 @@ export const TeamModule: React.FC<{
                       <p 
                         className="uppercase tracking-widest mb-3"
                         style={{ 
-                          fontSize: `${roleSize}px`, 
+                          fontSize: `${TYPOGRAPHY_SCALE[roleSize as keyof typeof TYPOGRAPHY_SCALE]?.fontSize || 14}px`, 
                           color: roleColor,
-                          fontWeight: roleWeight === 'bold' ? 700 : 500
+                          fontWeight: FONT_WEIGHTS[roleWeight as keyof typeof FONT_WEIGHTS]?.value || 800
                         }}
                       >
                         {member.role}
@@ -281,8 +353,11 @@ export const TeamModule: React.FC<{
                       
                       {(layout === 'list' || (member.bio && !enableModal)) && (
                         <p 
-                          className="text-sm leading-relaxed line-clamp-3"
-                          style={{ color: bioColor }}
+                          className="leading-relaxed line-clamp-3"
+                          style={{ 
+                            ...getTypographyStyle(bioSize, bioWeight),
+                            color: bioColor 
+                          }}
                         >
                           {member.bio}
                         </p>
@@ -298,13 +373,13 @@ export const TeamModule: React.FC<{
             <>
               <button 
                 onClick={prevSlide}
-                className="absolute left-[-20px] top-1/2 -translate-y-1/2 w-12 h-12 bg-white rounded-full shadow-xl flex items-center justify-center text-primary hover:bg-primary hover:text-white transition-all z-10"
+                className={`absolute left-[-20px] top-1/2 -translate-y-1/2 w-12 h-12 rounded-full shadow-xl flex items-center justify-center text-primary hover:bg-primary hover:text-white transition-all z-10 ${darkMode ? 'bg-slate-800' : 'bg-white'}`}
               >
                 <ChevronLeft size={24} />
               </button>
               <button 
                 onClick={nextSlide}
-                className="absolute right-[-20px] top-1/2 -translate-y-1/2 w-12 h-12 bg-white rounded-full shadow-xl flex items-center justify-center text-primary hover:bg-primary hover:text-white transition-all z-10"
+                className={`absolute right-[-20px] top-1/2 -translate-y-1/2 w-12 h-12 rounded-full shadow-xl flex items-center justify-center text-primary hover:bg-primary hover:text-white transition-all z-10 ${darkMode ? 'bg-slate-800' : 'bg-white'}`}
               >
                 <ChevronRight size={24} />
               </button>
@@ -328,46 +403,56 @@ export const TeamModule: React.FC<{
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-2xl bg-white rounded-[32px] overflow-hidden shadow-2xl flex flex-col md:flex-row"
+              className={`relative w-full max-w-2xl rounded-[32px] overflow-hidden shadow-2xl flex flex-col md:flex-row ${darkMode ? 'bg-slate-800' : 'bg-white'}`}
             >
               <button 
                 onClick={() => setSelectedMember(null)}
-                className="absolute top-4 right-4 w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-500 hover:bg-slate-200 transition-all z-10"
+                className={`absolute top-4 right-4 w-10 h-10 rounded-full flex items-center justify-center transition-all z-10 ${darkMode ? 'bg-slate-700 text-slate-400 hover:bg-slate-600' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
               >
                 <X size={20} />
               </button>
               
               <div className="w-full md:w-2/5 aspect-[4/5] md:aspect-auto">
-                <img 
-                  src={selectedMember.image} 
-                  alt={selectedMember.name} 
-                  className="w-full h-full object-cover"
-                  referrerPolicy="no-referrer"
-                />
+                {selectedMember.image && (
+                  <img 
+                    src={selectedMember.image} 
+                    alt={selectedMember.name} 
+                    className="w-full h-full object-cover"
+                    referrerPolicy="no-referrer"
+                  />
+                )}
               </div>
               
               <div className="flex-1 p-8 md:p-12">
                 <p className="text-primary font-bold uppercase tracking-widest text-sm mb-2">{selectedMember.role}</p>
-                <h3 className="text-3xl font-black text-slate-900 mb-6">{selectedMember.name}</h3>
+                <h3 
+                  className="text-3xl font-black mb-6"
+                  style={{ color: darkMode ? '#FFFFFF' : '#0F172A' }}
+                >
+                  {selectedMember.name}
+                </h3>
                 <div className="prose prose-slate mb-8">
-                  <p className="text-slate-600 leading-relaxed text-lg">
+                  <p 
+                    className="leading-relaxed text-lg"
+                    style={{ color: darkMode ? '#94A3B8' : '#475569' }}
+                  >
                     {selectedMember.bio || "Este miembro del equipo es una pieza fundamental de nuestra organización, aportando su experiencia y pasión para lograr resultados excepcionales."}
                   </p>
                 </div>
                 
                 <div className="flex gap-4">
                   {selectedMember.linkedin && (
-                    <a href={selectedMember.linkedin} className="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center text-slate-600 hover:bg-primary hover:text-white transition-all">
+                    <a href={selectedMember.linkedin} className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${darkMode ? 'bg-slate-700 text-slate-400 hover:bg-primary hover:text-white' : 'bg-slate-100 text-slate-600 hover:bg-primary hover:text-white'}`}>
                       <Linkedin size={20} />
                     </a>
                   )}
                   {selectedMember.twitter && (
-                    <a href={selectedMember.twitter} className="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center text-slate-600 hover:bg-primary hover:text-white transition-all">
+                    <a href={selectedMember.twitter} className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${darkMode ? 'bg-slate-700 text-slate-400 hover:bg-primary hover:text-white' : 'bg-slate-100 text-slate-600 hover:bg-primary hover:text-white'}`}>
                       <Twitter size={20} />
                     </a>
                   )}
                   {selectedMember.web && (
-                    <a href={selectedMember.web} className="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center text-slate-600 hover:bg-primary hover:text-white transition-all">
+                    <a href={selectedMember.web} className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${darkMode ? 'bg-slate-700 text-slate-400 hover:bg-primary hover:text-white' : 'bg-slate-100 text-slate-600 hover:bg-primary hover:text-white'}`}>
                       <Globe size={20} />
                     </a>
                   )}

@@ -4,6 +4,8 @@ import { Plus, Minus, ChevronDown, Search, HelpCircle, MessageCircle } from 'luc
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import * as LucideIcons from 'lucide-react';
+import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
+import { TextRenderer } from '../TextRenderer';
 
 const DEFAULT_CATEGORIES = [
   { id: 'all', label: 'Todas' },
@@ -66,11 +68,14 @@ export const FAQModule: React.FC<{
   };
 
   // Global Settings
-  const categories = getVal(null, 'categories', DEFAULT_CATEGORIES);
+  const categories = getVal(`${moduleId}_el_faq_header`, 'categories', DEFAULT_CATEGORIES);
   const layout = getVal(null, 'layout', 'single');
   const maxWidth = getVal(null, 'max_width', 1000);
   const paddingY = getVal(null, 'padding_y', 100);
-  const bgColor = getVal(null, 'bg_color', '#FFFFFF');
+  const darkMode = getVal(null, 'dark_mode', false);
+  const bgColor = darkMode ? '#0F172A' : getVal(null, 'bg_color', '#FFFFFF');
+  const sectionGradient = getVal(null, 'section_gradient', false);
+  const bgGradient = getVal(null, 'bg_gradient', 'linear-gradient(to bottom, #FFFFFF, #F8FAFC)');
   const glassmorphism = getVal(null, 'glassmorphism', false);
   const dividerStyle = getVal(null, 'divider_style', 'line');
   const entranceAnim = getVal(null, 'entrance_anim', true);
@@ -79,32 +84,50 @@ export const FAQModule: React.FC<{
   const itemGap = getVal(null, 'item_gap', 16);
 
   // Element: Header
+  const eyebrow = getVal(`${moduleId}_el_faq_header`, 'eyebrow', 'AYUDA');
   const headerTitle = getVal(`${moduleId}_el_faq_header`, 'title', 'Preguntas Frecuentes');
   const headerSubtitle = getVal(`${moduleId}_el_faq_header`, 'subtitle', 'Todo lo que necesitas saber sobre nuestro servicio.');
+  const headerSubtitleSize = getVal(`${moduleId}_el_faq_header`, 'subtitle_size', 'p');
+  const headerSubtitleWeight = getVal(`${moduleId}_el_faq_header`, 'subtitle_weight', 'normal');
   const headerAlign = getVal(`${moduleId}_el_faq_header`, 'align', 'center');
-  const headerTitleSize = getVal(`${moduleId}_el_faq_header`, 'title_size', 40);
-  const headerTitleWeight = getVal(`${moduleId}_el_faq_header`, 'title_weight', '900');
+  const headerTitleSize = getVal(`${moduleId}_el_faq_header`, 'title_size', 't2');
+  const headerTitleWeight = getVal(`${moduleId}_el_faq_header`, 'title_weight', 'black');
+
+  const titleHighlightType = getVal(`${moduleId}_el_faq_header`, 'title_highlight_type', 'gradient');
+  const titleHighlightColor = getVal(`${moduleId}_el_faq_header`, 'title_highlight_color', '#3B82F6');
+  const titleHighlightGradient = getVal(`${moduleId}_el_faq_header`, 'title_highlight_gradient', 'linear-gradient(90deg, #3B82F6 0%, #8B5CF6 100%)');
+  const titleHighlightBold = getVal(`${moduleId}_el_faq_header`, 'title_highlight_bold', true);
+
+  const subtitleHighlightType = getVal(`${moduleId}_el_faq_header`, 'subtitle_highlight_type', 'none');
+  const subtitleHighlightColor = getVal(`${moduleId}_el_faq_header`, 'subtitle_highlight_color', '#3B82F6');
+  const subtitleHighlightGradient = getVal(`${moduleId}_el_faq_header`, 'subtitle_highlight_gradient', 'linear-gradient(90deg, #3B82F6 0%, #8B5CF6 100%)');
+  const subtitleHighlightBold = getVal(`${moduleId}_el_faq_header`, 'subtitle_highlight_bold', true);
+
   const headerMarginB = getVal(`${moduleId}_el_faq_header`, 'margin_b', 60);
+  const eyebrowColor = getVal(`${moduleId}_el_faq_header`, 'eyebrow_color', 'var(--primary-color)');
+  const headerTitleColor = darkMode ? '#FFFFFF' : getVal(`${moduleId}_el_faq_header`, 'title_color', '#0F172A');
+  const headerSubtitleColor = darkMode ? '#94A3B8' : getVal(`${moduleId}_el_faq_header`, 'subtitle_color', '#64748B');
 
   // Element: Search
   const showSearch = getVal(`${moduleId}_el_faq_search`, 'show_search', true);
   const searchPlaceholder = getVal(`${moduleId}_el_faq_search`, 'placeholder', 'Buscar una pregunta...');
-  const searchBg = getVal(`${moduleId}_el_faq_search`, 'search_bg', '#F1F5F9');
+  const searchBg = darkMode ? '#1E293B' : getVal(`${moduleId}_el_faq_search`, 'search_bg', '#F1F5F9');
   const searchRadius = getVal(`${moduleId}_el_faq_search`, 'search_radius', 16);
   const searchBorder = getVal(`${moduleId}_el_faq_search`, 'search_border', 'var(--primary-color)');
 
   // Element: Item
   const faqs = getVal(`${moduleId}_el_faq_item`, 'faqs', DEFAULT_FAQS);
-  const itemBg = getVal(`${moduleId}_el_faq_item`, 'item_bg', 'transparent');
-  const activeBg = getVal(`${moduleId}_el_faq_item`, 'active_bg', '#F8FAFC');
-  const borderColor = getVal(`${moduleId}_el_faq_item`, 'border_color', '#E2E8F0');
+  const itemBg = darkMode ? '#1E293B' : getVal(`${moduleId}_el_faq_item`, 'item_bg', 'transparent');
+  const activeBg = darkMode ? '#334155' : getVal(`${moduleId}_el_faq_item`, 'active_bg', '#F8FAFC');
+  const borderColor = darkMode ? 'rgba(255,255,255,0.1)' : getVal(`${moduleId}_el_faq_item`, 'border_color', '#E2E8F0');
   const showBorder = getVal(`${moduleId}_el_faq_item`, 'show_border', true);
   const activeShadow = getVal(`${moduleId}_el_faq_item`, 'active_shadow', true);
-  const qSize = getVal(`${moduleId}_el_faq_item`, 'q_size', 18);
-  const qWeight = getVal(`${moduleId}_el_faq_item`, 'q_weight', '700');
-  const qColor = getVal(`${moduleId}_el_faq_item`, 'q_color', '#0F172A');
-  const aSize = getVal(`${moduleId}_el_faq_item`, 'a_size', 16);
-  const aColor = getVal(`${moduleId}_el_faq_item`, 'a_color', '#64748B');
+  const qSize = getVal(`${moduleId}_el_faq_item`, 'q_size', 't3');
+  const qWeight = getVal(`${moduleId}_el_faq_item`, 'q_weight', 'bold');
+  const qColor = darkMode ? '#FFFFFF' : getVal(`${moduleId}_el_faq_item`, 'q_color', '#0F172A');
+  const aSize = getVal(`${moduleId}_el_faq_item`, 'a_size', 'p');
+  const aWeight = getVal(`${moduleId}_el_faq_item`, 'a_weight', 'normal');
+  const aColor = darkMode ? '#94A3B8' : getVal(`${moduleId}_el_faq_item`, 'a_color', '#64748B');
   const iconType = getVal(`${moduleId}_el_faq_item`, 'icon_type', 'plus');
   const showItemIcons = getVal(`${moduleId}_el_faq_item`, 'show_item_icons', false);
 
@@ -113,8 +136,12 @@ export const FAQModule: React.FC<{
   const ctaText = getVal(`${moduleId}_el_faq_cta`, 'cta_text', '¿Aún tienes dudas?');
   const btnText = getVal(`${moduleId}_el_faq_cta`, 'btn_text', 'Contactar Soporte');
   const btnBg = getVal(`${moduleId}_el_faq_cta`, 'btn_bg', 'var(--primary-color)');
-  const ctaBg = getVal(`${moduleId}_el_faq_cta`, 'cta_bg', '#F8FAFC');
-  const btnLink = getVal(`${moduleId}_el_faq_cta`, 'btn_link', '#');
+  const ctaBg = darkMode ? '#1E293B' : getVal(`${moduleId}_el_faq_cta`, 'cta_bg', '#F8FAFC');
+  const btnType = getVal(`${moduleId}_el_faq_cta`, 'btn_link_type', 'external');
+  const btnUrl = getVal(`${moduleId}_el_faq_cta`, 'btn_url', '#');
+  const btnTarget = getVal(`${moduleId}_el_faq_cta`, 'btn_target', '_self');
+
+  const hasCtaLink = btnUrl && btnUrl !== '#' && btnUrl !== '';
 
   const filteredFaqs = useMemo(() => {
     return faqs.filter((faq: any) => {
@@ -155,6 +182,18 @@ export const FAQModule: React.FC<{
     visible: { y: 0, opacity: 1, transition: { duration: 0.4 } }
   };
 
+  const getTypographyStyle = (sizeToken: string, weightToken: string, alignToken?: string) => {
+    const size = TYPOGRAPHY_SCALE[sizeToken as keyof typeof TYPOGRAPHY_SCALE] || TYPOGRAPHY_SCALE.p;
+    const weight = FONT_WEIGHTS[weightToken as keyof typeof FONT_WEIGHTS] || FONT_WEIGHTS.normal;
+    
+    return {
+      fontSize: `${size.fontSize}px`,
+      lineHeight: size.lineHeight,
+      fontWeight: weight.value,
+      textAlign: (alignToken && alignToken !== 'inherit') ? alignToken : undefined
+    } as React.CSSProperties;
+  };
+
   const renderFaqItem = (faq: any, index: number) => {
     const isOpen = openIndex === index;
     
@@ -168,7 +207,9 @@ export const FAQModule: React.FC<{
         style={{
           backgroundColor: isOpen ? activeBg : itemBg,
           borderRadius: '20px',
-          border: showBorder ? `1px solid ${borderColor}` : 'none',
+          borderWidth: showBorder ? '1px' : '0px',
+          borderStyle: 'solid',
+          borderColor: borderColor,
           boxShadow: isOpen && activeShadow ? '0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)' : 'none',
           marginBottom: `${itemGap}px`
         }}
@@ -186,8 +227,8 @@ export const FAQModule: React.FC<{
             <span 
               className="leading-tight transition-colors"
               style={{ 
-                fontSize: `${qSize}px`, 
-                fontWeight: qWeight,
+                fontSize: `${TYPOGRAPHY_SCALE[qSize as keyof typeof TYPOGRAPHY_SCALE]?.fontSize || 18}px`, 
+                fontWeight: FONT_WEIGHTS[qWeight as keyof typeof FONT_WEIGHTS]?.value || 800,
                 color: isOpen ? 'var(--primary-color)' : qColor 
               }}
             >
@@ -213,11 +254,15 @@ export const FAQModule: React.FC<{
             >
               <div className="px-7 pb-7 pt-0">
                 {dividerStyle !== 'none' && (
-                  <div className={`mb-6 border-t ${dividerStyle === 'dots' ? 'border-dotted' : 'border-solid'}`} style={{ borderColor: borderColor }} />
+                  <div className={`mb-6 border-t ${dividerStyle === 'dots' ? 'border-dotted' : 'border-solid'}`} style={{ borderTopColor: borderColor }} />
                 )}
                 <div 
                   className="prose prose-slate max-w-none"
-                  style={{ fontSize: `${aSize}px`, color: aColor }}
+                  style={{ 
+                    fontSize: `${TYPOGRAPHY_SCALE[aSize as keyof typeof TYPOGRAPHY_SCALE]?.fontSize || 16}px`, 
+                    fontWeight: FONT_WEIGHTS[aWeight as keyof typeof FONT_WEIGHTS]?.value || 400,
+                    color: aColor 
+                  }}
                 >
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>
                     {faq.answer}
@@ -236,6 +281,7 @@ export const FAQModule: React.FC<{
       className="w-full relative overflow-hidden"
       style={{ 
         backgroundColor: bgColor,
+        backgroundImage: sectionGradient ? bgGradient : 'none',
         paddingTop: `${paddingY}px`,
         paddingBottom: `${paddingY}px`
       }}
@@ -246,21 +292,49 @@ export const FAQModule: React.FC<{
       >
         {/* Header */}
         <div 
-          className={`mb-12 flex flex-col ${headerAlign === 'center' ? 'items-center text-center' : 'items-start text-left'}`}
+          className={`mb-12 flex flex-col w-full ${headerAlign === 'center' ? 'items-center text-center' : headerAlign === 'right' ? 'items-end text-right' : 'items-start text-left'}`}
           style={{ marginBottom: `${headerMarginB}px` }}
         >
+          {eyebrow && (
+            <span 
+              className="text-sm font-bold tracking-widest mb-3 uppercase"
+              style={{ color: eyebrowColor }}
+            >
+              {eyebrow}
+            </span>
+          )}
           <h2 
-            className="text-slate-900 mb-6 leading-[1.1] tracking-tight"
+            className="mb-6 leading-[1.1] tracking-tight"
             style={{ 
-              fontSize: `${headerTitleSize}px`,
-              fontWeight: headerTitleWeight
+              ...getTypographyStyle(headerTitleSize as any, headerTitleWeight, headerAlign),
+              color: headerTitleColor
             }}
           >
-            {headerTitle}
+            <TextRenderer 
+              text={headerTitle}
+              highlightType={titleHighlightType}
+              highlightColor={titleHighlightColor}
+              highlightGradient={titleHighlightGradient}
+              highlightBold={titleHighlightBold}
+            />
           </h2>
-          <p className="text-slate-500 text-lg @md:text-xl max-w-2xl leading-relaxed">
-            {headerSubtitle}
-          </p>
+          {headerSubtitle && (
+            <p 
+              className="text-lg @md:text-xl max-w-2xl leading-relaxed"
+              style={{ 
+                ...getTypographyStyle(headerSubtitleSize as any, headerSubtitleWeight, headerAlign),
+                color: headerSubtitleColor 
+              }}
+            >
+              <TextRenderer 
+                text={headerSubtitle} 
+                highlightType={subtitleHighlightType}
+                highlightColor={subtitleHighlightColor}
+                highlightGradient={subtitleHighlightGradient}
+                highlightBold={subtitleHighlightBold}
+              />
+            </p>
+          )}
 
           {/* Search Bar */}
           {showSearch && (
@@ -271,11 +345,11 @@ export const FAQModule: React.FC<{
                 placeholder={searchPlaceholder}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-14 pr-6 py-4.5 text-base font-medium border-2 border-transparent focus:outline-none transition-all shadow-sm"
+                className={`w-full pl-14 pr-6 py-4.5 text-base font-medium border-2 focus:outline-none transition-all shadow-sm ${darkMode ? 'text-white placeholder:text-slate-500' : 'text-slate-900 placeholder:text-slate-400'}`}
                 style={{ 
                   backgroundColor: searchBg,
                   borderRadius: `${searchRadius}px`,
-                  borderColor: searchQuery ? searchBorder : 'transparent'
+                  borderColor: searchQuery ? searchBorder : (darkMode ? 'rgba(255,255,255,0.05)' : 'transparent')
                 }}
               />
             </div>
@@ -292,7 +366,7 @@ export const FAQModule: React.FC<{
                 className={`px-6 py-2.5 rounded-full text-sm font-bold transition-all ${
                   activeCategory === cat.id 
                     ? 'bg-primary text-white shadow-lg shadow-primary/20 scale-105' 
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    : (darkMode ? 'bg-slate-800 text-slate-400 hover:bg-slate-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200')
                 }`}
               >
                 {cat.label}
@@ -313,7 +387,7 @@ export const FAQModule: React.FC<{
                     className={`px-6 py-4 rounded-2xl text-left font-bold transition-all flex items-center justify-between group ${
                       activeCategory === cat.id 
                         ? 'bg-primary/5 text-primary border-l-4 border-primary' 
-                        : 'text-slate-500 hover:bg-slate-50'
+                        : (darkMode ? 'text-slate-500 hover:bg-slate-800' : 'text-slate-500 hover:bg-slate-50')
                     }`}
                   >
                     {cat.label}
@@ -340,7 +414,7 @@ export const FAQModule: React.FC<{
                     className={`whitespace-nowrap px-8 py-4 rounded-2xl font-bold transition-all border-2 ${
                       activeCategory === cat.id 
                         ? 'border-primary bg-primary text-white shadow-xl shadow-primary/20' 
-                        : 'border-slate-100 text-slate-500 hover:border-slate-200'
+                        : (darkMode ? 'border-white/5 text-slate-500 hover:border-white/10' : 'border-slate-100 text-slate-500 hover:border-slate-200')
                     }`}
                   >
                     {cat.label}
@@ -399,19 +473,33 @@ export const FAQModule: React.FC<{
                 <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
                   <MessageCircle className="text-primary" size={20} />
                 </div>
-                <h4 className="text-2xl font-black text-slate-900">{ctaText}</h4>
+                <h4 
+                  className="text-2xl font-black"
+                  style={{ color: darkMode ? '#FFFFFF' : '#0F172A' }}
+                >
+                  {ctaText}
+                </h4>
               </div>
-              <p className="text-slate-500 text-lg max-w-md">Nuestro equipo está listo para ayudarte con cualquier otra pregunta técnica o comercial.</p>
+              <p 
+                className="text-lg max-w-md"
+                style={{ color: darkMode ? '#94A3B8' : '#64748B' }}
+              >
+                Nuestro equipo está listo para ayudarte con cualquier otra pregunta técnica o comercial.
+              </p>
             </div>
             
-            <a 
-              href={btnLink}
-              className="relative z-10 px-10 py-5 rounded-2xl font-black text-base text-white shadow-2xl shadow-primary/30 hover:scale-105 hover:-translate-y-1 transition-all active:scale-95 flex items-center gap-3"
-              style={{ backgroundColor: btnBg }}
-            >
-              {btnText}
-              <Plus size={20} />
-            </a>
+            {hasCtaLink && (
+              <a 
+                href={btnUrl}
+                target={btnTarget === '_blank' ? '_blank' : '_self'}
+                rel={btnTarget === '_blank' ? 'noopener noreferrer' : undefined}
+                className="relative z-10 px-10 py-5 rounded-2xl font-black text-base text-white shadow-2xl shadow-primary/30 hover:scale-105 hover:-translate-y-1 transition-all active:scale-95 flex items-center gap-3"
+                style={{ backgroundColor: btnBg }}
+              >
+                {btnText}
+                <Plus size={20} />
+              </a>
+            )}
           </motion.div>
         )}
       </div>

@@ -121,7 +121,7 @@ const loadGoogleFont = (fontFamily: string) => {
   const link = document.createElement('link');
   link.id = fontId;
   link.rel = 'stylesheet';
-  link.href = `https://fonts.googleapis.com/css2?family=${mainFont.replace(/\s+/g, '+')}:wght@300;400;500;600;700&display=swap`;
+  link.href = `https://fonts.googleapis.com/css2?family=${mainFont.replace(/\s+/g, '+')}:wght@300;400;600;800;900&display=swap`;
   document.head.appendChild(link);
   console.log(`[THEME] Cargando Google Font: ${mainFont}`);
 };

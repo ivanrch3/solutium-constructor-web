@@ -18,16 +18,17 @@ export const SpacerModule: React.FC<{
   const align = getVal(null, 'align', 'center');
 
   // Global Settings - Estilo
+  const darkMode = getVal(null, 'dark_mode', false);
   const type = getVal(null, 'type', 'none');
   const thickness = getVal(null, 'thickness', 1);
-  const color = getVal(null, 'color', '#E2E8F0');
-  const bgColor = getVal(null, 'bg_color', 'transparent');
+  const color = darkMode ? 'rgba(255,255,255,0.1)' : getVal(null, 'color', '#E2E8F0');
+  const bgColor = darkMode ? '#0F172A' : getVal(null, 'bg_color', 'transparent');
   const showContent = getVal(null, 'show_content', false);
   const contentType = getVal(null, 'content_type', 'icon');
   const iconName = getVal(null, 'icon', 'Star');
   const text = getVal(null, 'text', 'SECCIÓN');
   const contentSize = getVal(null, 'content_size', 16);
-  const contentColor = getVal(null, 'content_color', '#94A3B8');
+  const contentColor = darkMode ? '#94A3B8' : getVal(null, 'content_color', '#94A3B8');
 
   const alignmentClasses = {
     start: 'justify-start',
@@ -73,7 +74,9 @@ export const SpacerModule: React.FC<{
               <div 
                 className="flex-1"
                 style={{ 
-                  borderTop: `${thickness}px ${type} ${color === '#E2E8F0' ? 'var(--color-border, #E2E8F0)' : color}`,
+                  borderTopWidth: `${thickness}px`,
+                  borderTopStyle: type as any,
+                  borderTopColor: color === '#E2E8F0' ? 'var(--color-border, #E2E8F0)' : color,
                   height: '0px',
                   opacity: color === '#E2E8F0' ? 0.6 : 1
                 }}
@@ -97,14 +100,24 @@ export const SpacerModule: React.FC<{
               <div 
                 className="flex-1"
                 style={{ 
-                  borderTop: `${thickness}px ${type} ${color === '#E2E8F0' ? 'var(--color-border, #E2E8F0)' : color}`,
+                  borderTopWidth: `${thickness}px`,
+                  borderTopStyle: type as any,
+                  borderTopColor: color === '#E2E8F0' ? 'var(--color-border, #E2E8F0)' : color,
                   height: '0px',
                   opacity: color === '#E2E8F0' ? 0.6 : 1
                 }}
               />
             </>
           ) : (
-            <div className="w-full border-t border-dashed border-border/20 group-hover/spacer:border-border/40 transition-colors" style={{ height: '1px' }} />
+            <div 
+              className="w-full group-hover/spacer:opacity-80 transition-opacity" 
+              style={{ 
+                height: '1px',
+                borderTopWidth: '1px',
+                borderTopStyle: 'dashed',
+                borderTopColor: 'rgba(148, 163, 184, 0.2)'
+              }} 
+            />
           )}
         </div>
       </div>

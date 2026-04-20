@@ -12,6 +12,8 @@ import {
   CheckCircle2,
   X
 } from 'lucide-react';
+import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
+import { TextRenderer } from '../TextRenderer';
 
 export const CTAModule: React.FC<{ 
   moduleId: string, 
@@ -31,7 +33,8 @@ export const CTAModule: React.FC<{
   const maxWidth = getVal(null, 'max_width', 1000);
   const paddingY = getVal(null, 'padding_y', 100);
   const bgType = getVal(null, 'bg_type', 'color');
-  const bgColor = getVal(null, 'bg_color', '#FFFFFF');
+  const darkMode = getVal(null, 'dark_mode', false);
+  const bgColor = darkMode ? '#0F172A' : getVal(null, 'bg_color', '#FFFFFF');
   const bgGradient = getVal(null, 'bg_gradient', 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)');
   const bgVideo = getVal(null, 'bg_video', '');
   const overlayOpacity = getVal(null, 'overlay_opacity', 50) / 100;
@@ -47,16 +50,42 @@ export const CTAModule: React.FC<{
   // Element: Content
   const title = getVal(`${moduleId}_el_cta_content`, 'title', '¿Listo para transformar tu negocio?');
   const subtitle = getVal(`${moduleId}_el_cta_content`, 'subtitle', 'Únete a miles de profesionales que ya están escalando sus resultados con nuestra plataforma.');
-  const titleSize = getVal(`${moduleId}_el_cta_content`, 'title_size', 42);
+  const titleSize = getVal(`${moduleId}_el_cta_content`, 'title_size', 't2');
   const titleWeight = getVal(`${moduleId}_el_cta_content`, 'title_weight', 'black');
-  const textColor = getVal(`${moduleId}_el_cta_content`, 'text_color', '#0F172A');
+  const subtitleSize = getVal(`${moduleId}_el_cta_content`, 'subtitle_size', 'p');
+  const subtitleWeight = getVal(`${moduleId}_el_cta_content`, 'subtitle_weight', 'normal');
+  const textAlign = getVal(`${moduleId}_el_cta_content`, 'text_align', 'center');
+  const titleColor = getVal(`${moduleId}_el_cta_content`, 'title_color', darkMode ? '#FFFFFF' : '#0F172A');
+  const subtitleColor = getVal(`${moduleId}_el_cta_content`, 'subtitle_color', darkMode ? '#94A3B8' : '#475569');
   const marginB = getVal(`${moduleId}_el_cta_content`, 'margin_b', 40);
+
+  // Highlight Settings
+  const titleHighlightType = getVal(`${moduleId}_el_cta_content`, 'title_highlight_type', 'gradient');
+  const titleHighlightColor = getVal(`${moduleId}_el_cta_content`, 'title_highlight_color', '#3B82F6');
+  const titleHighlightGradient = getVal(`${moduleId}_el_cta_content`, 'title_highlight_gradient', 'linear-gradient(90deg, #3B82F6 0%, #8B5CF6 100%)');
+  const titleHighlightBold = getVal(`${moduleId}_el_cta_content`, 'title_highlight_bold', true);
+
+  const subtitleHighlightType = getVal(`${moduleId}_el_cta_content`, 'subtitle_highlight_type', 'gradient');
+  const subtitleHighlightColor = getVal(`${moduleId}_el_cta_content`, 'subtitle_highlight_color', '#3B82F6');
+  const subtitleHighlightGradient = getVal(`${moduleId}_el_cta_content`, 'subtitle_highlight_gradient', 'linear-gradient(90deg, #3B82F6 0%, #8B5CF6 100%)');
+  const subtitleHighlightBold = getVal(`${moduleId}_el_cta_content`, 'subtitle_highlight_bold', true);
 
   // Element: Actions
   const mode = getVal(`${moduleId}_el_cta_actions`, 'mode', 'buttons');
   const primaryText = getVal(`${moduleId}_el_cta_actions`, 'primary_text', 'Empezar Ahora');
-  const placeholder = getVal(`${moduleId}_el_cta_actions`, 'placeholder', 'tu@email.com');
+  const primaryType = getVal(`${moduleId}_el_cta_actions`, 'primary_link_type', 'external');
+  const primaryUrl = getVal(`${moduleId}_el_cta_actions`, 'primary_url', '');
+  const primaryTarget = getVal(`${moduleId}_el_cta_actions`, 'primary_target', '_self');
+  
   const secondaryText = getVal(`${moduleId}_el_cta_actions`, 'secondary_text', 'Saber Más');
+  const secondaryType = getVal(`${moduleId}_el_cta_actions`, 'secondary_link_type', 'external');
+  const secondaryUrl = getVal(`${moduleId}_el_cta_actions`, 'secondary_url', '');
+  const secondaryTarget = getVal(`${moduleId}_el_cta_actions`, 'secondary_target', '_self');
+  
+  const hasPrimary = primaryUrl && primaryUrl !== '#' && primaryUrl !== '';
+  const hasSecondary = secondaryUrl && secondaryUrl !== '#' && secondaryUrl !== '';
+  
+  const placeholder = getVal(`${moduleId}_el_cta_actions`, 'placeholder', 'tu@email.com');
   const showSecondary = getVal(`${moduleId}_el_cta_actions`, 'show_secondary', true);
   const btnPrimaryBg = getVal(`${moduleId}_el_cta_actions`, 'btn_primary_bg', 'var(--primary-color)');
   const btnPrimaryColor = getVal(`${moduleId}_el_cta_actions`, 'btn_primary_color', '#FFFFFF');
@@ -67,7 +96,7 @@ export const CTAModule: React.FC<{
   const showTrust = getVal(`${moduleId}_el_cta_trust`, 'show_trust', true);
   const trustText = getVal(`${moduleId}_el_cta_trust`, 'trust_text', 'Únete a +5,000 usuarios activos');
   const trustSize = getVal(`${moduleId}_el_cta_trust`, 'trust_size', 14);
-  const trustColor = getVal(`${moduleId}_el_cta_trust`, 'trust_color', '#64748B');
+  const trustColor = darkMode ? '#94A3B8' : getVal(`${moduleId}_el_cta_trust`, 'trust_color', '#64748B');
   const showAvatars = getVal(`${moduleId}_el_cta_trust`, 'show_avatars', true);
   const showLogos = getVal(`${moduleId}_el_cta_trust`, 'show_logos', false);
   const companyLogos = getVal(`${moduleId}_el_cta_trust`, 'company_logos', []);
@@ -124,6 +153,18 @@ export const CTAModule: React.FC<{
     }
   };
 
+  const getTypographyStyle = (sizeToken: string, weightToken: string, alignToken?: string) => {
+    const size = TYPOGRAPHY_SCALE[sizeToken as keyof typeof TYPOGRAPHY_SCALE] || TYPOGRAPHY_SCALE.p;
+    const weight = FONT_WEIGHTS[weightToken as keyof typeof FONT_WEIGHTS] || FONT_WEIGHTS.normal;
+    
+    return {
+      fontSize: `${size.fontSize}px`,
+      lineHeight: size.lineHeight,
+      fontWeight: weight.value,
+      textAlign: (alignToken && alignToken !== 'inherit') ? alignToken : undefined
+    } as React.CSSProperties;
+  };
+
   const IconComponent1 = (LucideIcons as any)[floatingIcon1] || Sparkles;
   const IconComponent2 = (LucideIcons as any)[floatingIcon2] || Zap;
 
@@ -140,11 +181,11 @@ export const CTAModule: React.FC<{
           <div key={i} className="flex flex-col items-center">
             <div 
               className="w-14 h-14 rounded-2xl flex items-center justify-center text-xl font-black shadow-lg mb-1"
-              style={{ backgroundColor: 'rgba(255,255,255,0.1)', color: textColor, backdropFilter: 'blur(10px)' }}
+              style={{ backgroundColor: 'rgba(255,255,255,0.1)', color: titleColor, backdropFilter: 'blur(10px)' }}
             >
               {String(item.value).padStart(2, '0')}
             </div>
-            <span className="text-[10px] font-bold uppercase tracking-widest opacity-60" style={{ color: textColor }}>
+            <span className="text-[10px] font-bold uppercase tracking-widest opacity-60" style={{ color: titleColor }}>
               {item.label}
             </span>
           </div>
@@ -164,7 +205,7 @@ export const CTAModule: React.FC<{
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="flex p-1.5 bg-white rounded-2xl shadow-2xl items-center"
+                className={`flex p-1.5 rounded-2xl shadow-2xl items-center ${darkMode ? 'bg-slate-800' : 'bg-white'}`}
               >
                 <div className="pl-4 text-slate-400">
                   <Mail size={20} />
@@ -174,7 +215,7 @@ export const CTAModule: React.FC<{
                   placeholder={placeholder}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="flex-1 bg-transparent border-none focus:ring-0 text-slate-900 font-medium px-4"
+                  className={`flex-1 bg-transparent border-none focus:ring-0 font-medium px-4 ${darkMode ? 'text-white' : 'text-slate-900'}`}
                   required
                 />
                 <button 
@@ -204,34 +245,42 @@ export const CTAModule: React.FC<{
 
     return (
       <div className={`flex flex-wrap gap-4 ${layout === 'centered' || layout === 'bento' ? 'justify-center' : 'justify-start'}`}>
-        <motion.button
-          whileHover={magneticButton ? { x: 5, y: -5, scale: 1.05 } : hoverEffect === 'scale' ? { scale: 1.05 } : { boxShadow: `0 0 30px ${btnPrimaryBg}60` }}
-          whileTap={{ scale: 0.95 }}
-          className="relative px-8 py-4 font-black text-sm flex items-center gap-2 shadow-xl transition-all overflow-hidden group"
-          style={{ 
-            backgroundColor: btnPrimaryBg, 
-            color: btnPrimaryColor,
-            borderRadius: `${btnRadius}px` 
-          }}
-        >
-          {enableShimmer && (
-            <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out" />
-          )}
-          <span className="relative z-10">{primaryText}</span>
-          <ArrowRight size={18} className="relative z-10" />
-        </motion.button>
+        {hasPrimary && (
+          <motion.a
+            href={primaryUrl}
+            target={primaryTarget === '_blank' ? '_blank' : undefined}
+            rel={primaryTarget === '_blank' ? 'noopener noreferrer' : undefined}
+            whileHover={magneticButton ? { x: 5, y: -5, scale: 1.05 } : hoverEffect === 'scale' ? { scale: 1.05 } : { boxShadow: `0 0 30px ${btnPrimaryBg}60` }}
+            whileTap={{ scale: 0.95 }}
+            className="relative px-8 py-4 font-black text-sm flex items-center gap-2 shadow-xl transition-all overflow-hidden group"
+            style={{ 
+              backgroundColor: btnPrimaryBg, 
+              color: btnPrimaryColor,
+              borderRadius: `${btnRadius}px` 
+            }}
+          >
+            {enableShimmer && (
+              <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out" />
+            )}
+            <span className="relative z-10">{primaryText}</span>
+            <ArrowRight size={18} className="relative z-10" />
+          </motion.a>
+        )}
         
-        {showSecondary && (
-          <motion.button
+        {hasSecondary && showSecondary && (
+          <motion.a
+            href={secondaryUrl}
+            target={secondaryTarget === '_blank' ? '_blank' : undefined}
+            rel={secondaryTarget === '_blank' ? 'noopener noreferrer' : undefined}
             whileHover={{ x: 5 }}
             className="px-8 py-4 font-bold text-sm transition-all flex items-center gap-2"
             style={{ 
-              color: textColor,
+              color: darkMode ? '#FFFFFF' : '#0F172A',
               borderRadius: `${btnRadius}px` 
             }}
           >
             {secondaryText}
-          </motion.button>
+          </motion.a>
         )}
       </div>
     );
@@ -278,9 +327,9 @@ export const CTAModule: React.FC<{
 
         {showLogos && companyLogos.length > 0 && (
           <div className="flex flex-wrap gap-8 opacity-40 grayscale hover:grayscale-0 transition-all duration-500">
-            {companyLogos.map((logo: string, i: number) => (
+            {companyLogos.map((logo: string, i: number) => logo ? (
               <img key={i} src={logo} alt="Partner" className="h-6 object-contain" referrerPolicy="no-referrer" />
-            ))}
+            ) : null)}
           </div>
         )}
       </div>
@@ -341,30 +390,48 @@ export const CTAModule: React.FC<{
         <motion.div {...animProps}>
           {layout === 'bento' ? (
             <div 
-              className="p-12 @md:p-20 rounded-[48px] shadow-2xl border border-white/10 relative overflow-hidden"
+              className="p-12 @md:p-20 rounded-[48px] shadow-2xl relative overflow-hidden"
               style={{ 
-                backgroundColor: 'rgba(255,255,255,0.03)', 
+                backgroundColor: darkMode ? '#1E293B' : 'rgba(255,255,255,0.03)', 
                 backdropFilter: 'blur(20px)',
-                boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)'
+                boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
+                borderWidth: '1px',
+                borderStyle: 'solid',
+                borderColor: 'rgba(255,255,255,0.1)'
               }}
             >
               <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 blur-[100px] rounded-full -mr-32 -mt-32" />
-              <div className="relative z-10 flex flex-col items-center text-center">
+              <div className={`relative z-10 flex flex-col w-full ${textAlign === 'center' ? 'items-center text-center' : textAlign === 'right' ? 'items-end text-right' : 'items-start text-left'}`}>
                 {renderCountdown()}
                 <h2 
-                  className="leading-tight mb-6 text-4xl @md:text-5xl @lg:text-6xl max-w-3xl"
+                  className="mb-6 max-w-3xl"
                   style={{ 
-                    fontWeight: titleWeight === 'black' ? 900 : 700,
-                    color: textColor 
+                    ...getTypographyStyle(titleSize as any, titleWeight, textAlign),
+                    color: titleColor 
                   }}
                 >
-                  {title}
+                  <TextRenderer 
+                    text={title} 
+                    highlightType={titleHighlightType}
+                    highlightColor={titleHighlightColor}
+                    highlightGradient={titleHighlightGradient}
+                    highlightBold={titleHighlightBold}
+                  />
                 </h2>
                 <p 
-                  className="text-xl opacity-80 max-w-2xl leading-relaxed mb-10"
-                  style={{ color: textColor }}
+                  className="max-w-2xl mb-10"
+                  style={{ 
+                    ...getTypographyStyle(subtitleSize as any, subtitleWeight, textAlign),
+                    color: subtitleColor 
+                  }}
                 >
-                  {subtitle}
+                  <TextRenderer 
+                    text={subtitle} 
+                    highlightType={subtitleHighlightType}
+                    highlightColor={subtitleHighlightColor}
+                    highlightGradient={subtitleHighlightGradient}
+                    highlightBold={subtitleHighlightBold}
+                  />
                 </p>
                 {renderActions()}
                 {renderTrust()}
@@ -374,24 +441,39 @@ export const CTAModule: React.FC<{
             <div className="grid grid-cols-1 @md:grid-cols-2 gap-12 items-center">
               <div>
                 <div 
-                  className="flex flex-col items-start text-left"
+                  className={`flex flex-col ${textAlign === 'center' ? 'items-center text-center' : textAlign === 'right' ? 'items-end text-right' : 'items-start text-left'}`}
                   style={{ marginBottom: `${marginB}px` }}
                 >
                   {renderCountdown()}
                   <h2 
-                    className="leading-tight mb-6 text-3xl @md:text-4xl @lg:text-5xl"
+                    className="mb-6"
                     style={{ 
-                      fontWeight: titleWeight === 'black' ? 900 : 700,
-                      color: textColor 
+                      ...getTypographyStyle(titleSize as any, titleWeight, textAlign),
+                      color: titleColor 
                     }}
                   >
-                    {title}
+                    <TextRenderer 
+                      text={title} 
+                      highlightType={titleHighlightType}
+                      highlightColor={titleHighlightColor}
+                      highlightGradient={titleHighlightGradient}
+                      highlightBold={titleHighlightBold}
+                    />
                   </h2>
                   <p 
-                    className="text-lg opacity-80 max-w-2xl leading-relaxed"
-                    style={{ color: textColor }}
+                    className="max-w-2xl"
+                    style={{ 
+                      ...getTypographyStyle(subtitleSize as any, subtitleWeight, textAlign),
+                      color: subtitleColor 
+                    }}
                   >
-                    {subtitle}
+                    <TextRenderer 
+                      text={subtitle} 
+                      highlightType={subtitleHighlightType}
+                      highlightColor={subtitleHighlightColor}
+                      highlightGradient={subtitleHighlightGradient}
+                      highlightBold={subtitleHighlightBold}
+                    />
                   </p>
                 </div>
                 {renderActions()}
@@ -411,26 +493,41 @@ export const CTAModule: React.FC<{
               </div>
             </div>
           ) : (
-            <div className={`flex flex-col ${layout === 'centered' ? 'items-center text-center' : 'items-start text-left'}`}>
+            <div className={`flex flex-col w-full ${textAlign === 'center' ? 'items-center text-center' : textAlign === 'right' ? 'items-end text-right' : 'items-start text-left'}`}>
               {renderCountdown()}
               <div 
-                className={`flex flex-col ${layout === 'centered' ? 'items-center text-center' : 'items-start text-left'}`}
+                className={`flex flex-col w-full ${textAlign === 'center' ? 'items-center text-center' : textAlign === 'right' ? 'items-end text-right' : 'items-start text-left'}`}
                 style={{ marginBottom: `${marginB}px` }}
               >
                 <h2 
-                  className="leading-tight mb-6 text-3xl @md:text-4xl @lg:text-5xl"
+                  className="mb-6"
                   style={{ 
-                    fontWeight: titleWeight === 'black' ? 900 : 700,
-                    color: textColor 
+                    ...getTypographyStyle(titleSize as any, titleWeight, textAlign),
+                    color: titleColor 
                   }}
                 >
-                  {title}
+                  <TextRenderer 
+                    text={title} 
+                    highlightType={titleHighlightType}
+                    highlightColor={titleHighlightColor}
+                    highlightGradient={titleHighlightGradient}
+                    highlightBold={titleHighlightBold}
+                  />
                 </h2>
                 <p 
-                  className="text-lg opacity-80 max-w-2xl leading-relaxed"
-                  style={{ color: textColor }}
+                  className="max-w-2xl"
+                  style={{ 
+                    ...getTypographyStyle(subtitleSize as any, subtitleWeight, textAlign),
+                    color: subtitleColor 
+                  }}
                 >
-                  {subtitle}
+                  <TextRenderer 
+                    text={subtitle} 
+                    highlightType={subtitleHighlightType}
+                    highlightColor={subtitleHighlightColor}
+                    highlightGradient={subtitleHighlightGradient}
+                    highlightBold={subtitleHighlightBold}
+                  />
                 </p>
               </div>
               {renderActions()}

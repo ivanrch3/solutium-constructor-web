@@ -1,6 +1,9 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Sparkles } from 'lucide-react';
+import { ArrowRight, ChevronDown, Play } from 'lucide-react';
+import * as LucideIcons from 'lucide-react';
+import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
+import { TextRenderer } from '../TextRenderer';
 
 export const HeroModule: React.FC<{ 
   moduleId: string, 
@@ -15,230 +18,469 @@ export const HeroModule: React.FC<{
 
   // Global Settings
   const layout = getVal(null, 'layout', 'split');
-  const paddingY = getVal(null, 'padding_y', 100);
-  const contentWidth = getVal(null, 'content_width', 1200);
-  const bgColor = getVal(null, 'bg_color', '#FFFFFF');
+  const height = getVal(null, 'height', 'screen');
+  const maxWidth = getVal(null, 'max_width', 1200);
+  const darkMode = getVal(null, 'dark_mode', false);
+  const bgType = getVal(null, 'bg_type', 'color');
+  const bgColor = darkMode ? '#0F172A' : getVal(null, 'bg_color', '#FFFFFF');
+  const bgGradient = getVal(null, 'bg_gradient', 'linear-gradient(135deg, #F8FAFC 0%, #E2E8F0 100%)');
+  const overlayColor = getVal(null, 'overlay_color', '#000000');
   const overlayOpacity = getVal(null, 'overlay_opacity', 0);
-  const bgImage = getVal(null, 'bg_image', '');
-  const bgVideo = getVal(null, 'bg_video', '');
-  const entranceAnim = getVal(null, 'entrance_anim', true);
-  const parallax = getVal(null, 'parallax', false);
+  const showPattern = getVal(null, 'show_pattern', true);
+  const showBlobs = getVal(null, 'show_blobs', true);
+  const scrollIndicator = getVal(null, 'scroll_indicator', true);
+  const scrollText = getVal(null, 'scroll_text', 'SCROLL');
+  const entranceAnim = getVal(null, 'entrance_anim', 'fade_up');
 
-  // Element: Eyebrow
-  const eyebrowText = getVal(`${moduleId}_el_hero_eyebrow`, 'text', 'NUEVA FUNCIÓN');
-  const eyebrowSize = getVal(`${moduleId}_el_hero_eyebrow`, 'size', 14);
-  const eyebrowWeight = getVal(`${moduleId}_el_hero_eyebrow`, 'weight', 'bold');
-  const eyebrowColor = getVal(`${moduleId}_el_hero_eyebrow`, 'color', 'var(--primary-color)');
-  const eyebrowUpper = getVal(`${moduleId}_el_hero_eyebrow`, 'uppercase', true);
-  const eyebrowMarginB = getVal(`${moduleId}_el_hero_eyebrow`, 'margin_b', 12);
+  // Element: Typography
+  const eyebrow = getVal(`${moduleId}_el_hero_typography`, 'eyebrow', 'NUEVA SOLUCIÓN');
+  const title = getVal(`${moduleId}_el_hero_typography`, 'title', 'Transforma tu presencia digital hoy');
+  const subtitle = getVal(`${moduleId}_el_hero_typography`, 'subtitle', 'Construimos el futuro de tu marca con herramientas de última generación.');
+  const titleSize = getVal(`${moduleId}_el_hero_typography`, 'title_size', 't1');
+  const titleWeight = getVal(`${moduleId}_el_hero_typography`, 'title_weight', 'bold');
+  const subtitleSize = getVal(`${moduleId}_el_hero_typography`, 'subtitle_size', 'p');
+  const subtitleWeight = getVal(`${moduleId}_el_hero_typography`, 'subtitle_weight', 'normal');
+  
+  // Highlight Settings
+  const titleHighlightType = getVal(`${moduleId}_el_hero_typography`, 'title_highlight_type', 'gradient');
+  const titleHighlightColor = getVal(`${moduleId}_el_hero_typography`, 'title_highlight_color', '#3B82F6');
+  const titleHighlightGradient = getVal(`${moduleId}_el_hero_typography`, 'title_highlight_gradient', 'linear-gradient(90deg, #3B82F6 0%, #8B5CF6 100%)');
+  const titleHighlightBold = getVal(`${moduleId}_el_hero_typography`, 'title_highlight_bold', true);
 
-  // Element: Title
-  const titleText = getVal(`${moduleId}_el_hero_title`, 'text', 'Construye tu futuro digital');
-  const titleSize = getVal(`${moduleId}_el_hero_title`, 'size', 56);
-  const titleWeight = getVal(`${moduleId}_el_hero_title`, 'weight', 'bold');
-  const titleColor = getVal(`${moduleId}_el_hero_title`, 'color', '#0F172A');
-  const useGradient = getVal(`${moduleId}_el_hero_title`, 'use_gradient', false);
-  const gradientColor = getVal(`${moduleId}_el_hero_title`, 'gradient_color', 'var(--primary-color)');
+  const subtitleHighlightType = getVal(`${moduleId}_el_hero_typography`, 'subtitle_highlight_type', 'gradient');
+  const subtitleHighlightColor = getVal(`${moduleId}_el_hero_typography`, 'subtitle_highlight_color', '#3B82F6');
+  const subtitleHighlightGradient = getVal(`${moduleId}_el_hero_typography`, 'subtitle_highlight_gradient', 'linear-gradient(90deg, #3B82F6 0%, #8B5CF6 100%)');
+  const subtitleHighlightBold = getVal(`${moduleId}_el_hero_typography`, 'subtitle_highlight_bold', true);
 
-  // Element: Subtitle
-  const subtitleText = getVal(`${moduleId}_el_hero_subtitle`, 'text', 'La plataforma todo-en-uno para gestionar tu presencia online con elegancia y potencia.');
-  const subtitleSize = getVal(`${moduleId}_el_hero_subtitle`, 'size', 18);
-  const subtitleColor = getVal(`${moduleId}_el_hero_subtitle`, 'color', '#64748B');
-  const subtitleMarginB = getVal(`${moduleId}_el_hero_subtitle`, 'margin_b', 32);
+  const eyebrowBg = getVal(`${moduleId}_el_hero_typography`, 'eyebrow_bg', 'rgba(59, 130, 246, 0.1)');
+  const eyebrowColor = getVal(`${moduleId}_el_hero_typography`, 'eyebrow_color', '#3B82F6');
+  const typographyAlign = getVal(`${moduleId}_el_hero_typography`, 'align', 'inherit');
+  const typographyMarginB = getVal(`${moduleId}_el_hero_typography`, 'margin_b', 0);
 
-  // Element: CTA
-  const ctaText = getVal(`${moduleId}_el_hero_cta`, 'text', 'Empezar ahora');
-  const ctaBg = getVal(`${moduleId}_el_hero_cta`, 'bg_color', 'var(--primary-color)');
-  const ctaTextColor = getVal(`${moduleId}_el_hero_cta`, 'text_color', '#FFFFFF');
-  const ctaHoverScale = getVal(`${moduleId}_el_hero_cta`, 'hover_scale', true);
+  // Element: Media
+  const mediaType = getVal(`${moduleId}_el_hero_media`, 'media_type', 'image');
+  const visualImage = getVal(`${moduleId}_el_hero_media`, 'image', 'https://picsum.photos/seed/hero/1200/800') || 'https://picsum.photos/seed/hero/1200/800';
+  const visualVideo = getVal(`${moduleId}_el_hero_media`, 'video_url', '');
+  const visualRadius = getVal(`${moduleId}_el_hero_media`, 'border_radius', 24);
+  const visualShadow = getVal(`${moduleId}_el_hero_media`, 'shadow', 'lg');
+  const visualFit = getVal(`${moduleId}_el_hero_media`, 'object_fit', 'cover');
+  const perspective = getVal(`${moduleId}_el_hero_media`, 'perspective', 1000);
+  const rotationY = getVal(`${moduleId}_el_hero_media`, 'rotation_y', 15);
+  const floatingAnim = getVal(`${moduleId}_el_hero_media`, 'floating_anim', true);
 
-  // Element: Visual
-  const visualUrl = getVal(`${moduleId}_el_hero_visual`, 'url', 'https://picsum.photos/seed/hero/800/600');
-  const visualFit = getVal(`${moduleId}_el_hero_visual`, 'fit', 'contain');
-  const visualMaxWidth = getVal(`${moduleId}_el_hero_visual`, 'max_width', 600);
-  const visualRadius = getVal(`${moduleId}_el_hero_visual`, 'radius', 24);
-  const floating = getVal(`${moduleId}_el_hero_visual`, 'floating', true);
+  // Element: CTAs
+  const primaryText = getVal(`${moduleId}_el_hero_ctas`, 'primary_text', 'Comenzar Ahora');
+  const primaryIcon = getVal(`${moduleId}_el_hero_ctas`, 'primary_icon', 'ArrowRight');
+  const primaryType = getVal(`${moduleId}_el_hero_ctas`, 'primary_link_type', 'external');
+  const primaryUrl = getVal(`${moduleId}_el_hero_ctas`, 'primary_url', '');
+  const primaryTarget = getVal(`${moduleId}_el_hero_ctas`, 'primary_target', '_self');
+  
+  const secondaryText = getVal(`${moduleId}_el_hero_ctas`, 'secondary_text', 'Saber Más');
+  const secondaryIcon = getVal(`${moduleId}_el_hero_ctas`, 'secondary_icon', '');
+  const secondaryType = getVal(`${moduleId}_el_hero_ctas`, 'secondary_link_type', 'external');
+  const secondaryUrl = getVal(`${moduleId}_el_hero_ctas`, 'secondary_url', '');
+  const secondaryTarget = getVal(`${moduleId}_el_hero_ctas`, 'secondary_target', '_self');
 
-  const getFontWeight = (w: string) => {
-    if (w === 'medium') return 500;
-    if (w === 'normal') return 400;
-    return 700;
+  const hasPrimary = primaryUrl && primaryUrl !== '#' && primaryUrl !== '';
+  const hasSecondary = secondaryUrl && secondaryUrl !== '#' && secondaryUrl !== '';
+
+  const primaryBg = getVal(`${moduleId}_el_hero_ctas`, 'primary_bg', 'var(--primary-color)');
+  const primaryColor = getVal(`${moduleId}_el_hero_ctas`, 'primary_color', '#FFFFFF');
+  const secondaryStyle = getVal(`${moduleId}_el_hero_ctas`, 'secondary_style', 'outline');
+  const shimmerEffect = getVal(`${moduleId}_el_hero_ctas`, 'shimmer_effect', false);
+  const hoverEffect = getVal(`${moduleId}_el_hero_ctas`, 'hover_effect', 'lift');
+  const pulseEffect = getVal(`${moduleId}_el_hero_ctas`, 'pulse_effect', true);
+  const btnRadius = getVal(`${moduleId}_el_hero_ctas`, 'btn_radius', 16);
+  const btnWidthMobile = getVal(`${moduleId}_el_hero_ctas`, 'btn_width', 'auto');
+
+  // Element: Social Proof
+  const showProof = getVal(`${moduleId}_el_hero_social_proof`, 'show_proof', true);
+  const proofText = getVal(`${moduleId}_el_hero_social_proof`, 'proof_text', 'Confiado por +500 empresas');
+  const avatars = getVal(`${moduleId}_el_hero_social_proof`, 'avatars', []);
+  const proofFontSize = getVal(`${moduleId}_el_hero_social_proof`, 'font_size', 's');
+  const proofWeight = getVal(`${moduleId}_el_hero_social_proof`, 'font_weight', 'bold');
+  const proofMarginB = getVal(`${moduleId}_el_hero_social_proof`, 'margin_b', 0);
+
+  const IconRenderer = ({ name, size = 16, className = "" }: { name: string, size?: number, className?: string }) => {
+    const IconComponent = (LucideIcons as any)[name];
+    if (!IconComponent) return null;
+    return <IconComponent size={size} className={className} />;
   };
+
+  const getTypographyStyle = (sizeToken: string, weightToken: string) => {
+    const size = TYPOGRAPHY_SCALE[sizeToken as keyof typeof TYPOGRAPHY_SCALE] || TYPOGRAPHY_SCALE.p;
+    const weight = FONT_WEIGHTS[weightToken as keyof typeof FONT_WEIGHTS] || FONT_WEIGHTS.normal;
+    return {
+      fontSize: `${size.fontSize}px`,
+      lineHeight: size.lineHeight,
+      fontWeight: weight.value,
+    } as React.CSSProperties;
+  };
+
+  const sectionHeight = height === 'screen' ? 'min-h-screen' : 
+                        height === 'large' ? 'min-h-[80vh]' : 
+                        height === 'medium' ? 'min-h-[60vh]' : 'min-h-auto';
 
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
-      transition: {
-        staggerChildren: 0.2
-      }
+      transition: { staggerChildren: 0.15 }
     }
   };
 
-  const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: { y: 0, opacity: 1, transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] as any } }
+  const itemVariants: any = {
+    fade_up: {
+      hidden: { y: 30, opacity: 0 },
+      visible: { y: 0, opacity: 1, transition: { duration: 0.8, ease: [0.22, 1, 0.36, 1] } }
+    },
+    reveal: {
+      hidden: { x: -30, opacity: 0 },
+      visible: { x: 0, opacity: 1, transition: { duration: 0.8, ease: "easeOut" } }
+    },
+    zoom: {
+      hidden: { scale: 0.9, opacity: 0 },
+      visible: { scale: 1, opacity: 1, transition: { duration: 0.8, ease: "easeOut" } }
+    }
+  }[entranceAnim as 'fade_up' | 'reveal' | 'zoom'] || {
+    hidden: { y: 30, opacity: 0 },
+    visible: { y: 0, opacity: 1, transition: { duration: 0.8 } }
   };
 
-  const renderContent = () => (
-    <motion.div 
-      variants={entranceAnim ? containerVariants : {}}
-      initial="hidden"
-      whileInView="visible"
-      viewport={{ once: true }}
-      className={`flex flex-col ${layout === 'centered' ? 'items-center text-center' : 'items-start text-left'} z-20`}
-    >
-      {eyebrowText && (
+  const renderContent = (isCentered = false) => {
+    const finalAlign = typographyAlign === 'inherit' ? (isCentered ? 'center' : 'left') : typographyAlign;
+    
+    return (
+      <motion.div 
+        variants={containerVariants}
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true }}
+        className={`flex flex-col w-full ${
+          finalAlign === 'center' ? 'items-center text-center mx-auto' : 
+          finalAlign === 'right' ? 'items-end text-right ml-auto' : 
+          'items-start text-left mr-auto'
+        } gap-6 max-w-2xl relative z-30`}
+        style={{ marginBottom: `${typographyMarginB}px` }}
+      >
+      {eyebrow && (
         <motion.span 
-          variants={entranceAnim ? itemVariants : {}}
-          className={`inline-block ${eyebrowUpper ? 'uppercase tracking-widest' : ''}`}
-          style={{ 
-            fontSize: `${eyebrowSize}px`, 
-            fontWeight: getFontWeight(eyebrowWeight),
-            color: eyebrowColor,
-            marginBottom: `${eyebrowMarginB}px`
-          }}
+          variants={itemVariants}
+          className="px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em]"
+          style={{ backgroundColor: eyebrowBg, color: eyebrowColor }}
         >
-          {eyebrowText}
+          {eyebrow}
         </motion.span>
       )}
       
       <motion.h1 
-        variants={entranceAnim ? itemVariants : {}}
-        className="leading-[1.1] mb-6 text-4xl @md:text-5xl @lg:text-6xl @xl:text-7xl"
+        variants={itemVariants}
+        className="leading-[1.1] tracking-tight"
         style={{ 
-          fontWeight: getFontWeight(titleWeight),
-          color: useGradient ? 'transparent' : titleColor,
-          backgroundImage: useGradient ? `linear-gradient(to right, ${titleColor}, ${gradientColor})` : 'none',
-          WebkitBackgroundClip: useGradient ? 'text' : 'none',
-          backgroundClip: useGradient ? 'text' : 'none',
+          ...getTypographyStyle(titleSize, titleWeight),
+          color: darkMode ? '#FFFFFF' : '#0F172A'
         }}
       >
-        {titleText}
+        <TextRenderer 
+          text={title} 
+          highlightType={titleHighlightType}
+          highlightColor={titleHighlightColor}
+          highlightGradient={titleHighlightGradient}
+          highlightBold={titleHighlightBold}
+        />
       </motion.h1>
 
-      {subtitleText && (
+      {subtitle && (
         <motion.p
-          variants={entranceAnim ? itemVariants : {}}
-          className="max-w-xl leading-relaxed"
+          variants={itemVariants}
+          className="text-lg leading-relaxed opacity-70"
           style={{ 
-            fontSize: `${subtitleSize}px`, 
-            color: subtitleColor,
-            marginBottom: `${subtitleMarginB}px`
+            ...getTypographyStyle(subtitleSize, subtitleWeight),
+            color: darkMode ? '#94A3B8' : '#475569'
           }}
         >
-          {subtitleText}
+          <TextRenderer 
+            text={subtitle} 
+            highlightType={subtitleHighlightType}
+            highlightColor={subtitleHighlightColor}
+            highlightGradient={subtitleHighlightGradient}
+            highlightBold={subtitleHighlightBold}
+          />
         </motion.p>
       )}
 
-      <motion.div variants={entranceAnim ? itemVariants : {}} className="flex flex-wrap gap-4">
-        <motion.button 
-          whileHover={ctaHoverScale ? { scale: 1.05 } : {}}
-          whileTap={{ scale: 0.95 }}
-          className="px-8 py-4 font-bold rounded-2xl shadow-xl shadow-primary/20 transition-all"
-          style={{ 
-            backgroundColor: ctaBg,
-            color: ctaTextColor
-          }}
-        >
-          {ctaText}
-        </motion.button>
+      <motion.div 
+        variants={itemVariants} 
+        className={`flex flex-wrap gap-4 w-full ${isCentered ? 'justify-center' : 'justify-start'}`}
+      >
+        {hasPrimary && (
+          <motion.a 
+            href={primaryUrl}
+            target={primaryTarget === '_blank' ? '_blank' : undefined}
+            rel={primaryTarget === '_blank' ? 'noopener noreferrer' : undefined}
+            whileHover={hoverEffect === 'lift' ? { y: -5 } : { boxShadow: `0 0 20px ${primaryBg}40` }}
+            whileTap={{ scale: 0.95 }}
+            animate={pulseEffect ? { 
+              boxShadow: [`0 0 0 0px ${primaryBg}40`, `0 0 0 15px ${primaryBg}00`]
+            } : {}}
+            transition={pulseEffect ? { repeat: Infinity, duration: 2 } : {}}
+            className={`group relative overflow-hidden flex items-center justify-center gap-2 px-8 py-4 font-black uppercase tracking-widest text-[11px] shadow-2xl transition-all ${btnWidthMobile === 'full' ? 'w-full sm:w-auto' : 'w-auto'}`}
+            style={{ 
+              backgroundColor: primaryBg,
+              color: primaryColor,
+              borderRadius: `${btnRadius}px`
+            }}
+          >
+            {shimmerEffect && (
+              <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full animate-[shimmer_2s_infinite]" />
+            )}
+            {primaryText}
+            {primaryIcon && <IconRenderer name={primaryIcon} className="group-hover:translate-x-1 transition-transform" />}
+          </motion.a>
+        )}
+
+        {hasSecondary && (
+          <motion.a 
+            href={secondaryUrl}
+            target={secondaryTarget === '_blank' ? '_blank' : undefined}
+            rel={secondaryTarget === '_blank' ? 'noopener noreferrer' : undefined}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className={`flex items-center justify-center gap-2 px-8 py-4 font-black uppercase tracking-widest text-[11px] transition-all ${btnWidthMobile === 'full' ? 'w-full sm:w-auto' : 'w-auto'}`}
+            style={{ 
+              backgroundColor: secondaryStyle === 'solid' ? (darkMode ? '#334155' : '#F1F5F9') : 'transparent',
+              color: darkMode ? '#FFFFFF' : '#0F172A',
+              border: secondaryStyle === 'outline' ? `2px solid ${darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}` : 'none',
+              borderRadius: `${btnRadius}px`
+            }}
+          >
+            {secondaryText}
+            {secondaryIcon && <IconRenderer name={secondaryIcon} />}
+          </motion.a>
+        )}
       </motion.div>
+
+      {showProof && (
+        <motion.div 
+          variants={itemVariants} 
+          className="flex items-center gap-4 mt-4"
+          style={{ marginBottom: `${proofMarginB}px` }}
+        >
+          <div className="flex -space-x-3">
+            {(avatars.length > 0 ? avatars : [1,2,3,4]).map((avatar: any, i: number) => {
+              const baseSize = TYPOGRAPHY_SCALE[proofFontSize as keyof typeof TYPOGRAPHY_SCALE]?.fontSize || 12;
+              const avatarSize = Math.max(32, baseSize * 2.5);
+              return (
+                <div 
+                  key={i} 
+                  className="rounded-full border-2 border-white overflow-hidden bg-slate-100"
+                  style={{ 
+                    width: `${avatarSize}px`, 
+                    height: `${avatarSize}px`,
+                    borderColor: darkMode ? '#0F172A' : '#FFFFFF' 
+                  }}
+                >
+                  <img 
+                    src={avatar.img || `https://i.pravatar.cc/100?u=${i}`} 
+                    alt="User" 
+                    className="w-full h-full object-cover"
+                    referrerPolicy="no-referrer"
+                  />
+                </div>
+              );
+            })}
+          </div>
+          <span 
+            className="opacity-60 uppercase tracking-wider"
+            style={{ 
+              fontSize: `${TYPOGRAPHY_SCALE[proofFontSize as keyof typeof TYPOGRAPHY_SCALE]?.fontSize || 12}px`,
+              fontWeight: FONT_WEIGHTS[proofWeight as keyof typeof FONT_WEIGHTS]?.value || 800
+            }}
+          >
+            {proofText}
+          </span>
+        </motion.div>
+      )}
     </motion.div>
-  );
+    );
+  };
 
   const renderVisual = () => (
     <motion.div 
-      initial={entranceAnim ? { opacity: 0, scale: 0.9 } : {}}
-      whileInView={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.8, delay: 0.4 }}
+      initial={{ opacity: 0, scale: 0.9, rotateY: rotationY }}
+      whileInView={{ opacity: 1, scale: 1, rotateY: 0 }}
+      animate={floatingAnim ? {
+        y: [0, -15, 0],
+        rotate: [0, 1, 0]
+      } : {}}
+      transition={floatingAnim ? {
+        y: { duration: 4, repeat: Infinity, ease: "easeInOut" },
+        rotate: { duration: 6, repeat: Infinity, ease: "easeInOut" },
+        opacity: { duration: 1 },
+        scale: { duration: 1 }
+      } : { duration: 1 }}
       viewport={{ once: true }}
-      className="relative z-20 flex justify-center items-center"
+      className="relative z-30"
+      style={{ perspective: `${perspective}px` }}
     >
-      <motion.div
-        animate={floating ? { y: [0, -20, 0] } : {}}
-        transition={floating ? { duration: 4, repeat: Infinity, ease: "easeInOut" } : {}}
-        className="shadow-2xl overflow-hidden"
+      <div 
+        className={`relative overflow-hidden transition-all duration-500 ${
+          visualShadow === 'lg' ? 'shadow-[0_50px_100px_-20px_rgba(0,0,0,0.3)]' : 
+          visualShadow === 'sm' ? 'shadow-xl' : ''
+        }`}
         style={{ 
-          maxWidth: `${visualMaxWidth}px`,
           borderRadius: `${visualRadius}px`,
-          backgroundColor: 'rgba(255,255,255,0.05)',
-          backdropFilter: 'blur(10px)'
+          backgroundColor: darkMode ? '#1E293B' : '#F8FAFC'
         }}
       >
-        <img 
-          src={visualUrl} 
-          alt="Hero Visual" 
-          className="w-full h-auto block"
-          style={{ objectFit: visualFit as any }}
-          referrerPolicy="no-referrer"
-        />
-      </motion.div>
-    </motion.div>
-  );
-
-  return (
-    <section 
-      className="relative w-full overflow-hidden flex items-center justify-center py-12 @md:py-20 @lg:py-32"
-      style={{ 
-        backgroundColor: bgColor,
-        minHeight: layout === 'full' ? '100vh' : 'auto'
-      }}
-    >
-      {/* Background Media */}
-      {bgImage && (
-        <div 
-          className={`absolute inset-0 z-0 ${parallax ? 'scale-110' : ''}`}
-          style={{ 
-            backgroundImage: `url(${bgImage})`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-          }}
-        />
-      )}
-      
-      {bgVideo && (
-        <video 
-          autoPlay 
-          muted 
-          loop 
-          playsInline 
-          className="absolute inset-0 w-full h-full object-cover z-0"
-        >
-          <source src={bgVideo} type="video/mp4" />
-        </video>
-      )}
-
-      {/* Overlay */}
-      <div 
-        className="absolute inset-0 z-10 bg-black" 
-        style={{ opacity: overlayOpacity / 100 }}
-      />
-
-      <div 
-        className="relative z-20 w-full px-8 mx-auto"
-        style={{ maxWidth: `${contentWidth}px` }}
-      >
-        {layout === 'split' && (
-          <div className="grid grid-cols-1 @lg:grid-cols-2 gap-16 items-center">
-            {renderContent()}
-            {renderVisual()}
+        {mediaType === 'image' && visualImage ? (
+          <img 
+            src={visualImage} 
+            alt="Hero Visual" 
+            className="w-full h-auto block"
+            style={{ objectFit: visualFit as any }}
+            referrerPolicy="no-referrer"
+          />
+        ) : mediaType === 'image' ? (
+          <div className="aspect-video bg-slate-100 flex items-center justify-center text-slate-300">
+            <LucideIcons.Image size={48} />
           </div>
-        )}
-
-        {layout === 'centered' && (
-          <div className="flex flex-col items-center gap-12">
-            {renderContent()}
-            {renderVisual()}
-          </div>
-        )}
-
-        {layout === 'full' && (
-          <div className="flex flex-col items-center justify-center text-center min-h-[60vh]">
-            {renderContent()}
+        ) : (
+          <div className="relative aspect-video bg-black flex items-center justify-center group">
+            <video 
+              src={visualVideo} 
+              className="w-full h-full object-cover"
+              autoPlay muted loop playsInline
+            />
+            <div className="absolute inset-0 bg-black/20 group-hover:bg-black/0 transition-all flex items-center justify-center">
+              <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white scale-90 group-hover:scale-100 transition-all">
+                <Play fill="currentColor" size={24} />
+              </div>
+            </div>
           </div>
         )}
       </div>
+      
+      {/* Decorative elements */}
+      {showBlobs && (
+        <>
+          <div className="absolute -z-10 -top-12 -right-12 w-64 h-64 bg-primary/10 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute -z-10 -bottom-12 -left-12 w-64 h-64 bg-accent/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+        </>
+      )}
+    </motion.div>
+  );
+
+  const renderBackground = () => {
+    if (bgType === 'video' && visualVideo) {
+      return (
+        <div className="absolute inset-0 z-0">
+          <video 
+            src={visualVideo} 
+            autoPlay muted loop playsInline 
+            className="w-full h-full object-cover"
+          />
+          <div 
+            className="absolute inset-0" 
+            style={{ backgroundColor: overlayColor, opacity: overlayOpacity / 100 }}
+          />
+        </div>
+      );
+    }
+    if (bgType === 'image' && visualImage) {
+      return (
+        <div className="absolute inset-0 z-0">
+          <div 
+            className="w-full h-full bg-cover bg-center"
+            style={{ backgroundImage: `url(${visualImage})` }}
+          />
+          <div 
+            className="absolute inset-0" 
+            style={{ backgroundColor: overlayColor, opacity: overlayOpacity / 100 }}
+          />
+        </div>
+      );
+    }
+    if (bgType === 'gradient') {
+      return (
+        <div 
+          className="absolute inset-0 z-0" 
+          style={{ background: bgGradient }}
+        />
+      );
+    }
+    return (
+      <div 
+        className="absolute inset-0 z-0" 
+        style={{ backgroundColor: bgColor }}
+      />
+    );
+  };
+
+  return (
+    <section className={`relative w-full overflow-hidden flex items-center ${sectionHeight}`}>
+      {renderBackground()}
+
+      <div 
+        className="relative z-30 w-full px-8 mx-auto py-20"
+        style={{ maxWidth: `${maxWidth}px` }}
+      >
+        {layout === 'split' && (
+          <div className="grid grid-cols-1 @lg:grid-cols-2 gap-16 @lg:gap-24 items-center">
+            {renderContent()}
+            {renderVisual()}
+          </div>
+        )}
+
+        {layout === 'reverse' && (
+          <div className="grid grid-cols-1 @lg:grid-cols-2 gap-16 @lg:gap-24 items-center">
+            <div className="order-2 @lg:order-1">
+              {renderVisual()}
+            </div>
+            <div className="order-1 @lg:order-2">
+              {renderContent()}
+            </div>
+          </div>
+        )}
+
+        {(layout === 'center' || layout === 'full_bg') && (
+          <div className="flex flex-col items-center gap-16">
+            {renderContent(true)}
+            {layout === 'center' && renderVisual()}
+          </div>
+        )}
+      </div>
+
+      {scrollIndicator && (
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 2 }}
+          className="absolute bottom-10 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center gap-2 text-primary"
+        >
+          <span className="text-[9px] font-black uppercase tracking-[0.3em] opacity-50">{scrollText}</span>
+          <motion.div
+            animate={{ y: [0, 8, 0] }}
+            transition={{ duration: 2, repeat: Infinity }}
+          >
+            <ChevronDown size={20} />
+          </motion.div>
+        </motion.div>
+      )}
+
+      {/* Background patterns */}
+      {showPattern && (
+        <div className="absolute inset-0 z-10 opacity-[0.03] pointer-events-none" 
+          style={{ backgroundImage: `radial-gradient(${darkMode ? '#fff' : '#000'} 1px, transparent 1px)`, backgroundSize: '40px 40px' }} 
+        />
+      )}
+
+      <style>{`
+        @keyframes shimmer {
+          0% { transform: translateX(-100%); }
+          100% { transform: translateX(100%); }
+        }
+      `}</style>
     </section>
   );
 };

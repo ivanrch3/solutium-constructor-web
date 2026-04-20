@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { Mail, Phone, MapPin, Send, MessageCircle, Copy, Check, Calendar, Linkedin, Twitter, Instagram, Facebook, Github } from 'lucide-react';
+import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
+import { TextRenderer } from '../TextRenderer';
 
 export const ContactModule: React.FC<{ 
   moduleId: string, 
@@ -19,7 +21,8 @@ export const ContactModule: React.FC<{
   const layout = getVal(null, 'layout', 'split');
   const maxWidth = getVal(null, 'max_width', 1200);
   const paddingY = getVal(null, 'padding_y', 100);
-  const bgColor = getVal(null, 'bg_color', '#F8FAFC');
+  const darkMode = getVal(null, 'dark_mode', false);
+  const bgColor = darkMode ? '#0F172A' : getVal(null, 'bg_color', '#F8FAFC');
   const bgImage = getVal(null, 'bg_image', '');
   const bgOverlay = getVal(null, 'bg_overlay', 0);
   const entranceAnim = getVal(null, 'entrance_anim', true);
@@ -27,10 +30,23 @@ export const ContactModule: React.FC<{
   // Element: Header
   const headerTitle = getVal(`${moduleId}_el_contact_header`, 'title', 'Ponte en contacto');
   const headerSubtitle = getVal(`${moduleId}_el_contact_header`, 'subtitle', 'Estamos aquí para ayudarte. Envíanos un mensaje y te responderemos lo antes posible.');
+  const headerSubtitleSize = getVal(`${moduleId}_el_contact_header`, 'subtitle_size', 'p');
+  const headerSubtitleWeight = getVal(`${moduleId}_el_contact_header`, 'subtitle_weight', 'normal');
   const headerAlign = getVal(`${moduleId}_el_contact_header`, 'align', 'left');
-  const headerTitleSize = getVal(`${moduleId}_el_contact_header`, 'title_size', 32);
-  const headerTitleColor = getVal(`${moduleId}_el_contact_header`, 'title_color', '#0F172A');
+  const headerTitleSize = getVal(`${moduleId}_el_contact_header`, 'title_size', 't2');
+  const headerTitleWeight = getVal(`${moduleId}_el_contact_header`, 'title_weight', 'bold');
+  const headerTitleColor = darkMode ? '#FFFFFF' : getVal(`${moduleId}_el_contact_header`, 'title_color', '#0F172A');
   const headerMarginB = getVal(`${moduleId}_el_contact_header`, 'margin_b', 60);
+
+  const titleHighlightType = getVal(`${moduleId}_el_contact_header`, 'title_highlight_type', 'gradient');
+  const titleHighlightColor = getVal(`${moduleId}_el_contact_header`, 'title_highlight_color', '#3B82F6');
+  const titleHighlightGradient = getVal(`${moduleId}_el_contact_header`, 'title_highlight_gradient', 'linear-gradient(90deg, #3B82F6 0%, #8B5CF6 100%)');
+  const titleHighlightBold = getVal(`${moduleId}_el_contact_header`, 'title_highlight_bold', true);
+
+  const subtitleHighlightType = getVal(`${moduleId}_el_contact_header`, 'subtitle_highlight_type', 'none');
+  const subtitleHighlightColor = getVal(`${moduleId}_el_contact_header`, 'subtitle_highlight_color', '#3B82F6');
+  const subtitleHighlightGradient = getVal(`${moduleId}_el_contact_header`, 'subtitle_highlight_gradient', 'linear-gradient(90deg, #3B82F6 0%, #8B5CF6 100%)');
+  const subtitleHighlightBold = getVal(`${moduleId}_el_contact_header`, 'subtitle_highlight_bold', true);
 
   // Element: Info
   const email = getVal(`${moduleId}_el_contact_info`, 'email', 'hola@tuempresa.com');
@@ -39,24 +55,29 @@ export const ContactModule: React.FC<{
   const showAvailability = getVal(`${moduleId}_el_contact_info`, 'show_availability', true);
   const availabilityText = getVal(`${moduleId}_el_contact_info`, 'availability_text', 'Disponible ahora (9:00 - 18:00)');
   const socialLinks = getVal(`${moduleId}_el_contact_info`, 'social_links', []);
-  const infoSize = getVal(`${moduleId}_el_contact_info`, 'info_size', 16);
-  const infoColor = getVal(`${moduleId}_el_contact_info`, 'info_color', '#475569');
+  const infoSize = getVal(`${moduleId}_el_contact_info`, 'info_size', 'p');
+  const infoWeight = getVal(`${moduleId}_el_contact_info`, 'info_weight', 'normal');
+  const infoColor = darkMode ? '#94A3B8' : getVal(`${moduleId}_el_contact_info`, 'info_color', '#475569');
   const iconColor = getVal(`${moduleId}_el_contact_info`, 'icon_color', 'var(--primary-color)');
-  const infoCardBg = getVal(`${moduleId}_el_contact_info`, 'card_bg', 'transparent');
+  const infoCardBg = darkMode ? '#1E293B' : getVal(`${moduleId}_el_contact_info`, 'card_bg', 'transparent');
   const showCopyButtons = getVal(`${moduleId}_el_contact_info`, 'show_copy_buttons', true);
 
   // Element: Form
   const buttonText = getVal(`${moduleId}_el_contact_form`, 'button_text', 'Enviar Mensaje');
+  const btnUrl = getVal(`${moduleId}_el_contact_form`, 'btn_url', '#');
+  const btnTarget = getVal(`${moduleId}_el_contact_form`, 'btn_target', '_self');
   const whatsappNumber = getVal(`${moduleId}_el_contact_form`, 'whatsapp_number', '');
   const customFields = getVal(`${moduleId}_el_contact_form`, 'custom_fields', [
     { label: 'Nombre Completo', type: 'text', placeholder: 'Ej: Juan Pérez', required: true },
     { label: 'Correo Electrónico', type: 'email', placeholder: 'juan@ejemplo.com', required: true },
     { label: 'Mensaje', type: 'textarea', placeholder: '¿En qué podemos ayudarte?', required: true }
   ]);
-  const inputBg = getVal(`${moduleId}_el_contact_form`, 'input_bg', '#FFFFFF');
+  const inputBg = darkMode ? '#334155' : getVal(`${moduleId}_el_contact_form`, 'input_bg', '#FFFFFF');
   const inputRadius = getVal(`${moduleId}_el_contact_form`, 'input_radius', 12);
   const btnBg = getVal(`${moduleId}_el_contact_form`, 'btn_bg', 'var(--primary-color)');
   const btnColor = getVal(`${moduleId}_el_contact_form`, 'btn_color', '#FFFFFF');
+  const labelSizeToken = getVal(`${moduleId}_el_contact_form`, 'label_size', 's');
+  const labelWeightToken = getVal(`${moduleId}_el_contact_form`, 'label_weight', 'bold');
   const shimmer = getVal(`${moduleId}_el_contact_form`, 'shimmer', false);
   const hoverEffect = getVal(`${moduleId}_el_contact_form`, 'hover_effect', 'lift');
 
@@ -64,7 +85,7 @@ export const ContactModule: React.FC<{
   const showCalendly = getVal(`${moduleId}_el_contact_integrations`, 'show_calendly', false);
   const calendlyUrl = getVal(`${moduleId}_el_contact_integrations`, 'calendly_url', '');
   const calendlyText = getVal(`${moduleId}_el_contact_integrations`, 'calendly_text', '¿Prefieres una videollamada? Reserva aquí');
-  const calendlyBg = getVal(`${moduleId}_el_contact_integrations`, 'calendly_bg', '#F1F5F9');
+  const calendlyBg = darkMode ? '#1E293B' : getVal(`${moduleId}_el_contact_integrations`, 'calendly_bg', '#F1F5F9');
 
   // Element: Map
   const showMap = getVal(`${moduleId}_el_contact_map`, 'show_map', true);
@@ -72,6 +93,18 @@ export const ContactModule: React.FC<{
   const mapHeight = getVal(`${moduleId}_el_contact_map`, 'map_height', 400);
   const mapGrayscale = getVal(`${moduleId}_el_contact_map`, 'grayscale', false);
   const mapRadius = getVal(`${moduleId}_el_contact_map`, 'map_radius', 24);
+
+  const getTypographyStyle = (sizeToken: string, weightToken: string, alignToken?: string) => {
+    const size = TYPOGRAPHY_SCALE[sizeToken as keyof typeof TYPOGRAPHY_SCALE] || TYPOGRAPHY_SCALE.p;
+    const weight = FONT_WEIGHTS[weightToken as keyof typeof FONT_WEIGHTS] || FONT_WEIGHTS.normal;
+    
+    return {
+      fontSize: `${size.fontSize}px`,
+      lineHeight: size.lineHeight,
+      fontWeight: weight.value,
+      textAlign: (alignToken && alignToken !== 'inherit') ? alignToken : undefined
+    } as React.CSSProperties;
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -134,8 +167,16 @@ export const ContactModule: React.FC<{
               <item.icon size={24} />
             </div>
             <div className="flex-1 min-w-0">
-              <h4 className="font-bold text-slate-900 mb-0.5 text-sm">{item.label}</h4>
-              <p className="truncate" style={{ fontSize: `${infoSize}px`, color: infoColor }}>{item.value}</p>
+              <h4 
+                className="font-bold mb-0.5 text-sm"
+                style={{ color: darkMode ? '#FFFFFF' : '#0F172A' }}
+              >
+                {item.label}
+              </h4>
+              <p className="truncate" style={{ 
+                ...getTypographyStyle(infoSize, infoWeight),
+                color: infoColor 
+              }}>{item.value}</p>
             </div>
             {showCopyButtons && item.id !== 'address' && (
               <button 
@@ -181,30 +222,50 @@ export const ContactModule: React.FC<{
   );
 
   const renderForm = (isBento: boolean = false) => (
-    <div className={`bg-white p-6 @md:p-10 rounded-[32px] shadow-2xl shadow-slate-200/50 border border-slate-100 ${isBento ? 'h-full' : ''}`}>
+    <div 
+      className={`p-6 @md:p-10 rounded-[32px] shadow-2xl border ${isBento ? 'h-full' : ''} ${darkMode ? 'bg-slate-800 border-white/10 shadow-none' : 'bg-white border-slate-100 shadow-slate-200/50'}`}
+      style={{
+        borderWidth: '1px',
+        borderStyle: 'solid',
+        borderColor: darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(241, 245, 249, 1)'
+      }}
+    >
       {isSubmitted ? (
         <motion.div 
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           className="text-center py-12"
         >
-          <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
+          <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 ${darkMode ? 'bg-green-900/30 text-green-400' : 'bg-green-100 text-green-600'}`}>
             <Send size={32} />
           </div>
-          <h3 className="text-2xl font-black text-slate-900 mb-2">¡Mensaje Enviado!</h3>
-          <p className="text-slate-500">Gracias por contactarnos. Te responderemos muy pronto.</p>
+          <h3 
+            className="text-2xl font-black mb-2"
+            style={{ color: darkMode ? '#FFFFFF' : '#0F172A' }}
+          >
+            ¡Mensaje Enviado!
+          </h3>
+          <p style={{ color: darkMode ? '#94A3B8' : '#64748B' }}>Gracias por contactarnos. Te responderemos muy pronto.</p>
         </motion.div>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-5">
           {customFields.map((field: any, idx: number) => (
             <div key={idx} className="space-y-2">
-              <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">{field.label}</label>
+              <label 
+                className="uppercase tracking-widest ml-1"
+                style={{
+                  ...getTypographyStyle(labelSizeToken, labelWeightToken),
+                  color: darkMode ? '#94A3B8' : '#94A3B8' // Keeping slate-400 equivalent for labels as requested/standard
+                }}
+              >
+                {field.label}
+              </label>
               {field.type === 'textarea' ? (
                 <textarea 
                   required={field.required}
                   rows={4}
                   placeholder={field.placeholder}
-                  className="w-full px-5 py-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all border border-slate-200 resize-none"
+                  className={`w-full px-5 py-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all border resize-none ${darkMode ? 'border-white/10 text-white placeholder:text-slate-500' : 'border-slate-200 text-slate-900'}`}
                   style={{ backgroundColor: inputBg, borderRadius: `${inputRadius}px` }}
                   value={formState[field.label] || ''}
                   onChange={(e) => setFormState({...formState, [field.label]: e.target.value})}
@@ -214,7 +275,7 @@ export const ContactModule: React.FC<{
                   required={field.required}
                   type={field.type}
                   placeholder={field.placeholder}
-                  className="w-full px-5 py-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all border border-slate-200"
+                  className={`w-full px-5 py-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all border ${darkMode ? 'border-white/10 text-white placeholder:text-slate-500' : 'border-slate-200 text-slate-900'}`}
                   style={{ backgroundColor: inputBg, borderRadius: `${inputRadius}px` }}
                   value={formState[field.label] || ''}
                   onChange={(e) => setFormState({...formState, [field.label]: e.target.value})}
@@ -226,6 +287,9 @@ export const ContactModule: React.FC<{
             whileHover={hoverEffect === 'lift' ? { y: -5 } : hoverEffect === 'glow' ? { boxShadow: `0 0 25px ${btnBg}60` } : hoverEffect === 'magnetic' ? { scale: 1.02 } : {}}
             whileTap={{ scale: 0.98 }}
             type="submit"
+            onClick={() => {
+              if (btnUrl && btnUrl !== '#') window.open(btnUrl, btnTarget === '_blank' ? '_blank' : '_self');
+            }}
             className={`w-full py-5 font-black text-sm shadow-xl transition-all flex items-center justify-center gap-2 relative overflow-hidden group`}
             style={{ backgroundColor: btnBg, color: btnColor, borderRadius: `${inputRadius}px` }}
           >
@@ -244,11 +308,14 @@ export const ContactModule: React.FC<{
     if (!showMap) return null;
     return (
       <div 
-        className={`w-full overflow-hidden shadow-xl border border-slate-200 group ${isBento ? 'h-full' : ''}`}
+        className={`w-full overflow-hidden shadow-xl border group ${isBento ? 'h-full' : ''} ${darkMode ? 'border-white/10' : 'border-slate-200'}`}
         style={{ 
           height: isBento ? '100%' : `${mapHeight}px`, 
           borderRadius: `${mapRadius}px`,
-          filter: mapGrayscale ? 'grayscale(1)' : 'none'
+          filter: mapGrayscale ? 'grayscale(1)' : 'none',
+          borderWidth: '1px',
+          borderStyle: 'solid',
+          borderColor: darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(226, 232, 240, 1)'
         }}
       >
         <iframe
@@ -272,15 +339,20 @@ export const ContactModule: React.FC<{
         className={`p-8 rounded-[32px] flex flex-col items-center text-center justify-center gap-4 ${isBento ? 'h-full' : ''}`}
         style={{ backgroundColor: calendlyBg }}
       >
-        <div className="w-16 h-16 bg-white rounded-2xl shadow-lg flex items-center justify-center text-primary">
+        <div className={`w-16 h-16 rounded-2xl shadow-lg flex items-center justify-center text-primary ${darkMode ? 'bg-slate-800' : 'bg-white'}`}>
           <Calendar size={32} />
         </div>
-        <h4 className="font-black text-slate-900">{calendlyText}</h4>
+        <h4 
+          className="font-black"
+          style={{ color: darkMode ? '#FFFFFF' : '#0F172A' }}
+        >
+          {calendlyText}
+        </h4>
         <a 
           href={calendlyUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="px-6 py-3 bg-white rounded-xl text-sm font-bold shadow-sm hover:shadow-md transition-all hover:-translate-y-1"
+          className={`px-6 py-3 rounded-xl text-sm font-bold shadow-sm hover:shadow-md transition-all hover:-translate-y-1 ${darkMode ? 'bg-slate-800 text-white' : 'bg-white text-slate-900'}`}
         >
           Reservar Cita
         </a>
@@ -304,18 +376,41 @@ export const ContactModule: React.FC<{
         <motion.div {...animProps}>
           {/* Header */}
           <div 
-            className={`flex flex-col mb-12 @md:mb-16 ${headerAlign === 'center' ? 'items-center text-center' : 'items-start text-left'}`}
+            className={`flex flex-col w-full mb-12 @md:mb-16 ${headerAlign === 'center' ? 'items-center text-center' : headerAlign === 'right' ? 'items-end text-right' : 'items-start text-left'}`}
             style={{ marginBottom: `${headerMarginB}px` }}
           >
             <h2 
-              className="font-black leading-tight mb-4 text-3xl @md:text-4xl @lg:text-6xl tracking-tighter"
-              style={{ color: headerTitleColor, fontSize: `${headerTitleSize}px` }}
+              className="mb-4 tracking-tighter"
+              style={{ 
+                ...getTypographyStyle(headerTitleSize as any, headerTitleWeight, headerAlign),
+                color: headerTitleColor 
+              }}
             >
-              {headerTitle}
+              <TextRenderer 
+                text={headerTitle}
+                highlightType={titleHighlightType}
+                highlightColor={titleHighlightColor}
+                highlightGradient={titleHighlightGradient}
+                highlightBold={titleHighlightBold}
+              />
             </h2>
-            <p className="text-slate-500 text-lg max-w-2xl leading-relaxed">
-              {headerSubtitle}
-            </p>
+            {headerSubtitle && (
+              <p 
+                className="text-lg max-w-2xl leading-relaxed"
+                style={{ 
+                  ...getTypographyStyle(headerSubtitleSize as any, headerSubtitleWeight, headerAlign),
+                  color: darkMode ? '#94A3B8' : '#64748B' 
+                }}
+              >
+                <TextRenderer 
+                  text={headerSubtitle} 
+                  highlightType={subtitleHighlightType}
+                  highlightColor={subtitleHighlightColor}
+                  highlightGradient={subtitleHighlightGradient}
+                  highlightBold={subtitleHighlightBold}
+                />
+              </p>
+            )}
           </div>
 
           {/* Layouts */}

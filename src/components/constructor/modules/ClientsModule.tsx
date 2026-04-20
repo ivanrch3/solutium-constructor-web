@@ -3,6 +3,8 @@ import { motion } from 'motion/react';
 import { Customer } from '../../../types/schema';
 import { MOCK_CUSTOMERS } from '../../../constants/mockData';
 import { Users } from 'lucide-react';
+import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
+import { TextRenderer } from '../TextRenderer';
 
 const LogoItem = ({ 
   customer, 
@@ -84,7 +86,7 @@ export const ClientsModule: React.FC<{
     return settingsValues[key] !== undefined ? settingsValues[key] : defaultValue;
   };
 
-  const selectedCustomerIds = getVal(null, 'select_customers', []);
+  const selectedCustomerIds = getVal(`${moduleId}_el_client_logos_data`, 'select_customers', []);
   const baseCustomers = customers && customers.length > 0 ? customers : (isDevMode ? MOCK_CUSTOMERS : []);
   
   const displayCustomers = useMemo(() => {
@@ -99,8 +101,10 @@ export const ClientsModule: React.FC<{
   const columns = getVal(null, 'columns', 5);
   const gap = getVal(null, 'gap', 40);
   const paddingY = getVal(null, 'padding_y', 80);
-  const bgColor = getVal(null, 'bg_color', '#FFFFFF');
+  const darkMode = getVal(null, 'dark_mode', false);
+  const bgColor = darkMode ? '#0F172A' : getVal(null, 'bg_color', '#FFFFFF');
   const sectionGradient = getVal(null, 'section_gradient', false);
+  const bgGradient = getVal(null, 'bg_gradient', 'linear-gradient(to bottom, #FFFFFF, #F8FAFC)');
   const animationSpeed = getVal(null, 'animation_speed', 30);
   const marqueeDirection = getVal(null, 'marquee_direction', 'left');
   const pauseOnHover = getVal(null, 'pause_on_hover', true);
@@ -108,18 +112,31 @@ export const ClientsModule: React.FC<{
 
   // Element Settings: Header
   const eyebrow = getVal(`${moduleId}_el_clients_header`, 'eyebrow', 'TRUSTED BY');
-  const titleText = getVal(`${moduleId}_el_clients_header`, 'title_text', 'Empresas que confían en nosotros');
-  const subtitleText = getVal(`${moduleId}_el_clients_header`, 'subtitle_text', 'Trabajamos con los mejores para ofrecerte lo mejor.');
+  const titleText = getVal(`${moduleId}_el_clients_header`, 'title', 'Empresas que confían en nosotros');
+  const subtitleText = getVal(`${moduleId}_el_clients_header`, 'subtitle', 'Trabajamos con los mejores para ofrecerte lo mejor.');
   const headerAlign = getVal(`${moduleId}_el_clients_header`, 'align', 'center');
-  const titleSize = getVal(`${moduleId}_el_clients_header`, 'title_size', 32);
-  const titleColor = getVal(`${moduleId}_el_clients_header`, 'title_color', '#0F172A');
+  const titleSize = getVal(`${moduleId}_el_clients_header`, 'title_size', 't2');
+  const titleWeight = getVal(`${moduleId}_el_clients_header`, 'title_weight', 'black');
+  const subtitleSize = getVal(`${moduleId}_el_clients_header`, 'subtitle_size', 'p');
+  const subtitleWeight = getVal(`${moduleId}_el_clients_header`, 'subtitle_weight', 'normal');
+  const titleColor = darkMode ? '#FFFFFF' : getVal(`${moduleId}_el_clients_header`, 'title_color', '#0F172A');
   const eyebrowColor = getVal(`${moduleId}_el_clients_header`, 'eyebrow_color', 'var(--primary-color)');
   const headerMarginB = getVal(`${moduleId}_el_clients_header`, 'margin_b', 60);
+
+  const titleHighlightType = getVal(`${moduleId}_el_clients_header`, 'title_highlight_type', 'gradient');
+  const titleHighlightColor = getVal(`${moduleId}_el_clients_header`, 'title_highlight_color', '#3B82F6');
+  const titleHighlightGradient = getVal(`${moduleId}_el_clients_header`, 'title_highlight_gradient', 'linear-gradient(to right, #3B82F6, #2563EB)');
+  const titleHighlightBold = getVal(`${moduleId}_el_clients_header`, 'title_highlight_bold', true);
+
+  const subtitleHighlightType = getVal(`${moduleId}_el_clients_header`, 'subtitle_highlight_type', 'none');
+  const subtitleHighlightColor = getVal(`${moduleId}_el_clients_header`, 'subtitle_highlight_color', '#3B82F6');
+  const subtitleHighlightGradient = getVal(`${moduleId}_el_clients_header`, 'subtitle_highlight_gradient', 'linear-gradient(to right, #3B82F6, #2563EB)');
+  const subtitleHighlightBold = getVal(`${moduleId}_el_clients_header`, 'subtitle_highlight_bold', true);
 
   // Element Settings: Logo
   const logoHeight = getVal(`${moduleId}_el_client_logo`, 'logo_height', 40);
   const logoFit = getVal(`${moduleId}_el_client_logo`, 'logo_fit', 'contain');
-  const logoFilter = getVal(`${moduleId}_el_client_logo`, 'logo_filter', 'grayscale');
+  const logoFilter = darkMode ? 'invert' : getVal(`${moduleId}_el_client_logo`, 'logo_filter', 'grayscale');
   const logoOpacity = getVal(`${moduleId}_el_client_logo`, 'logo_opacity', 60);
   const logoBorderRadius = getVal(`${moduleId}_el_client_logo`, 'logo_border_radius', 0);
   const hoverReveal = getVal(`${moduleId}_el_client_logo`, 'hover_reveal', true);
@@ -127,6 +144,18 @@ export const ClientsModule: React.FC<{
   const hoverGlow = getVal(`${moduleId}_el_client_logo`, 'hover_glow', false);
   const showTooltips = getVal(`${moduleId}_el_client_logo`, 'show_tooltips', true);
   const enableLinks = getVal(`${moduleId}_el_client_logo`, 'enable_links', false);
+
+  const getTypographyStyle = (sizeToken: string, weightToken: string, alignToken?: string) => {
+    const size = TYPOGRAPHY_SCALE[sizeToken as keyof typeof TYPOGRAPHY_SCALE] || TYPOGRAPHY_SCALE.p;
+    const weight = FONT_WEIGHTS[weightToken as keyof typeof FONT_WEIGHTS] || FONT_WEIGHTS.normal;
+    
+    return {
+      fontSize: `${size.fontSize}px`,
+      lineHeight: size.lineHeight,
+      fontWeight: weight.value,
+      textAlign: (alignToken && alignToken !== 'inherit') ? alignToken : undefined
+    } as React.CSSProperties;
+  };
 
   const getAlignmentClass = (align: string) => {
     switch (align) {
@@ -211,18 +240,16 @@ export const ClientsModule: React.FC<{
       
       return (
         <div className="overflow-hidden relative py-8 -mx-8">
-          <div className="absolute inset-y-0 left-0 w-32 bg-gradient-to-r from-inherit to-transparent z-10 pointer-events-none" style={{ backgroundColor: bgColor }} />
-          <div className="absolute inset-y-0 right-0 w-32 bg-gradient-to-l from-inherit to-transparent z-10 pointer-events-none" style={{ backgroundColor: bgColor }} />
+          <div className={`absolute inset-y-0 left-0 w-32 z-10 pointer-events-none ${darkMode ? 'bg-gradient-to-r from-[#0F172A] to-transparent' : 'bg-gradient-to-r from-white to-transparent'}`} />
+          <div className={`absolute inset-y-0 right-0 w-32 z-10 pointer-events-none ${darkMode ? 'bg-gradient-to-l from-[#0F172A] to-transparent' : 'bg-gradient-to-l from-white to-transparent'}`} />
           
-          <motion.div 
-            className="flex items-center gap-20 whitespace-nowrap w-max"
-            animate={{ x: marqueeDirection === 'left' ? [0, -1500] : [-1500, 0] }}
-            transition={{ 
-              repeat: Infinity, 
-              duration: animationSpeed, 
-              ease: "linear" 
-            }}
-            whileHover={pauseOnHover ? { animationPlayState: 'paused' } : {}}
+          <div 
+            className="clients-marquee-container flex items-center gap-20 whitespace-nowrap w-max"
+            style={{ 
+              '--speed': `${animationSpeed}s`,
+              '--pause': pauseOnHover ? 'paused' : 'running',
+              '--direction': marqueeDirection === 'left' ? 'marquee-left' : 'marquee-right'
+            } as any}
           >
             {marqueeLogos.map((customer, idx) => (
               <LogoItem 
@@ -232,7 +259,7 @@ export const ClientsModule: React.FC<{
                 entranceAnimation={false}
               />
             ))}
-          </motion.div>
+          </div>
         </div>
       );
     }
@@ -262,15 +289,15 @@ export const ClientsModule: React.FC<{
       className="w-full relative overflow-hidden"
       style={{ 
         backgroundColor: bgColor,
-        backgroundImage: sectionGradient ? `linear-gradient(to bottom, ${bgColor}, white)` : 'none',
+        backgroundImage: sectionGradient ? bgGradient : 'none',
         paddingTop: `${paddingY}px`,
         paddingBottom: `${paddingY}px`
       }}
     >
-      <div className="max-w-7xl mx-auto px-8">
+      <div className="max-w-7xl mx-auto px-8 relative z-10">
         {/* Header */}
         <div 
-          className={`flex flex-col mb-12 ${getAlignmentClass(headerAlign)}`}
+          className={`flex flex-col mb-12 w-full ${headerAlign === 'center' ? 'items-center text-center' : headerAlign === 'right' ? 'items-end text-right' : 'items-start text-left'}`}
           style={{ marginBottom: `${headerMarginB}px` }}
         >
           {eyebrow && (
@@ -282,20 +309,35 @@ export const ClientsModule: React.FC<{
             </span>
           )}
           <h2 
-            className="font-black mb-4 leading-tight text-2xl @md:text-3xl @lg:text-4xl"
+            className="mb-4 leading-tight"
             style={{ 
-              color: titleColor,
-              fontSize: `${titleSize}px`
+              ...getTypographyStyle(titleSize as any, titleWeight, headerAlign),
+              color: titleColor
             }}
           >
-            {titleText}
+            <TextRenderer 
+              text={titleText}
+              highlightType={titleHighlightType}
+              highlightColor={titleHighlightColor}
+              highlightGradient={titleHighlightGradient}
+              highlightBold={titleHighlightBold}
+            />
           </h2>
           {subtitleText && (
             <p 
-              className="text-slate-500 max-w-2xl text-lg"
-              style={{ color: '#64748B' }}
+              className="max-w-2xl text-lg"
+              style={{ 
+                ...getTypographyStyle(subtitleSize as any, subtitleWeight, headerAlign),
+                color: darkMode ? '#94A3B8' : '#64748B' 
+              }}
             >
-              {subtitleText}
+              <TextRenderer 
+                text={subtitleText}
+                highlightType={subtitleHighlightType}
+                highlightColor={subtitleHighlightColor}
+                highlightGradient={subtitleHighlightGradient}
+                highlightBold={subtitleHighlightBold}
+              />
             </p>
           )}
         </div>
@@ -304,17 +346,51 @@ export const ClientsModule: React.FC<{
         {displayCustomers.length > 0 ? (
           renderLogos()
         ) : (
-          <div className="py-12 text-center border-2 border-dashed border-slate-200 rounded-3xl bg-slate-50">
+          <div 
+            className="py-12 text-center rounded-3xl"
+            style={{
+              backgroundColor: darkMode ? 'rgba(30, 41, 59, 0.5)' : 'rgba(248, 250, 252, 1)',
+              borderWidth: '2px',
+              borderStyle: 'dashed',
+              borderColor: darkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(226, 232, 240, 1)'
+            }}
+          >
             <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <Users className="text-primary w-8 h-8" />
             </div>
-            <h3 className="text-lg font-bold mb-2 text-slate-900">No hay clientes seleccionados</h3>
-            <p className="text-sm text-slate-500">
+            <h3 
+              className="text-lg font-bold mb-2"
+              style={{ color: darkMode ? '#FFFFFF' : '#0F172A' }}
+            >
+              No hay clientes seleccionados
+            </h3>
+            <p 
+              className="text-sm"
+              style={{ color: darkMode ? '#94A3B8' : '#64748B' }}
+            >
               Selecciona los logotipos de clientes en la Configuración Global para mostrarlos aquí.
             </p>
           </div>
         )}
       </div>
+      <style>{`
+        @keyframes marquee-left {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+        }
+        @keyframes marquee-right {
+          0% { transform: translateX(-50%); }
+          100% { transform: translateX(0); }
+        }
+        .clients-marquee-container {
+          display: flex;
+          width: max-content;
+          animation: var(--direction) var(--speed) linear infinite;
+        }
+        .clients-marquee-container:hover {
+          animation-play-state: var(--pause);
+        }
+      `}</style>
     </section>
   );
 };

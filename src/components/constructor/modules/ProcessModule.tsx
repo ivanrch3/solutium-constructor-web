@@ -2,6 +2,8 @@ import React from 'react';
 import { motion } from 'motion/react';
 import * as LucideIcons from 'lucide-react';
 import { CheckCircle2 } from 'lucide-react';
+import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
+import { TextRenderer } from '../TextRenderer';
 
 const StepItem = ({ 
   step, 
@@ -18,33 +20,48 @@ const StepItem = ({
   indicatorColor, 
   indicatorSize,
   indicatorGlow,
+  indicatorShape,
   useIcons,
   isLast,
   connectorStyle,
   connectorColor,
   drawConnectors,
   titleSize,
+  titleWeight,
   descSize,
-  hoverGlow
+  textAlign,
+  hoverGlow,
+  darkMode
 }: any) => {
   const IconComponent = (LucideIcons as any)[step.icon] || CheckCircle2;
   const isHorizontal = layout === 'horizontal';
   const isVertical = layout === 'vertical';
   const isAlternating = layout === 'alternating';
 
+  const getShapeClass = (shape: string) => {
+    switch (shape) {
+      case 'squircle': return 'rounded-[30%]';
+      case 'diamond': return 'rotate-45 rounded-sm';
+      case 'hexagon': return 'clip-path-hexagon'; // Requiere CSS o inline style
+      default: return 'rounded-full';
+    }
+  };
+
   const renderIndicator = () => (
     <div 
-      className={`flex items-center justify-center flex-shrink-0 z-10 relative group-hover:scale-110 transition-transform duration-500 ${indicatorGlow ? 'shadow-lg' : ''}`}
+      className={`flex items-center justify-center flex-shrink-0 z-10 relative group-hover:scale-110 transition-transform duration-500 shadow-lg ${getShapeClass(indicatorShape)}`}
       style={{ 
-        width: `${indicatorSize}px`, 
-        height: `${indicatorSize}px`, 
+        width: `${parseFloat(indicatorSize as any) || 48}px`, 
+        height: `${parseFloat(indicatorSize as any) || 48}px`, 
         backgroundColor: indicatorBg,
         color: indicatorColor,
-        borderRadius: '50%',
-        boxShadow: indicatorGlow ? `0 0 20px ${indicatorBg}44` : '0 4px 12px rgba(0,0,0,0.1)'
+        boxShadow: indicatorGlow ? (indicatorBg.startsWith('#') ? `0 0 20px ${indicatorBg}44` : `0 0 20px rgba(0,0,0,0.1)`) : '0 4px 12px rgba(0,0,0,0.1)',
+        clipPath: indicatorShape === 'hexagon' ? 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)' : 'none'
       }}
     >
-      {useIcons ? <IconComponent size={indicatorSize * 0.45} /> : <span className="font-black" style={{ fontSize: `${indicatorSize * 0.4}px` }}>{index + 1}</span>}
+      <div className={indicatorShape === 'diamond' ? '-rotate-45' : ''}>
+        {useIcons ? <IconComponent size={indicatorSize * 0.45} /> : <span className="font-black" style={{ fontSize: `${indicatorSize * 0.4}px` }}>{index + 1}</span>}
+      </div>
       
       {hoverGlow && (
         <div 
@@ -60,6 +77,7 @@ const StepItem = ({
     
     const isDashed = connectorStyle === 'dashed';
     const isGradient = connectorStyle === 'gradient';
+    const isCurved = connectorStyle === 'curved';
     
     if (isHorizontal) {
       return (
@@ -70,7 +88,9 @@ const StepItem = ({
             transition={{ duration: 1, delay: index * 0.2 }}
             className="origin-left h-[2px] w-full"
             style={{ 
-              borderTop: isDashed ? `2px dashed ${connectorColor}` : isGradient ? 'none' : `2px solid ${connectorColor}`,
+              borderTopWidth: isHorizontal && !isGradient ? '2px' : '0px',
+              borderTopStyle: isDashed ? 'dashed' : 'solid',
+              borderTopColor: isHorizontal && !isGradient ? connectorColor : 'transparent',
               background: isGradient ? `linear-gradient(to right, ${connectorColor}, transparent)` : 'none'
             }} 
           />
@@ -88,8 +108,11 @@ const StepItem = ({
             transition={{ duration: 1, delay: index * 0.2 }}
             className="origin-top w-[2px] h-full"
             style={{ 
-              borderLeft: isDashed ? `2px dashed ${connectorColor}` : isGradient ? 'none' : `2px solid ${connectorColor}`,
-              background: isGradient ? `linear-gradient(to bottom, ${connectorColor}, transparent)` : 'none'
+              borderLeftWidth: (isVertical || isAlternating) && !isGradient ? '2px' : '0px',
+              borderLeftStyle: isDashed ? 'dashed' : 'solid',
+              borderLeftColor: (isVertical || isAlternating) && !isGradient ? connectorColor : 'transparent',
+              background: isGradient ? `linear-gradient(to bottom, ${connectorColor}, transparent)` : 'none',
+              borderRadius: isCurved ? '20px' : undefined
             }} 
           />
         </div>
@@ -99,12 +122,18 @@ const StepItem = ({
     return null;
   };
 
-  const CardWrapper = step.link ? 'a' : 'div';
+  const hasLink = step.link_url && step.link_url !== '#' && step.link_url !== '';
+  const CardWrapper = hasLink ? 'a' : 'div';
+  const wrapperProps = hasLink ? { 
+    href: step.link_url, 
+    target: step.link_target === '_blank' ? '_blank' : '_self' ,
+    rel: step.link_target === '_blank' ? 'noopener noreferrer' : undefined 
+  } : {};
 
   return (
     <motion.div
       variants={staggerAnim ? itemVariants : {}}
-      className={`relative flex flex-col items-center text-center group @md:flex-row @md:gap-8 @md:items-start ${isHorizontal ? '@md:flex-col @md:items-center @md:text-center' : '@md:text-left'}`}
+      className={`relative flex flex-col items-center text-center group @md:flex-row @md:gap-8 @md:items-start ${isHorizontal ? '@md:flex-col @md:items-center @md:text-center' : isAlternating && index % 2 !== 0 ? '@md:flex-row-reverse @md:text-right' : '@md:text-left'}`}
     >
       {renderConnector()}
       
@@ -113,33 +142,55 @@ const StepItem = ({
       </div>
 
       <CardWrapper
-        href={step.link}
-        className={`flex-1 transition-all duration-500 block ${step.link ? 'hover:scale-[1.02]' : ''}`}
+        {...wrapperProps}
+        className={`flex-1 transition-all duration-500 block ${hasLink ? 'hover:scale-[1.02]' : ''}`}
         style={{ 
           backgroundColor: isHorizontal ? 'transparent' : cardBg,
-          padding: isHorizontal ? '0' : `${cardPadding}px`,
-          borderRadius: `${cardRadius}px`,
-          border: isHorizontal ? 'none' : `1px solid ${cardBorder}`,
+          padding: isHorizontal ? '0' : `${parseFloat(cardPadding as any) || 32}px`,
+          borderRadius: `${parseFloat(cardRadius as any) || 24}px`,
+          borderWidth: isHorizontal ? '0px' : '1px',
+          borderStyle: isHorizontal ? 'none' : 'solid',
+          borderColor: isHorizontal ? 'transparent' : cardBorder,
         }}
       >
         <motion.div
           whileHover={hoverLift ? { y: -8 } : {}}
           transition={{ duration: 0.4, ease: "easeOut" }}
         >
+          {step.image && (
+            <div className="mb-6 overflow-hidden rounded-2xl aspect-video bg-slate-100">
+              <img src={step.image} alt={step.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" referrerPolicy="no-referrer" />
+            </div>
+          )}
           {step.badge && (
             <span className="inline-block px-3 py-1 bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-widest rounded-full mb-3">
               {step.badge}
             </span>
           )}
-          <h3 className="font-bold text-slate-900 mb-3 leading-tight" style={{ fontSize: `${titleSize}px` }}>
+          <h3 
+            className="mb-3 leading-tight" 
+            style={{ 
+              fontSize: `${TYPOGRAPHY_SCALE[titleSize as keyof typeof TYPOGRAPHY_SCALE]?.fontSize || 20}px`,
+              fontWeight: FONT_WEIGHTS[titleWeight as keyof typeof FONT_WEIGHTS]?.value || 800,
+              textAlign: textAlign !== 'inherit' ? textAlign : undefined,
+              color: darkMode ? '#FFFFFF' : '#0F172A'
+            }}
+          >
             {step.title}
           </h3>
-          <p className="text-slate-500 leading-relaxed" style={{ fontSize: `${descSize}px` }}>
+          <p 
+            className="leading-relaxed" 
+            style={{ 
+              fontSize: `${TYPOGRAPHY_SCALE[descSize as keyof typeof TYPOGRAPHY_SCALE]?.fontSize || 16}px`,
+              textAlign: textAlign !== 'inherit' ? textAlign : undefined,
+              color: darkMode ? '#94A3B8' : '#64748B'
+            }}
+          >
             {step.desc}
           </p>
           
-          {step.link && (
-            <div className="mt-4 flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-wider opacity-0 group-hover:opacity-100 transition-opacity">
+          {hasLink && (
+            <div className={`mt-4 flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-wider opacity-0 group-hover:opacity-100 transition-opacity ${isAlternating && index % 2 !== 0 ? 'justify-end' : ''}`}>
               Ver más <LucideIcons.ArrowRight size={14} />
             </div>
           )}
@@ -160,43 +211,53 @@ export const ProcessModule: React.FC<{
 
   // Global Settings
   const layout = getVal(null, 'layout', 'horizontal');
-  const columns = getVal(null, 'columns', 4);
-  const paddingY = getVal(null, 'padding_y', 120);
-  const gap = getVal(null, 'gap', 40);
-  const bgColor = getVal(null, 'bg_color', '#F8FAFC');
+  const columns = Math.max(1, parseInt(getVal(null, 'columns', 4)) || 4);
+  const paddingY = parseFloat(getVal(null, 'padding_y', 120)) || 120;
+  const gap = parseFloat(getVal(null, 'gap', 40)) || 40;
+  const darkMode = getVal(null, 'dark_mode', false);
+  const bgColor = darkMode ? '#0F172A' : getVal(null, 'bg_color', '#F8FAFC');
+  const sectionGradient = getVal(null, 'section_gradient', false);
+  const bgGradient = getVal(null, 'bg_gradient', 'linear-gradient(to bottom, #F8FAFC, #FFFFFF)');
   const connectorStyle = getVal(null, 'connector_style', 'dashed');
-  const connectorColor = getVal(null, 'connector_color', 'rgba(var(--primary-rgb), 0.2)');
+  const connectorColor = darkMode ? 'rgba(255,255,255,0.1)' : getVal(null, 'connector_color', 'rgba(59, 130, 246, 0.2)');
   const entranceAnim = getVal(null, 'entrance_anim', true);
   const drawConnectors = getVal(null, 'draw_connectors', true);
   const hoverGlow = getVal(null, 'hover_glow', true);
 
-  // Element: Header
+  // Element: Textos
   const eyebrow = getVal(`${moduleId}_el_process_header`, 'eyebrow', 'METODOLOGÍA');
   const headerTitle = getVal(`${moduleId}_el_process_header`, 'title', 'Nuestro Proceso');
   const headerSubtitle = getVal(`${moduleId}_el_process_header`, 'subtitle', 'Cómo trabajamos para hacer realidad tus ideas.');
   const headerAlign = getVal(`${moduleId}_el_process_header`, 'align', 'center');
-  const headerTitleSize = getVal(`${moduleId}_el_process_header`, 'title_size', 40);
-  const headerTitleColor = getVal(`${moduleId}_el_process_header`, 'title_color', '#0F172A');
-  const eyebrowColor = getVal(`${moduleId}_el_process_header`, 'eyebrow_color', 'var(--primary-color)');
+  const headerTitleSize = getVal(`${moduleId}_el_process_header`, 'title_size', 't2');
+  const headerTitleWeight = getVal(`${moduleId}_el_process_header`, 'title_weight', 'bold');
+  const headerEyebrowColor = getVal(`${moduleId}_el_process_header`, 'eyebrow_color', '#3B82F6');
+  const headerEyebrowBg = getVal(`${moduleId}_el_process_header`, 'eyebrow_bg', 'rgba(59, 130, 246, 0.1)');
   const headerMarginB = getVal(`${moduleId}_el_process_header`, 'margin_b', 80);
 
+  const headerTitleColor = darkMode ? '#FFFFFF' : undefined;
+
+  // Element: Lista de Pasos
+  const steps = getVal(`${moduleId}_el_process_items`, 'steps', []);
+
   // Element: Step Style
-  const cardBg = getVal(`${moduleId}_el_process_step`, 'card_bg', '#FFFFFF');
-  const cardBorder = getVal(`${moduleId}_el_process_step`, 'card_border', 'rgba(0,0,0,0.05)');
+  const cardBg = darkMode ? '#1E293B' : getVal(`${moduleId}_el_process_step`, 'card_bg', '#FFFFFF');
+  const cardBorder = darkMode ? 'rgba(255,255,255,0.1)' : getVal(`${moduleId}_el_process_step`, 'card_border', 'rgba(0,0,0,0.05)');
   const cardRadius = getVal(`${moduleId}_el_process_step`, 'card_radius', 24);
   const cardPadding = getVal(`${moduleId}_el_process_step`, 'card_padding', 32);
-  const stepTitleSize = getVal(`${moduleId}_el_process_step`, 'step_title_size', 20);
-  const stepDescSize = getVal(`${moduleId}_el_process_step`, 'step_desc_size', 15);
+  const stepTitleSize = getVal(`${moduleId}_el_process_step`, 'step_title_size', 't3');
+  const stepTitleWeight = getVal(`${moduleId}_el_process_step`, 'step_title_weight', 'bold');
+  const stepDescSize = getVal(`${moduleId}_el_process_step`, 'step_desc_size', 'p');
+  const stepTextAlign = getVal(`${moduleId}_el_process_step`, 'text_align', 'inherit');
   const hoverLift = getVal(`${moduleId}_el_process_step`, 'hover_lift', true);
 
   // Element: Indicator
-  const indicatorBg = getVal(`${moduleId}_el_process_indicator`, 'indicator_bg', 'var(--primary-color)');
+  const indicatorBg = getVal(`${moduleId}_el_process_indicator`, 'indicator_bg', '#3B82F6');
   const indicatorColor = getVal(`${moduleId}_el_process_indicator`, 'indicator_color', '#FFFFFF');
   const indicatorSize = getVal(`${moduleId}_el_process_indicator`, 'indicator_size', 48);
   const indicatorGlow = getVal(`${moduleId}_el_process_indicator`, 'indicator_glow', true);
+  const indicatorShape = getVal(`${moduleId}_el_process_indicator`, 'indicator_shape', 'circle');
   const useIcons = getVal(`${moduleId}_el_process_indicator`, 'use_icons', true);
-
-  const steps = getVal(null, 'steps', []);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -220,11 +281,24 @@ export const ProcessModule: React.FC<{
     5: '@md:grid-cols-5'
   }[columns as 2|3|4|5] || '@md:grid-cols-4';
 
+  const getTypographyStyle = (sizeToken: string, weightToken: string, alignToken?: string) => {
+    const size = TYPOGRAPHY_SCALE[sizeToken as keyof typeof TYPOGRAPHY_SCALE] || TYPOGRAPHY_SCALE.p;
+    const weight = FONT_WEIGHTS[weightToken as keyof typeof FONT_WEIGHTS] || FONT_WEIGHTS.normal;
+    
+    return {
+      fontSize: `${size.fontSize}px`,
+      lineHeight: size.lineHeight,
+      fontWeight: weight.value,
+      textAlign: (alignToken && alignToken !== 'inherit') ? alignToken : undefined
+    } as React.CSSProperties;
+  };
+
   return (
     <section 
       className="w-full relative overflow-hidden"
       style={{ 
         backgroundColor: bgColor,
+        backgroundImage: sectionGradient ? bgGradient : 'none',
         paddingTop: `${paddingY}px`,
         paddingBottom: `${paddingY}px`
       }}
@@ -232,22 +306,40 @@ export const ProcessModule: React.FC<{
       <div className="max-w-7xl mx-auto px-8">
         {/* Header */}
         <div 
-          className={`flex flex-col ${headerAlign === 'center' ? 'items-center text-center' : 'items-start text-left'}`}
+          className={`flex flex-col w-full ${headerAlign === 'center' ? 'items-center text-center' : headerAlign === 'right' ? 'items-end text-right' : 'items-start text-left'}`}
           style={{ marginBottom: `${headerMarginB}px` }}
         >
           {eyebrow && (
-            <span className="font-bold tracking-[0.3em] text-[10px] @md:text-xs uppercase mb-4 block" style={{ color: eyebrowColor }}>
+            <span 
+              className="text-[10px] font-bold tracking-[0.2em] uppercase mb-4 px-3 py-1 rounded-full"
+              style={{ 
+                color: headerEyebrowColor,
+                backgroundColor: headerEyebrowBg
+              }}
+            >
               {eyebrow}
             </span>
           )}
           <h2 
-            className="font-black leading-tight mb-6"
-            style={{ fontSize: `${headerTitleSize}px`, color: headerTitleColor }}
+            className="mb-6"
+            style={{ 
+              ...getTypographyStyle(headerTitleSize as any, headerTitleWeight, headerAlign),
+              color: headerTitleColor 
+            }}
           >
-            {headerTitle}
+            <TextRenderer 
+              text={headerTitle}
+              highlightType={getVal(`${moduleId}_el_process_header`, 'title_highlight_type', 'gradient')}
+              highlightColor={getVal(`${moduleId}_el_process_header`, 'title_highlight_color', '#3B82F6')}
+              highlightGradient={getVal(`${moduleId}_el_process_header`, 'title_highlight_gradient', 'linear-gradient(to right, #3B82F6, #2563EB)')}
+              highlightBold={getVal(`${moduleId}_el_process_header`, 'title_highlight_bold', true)}
+            />
           </h2>
           {headerSubtitle && (
-            <p className="text-slate-500 max-w-2xl text-base @md:text-lg">
+            <p 
+              className="max-w-2xl text-base @md:text-lg"
+              style={{ color: darkMode ? '#94A3B8' : '#64748B' }}
+            >
               {headerSubtitle}
             </p>
           )}
@@ -279,14 +371,18 @@ export const ProcessModule: React.FC<{
               indicatorColor={indicatorColor}
               indicatorSize={indicatorSize}
               indicatorGlow={indicatorGlow}
+              indicatorShape={indicatorShape}
               useIcons={useIcons}
               isLast={i === steps.length - 1}
               connectorStyle={connectorStyle}
               connectorColor={connectorColor}
               drawConnectors={drawConnectors}
               titleSize={stepTitleSize}
+              titleWeight={stepTitleWeight}
               descSize={stepDescSize}
+              textAlign={stepTextAlign}
               hoverGlow={hoverGlow}
+              darkMode={darkMode}
             />
           ))}
         </motion.div>

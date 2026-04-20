@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import * as LucideIcons from 'lucide-react';
 import { Check, X, ShieldCheck, Zap, Clock, CreditCard } from 'lucide-react';
+import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
+import { TextRenderer } from '../TextRenderer';
 
-const AnimatedPrice: React.FC<{ value: number, color: string, size: number, weight: string }> = ({ value, color, size, weight }) => {
+const AnimatedPrice: React.FC<{ value: number, color: string, size: string, weight: string }> = ({ value, color, size, weight }) => {
   const [displayValue, setDisplayValue] = useState(value);
 
   useEffect(() => {
@@ -30,11 +32,14 @@ const AnimatedPrice: React.FC<{ value: number, color: string, size: number, weig
     requestAnimationFrame(animate);
   }, [value]);
 
+  const fontSize = TYPOGRAPHY_SCALE[size as keyof typeof TYPOGRAPHY_SCALE]?.fontSize || 48;
+  const fontWeightValue = FONT_WEIGHTS[weight as keyof typeof FONT_WEIGHTS]?.value || 900;
+
   return (
     <span
       style={{ 
-        fontSize: `${size}px`, 
-        fontWeight: weight === 'black' ? 900 : 700,
+        fontSize: `${fontSize}px`, 
+        fontWeight: fontWeightValue,
         color: color 
       }}
     >
@@ -57,7 +62,10 @@ export const PricingModule: React.FC<{
   // Global Settings
   const columns = getVal(null, 'columns', 3);
   const gap = getVal(null, 'gap', 32);
-  const bgColor = getVal(null, 'bg_color', '#F8FAFC');
+  const darkMode = getVal(null, 'dark_mode', false);
+  const bgColor = darkMode ? '#0F172A' : getVal(null, 'bg_color', '#F8FAFC');
+  const sectionGradient = getVal(null, 'section_gradient', false);
+  const bgGradient = getVal(null, 'bg_gradient', 'linear-gradient(to bottom, #F8FAFC, #FFFFFF)');
   const entranceAnim = getVal(null, 'entrance_anim', true);
   const staggerAnim = getVal(null, 'stagger_anim', true);
   const layoutMode = getVal(null, 'layout_mode', 'grid'); // grid | comparison
@@ -65,15 +73,29 @@ export const PricingModule: React.FC<{
   // Element: Header
   const headerTitle = getVal(`${moduleId}_el_pricing_header`, 'title', 'Planes diseñados para tu éxito');
   const headerSubtitle = getVal(`${moduleId}_el_pricing_header`, 'subtitle', 'Elige el plan que mejor se adapte a tus necesidades actuales.');
+  const headerSubtitleSize = getVal(`${moduleId}_el_pricing_header`, 'subtitle_size', 'p');
+  const headerSubtitleWeight = getVal(`${moduleId}_el_pricing_header`, 'subtitle_weight', 'normal');
   const headerAlign = getVal(`${moduleId}_el_pricing_header`, 'align', 'center');
+  const headerTitleSize = getVal(`${moduleId}_el_pricing_header`, 'title_size', 't2');
+  const headerTitleWeight = getVal(`${moduleId}_el_pricing_header`, 'title_weight', 'bold');
   const headerMarginB = getVal(`${moduleId}_el_pricing_header`, 'margin_b', 60);
+
+  const titleHighlightType = getVal(`${moduleId}_el_pricing_header`, 'title_highlight_type', 'gradient');
+  const titleHighlightColor = getVal(`${moduleId}_el_pricing_header`, 'title_highlight_color', '#3B82F6');
+  const titleHighlightGradient = getVal(`${moduleId}_el_pricing_header`, 'title_highlight_gradient', 'linear-gradient(90deg, #3B82F6 0%, #8B5CF6 100%)');
+  const titleHighlightBold = getVal(`${moduleId}_el_pricing_header`, 'title_highlight_bold', true);
+
+  const subtitleHighlightType = getVal(`${moduleId}_el_pricing_header`, 'subtitle_highlight_type', 'none');
+  const subtitleHighlightColor = getVal(`${moduleId}_el_pricing_header`, 'subtitle_highlight_color', '#3B82F6');
+  const subtitleHighlightGradient = getVal(`${moduleId}_el_pricing_header`, 'subtitle_highlight_gradient', 'linear-gradient(90deg, #3B82F6 0%, #8B5CF6 100%)');
+  const subtitleHighlightBold = getVal(`${moduleId}_el_pricing_header`, 'subtitle_highlight_bold', true);
 
   // Element: Toggle
   const showToggle = getVal(`${moduleId}_el_pricing_toggle`, 'show_toggle', true);
   const discountLabel = getVal(`${moduleId}_el_pricing_toggle`, 'discount_label', '-20%');
-  const toggleBg = getVal(`${moduleId}_el_pricing_toggle`, 'toggle_bg', '#F1F5F9');
-  const activeBg = getVal(`${moduleId}_el_pricing_toggle`, 'active_bg', '#FFFFFF');
-  const activeColor = getVal(`${moduleId}_el_pricing_toggle`, 'active_color', '#0F172A');
+  const toggleBg = darkMode ? '#1E293B' : getVal(`${moduleId}_el_pricing_toggle`, 'toggle_bg', '#F1F5F9');
+  const activeBg = darkMode ? '#334155' : getVal(`${moduleId}_el_pricing_toggle`, 'active_bg', '#FFFFFF');
+  const activeColor = darkMode ? '#FFFFFF' : getVal(`${moduleId}_el_pricing_toggle`, 'active_color', '#0F172A');
 
   // Element: Card
   const cardBg = getVal(`${moduleId}_el_pricing_card`, 'card_bg', '#FFFFFF');
@@ -84,14 +106,15 @@ export const PricingModule: React.FC<{
   const glassMode = getVal(`${moduleId}_el_pricing_card`, 'glass_mode', false);
 
   // Element: Price
-  const priceSize = getVal(`${moduleId}_el_pricing_price`, 'price_size', 48);
+  const priceSize = getVal(`${moduleId}_el_pricing_price`, 'price_size', 't1');
   const priceWeight = getVal(`${moduleId}_el_pricing_price`, 'price_weight', 'black');
   const currencySymbol = getVal(`${moduleId}_el_pricing_price`, 'currency_symbol', '$');
-  const priceColor = getVal(`${moduleId}_el_pricing_price`, 'price_color', '#0F172A');
+  const priceColor = darkMode ? '#FFFFFF' : getVal(`${moduleId}_el_pricing_price`, 'price_color', '#0F172A');
 
   // Element: Features
-  const featSize = getVal(`${moduleId}_el_pricing_features`, 'feat_size', 14);
-  const featColor = getVal(`${moduleId}_el_pricing_features`, 'feat_color', '#475569');
+  const featSize = getVal(`${moduleId}_el_pricing_features`, 'feat_size', 'p');
+  const featWeight = getVal(`${moduleId}_el_pricing_features`, 'feat_weight', 'normal');
+  const featColor = darkMode ? '#94A3B8' : getVal(`${moduleId}_el_pricing_features`, 'feat_color', '#475569');
   const iconType = getVal(`${moduleId}_el_pricing_features`, 'icon_type', 'check');
   const iconColor = getVal(`${moduleId}_el_pricing_features`, 'icon_color', 'var(--primary-color)');
   const showNegative = getVal(`${moduleId}_el_pricing_features`, 'show_negative', true);
@@ -138,6 +161,18 @@ export const PricingModule: React.FC<{
     }
   ]);
 
+  const getTypographyStyle = (sizeToken: string, weightToken: string, alignToken?: string) => {
+    const size = TYPOGRAPHY_SCALE[sizeToken as keyof typeof TYPOGRAPHY_SCALE] || TYPOGRAPHY_SCALE.p;
+    const weight = FONT_WEIGHTS[weightToken as keyof typeof FONT_WEIGHTS] || FONT_WEIGHTS.normal;
+    
+    return {
+      fontSize: `${size.fontSize}px`,
+      lineHeight: size.lineHeight,
+      fontWeight: weight.value,
+      textAlign: (alignToken && alignToken !== 'inherit') ? alignToken : undefined
+    } as React.CSSProperties;
+  };
+
   const getIcon = (iconName: string, size = 20) => {
     const IconComp = (LucideIcons as any)[iconName] || (LucideIcons as any)[iconName.replace('Check', '')] || Check;
     return <IconComp size={size} />;
@@ -160,7 +195,8 @@ export const PricingModule: React.FC<{
     <section 
       className="w-full relative overflow-hidden py-12 @md:py-20 @lg:py-24"
       style={{ 
-        backgroundColor: bgColor
+        backgroundColor: bgColor,
+        backgroundImage: sectionGradient ? bgGradient : 'none'
       }}
     >
       <div className="max-w-7xl mx-auto px-8">
@@ -169,22 +205,37 @@ export const PricingModule: React.FC<{
           className={`mb-12 flex flex-col ${headerAlign === 'center' ? 'items-center text-center' : 'items-start text-left'}`}
           style={{ marginBottom: `${headerMarginB}px` }}
         >
-          <h2 className="font-black text-slate-900 mb-4 leading-tight text-3xl @md:text-4xl @lg:text-5xl">
-            {headerTitle}
+          <h2 
+            className="mb-4 leading-tight"
+            style={{ 
+              ...getTypographyStyle(headerTitleSize as any, headerTitleWeight, headerAlign),
+              color: darkMode ? '#FFFFFF' : '#0F172A'
+            }}
+          >
+            <TextRenderer 
+              text={headerTitle}
+              highlightType={getVal(`${moduleId}_el_pricing_header`, 'title_highlight_type', 'gradient')}
+              highlightColor={getVal(`${moduleId}_el_pricing_header`, 'title_highlight_color', '#3B82F6')}
+              highlightGradient={getVal(`${moduleId}_el_pricing_header`, 'title_highlight_gradient', 'linear-gradient(to right, #3B82F6, #2563EB)')}
+              highlightBold={getVal(`${moduleId}_el_pricing_header`, 'title_highlight_bold', true)}
+            />
           </h2>
-          <p className="text-slate-500 text-lg max-w-2xl leading-relaxed">
+          <p 
+            className="text-lg max-w-2xl leading-relaxed"
+            style={{ color: darkMode ? '#94A3B8' : '#64748B' }}
+          >
             {headerSubtitle}
           </p>
 
           {/* Toggle */}
           {showToggle && (
             <div 
-              className="mt-10 flex items-center p-1.5 rounded-2xl border border-slate-200/50 shadow-sm"
+              className={`mt-10 flex items-center p-1.5 rounded-2xl border shadow-sm ${darkMode ? 'border-white/10' : 'border-slate-200/50'}`}
               style={{ backgroundColor: toggleBg }}
             >
               <button 
                 onClick={() => setIsYearly(false)}
-                className={`px-8 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 ${!isYearly ? 'shadow-lg scale-105' : 'text-slate-500 hover:text-slate-700'}`}
+                className={`px-8 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 ${!isYearly ? 'shadow-lg scale-105' : (darkMode ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-700')}`}
                 style={{ 
                   backgroundColor: !isYearly ? activeBg : 'transparent',
                   color: !isYearly ? activeColor : undefined
@@ -194,7 +245,7 @@ export const PricingModule: React.FC<{
               </button>
               <button 
                 onClick={() => setIsYearly(true)}
-                className={`px-8 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 relative ${isYearly ? 'shadow-lg scale-105' : 'text-slate-500 hover:text-slate-700'}`}
+                className={`px-8 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 relative ${isYearly ? 'shadow-lg scale-105' : (darkMode ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-700')}`}
                 style={{ 
                   backgroundColor: isYearly ? activeBg : 'transparent',
                   color: isYearly ? activeColor : undefined
@@ -233,11 +284,11 @@ export const PricingModule: React.FC<{
                 whileHover={hoverEffect === 'lift' ? { y: -15 } : hoverEffect === 'glow' ? { boxShadow: `0 0 40px ${highlightColor}30` } : {}}
                 className={`relative flex flex-col h-full transition-all duration-500 group p-6 @md:p-10 ${plan.highlight ? 'z-10' : 'z-1'}`}
                 style={{
-                  backgroundColor: glassMode ? 'rgba(255,255,255,0.7)' : cardBg,
+                  backgroundColor: glassMode ? (darkMode ? 'rgba(30,41,59,0.7)' : 'rgba(255,255,255,0.7)') : (darkMode ? '#1E293B' : cardBg),
                   backdropFilter: glassMode ? 'blur(12px)' : 'none',
                   borderRadius: `${cardRadius}px`,
-                  boxShadow: showShadow ? (plan.highlight ? `0 25px 60px -15px ${highlightColor}25` : '0 10px 40px -10px rgba(0,0,0,0.04)') : 'none',
-                  border: plan.highlight ? `2px solid ${highlightColor}` : '1px solid rgba(0,0,0,0.08)',
+                  boxShadow: showShadow && !darkMode ? (plan.highlight ? `0 25px 60px -15px ${highlightColor}25` : '0 10px 40px -10px rgba(0,0,0,0.04)') : 'none',
+                  border: plan.highlight ? `2px solid ${highlightColor}` : (darkMode ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.08)'),
                 }}
               >
                 {plan.badge && (
@@ -256,19 +307,44 @@ export const PricingModule: React.FC<{
                   >
                     {getIcon(plan.icon, 28)}
                   </div>
-                  <h3 className="text-2xl font-black text-slate-900 mb-2">{plan.name}</h3>
-                  <p className="text-slate-500 text-sm leading-relaxed">{plan.description}</p>
+                  <h3 
+                    className="text-2xl font-black mb-2"
+                    style={{ color: darkMode ? '#FFFFFF' : '#0F172A' }}
+                  >
+                    {plan.name}
+                  </h3>
+                  <p 
+                    className="text-sm leading-relaxed"
+                    style={{ color: darkMode ? '#94A3B8' : '#64748B' }}
+                  >
+                    {plan.description}
+                  </p>
                 </div>
 
                 <div className="mb-8 flex items-baseline gap-1.5">
-                  <span className="text-2xl font-bold text-slate-400">{currencySymbol}</span>
+                  <span 
+                    className="text-slate-400" 
+                    style={{ 
+                      fontSize: `${(TYPOGRAPHY_SCALE[priceSize as keyof typeof TYPOGRAPHY_SCALE]?.fontSize || 48) * 0.5}px`,
+                      fontWeight: FONT_WEIGHTS[priceWeight as keyof typeof FONT_WEIGHTS]?.value || 800 
+                    }}
+                  >
+                    {currencySymbol}
+                  </span>
                   <AnimatedPrice 
                     value={isYearly ? plan.yearlyPrice : plan.monthlyPrice} 
                     color={priceColor} 
                     size={priceSize} 
                     weight={priceWeight} 
                   />
-                  <span className="text-slate-400 font-bold text-sm">/mes</span>
+                  <span 
+                    className="text-slate-400 font-bold"
+                    style={{
+                      fontSize: `${Math.max(14, (TYPOGRAPHY_SCALE[priceSize as keyof typeof TYPOGRAPHY_SCALE]?.fontSize || 48) * 0.3)}px`
+                    }}
+                  >
+                    /mes
+                  </span>
                 </div>
 
                 <div className="flex-1 space-y-5 mb-10">
@@ -290,8 +366,12 @@ export const PricingModule: React.FC<{
                           {isNegative ? <X size={12} /> : getIcon(iconType, 12)}
                         </div>
                         <span 
-                          className={`font-medium leading-tight ${isNegative ? 'line-through' : ''}`}
-                          style={{ fontSize: `${featSize}px`, color: featColor }}
+                          className={`leading-tight ${isNegative ? 'line-through' : ''}`}
+                          style={{ 
+                            fontSize: `${TYPOGRAPHY_SCALE[featSize as keyof typeof TYPOGRAPHY_SCALE]?.fontSize || 14}px`,
+                            fontWeight: FONT_WEIGHTS[featWeight as keyof typeof FONT_WEIGHTS]?.value || 400,
+                            color: featColor 
+                          }}
                         >
                           {cleanFeature}
                         </span>
@@ -300,19 +380,24 @@ export const PricingModule: React.FC<{
                   })}
                 </div>
 
-                <button 
-                  className="w-full py-4 rounded-2xl font-black text-sm transition-all active:scale-95 overflow-hidden relative group/btn"
-                  style={{ 
-                    backgroundColor: plan.highlight ? highlightColor : '#F1F5F9',
-                    color: plan.highlight ? '#FFFFFF' : '#0F172A',
-                    boxShadow: plan.highlight ? `0 15px 30px -8px ${highlightColor}40` : 'none'
-                  }}
-                >
-                  <span className="relative z-10">{plan.cta}</span>
-                  {plan.highlight && (
-                    <div className="absolute inset-0 bg-white/20 translate-y-full group-hover/btn:translate-y-0 transition-transform duration-300" />
-                  )}
-                </button>
+                {plan.cta && plan.cta_url && plan.cta_url !== '#' && (
+                  <a 
+                    href={plan.cta_url}
+                    target={plan.cta_target === '_blank' ? '_blank' : '_self'}
+                    rel={plan.cta_target === '_blank' ? 'noopener noreferrer' : undefined}
+                    className="w-full py-4 rounded-2xl font-black text-sm transition-all active:scale-95 overflow-hidden relative group/btn text-center block"
+                    style={{ 
+                      backgroundColor: plan.highlight ? highlightColor : (darkMode ? '#334155' : '#F1F5F9'),
+                      color: plan.highlight ? '#FFFFFF' : (darkMode ? '#FFFFFF' : '#0F172A'),
+                      boxShadow: plan.highlight ? `0 15px 30px -8px ${highlightColor}40` : 'none'
+                    }}
+                  >
+                    <span className="relative z-10">{plan.cta}</span>
+                    {plan.highlight && (
+                      <div className="absolute inset-0 bg-white/20 translate-y-full group-hover/btn:translate-y-0 transition-transform duration-300" />
+                    )}
+                  </a>
+                )}
               </motion.div>
             );
           })}
@@ -324,11 +409,11 @@ export const PricingModule: React.FC<{
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="mt-16 pt-12 border-t border-slate-200/60 flex flex-wrap justify-center gap-x-12 gap-y-6"
+            className={`mt-16 pt-12 border-t flex flex-wrap justify-center gap-x-12 gap-y-6 ${darkMode ? 'border-white/10' : 'border-slate-200/60'}`}
           >
             {trustItems.map((item: any, idx: number) => (
-              <div key={idx} className="flex items-center gap-3 text-slate-400 hover:text-slate-600 transition-colors group">
-                <div className="text-slate-300 group-hover:text-primary transition-colors">
+              <div key={idx} className={`flex items-center gap-3 transition-colors group ${darkMode ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-600'}`}>
+                <div className={`transition-colors ${darkMode ? 'text-slate-600 group-hover:text-primary' : 'text-slate-300 group-hover:text-primary'}`}>
                   {getIcon(item.icon, 20)}
                 </div>
                 <span className="text-sm font-bold tracking-wide uppercase">{item.text}</span>

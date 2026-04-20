@@ -1,6 +1,8 @@
 import React, { useState, useRef, useMemo } from 'react';
 import { motion, AnimatePresence, useScroll, useTransform } from 'motion/react';
 import { Play, X, Maximize2, ArrowRight } from 'lucide-react';
+import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
+import { TextRenderer } from '../TextRenderer';
 
 export const VideoModule: React.FC<{ 
   moduleId: string, 
@@ -27,7 +29,10 @@ export const VideoModule: React.FC<{
   const aspectRatio = getVal(null, 'aspect_ratio', '16/9');
   const paddingY = getVal(null, 'padding_y', 100);
   const maxWidth = getVal(null, 'max_width', 1000);
-  const bgColor = getVal(null, 'bg_color', '#FFFFFF');
+  const darkMode = getVal(null, 'dark_mode', false);
+  const bgColor = darkMode ? '#0F172A' : getVal(null, 'bg_color', '#FFFFFF');
+  const sectionGradient = getVal(null, 'section_gradient', false);
+  const bgGradient = getVal(null, 'bg_gradient', 'linear-gradient(to bottom, #FFFFFF, #F8FAFC)');
   const overlayColor = getVal(null, 'overlay_color', 'rgba(0,0,0,0.2)');
   const videoFilter = getVal(null, 'video_filter', 'none');
   const entranceAnim = getVal(null, 'entrance_anim', true);
@@ -43,7 +48,7 @@ export const VideoModule: React.FC<{
   const controls = getVal(`${moduleId}_el_video_player`, 'controls', true);
   const radius = getVal(`${moduleId}_el_video_player`, 'radius', 24);
   const shadow = getVal(`${moduleId}_el_video_player`, 'shadow', true);
-  const borderColor = getVal(`${moduleId}_el_video_player`, 'border_color', 'rgba(0,0,0,0.1)');
+  const borderColor = darkMode ? 'rgba(255,255,255,0.1)' : getVal(`${moduleId}_el_video_player`, 'border_color', 'rgba(0,0,0,0.1)');
   const useLightbox = getVal(`${moduleId}_el_video_player`, 'lightbox', false);
   const playButtonStyle = getVal(`${moduleId}_el_video_player`, 'play_button_style', 'pulse');
 
@@ -54,10 +59,23 @@ export const VideoModule: React.FC<{
   const subtitle = getVal(`${moduleId}_el_video_text`, 'subtitle', 'Un recorrido visual por lo que nos hace únicos.');
   const ctaText = getVal(`${moduleId}_el_video_text`, 'cta_text', '');
   const textAlign = getVal(`${moduleId}_el_video_text`, 'align', 'center');
-  const titleSize = getVal(`${moduleId}_el_video_text`, 'title_size', 40);
-  const titleColor = getVal(`${moduleId}_el_video_text`, 'title_color', '#0F172A');
+  const titleSize = getVal(`${moduleId}_el_video_text`, 'title_size', 't2');
+  const titleWeight = getVal(`${moduleId}_el_video_text`, 'title_weight', 'bold');
+  const subtitleSize = getVal(`${moduleId}_el_video_text`, 'subtitle_size', 'p');
+  const subtitleWeight = getVal(`${moduleId}_el_video_text`, 'subtitle_weight', 'normal');
+  const titleColor = darkMode ? '#FFFFFF' : getVal(`${moduleId}_el_video_text`, 'title_color', '#0F172A');
   const eyebrowColor = getVal(`${moduleId}_el_video_text`, 'eyebrow_color', 'var(--primary-color)');
   const marginB = getVal(`${moduleId}_el_video_text`, 'margin_b', 40);
+
+  const titleHighlightType = getVal(`${moduleId}_el_video_text`, 'title_highlight_type', 'gradient');
+  const titleHighlightColor = getVal(`${moduleId}_el_video_text`, 'title_highlight_color', '#3B82F6');
+  const titleHighlightGradient = getVal(`${moduleId}_el_video_text`, 'title_highlight_gradient', 'linear-gradient(to right, #3B82F6, #2563EB)');
+  const titleHighlightBold = getVal(`${moduleId}_el_video_text`, 'title_highlight_bold', true);
+
+  const subtitleHighlightType = getVal(`${moduleId}_el_video_text`, 'subtitle_highlight_type', 'none');
+  const subtitleHighlightColor = getVal(`${moduleId}_el_video_text`, 'subtitle_highlight_color', '#3B82F6');
+  const subtitleHighlightGradient = getVal(`${moduleId}_el_video_text`, 'subtitle_highlight_gradient', 'linear-gradient(to right, #3B82F6, #2563EB)');
+  const subtitleHighlightBold = getVal(`${moduleId}_el_video_text`, 'subtitle_highlight_bold', true);
 
   const y = useTransform(scrollYProgress, [0, 1], [0, parallaxEffect ? 100 : 0]);
 
@@ -172,11 +190,11 @@ export const VideoModule: React.FC<{
   const renderTextContent = (isOverlay = false) => {
     if (!showText) return null;
     const colorClass = isOverlay ? 'text-white' : '';
-    const subColorClass = isOverlay ? 'text-white/80' : 'text-slate-500';
+    const subColorClass = isOverlay ? 'text-white/80' : (darkMode ? 'text-slate-400' : 'text-slate-500');
 
     return (
       <div 
-        className={`flex flex-col ${textAlign === 'center' ? 'items-center text-center' : 'items-start text-left'}`}
+        className={`flex flex-col w-full ${textAlign === 'center' ? 'items-center text-center' : textAlign === 'right' ? 'items-end text-right' : 'items-start text-left'}`}
         style={{ marginBottom: isOverlay ? 0 : `${marginB}px` }}
       >
         {eyebrow && (
@@ -188,14 +206,32 @@ export const VideoModule: React.FC<{
           </span>
         )}
         <h2 
-          className={`font-black leading-tight mb-4 ${colorClass}`}
-          style={{ fontSize: `${titleSize}px`, color: isOverlay ? 'white' : titleColor }}
+          className={`leading-tight mb-4 ${colorClass}`}
+          style={{ 
+            ...getTypographyStyle(titleSize as any, titleWeight, textAlign),
+            color: isOverlay ? 'white' : titleColor 
+          }}
         >
-          {title}
+          <TextRenderer 
+            text={title}
+            highlightType={titleHighlightType}
+            highlightColor={titleHighlightColor}
+            highlightGradient={titleHighlightGradient}
+            highlightBold={titleHighlightBold}
+          />
         </h2>
         {subtitle && (
-          <p className={`max-w-2xl text-lg mb-8 ${subColorClass}`}>
-            {subtitle}
+          <p 
+            className={`max-w-2xl text-lg mb-8 ${subColorClass}`}
+            style={getTypographyStyle(subtitleSize as any, subtitleWeight, textAlign)}
+          >
+            <TextRenderer 
+              text={subtitle}
+              highlightType={subtitleHighlightType}
+              highlightColor={subtitleHighlightColor}
+              highlightGradient={subtitleHighlightGradient}
+              highlightBold={subtitleHighlightBold}
+            />
           </p>
         )}
         {ctaText && (
@@ -217,7 +253,9 @@ export const VideoModule: React.FC<{
         y,
         borderRadius: maskShape === 'circle' ? '50%' : `${radius}px`,
         paddingBottom: getAspectRatioPadding(aspectRatio),
-        border: `1px solid ${borderColor}`
+        borderWidth: '1px',
+        borderStyle: 'solid',
+        borderColor: borderColor
       }}
     >
       {/* Poster Overlay */}
@@ -265,12 +303,25 @@ export const VideoModule: React.FC<{
     );
   }
 
+  const getTypographyStyle = (sizeToken: string, weightToken: string, alignToken?: string) => {
+    const size = TYPOGRAPHY_SCALE[sizeToken as keyof typeof TYPOGRAPHY_SCALE] || TYPOGRAPHY_SCALE.p;
+    const weight = FONT_WEIGHTS[weightToken as keyof typeof FONT_WEIGHTS] || FONT_WEIGHTS.normal;
+    
+    return {
+      fontSize: `${size.fontSize}px`,
+      lineHeight: size.lineHeight,
+      fontWeight: weight.value,
+      textAlign: (alignToken && alignToken !== 'inherit') ? alignToken : undefined
+    } as React.CSSProperties;
+  };
+
   return (
     <section 
       ref={containerRef}
       className="w-full relative overflow-hidden @container"
       style={{ 
         backgroundColor: bgColor,
+        backgroundImage: sectionGradient ? bgGradient : 'none',
         paddingTop: `${paddingY}px`,
         paddingBottom: `${paddingY}px`
       }}

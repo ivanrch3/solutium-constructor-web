@@ -1,6 +1,8 @@
 import React from 'react';
 import { motion, useScroll, useTransform } from 'motion/react';
 import * as LucideIcons from 'lucide-react';
+import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
+import { TextRenderer } from '../TextRenderer';
 
 export const AboutModule: React.FC<{ 
   moduleId: string, 
@@ -21,7 +23,10 @@ export const AboutModule: React.FC<{
   const layout = getVal(null, 'layout', 'split_right');
   const paddingY = getVal(null, 'padding_y', 120);
   const contentWidth = getVal(null, 'content_width', 1200);
-  const bgColor = getVal(null, 'bg_color', '#FFFFFF');
+  const darkMode = getVal(null, 'dark_mode', false);
+  const bgColor = darkMode ? '#0F172A' : getVal(null, 'bg_color', '#FFFFFF');
+  const sectionGradient = getVal(null, 'section_gradient', false);
+  const bgGradient = getVal(null, 'bg_gradient', 'linear-gradient(to bottom, #FFFFFF, #F8FAFC)');
   const entranceAnim = getVal(null, 'entrance_anim', true);
   const showDecor = getVal(null, 'show_decor', true);
 
@@ -32,13 +37,19 @@ export const AboutModule: React.FC<{
   const quote = getVal(`${moduleId}_el_about_narrative`, 'quote', '');
   const signatureUrl = getVal(`${moduleId}_el_about_narrative`, 'signature_url', '');
   const buttonText = getVal(`${moduleId}_el_about_narrative`, 'button_text', 'Saber más');
-  const buttonLink = getVal(`${moduleId}_el_about_narrative`, 'button_link', '#');
+  const buttonType = getVal(`${moduleId}_el_about_narrative`, 'button_link_type', 'external');
+  const buttonUrl = getVal(`${moduleId}_el_about_narrative`, 'button_url', '');
+  const buttonTarget = getVal(`${moduleId}_el_about_narrative`, 'button_target', '_self');
   
-  const titleSize = getVal(`${moduleId}_el_about_narrative`, 'title_size', 48);
-  const titleColor = getVal(`${moduleId}_el_about_narrative`, 'title_color', '#0F172A');
+  const hasLink = buttonUrl && buttonUrl !== '#' && buttonUrl !== '';
+  const titleSize = getVal(`${moduleId}_el_about_narrative`, 'title_size', 't2');
+  const titleWeight = getVal(`${moduleId}_el_about_narrative`, 'title_weight', 'bold');
+  const titleColor = darkMode ? '#FFFFFF' : getVal(`${moduleId}_el_about_narrative`, 'title_color', '#0F172A');
   const eyebrowColor = getVal(`${moduleId}_el_about_narrative`, 'eyebrow_color', 'var(--primary-color)');
-  const descSize = getVal(`${moduleId}_el_about_narrative`, 'desc_size', 18);
+  const descSize = getVal(`${moduleId}_el_about_narrative`, 'desc_size', 'p');
+  const descWeight = getVal(`${moduleId}_el_about_narrative`, 'desc_weight', 'normal');
   const textAlign = getVal(`${moduleId}_el_about_narrative`, 'align', 'left');
+  const narrativeMarginB = getVal(`${moduleId}_el_about_narrative`, 'margin_b', 40);
 
   // Element: Visual
   const imageUrl = getVal(`${moduleId}_el_about_visual`, 'image_url', 'https://picsum.photos/seed/about/800/600');
@@ -101,15 +112,27 @@ export const AboutModule: React.FC<{
       )}
       <motion.h2 
         variants={entranceAnim ? itemVariants : {}}
-        className="font-black leading-[1.1] mb-8"
-        style={{ fontSize: `${titleSize}px`, color: titleColor }}
+        className="mb-8"
+        style={{ 
+          ...getTypographyStyle(titleSize as any, titleWeight, textAlign),
+          color: titleColor 
+        }}
       >
-        {title}
+        <TextRenderer 
+          text={title}
+          highlightType={getVal(`${moduleId}_el_about_narrative`, 'title_highlight_type', 'gradient')}
+          highlightColor={getVal(`${moduleId}_el_about_narrative`, 'title_highlight_color', '#3B82F6')}
+          highlightGradient={getVal(`${moduleId}_el_about_narrative`, 'title_highlight_gradient', 'linear-gradient(to right, #3B82F6, #2563EB)')}
+          highlightBold={getVal(`${moduleId}_el_about_narrative`, 'title_highlight_bold', true)}
+        />
       </motion.h2>
       <motion.p 
         variants={entranceAnim ? itemVariants : {}}
-        className="text-slate-500 leading-relaxed mb-10 max-w-xl"
-        style={{ fontSize: `${descSize}px` }}
+        className="leading-relaxed mb-10 max-w-xl"
+        style={{ 
+          ...getTypographyStyle(descSize as any, descWeight, textAlign),
+          color: darkMode ? '#94A3B8' : '#64748B'
+        }}
       >
         {description}
       </motion.p>
@@ -117,7 +140,7 @@ export const AboutModule: React.FC<{
       {quote && (
         <motion.div 
           variants={entranceAnim ? itemVariants : {}}
-          className="border-l-4 border-primary/30 pl-6 py-2 mb-10 italic text-slate-600 text-lg @md:text-xl font-serif"
+          className={`border-l-4 border-primary/30 pl-6 py-2 mb-10 italic text-lg @md:text-xl font-serif ${darkMode ? 'text-slate-300' : 'text-slate-600'}`}
         >
           "{quote}"
         </motion.div>
@@ -126,11 +149,14 @@ export const AboutModule: React.FC<{
       {(buttonText || signatureUrl) && (
         <motion.div 
           variants={entranceAnim ? itemVariants : {}}
-          className="flex flex-wrap items-center gap-8 mb-12"
+          className="flex flex-wrap items-center gap-8"
+          style={{ marginBottom: `${narrativeMarginB}px` }}
         >
-          {buttonText && (
+          {buttonText && hasLink && (
             <a 
-              href={buttonLink}
+              href={buttonUrl}
+              target={buttonTarget === '_blank' ? '_blank' : '_self'}
+              rel={buttonTarget === '_blank' ? 'noopener noreferrer' : undefined}
               className="px-8 py-4 bg-primary text-white font-bold rounded-full hover:scale-105 transition-transform shadow-lg shadow-primary/20"
             >
               {buttonText}
@@ -152,7 +178,7 @@ export const AboutModule: React.FC<{
           variants={entranceAnim ? itemVariants : {}}
           className="grid gap-8 w-full p-8 rounded-3xl"
           style={{ 
-            backgroundColor: statBg,
+            backgroundColor: darkMode ? '#1E293B' : statBg,
             gridTemplateColumns: `repeat(${statColumns}, minmax(0, 1fr))` 
           }}
         >
@@ -214,12 +240,25 @@ export const AboutModule: React.FC<{
     </motion.div>
   );
 
+  const getTypographyStyle = (sizeToken: string, weightToken: string, alignToken?: string) => {
+    const size = TYPOGRAPHY_SCALE[sizeToken as keyof typeof TYPOGRAPHY_SCALE] || TYPOGRAPHY_SCALE.p;
+    const weight = FONT_WEIGHTS[weightToken as keyof typeof FONT_WEIGHTS] || FONT_WEIGHTS.normal;
+    
+    return {
+      fontSize: `${size.fontSize}px`,
+      lineHeight: size.lineHeight,
+      fontWeight: weight.value,
+      textAlign: (alignToken && alignToken !== 'inherit') ? alignToken : undefined
+    } as React.CSSProperties;
+  };
+
   return (
     <section 
       ref={containerRef}
       className="w-full relative overflow-hidden"
       style={{ 
         backgroundColor: bgColor,
+        backgroundImage: sectionGradient ? bgGradient : 'none',
         paddingTop: `${paddingY}px`,
         paddingBottom: `${paddingY}px`
       }}
@@ -249,7 +288,9 @@ export const AboutModule: React.FC<{
             <div className="@lg:col-span-7 relative z-10">
               {renderVisual()}
             </div>
-            <div className="@lg:col-span-6 @lg:-ml-24 relative z-20 bg-white/80 backdrop-blur-md p-8 @md:p-12 rounded-[40px] shadow-2xl shadow-black/5">
+            <div 
+              className={`@lg:col-span-6 @lg:-ml-24 relative z-20 backdrop-blur-md p-8 @md:p-12 rounded-[40px] shadow-2xl shadow-black/5 ${darkMode ? 'bg-slate-800/80' : 'bg-white/80'}`}
+            >
               {renderNarrative()}
             </div>
           </div>

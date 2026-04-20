@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap');
 @import "tailwindcss";
 
 @theme {
@@ -15,6 +16,7 @@
   --color-sidebar-border: var(--sidebar-border, rgba(255, 255, 255, 0.1));
   
   --font-sans: var(--solutium-font, "Inter", sans-serif);
+  --font-heading: var(--font-heading, var(--font-sans));
   --radius-lg: var(--radius, 0.75rem);
   
   /* Contraste Crítico */
@@ -48,7 +50,7 @@ body {
   color: #FFFFFF;
   padding: 0.625rem 1.25rem;
   border-radius: var(--radius-lg);
-  font-weight: 700;
+  font-weight: 800;
   transition: all 0.2s ease-in-out;
   box-shadow: 0 4px 12px -2px color-mix(in srgb, var(--color-primary, #3B82F6), transparent 80%);
 }
@@ -62,4 +64,45 @@ body {
 .btn-primary:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* Máscaras Especiales */
+.mask-blob {
+  mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='%23FF0066' d='M44.7,-76.4C58.2,-69.2,70.1,-58.5,77.4,-45.3C84.7,-32.1,87.3,-16,85.9,-0.8C84.5,14.3,78.9,28.7,71.1,41.2C63.3,53.7,53.2,64.4,40.7,72.4C28.2,80.4,14.1,85.7,-0.7,86.9C-15.5,88.1,-31.1,85.2,-44.6,77.7C-58.1,70.2,-69.6,58.1,-76.9,44.2C-84.3,30.3,-87.5,14.7,-87.5,-0.1L-87.5,-0.1C-87.6,-14.9,-84.6,-29.6,-77.2,-43.3C-69.8,-57,-58.1,-69.7,-44.4,-76.7C-30.7,-83.7,-15.4,-85.1,-0.1,-85C15.1,-85,31.2,-83.6,44.7,-76.4Z' transform='translate(100 100)' /%3E%3C/svg%3E");
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+}
+
+/* React Grid Layout */
+.react-grid-placeholder {
+  @apply bg-primary/10 border-2 border-dashed border-primary !rounded-[28px] opacity-50 z-[-1] !transition-none;
+}
+
+.react-resizable-handle {
+  @apply absolute bottom-2 right-2 w-6 h-6 cursor-se-resize bg-surface border border-border shadow-sm rounded-lg flex items-center justify-center after:content-[''] after:w-1 after:h-1 after:bg-text/40 after:shadow-[3px_-3px_0_var(--color-text),0px_-3px_0_var(--color-text),3px_0px_0_var(--color-text)] transition-all hover:scale-110 active:scale-95 z-50;
+}
+
+.bento-dragging .react-grid-item {
+  @apply transition-none;
+}
+
+.bento-dragging .react-grid-placeholder {
+  @apply bg-primary/20 border-2 border-dashed border-primary !rounded-[28px] !opacity-60;
+}
+
+.react-grid-item.dropping-item {
+  @apply bg-primary/10 border-2 border-primary !rounded-[28px] flex items-center justify-center;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  @apply bg-slate-400/20 rounded-full hover:bg-slate-400/40 transition-colors;
 }

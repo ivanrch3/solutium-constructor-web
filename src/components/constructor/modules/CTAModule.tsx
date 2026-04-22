@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence, useScroll } from 'motion/react';
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import * as LucideIcons from 'lucide-react';
 import { 
   ArrowRight, 
@@ -14,8 +14,6 @@ import {
 } from 'lucide-react';
 import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
 import { TextRenderer } from '../TextRenderer';
-import { ParallaxBackground } from '../ParallaxBackground';
-import { parseNumSafe } from '../utils';
 
 export const CTAModule: React.FC<{ 
   moduleId: string, 
@@ -25,12 +23,6 @@ export const CTAModule: React.FC<{
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
   
-  const containerRef = useRef(null);
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start end", "end start"]
-  });
-
   const getVal = (elementId: string | null, settingId: string, defaultValue: any) => {
     const key = elementId ? `${elementId}_${settingId}` : `${moduleId}_global_${settingId}`;
     return settingsValues[key] !== undefined ? settingsValues[key] : defaultValue;
@@ -38,14 +30,14 @@ export const CTAModule: React.FC<{
 
   // Global Settings
   const layout = getVal(null, 'layout', 'centered');
-  const maxWidth = parseNumSafe(getVal(null, 'max_width', 1000), 1000);
-  const paddingY = parseNumSafe(getVal(null, 'padding_y', 100), 100);
+  const maxWidth = getVal(null, 'max_width', 1000);
+  const paddingY = getVal(null, 'padding_y', 100);
   const bgType = getVal(null, 'bg_type', 'color');
   const darkMode = getVal(null, 'dark_mode', false);
   const bgColor = darkMode ? '#0F172A' : getVal(null, 'bg_color', '#FFFFFF');
   const bgGradient = getVal(null, 'bg_gradient', 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)');
   const bgVideo = getVal(null, 'bg_video', '');
-  const overlayOpacity = parseNumSafe(getVal(null, 'overlay_opacity', 50), 50) / 100;
+  const overlayOpacity = getVal(null, 'overlay_opacity', 50) / 100;
   const entranceAnim = getVal(null, 'entrance_anim', true);
   const enableShimmer = getVal(null, 'enable_shimmer', true);
   const magneticButton = getVal(null, 'magnetic_button', false);
@@ -54,13 +46,6 @@ export const CTAModule: React.FC<{
   const floatingIcon2 = getVal(null, 'floating_icon_2', 'Zap');
   const enableCountdown = getVal(null, 'enable_countdown', false);
   const countdownDate = getVal(null, 'countdown_date', '2026-12-31');
-
-  // Multimedia (Parallax Background)
-  const bgParallaxEnabled = getVal(null, 'bg_parallax_enabled', false);
-  const bgParallaxImg = getVal(null, 'bg_parallax_img', '');
-  const bgParallaxOpacity = parseNumSafe(getVal(null, 'bg_parallax_opacity', 20), 20);
-  const bgParallaxOverlay = getVal(null, 'bg_parallax_overlay', '#000000');
-  const bgParallaxSpeed = parseNumSafe(getVal(null, 'bg_parallax_speed', 100), 100);
 
   // Element: Content
   const title = getVal(`${moduleId}_el_cta_content`, 'title', '¿Listo para transformar tu negocio?');
@@ -72,7 +57,7 @@ export const CTAModule: React.FC<{
   const textAlign = getVal(`${moduleId}_el_cta_content`, 'text_align', 'center');
   const titleColor = getVal(`${moduleId}_el_cta_content`, 'title_color', darkMode ? '#FFFFFF' : '#0F172A');
   const subtitleColor = getVal(`${moduleId}_el_cta_content`, 'subtitle_color', darkMode ? '#94A3B8' : '#475569');
-  const marginB = parseNumSafe(getVal(`${moduleId}_el_cta_content`, 'margin_b', 40), 40);
+  const marginB = getVal(`${moduleId}_el_cta_content`, 'margin_b', 40);
 
   // Highlight Settings
   const titleHighlightType = getVal(`${moduleId}_el_cta_content`, 'title_highlight_type', 'gradient');
@@ -104,13 +89,13 @@ export const CTAModule: React.FC<{
   const showSecondary = getVal(`${moduleId}_el_cta_actions`, 'show_secondary', true);
   const btnPrimaryBg = getVal(`${moduleId}_el_cta_actions`, 'btn_primary_bg', 'var(--primary-color)');
   const btnPrimaryColor = getVal(`${moduleId}_el_cta_actions`, 'btn_primary_color', '#FFFFFF');
-  const btnRadius = parseNumSafe(getVal(`${moduleId}_el_cta_actions`, 'btn_radius', 16), 16);
+  const btnRadius = getVal(`${moduleId}_el_cta_actions`, 'btn_radius', 16);
   const hoverEffect = getVal(`${moduleId}_el_cta_actions`, 'hover_effect', 'scale');
 
   // Element: Trust
   const showTrust = getVal(`${moduleId}_el_cta_trust`, 'show_trust', true);
   const trustText = getVal(`${moduleId}_el_cta_trust`, 'trust_text', 'Únete a +5,000 usuarios activos');
-  const trustSize = parseNumSafe(getVal(`${moduleId}_el_cta_trust`, 'trust_size', 14), 14);
+  const trustSize = getVal(`${moduleId}_el_cta_trust`, 'trust_size', 14);
   const trustColor = darkMode ? '#94A3B8' : getVal(`${moduleId}_el_cta_trust`, 'trust_color', '#64748B');
   const showAvatars = getVal(`${moduleId}_el_cta_trust`, 'show_avatars', true);
   const showLogos = getVal(`${moduleId}_el_cta_trust`, 'show_logos', false);
@@ -146,10 +131,7 @@ export const CTAModule: React.FC<{
   };
 
   if (bgType === 'color') bgStyle.backgroundColor = bgColor;
-  if (bgType === 'gradient') {
-    const isSafe = typeof bgGradient === 'string' && !bgGradient.includes('NaN');
-    bgStyle.backgroundImage = isSafe ? bgGradient : 'none';
-  }
+  if (bgType === 'gradient') bgStyle.backgroundImage = bgGradient;
   if (bgType === 'image') {
     bgStyle.backgroundImage = `url('https://picsum.photos/seed/cta/1920/1080')`;
     bgStyle.backgroundSize = 'cover';
@@ -382,19 +364,7 @@ export const CTAModule: React.FC<{
   };
 
   return (
-    <section 
-      ref={containerRef}
-      className="w-full relative overflow-hidden py-12 @md:py-20 @lg:py-24" 
-      style={bgStyle}
-    >
-      <ParallaxBackground 
-        scrollYProgress={scrollYProgress}
-        enabled={bgParallaxEnabled}
-        imageUrl={bgParallaxImg}
-        opacity={bgParallaxOpacity}
-        overlayColor={bgParallaxOverlay}
-        speed={bgParallaxSpeed}
-      />
+    <section className="w-full relative overflow-hidden py-12 @md:py-20 @lg:py-24" style={bgStyle}>
       {bgType === 'video' && bgVideo && (
         <video 
           autoPlay 

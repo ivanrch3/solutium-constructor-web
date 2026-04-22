@@ -4,7 +4,6 @@ import {
   Eye, 
   Monitor, 
   Tablet, 
-  Smartphone, 
   Maximize, 
   Check, 
   X, 
@@ -16,7 +15,7 @@ import { motion } from 'motion/react';
 interface TopBarProps {
   onSave: () => void;
   onPublish: () => void;
-  onReload: () => void;
+  onPreview: () => void;
   logoUrl: string | null;
   viewport: 'desktop' | 'tablet' | 'mobile';
   setViewport: (v: 'desktop' | 'tablet' | 'mobile') => void;
@@ -31,7 +30,7 @@ interface TopBarProps {
 export const TopBar: React.FC<TopBarProps> = ({ 
   onSave, 
   onPublish, 
-  onReload,
+  onPreview,
   logoUrl,
   viewport,
   setViewport,
@@ -44,6 +43,14 @@ export const TopBar: React.FC<TopBarProps> = ({
 }) => (
   <div className={`bg-surface border-b border-border/60 flex items-center justify-between px-4 md:px-6 z-20 ${isMobile ? 'h-[70px]' : 'h-[60px]'}`}>
     <div className="flex items-center gap-3 md:gap-4">
+      {logoUrl && !isMobile && (
+        <img 
+          src={logoUrl} 
+          alt="Logo" 
+          className="h-8 w-auto object-contain mr-2" 
+          referrerPolicy="no-referrer" 
+        />
+      )}
       <div className="flex flex-col">
         <div className="flex items-center gap-2">
           <h2 className={`${isMobile ? 'text-sm' : 'text-base'} font-bold text-text`}>
@@ -69,9 +76,18 @@ export const TopBar: React.FC<TopBarProps> = ({
       <div className="flex items-center gap-2 md:gap-3 border-r border-border/60 pr-2 md:pr-4">
         {!isMobile && (
           <button 
-            onClick={onReload}
+            onClick={onPreview}
             className="p-1.5 text-text/60 hover:text-primary hover:bg-secondary rounded-lg transition-all"
-            title="Recargar página"
+            title="Previsualizar en pestaña nueva"
+          >
+            <Eye size={16} />
+          </button>
+        )}
+        {!isMobile && (
+          <button 
+            onClick={() => setViewport('desktop')}
+            className="p-1.5 text-text/60 hover:text-primary hover:bg-secondary rounded-lg transition-all"
+            title="Restablecer vista"
           >
             <RotateCcw size={16} />
           </button>
@@ -90,13 +106,6 @@ export const TopBar: React.FC<TopBarProps> = ({
             title="Vista de Tablet"
           >
             <Tablet size={isMobile ? 16 : 14} />
-          </button>
-          <button 
-            onClick={() => setViewport('mobile')}
-            className={`p-1.5 rounded-lg transition-all ${viewport === 'mobile' ? 'text-primary bg-surface shadow-sm' : 'text-text/60 hover:text-primary'}`}
-            title="Vista de Móvil"
-          >
-            <Smartphone size={isMobile ? 16 : 14} />
           </button>
         </div>
         {!isMobile && (

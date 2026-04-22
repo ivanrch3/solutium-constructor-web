@@ -67,16 +67,11 @@ export const FAQModule: React.FC<{
     return settingsValues[key] !== undefined ? settingsValues[key] : defaultValue;
   };
 
-  const parseF = (val: any, fallback: number) => {
-    const f = parseFloat(val);
-    return isNaN(f) ? fallback : f;
-  };
-
   // Global Settings
   const categories = getVal(`${moduleId}_el_faq_header`, 'categories', DEFAULT_CATEGORIES);
   const layout = getVal(null, 'layout', 'single');
-  const maxWidth = parseF(getVal(null, 'max_width', 1000), 1000);
-  const paddingY = parseF(getVal(null, 'padding_y', 100), 100);
+  const maxWidth = getVal(null, 'max_width', 1000);
+  const paddingY = getVal(null, 'padding_y', 100);
   const darkMode = getVal(null, 'dark_mode', false);
   const bgColor = darkMode ? '#0F172A' : getVal(null, 'bg_color', '#FFFFFF');
   const sectionGradient = getVal(null, 'section_gradient', false);
@@ -86,7 +81,7 @@ export const FAQModule: React.FC<{
   const entranceAnim = getVal(null, 'entrance_anim', true);
   const singleOpen = getVal(null, 'single_open', true);
   const scrollToActive = getVal(null, 'scroll_to_active', false);
-  const itemGap = parseF(getVal(null, 'item_gap', 16), 16);
+  const itemGap = getVal(null, 'item_gap', 16);
 
   // Element: Header
   const eyebrow = getVal(`${moduleId}_el_faq_header`, 'eyebrow', 'AYUDA');
@@ -108,7 +103,7 @@ export const FAQModule: React.FC<{
   const subtitleHighlightGradient = getVal(`${moduleId}_el_faq_header`, 'subtitle_highlight_gradient', 'linear-gradient(90deg, #3B82F6 0%, #8B5CF6 100%)');
   const subtitleHighlightBold = getVal(`${moduleId}_el_faq_header`, 'subtitle_highlight_bold', true);
 
-  const headerMarginB = parseF(getVal(`${moduleId}_el_faq_header`, 'margin_b', 60), 60);
+  const headerMarginB = getVal(`${moduleId}_el_faq_header`, 'margin_b', 60);
   const eyebrowColor = getVal(`${moduleId}_el_faq_header`, 'eyebrow_color', 'var(--primary-color)');
   const headerTitleColor = darkMode ? '#FFFFFF' : getVal(`${moduleId}_el_faq_header`, 'title_color', '#0F172A');
   const headerSubtitleColor = darkMode ? '#94A3B8' : getVal(`${moduleId}_el_faq_header`, 'subtitle_color', '#64748B');
@@ -117,7 +112,7 @@ export const FAQModule: React.FC<{
   const showSearch = getVal(`${moduleId}_el_faq_search`, 'show_search', true);
   const searchPlaceholder = getVal(`${moduleId}_el_faq_search`, 'placeholder', 'Buscar una pregunta...');
   const searchBg = darkMode ? '#1E293B' : getVal(`${moduleId}_el_faq_search`, 'search_bg', '#F1F5F9');
-  const searchRadius = parseF(getVal(`${moduleId}_el_faq_search`, 'search_radius', 16), 16);
+  const searchRadius = getVal(`${moduleId}_el_faq_search`, 'search_radius', 16);
   const searchBorder = getVal(`${moduleId}_el_faq_search`, 'search_border', 'var(--primary-color)');
 
   // Element: Item
@@ -286,7 +281,7 @@ export const FAQModule: React.FC<{
       className="w-full relative overflow-hidden"
       style={{ 
         backgroundColor: bgColor,
-        backgroundImage: (sectionGradient && typeof bgGradient === 'string' && !bgGradient.includes('NaN')) ? bgGradient : 'none',
+        backgroundImage: sectionGradient ? bgGradient : 'none',
         paddingTop: `${paddingY}px`,
         paddingBottom: `${paddingY}px`
       }}

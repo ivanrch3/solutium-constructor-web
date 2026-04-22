@@ -32,11 +32,10 @@ export const TextRenderer: React.FC<TextRendererProps> = ({
           if (highlightType === 'solid') {
             style.color = highlightColor;
           } else if (highlightType === 'gradient') {
-            const isSafeGradient = highlightGradient && !String(highlightGradient).includes('NaN');
-            style.backgroundImage = isSafeGradient ? highlightGradient : 'none';
-            style.WebkitBackgroundClip = isSafeGradient ? 'text' : 'border-box';
-            style.WebkitTextFillColor = isSafeGradient ? 'transparent' : 'inherit';
-            style.backgroundClip = isSafeGradient ? 'text' : 'border-box';
+            style.backgroundImage = highlightGradient;
+            style.WebkitBackgroundClip = 'text';
+            style.WebkitTextFillColor = 'transparent';
+            style.backgroundClip = 'text';
             style.display = 'inline-block';
           }
 

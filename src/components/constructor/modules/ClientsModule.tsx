@@ -86,11 +86,6 @@ export const ClientsModule: React.FC<{
     return settingsValues[key] !== undefined ? settingsValues[key] : defaultValue;
   };
 
-  const parseF = (val: any, fallback: number) => {
-    const f = parseFloat(val);
-    return isNaN(f) ? fallback : f;
-  };
-
   const selectedCustomerIds = getVal(`${moduleId}_el_client_logos_data`, 'select_customers', []);
   const baseCustomers = customers && customers.length > 0 ? customers : (isDevMode ? MOCK_CUSTOMERS : []);
   
@@ -103,14 +98,14 @@ export const ClientsModule: React.FC<{
   // Global Settings
   const layout = getVal(null, 'layout', 'grid');
   const alignment = getVal(null, 'alignment', 'center');
-  const columns = Math.max(1, parseInt(getVal(null, 'columns', 5)) || 5);
-  const gap = parseF(getVal(null, 'gap', 40), 40);
-  const paddingY = parseF(getVal(null, 'padding_y', 80), 80);
+  const columns = getVal(null, 'columns', 5);
+  const gap = getVal(null, 'gap', 40);
+  const paddingY = getVal(null, 'padding_y', 80);
   const darkMode = getVal(null, 'dark_mode', false);
   const bgColor = darkMode ? '#0F172A' : getVal(null, 'bg_color', '#FFFFFF');
   const sectionGradient = getVal(null, 'section_gradient', false);
   const bgGradient = getVal(null, 'bg_gradient', 'linear-gradient(to bottom, #FFFFFF, #F8FAFC)');
-  const animationSpeed = parseF(getVal(null, 'animation_speed', 30), 30);
+  const animationSpeed = getVal(null, 'animation_speed', 30);
   const marqueeDirection = getVal(null, 'marquee_direction', 'left');
   const pauseOnHover = getVal(null, 'pause_on_hover', true);
   const entranceAnimation = getVal(null, 'entrance_animation', true);
@@ -126,7 +121,7 @@ export const ClientsModule: React.FC<{
   const subtitleWeight = getVal(`${moduleId}_el_clients_header`, 'subtitle_weight', 'normal');
   const titleColor = darkMode ? '#FFFFFF' : getVal(`${moduleId}_el_clients_header`, 'title_color', '#0F172A');
   const eyebrowColor = getVal(`${moduleId}_el_clients_header`, 'eyebrow_color', 'var(--primary-color)');
-  const headerMarginB = parseF(getVal(`${moduleId}_el_clients_header`, 'margin_b', 60), 60);
+  const headerMarginB = getVal(`${moduleId}_el_clients_header`, 'margin_b', 60);
 
   const titleHighlightType = getVal(`${moduleId}_el_clients_header`, 'title_highlight_type', 'gradient');
   const titleHighlightColor = getVal(`${moduleId}_el_clients_header`, 'title_highlight_color', '#3B82F6');
@@ -139,13 +134,13 @@ export const ClientsModule: React.FC<{
   const subtitleHighlightBold = getVal(`${moduleId}_el_clients_header`, 'subtitle_highlight_bold', true);
 
   // Element Settings: Logo
-  const logoHeight = parseF(getVal(`${moduleId}_el_client_logo`, 'logo_height', 40), 40);
+  const logoHeight = getVal(`${moduleId}_el_client_logo`, 'logo_height', 40);
   const logoFit = getVal(`${moduleId}_el_client_logo`, 'logo_fit', 'contain');
   const logoFilter = darkMode ? 'invert' : getVal(`${moduleId}_el_client_logo`, 'logo_filter', 'grayscale');
-  const logoOpacity = parseF(getVal(`${moduleId}_el_client_logo`, 'logo_opacity', 60), 60);
-  const logoBorderRadius = parseF(getVal(`${moduleId}_el_client_logo`, 'logo_border_radius', 0), 0);
+  const logoOpacity = getVal(`${moduleId}_el_client_logo`, 'logo_opacity', 60);
+  const logoBorderRadius = getVal(`${moduleId}_el_client_logo`, 'logo_border_radius', 0);
   const hoverReveal = getVal(`${moduleId}_el_client_logo`, 'hover_reveal', true);
-  const hoverScale = parseF(getVal(`${moduleId}_el_client_logo`, 'hover_scale', 110), 110);
+  const hoverScale = getVal(`${moduleId}_el_client_logo`, 'hover_scale', 110);
   const hoverGlow = getVal(`${moduleId}_el_client_logo`, 'hover_glow', false);
   const showTooltips = getVal(`${moduleId}_el_client_logo`, 'show_tooltips', true);
   const enableLinks = getVal(`${moduleId}_el_client_logo`, 'enable_links', false);
@@ -294,7 +289,7 @@ export const ClientsModule: React.FC<{
       className="w-full relative overflow-hidden"
       style={{ 
         backgroundColor: bgColor,
-        backgroundImage: (sectionGradient && typeof bgGradient === 'string' && !bgGradient.includes('NaN')) ? bgGradient : 'none',
+        backgroundImage: sectionGradient ? bgGradient : 'none',
         paddingTop: `${paddingY}px`,
         paddingBottom: `${paddingY}px`
       }}

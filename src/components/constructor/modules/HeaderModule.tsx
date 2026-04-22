@@ -28,6 +28,8 @@ export const HeaderModule: React.FC<{
 
   // Global Settings
   const position = getVal(null, 'position', 'sticky');
+  const height = parseFloat(getVal(null, 'height', 80)) || 80;
+  const maxWidth = parseFloat(getVal(null, 'max_width', 1400)) || 1400;
   const layoutType = getVal(null, 'layout_type', 'standard');
   const darkMode = getVal(null, 'dark_mode', false);
   const bgType = getVal(null, 'bg_type', 'glass');
@@ -74,25 +76,21 @@ export const HeaderModule: React.FC<{
   const secondaryUrl = getVal(`${moduleId}_el_header_actions`, 'secondary_url', '');
   const secondaryTarget = getVal(`${moduleId}_el_header_actions`, 'secondary_target', '_self');
 
-  const hasPrimary = primaryUrl !== '';
-  const hasSecondary = secondaryUrl !== '';
+  const hasPrimary = primaryUrl && primaryUrl !== '#' && primaryUrl !== '';
+  const hasSecondary = secondaryUrl && secondaryUrl !== '#' && secondaryUrl !== '';
   const primaryBg = getVal(`${moduleId}_el_header_actions`, 'primary_bg', 'var(--primary-color)');
   const primaryColor = getVal(`${moduleId}_el_header_actions`, 'primary_color', '#FFFFFF');
   const secondaryStyle = getVal(`${moduleId}_el_header_actions`, 'secondary_style', 'outline');
   const pulseEffect = getVal(`${moduleId}_el_header_actions`, 'pulse_effect', true);
   const hoverAnim = getVal(`${moduleId}_el_header_actions`, 'hover_anim', 'scale');
 
-  const hasButtons = (showActions && (hasPrimary || hasSecondary));
-  const showContent = showReg || hasButtons;
-
   const isCompact = layoutType === 'compact';
-  const py = isCompact ? 12 : 20;
+  const baseHeight = isCompact ? 55 : height;
+  const currentHeight = (shrinkOnScroll && isScrolled) ? baseHeight * 0.8 : baseHeight;
 
   const headerStyle: React.CSSProperties = {
-    paddingTop: showContent ? `${py}px` : '0px',
-    paddingBottom: showContent ? `${py}px` : '0px',
+    height: `${currentHeight}px`,
     transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-    top: 0
   };
 
   if (bgType === 'solid') {
@@ -127,7 +125,7 @@ export const HeaderModule: React.FC<{
     if (shadow === 'lg') headerStyle.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)';
   }
 
-  const positionClass = 'relative';
+  const positionClass = position === 'sticky' ? 'sticky top-0' : position === 'fixed' ? 'fixed top-0 left-0 right-0' : 'relative';
 
   const isTransparentMode = bgType === 'transparent' && !isScrolled;
 
@@ -185,12 +183,11 @@ export const HeaderModule: React.FC<{
         </div>
       )}
 
-      {showContent && (
-        <header className="w-full flex items-center" style={headerStyle}>
-          <div className={`mx-auto px-6 w-full flex items-center ${layoutType === 'standard' ? 'justify-center gap-12' : 'justify-between gap-8'}`} style={{ maxWidth: '1400px' }}>
-            
-            {/* Registro / Centro */}
-            <div className={`flex items-center ${layoutType === 'split' ? 'flex-1 justify-start' : ''}`}>
+      <header className="w-full flex items-center" style={headerStyle}>
+        <div className={`mx-auto px-6 w-full flex items-center justify-between ${isCompact ? 'gap-4' : 'gap-8'}`} style={{ maxWidth: `${maxWidth}px` }}>
+          
+          {/* Center: Quick Reg */}
+          <div className={`flex flex-1 items-center ${layoutType === 'standard' ? 'justify-center' : 'justify-start'}`}>
             {showReg && (
               <form 
                 onSubmit={handleSubscribe}
@@ -383,7 +380,6 @@ export const HeaderModule: React.FC<{
           )}
         </AnimatePresence>
       </header>
-    )}
       
       <style>{`
         @keyframes gradient {

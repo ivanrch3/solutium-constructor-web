@@ -54,8 +54,7 @@ import {
   Video,
   Monitor,
   Layout,
-  RotateCcw,
-  Columns2
+  RotateCcw
 } from 'lucide-react';
 import { WebModule, SettingGroupType, SettingDefinition } from '../../types/constructor';
 
@@ -82,14 +81,6 @@ const BUTTON_LINK_SETTINGS = (prefix: string, defaultUrl: string = '#'): Setting
   ]}
 ];
 
-const PARALLAX_BACKGROUND_SETTINGS: SettingDefinition[] = [
-  { id: 'bg_parallax_enabled', label: 'Habilitar Fondo con Paralaje', type: 'boolean', defaultValue: false },
-  { id: 'bg_parallax_img', label: 'Imagen de Fondo', type: 'image', defaultValue: '', showIf: { settingId: 'bg_parallax_enabled', value: true } },
-  { id: 'bg_parallax_opacity', label: 'Opacidad Imagen', type: 'range', defaultValue: 20, min: 0, max: 100, unit: '%', showIf: { settingId: 'bg_parallax_enabled', value: true } },
-  { id: 'bg_parallax_overlay', label: 'Color de Overlay', type: 'color', defaultValue: '#000000', showIf: { settingId: 'bg_parallax_enabled', value: true } },
-  { id: 'bg_parallax_speed', label: 'Intensidad de Movimiento', type: 'range', defaultValue: 100, min: 20, max: 300, unit: 'px', showIf: { settingId: 'bg_parallax_enabled', value: true } }
-];
-
 export const HEADER_MODULE: WebModule = {
   id: 'mod_header_1',
   type: 'conversion',
@@ -103,9 +94,11 @@ export const HEADER_MODULE: WebModule = {
         { label: 'Fijo Superior (Fixed)', value: 'fixed' },
         { label: 'Estático', value: 'static' }
       ]},
+      { id: 'height', label: 'Altura de Barra', type: 'range', defaultValue: 80, min: 60, max: 140, unit: 'px' },
+      { id: 'max_width', label: 'Ancho Máximo', type: 'range', defaultValue: 1400, min: 1000, max: 1920, unit: 'px' },
       { id: 'layout_type', label: 'Distribución', type: 'select', defaultValue: 'standard', options: [
         { label: 'Estándar (Centro - Acciones)', value: 'standard' },
-        { label: 'Split (Izquierda - Derecha)', value: 'split' },
+        { label: 'Split (Acciones)', value: 'split' },
         { label: 'Compacto', value: 'compact' }
       ]}
     ],
@@ -206,23 +199,19 @@ export const MENU_MODULE: WebModule = {
   globalGroups: ['estructura', 'estilo', 'interaccion'],
   globalSettings: {
     estructura: [
-      { id: 'position', label: 'Posición', type: 'select', defaultValue: 'relative', options: [
-        { label: 'Estándar (Sigue el scroll)', value: 'relative' },
-        { label: 'Fijo al scroll (Sticky)', value: 'sticky' },
-        { label: 'Fijo al tope (Fixed)', value: 'fixed' }
-      ]},
       { id: 'layout', label: 'Diseño', type: 'select', defaultValue: 'horizontal', options: [
         { label: 'Horizontal (Barra)', value: 'horizontal' },
-        { label: 'Vertical (Lista)', value: 'vertical' }
+        { label: 'Vertical (Lista)', value: 'vertical' },
+        { label: 'Grilla (Mega-menú)', value: 'grid' }
       ]},
-      { id: 'invert_order', label: 'Invertir Orden (Logo a la derecha)', type: 'boolean', defaultValue: false, showIf: { settingId: 'layout', value: 'horizontal' } },
       { id: 'align', label: 'Alineación', type: 'select', defaultValue: 'center', options: [
         { label: 'Inicio', value: 'start' },
         { label: 'Centro', value: 'center' },
         { label: 'Fin', value: 'end' }
       ]},
       { id: 'gap', label: 'Espaciado entre items', type: 'range', defaultValue: 24, min: 0, max: 64, unit: 'px' },
-      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 20, min: 0, max: 100, unit: 'px' }
+      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 20, min: 0, max: 100, unit: 'px' },
+      { id: 'sticky', label: 'Menú Fijo (Sticky)', type: 'boolean', defaultValue: false }
     ],
     estilo: [
       { id: 'dark_mode', label: 'Modo Oscuro', type: 'boolean', defaultValue: false },
@@ -471,7 +460,7 @@ export const SPACER_MODULE: WebModule = {
   type: 'spacer',
   iconKey: 'spacer',
   name: 'Espaciador y Divisor',
-  globalGroups: ['estructura', 'estilo', 'multimedia'],
+  globalGroups: ['estructura', 'estilo'],
   globalSettings: {
     estructura: [
       { id: 'height_desktop', label: 'Altura (Escritorio)', type: 'range', defaultValue: 60, min: 0, max: 200, unit: 'px' },
@@ -504,8 +493,7 @@ export const SPACER_MODULE: WebModule = {
       { id: 'content_size', label: 'Tamaño Contenido', type: 'range', defaultValue: 18, min: 10, max: 40, unit: 'px' },
       { id: 'content_color', label: 'Color Contenido', type: 'color', defaultValue: '#94A3B8' }
     ],
-    multimedia: [...PARALLAX_BACKGROUND_SETTINGS],
-    contenido: [], tipografia: [], interaccion: []
+    contenido: [], tipografia: [], multimedia: [], interaccion: []
   },
   elements: []
 };
@@ -710,7 +698,7 @@ export const HERO_MODULE: WebModule = {
   type: 'hero',
   iconKey: 'hero',
   name: 'Sección Hero (Impacto)',
-  globalGroups: ['contenido', 'estructura', 'estilo', 'interaccion', 'multimedia'],
+  globalGroups: ['contenido', 'estructura', 'estilo', 'interaccion'],
   globalSettings: {
     contenido: [],
     estructura: [
@@ -752,41 +740,27 @@ export const HERO_MODULE: WebModule = {
         { label: 'Zoom Suave', value: 'zoom' }
       ]}
     ],
-    multimedia: [...PARALLAX_BACKGROUND_SETTINGS],
-    tipografia: []
+    tipografia: [],
+    multimedia: []
   },
   elements: [
-    { id: 'el_hero_typography', name: 'Textos', type: 'text', groups: ['eyebrow', 'title', 'subtitle', 'texto_rotativo', 'estructura'], settings: {
+    { id: 'el_hero_typography', name: 'Textos', type: 'text', groups: ['eyebrow', 'title', 'subtitle', 'estructura'], settings: {
       eyebrow: [
         { id: 'eyebrow', label: 'Texto de la Cejilla', type: 'text', defaultValue: 'NUEVA SOLUCIÓN' },
         { id: 'eyebrow_color', label: 'Color de Texto', type: 'color', defaultValue: '#3B82F6' },
         { id: 'eyebrow_bg', label: 'Color de Fondo', type: 'color', defaultValue: 'rgba(59, 130, 246, 0.1)' }
       ],
       title: [
-        { id: 'title', label: 'Texto del Título', type: 'text', defaultValue: 'Solutium es **la mejor alternativa** para tu negocio' },
+        { id: 'title', label: 'Texto del Título', type: 'text', defaultValue: 'Transforma tu **presencia** digital hoy' },
         { id: 'title_size', label: 'Tamaño', type: 'typography_size', defaultValue: 't1', allowedLevels: ['t1', 't2', 't3'] },
         { id: 'title_weight', label: 'Peso', type: 'font_weight', defaultValue: 'extrabold' },
         ...HIGHLIGHT_SETTINGS('title')
       ],
       subtitle: [
-        { id: 'subtitle', label: 'Texto del Subtítulo', type: 'text', defaultValue: 'Impulsamos el **éxito** de emprendedores y empresas con soluciones digitales innovadoras y personalizadas.' },
+        { id: 'subtitle', label: 'Texto del Subtítulo', type: 'text', defaultValue: 'Construimos el **futuro** de tu marca con herramientas de última generación y diseño centrado en el usuario.' },
         { id: 'subtitle_size', label: 'Tamaño', type: 'typography_size', defaultValue: 'p', allowedLevels: ['t3', 'p', 's'] },
         { id: 'subtitle_weight', label: 'Peso', type: 'font_weight', defaultValue: 'normal' },
         ...HIGHLIGHT_SETTINGS('subtitle')
-      ],
-      texto_rotativo: [
-        { id: 'rotating_enabled', label: 'Habilitar Título Rotativo', type: 'boolean', defaultValue: true },
-        { id: 'rotating_fixed', label: 'Parte Fija', type: 'text', defaultValue: 'Solutium es la mejor alternativa para ', showIf: { settingId: 'rotating_enabled', value: true } },
-        { id: 'rotating_options', label: 'Opciones que Cambian', type: 'repeater', defaultValue: [{text: 'emprendedores'}, {text: 'profesionales'}, {text: 'empresas'}], fields: [
-          { id: 'text', label: 'Frase', type: 'text', defaultValue: 'Nueva opción' }
-        ], showIf: { settingId: 'rotating_enabled', value: true } },
-        { id: 'rotating_anim', label: 'Tipo de Animación', type: 'select', defaultValue: 'fade', options: [
-          { label: 'Desvanecer (Fade)', value: 'fade' },
-          { label: 'Deslizar (Slide)', value: 'slide' }
-        ], showIf: { settingId: 'rotating_enabled', value: true } },
-        { id: 'rotating_speed', label: 'Velocidad de Cambio', type: 'range', defaultValue: 3000, min: 1000, max: 10000, unit: 'ms', step: 500, showIf: { settingId: 'rotating_enabled', value: true } },
-        { id: 'rotating_color', label: 'Color Texto Dinámico', type: 'color', defaultValue: '#3B82F6', showIf: { settingId: 'rotating_enabled', value: true } },
-        { id: 'rotating_gradient', label: 'Degradado Texto Dinámico', type: 'gradient', defaultValue: 'linear-gradient(90deg, #3B82F6 0%, #8B5CF6 100%)', showIf: { settingId: 'rotating_enabled', value: true } }
       ],
       estructura: [
         { id: 'align', label: 'Alineación', type: 'select', defaultValue: 'inherit', options: [
@@ -987,7 +961,7 @@ export const ABOUT_MODULE: WebModule = {
   type: 'about',
   iconKey: 'about',
   name: 'Sobre Nosotros / Historia',
-  globalGroups: ['contenido', 'estructura', 'estilo', 'interaccion', 'multimedia'],
+  globalGroups: ['contenido', 'estructura', 'estilo', 'interaccion'],
   globalSettings: {
     contenido: [],
     estructura: [
@@ -1010,8 +984,7 @@ export const ABOUT_MODULE: WebModule = {
     interaccion: [
       { id: 'entrance_anim', label: 'Animación de Entrada', type: 'boolean', defaultValue: true }
     ],
-    multimedia: [...PARALLAX_BACKGROUND_SETTINGS],
-    tipografia: []
+    tipografia: [], multimedia: []
   },
   elements: [
     { 
@@ -1536,7 +1509,7 @@ export const TESTIMONIALS_MODULE: WebModule = {
   type: 'testimonials',
   iconKey: 'testimonials',
   name: 'Testimonios de Clientes',
-  globalGroups: ['contenido', 'estructura', 'estilo', 'interaccion', 'multimedia'],
+  globalGroups: ['contenido', 'estructura', 'estilo'],
   globalSettings: {
       contenido: [],
       estructura: [
@@ -1561,8 +1534,7 @@ export const TESTIMONIALS_MODULE: WebModule = {
         { id: 'autoplay', label: 'Auto-reproducción (Carrusel)', type: 'boolean', defaultValue: true },
         { id: 'autoplay_speed', label: 'Velocidad (ms)', type: 'range', defaultValue: 5000, min: 2000, max: 10000, step: 500 }
       ],
-      multimedia: [...PARALLAX_BACKGROUND_SETTINGS],
-      tipografia: []
+      tipografia: [], multimedia: []
     },
     elements: [
       { 
@@ -1690,7 +1662,7 @@ export const STATS_MODULE: WebModule = {
   type: 'stats',
   iconKey: 'stats',
   name: 'Contadores y Estadísticas',
-  globalGroups: ['contenido', 'estructura', 'estilo', 'interaccion', 'multimedia'],
+  globalGroups: ['contenido', 'estructura', 'estilo'],
   globalSettings: {
     contenido: [],
     estructura: [
@@ -1718,8 +1690,7 @@ export const STATS_MODULE: WebModule = {
         { label: 'Lineal', value: 'linear' }
       ]}
     ],
-    multimedia: [...PARALLAX_BACKGROUND_SETTINGS],
-    tipografia: []
+    tipografia: [], multimedia: []
   },
   elements: [
     { id: 'el_stats_header', name: 'Textos', type: 'text', groups: ['eyebrow', 'title', 'subtitle', 'estructura'], settings: {
@@ -1827,7 +1798,7 @@ export const NEWSLETTER_MODULE: WebModule = {
   type: 'newsletter',
   iconKey: 'newsletter',
   name: 'Suscripción (Newsletter)',
-  globalGroups: ['contenido', 'estructura', 'estilo', 'interaccion', 'multimedia'],
+  globalGroups: ['contenido', 'estructura', 'estilo', 'interaccion'],
   globalSettings: {
     contenido: [],
     estructura: [
@@ -1862,8 +1833,7 @@ export const NEWSLETTER_MODULE: WebModule = {
     interaccion: [
       { id: 'entrance_anim', label: 'Animación de Entrada', type: 'boolean', defaultValue: true }
     ],
-    multimedia: [...PARALLAX_BACKGROUND_SETTINGS],
-    tipografia: []
+    tipografia: [], multimedia: []
   },
   elements: [
     { id: 'el_news_header', name: 'Textos', type: 'text', groups: ['title', 'subtitle', 'estructura'], settings: {
@@ -2282,7 +2252,7 @@ export const CTA_MODULE: WebModule = {
   type: 'cta',
   iconKey: 'cta',
   name: 'Call to Action',
-  globalGroups: ['contenido', 'estructura', 'estilo', 'interaccion', 'multimedia'],
+  globalGroups: ['contenido', 'estructura', 'estilo', 'interaccion'],
   globalSettings: {
     contenido: [],
     estructura: [
@@ -2313,8 +2283,7 @@ export const CTA_MODULE: WebModule = {
       { id: 'floating_icon_1', label: 'Icono 1', type: 'icon', defaultValue: 'Sparkles' },
       { id: 'floating_icon_2', label: 'Icono 2', type: 'icon', defaultValue: 'Zap' }
     ],
-    multimedia: [...PARALLAX_BACKGROUND_SETTINGS],
-    tipografia: []
+    tipografia: [], multimedia: []
   },
   elements: [
     { id: 'el_cta_content', name: 'Textos', type: 'text', groups: ['title', 'subtitle', 'estructura'], settings: {
@@ -2823,7 +2792,7 @@ export const BENTO_MODULE: WebModule = {
   type: 'content',
   iconKey: 'bento',
   name: 'Composición Libre (Bento)',
-  globalGroups: ['estructura', 'estilo', 'interaccion', 'multimedia'],
+  globalGroups: ['estructura', 'estilo', 'interaccion'],
   globalSettings: {
     estructura: [
       { id: 'columns', label: 'Columnas Desktop', type: 'range', defaultValue: 4, min: 1, max: 12 },
@@ -2841,8 +2810,7 @@ export const BENTO_MODULE: WebModule = {
       { id: 'entrance_anim', label: 'Animación de Entrada', type: 'boolean', defaultValue: true },
       { id: 'stagger_anim', label: 'Efecto Escalonado', type: 'boolean', defaultValue: true, showIf: { settingId: 'entrance_anim', value: true } }
     ],
-    multimedia: [...PARALLAX_BACKGROUND_SETTINGS],
-    contenido: [], tipografia: []
+    contenido: [], tipografia: [], multimedia: []
   },
   elements: [
     { id: 'el_bento_header', name: 'Textos', type: 'single', groups: ['title', 'subtitle', 'estructura'], settings: {
@@ -2953,64 +2921,6 @@ export const BENTO_MODULE: WebModule = {
   ]
 };
 
-export const COMPARISON_MODULE: WebModule = {
-  id: 'mod_comparison_1',
-  type: 'comparative',
-  iconKey: 'comparative',
-  name: 'Comparativo',
-  globalGroups: ['contenido', 'estructura', 'estilo', 'interaccion'],
-  globalSettings: {
-    contenido: [],
-    estructura: [
-      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 100, min: 40, max: 200, unit: 'px' },
-      { id: 'max_width', label: 'Ancho Máximo Slider', type: 'range', defaultValue: 1000, min: 600, max: 1400, unit: 'px' },
-      { id: 'aspect_ratio', label: 'Proporción de Imagen', type: 'select', defaultValue: '16/9', options: [
-        { label: 'Panorámico (16:9)', value: '16/9' },
-        { label: 'Estándar (4:3)', value: '4/3' },
-        { label: 'Cuadrado (1:1)', value: '1/1' },
-        { label: 'Vertical (9:16)', value: '9/16' },
-        { label: 'Automático', value: 'auto' }
-      ]}
-    ],
-    estilo: [
-      { id: 'dark_mode', label: 'Modo Oscuro', type: 'boolean', defaultValue: false },
-      { id: 'bg_color', label: 'Color de Fondo', type: 'color', defaultValue: '#FFFFFF' },
-      { id: 'handle_color', label: 'Color del Slider', type: 'color', defaultValue: '#3B82F6' },
-      { id: 'border_radius', label: 'Redondeo Contenedor', type: 'range', defaultValue: 24, min: 0, max: 60 }
-    ],
-    interaccion: [
-      { id: 'initial_position', label: 'Posición Inicial', type: 'range', defaultValue: 50, min: 0, max: 100, unit: '%' },
-      { id: 'show_labels', label: 'Mostrar Etiquetas', type: 'boolean', defaultValue: true },
-      { id: 'label_before', label: 'Etiqueta Antes', type: 'text', defaultValue: 'Antes' },
-      { id: 'label_after', label: 'Etiqueta Después', type: 'text', defaultValue: 'Después' }
-    ]
-  },
-  elements: [
-    { id: 'el_comp_text', name: 'Textos', type: 'text', groups: ['title', 'subtitle'], settings: {
-      title: [
-        { id: 'title', label: 'Texto del Título', type: 'text', defaultValue: 'Nuestros **Resultados**' },
-        { id: 'title_size', label: 'Tamaño', type: 'typography_size', defaultValue: 't1', allowedLevels: ['t1', 't2', 't3'] },
-        { id: 'title_weight', label: 'Peso', type: 'font_weight', defaultValue: 'extrabold' },
-        { id: 'title_color', label: 'Color del Título', type: 'color', defaultValue: 'inherit' },
-        ...HIGHLIGHT_SETTINGS('title')
-      ],
-      subtitle: [
-        { id: 'subtitle', label: 'Texto del Subtítulo', type: 'text', defaultValue: 'Desliza para ver la transformación real de nuestros proyectos.' },
-        { id: 'subtitle_size', label: 'Tamaño', type: 'typography_size', defaultValue: 'p', allowedLevels: ['t3', 'p', 's'] },
-        { id: 'subtitle_weight', label: 'Peso', type: 'font_weight', defaultValue: 'normal' },
-        { id: 'subtitle_color', label: 'Color del Subtítulo', type: 'color', defaultValue: 'inherit' },
-        ...HIGHLIGHT_SETTINGS('subtitle')
-      ]
-    }},
-    { id: 'el_comp_images', name: 'Imágenes a Comparar', type: 'multimedia', groups: ['multimedia'], settings: {
-      multimedia: [
-        { id: 'img_before', label: 'Imagen ANTES', type: 'image', defaultValue: 'https://picsum.photos/seed/before/1920/1080' },
-        { id: 'img_after', label: 'Imagen DESPUÉS', type: 'image', defaultValue: 'https://picsum.photos/seed/after/1920/1080' }
-      ]
-    }}
-  ]
-};
-
 export const GROUP_LABELS: Record<SettingGroupType, string> = {
   contenido: 'Contenido',
   estructura: 'Estructura',
@@ -3022,8 +2932,7 @@ export const GROUP_LABELS: Record<SettingGroupType, string> = {
   eyebrow: 'Cejilla',
   title: 'Título Principal',
   subtitle: 'Subtítulo',
-  description: 'Descripción',
-  texto_rotativo: 'Texto Dinámico'
+  description: 'Descripción'
 };
 
 export const MODULE_INFO: Record<string, { label: string; icon: React.ElementType }> = {
@@ -3046,7 +2955,6 @@ export const MODULE_INFO: Record<string, { label: string; icon: React.ElementTyp
   cta: { label: 'Call to Action', icon: MousePointerClick },
   pricing: { label: 'Precios', icon: Tags },
   faq: { label: 'FAQ', icon: MessageCircleQuestion },
-  comparative: { label: 'Comparativo', icon: Columns2 },
   clients: { label: 'Clientes', icon: Handshake },
   bento: { label: 'Composición Libre', icon: Layout }
 };

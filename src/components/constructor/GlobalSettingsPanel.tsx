@@ -13,7 +13,6 @@ import {
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { SettingControl } from './SettingControl';
-import { parseNumSafe } from './utils';
 
 interface GlobalSettingsPanelProps {
   settingsValues: Record<string, any>;
@@ -37,14 +36,6 @@ export const GlobalSettingsPanel: React.FC<GlobalSettingsPanelProps> = ({
   const handleThemeChange = (settingId: string, value: any) => {
     onSettingChange('global', `theme_${settingId}`, value);
   };
-
-  const projectColors = [
-    getVal('primary_color', project?.brandColors?.primary || '#3B82F6'),
-    getVal('secondary_color', '#F1F5F9'),
-    getVal('accent_color', '#7C3AED'),
-    getVal('background_color', '#F8FAFC'),
-    getVal('text_color', '#0F172A'),
-  ].filter(Boolean) as string[];
 
   const sections = [
     {
@@ -175,7 +166,7 @@ export const GlobalSettingsPanel: React.FC<GlobalSettingsPanelProps> = ({
                 className="h-20 rounded-2xl flex items-center justify-center text-white font-bold p-4 text-center text-xs"
                 style={{ 
                   backgroundColor: getVal('primary_color', project?.brandColors?.primary || '#3B82F6'),
-                  borderRadius: `${parseNumSafe(getVal('radius', 12), 12)}px`
+                  borderRadius: `${getVal('radius', 12)}px`
                 }}
               >
                 Botón Principal
@@ -183,11 +174,11 @@ export const GlobalSettingsPanel: React.FC<GlobalSettingsPanelProps> = ({
               <div className="flex gap-2">
                 <div 
                   className="flex-1 h-10 rounded-xl border border-slate-200"
-                  style={{ backgroundColor: getVal('secondary_color', '#F1F5F9'), borderRadius: `${parseNumSafe(getVal('radius', 12), 12) * 0.8}px` }}
+                  style={{ backgroundColor: getVal('secondary_color', '#F1F5F9'), borderRadius: `${getVal('radius', 12) * 0.8}px` }}
                 />
                 <div 
                   className="flex-1 h-10 rounded-xl"
-                  style={{ backgroundColor: getVal('accent_color', '#7C3AED'), borderRadius: `${parseNumSafe(getVal('radius', 12), 12) * 0.8}px` }}
+                  style={{ backgroundColor: getVal('accent_color', '#7C3AED'), borderRadius: `${getVal('radius', 12) * 0.8}px` }}
                 />
               </div>
               <div className="pt-2">
@@ -239,7 +230,6 @@ export const GlobalSettingsPanel: React.FC<GlobalSettingsPanelProps> = ({
                       value={getVal(setting.id, setting.defaultValue)}
                       onChange={(val) => handleThemeChange(setting.id, val)}
                       projectId={projectId}
-                      projectColors={projectColors}
                     />
                     {setting.description && (
                       <p className="text-[10px] text-slate-400 font-medium italic mt-1">

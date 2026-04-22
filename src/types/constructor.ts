@@ -1,5 +1,5 @@
 
-export type SettingGroupType = 'contenido' | 'estructura' | 'estilo' | 'tipografia' | 'multimedia' | 'interaccion' | 'secciones' | 'eyebrow' | 'title' | 'subtitle' | 'description' | 'texto_rotativo';
+export type SettingGroupType = 'contenido' | 'estructura' | 'estilo' | 'tipografia' | 'multimedia' | 'interaccion' | 'secciones' | 'eyebrow' | 'title' | 'subtitle' | 'description';
 
 export type SettingType = 
   | 'text' | 'number' | 'color' | 'gradient' | 'select' | 'boolean' | 'range' | 'button' 

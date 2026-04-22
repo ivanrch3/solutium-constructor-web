@@ -1,18 +1,16 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { motion, useInView, useSpring, useTransform, animate, useScroll } from 'motion/react';
+import { motion, useInView, useSpring, useTransform, animate } from 'motion/react';
 import * as LucideIcons from 'lucide-react';
 import { Star } from 'lucide-react';
 import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
 import { TextRenderer } from '../TextRenderer';
-import { ParallaxBackground } from '../ParallaxBackground';
-import { parseNumSafe } from '../utils';
 
 const CountUp = ({ value, duration = 2, easing = 'spring' }: { value: number | string, duration?: number, easing?: string }) => {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true });
   const [display, setDisplay] = useState(0);
   
-  const numericValue = parseNumSafe(value, 0);
+  const numericValue = typeof value === 'number' ? value : parseFloat(value) || 0;
   
   const spring = useSpring(0, {
     duration: duration * 1000,
@@ -59,11 +57,11 @@ const IconShape = ({ shape, color, bg, size, icon: Icon }: any) => {
       style={{ 
         backgroundColor: shape === 'none' ? 'transparent' : bg, 
         color: color,
-        width: `${parseNumSafe(size, 24) * 2.5}px`,
-        height: `${parseNumSafe(size, 24) * 2.5}px`
+        width: `${size * 2.5}px`,
+        height: `${size * 2.5}px`
       }}
     >
-      <Icon size={parseNumSafe(size, 24)} />
+      <Icon size={size} />
     </div>
   );
 };
@@ -178,31 +176,18 @@ export const StatsModule: React.FC<{
     return settingsValues[key] !== undefined ? settingsValues[key] : defaultValue;
   };
 
-  const containerRef = useRef(null);
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start end", "end start"]
-  });
-
   // Global Settings
   const layout = getVal(null, 'layout', 'grid');
-  const columns = parseNumSafe(getVal(null, 'columns', 4), 4);
-  const gap = parseNumSafe(getVal(null, 'gap', 30), 30);
-  const paddingY = parseNumSafe(getVal(null, 'padding_y', 100), 100);
+  const columns = getVal(null, 'columns', 4);
+  const gap = getVal(null, 'gap', 30);
+  const paddingY = getVal(null, 'padding_y', 100);
   const darkMode = getVal(null, 'dark_mode', false);
   const bgColor = darkMode ? '#0F172A' : getVal(null, 'bg_color', '#FFFFFF');
   const sectionGradient = getVal(null, 'section_gradient', false);
   const bgGradient = getVal(null, 'bg_gradient', 'linear-gradient(to bottom, #FFFFFF, #F8FAFC)');
   const entranceAnim = getVal(null, 'entrance_anim', true);
-  const countSpeed = parseNumSafe(getVal(null, 'count_speed', 2), 2);
+  const countSpeed = getVal(null, 'count_speed', 2);
   const countEasing = getVal(null, 'count_easing', 'spring');
-
-  // Multimedia (Parallax Background)
-  const bgParallaxEnabled = getVal(null, 'bg_parallax_enabled', false);
-  const bgParallaxImg = getVal(null, 'bg_parallax_img', '');
-  const bgParallaxOpacity = parseNumSafe(getVal(null, 'bg_parallax_opacity', 20), 20);
-  const bgParallaxOverlay = getVal(null, 'bg_parallax_overlay', '#000000');
-  const bgParallaxSpeed = parseNumSafe(getVal(null, 'bg_parallax_speed', 100), 100);
 
   // Element: Header
   const showHeader = getVal(`${moduleId}_el_stats_header`, 'show_header', true);
@@ -216,7 +201,7 @@ export const StatsModule: React.FC<{
   const headerSubtitleWeight = getVal(`${moduleId}_el_stats_header`, 'subtitle_weight', 'normal');
   const headerEyebrowColor = getVal(`${moduleId}_el_stats_header`, 'eyebrow_color', '#3B82F6');
   const headerEyebrowBg = getVal(`${moduleId}_el_stats_header`, 'eyebrow_bg', 'rgba(59, 130, 246, 0.1)');
-  const headerMarginB = parseNumSafe(getVal(`${moduleId}_el_stats_header`, 'margin_b', 60), 60);
+  const headerMarginB = getVal(`${moduleId}_el_stats_header`, 'margin_b', 60);
 
   const titleHighlightType = getVal(`${moduleId}_el_stats_header`, 'title_highlight_type', 'gradient');
   const titleHighlightColor = getVal(`${moduleId}_el_stats_header`, 'title_highlight_color', '#3B82F6');
@@ -232,7 +217,7 @@ export const StatsModule: React.FC<{
 
   // Element: Stat Item Style
   const cardBg = darkMode ? '#1E293B' : getVal(`${moduleId}_el_stat_item`, 'card_bg', 'transparent');
-  const cardRadius = parseNumSafe(getVal(`${moduleId}_el_stat_item`, 'card_radius', 24), 24);
+  const cardRadius = getVal(`${moduleId}_el_stat_item`, 'card_radius', 24);
   const showBorder = getVal(`${moduleId}_el_stat_item`, 'show_border', false);
   const cardShadow = getVal(`${moduleId}_el_stat_item`, 'card_shadow', 'none');
   const numberColor = getVal(`${moduleId}_el_stat_item`, 'number_color', darkMode ? '#FFFFFF' : '#0F172A');
@@ -244,7 +229,7 @@ export const StatsModule: React.FC<{
 
   // Element: Icon Style
   const showIcons = getVal(`${moduleId}_el_stat_icon`, 'show_icons', true);
-  const iconSize = parseNumSafe(getVal(`${moduleId}_el_stat_icon`, 'icon_size', 24), 24);
+  const iconSize = getVal(`${moduleId}_el_stat_icon`, 'icon_size', 24);
   const iconShape = getVal(`${moduleId}_el_stat_icon`, 'icon_shape', 'squircle');
   const iconColor = getVal(`${moduleId}_el_stat_icon`, 'icon_color', 'var(--primary-color)');
   const iconBg = darkMode ? 'rgba(255, 255, 255, 0.05)' : getVal(`${moduleId}_el_stat_icon`, 'icon_bg', 'rgba(59, 130, 246, 0.1)');
@@ -285,24 +270,14 @@ export const StatsModule: React.FC<{
 
   return (
     <section 
-      id={moduleId}
-      ref={containerRef}
       className="w-full relative overflow-hidden"
       style={{ 
         backgroundColor: bgColor,
-        backgroundImage: (sectionGradient && typeof bgGradient === 'string' && !bgGradient.includes('NaN')) ? bgGradient : 'none',
+        backgroundImage: sectionGradient ? bgGradient : 'none',
         paddingTop: `${paddingY}px`,
         paddingBottom: `${paddingY}px`
       }}
     >
-      <ParallaxBackground 
-        scrollYProgress={scrollYProgress}
-        enabled={bgParallaxEnabled}
-        imageUrl={bgParallaxImg}
-        opacity={bgParallaxOpacity}
-        overlayColor={bgParallaxOverlay}
-        speed={bgParallaxSpeed}
-      />
       <div className="max-w-7xl mx-auto px-8 relative z-10">
         {/* Header */}
         {showHeader && (

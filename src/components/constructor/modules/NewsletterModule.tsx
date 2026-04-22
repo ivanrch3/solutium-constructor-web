@@ -1,10 +1,8 @@
-import React, { useState, useRef } from 'react';
-import { motion, AnimatePresence, useScroll } from 'motion/react';
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Mail, Check, Send, Bell, User, ShieldCheck, X } from 'lucide-react';
 import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
 import { TextRenderer } from '../TextRenderer';
-import { ParallaxBackground } from '../ParallaxBackground';
-import { parseNumSafe } from '../utils';
 
 export const NewsletterModule: React.FC<{ 
   moduleId: string, 
@@ -16,12 +14,6 @@ export const NewsletterModule: React.FC<{
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [showFloating, setShowFloating] = useState(true);
 
-  const containerRef = useRef(null);
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start end", "end start"]
-  });
-
   const getVal = (elementId: string | null, settingId: string, defaultValue: any) => {
     const key = elementId ? `${elementId}_${settingId}` : `${moduleId}_global_${settingId}`;
     return settingsValues[key] !== undefined ? settingsValues[key] : defaultValue;
@@ -29,24 +21,17 @@ export const NewsletterModule: React.FC<{
 
   // Global Settings
   const layout = getVal(null, 'layout', 'centered');
-  const maxWidth = parseNumSafe(getVal(null, 'max_width', 800), 800);
-  const paddingY = parseNumSafe(getVal(null, 'padding_y', 80), 80);
+  const maxWidth = parseFloat(getVal(null, 'max_width', 800)) || 800;
+  const paddingY = parseFloat(getVal(null, 'padding_y', 80)) || 80;
   const darkMode = getVal(null, 'dark_mode', false);
   const bgType = getVal(null, 'bg_type', 'color');
   const bgColor = darkMode ? '#0F172A' : getVal(null, 'bg_color', '#FFFFFF');
   const bgGradient = darkMode ? 'linear-gradient(135deg, #0F172A 0%, #1E293B 100%)' : getVal(null, 'bg_gradient', 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)');
   const bgPattern = getVal(null, 'bg_pattern', 'none');
-  const backdropBlur = parseNumSafe(getVal(null, 'backdrop_blur', 0), 0);
-  const borderRadius = parseNumSafe(getVal(null, 'border_radius', 32), 32);
+  const backdropBlur = getVal(null, 'backdrop_blur', 0);
+  const borderRadius = getVal(null, 'border_radius', 32);
   const showShadow = getVal(null, 'show_shadow', true);
   const entranceAnim = getVal(null, 'entrance_anim', true);
-
-  // Multimedia (Parallax Background)
-  const bgParallaxEnabled = getVal(null, 'bg_parallax_enabled', false);
-  const bgParallaxImg = getVal(null, 'bg_parallax_img', '');
-  const bgParallaxOpacity = parseNumSafe(getVal(null, 'bg_parallax_opacity', 20), 20);
-  const bgParallaxOverlay = getVal(null, 'bg_parallax_overlay', '#000000');
-  const bgParallaxSpeed = parseNumSafe(getVal(null, 'bg_parallax_speed', 100), 100);
 
   // Element: Header
   const title = getVal(`${moduleId}_el_news_header`, 'title', 'Suscríbete a nuestra Newsletter');
@@ -57,7 +42,7 @@ export const NewsletterModule: React.FC<{
   const subtitleSize = getVal(`${moduleId}_el_news_header`, 'subtitle_size', 'p');
   const subtitleWeight = getVal(`${moduleId}_el_news_header`, 'subtitle_weight', 'normal');
   const textColor = darkMode ? '#FFFFFF' : getVal(`${moduleId}_el_news_header`, 'text_color', '#0F172A');
-  const marginB = parseNumSafe(getVal(`${moduleId}_el_news_header`, 'margin_b', 32), 32);
+  const marginB = getVal(`${moduleId}_el_news_header`, 'margin_b', 32);
 
   const titleHighlightType = getVal(`${moduleId}_el_news_header`, 'title_highlight_type', 'gradient');
   const titleHighlightColor = getVal(`${moduleId}_el_news_header`, 'title_highlight_color', '#3B82F6');
@@ -80,7 +65,7 @@ export const NewsletterModule: React.FC<{
   const inputBg = darkMode ? '#334155' : getVal(`${moduleId}_el_news_form`, 'input_bg', '#F8FAFC');
   const btnBg = getVal(`${moduleId}_el_news_form`, 'btn_bg', 'var(--primary-color)');
   const btnColor = getVal(`${moduleId}_el_news_form`, 'btn_color', '#FFFFFF');
-  const inputRadius = parseNumSafe(getVal(`${moduleId}_el_news_form`, 'input_radius', 16), 16);
+  const inputRadius = getVal(`${moduleId}_el_news_form`, 'input_radius', 16);
   const hoverEffect = getVal(`${moduleId}_el_news_form`, 'hover_effect', 'scale');
   const showConfetti = getVal(`${moduleId}_el_news_form`, 'show_confetti', true);
 
@@ -91,7 +76,7 @@ export const NewsletterModule: React.FC<{
   // Element: Trust
   const privacyText = getVal(`${moduleId}_el_news_trust`, 'privacy_text', 'Respetamos tu privacidad. Sin spam, solo valor.');
   const subscriberCount = getVal(`${moduleId}_el_news_trust`, 'subscriber_count', 'Únete a +2,000 suscriptores');
-  const trustTextSize = parseNumSafe(getVal(`${moduleId}_el_news_trust`, 'text_size', 12), 12);
+  const trustTextSize = getVal(`${moduleId}_el_news_trust`, 'text_size', 12);
   const trustTextColor = darkMode ? '#94A3B8' : getVal(`${moduleId}_el_news_trust`, 'text_color', '#64748B');
   const showIcon = getVal(`${moduleId}_el_news_trust`, 'show_icon', true);
 
@@ -131,10 +116,7 @@ export const NewsletterModule: React.FC<{
   };
 
   if (bgType === 'color') containerStyle.backgroundColor = bgColor;
-  if (bgType === 'gradient') {
-    const isSafe = typeof bgGradient === 'string' && !bgGradient.includes('NaN');
-    containerStyle.backgroundImage = isSafe ? bgGradient : 'none';
-  }
+  if (bgType === 'gradient') containerStyle.backgroundImage = bgGradient;
   if (bgType === 'transparent') containerStyle.backgroundColor = 'transparent';
 
   const animProps = entranceAnim ? {
@@ -169,10 +151,10 @@ export const NewsletterModule: React.FC<{
         {[...Array(20)].map((_, i) => (
           <motion.div
             key={i}
-            initial={{ top: -20, left: `${isFinite(Math.random()) ? (Math.random() * 100).toFixed(2) : 50}%`, rotate: 0 }}
+            initial={{ top: -20, left: `${(Math.random() * 100).toFixed(2)}%`, rotate: 0 }}
             animate={{ 
               top: '120%', 
-              left: `${isFinite(Math.random()) ? (Math.random() * 100).toFixed(2) : 50}%`, 
+              left: `${(Math.random() * 100).toFixed(2)}%`, 
               rotate: 360,
               transition: { duration: 2 + Math.random() * 2, repeat: Infinity, ease: "linear" }
             }}
@@ -237,19 +219,7 @@ export const NewsletterModule: React.FC<{
   }
 
   return (
-    <section 
-      id={moduleId}
-      ref={containerRef}
-      className={`w-full relative px-8 ${layout === 'minimal' ? 'py-8' : 'py-12'}`}
-    >
-      <ParallaxBackground 
-        scrollYProgress={scrollYProgress}
-        enabled={bgParallaxEnabled}
-        imageUrl={bgParallaxImg}
-        opacity={bgParallaxOpacity}
-        overlayColor={bgParallaxOverlay}
-        speed={bgParallaxSpeed}
-      />
+    <section className={`w-full px-8 ${layout === 'minimal' ? 'py-8' : 'py-12'}`}>
       <motion.div 
         {...animProps}
         className={`mx-auto px-8 @md:px-12 relative overflow-hidden transition-all duration-500 ${layout === 'minimal' ? 'py-8' : 'py-12 @md:py-16 @lg:py-20'}`}

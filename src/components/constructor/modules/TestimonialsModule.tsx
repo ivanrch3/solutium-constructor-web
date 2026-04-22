@@ -1,9 +1,8 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { motion, AnimatePresence, useScroll } from 'motion/react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Quote, Star, ChevronLeft, ChevronRight } from 'lucide-react';
 import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
 import { TextRenderer } from '../TextRenderer';
-import { ParallaxBackground } from '../ParallaxBackground';
 
 const MOCK_TESTIMONIALS = [
   {
@@ -165,41 +164,23 @@ export const TestimonialsModule: React.FC<{
 }> = ({ moduleId, settingsValues }) => {
   const [activeIndex, setActiveIndex] = useState(0);
 
-  const containerRef = useRef(null);
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start end", "end start"]
-  });
-
   const getVal = (elementId: string | null, settingId: string, defaultValue: any) => {
     const key = elementId ? `${elementId}_${settingId}` : `${moduleId}_global_${settingId}`;
     return settingsValues[key] !== undefined ? settingsValues[key] : defaultValue;
   };
 
-  const parseF = (val: any, fallback: number) => {
-    const f = parseFloat(val);
-    return isNaN(f) ? fallback : f;
-  };
-
   // Global Settings
   const layout = getVal(null, 'layout', 'carousel');
-  const columns = Math.max(1, parseInt(getVal(null, 'columns', 3)) || 3);
-  const gap = parseF(getVal(null, 'gap', 30), 30);
-  const paddingY = parseF(getVal(null, 'padding_y', 100), 100);
+  const columns = getVal(null, 'columns', 3);
+  const gap = getVal(null, 'gap', 30);
+  const paddingY = getVal(null, 'padding_y', 100);
   const darkMode = getVal(null, 'dark_mode', false);
   const bgColor = darkMode ? '#0F172A' : getVal(null, 'bg_color', '#F8FAFC');
   const sectionGradient = getVal(null, 'section_gradient', false);
   const bgGradient = getVal(null, 'bg_gradient', 'linear-gradient(to bottom, #F8FAFC, #FFFFFF)');
   const autoplay = getVal(null, 'autoplay', true);
-  const autoplaySpeed = parseF(getVal(null, 'autoplay_speed', 5000), 5000);
+  const autoplaySpeed = getVal(null, 'autoplay_speed', 5000);
   const entranceAnim = getVal(null, 'entrance_anim', true);
-
-  // Multimedia (Parallax Background)
-  const bgParallaxEnabled = getVal(null, 'bg_parallax_enabled', false);
-  const bgParallaxImg = getVal(null, 'bg_parallax_img', '');
-  const bgParallaxOpacity = parseF(getVal(null, 'bg_parallax_opacity', 20), 20);
-  const bgParallaxOverlay = getVal(null, 'bg_parallax_overlay', '#000000');
-  const bgParallaxSpeed = parseF(getVal(null, 'bg_parallax_speed', 100), 100);
 
   // Element: Header
   const eyebrow = getVal(`${moduleId}_el_testimonials_header`, 'eyebrow', 'TESTIMONIOS');
@@ -212,7 +193,7 @@ export const TestimonialsModule: React.FC<{
   const headerTitleWeight = getVal(`${moduleId}_el_testimonials_header`, 'title_weight', 'bold');
   const headerTitleColor = darkMode ? '#FFFFFF' : getVal(`${moduleId}_el_testimonials_header`, 'title_color', '#0F172A');
   const eyebrowColor = getVal(`${moduleId}_el_testimonials_header`, 'eyebrow_color', 'var(--primary-color)');
-  const headerMarginB = parseF(getVal(`${moduleId}_el_testimonials_header`, 'margin_b', 60), 60);
+  const headerMarginB = getVal(`${moduleId}_el_testimonials_header`, 'margin_b', 60);
 
   // Highlight Settings
   const titleHighlightType = getVal(`${moduleId}_el_testimonials_header`, 'title_highlight_type', 'gradient');
@@ -227,11 +208,11 @@ export const TestimonialsModule: React.FC<{
 
   // Element: Card Style
   const cardBg = getVal(`${moduleId}_el_testimonial_card`, 'card_bg', '#FFFFFF');
-  const cardRadius = parseF(getVal(`${moduleId}_el_testimonial_card`, 'card_radius', 24), 24);
+  const cardRadius = getVal(`${moduleId}_el_testimonial_card`, 'card_radius', 24);
   const showShadow = getVal(`${moduleId}_el_testimonial_card`, 'show_shadow', true);
   const borderColor = getVal(`${moduleId}_el_testimonial_card`, 'border_color', 'transparent');
   const quoteStyle = getVal(`${moduleId}_el_testimonial_card`, 'quote_style', 'top-left');
-  const cardPadding = parseF(getVal(`${moduleId}_el_testimonial_card`, 'card_padding', 32), 32);
+  const cardPadding = getVal(`${moduleId}_el_testimonial_card`, 'card_padding', 32);
   const hoverLift = getVal(`${moduleId}_el_testimonial_card`, 'hover_lift', true);
   const hoverGlow = getVal(`${moduleId}_el_testimonial_card`, 'hover_glow', false);
 
@@ -311,24 +292,14 @@ export const TestimonialsModule: React.FC<{
 
   return (
     <section 
-      id={moduleId}
-      ref={containerRef}
       className="w-full relative overflow-hidden"
       style={{ 
         backgroundColor: bgColor,
-        backgroundImage: (sectionGradient && typeof bgGradient === 'string' && !bgGradient.includes('NaN')) ? bgGradient : 'none',
+        backgroundImage: sectionGradient ? bgGradient : 'none',
         paddingTop: `${paddingY}px`,
         paddingBottom: `${paddingY}px`
       }}
     >
-      <ParallaxBackground 
-        scrollYProgress={scrollYProgress}
-        enabled={bgParallaxEnabled}
-        imageUrl={bgParallaxImg}
-        opacity={bgParallaxOpacity}
-        overlayColor={bgParallaxOverlay}
-        speed={bgParallaxSpeed}
-      />
       <div className="max-w-7xl mx-auto px-8">
         {/* Header */}
         <div 

@@ -106,12 +106,3 @@ body {
 .custom-scrollbar::-webkit-scrollbar-thumb {
   @apply bg-slate-400/20 rounded-full hover:bg-slate-400/40 transition-colors;
 }
-
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}

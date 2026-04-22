@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'motion/react';
 import { X, ZoomIn, ChevronLeft, ChevronRight, Play } from 'lucide-react';
 import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
 import { TextRenderer } from '../TextRenderer';
-import { parseNumSafe } from '../utils';
 
 const getAspectRatioClass = (ratio: string) => {
   switch (ratio) {
@@ -51,9 +50,9 @@ const GalleryItem = ({
 
   const hasVideo = isVideo(img.url);
 
-  const safeRadius = parseNumSafe(radius, 0);
-  const safeBorderWidth = parseNumSafe(borderWidth, 0);
-  const safeCaptionSize = parseNumSafe(captionSize, 16);
+  const safeRadius = parseFloat(radius as any) || 0;
+  const safeBorderWidth = parseFloat(borderWidth as any) || 0;
+  const safeCaptionSize = parseFloat(captionSize as any) || 16;
 
   return (
     <motion.div
@@ -131,9 +130,9 @@ export const GalleryModule: React.FC<{
 
   // Global Settings
   const layout = getVal(null, 'layout', 'grid');
-  const columns = Math.max(1, parseNumSafe(getVal(null, 'columns', 3), 3));
-  const gap = parseNumSafe(getVal(null, 'gap', 20), 20);
-  const paddingY = parseNumSafe(getVal(null, 'padding_y', 100), 100);
+  const columns = Math.max(1, parseInt(getVal(null, 'columns', 3)) || 3);
+  const gap = parseFloat(getVal(null, 'gap', 20)) || 20;
+  const paddingY = parseFloat(getVal(null, 'padding_y', 100)) || 100;
   const darkMode = getVal(null, 'dark_mode', false);
   const bgColor = darkMode ? '#0F172A' : getVal(null, 'bg_color', '#FFFFFF');
   const sectionGradient = getVal(null, 'section_gradient', false);
@@ -154,7 +153,7 @@ export const GalleryModule: React.FC<{
   const headerTitleWeight = getVal(`${moduleId}_el_gallery_header`, 'title_weight', 'bold');
   const headerSubtitleSize = getVal(`${moduleId}_el_gallery_header`, 'subtitle_size', 'p');
   const headerSubtitleWeight = getVal(`${moduleId}_el_gallery_header`, 'subtitle_weight', 'normal');
-  const headerMarginB = parseNumSafe(getVal(`${moduleId}_el_gallery_header`, 'margin_b', 60), 60);
+  const headerMarginB = getVal(`${moduleId}_el_gallery_header`, 'margin_b', 60);
 
   const titleHighlightType = getVal(`${moduleId}_el_gallery_header`, 'title_highlight_type', 'gradient');
   const titleHighlightColor = getVal(`${moduleId}_el_gallery_header`, 'title_highlight_color', '#3B82F6');
@@ -236,7 +235,7 @@ export const GalleryModule: React.FC<{
       className="w-full relative overflow-hidden"
       style={{ 
         backgroundColor: bgColor,
-        backgroundImage: (sectionGradient && typeof bgGradient === 'string' && !bgGradient.includes('NaN')) ? bgGradient : 'none',
+        backgroundImage: sectionGradient ? bgGradient : 'none',
         paddingTop: `${paddingY}px`,
         paddingBottom: `${paddingY}px`
       }}

@@ -16,8 +16,8 @@ export const FooterModule: React.FC<{
   };
 
   // Global Settings
-  const paddingY = parseFloat(getVal(null, 'padding_y', 80)) || 80;
-  const maxWidth = parseFloat(getVal(null, 'max_width', 1400)) || 1400;
+  const paddingY = getVal(null, 'padding_y', 80);
+  const maxWidth = getVal(null, 'max_width', 1400);
   const darkMode = getVal(null, 'dark_mode', false);
   const bgColor = darkMode ? '#0F172A' : getVal(null, 'bg_color', '#F8FAFC');
   const textColor = darkMode ? '#94A3B8' : getVal(null, 'text_color', '#475569');
@@ -28,7 +28,7 @@ export const FooterModule: React.FC<{
   const showLogo = getVal(`${moduleId}_el_footer_brand`, 'show_logo', true);
   const bio = getVal(`${moduleId}_el_footer_brand`, 'bio', 'Creamos soluciones digitales innovadoras para impulsar el crecimiento de tu negocio en la era moderna.');
   const logoImg = getVal(`${moduleId}_el_footer_brand`, 'logo_img', '');
-  const logoWidth = parseFloat(getVal(`${moduleId}_el_footer_brand`, 'logo_width', 120)) || 120;
+  const logoWidth = getVal(`${moduleId}_el_footer_brand`, 'logo_width', 120);
 
   // Element: Nav
   const columns = getVal(`${moduleId}_el_footer_nav`, 'columns', [

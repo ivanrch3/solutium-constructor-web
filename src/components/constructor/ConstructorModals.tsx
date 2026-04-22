@@ -6,9 +6,7 @@ import {
   HelpCircle, 
   Save, 
   Trash2, 
-  Send,
-  Sparkles,
-  Check
+  Send 
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -208,93 +206,6 @@ export const PublishModal: React.FC<{
           className="flex-1 px-6 py-3 bg-primary hover:bg-primary/90 text-white font-bold rounded-2xl shadow-lg shadow-primary/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isSaving ? 'Publicando...' : 'Publicar Ahora'}
-        </button>
-      </div>
-    </motion.div>
-  </div>
-);
-
-// AIGenerationModal Component
-export const AIGenerationModal: React.FC<{
-  currentStep: number,
-  steps: string[],
-  onCancel: () => void
-}> = ({ currentStep, steps, onCancel }) => (
-  <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-    <motion.div 
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="absolute inset-0 bg-text/80 backdrop-blur-md"
-    />
-    <motion.div 
-      initial={{ scale: 0.9, opacity: 0, y: 20 }}
-      animate={{ scale: 1, opacity: 1, y: 0 }}
-      className="relative w-full max-w-lg bg-surface rounded-[2.5rem] p-10 shadow-3xl text-center overflow-hidden"
-    >
-      {/* Decorative background elements */}
-      <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 blur-3xl rounded-full -mr-16 -mt-16" />
-      <div className="absolute bottom-0 left-0 w-32 h-32 bg-accent/10 blur-3xl rounded-full -ml-16 -mb-16" />
-
-      <div className="relative">
-        <div className="w-24 h-24 bg-gradient-to-br from-primary to-accent rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-2xl animate-pulse">
-          <Sparkles className="text-white w-12 h-12" />
-        </div>
-        
-        <h2 className="text-3xl font-black text-text mb-4 tracking-tight">
-          Solutium <span className="text-primary italic">AI Engine</span>
-        </h2>
-        
-        <p className="text-text/60 mb-10 max-w-sm mx-auto leading-relaxed">
-          Nuestra inteligencia artificial está esculpiendo tu sitio web profesional basándose en tu visión.
-        </p>
-
-        <div className="space-y-4 mb-10">
-          {steps.map((step, idx) => {
-            const isCompleted = idx < currentStep;
-            const isCurrent = idx === currentStep;
-            
-            return (
-              <div 
-                key={idx}
-                className={`flex items-center gap-4 p-4 rounded-2xl transition-all duration-500 border ${
-                  isCurrent ? 'bg-primary/5 border-primary/20 shadow-sm' : 
-                  isCompleted ? 'bg-success/5 border-success/10' : 'bg-transparent border-transparent opacity-30'
-                }`}
-              >
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${
-                  isCompleted ? 'bg-success text-white' : 
-                  isCurrent ? 'bg-primary text-white animate-bounce' : 'bg-secondary text-text/40'
-                }`}>
-                  {isCompleted ? <Check className="w-5 h-5" /> : idx + 1}
-                </div>
-                <div className="text-left flex-1">
-                  <p className={`text-sm font-bold ${isCurrent ? 'text-primary' : isCompleted ? 'text-text/80' : 'text-text/40'}`}>
-                    {step}
-                  </p>
-                  {isCurrent && (
-                    <motion.div 
-                      className="h-1 bg-primary/20 rounded-full mt-2 overflow-hidden"
-                      initial={{ width: 0 }}
-                      animate={{ width: '100%' }}
-                    >
-                      <motion.div 
-                        className="h-full bg-primary"
-                        animate={{ x: ['-100%', '100%'] }}
-                        transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
-                      />
-                    </motion.div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        <button 
-          onClick={onCancel}
-          className="text-[10px] font-black uppercase tracking-widest text-text/30 hover:text-error transition-all duration-300"
-        >
-          Interrumpir generación
         </button>
       </div>
     </motion.div>

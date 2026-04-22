@@ -1,11 +1,9 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { motion, AnimatePresence, useScroll } from 'motion/react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import * as LucideIcons from 'lucide-react';
 import { ArrowRight, Sparkles, ExternalLink } from 'lucide-react';
 import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
 import { TextRenderer } from '../TextRenderer';
-import { ParallaxBackground } from '../ParallaxBackground';
-import { parseNumSafe } from '../utils';
 import { Responsive, WidthProvider } from 'react-grid-layout/legacy';
 import '/node_modules/react-grid-layout/css/styles.css';
 import '/node_modules/react-resizable/css/styles.css';
@@ -50,7 +48,7 @@ const BentoCellContent = ({ item, darkMode }: any) => {
           <h4 
             className="leading-none mt-2"
             style={{ 
-              fontSize: window.innerWidth < 640 ? '32px' : '48px',
+              fontSize: '48px',
               fontWeight: 900,
               color: finalTitleColor
             }}
@@ -185,12 +183,6 @@ export const BentoModule: React.FC<{
   const [isDragging, setIsDragging] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
-  const containerRef = useRef(null);
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start end", "end start"]
-  });
-
   const getVal = (elementId: string | null, settingId: string, defaultValue: any) => {
     const key = elementId ? `${elementId}_${settingId}` : `${moduleId}_global_${settingId}`;
     return settingsValues[key] !== undefined ? settingsValues[key] : defaultValue;
@@ -198,20 +190,13 @@ export const BentoModule: React.FC<{
 
   // Global Settings
   const columns = Math.max(1, parseInt(getVal(null, 'columns', 12)) || 12);
-  const gap = parseNumSafe(getVal(null, 'gap', 20), 20);
-  const paddingY = parseNumSafe(getVal(null, 'padding_y', 100), 100);
-  const maxWidth = parseNumSafe(getVal(null, 'max_width', 1400), 1400);
+  const gap = parseFloat(getVal(null, 'gap', 20)) || 20;
+  const paddingY = parseFloat(getVal(null, 'padding_y', 100)) || 100;
+  const maxWidth = parseFloat(getVal(null, 'max_width', 1400)) || 1400;
   const darkMode = getVal(null, 'dark_mode', false);
   const bgColor = darkMode ? '#0F172A' : getVal(null, 'bg_color', '#FFFFFF');
   const sectionGradient = getVal(null, 'section_gradient', false);
   const bgGradient = getVal(null, 'bg_gradient', 'linear-gradient(to bottom, #FFFFFF, #F8FAFC)');
-
-  // Multimedia (Parallax Background)
-  const bgParallaxEnabled = getVal(null, 'bg_parallax_enabled', false);
-  const bgParallaxImg = getVal(null, 'bg_parallax_img', '');
-  const bgParallaxOpacity = parseNumSafe(getVal(null, 'bg_parallax_opacity', 20), 20);
-  const bgParallaxOverlay = getVal(null, 'bg_parallax_overlay', '#000000');
-  const bgParallaxSpeed = parseNumSafe(getVal(null, 'bg_parallax_speed', 100), 100);
 
   // Items Data
   const rawItems = getVal(`${moduleId}_el_bento_items`, 'items', []);
@@ -236,23 +221,18 @@ export const BentoModule: React.FC<{
     newLayout.forEach((l: any) => {
       const idx = parseInt(l.i);
       if (newItems[idx]) {
-        const x = isNaN(parseInt(l.x)) ? 0 : parseInt(l.x);
-        const y = isNaN(parseInt(l.y)) ? 0 : parseInt(l.y);
-        const w = isNaN(parseInt(l.w)) ? 1 : parseInt(l.w);
-        const h = isNaN(parseInt(l.h)) ? 1 : parseInt(l.h);
-
         if (
-          newItems[idx].col_span !== w || 
-          newItems[idx].row_span !== h ||
-          newItems[idx].x !== x ||
-          newItems[idx].y !== y
+          newItems[idx].col_span !== l.w || 
+          newItems[idx].row_span !== l.h ||
+          newItems[idx].x !== l.x ||
+          newItems[idx].y !== l.y
         ) {
           newItems[idx] = { 
             ...newItems[idx], 
-            col_span: w, 
-            row_span: h,
-            x: x,
-            y: y
+            col_span: l.w, 
+            row_span: l.h,
+            x: l.x,
+            y: l.y
           };
           changed = true;
         }
@@ -319,24 +299,14 @@ export const BentoModule: React.FC<{
 
   return (
     <section 
-      id={moduleId}
-      ref={containerRef}
       className={`w-full relative overflow-hidden transition-colors duration-500 ${isDragging ? 'bento-dragging' : ''}`}
       style={{ 
         backgroundColor: bgColor,
-        backgroundImage: (sectionGradient && typeof bgGradient === 'string' && !bgGradient.includes('NaN')) ? bgGradient : 'none',
+        backgroundImage: sectionGradient ? bgGradient : 'none',
         paddingTop: `${paddingY}px`,
         paddingBottom: `${paddingY}px`
       }}
     >
-      <ParallaxBackground 
-        scrollYProgress={scrollYProgress}
-        enabled={bgParallaxEnabled}
-        imageUrl={bgParallaxImg}
-        opacity={bgParallaxOpacity}
-        overlayColor={bgParallaxOverlay}
-        speed={bgParallaxSpeed}
-      />
       <div className="mx-auto px-4 sm:px-8" style={{ maxWidth: `${maxWidth}px` }}>
         
         {/* Grid Guide - Only visible in constructor */}
@@ -376,12 +346,7 @@ export const BentoModule: React.FC<{
               md: layout, 
               sm: layout, 
               xs: layout, 
-              xxs: layout.map((l: any, idx: number) => ({ 
-                ...l, 
-                w: 1, 
-                x: 0, 
-                y: idx * 2 
-              }))
+              xxs: layout.map((l: any, idx: number) => ({ ...l, w: 1, x: 0, y: idx * 2 }))
             }}
             breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
             cols={{ lg: columns, md: columns, sm: 6, xs: 4, xxs: 1 }}
@@ -397,7 +362,7 @@ export const BentoModule: React.FC<{
             onResizeStart={() => setIsDragging(true)}
             onResizeStop={() => setIsDragging(false)}
             onDrop={handleDrop}
-            useCSSTransforms={true}
+            useCSSTransforms={false}
             measureBeforeMount={true}
             droppingItem={{ i: "__dropping_elem__", w: 4, h: 2, x: 0, y: 0 }}
           >
@@ -418,9 +383,8 @@ export const BentoModule: React.FC<{
               z_index = 1
             } = item;
 
-            const isSafeGradient = (val: any) => typeof val === 'string' && !val.includes('NaN');
             const finalBg = card_style === 'solid' ? (darkMode ? '#1E293B' : card_bg) : 
-                            (card_style === 'gradient' && isSafeGradient(card_gradient)) ? card_gradient : 
+                            card_style === 'gradient' ? card_gradient : 
                             card_style === 'glass' ? (darkMode ? 'rgba(30, 41, 59, 0.7)' : 'rgba(255, 255, 255, 0.7)') : 
                             'transparent';
             

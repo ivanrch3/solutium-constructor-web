@@ -179,28 +179,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   const [structurePanelCollapsed, setStructurePanelCollapsed] = useState(false);
   const [viewport, setViewport] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
   const [isFullscreen, setIsFullscreen] = useState(false);
-  
-  // AI Generation State
-  const [showAIInitialForm, setShowAIInitialForm] = useState(() => {
-    // Solo mostrar si es un sitio nuevo y no tiene módulos
-    return !initialPage && (!editorState.addedModules || editorState.addedModules.length === 0);
-  });
-  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
-  const [aiGenerationStep, setAiGenerationStep] = useState(0);
-  const aiSteps = [
-    "Diseñando estructura por industria...",
-    "Redactando contenido persuasivo...",
-    "Sincronizando paleta de marca y estilo...",
-    "Curando imágenes de stock y activos..."
-  ];
 
-  const [isPreviewMode] = useState(() => {
-    const params = new URLSearchParams(window.location.search);
-    return params.get('mode') === 'preview';
-  });
-  const [reloadKey, setReloadKey] = useState(0);
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const [showUnsavedModal, setShowUnsavedModal] = useState(false);
   const [editorState, setEditorState] = useState<EditorState>(() => {
     const defaultState: EditorState = {
       addedModules: [],
@@ -249,6 +228,14 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
 
     return defaultState;
   });
+  
+  // AI Generation State
+  const [showAIInitialForm, setShowAIInitialForm] = useState(() => {
+    // Solo mostrar si es un sitio nuevo y no tiene módulos
+    return !initialPage && (!editorState.addedModules || editorState.addedModules.length === 0);
+  });
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+  const [aiGenerationStep, setAiGenerationStep] = useState(0);
 
   // Apply Global Theme to CSS Variables
   useEffect(() => {

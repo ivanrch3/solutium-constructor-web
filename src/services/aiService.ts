@@ -88,8 +88,8 @@ export const generateSiteContent = async (brief: GenerationBrief): Promise<SiteC
   }
 
   const systemInstruction = `
-    Eres un Copywriter y Diseñador Web profesional experto en marketing digital para Solutium.
-    Tu tarea es generar la estructura y contenido de un sitio web premium.
+    Eres un Copywriter y Diseñador Web premium de Solutium.
+    Tu tarea es generar un sitio web ESTRATÉGICO y MINIMALISTA.
     
     INDUSTRIA: ${brief.industry}
     NEGOCIO: ${brief.name}
@@ -97,22 +97,18 @@ export const generateSiteContent = async (brief: GenerationBrief): Promise<SiteC
     OBJETIVO: ${brief.goal}
     ESTILO: ${brief.style}
 
-    DEBES usar exclusivamente estos IDs de módulos:
-    - Navegación: mod_menu_1 (el_menu_logo, el_menu_items)
-    - Impacto: mod_hero_1 (el_hero_typography)
-    - Productos/Servicios: mod_products_1 (el_products_header)
-    - Pie: mod_footer_1 (el_footer_brand, el_footer_nav, el_footer_contact)
-
-    PRINCIPIOS DE REDACCIÓN:
-    - Títulos persuasivos usando sintaxis de resaltado: **texto resaltado**.
-    - Copys orientados al objetivo (${brief.goal}).
-    - Si el valor es una imagen, devuelve una QUERY DE BÚSQUEDA en inglés para stock photos.
+    REGLAS CRÍTICAS:
+    1. Máximo 4 secciones totales.
+    2. Usa sintaxis **resaltado** para textos impactantes.
+    3. Si es imagen, devuelve una keyword de Pexels en inglés.
+    4. NO generes textos largos. Se directo y persuasivo.
+    5. Solo usa estos IDs: mod_menu_1, mod_hero_1, mod_products_1, mod_footer_1.
   `;
 
   try {
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
-      contents: `Genera el sitio web para ${brief.name} (${brief.industry}).`,
+      contents: `Genera una Landing Page para ${brief.name}. Responde solo con JSON conciso.`,
       config: {
         systemInstruction,
         responseMimeType: "application/json",
@@ -120,40 +116,76 @@ export const generateSiteContent = async (brief: GenerationBrief): Promise<SiteC
       }
     });
 
-    const generatedData = JSON.parse(response.text);
+    let text = response.text;
     
-    // Capa D: Curador de Imágenes (Pexels)
-    const sectionsWithImages = await Promise.all(generatedData.sections.map(async (section: any) => {
-      const enrichedElements = await Promise.all(section.elements.map(async (el: any) => {
-        const enrichedFields = await Promise.all(el.fields.map(async (field: any) => {
-          // Detectar si el campo requiere una imagen basada en metadatos o keyword
-          if (field.id.includes('img') || field.id.includes('logo')) {
-            const photos = await searchStockPhotos(`${brief.industry} ${field.value || ''}`);
-            return { ...field, value: photos[0] || 'https://images.pexels.com/photos/1181244/pexels-photo-1181244.jpeg' }; // Fallback
-          }
-          return field;
-        }));
-        return { ...el, fields: enrichedFields };
-      }));
-      return { ...section, elements: enrichedElements };
-    }));
+    // Mitigación agresiva para JSON truncado (string no terminado)
+    try {
+      return await processResponse(text, brief);
+    } catch (parseError) {
+      console.warn("Retrying JSON fix for unterminated string...");
+      // Si falla, intentamos cerrar la última comilla si hay una abierta
+      if (text.split('"').length % 2 === 0) { // Comillas impares significa una abierta
+        text += '"'; 
+      }
+      // Re-intentar cerrar objetos y arrays
+      const openBrackets = (text.match(/\{/g) || []).length;
+      const closeBrackets = (text.match(/\}/g) || []).length;
+      text += '}'.repeat(Math.max(0, openBrackets - closeBrackets));
+      
+      const openSquares = (text.match(/\[/g) || []).length;
+      const closeSquares = (text.match(/\]/g) || []).length;
+      text += ']'.repeat(Math.max(0, openSquares - closeSquares));
 
-    const theme = mapStyleToTheme(brief.style, brief.brandColors);
-
-    return {
-      theme,
-      sections: sectionsWithImages.map((s: any) => ({
-        ...s,
-        settings: s.settings || {
-          paddingY: 'py-20',
-          backgroundColor: '#FFFFFF',
-        }
-      }))
-    };
+      return await processResponse(text, brief);
+    }
   } catch (error) {
     console.error("AI Generation failed:", error);
     throw error;
   }
 };
+
+/**
+ * Procesa la respuesta de texto a JSON y enriquece con imágenes
+ */
+async function processResponse(text: string, brief: GenerationBrief): Promise<SiteContent> {
+  let cleanedText = text;
+  
+  // Limpieza básica de caracteres antes/después del JSON
+  const start = cleanedText.indexOf('{');
+  const end = cleanedText.lastIndexOf('}');
+  if (start !== -1 && end !== -1) {
+    cleanedText = cleanedText.substring(start, end + 1);
+  }
+
+  const generatedData = JSON.parse(cleanedText);
+  
+  // Capa D: Curador de Imágenes (Pexels)
+  const sectionsWithImages = await Promise.all(generatedData.sections.map(async (section: any) => {
+    const enrichedElements = await Promise.all(section.elements.map(async (el: any) => {
+      const enrichedFields = await Promise.all(el.fields.map(async (field: any) => {
+        if (field.id.includes('img') || field.id.includes('logo')) {
+          const photos = await searchStockPhotos(`${brief.industry} ${field.value || ''}`);
+          return { ...field, value: photos[0] || 'https://images.pexels.com/photos/1181244/pexels-photo-1181244.jpeg' };
+        }
+        return field;
+      }));
+      return { ...el, fields: enrichedFields };
+    }));
+    return { ...section, elements: enrichedElements };
+  }));
+
+  const theme = mapStyleToTheme(brief.style, brief.brandColors);
+
+  return {
+    theme,
+    sections: sectionsWithImages.map((s: any) => ({
+      ...s,
+      settings: s.settings || {
+        paddingY: 'py-20',
+        backgroundColor: '#FFFFFF',
+      }
+    }))
+  };
+}
 
 export const generateSite = generateSiteContent;

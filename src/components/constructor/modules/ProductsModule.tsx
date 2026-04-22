@@ -22,6 +22,11 @@ export const ProductsModule: React.FC<{
     return settingsValues[key] !== undefined ? settingsValues[key] : defaultValue;
   };
 
+  const parseF = (val: any, fallback: number) => {
+    const f = parseFloat(val);
+    return isNaN(f) ? fallback : f;
+  };
+
   // Element: Textos
   const sectionTitle = getVal(`${moduleId}_el_products_header`, 'title', 'Nuestros Productos');
   const sectionDesc = getVal(`${moduleId}_el_products_header`, 'subtitle', 'Descubre nuestra selección exclusiva de productos.');
@@ -49,7 +54,7 @@ export const ProductsModule: React.FC<{
   // Global Settings
   const layout = getVal(null, 'layout', 'grid');
   const columns = Math.max(1, parseInt(getVal(null, 'columns', 4)) || 4);
-  const gap = parseFloat(getVal(null, 'gap', 24)) || 24;
+  const gap = parseF(getVal(null, 'gap', 24), 24);
   const darkMode = getVal(null, 'dark_mode', false);
   const bgColor = getVal(null, 'bg_color', '#FFFFFF');
   const sectionGradient = getVal(null, 'section_gradient', false);
@@ -61,7 +66,7 @@ export const ProductsModule: React.FC<{
   const showStockBar = getVal(null, 'show_stock_bar', false);
 
   // Element Settings
-  const imgBorderRadius = getVal(`${moduleId}_el_img`, 'border_radius', 16);
+  const imgBorderRadius = parseF(getVal(`${moduleId}_el_img`, 'border_radius', 16), 16);
   const imgAspectRatio = getVal(`${moduleId}_el_img`, 'aspect_ratio', '1:1');
   const hoverSwap = getVal(`${moduleId}_el_img`, 'hover_swap', true);
   const imgHoverEffect = getVal(`${moduleId}_el_img`, 'hover_effect', 'zoom');
@@ -90,7 +95,7 @@ export const ProductsModule: React.FC<{
   const showCtaIcon = getVal(`${moduleId}_el_cta`, 'show_icon', true);
   const ctaBg = getVal(`${moduleId}_el_cta`, 'cta_bg', '#0F172A');
   const ctaColor = getVal(`${moduleId}_el_cta`, 'cta_color', '#FFFFFF');
-  const ctaRadius = getVal(`${moduleId}_el_cta`, 'cta_radius', 12);
+  const ctaRadius = parseF(getVal(`${moduleId}_el_cta`, 'cta_radius', 12), 12);
   const ctaHoverBg = getVal(`${moduleId}_el_cta`, 'cta_hover_bg', '#2563EB');
 
   const baseProducts = products && products.length > 0 ? products : (isDevMode ? MOCK_PRODUCTS : []);
@@ -166,7 +171,7 @@ export const ProductsModule: React.FC<{
       className={`py-12 @md:py-20 @lg:py-24 px-8 w-full transition-colors duration-300 relative ${darkMode ? 'bg-slate-900' : ''}`}
       style={{ 
         backgroundColor: darkMode ? undefined : bgColor,
-        backgroundImage: sectionGradient ? bgGradient : 'none'
+        backgroundImage: (sectionGradient && typeof bgGradient === 'string' && !bgGradient.includes('NaN')) ? bgGradient : 'none'
       }}
     >
       <div className="max-w-7xl mx-auto relative z-10">
@@ -230,7 +235,7 @@ export const ProductsModule: React.FC<{
           <div className="relative">
             <div className="overflow-hidden">
               <motion.div 
-                animate={{ x: layout === 'carousel' ? `-${(carouselIndex || 0) * 100}%` : 0 }}
+                animate={{ x: layout === 'carousel' ? `-${(parseFloat(carouselIndex as any) || 0) * 100}%` : 0 }}
                 transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                 className={`grid ${
                   layout === 'carousel' ? 'flex transition-none' :
@@ -340,7 +345,7 @@ export const ProductsModule: React.FC<{
                           {/* Urgency & Stock Bar */}
                           {(showUrgency || showStockBar) && (
                             <div className="mb-4">
-                              {showUrgency && (product.stock || 0) < 10 && (
+                              {showUrgency && (parseFloat(product.stock as any) || 0) < 10 && (
                                 <div className="flex items-center justify-center gap-1 mb-2 text-rose-500 text-[10px] font-bold uppercase animate-pulse">
                                   <Zap size={10} fill="currentColor" />
                                   ¡Solo quedan {product.stock} unidades!
@@ -351,7 +356,7 @@ export const ProductsModule: React.FC<{
                                   <motion.div 
                                     initial={{ width: 0 }}
                                     whileInView={{ width: `${Math.min(100, (parseFloat(product.stock as any) || 0) * 5)}%` }}
-                                    className={`h-full ${(product.stock || 0) < 10 ? 'bg-rose-500' : 'bg-emerald-500'}`}
+                                    className={`h-full ${(parseFloat(product.stock as any) || 0) < 10 ? 'bg-rose-500' : 'bg-emerald-500'}`}
                                   />
                                 </div>
                               )}

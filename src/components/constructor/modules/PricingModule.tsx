@@ -4,6 +4,7 @@ import * as LucideIcons from 'lucide-react';
 import { Check, X, ShieldCheck, Zap, Clock, CreditCard } from 'lucide-react';
 import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
 import { TextRenderer } from '../TextRenderer';
+import { parseNumSafe } from '../utils';
 
 const AnimatedPrice: React.FC<{ value: number, color: string, size: string, weight: string }> = ({ value, color, size, weight }) => {
   const [displayValue, setDisplayValue] = useState(value);
@@ -60,8 +61,8 @@ export const PricingModule: React.FC<{
   };
 
   // Global Settings
-  const columns = getVal(null, 'columns', 3);
-  const gap = getVal(null, 'gap', 32);
+  const columns = parseNumSafe(getVal(null, 'columns', 3), 3);
+  const gap = parseNumSafe(getVal(null, 'gap', 32), 32);
   const darkMode = getVal(null, 'dark_mode', false);
   const bgColor = darkMode ? '#0F172A' : getVal(null, 'bg_color', '#F8FAFC');
   const sectionGradient = getVal(null, 'section_gradient', false);
@@ -78,7 +79,7 @@ export const PricingModule: React.FC<{
   const headerAlign = getVal(`${moduleId}_el_pricing_header`, 'align', 'center');
   const headerTitleSize = getVal(`${moduleId}_el_pricing_header`, 'title_size', 't2');
   const headerTitleWeight = getVal(`${moduleId}_el_pricing_header`, 'title_weight', 'bold');
-  const headerMarginB = getVal(`${moduleId}_el_pricing_header`, 'margin_b', 60);
+  const headerMarginB = parseNumSafe(getVal(`${moduleId}_el_pricing_header`, 'margin_b', 60), 60);
 
   const titleHighlightType = getVal(`${moduleId}_el_pricing_header`, 'title_highlight_type', 'gradient');
   const titleHighlightColor = getVal(`${moduleId}_el_pricing_header`, 'title_highlight_color', '#3B82F6');
@@ -99,7 +100,7 @@ export const PricingModule: React.FC<{
 
   // Element: Card
   const cardBg = getVal(`${moduleId}_el_pricing_card`, 'card_bg', '#FFFFFF');
-  const cardRadius = getVal(`${moduleId}_el_pricing_card`, 'card_radius', 32);
+  const cardRadius = parseNumSafe(getVal(`${moduleId}_el_pricing_card`, 'card_radius', 32), 32);
   const highlightColor = getVal(`${moduleId}_el_pricing_card`, 'highlight_color', 'var(--primary-color)');
   const showShadow = getVal(`${moduleId}_el_pricing_card`, 'show_shadow', true);
   const hoverEffect = getVal(`${moduleId}_el_pricing_card`, 'hover_effect', 'lift');
@@ -196,7 +197,7 @@ export const PricingModule: React.FC<{
       className="w-full relative overflow-hidden py-12 @md:py-20 @lg:py-24"
       style={{ 
         backgroundColor: bgColor,
-        backgroundImage: sectionGradient ? bgGradient : 'none'
+        backgroundImage: (sectionGradient && typeof bgGradient === 'string' && !bgGradient.includes('NaN')) ? bgGradient : 'none'
       }}
     >
       <div className="max-w-7xl mx-auto px-8">

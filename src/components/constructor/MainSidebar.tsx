@@ -42,7 +42,8 @@ import {
   FAQ_MODULE, 
   PRODUCTS_MODULE, 
   SPACER_MODULE,
-  BENTO_MODULE
+  BENTO_MODULE,
+  COMPARISON_MODULE
 } from './registry';
 
 interface SidebarItemProps {
@@ -249,6 +250,11 @@ export const MainSidebar: React.FC<MainSidebarProps> = ({
                       icon={React.createElement(MODULE_INFO.bento.icon, { size: 18 })} 
                       label="Composición Libre" 
                       onClick={() => onAddModule(BENTO_MODULE)}
+                    />
+                    <ModuleItem 
+                      icon={React.createElement(MODULE_INFO.comparative.icon, { size: 18 })} 
+                      label="Comparativo" 
+                      onClick={() => onAddModule(COMPARISON_MODULE)}
                     />
                   </div>
                 )}

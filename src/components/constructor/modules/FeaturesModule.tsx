@@ -233,11 +233,16 @@ export const FeaturesModule: React.FC<{
     return settingsValues[key] !== undefined ? settingsValues[key] : defaultValue;
   };
 
+  const parseF = (val: any, fallback: number) => {
+    const f = parseFloat(val);
+    return isNaN(f) ? fallback : f;
+  };
+
   // Global Settings
   const layout = getVal(null, 'layout', 'grid');
   const columns = Math.max(1, parseInt(getVal(null, 'columns', 3)) || 3);
-  const gap = parseFloat(getVal(null, 'gap', 32)) || 32;
-  const paddingY = parseFloat(getVal(null, 'padding_y', 100)) || 100;
+  const gap = parseF(getVal(null, 'gap', 32), 32);
+  const paddingY = parseF(getVal(null, 'padding_y', 100), 100);
   const darkMode = getVal(null, 'dark_mode', false);
   const bgColor = darkMode ? '#0F172A' : getVal(null, 'bg_color', '#FFFFFF');
   const sectionGradient = getVal(null, 'section_gradient', false);
@@ -253,7 +258,7 @@ export const FeaturesModule: React.FC<{
   const headerTitleWeight = getVal(`${moduleId}_el_features_header`, 'title_weight', 'bold');
   const headerEyebrowColor = getVal(`${moduleId}_el_features_header`, 'eyebrow_color', '#3B82F6');
   const headerEyebrowBg = getVal(`${moduleId}_el_features_header`, 'eyebrow_bg', 'rgba(59, 130, 246, 0.1)');
-  const headerMarginB = getVal(`${moduleId}_el_features_header`, 'margin_b', 80);
+  const headerMarginB = parseF(getVal(`${moduleId}_el_features_header`, 'margin_b', 80), 80);
 
   const headerTitleColor = darkMode ? '#FFFFFF' : undefined;
 
@@ -311,7 +316,7 @@ export const FeaturesModule: React.FC<{
       className="w-full relative overflow-hidden"
       style={{ 
         backgroundColor: bgColor,
-        backgroundImage: sectionGradient ? bgGradient : 'none',
+        backgroundImage: (sectionGradient && typeof bgGradient === 'string' && !bgGradient.includes('NaN')) ? bgGradient : 'none',
         paddingTop: `${paddingY}px`,
         paddingBottom: `${paddingY}px`
       }}

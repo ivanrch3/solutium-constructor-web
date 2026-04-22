@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { EditorState, WebModule } from '../../types/constructor';
 import { Product, Customer } from '../../types/schema';
+import { useEditorStore } from '../../store/editorStore';
 import { ProductsModule } from './modules/ProductsModule';
 import { HeroModule } from './modules/HeroModule';
 import { FeaturesModule } from './modules/FeaturesModule';
@@ -29,6 +30,7 @@ import { MenuModule } from './modules/MenuModule';
 import { FooterModule } from './modules/FooterModule';
 import { SpacerModule } from './modules/SpacerModule';
 import { BentoModule } from './modules/BentoModule';
+import { ComparisonModule } from './modules/ComparisonModule';
 
 interface CanvasProps {
   editorState: EditorState;
@@ -44,6 +46,7 @@ interface CanvasProps {
   setIsFullscreen: (f: boolean) => void;
   isPreviewMode: boolean;
   onSettingChange: (elementOrModuleId: string, settingId: string, value: any) => void;
+  reloadKey?: number;
 }
 
 export const Canvas: React.FC<CanvasProps> = ({ 
@@ -59,8 +62,10 @@ export const Canvas: React.FC<CanvasProps> = ({
   isFullscreen, 
   setIsFullscreen,
   isPreviewMode,
-  onSettingChange
+  onSettingChange,
+  reloadKey = 0
 }) => {
+  const { selectSection, selectedSectionId } = useEditorStore();
   const lastModuleRef = React.useRef<HTMLDivElement>(null);
   const prevModulesLength = React.useRef(editorState.addedModules?.length || 0);
 
@@ -135,7 +140,7 @@ export const Canvas: React.FC<CanvasProps> = ({
       )}
       <div className={`flex justify-center min-h-full transition-all duration-500 ${isFullscreen ? 'p-12 pt-24' : isPreviewMode ? 'p-0' : 'p-12'}`}>
         <div 
-          className={`bg-surface relative overflow-hidden transition-all duration-500 ease-in-out @container ${
+          className={`bg-surface relative transition-all duration-500 ease-in-out @container ${
             isPreviewMode ? 'w-full max-w-none border-none rounded-none shadow-none' : 
             isFullscreen ? 'rounded-3xl border border-border/50 shadow-2xl' : 'rounded-2xl border border-border/50 shadow-2xl'
           } ${viewport === 'mobile' && !isPreviewMode ? 'rounded-[3rem] border-[8px] border-slate-900 shadow-[0_0_0_2px_rgba(0,0,0,0.1)]' : ''} ${viewport === 'tablet' && !isPreviewMode ? 'rounded-[2rem] border-[12px] border-slate-900 shadow-[0_0_0_2px_rgba(0,0,0,0.1)]' : ''}`}
@@ -150,7 +155,7 @@ export const Canvas: React.FC<CanvasProps> = ({
               <div className="w-10 h-1 bg-slate-800 rounded-full" />
             </div>
           )}
-          <div className="w-full">
+          <div className="w-full" key={reloadKey}>
             {(!editorState.addedModules || editorState.addedModules.length === 0) && !isPreviewMode ? (
               <div className="flex flex-col items-center justify-center py-32 px-6 text-center">
                 <div className="w-20 h-20 bg-secondary rounded-3xl flex items-center justify-center mb-6 text-text/20">
@@ -165,8 +170,82 @@ export const Canvas: React.FC<CanvasProps> = ({
               (editorState.addedModules || []).map((module, index) => {
                 const isLast = index === (editorState.addedModules?.length || 0) - 1;
                 
+                // Determine if this module wrapper should be sticky/fixed
+                const modulePos = editorState.settingsValues[`${module.id}_global_position`];
+                const menuSticky = editorState.settingsValues[`${module.id}_global_sticky`];
+                const isSticky = modulePos === 'sticky' || menuSticky === true;
+                const isFixed = modulePos === 'fixed';
+
+                // Calculate cumulative top offset for stacking floating modules
+                let topOffset = 0;
+                if (isSticky || isFixed) {
+                  for (let i = 0; i < index; i++) {
+                    const prev = editorState.addedModules[i];
+                    const prevPos = editorState.settingsValues[`${prev.id}_global_position`];
+                    const prevSticky = editorState.settingsValues[`${prev.id}_global_sticky`];
+                    const isPrevFloating = prevPos === 'sticky' || prevPos === 'fixed' || prevSticky === true;
+                    
+                    if (isPrevFloating) {
+                      if (prev.type === 'conversion' || prev.type === 'header') {
+                        const showMarquee = editorState.settingsValues[`${prev.id}_el_header_marquee_show_marquee`] ?? true;
+                        const showReg = editorState.settingsValues[`${prev.id}_el_header_quick_reg_show_reg`] ?? false;
+                        const showActions = editorState.settingsValues[`${prev.id}_el_header_actions_show_actions`] ?? true;
+                        
+                        // Determine if content actually renders (Sync with HeaderModule.tsx)
+                        const primaryUrl = editorState.settingsValues[`${prev.id}_el_header_actions_primary_url`] || '';
+                        const secondaryUrl = editorState.settingsValues[`${prev.id}_el_header_actions_secondary_url`] || '';
+                        const hasPrimary = primaryUrl !== '';
+                        const hasSecondary = secondaryUrl !== '';
+                        const hasButtons = showActions && (hasPrimary || hasSecondary);
+                        const hasContent = showReg || hasButtons;
+                        
+                        const layoutType = editorState.settingsValues[`${prev.id}_global_layout_type`] || 'standard';
+                        const isCompact = layoutType === 'compact';
+                        
+                        let h = 0;
+                        if (showMarquee) h += 32; // Marquee (py-2 = 16px + font-size approx 16px)
+                        if (hasContent) {
+                          const py = isCompact ? 12 : 20;
+                          const contentH = isCompact ? 34 : 38; // Measured base height of buttons/form
+                          h += (py * 2) + contentH + 1; // Content + paddings + bottom border
+                        }
+                        
+                        topOffset += h;
+                      } else if (prev.type === 'navegacion' || prev.type === 'menu') {
+                        const pyValue = editorState.settingsValues[`${prev.id}_global_padding_y`];
+                        const py = (typeof pyValue === 'number' ? pyValue : parseFloat(pyValue)) || 20;
+                        topOffset += (isNaN(py) ? 20 : py * 2) + 40;
+                      }
+                    }
+                  }
+                }
+
+                // Higher z-index for earlier modules to ensure top bar is always on top
+                const stackingZIndex = 110 - index;
+
                 return (
-                  <div key={module.id} id={`module-${module.id}`} ref={isLast ? lastModuleRef : null} className="w-full">
+                  <div 
+                    key={module.id} 
+                    id={`module-${module.id}`} 
+                    ref={isLast ? lastModuleRef : null} 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      selectSection(module.id);
+                    }}
+                    className={`w-full group relative cursor-pointer outline-none transition-all duration-300 ${isSticky || isFixed ? 'sticky' : 'relative'} ${
+                      selectedSectionId === module.id 
+                        ? 'ring-2 ring-blue-500 ring-inset shadow-2xl z-50' 
+                        : 'hover:ring-1 hover:ring-blue-300/50 ring-inset'
+                    }`}
+                    style={{ 
+                      top: isSticky || isFixed ? `${topOffset}px` : undefined,
+                      zIndex: isSticky || isFixed ? stackingZIndex : (selectedSectionId === module.id ? 50 : 1)
+                    }}
+                  >
+                    {/* Indicador de Selección */}
+                    {selectedSectionId === module.id && !isPreviewMode && (
+                      <div className="absolute -left-1 top-0 bottom-0 w-1 bg-blue-500 z-50 rounded-full" />
+                    )}
                     {module.type === 'products' && (
                       <ProductsModule 
                         moduleId={module.id}
@@ -303,6 +382,13 @@ export const Canvas: React.FC<CanvasProps> = ({
                         settingsValues={editorState.settingsValues}
                         onSettingChange={onSettingChange}
                         isPreviewMode={isPreviewMode}
+                      />
+                    )}
+                    {module.type === 'comparative' && (
+                      <ComparisonModule 
+                        moduleId={module.id}
+                        settingsValues={editorState.settingsValues}
+                        preview={isPreviewMode}
                       />
                     )}
                   </div>

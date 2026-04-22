@@ -27,8 +27,8 @@ export const VideoModule: React.FC<{
   // Global Settings
   const layout = getVal(null, 'layout', 'centered');
   const aspectRatio = getVal(null, 'aspect_ratio', '16/9');
-  const paddingY = getVal(null, 'padding_y', 100);
-  const maxWidth = getVal(null, 'max_width', 1000);
+  const paddingY = parseFloat(getVal(null, 'padding_y', 100)) || 100;
+  const maxWidth = parseFloat(getVal(null, 'max_width', 1000)) || 1000;
   const darkMode = getVal(null, 'dark_mode', false);
   const bgColor = darkMode ? '#0F172A' : getVal(null, 'bg_color', '#FFFFFF');
   const sectionGradient = getVal(null, 'section_gradient', false);
@@ -46,7 +46,7 @@ export const VideoModule: React.FC<{
   const autoplay = getVal(`${moduleId}_el_video_player`, 'autoplay', false);
   const loop = getVal(`${moduleId}_el_video_player`, 'loop', true);
   const controls = getVal(`${moduleId}_el_video_player`, 'controls', true);
-  const radius = getVal(`${moduleId}_el_video_player`, 'radius', 24);
+  const radius = parseFloat(getVal(`${moduleId}_el_video_player`, 'radius', 24)) || 24;
   const shadow = getVal(`${moduleId}_el_video_player`, 'shadow', true);
   const borderColor = darkMode ? 'rgba(255,255,255,0.1)' : getVal(`${moduleId}_el_video_player`, 'border_color', 'rgba(0,0,0,0.1)');
   const useLightbox = getVal(`${moduleId}_el_video_player`, 'lightbox', false);
@@ -65,7 +65,7 @@ export const VideoModule: React.FC<{
   const subtitleWeight = getVal(`${moduleId}_el_video_text`, 'subtitle_weight', 'normal');
   const titleColor = darkMode ? '#FFFFFF' : getVal(`${moduleId}_el_video_text`, 'title_color', '#0F172A');
   const eyebrowColor = getVal(`${moduleId}_el_video_text`, 'eyebrow_color', 'var(--primary-color)');
-  const marginB = getVal(`${moduleId}_el_video_text`, 'margin_b', 40);
+  const marginB = parseFloat(getVal(`${moduleId}_el_video_text`, 'margin_b', 40)) || 40;
 
   const titleHighlightType = getVal(`${moduleId}_el_video_text`, 'title_highlight_type', 'gradient');
   const titleHighlightColor = getVal(`${moduleId}_el_video_text`, 'title_highlight_color', '#3B82F6');
@@ -321,7 +321,7 @@ export const VideoModule: React.FC<{
       className="w-full relative overflow-hidden @container"
       style={{ 
         backgroundColor: bgColor,
-        backgroundImage: sectionGradient ? bgGradient : 'none',
+        backgroundImage: (sectionGradient && typeof bgGradient === 'string' && !bgGradient.includes('NaN')) ? bgGradient : 'none',
         paddingTop: `${paddingY}px`,
         paddingBottom: `${paddingY}px`
       }}

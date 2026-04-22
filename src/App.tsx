@@ -10,6 +10,8 @@ import { Dashboard } from './components/Dashboard';
 import { MethodSelection, CreationMethod } from './components/MethodSelection';
 import { ProjectForm, ProjectFormData } from './components/ProjectForm';
 import { WebConstructor } from './components/constructor/WebConstructor';
+import { AIGenerationOverlay } from './components/constructor/AIGenerationOverlay';
+import { useEditorStore } from './store/editorStore';
 import { Viewer } from './components/Viewer';
 import { Profile, Project, Asset, WebBuilderSite, PublishedSite } from './types/schema';
 import { getAssets } from './services/dataService';
@@ -119,12 +121,18 @@ const AppContent: React.FC = () => {
           link.href = handshakeFavicon;
         }
 
-        if (payload.do_endpoint && payload.do_access_key && payload.do_secret_key && payload.do_bucket) {
+        // Configuration fallbacks from environment
+        const finalEndpoint = payload.do_endpoint || import.meta.env.VITE_STORAGE_ENDPOINT;
+        const finalAccessKey = payload.do_access_key || import.meta.env.VITE_STORAGE_ACCESS_KEY;
+        const finalSecretKey = payload.do_secret_key || import.meta.env.VITE_STORAGE_SECRET_KEY;
+        const finalBucket = payload.do_bucket || import.meta.env.VITE_STORAGE_BUCKET;
+
+        if (finalEndpoint && finalAccessKey && finalSecretKey && finalBucket) {
           initDOClient(
-            payload.do_endpoint,
-            payload.do_access_key,
-            payload.do_secret_key,
-            payload.do_bucket
+            finalEndpoint,
+            finalAccessKey,
+            finalSecretKey,
+            finalBucket
           );
         }
 
@@ -264,10 +272,21 @@ const AppContent: React.FC = () => {
     setCurrentView('form');
   };
 
-  const handleFormSubmit = (data: ProjectFormData) => {
+  const handleFormSubmit = async (data: ProjectFormData) => {
     setFormData(data);
     if (selectedMethod === 'ai') {
-      setCurrentView('generator');
+      // Disparar generación inteligente
+      const brief = {
+        name: data.name,
+        industry: data.industry,
+        description: data.description,
+        goal: data.goal,
+        style: (data as any).visualStyle || 'modern', // Fallback si no está en el form
+        brandColors: project?.brandColors || { primary: '#3B82F6', secondary: '#1E293B' }
+      };
+
+      await useEditorStore.getState().startAIGeneration(brief);
+      setCurrentView('constructor');
     } else {
       setCurrentView('constructor');
     }
@@ -336,10 +355,10 @@ const AppContent: React.FC = () => {
                   'placeholder-token'
                 );
                 initDOClient(
-                  'https://nyc3.digitaloceanspaces.com',
-                  'mock-key',
-                  'mock-secret',
-                  'mock-bucket'
+                  import.meta.env.VITE_STORAGE_ENDPOINT || 'nyc3.digitaloceanspaces.com',
+                  import.meta.env.VITE_STORAGE_ACCESS_KEY || 'mock-key',
+                  import.meta.env.VITE_STORAGE_SECRET_KEY || 'mock-secret',
+                  import.meta.env.VITE_STORAGE_BUCKET || 'mock-bucket'
                 );
                 setProjectId('dev-project-id');
                 setProfile({
@@ -457,6 +476,7 @@ const AppContent: React.FC = () => {
   return (
     <div className="min-h-screen bg-background text-text">
       {renderView()}
+      <AIGenerationOverlay />
     </div>
   );
 };

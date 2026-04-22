@@ -102,6 +102,7 @@ class StorageService {
       formData.append('contentType', contentType);
 
       console.log(`[StorageService] Attempting proxy upload to /api/upload-proxy for ${fileName}`);
+      console.log(`[StorageService] Endpoint: ${this.endpoint}, Bucket: ${this.bucket}`);
       
       const proxyUrl = `${window.location.origin}/api/upload-proxy`;
       const response = await fetch(proxyUrl, {

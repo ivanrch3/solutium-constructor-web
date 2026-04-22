@@ -60,7 +60,7 @@ const StepItem = ({
       }}
     >
       <div className={indicatorShape === 'diamond' ? '-rotate-45' : ''}>
-        {useIcons ? <IconComponent size={indicatorSize * 0.45} /> : <span className="font-black" style={{ fontSize: `${indicatorSize * 0.4}px` }}>{index + 1}</span>}
+        {useIcons ? <IconComponent size={(parseFloat(indicatorSize as any) || 48) * 0.45} /> : <span className="font-black" style={{ fontSize: `${(parseFloat(indicatorSize as any) || 48) * 0.4}px` }}>{index + 1}</span>}
       </div>
       
       {hoverGlow && (
@@ -209,11 +209,16 @@ export const ProcessModule: React.FC<{
     return settingsValues[key] !== undefined ? settingsValues[key] : defaultValue;
   };
 
+  const parseF = (val: any, fallback: number) => {
+    const f = parseFloat(val);
+    return isNaN(f) ? fallback : f;
+  };
+
   // Global Settings
   const layout = getVal(null, 'layout', 'horizontal');
   const columns = Math.max(1, parseInt(getVal(null, 'columns', 4)) || 4);
-  const paddingY = parseFloat(getVal(null, 'padding_y', 120)) || 120;
-  const gap = parseFloat(getVal(null, 'gap', 40)) || 40;
+  const paddingY = parseF(getVal(null, 'padding_y', 120), 120);
+  const gap = parseF(getVal(null, 'gap', 40), 40);
   const darkMode = getVal(null, 'dark_mode', false);
   const bgColor = darkMode ? '#0F172A' : getVal(null, 'bg_color', '#F8FAFC');
   const sectionGradient = getVal(null, 'section_gradient', false);
@@ -233,7 +238,7 @@ export const ProcessModule: React.FC<{
   const headerTitleWeight = getVal(`${moduleId}_el_process_header`, 'title_weight', 'bold');
   const headerEyebrowColor = getVal(`${moduleId}_el_process_header`, 'eyebrow_color', '#3B82F6');
   const headerEyebrowBg = getVal(`${moduleId}_el_process_header`, 'eyebrow_bg', 'rgba(59, 130, 246, 0.1)');
-  const headerMarginB = getVal(`${moduleId}_el_process_header`, 'margin_b', 80);
+  const headerMarginB = parseF(getVal(`${moduleId}_el_process_header`, 'margin_b', 80), 80);
 
   const headerTitleColor = darkMode ? '#FFFFFF' : undefined;
 
@@ -243,8 +248,8 @@ export const ProcessModule: React.FC<{
   // Element: Step Style
   const cardBg = darkMode ? '#1E293B' : getVal(`${moduleId}_el_process_step`, 'card_bg', '#FFFFFF');
   const cardBorder = darkMode ? 'rgba(255,255,255,0.1)' : getVal(`${moduleId}_el_process_step`, 'card_border', 'rgba(0,0,0,0.05)');
-  const cardRadius = getVal(`${moduleId}_el_process_step`, 'card_radius', 24);
-  const cardPadding = getVal(`${moduleId}_el_process_step`, 'card_padding', 32);
+  const cardRadius = parseF(getVal(`${moduleId}_el_process_step`, 'card_radius', 24), 24);
+  const cardPadding = parseF(getVal(`${moduleId}_el_process_step`, 'card_padding', 32), 32);
   const stepTitleSize = getVal(`${moduleId}_el_process_step`, 'step_title_size', 't3');
   const stepTitleWeight = getVal(`${moduleId}_el_process_step`, 'step_title_weight', 'bold');
   const stepDescSize = getVal(`${moduleId}_el_process_step`, 'step_desc_size', 'p');
@@ -254,7 +259,7 @@ export const ProcessModule: React.FC<{
   // Element: Indicator
   const indicatorBg = getVal(`${moduleId}_el_process_indicator`, 'indicator_bg', '#3B82F6');
   const indicatorColor = getVal(`${moduleId}_el_process_indicator`, 'indicator_color', '#FFFFFF');
-  const indicatorSize = getVal(`${moduleId}_el_process_indicator`, 'indicator_size', 48);
+  const indicatorSize = parseF(getVal(`${moduleId}_el_process_indicator`, 'indicator_size', 48), 48);
   const indicatorGlow = getVal(`${moduleId}_el_process_indicator`, 'indicator_glow', true);
   const indicatorShape = getVal(`${moduleId}_el_process_indicator`, 'indicator_shape', 'circle');
   const useIcons = getVal(`${moduleId}_el_process_indicator`, 'use_icons', true);
@@ -298,7 +303,7 @@ export const ProcessModule: React.FC<{
       className="w-full relative overflow-hidden"
       style={{ 
         backgroundColor: bgColor,
-        backgroundImage: sectionGradient ? bgGradient : 'none',
+        backgroundImage: (sectionGradient && typeof bgGradient === 'string' && !bgGradient.includes('NaN')) ? bgGradient : 'none',
         paddingTop: `${paddingY}px`,
         paddingBottom: `${paddingY}px`
       }}

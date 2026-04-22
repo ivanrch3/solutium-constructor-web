@@ -1,6 +1,7 @@
-import React from 'react';
-import { motion } from 'motion/react';
+import React, { useRef } from 'react';
+import { motion, useScroll } from 'motion/react';
 import * as LucideIcons from 'lucide-react';
+import { ParallaxBackground } from '../ParallaxBackground';
 
 export const SpacerModule: React.FC<{ 
   moduleId: string, 
@@ -11,24 +12,42 @@ export const SpacerModule: React.FC<{
     return settingsValues[key] !== undefined ? settingsValues[key] : defaultValue;
   };
 
+  const containerRef = useRef(null);
+  const { scrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ["start end", "end start"]
+  });
+
+  const parseF = (val: any, fallback: number) => {
+    const f = parseFloat(val);
+    return isNaN(f) ? fallback : f;
+  };
+
   // Global Settings - Estructura
-  const heightDesktop = getVal(null, 'height_desktop', 60);
-  const heightMobile = getVal(null, 'height_mobile', 40);
-  const width = getVal(null, 'width', 100);
+  const heightDesktop = parseF(getVal(null, 'height_desktop', 60), 60);
+  const heightMobile = parseF(getVal(null, 'height_mobile', 40), 40);
+  const width = parseF(getVal(null, 'width', 100), 100);
   const align = getVal(null, 'align', 'center');
 
   // Global Settings - Estilo
   const darkMode = getVal(null, 'dark_mode', false);
   const type = getVal(null, 'type', 'none');
-  const thickness = getVal(null, 'thickness', 1);
+  const thickness = parseF(getVal(null, 'thickness', 1), 1);
   const color = darkMode ? 'rgba(255,255,255,0.1)' : getVal(null, 'color', '#E2E8F0');
   const bgColor = darkMode ? '#0F172A' : getVal(null, 'bg_color', 'transparent');
   const showContent = getVal(null, 'show_content', false);
   const contentType = getVal(null, 'content_type', 'icon');
   const iconName = getVal(null, 'icon', 'Star');
   const text = getVal(null, 'text', 'SECCIÓN');
-  const contentSize = getVal(null, 'content_size', 16);
+  const contentSize = parseF(getVal(null, 'content_size', 16), 16);
   const contentColor = darkMode ? '#94A3B8' : getVal(null, 'content_color', '#94A3B8');
+
+  // Multimedia (Parallax Background)
+  const bgParallaxEnabled = getVal(null, 'bg_parallax_enabled', false);
+  const bgParallaxImg = getVal(null, 'bg_parallax_img', '');
+  const bgParallaxOpacity = parseF(getVal(null, 'bg_parallax_opacity', 20), 20);
+  const bgParallaxOverlay = getVal(null, 'bg_parallax_overlay', '#000000');
+  const bgParallaxSpeed = parseF(getVal(null, 'bg_parallax_speed', 100), 100);
 
   const alignmentClasses = {
     start: 'justify-start',
@@ -43,13 +62,23 @@ export const SpacerModule: React.FC<{
 
   return (
     <div 
-      className="w-full flex items-center overflow-hidden transition-all duration-300 group/spacer"
+      id={moduleId}
+      ref={containerRef}
+      className="w-full relative flex items-center overflow-hidden transition-all duration-300 group/spacer"
       data-module-type="spacer"
       style={{ 
         backgroundColor: bgColor,
         minHeight: `${heightMobile}px`
       }}
     >
+      <ParallaxBackground 
+        scrollYProgress={scrollYProgress}
+        enabled={bgParallaxEnabled}
+        imageUrl={bgParallaxImg}
+        opacity={bgParallaxOpacity}
+        overlayColor={bgParallaxOverlay}
+        speed={bgParallaxSpeed}
+      />
       {/* CSS Variable injection for responsive height */}
       <style dangerouslySetInnerHTML={{ __html: `
         #spacer-container-${moduleId} { height: ${heightMobile}px; }

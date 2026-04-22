@@ -1,9 +1,12 @@
 import React from 'react';
-import { motion } from 'motion/react';
+import { motion, useScroll } from 'motion/react';
 import { ArrowRight, ChevronDown, Play } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
 import { TextRenderer } from '../TextRenderer';
+import { ParallaxBackground } from '../ParallaxBackground';
+import { RotatingText } from '../RotatingText';
+import { parseNumSafe } from '../utils';
 
 export const HeroModule: React.FC<{ 
   moduleId: string, 
@@ -16,21 +19,34 @@ export const HeroModule: React.FC<{
     return settingsValues[key] !== undefined ? settingsValues[key] : defaultValue;
   };
 
+  const containerRef = React.useRef(null);
+  const { scrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ["start end", "end start"]
+  });
+
   // Global Settings
   const layout = getVal(null, 'layout', 'split');
   const height = getVal(null, 'height', 'screen');
-  const maxWidth = getVal(null, 'max_width', 1200);
+  const maxWidth = parseNumSafe(getVal(null, 'max_width', 1200), 1200);
   const darkMode = getVal(null, 'dark_mode', false);
   const bgType = getVal(null, 'bg_type', 'color');
   const bgColor = darkMode ? '#0F172A' : getVal(null, 'bg_color', '#FFFFFF');
   const bgGradient = getVal(null, 'bg_gradient', 'linear-gradient(135deg, #F8FAFC 0%, #E2E8F0 100%)');
   const overlayColor = getVal(null, 'overlay_color', '#000000');
-  const overlayOpacity = getVal(null, 'overlay_opacity', 0);
+  const overlayOpacity = parseNumSafe(getVal(null, 'overlay_opacity', 0), 0);
   const showPattern = getVal(null, 'show_pattern', true);
   const showBlobs = getVal(null, 'show_blobs', true);
   const scrollIndicator = getVal(null, 'scroll_indicator', true);
   const scrollText = getVal(null, 'scroll_text', 'SCROLL');
   const entranceAnim = getVal(null, 'entrance_anim', 'fade_up');
+
+  // Multimedia (Parallax Background)
+  const bgParallaxEnabled = getVal(null, 'bg_parallax_enabled', false);
+  const bgParallaxImg = getVal(null, 'bg_parallax_img', '');
+  const bgParallaxOpacity = parseNumSafe(getVal(null, 'bg_parallax_opacity', 20), 20);
+  const bgParallaxOverlay = getVal(null, 'bg_parallax_overlay', '#000000');
+  const bgParallaxSpeed = parseNumSafe(getVal(null, 'bg_parallax_speed', 100), 100);
 
   // Element: Typography
   const eyebrow = getVal(`${moduleId}_el_hero_typography`, 'eyebrow', 'NUEVA SOLUCIÓN');
@@ -47,6 +63,15 @@ export const HeroModule: React.FC<{
   const titleHighlightGradient = getVal(`${moduleId}_el_hero_typography`, 'title_highlight_gradient', 'linear-gradient(90deg, #3B82F6 0%, #8B5CF6 100%)');
   const titleHighlightBold = getVal(`${moduleId}_el_hero_typography`, 'title_highlight_bold', true);
 
+  // Rotating Text Settings
+  const rotatingEnabled = getVal(`${moduleId}_el_hero_typography`, 'rotating_enabled', false);
+  const rotatingFixed = getVal(`${moduleId}_el_hero_typography`, 'rotating_fixed', 'Mi sueño en esta vida es');
+  const rotatingOptions = getVal(`${moduleId}_el_hero_typography`, 'rotating_options', []);
+  const rotatingAnim = getVal(`${moduleId}_el_hero_typography`, 'rotating_anim', 'fade');
+  const rotatingSpeed = getVal(`${moduleId}_el_hero_typography`, 'rotating_speed', 3000);
+  const rotatingColor = getVal(`${moduleId}_el_hero_typography`, 'rotating_color', '#3B82F6');
+  const rotatingGradient = getVal(`${moduleId}_el_hero_typography`, 'rotating_gradient', '');
+
   const subtitleHighlightType = getVal(`${moduleId}_el_hero_typography`, 'subtitle_highlight_type', 'gradient');
   const subtitleHighlightColor = getVal(`${moduleId}_el_hero_typography`, 'subtitle_highlight_color', '#3B82F6');
   const subtitleHighlightGradient = getVal(`${moduleId}_el_hero_typography`, 'subtitle_highlight_gradient', 'linear-gradient(90deg, #3B82F6 0%, #8B5CF6 100%)');
@@ -55,17 +80,17 @@ export const HeroModule: React.FC<{
   const eyebrowBg = getVal(`${moduleId}_el_hero_typography`, 'eyebrow_bg', 'rgba(59, 130, 246, 0.1)');
   const eyebrowColor = getVal(`${moduleId}_el_hero_typography`, 'eyebrow_color', '#3B82F6');
   const typographyAlign = getVal(`${moduleId}_el_hero_typography`, 'align', 'inherit');
-  const typographyMarginB = getVal(`${moduleId}_el_hero_typography`, 'margin_b', 0);
+  const typographyMarginB = parseNumSafe(getVal(`${moduleId}_el_hero_typography`, 'margin_b', 0), 0);
 
   // Element: Media
   const mediaType = getVal(`${moduleId}_el_hero_media`, 'media_type', 'image');
   const visualImage = getVal(`${moduleId}_el_hero_media`, 'image', 'https://picsum.photos/seed/hero/1200/800') || 'https://picsum.photos/seed/hero/1200/800';
   const visualVideo = getVal(`${moduleId}_el_hero_media`, 'video_url', '');
-  const visualRadius = getVal(`${moduleId}_el_hero_media`, 'border_radius', 24);
+  const visualRadius = parseNumSafe(getVal(`${moduleId}_el_hero_media`, 'border_radius', 24), 24);
   const visualShadow = getVal(`${moduleId}_el_hero_media`, 'shadow', 'lg');
   const visualFit = getVal(`${moduleId}_el_hero_media`, 'object_fit', 'cover');
-  const perspective = getVal(`${moduleId}_el_hero_media`, 'perspective', 1000);
-  const rotationY = getVal(`${moduleId}_el_hero_media`, 'rotation_y', 15);
+  const perspective = parseNumSafe(getVal(`${moduleId}_el_hero_media`, 'perspective', 1000), 1000);
+  const rotationY = parseNumSafe(getVal(`${moduleId}_el_hero_media`, 'rotation_y', 15), 15);
   const floatingAnim = getVal(`${moduleId}_el_hero_media`, 'floating_anim', true);
 
   // Element: CTAs
@@ -90,7 +115,7 @@ export const HeroModule: React.FC<{
   const shimmerEffect = getVal(`${moduleId}_el_hero_ctas`, 'shimmer_effect', false);
   const hoverEffect = getVal(`${moduleId}_el_hero_ctas`, 'hover_effect', 'lift');
   const pulseEffect = getVal(`${moduleId}_el_hero_ctas`, 'pulse_effect', true);
-  const btnRadius = getVal(`${moduleId}_el_hero_ctas`, 'btn_radius', 16);
+  const btnRadius = parseNumSafe(getVal(`${moduleId}_el_hero_ctas`, 'btn_radius', 16), 16);
   const btnWidthMobile = getVal(`${moduleId}_el_hero_ctas`, 'btn_width', 'auto');
 
   // Element: Social Proof
@@ -99,7 +124,7 @@ export const HeroModule: React.FC<{
   const avatars = getVal(`${moduleId}_el_hero_social_proof`, 'avatars', []);
   const proofFontSize = getVal(`${moduleId}_el_hero_social_proof`, 'font_size', 's');
   const proofWeight = getVal(`${moduleId}_el_hero_social_proof`, 'font_weight', 'bold');
-  const proofMarginB = getVal(`${moduleId}_el_hero_social_proof`, 'margin_b', 0);
+  const proofMarginB = parseNumSafe(getVal(`${moduleId}_el_hero_social_proof`, 'margin_b', 0), 0);
 
   const IconRenderer = ({ name, size = 16, className = "" }: { name: string, size?: number, className?: string }) => {
     const IconComponent = (LucideIcons as any)[name];
@@ -181,13 +206,24 @@ export const HeroModule: React.FC<{
           color: darkMode ? '#FFFFFF' : '#0F172A'
         }}
       >
-        <TextRenderer 
-          text={title} 
-          highlightType={titleHighlightType}
-          highlightColor={titleHighlightColor}
-          highlightGradient={titleHighlightGradient}
-          highlightBold={titleHighlightBold}
-        />
+        {rotatingEnabled ? (
+          <RotatingText 
+            fixedText={rotatingFixed}
+            options={rotatingOptions.map((opt: any) => opt.text)}
+            color={rotatingColor}
+            gradient={rotatingGradient}
+            speed={rotatingSpeed}
+            animationType={rotatingAnim as any}
+          />
+        ) : (
+          <TextRenderer 
+            text={title} 
+            highlightType={titleHighlightType}
+            highlightColor={titleHighlightColor}
+            highlightGradient={titleHighlightGradient}
+            highlightBold={titleHighlightBold}
+          />
+        )}
       </motion.h1>
 
       {subtitle && (
@@ -405,7 +441,7 @@ export const HeroModule: React.FC<{
       return (
         <div 
           className="absolute inset-0 z-0" 
-          style={{ background: bgGradient }}
+          style={{ background: (typeof bgGradient === 'string' && !bgGradient.includes('NaN')) ? bgGradient : 'none' }}
         />
       );
     }
@@ -418,8 +454,20 @@ export const HeroModule: React.FC<{
   };
 
   return (
-    <section className={`relative w-full overflow-hidden flex items-center ${sectionHeight}`}>
+    <section 
+      ref={containerRef}
+      className={`relative w-full overflow-hidden flex items-center ${sectionHeight}`}
+    >
       {renderBackground()}
+
+      <ParallaxBackground 
+        scrollYProgress={scrollYProgress}
+        enabled={bgParallaxEnabled}
+        imageUrl={bgParallaxImg}
+        opacity={bgParallaxOpacity}
+        overlayColor={bgParallaxOverlay}
+        speed={bgParallaxSpeed}
+      />
 
       <div 
         className="relative z-30 w-full px-8 mx-auto py-20"

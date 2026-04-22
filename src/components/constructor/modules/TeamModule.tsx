@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Linkedin, Twitter, Globe, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
 import { TextRenderer } from '../TextRenderer';
+import { parseNumSafe } from '../utils';
 
 export const TeamModule: React.FC<{ 
   moduleId: string, 
@@ -20,9 +21,9 @@ export const TeamModule: React.FC<{
   // Global Settings
   const layout = getVal(null, 'layout', 'grid');
   const showFilters = getVal(null, 'show_filters', true);
-  const columns = getVal(null, 'columns', 3);
-  const gap = getVal(null, 'gap', 32);
-  const paddingY = getVal(null, 'padding_y', 100);
+  const columns = Math.max(1, parseNumSafe(getVal(null, 'columns', 3), 3));
+  const gap = parseNumSafe(getVal(null, 'gap', 32), 32);
+  const paddingY = parseNumSafe(getVal(null, 'padding_y', 100), 100);
   const darkMode = getVal(null, 'dark_mode', false);
   const bgColor = darkMode ? '#0F172A' : getVal(null, 'bg_color', '#FFFFFF');
   const sectionGradient = getVal(null, 'section_gradient', false);
@@ -42,7 +43,7 @@ export const TeamModule: React.FC<{
   const headerTitleWeight = getVal(`${moduleId}_el_team_header`, 'title_weight', 'black');
   const headerTitleColor = darkMode ? '#FFFFFF' : getVal(`${moduleId}_el_team_header`, 'title_color', '#0F172A');
   const eyebrowColor = getVal(`${moduleId}_el_team_header`, 'eyebrow_color', 'var(--primary-color)');
-  const headerMarginB = getVal(`${moduleId}_el_team_header`, 'margin_b', 60);
+  const headerMarginB = parseNumSafe(getVal(`${moduleId}_el_team_header`, 'margin_b', 60), 60);
 
   // Highlight Settings
   const titleHighlightType = getVal(`${moduleId}_el_team_header`, 'title_highlight_type', 'gradient');
@@ -66,14 +67,14 @@ export const TeamModule: React.FC<{
   // Element: Card
   const cardStyle = getVal(`${moduleId}_el_team_card`, 'card_style', 'solid');
   const cardBg = darkMode ? '#1E293B' : getVal(`${moduleId}_el_team_card`, 'card_bg', '#FFFFFF');
-  const cardRadius = getVal(`${moduleId}_el_team_card`, 'card_radius', 24);
+  const cardRadius = parseNumSafe(getVal(`${moduleId}_el_team_card`, 'card_radius', 24), 24);
   const showBorder = getVal(`${moduleId}_el_team_card`, 'show_border', false);
   const cardShadow = getVal(`${moduleId}_el_team_card`, 'card_shadow', 'sm');
-  const cardPadding = getVal(`${moduleId}_el_team_card`, 'card_padding', 24);
+  const cardPadding = parseNumSafe(getVal(`${moduleId}_el_team_card`, 'card_padding', 24), 24);
   const hoverEffect = getVal(`${moduleId}_el_team_card`, 'hover_effect', 'lift');
 
   // Element: Image
-  const imgRadius = getVal(`${moduleId}_el_team_image`, 'img_radius', 20);
+  const imgRadius = parseNumSafe(getVal(`${moduleId}_el_team_image`, 'img_radius', 20), 20);
   const imgAspect = getVal(`${moduleId}_el_team_image`, 'img_aspect', 'portrait');
   const hoverImageSwap = getVal(`${moduleId}_el_team_image`, 'hover_image_swap', true);
   const imgMask = getVal(`${moduleId}_el_team_image`, 'img_mask', 'none');
@@ -143,11 +144,15 @@ export const TeamModule: React.FC<{
   };
 
   const nextSlide = () => {
-    setCarouselIndex((prev) => (prev + 1) % Math.ceil(filteredMembers.length / columns));
+    const pages = Math.ceil(filteredMembers.length / columns);
+    if (pages <= 0) return;
+    setCarouselIndex((prev) => (prev + 1) % pages);
   };
 
   const prevSlide = () => {
-    setCarouselIndex((prev) => (prev - 1 + Math.ceil(filteredMembers.length / columns)) % Math.ceil(filteredMembers.length / columns));
+    const pages = Math.ceil(filteredMembers.length / columns);
+    if (pages <= 0) return;
+    setCarouselIndex((prev) => (prev - 1 + pages) % pages);
   };
 
   return (
@@ -155,7 +160,7 @@ export const TeamModule: React.FC<{
       className="w-full relative overflow-hidden"
       style={{ 
         backgroundColor: bgColor,
-        backgroundImage: sectionGradient ? bgGradient : 'none',
+        backgroundImage: (sectionGradient && typeof bgGradient === 'string' && !bgGradient.includes('NaN')) ? bgGradient : 'none',
         paddingTop: `${paddingY}px`,
         paddingBottom: `${paddingY}px`
       }}
@@ -246,8 +251,8 @@ export const TeamModule: React.FC<{
               columns === 2 ? 'grid-cols-1 @sm:grid-cols-2' : 'grid-cols-1'
             }`}
             style={{ 
-              gap: layout === 'carousel' ? '0' : `${gap}px`,
-              transform: layout === 'carousel' ? `translateX(-${carouselIndex * 100}%)` : 'none'
+              gap: layout === 'carousel' ? '0' : `${parseFloat(gap as any) || 0}px`,
+              transform: layout === 'carousel' ? `translateX(-${(parseFloat(carouselIndex as any) || 0) * 100}%)` : 'none'
             }}
           >
             <AnimatePresence mode="popLayout">

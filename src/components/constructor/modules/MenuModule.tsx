@@ -17,14 +17,20 @@ export const MenuModule: React.FC<{
   // Global Settings
   const layout = getVal(null, 'layout', 'horizontal');
   const align = getVal(null, 'align', 'center');
-  const gap = getVal(null, 'gap', 24);
-  const paddingY = getVal(null, 'padding_y', 20);
+  const gap = parseFloat(getVal(null, 'gap', 24)) || 24;
+  const paddingY = parseFloat(getVal(null, 'padding_y', 20)) || 20;
   const darkMode = getVal(null, 'dark_mode', false);
-  const bgColor = darkMode ? '#0F172A' : getVal(null, 'bg_color', 'transparent');
+  const rawBgColor = darkMode ? '#0F172A' : getVal(null, 'bg_color', 'transparent');
   const glassEffect = getVal(null, 'glass_effect', false);
-  const sticky = getVal(null, 'sticky', false);
-  const borderRadius = getVal(null, 'border_radius', 12);
+  const position = getVal(null, 'position', getVal(null, 'sticky', false) ? 'sticky' : 'relative');
+  const isFloating = position === 'sticky' || position === 'fixed';
+
+  const bgColor = (isFloating && rawBgColor === 'transparent') 
+    ? (darkMode ? '#1E293B' : '#FFFFFF') 
+    : rawBgColor;
+  const borderRadius = parseFloat(getVal(null, 'border_radius', 12)) || 12;
   const entranceAnim = getVal(null, 'entrance_anim', true);
+  const invertOrder = getVal(null, 'invert_order', false);
 
   // Helper to safely apply opacity to hex colors
   const getGlassColor = (color: string) => {
@@ -39,7 +45,7 @@ export const MenuModule: React.FC<{
   const logoText = getVal(`${moduleId}_el_menu_logo`, 'logo_text', 'MI MARCA');
   const logoImg = getVal(`${moduleId}_el_menu_logo`, 'logo_img', '');
   const logoImgAlt = getVal(`${moduleId}_el_menu_logo`, 'logo_img_alt', '');
-  const logoWidth = getVal(`${moduleId}_el_menu_logo`, 'logo_width', 120);
+  const logoWidth = parseFloat(getVal(`${moduleId}_el_menu_logo`, 'logo_width', 120)) || 120;
   const logoColor = getVal(`${moduleId}_el_menu_logo`, 'text_color', '#0F172A');
   const logoFontSize = getVal(`${moduleId}_el_menu_logo`, 'font_size', 't3');
   const logoFontWeight = getVal(`${moduleId}_el_menu_logo`, 'font_weight', 'bold');
@@ -70,14 +76,13 @@ export const MenuModule: React.FC<{
 
   const containerClasses = {
     horizontal: 'flex flex-row flex-wrap',
-    vertical: 'flex flex-col',
-    grid: 'grid grid-cols-2 @md:grid-cols-3 @lg:grid-cols-4'
+    vertical: 'flex flex-col'
   };
 
   const alignmentClasses = {
-    start: 'justify-start items-start',
-    center: 'justify-center items-center',
-    end: 'justify-end items-end'
+    start: layout === 'vertical' ? 'items-start' : 'justify-start',
+    center: layout === 'vertical' ? 'items-center' : 'justify-center',
+    end: layout === 'vertical' ? 'items-end' : 'justify-end'
   };
 
   const animProps = entranceAnim ? {
@@ -93,21 +98,22 @@ export const MenuModule: React.FC<{
 
   const navStyle: React.CSSProperties = {
     backgroundColor: getGlassColor(bgColor),
-    backdropFilter: glassEffect ? 'blur(12px)' : 'none',
-    WebkitBackdropFilter: glassEffect ? 'blur(12px)' : 'none',
-    borderRadius: `${borderRadius}px`,
+    backdropFilter: glassEffect || isFloating ? 'blur(12px)' : 'none',
+    WebkitBackdropFilter: glassEffect || isFloating ? 'blur(12px)' : 'none',
+    borderRadius: isFloating ? '0px' : `${borderRadius}px`,
     paddingTop: `${paddingY}px`,
     paddingBottom: `${paddingY}px`,
-    position: sticky ? 'sticky' : 'relative',
-    top: sticky ? 0 : 'auto',
-    zIndex: sticky ? 50 : 10
+    position: 'relative', // Always relative internally, Canvas wrapper handles floating
+    width: '100%',
+    zIndex: 1, // Inner z-index low, wrapper handles high z-index
+    borderBottom: isFloating ? `1px solid ${darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'}` : 'none'
   };
 
   return (
     <nav className="w-full" style={navStyle}>
       <motion.div 
         {...animProps}
-        className={`${containerClasses[layout as keyof typeof containerClasses]} ${alignmentClasses[align as keyof typeof alignmentClasses]} w-full mx-auto px-6 flex items-center gap-8`}
+        className={`${containerClasses[layout as keyof typeof containerClasses]} w-full mx-auto px-6 flex items-center gap-8 ${invertOrder && layout === 'horizontal' ? 'flex-row-reverse' : ''} ${layout === 'vertical' ? alignmentClasses[align as keyof typeof alignmentClasses] : ''}`}
         style={{ gap: `${gap}px` }}
       >
         {/* Logo Integration */}
@@ -135,7 +141,7 @@ export const MenuModule: React.FC<{
         </div>
 
         {/* Links */}
-        <div className={`flex flex-1 items-center gap-6 ${alignmentClasses[align as keyof typeof alignmentClasses]}`}>
+        <div className={`flex flex-1 items-center gap-6 ${layout === 'horizontal' ? alignmentClasses[align as keyof typeof alignmentClasses] : 'flex-col items-center'}`}>
           {links.map((link: any, idx: number) => {
             const isTitle = link.is_title;
             

@@ -3,6 +3,8 @@ import { motion, useScroll, useTransform } from 'motion/react';
 import * as LucideIcons from 'lucide-react';
 import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
 import { TextRenderer } from '../TextRenderer';
+import { ParallaxBackground } from '../ParallaxBackground';
+import { parseNumSafe } from '../utils';
 
 export const AboutModule: React.FC<{ 
   moduleId: string, 
@@ -21,14 +23,21 @@ export const AboutModule: React.FC<{
 
   // Global Settings
   const layout = getVal(null, 'layout', 'split_right');
-  const paddingY = getVal(null, 'padding_y', 120);
-  const contentWidth = getVal(null, 'content_width', 1200);
+  const paddingY = parseNumSafe(getVal(null, 'padding_y', 120), 120);
+  const contentWidth = parseNumSafe(getVal(null, 'content_width', 1200), 1200);
   const darkMode = getVal(null, 'dark_mode', false);
   const bgColor = darkMode ? '#0F172A' : getVal(null, 'bg_color', '#FFFFFF');
   const sectionGradient = getVal(null, 'section_gradient', false);
   const bgGradient = getVal(null, 'bg_gradient', 'linear-gradient(to bottom, #FFFFFF, #F8FAFC)');
   const entranceAnim = getVal(null, 'entrance_anim', true);
   const showDecor = getVal(null, 'show_decor', true);
+
+  // Multimedia (Parallax Background)
+  const bgParallaxEnabled = getVal(null, 'bg_parallax_enabled', false);
+  const bgParallaxImg = getVal(null, 'bg_parallax_img', '');
+  const bgParallaxOpacity = parseNumSafe(getVal(null, 'bg_parallax_opacity', 20), 20);
+  const bgParallaxOverlay = getVal(null, 'bg_parallax_overlay', '#000000');
+  const bgParallaxSpeed = parseNumSafe(getVal(null, 'bg_parallax_speed', 100), 100);
 
   // Element: Narrative
   const eyebrow = getVal(`${moduleId}_el_about_narrative`, 'eyebrow', 'NUESTRA HISTORIA');
@@ -49,12 +58,12 @@ export const AboutModule: React.FC<{
   const descSize = getVal(`${moduleId}_el_about_narrative`, 'desc_size', 'p');
   const descWeight = getVal(`${moduleId}_el_about_narrative`, 'desc_weight', 'normal');
   const textAlign = getVal(`${moduleId}_el_about_narrative`, 'align', 'left');
-  const narrativeMarginB = getVal(`${moduleId}_el_about_narrative`, 'margin_b', 40);
+  const narrativeMarginB = parseNumSafe(getVal(`${moduleId}_el_about_narrative`, 'margin_b', 40), 40);
 
   // Element: Visual
   const imageUrl = getVal(`${moduleId}_el_about_visual`, 'image_url', 'https://picsum.photos/seed/about/800/600');
   const visualFit = getVal(`${moduleId}_el_about_visual`, 'visual_fit', 'cover');
-  const radius = getVal(`${moduleId}_el_about_visual`, 'radius', 24);
+  const radius = parseNumSafe(getVal(`${moduleId}_el_about_visual`, 'radius', 24), 24);
   const maskType = getVal(`${moduleId}_el_about_visual`, 'mask_type', 'none');
   const showFrame = getVal(`${moduleId}_el_about_visual`, 'show_frame', false);
   const floating = getVal(`${moduleId}_el_about_visual`, 'floating', false);
@@ -65,7 +74,7 @@ export const AboutModule: React.FC<{
   const statsList = getVal(`${moduleId}_el_about_stats`, 'stats_list', []);
   const statColor = getVal(`${moduleId}_el_about_stats`, 'stat_color', 'var(--primary-color)');
   const statBg = getVal(`${moduleId}_el_about_stats`, 'stat_bg', 'transparent');
-  const statColumns = getVal(`${moduleId}_el_about_stats`, 'columns', 3);
+  const statColumns = parseNumSafe(getVal(`${moduleId}_el_about_stats`, 'columns', 3), 3);
 
   const yParallax = useTransform(scrollYProgress, [0, 1], [0, -100]);
 
@@ -254,15 +263,24 @@ export const AboutModule: React.FC<{
 
   return (
     <section 
+      id={moduleId}
       ref={containerRef}
       className="w-full relative overflow-hidden"
       style={{ 
         backgroundColor: bgColor,
-        backgroundImage: sectionGradient ? bgGradient : 'none',
+        backgroundImage: (sectionGradient && typeof bgGradient === 'string' && !bgGradient.includes('NaN')) ? bgGradient : 'none',
         paddingTop: `${paddingY}px`,
         paddingBottom: `${paddingY}px`
       }}
     >
+      <ParallaxBackground 
+        scrollYProgress={scrollYProgress}
+        enabled={bgParallaxEnabled}
+        imageUrl={bgParallaxImg}
+        opacity={bgParallaxOpacity}
+        overlayColor={bgParallaxOverlay}
+        speed={bgParallaxSpeed}
+      />
       {showDecor && (
         <>
           <div className="absolute top-1/4 left-0 w-64 h-64 bg-primary/5 rounded-full blur-[100px] -translate-x-1/2" />

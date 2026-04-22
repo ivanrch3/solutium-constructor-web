@@ -17,14 +17,19 @@ export const ContactModule: React.FC<{
     return settingsValues[key] !== undefined ? settingsValues[key] : defaultValue;
   };
 
+  const parseF = (val: any, fallback: number) => {
+    const f = parseFloat(val);
+    return isNaN(f) ? fallback : f;
+  };
+
   // Global Settings
   const layout = getVal(null, 'layout', 'split');
-  const maxWidth = getVal(null, 'max_width', 1200);
-  const paddingY = getVal(null, 'padding_y', 100);
+  const maxWidth = parseF(getVal(null, 'max_width', 1200), 1200);
+  const paddingY = parseF(getVal(null, 'padding_y', 100), 100);
   const darkMode = getVal(null, 'dark_mode', false);
   const bgColor = darkMode ? '#0F172A' : getVal(null, 'bg_color', '#F8FAFC');
   const bgImage = getVal(null, 'bg_image', '');
-  const bgOverlay = getVal(null, 'bg_overlay', 0);
+  const bgOverlay = parseF(getVal(null, 'bg_overlay', 0), 0);
   const entranceAnim = getVal(null, 'entrance_anim', true);
 
   // Element: Header
@@ -36,7 +41,7 @@ export const ContactModule: React.FC<{
   const headerTitleSize = getVal(`${moduleId}_el_contact_header`, 'title_size', 't2');
   const headerTitleWeight = getVal(`${moduleId}_el_contact_header`, 'title_weight', 'bold');
   const headerTitleColor = darkMode ? '#FFFFFF' : getVal(`${moduleId}_el_contact_header`, 'title_color', '#0F172A');
-  const headerMarginB = getVal(`${moduleId}_el_contact_header`, 'margin_b', 60);
+  const headerMarginB = parseF(getVal(`${moduleId}_el_contact_header`, 'margin_b', 60), 60);
 
   const titleHighlightType = getVal(`${moduleId}_el_contact_header`, 'title_highlight_type', 'gradient');
   const titleHighlightColor = getVal(`${moduleId}_el_contact_header`, 'title_highlight_color', '#3B82F6');
@@ -73,7 +78,7 @@ export const ContactModule: React.FC<{
     { label: 'Mensaje', type: 'textarea', placeholder: '¿En qué podemos ayudarte?', required: true }
   ]);
   const inputBg = darkMode ? '#334155' : getVal(`${moduleId}_el_contact_form`, 'input_bg', '#FFFFFF');
-  const inputRadius = getVal(`${moduleId}_el_contact_form`, 'input_radius', 12);
+  const inputRadius = parseF(getVal(`${moduleId}_el_contact_form`, 'input_radius', 12), 12);
   const btnBg = getVal(`${moduleId}_el_contact_form`, 'btn_bg', 'var(--primary-color)');
   const btnColor = getVal(`${moduleId}_el_contact_form`, 'btn_color', '#FFFFFF');
   const labelSizeToken = getVal(`${moduleId}_el_contact_form`, 'label_size', 's');
@@ -90,9 +95,9 @@ export const ContactModule: React.FC<{
   // Element: Map
   const showMap = getVal(`${moduleId}_el_contact_map`, 'show_map', true);
   const mapUrl = getVal(`${moduleId}_el_contact_map`, 'map_url', 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3037.615174415891!2d-3.7037902!3d40.4167754!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0xd42287e00000001%3A0x0!2zUHVlcnRhIGRlbCBTb2w!5e0!3m2!1ses!2ses!4v1625123456789!5m2!1ses!2ses');
-  const mapHeight = getVal(`${moduleId}_el_contact_map`, 'map_height', 400);
+  const mapHeight = parseF(getVal(`${moduleId}_el_contact_map`, 'map_height', 400), 400);
   const mapGrayscale = getVal(`${moduleId}_el_contact_map`, 'grayscale', false);
-  const mapRadius = getVal(`${moduleId}_el_contact_map`, 'map_radius', 24);
+  const mapRadius = parseF(getVal(`${moduleId}_el_contact_map`, 'map_radius', 24), 24);
 
   const getTypographyStyle = (sizeToken: string, weightToken: string, alignToken?: string) => {
     const size = TYPOGRAPHY_SCALE[sizeToken as keyof typeof TYPOGRAPHY_SCALE] || TYPOGRAPHY_SCALE.p;

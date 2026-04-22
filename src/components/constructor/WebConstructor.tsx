@@ -27,13 +27,15 @@ import { motion, AnimatePresence } from 'motion/react';
 import { DataTab } from '../DataTab';
 import { Project, RenderingContract, WebBuilderSite, PublishedSite } from '../../types/schema';
 import { WebModule, EditorState } from '../../types/constructor';
+import * as registryModules from './registry';
 import { 
   MODULE_INFO,
   HEADER_MODULE, MENU_MODULE, FOOTER_MODULE, SPACER_MODULE, 
   PRODUCTS_MODULE, HERO_MODULE, FEATURES_MODULE, ABOUT_MODULE, 
   PROCESS_MODULE, GALLERY_MODULE, VIDEO_MODULE, TESTIMONIALS_MODULE, 
   STATS_MODULE, NEWSLETTER_MODULE, CONTACT_MODULE, TEAM_MODULE, 
-  CTA_MODULE, PRICING_MODULE, FAQ_MODULE, CLIENTS_MODULE
+  CTA_MODULE, PRICING_MODULE, FAQ_MODULE, CLIENTS_MODULE,
+  BENTO_MODULE, COMPARISON_MODULE
 } from './registry';
 import { saveWebBuilderSiteDraft, publishWebBuilderSite, getProducts, getCustomers } from '../../services/dataService';
 import { sendToMother } from '../../services/handshakeService';
@@ -48,8 +50,19 @@ import {
   MobileBottomNav, 
   UnsavedChangesModal, 
   DeleteConfirmationModal, 
-  PublishModal 
+  PublishModal,
+  AIGenerationModal
 } from './ConstructorModals';
+import { 
+  getThemeVal,
+  getFontFamily,
+  getBorderRadius,
+} from './utils';
+import { generateSite } from '../../services/aiService';
+import { AIGenerationContext } from '../../types/ai';
+import { ProjectForm, ProjectFormData } from '../ProjectForm';
+import { useEditorStore } from '../../store/editorStore';
+import { PropertyEditor } from './PropertyEditor';
 
 // --- CONSTANTS ---
 
@@ -114,6 +127,26 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   project,
   initialPage
 }) => {
+  const { 
+    siteContent, 
+    selectedSectionId, 
+    selectSection, 
+    undo, 
+    redo,
+    setSiteContent,
+    updateTheme,
+    updateSectionSettings,
+    addSection,
+    removeSection,
+    setProject
+  } = useEditorStore();
+
+  useEffect(() => {
+    if (project) {
+      setProject(project);
+    }
+  }, [project, setProject]);
+
   const [activeTab, setActiveTab] = useState('constructor');
   const [mobileTab, setMobileTab] = useState<'constructor' | 'structure' | 'preview'>('constructor');
   const [isMobile, setIsMobile] = useState(false);
@@ -146,12 +179,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   const [structurePanelCollapsed, setStructurePanelCollapsed] = useState(false);
   const [viewport, setViewport] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [isPreviewMode] = useState(() => {
-    const params = new URLSearchParams(window.location.search);
-    return params.get('mode') === 'preview';
-  });
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const [showUnsavedModal, setShowUnsavedModal] = useState(false);
+
   const [editorState, setEditorState] = useState<EditorState>(() => {
     const defaultState: EditorState = {
       addedModules: [],
@@ -200,6 +228,28 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
 
     return defaultState;
   });
+  
+  // AI Generation State
+  const [showAIInitialForm, setShowAIInitialForm] = useState(() => {
+    // Solo mostrar si es un sitio nuevo y no tiene módulos
+    return !initialPage && (!editorState.addedModules || editorState.addedModules.length === 0);
+  });
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+  const [aiGenerationStep, setAiGenerationStep] = useState(0);
+  const aiSteps = [
+    "Diseñando estructura por industria...",
+    "Redactando contenido persuasivo...",
+    "Sincronizando paleta de marca y estilo...",
+    "Curando imágenes de stock y activos..."
+  ];
+
+  const [isPreviewMode] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('mode') === 'preview';
+  });
+  const [reloadKey, setReloadKey] = useState(0);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [showUnsavedModal, setShowUnsavedModal] = useState(false);
 
   // Apply Global Theme to CSS Variables
   useEffect(() => {
@@ -282,6 +332,113 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     setHasUnsavedChanges(true);
   };
 
+  const handleAISubmit = async (data: ProjectFormData) => {
+    setShowAIInitialForm(false);
+    setIsGeneratingAI(true);
+    setAiGenerationStep(0);
+
+    try {
+      // Step 0: Planificación
+      setAiGenerationStep(0);
+      
+      const context: AIGenerationContext = {
+        siteName: data.name,
+        industry: data.industry,
+        description: data.description,
+        goal: data.goal,
+        style: data.style,
+        brandColors: [
+          editorState.settingsValues['global_theme_primary_color'],
+          editorState.settingsValues['global_theme_secondary_color'],
+          editorState.settingsValues['global_theme_accent_color'],
+        ].filter(Boolean)
+      };
+
+      // Iniciar generación (esto cubre redacción y búsqueda de imágenes internamente)
+      // Simulamos el progreso visual de los pasos para que el usuario aprecie el trabajo
+      
+      const generationPromise = generateSite(context);
+      
+      // Simulación de pasos para feedback visual
+      setTimeout(() => setAiGenerationStep(1), 2000);
+      setTimeout(() => setAiGenerationStep(2), 5000);
+      setTimeout(() => setAiGenerationStep(3), 8000);
+
+      const result = await generationPromise;
+
+      // Inyectar resultados en el editorState
+      updateEditorState(prev => {
+        let newSettings = { ...prev.settingsValues };
+        
+        // Aplicar Tema
+        newSettings['global_theme_primary_color'] = result.theme.primaryColor;
+        newSettings['global_theme_accent_color'] = result.theme.accentColor;
+        newSettings['global_theme_background_color'] = result.theme.backgroundColor;
+        newSettings['global_theme_text_color'] = result.theme.textColor;
+        newSettings['global_theme_font_sans'] = result.theme.fontSans;
+        newSettings['global_theme_font_heading'] = result.theme.fontDisplay;
+        newSettings['global_theme_radius'] = parseInt(result.theme.borderRadius);
+
+        // Crear módulos reales a partir de los resultados
+        const newAddedModules: WebModule[] = [];
+        
+        result.sections.forEach((sec, idx) => {
+          const baseModule = Object.values(registryModules).find((m: any) => m.id === sec.moduleId) as WebModule;
+          if (!baseModule) return;
+
+          const moduleId = `${baseModule.id}_${Date.now()}_${idx}`;
+          
+          // Reconstruir elementos con prefijos de ID únicos
+          const newElements = baseModule.elements.map(el => {
+            const elId = `${moduleId}_${el.id}`;
+            
+            // Inyectar valores de settings para este elemento
+            Object.entries(sec.settingsValues).forEach(([key, val]) => {
+              // Si el key de la IA coincide con un setting de este elemento
+              // (Simplificación: la IA nos devuelve keys planos que mapeamos)
+              if (key.startsWith(el.id)) {
+                const settingKey = key.replace(`${el.id}_`, '');
+                newSettings[`${elId}_${settingKey}`] = val;
+              } else if (sec.settingsValues[key] !== undefined) {
+                // Intentar match directo si el ID es único
+                newSettings[`${elId}_${key}`] = sec.settingsValues[key];
+              }
+            });
+
+            return { ...el, id: elId };
+          });
+
+          // Global settings del módulo
+          if (sec.settingsValues) {
+            Object.entries(sec.settingsValues).forEach(([key, val]) => {
+              newSettings[`${moduleId}_global_${key}`] = val;
+            });
+          }
+
+          newAddedModules.push({
+            ...baseModule,
+            id: moduleId,
+            elements: newElements
+          });
+        });
+
+        return {
+          ...prev,
+          addedModules: newAddedModules,
+          settingsValues: newSettings,
+          totalModulesAdded: newAddedModules.length
+        };
+      });
+
+      setSiteName(data.name);
+      setIsGeneratingAI(false);
+    } catch (error) {
+      console.error("Error en Solutium AI Engine:", error);
+      setIsGeneratingAI(false);
+      // Fallback: mostrar el constructor vacío o con error
+    }
+  };
+
   const addModule = (module: WebModule) => {
     console.log('Adding module:', module.type);
     const moduleId = `${module.id}_${Date.now()}`;
@@ -337,10 +494,22 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
             let val = setting.defaultValue;
             
             // Custom logic for specific settings
-            if (setting.id === 'logo_text' && project?.name) {
+            if ((setting.id === 'logo_text' || setting.id === 'brand_name') && project?.name) {
               val = project.name.toUpperCase();
             }
-            
+
+            if (setting.id === 'logo_img' && (project?.logoUrl || logoUrl)) {
+              val = project?.logoUrl || logoUrl;
+            }
+
+            if (setting.id === 'logo_white_img' && (project?.logoWhiteUrl || logoWhiteUrl)) {
+              val = project?.logoWhiteUrl || logoWhiteUrl;
+            }
+
+            if (setting.id === 'logo_img_alt' && project?.logoWhiteUrl) {
+              val = project.logoWhiteUrl;
+            }
+
             // The element.id already contains the moduleId prefix
             initialValues[`${element.id}_${setting.id}`] = val;
           });
@@ -755,6 +924,10 @@ const formatTimestampName = () => {
     }
   };
 
+  const handleReload = () => {
+    setReloadKey(prev => prev + 1);
+  };
+
   const handlePreview = () => {
     const url = new URL(window.location.href);
     url.searchParams.set('mode', 'preview');
@@ -788,7 +961,7 @@ const formatTimestampName = () => {
                   <TopBar 
                     onSave={handleSaveDraft} 
                     onPublish={handlePublish} 
-                    onPreview={handlePreview}
+                    onReload={handleReload}
                     logoUrl={logoUrl}
                     viewport={viewport}
                     setViewport={setViewport}
@@ -827,6 +1000,7 @@ const formatTimestampName = () => {
                                 <ModuleItem icon={React.createElement(MODULE_INFO.process.icon, { size: 18 })} label="Proceso" onClick={() => addModule(PROCESS_MODULE)} />
                                 <ModuleItem icon={React.createElement(MODULE_INFO.stats.icon, { size: 18 })} label="Estadísticas" onClick={() => addModule(STATS_MODULE)} />
                                 <ModuleItem icon={React.createElement(MODULE_INFO.team.icon, { size: 18 })} label="Equipo" onClick={() => addModule(TEAM_MODULE)} />
+                                <ModuleItem icon={React.createElement(MODULE_INFO.comparative.icon, { size: 18 })} label="Comparativo" onClick={() => addModule(COMPARISON_MODULE)} />
                               </div>
                             </div>
 
@@ -872,6 +1046,7 @@ const formatTimestampName = () => {
                               <h4 className="text-[9px] font-black text-primary uppercase tracking-widest px-2">Estructura</h4>
                               <div className="space-y-1">
                                 <ModuleItem icon={React.createElement(MODULE_INFO.spacer.icon, { size: 18 })} label="Espaciadores" onClick={() => addModule(SPACER_MODULE)} />
+                                <ModuleItem icon={React.createElement(MODULE_INFO.bento.icon, { size: 18 })} label="Composición Libre" onClick={() => addModule(BENTO_MODULE)} />
                               </div>
                             </div>
                           </div>
@@ -943,7 +1118,7 @@ const formatTimestampName = () => {
                     <TopBar 
                       onSave={handleSaveDraft} 
                       onPublish={handlePublish} 
-                      onPreview={handlePreview}
+                      onReload={handleReload}
                       logoUrl={logoUrl}
                       viewport={viewport}
                       setViewport={setViewport}
@@ -955,21 +1130,26 @@ const formatTimestampName = () => {
                       isPreviewMode={isPreviewMode}
                     />
                   )}
-                  <Canvas 
-                    editorState={editorState} 
-                    onAddModule={addModule} 
-                    products={products}
-                    customers={customers}
-                    isDevMode={projectId === 'dev-project-id'}
-                    logoUrl={logoUrl}
-                    logoWhiteUrl={logoWhiteUrl}
-                    viewport={viewport}
-                    setViewport={setViewport}
-                    isFullscreen={isFullscreen}
-                    setIsFullscreen={setIsFullscreen}
-                    isPreviewMode={isPreviewMode}
-                    onSettingChange={handleSettingChange}
-                  />
+                  <div className="flex-1 flex overflow-hidden">
+                    <div className="flex-1 flex flex-col h-full overflow-hidden">
+                      <Canvas 
+                        editorState={editorState} 
+                        onAddModule={addModule} 
+                        products={products}
+                        customers={customers}
+                        isDevMode={projectId === 'dev-project-id'}
+                        logoUrl={logoUrl}
+                        logoWhiteUrl={logoWhiteUrl}
+                        viewport={viewport}
+                        setViewport={setViewport}
+                        isFullscreen={isFullscreen}
+                        setIsFullscreen={setIsFullscreen}
+                        isPreviewMode={isPreviewMode}
+                        onSettingChange={handleSettingChange}
+                        reloadKey={reloadKey}
+                      />
+                    </div>
+                  </div>
                 </div>
               </>
             )}
@@ -1010,6 +1190,20 @@ const formatTimestampName = () => {
 
       {/* Modals */}
       <AnimatePresence>
+        {showAIInitialForm && (
+          <ProjectForm 
+            onSubmit={handleAISubmit}
+            onCancel={() => setShowAIInitialForm(false)}
+            onSkip={() => setShowAIInitialForm(false)}
+          />
+        )}
+        {isGeneratingAI && (
+          <AIGenerationModal 
+            currentStep={aiGenerationStep}
+            steps={aiSteps}
+            onCancel={() => setIsGeneratingAI(false)}
+          />
+        )}
         {moduleToDelete && (
           <DeleteConfirmationModal 
             moduleName={moduleToDelete.name}

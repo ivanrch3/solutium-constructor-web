@@ -140,6 +140,25 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
     }
   };
 
+  // Extract project theme colors for the ColorPicker
+  const getProjectColors = () => {
+    const settings = editorState.settingsValues;
+    const colors = [
+      settings['global_theme_primary_color'],
+      settings['global_theme_secondary_color'],
+      settings['global_theme_accent_color'],
+      settings['global_theme_background_color'],
+      settings['global_theme_text_color'],
+    ].filter(Boolean) as string[];
+    
+    // Add default solutium primary if not exists
+    if (colors.length === 0) return ['#3B82F6', '#8B5CF6', '#1E293B'];
+    
+    return Array.from(new Set(colors));
+  };
+
+  const projectColors = getProjectColors();
+
   const toggleModule = (moduleId: string) => {
     stopShining();
     setEditorState(prev => ({
@@ -553,6 +572,7 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                                                               projectId={projectId}
                                                               products={products}
                                                               customers={customers}
+                                                              projectColors={projectColors}
                                                             />
                                                          ))}
                                                       </motion.div>
@@ -727,6 +747,7 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                                                       projectId={projectId}
                                                       products={products}
                                                       customers={customers}
+                                                      projectColors={projectColors}
                                                     />
                                                   );
                                                 });

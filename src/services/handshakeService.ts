@@ -95,9 +95,17 @@ export const startHandshake = (
     } catch(e) {}
   }
 
-  // PRIORIDAD 3: Escucha Pasiva (Esperar a la Madre)
-  console.log("⏳ [SIP v5.2] Esperando latido de la App Madre...");
+  // PRIORIDAD 3: Escucha Pasiva (Esperar a la Madre) y Solicitud Proactiva
+  console.log("⏳ [SIP v5.2] Esperando configuración de la App Madre...");
   setupMessageListener();
+  
+  // Solicitar proactivamente si tardamos más de 500ms
+  setTimeout(() => {
+    if (!isStable) {
+      console.log("📡 [SIP v5.2] Solicitando configuración (SOLUTIUM_GET_CONFIG)...");
+      sendToMother({ type: 'SOLUTIUM_GET_CONFIG' });
+    }
+  }, 500);
 };
 
 /**

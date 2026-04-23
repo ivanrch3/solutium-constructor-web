@@ -1210,28 +1210,8 @@ const formatTimestampName = () => {
               <LucideIcons.AlertCircle size={20} />
             </div>
             <div className="flex-1">
-              <p className="text-sm font-bold text-red-900">Error detectado</p>
-              <p className="text-xs text-red-700 leading-relaxed mb-3">{aiError}</p>
-              
-              {/* Botón de configuración manual si falta la key */}
-              {(aiError.includes("API Key") || aiError.includes("configurada")) && (
-                <button
-                  onClick={() => {
-                    const key = window.prompt("Introduce tu Gemini API Key (se guardará localmente en este navegador):");
-                    if (key) {
-                      configService.updateConfig({ geminiApiKey: key });
-                      setAiError(null);
-                      setHasStartedAI(false);
-                      setShowAIInitialForm(true);
-                      window.alert("✅ Configuración guardada. Intenta generar de nuevo.");
-                    }
-                  }}
-                  className="text-xs font-bold bg-solutium-dark text-white px-3 py-2 rounded-lg hover:opacity-90 transition-all flex items-center gap-2"
-                >
-                  <LucideIcons.Key size={14} />
-                  Configurar manualmente
-                </button>
-              )}
+              <p className="text-sm font-bold text-red-900">Error en el motor de IA</p>
+              <p className="text-xs text-red-700 leading-relaxed">{aiError}</p>
             </div>
             <button 
               onClick={() => {

@@ -1,7 +1,7 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import { SiteContent } from "../types";
-import { mapStyleToTheme, VisualStyle } from "../lib/styleMapper";
+import { SiteContent, VisualStyle } from "../types";
 import { configService } from "./configService";
+import { mapStyleToTheme } from "../lib/styleMapper";
 
 const getAI = () => {
   const key = configService.geminiApiKey || '';

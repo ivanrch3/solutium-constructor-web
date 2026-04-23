@@ -15,41 +15,30 @@ class ConfigService {
   };
 
   constructor() {
-    // 1. Intentar cargar de localStorage (Prioridad Máxima - Usuario Manual)
-    this.config.geminiApiKey = localStorage.getItem('solutium_ai_key');
-    this.config.pexelsApiKey = localStorage.getItem('solutium_pexels_key');
+    // 1. Intentar cargar de window.name (Zero-latency injection de la Madre)
+    try {
+      if (window.name) {
+        const data = JSON.parse(window.name);
+        if (data.gemini_api_key) this.config.geminiApiKey = data.gemini_api_key;
+        if (data.pexels_api_key) this.config.pexelsApiKey = data.pexels_api_key;
+        if (this.config.geminiApiKey) console.log("🚀 [ConfigService] Llave Gemini inyectada por window.name");
+      }
+    } catch (e) {
+      // Ignorar errores de parseo si window.name no es JSON
+    }
 
-    // 2. Intentar cargar de Vite (Build-time)
+    // 2. Fallback a variables de entorno si la Madre no inyectó nada
     if (!this.config.geminiApiKey) {
-      this.config.geminiApiKey = import.meta.env.VITE_GEMINI_API_KEY || null;
+      this.config.geminiApiKey = (import.meta.env.VITE_GEMINI_API_KEY as string) || null;
     }
     if (!this.config.pexelsApiKey) {
-      this.config.pexelsApiKey = import.meta.env.VITE_PEXELS_API_KEY || null;
+      this.config.pexelsApiKey = (import.meta.env.VITE_PEXELS_API_KEY as string) || null;
     }
-    
-    // 3. Fallback a process.env (Vite Define)
-    try {
-      if (!this.config.geminiApiKey && typeof process !== 'undefined' && process.env?.GEMINI_API_KEY) {
-        this.config.geminiApiKey = process.env.GEMINI_API_KEY;
-      }
-    } catch(e) {}
   }
 
   updateConfig(newConfig: Partial<AppConfig>) {
     this.config = { ...this.config, ...newConfig };
-    
-    // Persistir si se recibe de forma explícita
-    if (newConfig.geminiApiKey) localStorage.setItem('solutium_ai_key', newConfig.geminiApiKey);
-    if (newConfig.pexelsApiKey) localStorage.setItem('solutium_pexels_key', newConfig.pexelsApiKey);
-
-    console.log("⚙️ [ConfigService] Configuración actualizada y persistida.");
-  }
-
-  // Permite al usuario borrar la configuración manual
-  clearManualConfig() {
-    localStorage.removeItem('solutium_ai_key');
-    localStorage.removeItem('solutium_pexels_key');
-    window.location.reload();
+    console.log("⚡ [ConfigService] Configuración de runtime sincronizada.");
   }
 
   get geminiApiKey(): string | null {

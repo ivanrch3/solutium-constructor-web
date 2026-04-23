@@ -88,9 +88,12 @@ const SITE_SCHEMA = {
 };
 
 export const generateSiteContent = async (brief: GenerationBrief): Promise<SiteContent> => {
+  // Refrescar configuración justo antes de usarla por si la Madre inyectó algo tarde
+  configService.refreshConfig();
+  
   const apiKey = configService.geminiApiKey;
   if (!apiKey) {
-    throw new Error("La API Key de Gemini no está configurada. Debe configurarse en el panel de Staging o ser provista por la App Madre.");
+    throw new Error("La API Key de Gemini no está configurada. Debe ser provista por la App Madre para iniciar el motor de IA.");
   }
 
   const ai = getAI();

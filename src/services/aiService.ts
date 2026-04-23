@@ -1,12 +1,14 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { SiteContent } from "../types";
 import { mapStyleToTheme, VisualStyle } from "../lib/styleMapper";
+import { configService } from "./configService";
 
-const ai = new GoogleGenAI({ 
-  apiKey: (import.meta.env.VITE_GEMINI_API_KEY as string) || '' 
-});
+const getAI = () => {
+  const key = configService.geminiApiKey || '';
+  return new GoogleGenAI({ apiKey: key });
+};
 
-const PEXELS_API_KEY = (import.meta.env.VITE_PEXELS_API_KEY as string) || '';
+const getPexelsKey = () => configService.pexelsApiKey || '';
 
 export interface GenerationBrief {
   name: string;
@@ -21,11 +23,12 @@ export interface GenerationBrief {
  * Busca imágenes en Pexels basadas en una consulta
  */
 const searchStockPhotos = async (query: string): Promise<string[]> => {
-  if (!PEXELS_API_KEY) return [];
+  const pexelsKey = getPexelsKey();
+  if (!pexelsKey) return [];
   try {
     const response = await fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=5`, {
       headers: {
-        Authorization: PEXELS_API_KEY
+        Authorization: pexelsKey
       }
     });
     const data = await response.json();
@@ -85,10 +88,12 @@ const SITE_SCHEMA = {
 };
 
 export const generateSiteContent = async (brief: GenerationBrief): Promise<SiteContent> => {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  const apiKey = configService.geminiApiKey;
   if (!apiKey) {
-    throw new Error("La API Key de Gemini no está configurada (VITE_GEMINI_API_KEY). Verifica las variables de entorno de Staging o tu panel de configuración.");
+    throw new Error("La API Key de Gemini no está configurada. Debe configurarse en el panel de Staging o ser provista por la App Madre.");
   }
+
+  const ai = getAI();
 
   const systemInstruction = `
     Eres un Copywriter y Diseñador Web premium de Solutium.

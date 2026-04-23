@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { startHandshake } from './services/handshakeService';
+import { configService } from './services/configService';
 import { initSupabase } from './services/supabaseClient';
 import { initDOClient } from './services/doService';
 import { getProfile, getProject, getWebBuilderSites, getPublishedSites, renameWebBuilderSite } from './services/dataService';
@@ -72,6 +73,12 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     startHandshake(async (payload) => {
       try {
+        // Actualizar configuración dinámica (API Keys) desde la Madre
+        configService.updateConfig({
+          geminiApiKey: payload.gemini_api_key || payload.VITE_GEMINI_API_KEY || null,
+          pexelsApiKey: payload.pexels_api_key || payload.VITE_PEXELS_API_KEY || null
+        });
+
         const supabase = initSupabase(
           payload.supabase_url,
           payload.supabase_anon_key,

@@ -13,19 +13,36 @@ export interface ProjectFormData {
 interface ProjectFormProps {
   onSubmit: (data: ProjectFormData) => void;
   onCancel: () => void;
-  onSkip: () => void;
 }
 
 const INDUSTRIES = [
-  'Tecnología y Software',
-  'Salud y Bienestar',
-  'Educación',
-  'E-commerce / Retail',
-  'Servicios Profesionales',
+  'Agricultura y Ganadería',
+  'Alimentación y Bebidas',
+  'Arte y Diseño',
+  'Automotriz',
+  'Belleza y Estética',
+  'Bienes Raíces (Inmobiliaria)',
+  'Blog Personal / Influencer',
+  'Comercio Electrónico (E-commerce)',
+  'Construcción y Reformas',
+  'Consultoría y Coaching',
+  'Educación y Cursos',
+  'Entretenimiento y Eventos',
+  'Finanzas y Seguros',
+  'Fitness y Deportes',
+  'Fotografía y Video',
   'Gastronomía / Restaurantes',
-  'Inmobiliaria',
-  'Turismo y Viajes',
-  'Arte y Entretenimiento',
+  'Legal (Abogados)',
+  'Marketing y Publicidad',
+  'Mascotas y Veterinaria',
+  'Moda y Ropa',
+  'ONG / Sin Fines de Lucro',
+  'Salud y Medicina',
+  'Servicios de Limpieza',
+  'Servicios Profesionales',
+  'Tecnología y Software',
+  'Transporte y Logística',
+  'Turismo y Hospitalidad',
   'Otro'
 ];
 
@@ -49,8 +66,9 @@ const STYLES = [
   'Atrevido'
 ];
 
-export const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, onCancel, onSkip }) => {
+export const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, onCancel }) => {
   const [step, setStep] = useState(1);
+  const [customIndustry, setCustomIndustry] = useState('');
   const [formData, setFormData] = useState<ProjectFormData>({
     name: '',
     industry: '',
@@ -67,12 +85,19 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, onCancel, on
   }, [formData.description]);
 
   const isDescriptionValid = wordCount >= 10;
-  const isStep1Valid = formData.name.trim() !== '' && formData.industry !== '' && isDescriptionValid;
+  const isIndustryValid = formData.industry === 'Otro' ? customIndustry.trim() !== '' : formData.industry !== '';
+  const isStep1Valid = formData.name.trim() !== '' && isIndustryValid && isDescriptionValid;
   const isStep2Valid = formData.goal !== '' && formData.style !== '';
 
   const handleNext = () => {
     if (step === 1) setStep(2);
-    else onSubmit(formData);
+    else {
+      const finalData = {
+        ...formData,
+        industry: formData.industry === 'Otro' ? customIndustry : formData.industry
+      };
+      onSubmit(finalData);
+    }
   };
 
   const handleBack = () => {
@@ -127,6 +152,22 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, onCancel, on
                     </select>
                     <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-text/40 pointer-events-none w-4 h-4" />
                   </div>
+
+                  {formData.industry === 'Otro' && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      className="mt-2"
+                    >
+                      <input
+                        type="text"
+                        placeholder="Escribe tu industria personalizada..."
+                        value={customIndustry}
+                        onChange={(e) => setCustomIndustry(e.target.value)}
+                        className="w-full px-4 py-3 rounded-xl border border-border focus:border-primary focus:ring-0 outline-none transition-all text-sm text-text placeholder:text-text/30 bg-surface"
+                      />
+                    </motion.div>
+                  )}
                 </div>
 
                 {/* Descripción breve */}
@@ -207,12 +248,6 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, onCancel, on
             </button>
             
             <div className="flex items-center gap-3">
-              <button
-                onClick={onSkip}
-                className="px-6 py-3 rounded-xl font-bold text-base text-text/20 hover:text-text/40 transition-all"
-              >
-                Omitir
-              </button>
               <button
                 disabled={step === 1 ? !isStep1Valid : !isStep2Valid}
                 onClick={handleNext}

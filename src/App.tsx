@@ -267,29 +267,9 @@ const AppContent: React.FC = () => {
     setCurrentView('selection-method');
   };
 
-  const handleSelectMethod = (method) => {
+  const handleSelectMethod = (method: CreationMethod) => {
     setSelectedMethod(method);
-    setCurrentView('form');
-  };
-
-  const handleFormSubmit = async (data: ProjectFormData) => {
-    setFormData(data);
-    if (selectedMethod === 'ai') {
-      // Disparar generación inteligente
-      const brief = {
-        name: data.name,
-        industry: data.industry,
-        description: data.description,
-        goal: data.goal,
-        style: (data as any).visualStyle || 'modern', // Fallback si no está en el form
-        brandColors: project?.brandColors || { primary: '#3B82F6', secondary: '#1E293B' }
-      };
-
-      await useEditorStore.getState().startAIGeneration(brief);
-      setCurrentView('constructor');
-    } else {
-      setCurrentView('constructor');
-    }
+    setCurrentView('constructor');
   };
 
   const handleSelectAsset = (asset: Asset) => {
@@ -447,8 +427,13 @@ const AppContent: React.FC = () => {
           <WebConstructor 
             onBackToDashboard={() => {
               setSelectedPage(null);
+              setSelectedMethod(null);
               setCurrentView('dashboard');
             }} 
+            onCancelOnboarding={() => {
+              setCurrentView('selection-method');
+              setSelectedMethod(null);
+            }}
             projectId={projectId} 
             appId={appId}
             currentUserId={profile?.id || null}
@@ -456,6 +441,7 @@ const AppContent: React.FC = () => {
             logoWhiteUrl={urlLogoWhite}
             project={project}
             initialPage={selectedPage}
+            creationMethod={selectedMethod}
           />
         );
       case 'viewer':

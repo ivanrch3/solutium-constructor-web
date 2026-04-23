@@ -108,6 +108,7 @@ import { PropertyEditor } from './PropertyEditor';
 
 interface WebConstructorProps {
   onBackToDashboard: () => void;
+  onCancelOnboarding?: () => void;
   projectId: string | null;
   appId: string | null;
   currentUserId: string | null;
@@ -115,17 +116,20 @@ interface WebConstructorProps {
   logoWhiteUrl: string | null;
   project: Project | null;
   initialPage?: WebBuilderSite | PublishedSite | null;
+  creationMethod?: 'ai' | 'template' | 'scratch' | null;
 }
 
 export const WebConstructor: React.FC<WebConstructorProps> = ({ 
   onBackToDashboard, 
+  onCancelOnboarding,
   projectId, 
   appId,
   currentUserId,
   logoUrl,
   logoWhiteUrl,
   project,
-  initialPage
+  initialPage,
+  creationMethod
 }) => {
   const { 
     siteContent, 
@@ -230,10 +234,22 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   });
   
   // AI Generation State
-  const [showAIInitialForm, setShowAIInitialForm] = useState(() => {
-    // Solo mostrar si es un sitio nuevo y no tiene módulos
-    return !initialPage && (!editorState.addedModules || editorState.addedModules.length === 0);
+  const [onboardingFinished, setOnboardingFinished] = useState(() => {
+    // Si ya hay módulos, el onboarding terminó
+    if ((initialPage && !!(initialPage as any).contentDraft) || (editorState.addedModules && editorState.addedModules.length > 0)) {
+      return true;
+    }
+    // Si elegimos "scratch", no queremos onboarding
+    if (creationMethod === 'scratch') return true;
+    
+    return false;
   });
+  const [showAIInitialForm, setShowAIInitialForm] = useState(() => {
+    // Solo mostrar si es un sitio nuevo Y elegimos AI
+    return !initialPage && creationMethod === 'ai';
+  });
+  const [hasStartedAI, setHasStartedAI] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [aiGenerationStep, setAiGenerationStep] = useState(0);
   const aiSteps = [
@@ -334,13 +350,12 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
 
   const handleAISubmit = async (data: ProjectFormData) => {
     setShowAIInitialForm(false);
+    setHasStartedAI(true);
     setIsGeneratingAI(true);
     setAiGenerationStep(0);
+    setAiError(null);
 
     try {
-      // Step 0: Planificación
-      setAiGenerationStep(0);
-      
       const context: AIGenerationContext = {
         siteName: data.name,
         industry: data.industry,
@@ -354,23 +369,19 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         ].filter(Boolean)
       };
 
-      // Iniciar generación (esto cubre redacción y búsqueda de imágenes internamente)
-      // Simulamos el progreso visual de los pasos para que el usuario aprecie el trabajo
-      
       const generationPromise = generateSite(context);
+      setHasStartedAI(true);
+      setOnboardingFinished(true); // Persistir que ya terminamos el onboarding
       
-      // Simulación de pasos para feedback visual
       setTimeout(() => setAiGenerationStep(1), 2000);
       setTimeout(() => setAiGenerationStep(2), 5000);
       setTimeout(() => setAiGenerationStep(3), 8000);
 
       const result = await generationPromise;
 
-      // Inyectar resultados en el editorState
       updateEditorState(prev => {
         let newSettings = { ...prev.settingsValues };
         
-        // Aplicar Tema
         newSettings['global_theme_primary_color'] = result.theme.primaryColor;
         newSettings['global_theme_accent_color'] = result.theme.accentColor;
         newSettings['global_theme_background_color'] = result.theme.backgroundColor;
@@ -379,36 +390,26 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         newSettings['global_theme_font_heading'] = result.theme.fontDisplay;
         newSettings['global_theme_radius'] = parseInt(result.theme.borderRadius);
 
-        // Crear módulos reales a partir de los resultados
         const newAddedModules: WebModule[] = [];
         
         result.sections.forEach((sec, idx) => {
-          const baseModule = Object.values(registryModules).find((m: any) => m.id === sec.moduleId) as WebModule;
+          const baseModule = Object.values(registryModules).find((m: any) => (m as any).id === sec.moduleId) as WebModule;
           if (!baseModule) return;
 
           const moduleId = `${baseModule.id}_${Date.now()}_${idx}`;
-          
-          // Reconstruir elementos con prefijos de ID únicos
           const newElements = baseModule.elements.map(el => {
             const elId = `${moduleId}_${el.id}`;
-            
-            // Inyectar valores de settings para este elemento
             Object.entries(sec.settingsValues).forEach(([key, val]) => {
-              // Si el key de la IA coincide con un setting de este elemento
-              // (Simplificación: la IA nos devuelve keys planos que mapeamos)
               if (key.startsWith(el.id)) {
                 const settingKey = key.replace(`${el.id}_`, '');
                 newSettings[`${elId}_${settingKey}`] = val;
               } else if (sec.settingsValues[key] !== undefined) {
-                // Intentar match directo si el ID es único
                 newSettings[`${elId}_${key}`] = sec.settingsValues[key];
               }
             });
-
             return { ...el, id: elId };
           });
 
-          // Global settings del módulo
           if (sec.settingsValues) {
             Object.entries(sec.settingsValues).forEach(([key, val]) => {
               newSettings[`${moduleId}_global_${key}`] = val;
@@ -432,10 +433,10 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
 
       setSiteName(data.name);
       setIsGeneratingAI(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error en Solutium AI Engine:", error);
       setIsGeneratingAI(false);
-      // Fallback: mostrar el constructor vacío o con error
+      setAiError(error.message || "No se pudo generar el sitio. Por favor, verifica tu conexión o las API Keys en Staging.");
     }
   };
 
@@ -852,6 +853,15 @@ const formatTimestampName = () => {
     return timestampRegex.test(name) || name === 'Mi Sitio Web';
   };
 
+  const handleCloseOnboarding = () => {
+    setShowAIInitialForm(false);
+    if (onCancelOnboarding) {
+      onCancelOnboarding();
+    } else {
+      setOnboardingFinished(true);
+    }
+  };
+
   const handlePublish = async () => {
     if (!projectId || isPreviewMode) return;
     
@@ -1188,13 +1198,38 @@ const formatTimestampName = () => {
         )}
       </div>
 
+      {/* AI Error Alert */}
+      {aiError && (
+        <motion.div 
+          initial={{ opacity: 0, y: 50 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100] bg-red-50 border border-red-200 p-4 rounded-xl shadow-xl flex items-center gap-3 max-w-md"
+        >
+          <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center text-red-600 shrink-0">
+            <LucideIcons.AlertCircle size={20} />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-bold text-red-900">Error en la Generación</p>
+            <p className="text-xs text-red-700 leading-relaxed">{aiError}</p>
+          </div>
+          <button 
+            onClick={() => {
+              setAiError(null);
+              setShowAIInitialForm(true);
+            }}
+            className="p-2 hover:bg-red-100 rounded-lg text-red-500 transition-colors"
+          >
+            <LucideIcons.RotateCcw size={18} />
+          </button>
+        </motion.div>
+      )}
+
       {/* Modals */}
       <AnimatePresence>
-        {showAIInitialForm && (
+        {showAIInitialForm && !onboardingFinished && (
           <ProjectForm 
             onSubmit={handleAISubmit}
-            onCancel={() => setShowAIInitialForm(false)}
-            onSkip={() => setShowAIInitialForm(false)}
+            onCancel={handleCloseOnboarding}
           />
         )}
         {isGeneratingAI && (

@@ -14,16 +14,20 @@ class ConfigService {
     pexelsApiKey: null
   };
 
-  /**
-   * Inicializa la configuración con valores de entorno (build-time)
-   * como fallback inicial.
-   */
   constructor() {
-    // Intentar cargar de Vite
-    this.config.geminiApiKey = import.meta.env.VITE_GEMINI_API_KEY || null;
-    this.config.pexelsApiKey = import.meta.env.VITE_PEXELS_API_KEY || null;
+    // 1. Intentar cargar de localStorage (Prioridad Máxima - Usuario Manual)
+    this.config.geminiApiKey = localStorage.getItem('solutium_ai_key');
+    this.config.pexelsApiKey = localStorage.getItem('solutium_pexels_key');
+
+    // 2. Intentar cargar de Vite (Build-time)
+    if (!this.config.geminiApiKey) {
+      this.config.geminiApiKey = import.meta.env.VITE_GEMINI_API_KEY || null;
+    }
+    if (!this.config.pexelsApiKey) {
+      this.config.pexelsApiKey = import.meta.env.VITE_PEXELS_API_KEY || null;
+    }
     
-    // Intentar cargar de process.env (inyectado por vite define)
+    // 3. Fallback a process.env (Vite Define)
     try {
       if (!this.config.geminiApiKey && typeof process !== 'undefined' && process.env?.GEMINI_API_KEY) {
         this.config.geminiApiKey = process.env.GEMINI_API_KEY;
@@ -31,12 +35,21 @@ class ConfigService {
     } catch(e) {}
   }
 
-  /**
-   * Actualiza la configuración en caliente (por ejemplo, desde el Handshake)
-   */
   updateConfig(newConfig: Partial<AppConfig>) {
     this.config = { ...this.config, ...newConfig };
-    console.log("⚙️ [ConfigService] Configuración de runtime actualizada.");
+    
+    // Persistir si se recibe de forma explícita
+    if (newConfig.geminiApiKey) localStorage.setItem('solutium_ai_key', newConfig.geminiApiKey);
+    if (newConfig.pexelsApiKey) localStorage.setItem('solutium_pexels_key', newConfig.pexelsApiKey);
+
+    console.log("⚙️ [ConfigService] Configuración actualizada y persistida.");
+  }
+
+  // Permite al usuario borrar la configuración manual
+  clearManualConfig() {
+    localStorage.removeItem('solutium_ai_key');
+    localStorage.removeItem('solutium_pexels_key');
+    window.location.reload();
   }
 
   get geminiApiKey(): string | null {

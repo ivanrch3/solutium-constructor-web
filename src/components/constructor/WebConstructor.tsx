@@ -1203,24 +1203,46 @@ const formatTimestampName = () => {
         <motion.div 
           initial={{ opacity: 0, y: 50 }}
           animate={{ opacity: 1, y: 0 }}
-          className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100] bg-red-50 border border-red-200 p-4 rounded-xl shadow-xl flex items-center gap-3 max-w-md"
+          className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100] bg-white border border-red-200 p-6 rounded-2xl shadow-2xl flex flex-col gap-4 max-w-md w-[90vw]"
         >
-          <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center text-red-600 shrink-0">
-            <LucideIcons.AlertCircle size={20} />
+          <div className="flex items-start gap-4">
+            <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center text-red-600 shrink-0">
+              <LucideIcons.AlertCircle size={20} />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-bold text-red-900">Error detectado</p>
+              <p className="text-xs text-red-700 leading-relaxed mb-3">{aiError}</p>
+              
+              {/* Botón de configuración manual si falta la key */}
+              {(aiError.includes("API Key") || aiError.includes("configurada")) && (
+                <button
+                  onClick={() => {
+                    const key = window.prompt("Introduce tu Gemini API Key (se guardará localmente en este navegador):");
+                    if (key) {
+                      configService.updateConfig({ geminiApiKey: key });
+                      setAiError(null);
+                      setHasStartedAI(false);
+                      setShowAIInitialForm(true);
+                      window.alert("✅ Configuración guardada. Intenta generar de nuevo.");
+                    }
+                  }}
+                  className="text-xs font-bold bg-solutium-dark text-white px-3 py-2 rounded-lg hover:opacity-90 transition-all flex items-center gap-2"
+                >
+                  <LucideIcons.Key size={14} />
+                  Configurar manualmente
+                </button>
+              )}
+            </div>
+            <button 
+              onClick={() => {
+                setAiError(null);
+                setShowAIInitialForm(true);
+              }}
+              className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 transition-colors"
+            >
+              <LucideIcons.RotateCcw size={18} />
+            </button>
           </div>
-          <div className="flex-1">
-            <p className="text-sm font-bold text-red-900">Error en la Generación</p>
-            <p className="text-xs text-red-700 leading-relaxed">{aiError}</p>
-          </div>
-          <button 
-            onClick={() => {
-              setAiError(null);
-              setShowAIInitialForm(true);
-            }}
-            className="p-2 hover:bg-red-100 rounded-lg text-red-500 transition-colors"
-          >
-            <LucideIcons.RotateCcw size={18} />
-          </button>
         </motion.div>
       )}
 

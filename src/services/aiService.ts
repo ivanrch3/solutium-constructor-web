@@ -2,9 +2,11 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { SiteContent } from "../types";
 import { mapStyleToTheme, VisualStyle } from "../lib/styleMapper";
 
-const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY || '' });
+const ai = new GoogleGenAI({ 
+  apiKey: process.env.GEMINI_API_KEY || (import.meta.env.VITE_GEMINI_API_KEY as string) || '' 
+});
 
-const PEXELS_API_KEY = import.meta.env.VITE_PEXELS_API_KEY || '';
+const PEXELS_API_KEY = (import.meta.env.VITE_PEXELS_API_KEY as string) || process.env.PEXELS_API_KEY || '';
 
 export interface GenerationBrief {
   name: string;
@@ -83,8 +85,9 @@ const SITE_SCHEMA = {
 };
 
 export const generateSiteContent = async (brief: GenerationBrief): Promise<SiteContent> => {
-  if (!import.meta.env.VITE_GEMINI_API_KEY) {
-    throw new Error("La API Key de Gemini no está configurada (VITE_GEMINI_API_KEY). Verifica las variables de entorno de Staging.");
+  const apiKey = process.env.GEMINI_API_KEY || import.meta.env.VITE_GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error("La API Key de Gemini no está configurada (GEMINI_API_KEY). Verifica las variables de entorno o el archivo .env.");
   }
 
   const systemInstruction = `

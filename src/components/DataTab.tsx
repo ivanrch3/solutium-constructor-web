@@ -138,31 +138,38 @@ export const DataTab: React.FC<DataTabProps> = ({ projectId, currentUserId }) =>
     { id: 'test', label: 'Sincronización', icon: RefreshCw },
   ];
 
-  const filteredData = data.filter(item => {
+  const filteredData = Array.isArray(data) ? data.filter(item => {
+    if (!item) return false;
     if (!searchTerm) return true;
     return Object.values(item).some(val => 
-      String(val).toLowerCase().includes(searchTerm.toLowerCase())
+      String(val || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
-  });
+  }) : [];
 
   const renderCard = (item: any, type: SubTab) => {
+    if (!item) return null;
+
+    // FIND icon safely
+    const tabConfig = tabs.find(t => t.id === type);
+    const Icon = tabConfig?.icon || Database;
+
     // Custom card content based on type
-    const title = item.name || item.fullName || item.label || item.id;
-    const subtitle = item.email || item.category || item.status || (type === 'projects' ? item.clientName : '');
+    const title = item.name || item.fullName || item.label || item.id || 'Sin nombre';
+    const subtitle = item.email || item.category || item.status || (type === 'projects' ? item.clientName : '') || 'Sin detalles';
     const date = item.createdAt || item.created_at;
 
     return (
       <div 
-        key={item.id} 
-        className="bg-surface rounded-xl border border-border/20 p-5 hover:border-primary/40 hover:shadow-lg transition-all group relative overflow-hidden"
+        key={item.id || Math.random().toString()} 
+        className="bg-surface rounded-xl border border-border/20 p-5 hover:border-primary/40 hover:shadow-lg transition-all group relative overflow-hidden flex flex-col h-full"
       >
         <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
-          {tabs.find(t => t.id === type)?.icon({ size: 48 })}
+          <Icon size={48} />
         </div>
 
         <div className="flex items-start justify-between mb-4">
           <div className="p-2.5 rounded-lg bg-secondary text-primary">
-            {tabs.find(t => t.id === type)?.icon({ size: 20 })}
+            <Icon size={20} />
           </div>
           {item.status && (
             <span className={`text-[10px] uppercase font-black px-2 py-1 rounded-full ${

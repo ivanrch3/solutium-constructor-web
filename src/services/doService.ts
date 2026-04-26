@@ -14,7 +14,18 @@ class StorageService {
   private initialized: boolean = false;
   private initPromise: Promise<void> | null = null;
 
-  private constructor() {}
+  private constructor() {
+    // Intentar inicialización automática desde entorno si están disponibles (SIP v5.4 Fallback)
+    const envEndpoint = import.meta.env.VITE_STORAGE_ENDPOINT;
+    const envAccessKey = import.meta.env.VITE_STORAGE_ACCESS_KEY;
+    const envSecretKey = import.meta.env.VITE_STORAGE_SECRET_KEY;
+    const envBucket = import.meta.env.VITE_STORAGE_BUCKET;
+
+    if (envEndpoint && envAccessKey && envSecretKey && envBucket) {
+      console.log('[StorageService] Autoinicializando con variables de entorno...');
+      this.init(envEndpoint, envAccessKey, envSecretKey, envBucket);
+    }
+  }
 
   public static getInstance(): StorageService {
     if (!StorageService.instance) {

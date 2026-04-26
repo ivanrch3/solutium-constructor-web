@@ -128,11 +128,18 @@ const AppContent: React.FC = () => {
           link.href = handshakeFavicon;
         }
 
-        // Configuration fallbacks from environment
-        const finalEndpoint = payload.do_endpoint || import.meta.env.VITE_STORAGE_ENDPOINT;
-        const finalAccessKey = payload.do_access_key || import.meta.env.VITE_STORAGE_ACCESS_KEY;
-        const finalSecretKey = payload.do_secret_key || import.meta.env.VITE_STORAGE_SECRET_KEY;
-        const finalBucket = payload.do_bucket || import.meta.env.VITE_STORAGE_BUCKET;
+        // Configuration fallbacks from environment with more variants (SIP v5.4)
+        const finalEndpoint = payload.do_endpoint || payload.STORAGE_ENDPOINT || payload.storage_endpoint || import.meta.env.VITE_STORAGE_ENDPOINT;
+        const finalAccessKey = payload.do_access_key || payload.STORAGE_ACCESS_KEY || payload.storage_access_key || import.meta.env.VITE_STORAGE_ACCESS_KEY;
+        const finalSecretKey = payload.do_secret_key || payload.STORAGE_SECRET_KEY || payload.storage_secret_key || import.meta.env.VITE_STORAGE_SECRET_KEY;
+        const finalBucket = payload.do_bucket || payload.STORAGE_BUCKET || payload.storage_bucket || import.meta.env.VITE_STORAGE_BUCKET;
+
+        console.log('[HANDSHAKE] Detectando configuración de almacenamiento:', {
+          hasEndpoint: !!finalEndpoint,
+          hasAccessKey: !!finalAccessKey,
+          hasSecretKey: !!finalSecretKey,
+          hasBucket: !!finalBucket
+        });
 
         if (finalEndpoint && finalAccessKey && finalSecretKey && finalBucket) {
           initDOClient(
@@ -141,6 +148,8 @@ const AppContent: React.FC = () => {
             finalSecretKey,
             finalBucket
           );
+        } else {
+          console.warn('[HANDSHAKE] Faltan credenciales de almacenamiento. La subida de archivos podría fallar.');
         }
 
         if (payload.projectId) {

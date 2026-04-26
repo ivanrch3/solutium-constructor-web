@@ -79,15 +79,34 @@ export const syncAsset = async (
   } catch (error: any) {
     console.error('Error detallado en syncAsset:', error);
     
-    // 4. Resiliencia y Fallback: Guardar en localStorage
+    // 4. Resiliencia y Fallback: Guardar en localStorage con el contenido si es posible
     const pendingAssets = JSON.parse(localStorage.getItem('pending_assets') || '[]');
+    
+    let fileBase64 = null;
+    try {
+      // Intentar convertir a base64 para persistencia real (solo si no es excesivo)
+      if (fileSize < 2 * 1024 * 1024) { // Límite de 2MB para localStorage
+        if (file instanceof Blob) {
+          fileBase64 = await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.readAsDataURL(file);
+          });
+        }
+      }
+    } catch (e) {
+      console.warn('[AssetService] No se pudo serializar el archivo para el fallback:', e);
+    }
+
     pendingAssets.push({
       entity,
       type,
       extension,
+      contentType,
+      fileName,
+      fileData: fileBase64,
       timestamp: new Date().toISOString(),
-      error: error instanceof Error ? error.message : String(error),
-      fullError: error
+      error: error instanceof Error ? error.message : String(error)
     });
     localStorage.setItem('pending_assets', JSON.stringify(pendingAssets));
     

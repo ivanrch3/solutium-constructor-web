@@ -60,16 +60,36 @@ class StorageService {
   private async ensureInitialized(): Promise<void> {
     if (this.initialized) return;
     
+    console.log('[StorageService] Waiting for initialization...');
+    
     // If not initialized, we wait for a reasonable time or throw
     // This handles cases where upload is called before handshake completes
     let attempts = 0;
-    while (!this.initialized && attempts < 50) {
+    const maxAttempts = 50; // 5 seconds
+    
+    while (!this.initialized && attempts < maxAttempts) {
       await new Promise(resolve => setTimeout(resolve, 100));
       attempts++;
+      
+      // Every 10 attempts, log progress
+      if (attempts % 10 === 0) {
+        console.log(`[StorageService] Still waiting for initialization... attempt ${attempts}/${maxAttempts}`);
+      }
     }
 
     if (!this.initialized) {
-      throw new Error('Storage service not initialized. Handshake might have failed.');
+      const missing = [];
+      if (!this.endpoint) missing.push('Endpoint');
+      if (!this.accessKey) missing.push('AccessKey');
+      if (!this.secretKey) missing.push('SecretKey');
+      if (!this.bucket) missing.push('Bucket');
+      
+      const errorMsg = missing.length > 0 
+        ? `Storage service failed to initialize because the following keys are missing: ${missing.join(', ')}.` 
+        : 'Storage service not initialized. Handshake might have failed or timed out.';
+      
+      console.error(`[StorageService] CRITICAL: ${errorMsg}`);
+      throw new Error(`${errorMsg} Please ensure the Mother App (Solutium) is providing these credentials or they are set in the environment.`);
     }
   }
 

@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { SiteContent, Section } from '../types';
 
-interface EditorState {
+interface EditorStoreState {
   siteContent: SiteContent;
   selectedSectionId: string | null;
   selectedElementId: string | null;
@@ -11,11 +11,25 @@ interface EditorState {
   isGenerating: boolean;
   generationStep: number;
   generationSteps: string[];
+  inlineEditingId: string | null;
+  showMenuRecommendation: boolean;
   
   // Acciones
   setProject: (project: any) => void;
+  setInlineEditingId: (id: string | null) => void;
+  setShowMenuRecommendation: (show: boolean) => void;
   startAIGeneration: (brief: any) => Promise<void>;
   setGenerationStep: (step: number) => void;
+  updateSectionSettings: (sectionId: string, settingsUpdate: Record<string, any>) => void;
+  setSiteContent: (content: SiteContent) => void;
+  selectSection: (id: string | null) => void;
+  selectElement: (id: string | null) => void;
+  updateTheme: (themeUpdate: any) => void;
+  addSection: (section: Section) => void;
+  removeSection: (id: string) => void;
+  reorderSections: (startIndex: number, endIndex: number) => void;
+  undo: () => void;
+  redo: () => void;
 }
 
 const initialContent: SiteContent = {
@@ -25,12 +39,16 @@ const initialContent: SiteContent = {
     fontFamily: 'Inter',
     borderRadius: '0.5rem',
     backgroundColor: '#ffffff',
-    textColor: '#1f2937'
+    textColor: '#1f2937',
+    alternatingDarkMode: false,
+    alternatingThemeMode: false,
+    themeBackgroundColor: '#1e293b',
+    globalAnimationType: 'recommended'
   },
   sections: []
 };
 
-export const useEditorStore = create<EditorState>((set, get) => ({
+export const useEditorStore = create<EditorStoreState>((set, get) => ({
   siteContent: initialContent,
   selectedSectionId: null,
   selectedElementId: null,
@@ -46,8 +64,14 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     'Generando activos multimedia...',
     'Finalizando sitio...'
   ],
+  inlineEditingId: null,
+  showMenuRecommendation: false,
   
   setProject: (project) => set({ project }),
+
+  setInlineEditingId: (id) => set({ inlineEditingId: id }),
+
+  setShowMenuRecommendation: (show) => set({ showMenuRecommendation: show }),
 
   startAIGeneration: async (brief) => {
     const { generateSiteContent } = await import('../services/aiService');

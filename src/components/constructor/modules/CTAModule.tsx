@@ -15,12 +15,17 @@ import {
 import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
 import { TextRenderer } from '../TextRenderer';
 import { ParallaxBackground } from '../ParallaxBackground';
+import { InlineEditableText } from '../InlineEditableText';
 import { parseNumSafe } from '../utils';
+import { useEditorStore } from '../../../store/editorStore';
+import { GLOBAL_ANIMATIONS, getGlobalAnimation } from '../../../constants/animations';
 
 export const CTAModule: React.FC<{ 
   moduleId: string, 
-  settingsValues: Record<string, any> 
-}> = ({ moduleId, settingsValues }) => {
+  settingsValues: Record<string, any>,
+  isPreviewMode?: boolean
+}> = ({ moduleId, settingsValues, isPreviewMode = false }) => {
+  const { selectSection, selectElement } = useEditorStore();
   const [email, setEmail] = useState('');
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
@@ -42,12 +47,15 @@ export const CTAModule: React.FC<{
   const paddingY = parseNumSafe(getVal(null, 'padding_y', 100), 100);
   const bgType = getVal(null, 'bg_type', 'color');
   const darkMode = getVal(null, 'dark_mode', false);
-  const bgColor = darkMode ? '#0F172A' : getVal(null, 'bg_color', '#FFFFFF');
+  const bgColor = getVal(null, 'bg_color', darkMode ? '#0F172A' : '#FFFFFF');
   const bgGradient = getVal(null, 'bg_gradient', 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)');
   const bgVideo = getVal(null, 'bg_video', '');
   const overlayOpacity = parseNumSafe(getVal(null, 'overlay_opacity', 50), 50) / 100;
-  const entranceAnim = getVal(null, 'entrance_anim', true);
+  const entranceAnim = getVal(null, 'entrance_anim', 'none');
   const enableShimmer = getVal(null, 'enable_shimmer', true);
+
+  // Animation Overrides
+  const globalAnimOverride = getGlobalAnimation(entranceAnim, 'cta');
   const magneticButton = getVal(null, 'magnetic_button', false);
   const showFloatingAssets = getVal(null, 'show_floating_assets', false);
   const floatingIcon1 = getVal(null, 'floating_icon_1', 'Sparkles');
@@ -156,12 +164,16 @@ export const CTAModule: React.FC<{
     bgStyle.backgroundPosition = 'center';
   }
 
-  const animProps = entranceAnim ? {
-    initial: { opacity: 0, y: 30 },
-    whileInView: { opacity: 1, y: 0 },
+  const animProps = globalAnimOverride ? {
+    initial: globalAnimOverride.hidden as any,
+    whileInView: globalAnimOverride.visible as any,
+    viewport: { once: true },
+  } : (entranceAnim ? {
+    initial: { opacity: 0, y: 30 } as any,
+    whileInView: { opacity: 1, y: 0 } as any,
     viewport: { once: true },
     transition: { duration: 0.8, ease: [0.22, 1, 0.36, 1] as any }
-  } : {};
+  } : {});
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -270,6 +282,12 @@ export const CTAModule: React.FC<{
             rel={primaryTarget === '_blank' ? 'noopener noreferrer' : undefined}
             whileHover={magneticButton ? { x: 5, y: -5, scale: 1.05 } : hoverEffect === 'scale' ? { scale: 1.05 } : { boxShadow: `0 0 30px ${btnPrimaryBg}60` }}
             whileTap={{ scale: 0.95 }}
+            onClick={(e) => {
+              if (isPreviewMode) return;
+              e.stopPropagation();
+              selectSection(moduleId);
+              selectElement(`${moduleId}_el_cta_actions`);
+            }}
             className="relative px-8 py-4 font-black text-sm flex items-center gap-2 shadow-xl transition-all overflow-hidden group"
             style={{ 
               backgroundColor: btnPrimaryBg, 
@@ -280,7 +298,15 @@ export const CTAModule: React.FC<{
             {enableShimmer && (
               <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out" />
             )}
-            <span className="relative z-10">{primaryText}</span>
+            <InlineEditableText
+              moduleId={moduleId}
+              elementId={`${moduleId}_el_cta_actions`}
+              settingId="primary_text"
+              value={primaryText}
+              tagName="span"
+              isPreviewMode={isPreviewMode}
+              className="relative z-10"
+            />
             <ArrowRight size={18} className="relative z-10" />
           </motion.a>
         )}
@@ -297,7 +323,14 @@ export const CTAModule: React.FC<{
               borderRadius: `${btnRadius}px` 
             }}
           >
-            {secondaryText}
+            <InlineEditableText
+              moduleId={moduleId}
+              elementId={`${moduleId}_el_cta_actions`}
+              settingId="secondary_text"
+              value={secondaryText}
+              tagName="span"
+              isPreviewMode={isPreviewMode}
+            />
           </motion.a>
         )}
       </div>
@@ -334,12 +367,16 @@ export const CTAModule: React.FC<{
               </div>
               <span className="text-[10px] font-black uppercase tracking-widest text-amber-500">Verificado</span>
             </div>
-            <span 
+            <InlineEditableText
+              moduleId={moduleId}
+              elementId={`${moduleId}_el_cta_trust`}
+              settingId="trust_text"
+              value={trustText}
+              tagName="span"
+              isPreviewMode={isPreviewMode}
               className="font-medium"
               style={{ fontSize: `${trustSize}px`, color: trustColor }}
-            >
-              {trustText}
-            </span>
+            />
           </div>
         </div>
 
@@ -383,8 +420,15 @@ export const CTAModule: React.FC<{
 
   return (
     <section 
+      id={moduleId}
       ref={containerRef}
       className="w-full relative overflow-hidden py-12 @md:py-20 @lg:py-24" 
+      onClick={(e) => {
+        if (isPreviewMode) return;
+        e.stopPropagation();
+        selectSection(moduleId);
+        selectElement(`${moduleId}_global`);
+      }}
       style={bgStyle}
     >
       <ParallaxBackground 
@@ -440,13 +484,22 @@ export const CTAModule: React.FC<{
                     color: titleColor 
                   }}
                 >
-                  <TextRenderer 
-                    text={title} 
-                    highlightType={titleHighlightType}
-                    highlightColor={titleHighlightColor}
-                    highlightGradient={titleHighlightGradient}
-                    highlightBold={titleHighlightBold}
-                  />
+                  <InlineEditableText
+                    moduleId={moduleId}
+                    elementId={`${moduleId}_el_cta_content`}
+                    settingId="title"
+                    value={title}
+                    tagName="span"
+                    isPreviewMode={isPreviewMode}
+                  >
+                    <TextRenderer 
+                      text={title} 
+                      highlightType={titleHighlightType}
+                      highlightColor={titleHighlightColor}
+                      highlightGradient={titleHighlightGradient}
+                      highlightBold={titleHighlightBold}
+                    />
+                  </InlineEditableText>
                 </h2>
                 <p 
                   className="max-w-2xl mb-10"
@@ -455,13 +508,22 @@ export const CTAModule: React.FC<{
                     color: subtitleColor 
                   }}
                 >
-                  <TextRenderer 
-                    text={subtitle} 
-                    highlightType={subtitleHighlightType}
-                    highlightColor={subtitleHighlightColor}
-                    highlightGradient={subtitleHighlightGradient}
-                    highlightBold={subtitleHighlightBold}
-                  />
+                  <InlineEditableText
+                    moduleId={moduleId}
+                    elementId={`${moduleId}_el_cta_content`}
+                    settingId="subtitle"
+                    value={subtitle}
+                    tagName="span"
+                    isPreviewMode={isPreviewMode}
+                  >
+                    <TextRenderer 
+                      text={subtitle} 
+                      highlightType={subtitleHighlightType}
+                      highlightColor={subtitleHighlightColor}
+                      highlightGradient={subtitleHighlightGradient}
+                      highlightBold={subtitleHighlightBold}
+                    />
+                  </InlineEditableText>
                 </p>
                 {renderActions()}
                 {renderTrust()}
@@ -482,6 +544,14 @@ export const CTAModule: React.FC<{
                       color: titleColor 
                     }}
                   >
+                  <InlineEditableText
+                    moduleId={moduleId}
+                    elementId={`${moduleId}_el_cta_content`}
+                    settingId="title"
+                    value={title}
+                    tagName="span"
+                    isPreviewMode={isPreviewMode}
+                  >
                     <TextRenderer 
                       text={title} 
                       highlightType={titleHighlightType}
@@ -489,13 +559,22 @@ export const CTAModule: React.FC<{
                       highlightGradient={titleHighlightGradient}
                       highlightBold={titleHighlightBold}
                     />
-                  </h2>
-                  <p 
-                    className="max-w-2xl"
-                    style={{ 
-                      ...getTypographyStyle(subtitleSize as any, subtitleWeight, textAlign),
-                      color: subtitleColor 
-                    }}
+                  </InlineEditableText>
+                </h2>
+                <p 
+                  className="max-w-2xl"
+                  style={{ 
+                    ...getTypographyStyle(subtitleSize as any, subtitleWeight, textAlign),
+                    color: subtitleColor 
+                  }}
+                >
+                  <InlineEditableText
+                    moduleId={moduleId}
+                    elementId={`${moduleId}_el_cta_content`}
+                    settingId="subtitle"
+                    value={subtitle}
+                    tagName="span"
+                    isPreviewMode={isPreviewMode}
                   >
                     <TextRenderer 
                       text={subtitle} 
@@ -504,6 +583,7 @@ export const CTAModule: React.FC<{
                       highlightGradient={subtitleHighlightGradient}
                       highlightBold={subtitleHighlightBold}
                     />
+                  </InlineEditableText>
                   </p>
                 </div>
                 {renderActions()}
@@ -536,13 +616,22 @@ export const CTAModule: React.FC<{
                     color: titleColor 
                   }}
                 >
-                  <TextRenderer 
-                    text={title} 
-                    highlightType={titleHighlightType}
-                    highlightColor={titleHighlightColor}
-                    highlightGradient={titleHighlightGradient}
-                    highlightBold={titleHighlightBold}
-                  />
+                  <InlineEditableText
+                    moduleId={moduleId}
+                    elementId={`${moduleId}_el_cta_content`}
+                    settingId="title"
+                    value={title}
+                    tagName="span"
+                    isPreviewMode={isPreviewMode}
+                  >
+                    <TextRenderer 
+                      text={title} 
+                      highlightType={titleHighlightType}
+                      highlightColor={titleHighlightColor}
+                      highlightGradient={titleHighlightGradient}
+                      highlightBold={titleHighlightBold}
+                    />
+                  </InlineEditableText>
                 </h2>
                 <p 
                   className="max-w-2xl"
@@ -551,13 +640,22 @@ export const CTAModule: React.FC<{
                     color: subtitleColor 
                   }}
                 >
-                  <TextRenderer 
-                    text={subtitle} 
-                    highlightType={subtitleHighlightType}
-                    highlightColor={subtitleHighlightColor}
-                    highlightGradient={subtitleHighlightGradient}
-                    highlightBold={subtitleHighlightBold}
-                  />
+                  <InlineEditableText
+                    moduleId={moduleId}
+                    elementId={`${moduleId}_el_cta_content`}
+                    settingId="subtitle"
+                    value={subtitle}
+                    tagName="span"
+                    isPreviewMode={isPreviewMode}
+                  >
+                    <TextRenderer 
+                      text={subtitle} 
+                      highlightType={subtitleHighlightType}
+                      highlightColor={subtitleHighlightColor}
+                      highlightGradient={subtitleHighlightGradient}
+                      highlightBold={subtitleHighlightBold}
+                    />
+                  </InlineEditableText>
                 </p>
               </div>
               {renderActions()}

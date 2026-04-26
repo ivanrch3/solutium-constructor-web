@@ -49,10 +49,17 @@ const AnimatedPrice: React.FC<{ value: number, color: string, size: string, weig
   );
 };
 
+import { InlineEditableText } from '../InlineEditableText';
+import { useEditorStore } from '../../../store/editorStore';
+
+import { GLOBAL_ANIMATIONS, getGlobalAnimation } from '../../../constants/animations';
+
 export const PricingModule: React.FC<{ 
   moduleId: string, 
-  settingsValues: Record<string, any> 
-}> = ({ moduleId, settingsValues }) => {
+  settingsValues: Record<string, any>,
+  isPreviewMode?: boolean
+}> = ({ moduleId, settingsValues, isPreviewMode = false }) => {
+  const { updateSectionSettings, selectSection, selectElement } = useEditorStore();
   const [isYearly, setIsYearly] = useState(false);
 
   const getVal = (elementId: string | null, settingId: string, defaultValue: any) => {
@@ -64,12 +71,13 @@ export const PricingModule: React.FC<{
   const columns = parseNumSafe(getVal(null, 'columns', 3), 3);
   const gap = parseNumSafe(getVal(null, 'gap', 32), 32);
   const darkMode = getVal(null, 'dark_mode', false);
-  const bgColor = darkMode ? '#0F172A' : getVal(null, 'bg_color', '#F8FAFC');
+  const bgColor = getVal(null, 'bg_color', darkMode ? '#0F172A' : '#F8FAFC');
   const sectionGradient = getVal(null, 'section_gradient', false);
   const bgGradient = getVal(null, 'bg_gradient', 'linear-gradient(to bottom, #F8FAFC, #FFFFFF)');
-  const entranceAnim = getVal(null, 'entrance_anim', true);
+  const entranceAnim = getVal(null, 'entrance_anim', 'slide-up');
   const staggerAnim = getVal(null, 'stagger_anim', true);
-  const layoutMode = getVal(null, 'layout_mode', 'grid'); // grid | comparison
+  
+  const globalAnimOverride = getGlobalAnimation(entranceAnim, 'pricing');
 
   // Element: Header
   const headerTitle = getVal(`${moduleId}_el_pricing_header`, 'title', 'Planes diseñados para tu éxito');
@@ -187,7 +195,7 @@ export const PricingModule: React.FC<{
     }
   };
 
-  const itemVariants = {
+  const itemVariants = globalAnimOverride || {
     hidden: { y: 30, opacity: 0 },
     visible: { y: 0, opacity: 1, transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] as any } }
   };
@@ -195,6 +203,11 @@ export const PricingModule: React.FC<{
   return (
     <section 
       className="w-full relative overflow-hidden py-12 @md:py-20 @lg:py-24"
+      onClick={(e) => {
+        if (isPreviewMode) return;
+        e.stopPropagation();
+        selectSection(moduleId);
+      }}
       style={{ 
         backgroundColor: bgColor,
         backgroundImage: (sectionGradient && typeof bgGradient === 'string' && !bgGradient.includes('NaN')) ? bgGradient : 'none'
@@ -213,20 +226,47 @@ export const PricingModule: React.FC<{
               color: darkMode ? '#FFFFFF' : '#0F172A'
             }}
           >
-            <TextRenderer 
-              text={headerTitle}
-              highlightType={getVal(`${moduleId}_el_pricing_header`, 'title_highlight_type', 'gradient')}
-              highlightColor={getVal(`${moduleId}_el_pricing_header`, 'title_highlight_color', '#3B82F6')}
-              highlightGradient={getVal(`${moduleId}_el_pricing_header`, 'title_highlight_gradient', 'linear-gradient(to right, #3B82F6, #2563EB)')}
-              highlightBold={getVal(`${moduleId}_el_pricing_header`, 'title_highlight_bold', true)}
-            />
+            <InlineEditableText
+              moduleId={moduleId}
+              elementId={`${moduleId}_el_pricing_header`}
+              settingId="title"
+              value={headerTitle}
+              isPreviewMode={isPreviewMode}
+            >
+              <TextRenderer 
+                text={headerTitle}
+                highlightType={getVal(`${moduleId}_el_pricing_header`, 'title_highlight_type', 'gradient')}
+                highlightColor={getVal(`${moduleId}_el_pricing_header`, 'title_highlight_color', '#3B82F6')}
+                highlightGradient={getVal(`${moduleId}_el_pricing_header`, 'title_highlight_gradient', 'linear-gradient(to right, #3B82F6, #2563EB)')}
+                highlightBold={getVal(`${moduleId}_el_pricing_header`, 'title_highlight_bold', true)}
+              />
+            </InlineEditableText>
           </h2>
-          <p 
-            className="text-lg max-w-2xl leading-relaxed"
-            style={{ color: darkMode ? '#94A3B8' : '#64748B' }}
-          >
-            {headerSubtitle}
-          </p>
+          {headerSubtitle && (
+            <p 
+              className="text-lg max-w-2xl leading-relaxed"
+              style={{ 
+                ...getTypographyStyle(headerSubtitleSize as any, headerSubtitleWeight, headerAlign),
+                color: darkMode ? '#94A3B8' : '#64748B' 
+              }}
+            >
+              <InlineEditableText
+                moduleId={moduleId}
+                elementId={`${moduleId}_el_pricing_header`}
+                settingId="subtitle"
+                value={headerSubtitle}
+                isPreviewMode={isPreviewMode}
+              >
+                <TextRenderer 
+                  text={headerSubtitle}
+                  highlightType={subtitleHighlightType}
+                  highlightColor={subtitleHighlightColor}
+                  highlightGradient={subtitleHighlightGradient}
+                  highlightBold={subtitleHighlightBold}
+                />
+              </InlineEditableText>
+            </p>
+          )}
 
           {/* Toggle */}
           {showToggle && (
@@ -283,7 +323,13 @@ export const PricingModule: React.FC<{
                 key={i}
                 variants={itemVariants}
                 whileHover={hoverEffect === 'lift' ? { y: -15 } : hoverEffect === 'glow' ? { boxShadow: `0 0 40px ${highlightColor}30` } : {}}
-                className={`relative flex flex-col h-full transition-all duration-500 group p-6 @md:p-10 ${plan.highlight ? 'z-10' : 'z-1'}`}
+                onClick={(e) => {
+                  if (isPreviewMode) return;
+                  e.stopPropagation();
+                  selectSection(moduleId);
+                  selectElement(`${moduleId}_global`);
+                }}
+                className={`relative flex flex-col h-full transition-all duration-500 group p-6 @md:p-10 ${plan.highlight ? 'z-10' : 'z-1'} cursor-pointer`}
                 style={{
                   backgroundColor: glassMode ? (darkMode ? 'rgba(30,41,59,0.7)' : 'rgba(255,255,255,0.7)') : (darkMode ? '#1E293B' : cardBg),
                   backdropFilter: glassMode ? 'blur(12px)' : 'none',
@@ -312,13 +358,35 @@ export const PricingModule: React.FC<{
                     className="text-2xl font-black mb-2"
                     style={{ color: darkMode ? '#FFFFFF' : '#0F172A' }}
                   >
-                    {plan.name}
+                    <InlineEditableText
+                      moduleId={moduleId}
+                      settingId="name"
+                      value={plan.name}
+                      isPreviewMode={isPreviewMode}
+                      onSave={(val) => {
+                        const newPlans = [...plans];
+                        newPlans[i] = { ...newPlans[i], name: val };
+                        updateSectionSettings(moduleId, { [`${moduleId}_global_plans`]: newPlans });
+                      }}
+                      tagName="span"
+                    />
                   </h3>
                   <p 
                     className="text-sm leading-relaxed"
                     style={{ color: darkMode ? '#94A3B8' : '#64748B' }}
                   >
-                    {plan.description}
+                    <InlineEditableText
+                      moduleId={moduleId}
+                      settingId="description"
+                      value={plan.description}
+                      isPreviewMode={isPreviewMode}
+                      onSave={(val) => {
+                        const newPlans = [...plans];
+                        newPlans[i] = { ...newPlans[i], description: val };
+                        updateSectionSettings(moduleId, { [`${moduleId}_global_plans`]: newPlans });
+                      }}
+                      tagName="span"
+                    />
                   </p>
                 </div>
 

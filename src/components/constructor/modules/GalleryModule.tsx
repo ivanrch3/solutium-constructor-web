@@ -3,7 +3,10 @@ import { motion, AnimatePresence } from 'motion/react';
 import { X, ZoomIn, ChevronLeft, ChevronRight, Play } from 'lucide-react';
 import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
 import { TextRenderer } from '../TextRenderer';
+import { InlineEditableText } from '../InlineEditableText';
 import { parseNumSafe } from '../utils';
+
+import { GLOBAL_ANIMATIONS, getGlobalAnimation } from '../../../constants/animations';
 
 const getAspectRatioClass = (ratio: string) => {
   switch (ratio) {
@@ -119,8 +122,9 @@ const GalleryItem = ({
 
 export const GalleryModule: React.FC<{ 
   moduleId: string, 
-  settingsValues: Record<string, any> 
-}> = ({ moduleId, settingsValues }) => {
+  settingsValues: Record<string, any>,
+  isPreviewMode?: boolean
+}> = ({ moduleId, settingsValues, isPreviewMode = false }) => {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [activeFilter, setActiveFilter] = useState('Todos');
 
@@ -135,12 +139,15 @@ export const GalleryModule: React.FC<{
   const gap = parseNumSafe(getVal(null, 'gap', 20), 20);
   const paddingY = parseNumSafe(getVal(null, 'padding_y', 100), 100);
   const darkMode = getVal(null, 'dark_mode', false);
-  const bgColor = darkMode ? '#0F172A' : getVal(null, 'bg_color', '#FFFFFF');
+  const bgColor = getVal(null, 'bg_color', darkMode ? '#0F172A' : '#FFFFFF');
   const sectionGradient = getVal(null, 'section_gradient', false);
   const bgGradient = getVal(null, 'bg_gradient', 'linear-gradient(to bottom, #FFFFFF, #F8FAFC)');
   const imageFilter = getVal(null, 'image_filter', 'none');
   const filterOnHover = getVal(null, 'filter_on_hover', true);
-  const entranceAnim = getVal(null, 'entrance_anim', true);
+  const entranceAnim = getVal(null, 'entrance_anim', 'fade_up');
+
+  // Animation Overrides
+  const globalAnimOverride = getGlobalAnimation(entranceAnim, 'gallery');
 
   // Element: Filtros de Categoría
   const showFilters = getVal(`${moduleId}_el_gallery_filters`, 'show_filters', true);
@@ -202,7 +209,7 @@ export const GalleryModule: React.FC<{
     }
   };
 
-  const itemVariants = {
+  const itemVariants = globalAnimOverride || {
     hidden: { scale: 0.9, opacity: 0 },
     visible: { scale: 1, opacity: 1, transition: { duration: 0.5, ease: "easeOut" } }
   };
@@ -254,13 +261,21 @@ export const GalleryModule: React.FC<{
               color: darkMode ? '#FFFFFF' : '#0F172A'
             }}
           >
-            <TextRenderer 
-              text={headerTitle}
-              highlightType={titleHighlightType}
-              highlightColor={titleHighlightColor}
-              highlightGradient={titleHighlightGradient}
-              highlightBold={titleHighlightBold}
-            />
+            <InlineEditableText
+              moduleId={moduleId}
+              elementId={`${moduleId}_el_gallery_header`}
+              settingId="title"
+              value={headerTitle}
+              isPreviewMode={isPreviewMode}
+            >
+              <TextRenderer 
+                text={headerTitle}
+                highlightType={titleHighlightType}
+                highlightColor={titleHighlightColor}
+                highlightGradient={titleHighlightGradient}
+                highlightBold={titleHighlightBold}
+              />
+            </InlineEditableText>
           </h2>
           {headerSubtitle && (
             <p 
@@ -270,13 +285,21 @@ export const GalleryModule: React.FC<{
                 color: darkMode ? '#94A3B8' : '#64748B' 
               }}
             >
-              <TextRenderer 
-                text={headerSubtitle}
-                highlightType={subtitleHighlightType}
-                highlightColor={subtitleHighlightColor}
-                highlightGradient={subtitleHighlightGradient}
-                highlightBold={subtitleHighlightBold}
-              />
+              <InlineEditableText
+                moduleId={moduleId}
+                elementId={`${moduleId}_el_gallery_header`}
+                settingId="subtitle"
+                value={headerSubtitle}
+                isPreviewMode={isPreviewMode}
+              >
+                <TextRenderer 
+                  text={headerSubtitle}
+                  highlightType={subtitleHighlightType}
+                  highlightColor={subtitleHighlightColor}
+                  highlightGradient={subtitleHighlightGradient}
+                  highlightBold={subtitleHighlightBold}
+                />
+              </InlineEditableText>
             </p>
           )}
         </div>

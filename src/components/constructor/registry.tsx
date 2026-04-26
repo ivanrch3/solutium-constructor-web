@@ -222,7 +222,8 @@ export const MENU_MODULE: WebModule = {
         { label: 'Fin', value: 'end' }
       ]},
       { id: 'gap', label: 'Espaciado entre items', type: 'range', defaultValue: 24, min: 0, max: 64, unit: 'px' },
-      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 20, min: 0, max: 100, unit: 'px' }
+      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 20, min: 0, max: 100, unit: 'px' },
+      { id: 'desktop_hamburger', label: 'Usar Menú Hamburguesa en Escritorio', type: 'boolean', defaultValue: false }
     ],
     estilo: [
       { id: 'dark_mode', label: 'Modo Oscuro', type: 'boolean', defaultValue: false },

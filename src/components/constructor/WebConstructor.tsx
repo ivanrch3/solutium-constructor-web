@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import * as LucideIcons from 'lucide-react';
 import { 
   Monitor, 
@@ -142,7 +142,9 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     updateSectionSettings,
     addSection,
     removeSection,
-    setProject
+    setProject,
+    showMenuRecommendation,
+    setShowMenuRecommendation
   } = useEditorStore();
 
   useEffect(() => {
@@ -348,6 +350,65 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     setHasUnsavedChanges(true);
   };
 
+  // Synchronize store settings back to local editorState
+  useEffect(() => {
+    if (siteContent.sections.length > 0) {
+      updateEditorState(prev => {
+        const newSettings = { ...prev.settingsValues };
+        let changed = false;
+        
+        siteContent.sections.forEach(section => {
+          Object.entries(section.settings).forEach(([key, val]) => {
+            if (newSettings[key] !== val) {
+              newSettings[key] = val;
+              changed = true;
+            }
+          });
+        });
+
+        if (changed) return { ...prev, settingsValues: newSettings };
+        return prev;
+      });
+    }
+  }, [siteContent.sections]);
+
+  // Synchronize store selection back to local editorState
+  const storeSelectedSectionId = useEditorStore(state => state.selectedSectionId);
+  const storeSelectedElementId = useEditorStore(state => state.selectedElementId);
+
+  const handlePreviewClick = useCallback(() => {
+    if (activeTab === 'design-style' || activeTab === 'design-animations') {
+      setActiveTab('constructor');
+      setMobileTab('structure');
+    }
+  }, [activeTab]);
+
+  useEffect(() => {
+    updateEditorState(prev => {
+      let changed = false;
+      const newState = { ...prev };
+      
+      if (storeSelectedSectionId !== prev.expandedModuleId) {
+        newState.expandedModuleId = storeSelectedSectionId;
+        changed = true;
+        
+        // Auto-switch to constructor tab if selecting a section while in design tabs
+        if (storeSelectedSectionId && (activeTab === 'design-style' || activeTab === 'design-animations')) {
+          setActiveTab('constructor');
+          setMobileTab('structure');
+        }
+      }
+      
+      if (storeSelectedElementId !== prev.selectedElementId) {
+        newState.selectedElementId = storeSelectedElementId;
+        changed = true;
+      }
+
+      if (changed) return newState;
+      return prev;
+    });
+  }, [storeSelectedSectionId, storeSelectedElementId, activeTab]);
+
   const handleAISubmit = async (data: ProjectFormData) => {
     setShowAIInitialForm(false);
     setHasStartedAI(true);
@@ -546,7 +607,9 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         }
       }
 
-      return {
+      const isUtilityModule = ['navegacion', 'espaciador', 'footer'].includes(module.type) || module.id.startsWith('mod_header_1') || module.id.startsWith('mod_menu_1') || module.id.startsWith('mod_footer_1');
+
+      const finalState = {
         ...prev,
         addedModules: newModules,
         expandedModuleId: moduleId,
@@ -562,6 +625,26 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         recentlyAddedModuleId: moduleId,
         totalModulesAdded: (prev.totalModulesAdded || 0) + 1
       };
+
+      // SOP: Auto-generate menu link if not utility
+      if (!isPreviewMode && !isUtilityModule) {
+        const menuMod = newModules.find(m => m.type === 'navegacion');
+        if (menuMod) {
+          const menuItemsElId = `${menuMod.id}_el_menu_items`;
+          const currentLinks = finalState.settingsValues[`${menuItemsElId}_links`] || [];
+          const anchor = `#${moduleId}`;
+          const isLinked = currentLinks.some((l: any) => l.url === anchor);
+          
+          if (!isLinked) {
+            const moduleInfo = (module.iconKey && MODULE_INFO[module.iconKey]) || MODULE_INFO[module.type] || { label: module.name };
+            const iconKey = module?.iconKey || module?.type || '';
+            const newLinks = [...currentLinks, { label: moduleInfo.label, url: anchor, icon: iconKey }];
+            finalState.settingsValues[`${menuItemsElId}_links`] = newLinks;
+          }
+        }
+      }
+
+      return finalState;
     });
 
     // Mobile flow: jump to structure tab and show groups
@@ -920,8 +1003,6 @@ const formatTimestampName = () => {
           status: 'published',
           timestamp: new Date().toISOString()
         });
-
-        setTimeout(() => setPublishStatus('idle'), 3000);
       } else {
         throw new Error('Error al publicar el sitio');
       }
@@ -931,6 +1012,29 @@ const formatTimestampName = () => {
       setTimeout(() => setPublishStatus('idle'), 3000);
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleSwitchToHamburgerGlobal = () => {
+    const menuMod = editorState.addedModules.find(m => m.type === 'navegacion');
+    if (menuMod) {
+      const fullKey = `${menuMod.id}_global_desktop_hamburger`;
+      
+      // Update local editorState directly as it's the primary source of truth for the Canvas
+      handleSettingChange(menuMod.id, 'global_desktop_hamburger', true);
+      
+      // Also update store to prevent the synchronization useEffect from overwriting it
+      updateSectionSettings(menuMod.id, { [fullKey]: true });
+
+      // Scroll to menu immediately so user can see it
+      setTimeout(() => {
+        const element = document.getElementById(menuMod.id);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 100);
+      
+      setShowMenuRecommendation(false);
     }
   };
 
@@ -962,7 +1066,7 @@ const formatTimestampName = () => {
       )}
       
       <div className="flex-1 flex flex-col h-full overflow-hidden">
-        {activeTab === 'constructor' && (
+        {(activeTab === 'constructor' || activeTab === 'design-style' || activeTab === 'design-animations') && (
           <div className="flex flex-1 h-full overflow-hidden relative">
             {/* Mobile Layout */}
             {isMobile ? (
@@ -985,7 +1089,7 @@ const formatTimestampName = () => {
                 )}
                 
                 <div className="flex-1 overflow-hidden relative">
-                  {mobileTab === 'constructor' && !isPreviewMode && (
+                  {(activeTab === 'constructor' && mobileTab === 'constructor' && !isPreviewMode) && (
                     <div className="h-full overflow-y-auto bg-sidebar-bg custom-scrollbar">
                       <div className="p-6">
                         <h3 className="text-[10px] font-bold text-sidebar-foreground/40 uppercase tracking-[0.2em] mb-8 text-left px-2">Catálogo de Módulos</h3>
@@ -1064,6 +1168,18 @@ const formatTimestampName = () => {
                       </div>
                     </div>
                   )}
+
+                  {(activeTab === 'design-style' || activeTab === 'design-animations') && (
+                    <div className="h-full overflow-auto bg-slate-50">
+                      <GlobalSettingsPanel 
+                        view={activeTab as any}
+                        settingsValues={editorState.settingsValues}
+                        onSettingChange={handleSettingChange}
+                        project={project}
+                        projectId={projectId}
+                      />
+                    </div>
+                  )}
                   
                   {mobileTab === 'structure' && (
                     <div className="h-full overflow-hidden bg-surface">
@@ -1079,12 +1195,13 @@ const formatTimestampName = () => {
                         products={products}
                         customers={customers}
                         isMobile={true}
+                        activeTab={activeTab}
                       />
                     </div>
                   )}
                   
                   {mobileTab === 'preview' || isPreviewMode ? (
-                    <div className="h-full overflow-hidden">
+                    <div className="h-full overflow-hidden" onClickCapture={handlePreviewClick}>
                       <Canvas 
                         editorState={editorState} 
                         onAddModule={addModule} 
@@ -1099,6 +1216,7 @@ const formatTimestampName = () => {
                         setIsFullscreen={() => {}}
                         isPreviewMode={isPreviewMode}
                         onSettingChange={handleSettingChange}
+                        onReload={handleReload}
                       />
                     </div>
                   ) : null}
@@ -1121,6 +1239,7 @@ const formatTimestampName = () => {
                     projectId={projectId}
                     products={products}
                     customers={customers}
+                    activeTab={activeTab}
                   />
                 )}
                 <div className="flex-1 flex flex-col h-full">
@@ -1141,7 +1260,7 @@ const formatTimestampName = () => {
                     />
                   )}
                   <div className="flex-1 flex overflow-hidden">
-                    <div className="flex-1 flex flex-col h-full overflow-hidden">
+                    <div className="flex-1 flex flex-col h-full overflow-hidden" onClickCapture={handlePreviewClick}>
                       <Canvas 
                         editorState={editorState} 
                         onAddModule={addModule} 
@@ -1156,6 +1275,7 @@ const formatTimestampName = () => {
                         setIsFullscreen={setIsFullscreen}
                         isPreviewMode={isPreviewMode}
                         onSettingChange={handleSettingChange}
+                        onReload={handleReload}
                         reloadKey={reloadKey}
                       />
                     </div>
@@ -1189,6 +1309,7 @@ const formatTimestampName = () => {
         {activeTab === 'settings' && (
           <div className="flex-1 h-full overflow-auto bg-slate-50 relative">
             <GlobalSettingsPanel 
+              view={activeTab}
               settingsValues={editorState.settingsValues}
               onSettingChange={handleSettingChange}
               project={project}
@@ -1256,6 +1377,95 @@ const formatTimestampName = () => {
             onCancel={() => setShowPublishModal(false)}
             isSaving={isSaving}
           />
+        )}
+
+        {showMenuRecommendation && (
+          <>
+            {/* Extremely high z-index backdrop and modal for the recommendation */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[999998]"
+              onClick={() => setShowMenuRecommendation(false)}
+            />
+            
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[999999] max-w-2xl w-[90%] bg-white border border-slate-200 shadow-[0_32px_128px_-12px_rgba(0,0,0,0.5)] rounded-[40px] p-8 md:p-12 flex flex-col md:flex-row items-center gap-12 overflow-hidden"
+            >
+              {/* Sparkles decoration */}
+              <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
+                <LucideIcons.Sparkles size={160} />
+              </div>
+
+              {/* Visual Guide Representation */}
+              <div className="w-40 h-40 shrink-0 bg-slate-50 rounded-[32px] border border-slate-200 flex flex-col items-center justify-center relative group p-2 shadow-inner">
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-transparent" />
+                
+                {/* Simulated UI element representing the Structure Panel link button */}
+                <div className="w-full flex items-center justify-between gap-1 p-2 bg-white border border-slate-100 rounded-xl shadow-md mb-3 scale-90">
+                  <div className="w-12 h-2 bg-slate-100 rounded-full" />
+                  <div className="bg-blue-500/10 text-blue-600 p-1.5 rounded-md border border-blue-500/20 shadow-sm">
+                    <LucideIcons.Link size={12} />
+                  </div>
+                </div>
+
+                <div className="bg-blue-500/20 text-blue-600 p-5 rounded-2xl border border-blue-500/30 relative shadow-lg">
+                  <LucideIcons.Link size={40} />
+                  <motion.div 
+                    animate={{ scale: [1, 1.3, 1], opacity: [0.5, 1, 0.5] }}
+                    transition={{ repeat: Infinity, duration: 2 }}
+                    className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-blue-600 rounded-full border-4 border-white" 
+                  />
+                </div>
+                <p className="text-[10px] font-black text-blue-600 mt-4 uppercase tracking-[0.2em] text-center leading-none">
+                  Desactivar Link
+                </p>
+              </div>
+
+              {/* Text Content */}
+              <div className="flex-1 text-center md:text-left space-y-4">
+                <div className="flex items-center justify-center md:justify-start gap-2 text-blue-600 font-bold">
+                  <LucideIcons.Info size={20} />
+                  <span className="text-sm tracking-[0.2em] uppercase">Optimización UI</span>
+                </div>
+                <h4 className="text-3xl font-black text-slate-900 leading-tight">¡Tu menú ha crecido mucho!</h4>
+                <p className="text-lg text-slate-500 leading-relaxed">
+                  Detectamos demasiados enlaces en tu navegación. Para que tu sitio luzca impecable en todos los dispositivos:
+                </p>
+                
+                <div className="space-y-2 pb-4">
+                   <div className="flex items-center gap-3 text-slate-600">
+                      <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold">1</div>
+                      <p className="text-sm">Desactiva enlaces en algunos módulos</p>
+                   </div>
+                   <div className="flex items-center gap-3 text-slate-600">
+                      <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold">2</div>
+                      <p className="text-sm">O simplemente usa el menú hamburguesa estilo móvil</p>
+                   </div>
+                </div>
+                
+                <div className="flex flex-wrap items-center justify-center md:justify-start gap-4">
+                  <button 
+                    onClick={handleSwitchToHamburgerGlobal}
+                    className="px-8 py-4 bg-blue-600 text-white text-xs font-black uppercase tracking-widest rounded-full hover:scale-105 active:scale-95 shadow-2xl shadow-blue-500/30 transition-all flex items-center gap-3"
+                  >
+                    <LucideIcons.Menu size={16} />
+                    Activar Hamburguesa
+                  </button>
+                  <button 
+                    onClick={() => setShowMenuRecommendation(false)}
+                    className="px-8 py-4 bg-slate-100 text-slate-600 text-xs font-bold uppercase tracking-widest rounded-full hover:bg-slate-200 transition-all"
+                  >
+                    Entendido
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
     </div>

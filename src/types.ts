@@ -1,3 +1,13 @@
+export type VisualStyle = 
+  | 'Moderno' 
+  | 'Elegante' 
+  | 'Divertido' 
+  | 'Minimalista' 
+  | 'Corporativo' 
+  | 'Creativo' 
+  | 'Clásico' 
+  | 'Atrevido';
+
 export type PropertyPillar = 
   | 'content' 
   | 'structure' 
@@ -31,6 +41,8 @@ export interface Section {
   name: string;
   elements: ModuleElement[];
   settings: Record<string, any>;
+  moduleId?: string;
+  settingsValues?: Record<string, any>;
 }
 
 export interface Theme {
@@ -40,6 +52,15 @@ export interface Theme {
   borderRadius: string;
   backgroundColor: string;
   textColor: string;
+  accentColor?: string;
+  fontSans?: string;
+  fontDisplay?: string;
+  // Global Settings
+  alternatingDarkMode?: boolean;
+  alternatingThemeMode?: boolean;
+  themeBackgroundColor?: string;
+  globalAnimationType?: string;
+  invertedAlternatingMode?: boolean;
 }
 
 export interface SiteContent {

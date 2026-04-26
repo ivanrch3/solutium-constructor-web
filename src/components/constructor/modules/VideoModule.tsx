@@ -3,11 +3,16 @@ import { motion, AnimatePresence, useScroll, useTransform } from 'motion/react';
 import { Play, X, Maximize2, ArrowRight } from 'lucide-react';
 import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
 import { TextRenderer } from '../TextRenderer';
+import { InlineEditableText } from '../InlineEditableText';
+import { useEditorStore } from '../../../store/editorStore';
+import { GLOBAL_ANIMATIONS, getGlobalAnimation } from '../../../constants/animations';
 
 export const VideoModule: React.FC<{ 
   moduleId: string, 
-  settingsValues: Record<string, any> 
-}> = ({ moduleId, settingsValues }) => {
+  settingsValues: Record<string, any>,
+  isPreviewMode?: boolean
+}> = ({ moduleId, settingsValues, isPreviewMode = false }) => {
+  const { selectSection, selectElement } = useEditorStore();
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
@@ -30,13 +35,16 @@ export const VideoModule: React.FC<{
   const paddingY = parseFloat(getVal(null, 'padding_y', 100)) || 100;
   const maxWidth = parseFloat(getVal(null, 'max_width', 1000)) || 1000;
   const darkMode = getVal(null, 'dark_mode', false);
-  const bgColor = darkMode ? '#0F172A' : getVal(null, 'bg_color', '#FFFFFF');
+  const bgColor = getVal(null, 'bg_color', darkMode ? '#0F172A' : '#FFFFFF');
   const sectionGradient = getVal(null, 'section_gradient', false);
   const bgGradient = getVal(null, 'bg_gradient', 'linear-gradient(to bottom, #FFFFFF, #F8FAFC)');
   const overlayColor = getVal(null, 'overlay_color', 'rgba(0,0,0,0.2)');
   const videoFilter = getVal(null, 'video_filter', 'none');
-  const entranceAnim = getVal(null, 'entrance_anim', true);
+  const entranceAnim = getVal(null, 'entrance_anim', 'none');
   const parallaxEffect = getVal(null, 'parallax_effect', false);
+
+  // Animation Overrides
+  const globalAnimOverride = getGlobalAnimation(entranceAnim, 'video');
   const hoverToPlay = getVal(null, 'hover_to_play', false);
   const maskShape = getVal(null, 'mask_shape', 'none');
 
@@ -202,7 +210,13 @@ export const VideoModule: React.FC<{
             className="text-sm font-bold tracking-widest mb-3 uppercase"
             style={{ color: isOverlay ? 'white' : eyebrowColor }}
           >
-            {eyebrow}
+            <InlineEditableText
+              moduleId={moduleId}
+              elementId={`${moduleId}_el_video_text`}
+              settingId="eyebrow"
+              value={eyebrow}
+              isPreviewMode={isPreviewMode}
+            />
           </span>
         )}
         <h2 
@@ -212,26 +226,44 @@ export const VideoModule: React.FC<{
             color: isOverlay ? 'white' : titleColor 
           }}
         >
-          <TextRenderer 
-            text={title}
-            highlightType={titleHighlightType}
-            highlightColor={titleHighlightColor}
-            highlightGradient={titleHighlightGradient}
-            highlightBold={titleHighlightBold}
-          />
+          <InlineEditableText
+            moduleId={moduleId}
+            elementId={`${moduleId}_el_video_text`}
+            settingId="title"
+            value={title}
+            tagName="span"
+            isPreviewMode={isPreviewMode}
+          >
+            <TextRenderer 
+              text={title}
+              highlightType={titleHighlightType}
+              highlightColor={titleHighlightColor}
+              highlightGradient={titleHighlightGradient}
+              highlightBold={titleHighlightBold}
+            />
+          </InlineEditableText>
         </h2>
         {subtitle && (
           <p 
             className={`max-w-2xl text-lg mb-8 ${subColorClass}`}
             style={getTypographyStyle(subtitleSize as any, subtitleWeight, textAlign)}
           >
-            <TextRenderer 
-              text={subtitle}
-              highlightType={subtitleHighlightType}
-              highlightColor={subtitleHighlightColor}
-              highlightGradient={subtitleHighlightGradient}
-              highlightBold={subtitleHighlightBold}
-            />
+            <InlineEditableText
+              moduleId={moduleId}
+              elementId={`${moduleId}_el_video_text`}
+              settingId="subtitle"
+              value={subtitle}
+              tagName="span"
+              isPreviewMode={isPreviewMode}
+            >
+              <TextRenderer 
+                text={subtitle}
+                highlightType={subtitleHighlightType}
+                highlightColor={subtitleHighlightColor}
+                highlightGradient={subtitleHighlightGradient}
+                highlightBold={subtitleHighlightBold}
+              />
+            </InlineEditableText>
           </p>
         )}
         {ctaText && (
@@ -246,9 +278,15 @@ export const VideoModule: React.FC<{
 
   const videoContainer = (
     <motion.div 
-      className={`relative overflow-hidden group ${shadow ? 'shadow-2xl' : ''} ${maskClass}`}
+      className={`relative overflow-hidden group ${shadow ? 'shadow-2xl' : ''} ${maskClass} cursor-pointer`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
+      onClick={(e) => {
+        if (isPreviewMode) return;
+        e.stopPropagation();
+        selectSection(moduleId);
+        selectElement(`${moduleId}_el_video_player`);
+      }}
       style={{ 
         y,
         borderRadius: maskShape === 'circle' ? '50%' : `${radius}px`,
@@ -291,7 +329,7 @@ export const VideoModule: React.FC<{
         </div>
         <div className="relative z-10 max-w-4xl mx-auto px-8">
           <motion.div
-            initial={entranceAnim ? { opacity: 0, y: 30 } : {}}
+            initial={(entranceAnim ? { opacity: 0, y: 30 } : {}) as any}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
             viewport={{ once: true }}
@@ -317,8 +355,15 @@ export const VideoModule: React.FC<{
 
   return (
     <section 
+      id={moduleId}
       ref={containerRef}
       className="w-full relative overflow-hidden @container"
+      onClick={(e) => {
+        if (isPreviewMode) return;
+        e.stopPropagation();
+        selectSection(moduleId);
+        selectElement(`${moduleId}_global`);
+      }}
       style={{ 
         backgroundColor: bgColor,
         backgroundImage: (sectionGradient && typeof bgGradient === 'string' && !bgGradient.includes('NaN')) ? bgGradient : 'none',
@@ -326,49 +371,45 @@ export const VideoModule: React.FC<{
         paddingBottom: `${paddingY}px`
       }}
     >
-      <div className="mx-auto px-8" style={{ maxWidth: layout === 'full' ? '100%' : `${maxWidth}px` }}>
-        {layout === 'split' ? (
-          <div className="grid grid-cols-1 @lg:grid-cols-2 gap-12 @md:gap-16 items-center">
-            <motion.div
-              initial={entranceAnim ? { opacity: 0, x: -30 } : {}}
-              whileInView={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.8 }}
-              viewport={{ once: true }}
-            >
-              {renderTextContent()}
-            </motion.div>
-            <motion.div
-              initial={entranceAnim ? { opacity: 0, x: 30 } : {}}
-              whileInView={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.8 }}
-              viewport={{ once: true }}
-            >
-              {videoContainer}
-            </motion.div>
-          </div>
-        ) : (
-          <div className="flex flex-col items-center">
-            <motion.div
-              initial={entranceAnim ? { opacity: 0, y: -30 } : {}}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8 }}
-              viewport={{ once: true }}
-              className="w-full"
-            >
-              {renderTextContent()}
-            </motion.div>
-            <motion.div
-              initial={entranceAnim ? { opacity: 0, y: 30 } : {}}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8 }}
-              viewport={{ once: true }}
-              className="w-full"
-            >
-              {videoContainer}
-            </motion.div>
-          </div>
-        )}
-      </div>
+        <div className="mx-auto px-8" style={{ maxWidth: layout === 'full' ? '100%' : `${maxWidth}px` }}>
+          {layout === 'split' ? (
+            <div className="grid grid-cols-1 @lg:grid-cols-2 gap-12 @md:gap-16 items-center">
+              <motion.div
+                initial={(globalAnimOverride ? globalAnimOverride.hidden : (entranceAnim ? { opacity: 0, x: -30 } : {})) as any}
+                whileInView={(globalAnimOverride ? globalAnimOverride.visible : (entranceAnim ? { opacity: 1, x: 0 } : {})) as any}
+                viewport={{ once: true }}
+              >
+                {renderTextContent()}
+              </motion.div>
+              <motion.div
+                initial={(globalAnimOverride ? globalAnimOverride.hidden : (entranceAnim ? { opacity: 0, x: 30 } : {})) as any}
+                whileInView={(globalAnimOverride ? globalAnimOverride.visible : (entranceAnim ? { opacity: 1, x: 0 } : {})) as any}
+                viewport={{ once: true }}
+              >
+                {videoContainer}
+              </motion.div>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center">
+              <motion.div
+                initial={(globalAnimOverride ? globalAnimOverride.hidden : (entranceAnim ? { opacity: 0, y: -30 } : {})) as any}
+                whileInView={(globalAnimOverride ? globalAnimOverride.visible : (entranceAnim ? { opacity: 1, y: 0 } : {})) as any}
+                viewport={{ once: true }}
+                className="w-full"
+              >
+                {renderTextContent()}
+              </motion.div>
+              <motion.div
+                initial={(globalAnimOverride ? globalAnimOverride.hidden : (entranceAnim ? { opacity: 0, y: 30 } : {})) as any}
+                whileInView={(globalAnimOverride ? globalAnimOverride.visible : (entranceAnim ? { opacity: 1, y: 0 } : {})) as any}
+                viewport={{ once: true }}
+                className="w-full"
+              >
+                {videoContainer}
+              </motion.div>
+            </div>
+          )}
+        </div>
 
       {/* Lightbox */}
       <AnimatePresence>

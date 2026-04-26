@@ -6,6 +6,8 @@ import remarkGfm from 'remark-gfm';
 import * as LucideIcons from 'lucide-react';
 import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
 import { TextRenderer } from '../TextRenderer';
+import { InlineEditableText } from '../InlineEditableText';
+import { useEditorStore } from '../../../store/editorStore';
 
 const DEFAULT_CATEGORIES = [
   { id: 'all', label: 'Todas' },
@@ -53,10 +55,13 @@ const IconRenderer = ({ name, size = 20, className = "" }: { name: string, size?
   return <IconComponent size={size} className={className} />;
 };
 
+import { GLOBAL_ANIMATIONS, getGlobalAnimation } from '../../../constants/animations';
+
 export const FAQModule: React.FC<{ 
   moduleId: string, 
-  settingsValues: Record<string, any> 
-}> = ({ moduleId, settingsValues }) => {
+  settingsValues: Record<string, any>,
+  isPreviewMode?: boolean
+}> = ({ moduleId, settingsValues, isPreviewMode = false }) => {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('all');
@@ -78,15 +83,22 @@ export const FAQModule: React.FC<{
   const maxWidth = parseF(getVal(null, 'max_width', 1000), 1000);
   const paddingY = parseF(getVal(null, 'padding_y', 100), 100);
   const darkMode = getVal(null, 'dark_mode', false);
-  const bgColor = darkMode ? '#0F172A' : getVal(null, 'bg_color', '#FFFFFF');
+  const bgColor = getVal(null, 'bg_color', darkMode ? '#0F172A' : '#FFFFFF');
   const sectionGradient = getVal(null, 'section_gradient', false);
   const bgGradient = getVal(null, 'bg_gradient', 'linear-gradient(to bottom, #FFFFFF, #F8FAFC)');
   const glassmorphism = getVal(null, 'glassmorphism', false);
   const dividerStyle = getVal(null, 'divider_style', 'line');
-  const entranceAnim = getVal(null, 'entrance_anim', true);
+  const entranceAnim = getVal(null, 'entrance_anim', 'slide-up');
   const singleOpen = getVal(null, 'single_open', true);
   const scrollToActive = getVal(null, 'scroll_to_active', false);
   const itemGap = parseF(getVal(null, 'item_gap', 16), 16);
+
+  const globalAnimOverride = getGlobalAnimation(entranceAnim, 'faq');
+  const itemVariants = globalAnimOverride || {
+    hidden: { y: 20, opacity: 0 },
+    visible: { y: 0, opacity: 1, transition: { duration: 0.4 } }
+  };
+
 
   // Element: Header
   const eyebrow = getVal(`${moduleId}_el_faq_header`, 'eyebrow', 'AYUDA');
@@ -165,6 +177,14 @@ export const FAQModule: React.FC<{
     setOpenIndex(newIndex);
   };
 
+  const { updateSectionSettings } = useEditorStore();
+
+  const handleSaveFaq = (index: number, field: string, newValue: string) => {
+    const newFaqs = [...faqs];
+    newFaqs[index] = { ...newFaqs[index], [field]: newValue };
+    updateSectionSettings(moduleId, { [`${moduleId}_el_faq_item_faqs`]: newFaqs });
+  };
+
   useEffect(() => {
     if (scrollToActive && openIndex !== null && scrollRef.current) {
       const activeElement = scrollRef.current.querySelector(`[data-faq-index="${openIndex}"]`);
@@ -180,11 +200,6 @@ export const FAQModule: React.FC<{
       opacity: 1,
       transition: { staggerChildren: 0.05 }
     }
-  };
-
-  const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: { y: 0, opacity: 1, transition: { duration: 0.4 } }
   };
 
   const getTypographyStyle = (sizeToken: string, weightToken: string, alignToken?: string) => {
@@ -237,7 +252,13 @@ export const FAQModule: React.FC<{
                 color: isOpen ? 'var(--primary-color)' : qColor 
               }}
             >
-              {faq.question}
+              <InlineEditableText
+                moduleId={moduleId}
+                settingId="question"
+                value={faq.question}
+                isPreviewMode={isPreviewMode}
+                onSave={(val) => handleSaveFaq(index, 'question', val)}
+              />
             </span>
           </div>
           <div className={`flex-shrink-0 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}>
@@ -269,9 +290,17 @@ export const FAQModule: React.FC<{
                     color: aColor 
                   }}
                 >
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                    {faq.answer}
-                  </ReactMarkdown>
+                  <InlineEditableText
+                    moduleId={moduleId}
+                    settingId="answer"
+                    value={faq.answer}
+                    isPreviewMode={isPreviewMode}
+                    onSave={(val) => handleSaveFaq(index, 'answer', val)}
+                  >
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {faq.answer}
+                    </ReactMarkdown>
+                  </InlineEditableText>
                 </div>
               </div>
             </motion.div>
@@ -305,7 +334,13 @@ export const FAQModule: React.FC<{
               className="text-sm font-bold tracking-widest mb-3 uppercase"
               style={{ color: eyebrowColor }}
             >
-              {eyebrow}
+              <InlineEditableText
+                moduleId={moduleId}
+                elementId={`${moduleId}_el_faq_header`}
+                settingId="eyebrow"
+                value={eyebrow}
+                isPreviewMode={isPreviewMode}
+              />
             </span>
           )}
           <h2 
@@ -315,13 +350,21 @@ export const FAQModule: React.FC<{
               color: headerTitleColor
             }}
           >
-            <TextRenderer 
-              text={headerTitle}
-              highlightType={titleHighlightType}
-              highlightColor={titleHighlightColor}
-              highlightGradient={titleHighlightGradient}
-              highlightBold={titleHighlightBold}
-            />
+            <InlineEditableText
+              moduleId={moduleId}
+              elementId={`${moduleId}_el_faq_header`}
+              settingId="title"
+              value={headerTitle}
+              isPreviewMode={isPreviewMode}
+            >
+              <TextRenderer 
+                text={headerTitle}
+                highlightType={titleHighlightType}
+                highlightColor={titleHighlightColor}
+                highlightGradient={titleHighlightGradient}
+                highlightBold={titleHighlightBold}
+              />
+            </InlineEditableText>
           </h2>
           {headerSubtitle && (
             <p 
@@ -331,13 +374,21 @@ export const FAQModule: React.FC<{
                 color: headerSubtitleColor 
               }}
             >
-              <TextRenderer 
-                text={headerSubtitle} 
-                highlightType={subtitleHighlightType}
-                highlightColor={subtitleHighlightColor}
-                highlightGradient={subtitleHighlightGradient}
-                highlightBold={subtitleHighlightBold}
-              />
+              <InlineEditableText
+                moduleId={moduleId}
+                elementId={`${moduleId}_el_faq_header`}
+                settingId="subtitle"
+                value={headerSubtitle}
+                isPreviewMode={isPreviewMode}
+              >
+                <TextRenderer 
+                  text={headerSubtitle} 
+                  highlightType={subtitleHighlightType}
+                  highlightColor={subtitleHighlightColor}
+                  highlightGradient={subtitleHighlightGradient}
+                  highlightBold={subtitleHighlightBold}
+                />
+              </InlineEditableText>
             </p>
           )}
 
@@ -482,7 +533,13 @@ export const FAQModule: React.FC<{
                   className="text-2xl font-black"
                   style={{ color: darkMode ? '#FFFFFF' : '#0F172A' }}
                 >
-                  {ctaText}
+                  <InlineEditableText
+                    moduleId={moduleId}
+                    elementId={`${moduleId}_el_faq_cta`}
+                    settingId="cta_text"
+                    value={ctaText}
+                    isPreviewMode={isPreviewMode}
+                  />
                 </h4>
               </div>
               <p 
@@ -501,7 +558,13 @@ export const FAQModule: React.FC<{
                 className="relative z-10 px-10 py-5 rounded-2xl font-black text-base text-white shadow-2xl shadow-primary/30 hover:scale-105 hover:-translate-y-1 transition-all active:scale-95 flex items-center gap-3"
                 style={{ backgroundColor: btnBg }}
               >
-                {btnText}
+                <InlineEditableText
+                  moduleId={moduleId}
+                  elementId={`${moduleId}_el_faq_cta`}
+                  settingId="btn_text"
+                  value={btnText}
+                  isPreviewMode={isPreviewMode}
+                />
                 <Plus size={20} />
               </a>
             )}

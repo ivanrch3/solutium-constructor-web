@@ -24,6 +24,7 @@ import { EditorState, WebModule, ModuleElement, SettingGroupType } from '../../t
 import { Product, Customer } from '../../types/schema';
 import { MODULE_INFO, GROUP_LABELS, BENTO_MODULE } from './registry';
 import { SettingControl } from './SettingControl';
+import { GlobalSettingsPanel } from './GlobalSettingsPanel';
 
 interface StructurePanelProps {
   editorState: EditorState;
@@ -37,6 +38,7 @@ interface StructurePanelProps {
   products?: Product[];
   customers?: Customer[];
   isMobile?: boolean;
+  activeTab?: string;
 }
 
 export const StructurePanel: React.FC<StructurePanelProps> = ({ 
@@ -50,14 +52,36 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
   projectId,
   products,
   customers,
-  isMobile
+  isMobile,
+  activeTab = 'constructor'
 }) => {
+  const containerRef = React.useRef<HTMLDivElement>(null);
   const [shiningGroup, setShiningGroup] = React.useState<string | null>(null);
   const [expandedBentoItem, setExpandedBentoItem] = React.useState<number | null>(null);
   const [expandedBentoGroup, setExpandedBentoGroup] = React.useState<string | null>(null);
   
   const shiningIntervalRef = React.useRef<NodeJS.Timeout | null>(null);
   const shiningTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  // Effect to scroll to selected module/element
+  React.useEffect(() => {
+    if (isCollapsed) return;
+
+    const targetId = editorState.selectedElementId 
+      ? `structure_el_${editorState.selectedElementId}` 
+      : editorState.expandedModuleId 
+        ? `structure_mod_${editorState.expandedModuleId}` 
+        : null;
+
+    if (targetId) {
+      setTimeout(() => {
+        const element = document.getElementById(targetId);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 300); // Wait for animations
+    }
+  }, [editorState.expandedModuleId, editorState.selectedElementId, isCollapsed]);
 
   // Effect to handle shining animation
   React.useEffect(() => {
@@ -247,7 +271,20 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
       </div>
 
       <div className="flex-1 overflow-y-auto custom-scrollbar overflow-x-hidden">
-        {(!editorState.addedModules || editorState.addedModules.length === 0) && (
+        {(activeTab === 'design-style' || activeTab === 'design-animations') ? (
+          <div className="h-full">
+            <GlobalSettingsPanel 
+              view={activeTab as any}
+              settingsValues={editorState.settingsValues}
+              onSettingChange={onSettingChange}
+              projectId={projectId}
+              project={{ id: projectId || '', name: '', brandColors: { primary: '', secondary: '' } } as any} // Minimal project object or pass it correctly
+              isSidebarMode={true}
+            />
+          </div>
+        ) : (
+          <>
+            {(!editorState.addedModules || editorState.addedModules.length === 0) && (
           <div className={`p-8 text-center space-y-4 ${isCollapsed ? 'px-2' : ''}`}>
             <div className="w-12 h-12 bg-secondary rounded-full flex items-center justify-center mx-auto">
               <Layout className="text-text/40 w-6 h-6" />
@@ -280,7 +317,11 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
           const isBento = module.id.startsWith('mod_bento_1');
 
           return (
-            <div key={module.id} className={`p-3 border-b border-border/30 last:border-0 ${isCollapsed ? 'px-2' : ''}`}>
+            <div 
+              key={module.id} 
+              id={`structure_mod_${module.id}`}
+              className={`p-3 border-b border-border/30 last:border-0 ${isCollapsed ? 'px-2' : ''}`}
+            >
               <div 
                 onClick={() => !isCollapsed && toggleModule(module.id)}
                 className={`flex items-center gap-2.5 p-2.5 rounded-xl border transition-all cursor-pointer group ${
@@ -620,7 +661,11 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                       const isElementSelected = editorState.selectedElementId === element.id;
                       
                       return (
-                        <div key={element.id} className="space-y-1">
+                        <div 
+                          key={element.id} 
+                          id={`structure_el_${element.id}`}
+                          className="space-y-1"
+                        >
                           <div 
                             onClick={() => toggleElement(element.id)}
                             className={`flex items-center gap-2.5 p-2 rounded-lg border transition-all cursor-pointer ${
@@ -777,6 +822,8 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
             </div>
           );
         })}
+          </>
+        )}
       </div>
     </div>
   );

@@ -1,5 +1,6 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { SiteContent, VisualStyle } from "../types";
+import { AIGenerationContext } from "../types/ai";
 import { configService } from "./configService";
 import { mapStyleToTheme } from "../lib/styleMapper";
 
@@ -9,15 +10,6 @@ const getAI = () => {
 };
 
 const getPexelsKey = () => configService.pexelsApiKey || '';
-
-export interface GenerationBrief {
-  name: string;
-  industry: string;
-  description: string;
-  goal: string;
-  style: VisualStyle;
-  brandColors: Record<string, string>;
-}
 
 /**
  * Busca imágenes en Pexels basadas en una consulta
@@ -87,7 +79,7 @@ const SITE_SCHEMA = {
   required: ["sections"]
 };
 
-export const generateSiteContent = async (brief: GenerationBrief): Promise<SiteContent> => {
+export const generateSiteContent = async (brief: AIGenerationContext): Promise<SiteContent> => {
   // Refrescar configuración justo antes de usarla por si la Madre inyectó algo tarde
   configService.refreshConfig();
   
@@ -103,7 +95,7 @@ export const generateSiteContent = async (brief: GenerationBrief): Promise<SiteC
     Tu tarea es generar un sitio web ESTRATÉGICO y MINIMALISTA.
     
     INDUSTRIA: ${brief.industry}
-    NEGOCIO: ${brief.name}
+    NEGOCIO: ${brief.siteName}
     DESCRIPCIÓN: ${brief.description}
     OBJETIVO: ${brief.goal}
     ESTILO: ${brief.style}
@@ -119,7 +111,7 @@ export const generateSiteContent = async (brief: GenerationBrief): Promise<SiteC
   try {
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
-      contents: `Genera una Landing Page para ${brief.name}. Responde solo con JSON conciso.`,
+      contents: `Genera una Landing Page para ${brief.siteName}. Responde solo con JSON conciso.`,
       config: {
         systemInstruction,
         responseMimeType: "application/json",
@@ -158,7 +150,7 @@ export const generateSiteContent = async (brief: GenerationBrief): Promise<SiteC
 /**
  * Procesa la respuesta de texto a JSON y enriquece con imágenes
  */
-async function processResponse(text: string, brief: GenerationBrief): Promise<SiteContent> {
+async function processResponse(text: string, brief: AIGenerationContext): Promise<SiteContent> {
   let cleanedText = text;
   
   // Limpieza básica de caracteres antes/después del JSON
@@ -185,7 +177,10 @@ async function processResponse(text: string, brief: GenerationBrief): Promise<Si
     return { ...section, elements: enrichedElements };
   }));
 
-  const theme = mapStyleToTheme(brief.style, brief.brandColors);
+  const theme = mapStyleToTheme(brief.style as VisualStyle, {
+    primary: brief.brandColors?.[0] || '#3B82F6',
+    secondary: brief.brandColors?.[1] || '#1E293B'
+  });
 
   return {
     theme,

@@ -4,10 +4,16 @@ import { Mail, Phone, MapPin, Send, MessageCircle, Copy, Check, Calendar, Linked
 import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
 import { TextRenderer } from '../TextRenderer';
 
+import { InlineEditableText } from '../InlineEditableText';
+import { useEditorStore } from '../../../store/editorStore';
+import { GLOBAL_ANIMATIONS, getGlobalAnimation } from '../../../constants/animations';
+
 export const ContactModule: React.FC<{ 
   moduleId: string, 
-  settingsValues: Record<string, any> 
-}> = ({ moduleId, settingsValues }) => {
+  settingsValues: Record<string, any>,
+  isPreviewMode?: boolean
+}> = ({ moduleId, settingsValues, isPreviewMode = false }) => {
+  const { selectSection, selectElement } = useEditorStore();
   const [formState, setFormState] = useState<Record<string, string>>({});
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
@@ -27,10 +33,13 @@ export const ContactModule: React.FC<{
   const maxWidth = parseF(getVal(null, 'max_width', 1200), 1200);
   const paddingY = parseF(getVal(null, 'padding_y', 100), 100);
   const darkMode = getVal(null, 'dark_mode', false);
-  const bgColor = darkMode ? '#0F172A' : getVal(null, 'bg_color', '#F8FAFC');
+  const bgColor = getVal(null, 'bg_color', darkMode ? '#0F172A' : '#F8FAFC');
   const bgImage = getVal(null, 'bg_image', '');
   const bgOverlay = parseF(getVal(null, 'bg_overlay', 0), 0);
-  const entranceAnim = getVal(null, 'entrance_anim', true);
+  const entranceAnim = getVal(null, 'entrance_anim', 'none');
+
+  // Animation Overrides
+  const globalAnimOverride = getGlobalAnimation(entranceAnim, 'contact');
 
   // Element: Header
   const headerTitle = getVal(`${moduleId}_el_contact_header`, 'title', 'Ponte en contacto');
@@ -134,12 +143,16 @@ export const ContactModule: React.FC<{
     }
   };
 
-  const animProps = entranceAnim ? {
-    initial: { opacity: 0, y: 30 },
-    whileInView: { opacity: 1, y: 0 },
+  const animProps = globalAnimOverride ? {
+    initial: globalAnimOverride.hidden as any,
+    whileInView: globalAnimOverride.visible as any,
+    viewport: { once: true },
+  } : (entranceAnim ? {
+    initial: { opacity: 0, y: 30 } as any,
+    whileInView: { opacity: 1, y: 0 } as any,
     viewport: { once: true },
     transition: { duration: 0.8, ease: [0.22, 1, 0.36, 1] as any }
-  } : {};
+  } : {});
 
   const renderInfo = (isBento: boolean = false) => (
     <div className={`space-y-6 ${isBento ? 'h-full flex flex-col' : ''}`}>
@@ -178,10 +191,19 @@ export const ContactModule: React.FC<{
               >
                 {item.label}
               </h4>
-              <p className="truncate" style={{ 
+              <div className="truncate" style={{ 
                 ...getTypographyStyle(infoSize, infoWeight),
                 color: infoColor 
-              }}>{item.value}</p>
+              }}>
+                <InlineEditableText
+                  moduleId={moduleId}
+                  elementId={`${moduleId}_el_contact_info`}
+                  settingId={item.id}
+                  value={item.value}
+                  tagName="span"
+                  isPreviewMode={isPreviewMode}
+                />
+              </div>
             </div>
             {showCopyButtons && item.id !== 'address' && (
               <button 
@@ -367,6 +389,13 @@ export const ContactModule: React.FC<{
 
   return (
     <section 
+      id={moduleId}
+      onClick={(e) => {
+        if (isPreviewMode) return;
+        e.stopPropagation();
+        selectSection(moduleId);
+        selectElement(`${moduleId}_global`);
+      }}
       className="w-full relative overflow-hidden py-12 @md:py-20 @lg:py-24"
       style={{ backgroundColor: bgColor }}
     >
@@ -391,13 +420,22 @@ export const ContactModule: React.FC<{
                 color: headerTitleColor 
               }}
             >
-              <TextRenderer 
-                text={headerTitle}
-                highlightType={titleHighlightType}
-                highlightColor={titleHighlightColor}
-                highlightGradient={titleHighlightGradient}
-                highlightBold={titleHighlightBold}
-              />
+              <InlineEditableText
+                moduleId={moduleId}
+                elementId={`${moduleId}_el_contact_header`}
+                settingId="title"
+                value={headerTitle}
+                tagName="span"
+                isPreviewMode={isPreviewMode}
+              >
+                <TextRenderer 
+                  text={headerTitle}
+                  highlightType={titleHighlightType}
+                  highlightColor={titleHighlightColor}
+                  highlightGradient={titleHighlightGradient}
+                  highlightBold={titleHighlightBold}
+                />
+              </InlineEditableText>
             </h2>
             {headerSubtitle && (
               <p 
@@ -407,13 +445,22 @@ export const ContactModule: React.FC<{
                   color: darkMode ? '#94A3B8' : '#64748B' 
                 }}
               >
-                <TextRenderer 
-                  text={headerSubtitle} 
-                  highlightType={subtitleHighlightType}
-                  highlightColor={subtitleHighlightColor}
-                  highlightGradient={subtitleHighlightGradient}
-                  highlightBold={subtitleHighlightBold}
-                />
+                <InlineEditableText
+                  moduleId={moduleId}
+                  elementId={`${moduleId}_el_contact_header`}
+                  settingId="subtitle"
+                  value={headerSubtitle}
+                  tagName="span"
+                  isPreviewMode={isPreviewMode}
+                >
+                  <TextRenderer 
+                    text={headerSubtitle} 
+                    highlightType={subtitleHighlightType}
+                    highlightColor={subtitleHighlightColor}
+                    highlightGradient={subtitleHighlightGradient}
+                    highlightBold={subtitleHighlightBold}
+                  />
+                </InlineEditableText>
               </p>
             )}
           </div>

@@ -6,8 +6,9 @@ import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
 
 export const HeaderModule: React.FC<{ 
   moduleId: string, 
-  settingsValues: Record<string, any>
-}> = ({ moduleId, settingsValues }) => {
+  settingsValues: Record<string, any>,
+  isPreviewMode?: boolean
+}> = ({ moduleId, settingsValues, isPreviewMode = false }) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [email, setEmail] = useState('');
@@ -31,7 +32,7 @@ export const HeaderModule: React.FC<{
   const layoutType = getVal(null, 'layout_type', 'standard');
   const darkMode = getVal(null, 'dark_mode', false);
   const bgType = getVal(null, 'bg_type', 'glass');
-  const bgColor = darkMode ? '#0F172A' : getVal(null, 'bg_color', '#FFFFFF');
+  const bgColor = getVal(null, 'bg_color', darkMode ? '#0F172A' : '#FFFFFF');
   const accentColor = getVal(null, 'accent_color', 'var(--primary-color)');
   const borderColor = darkMode ? 'rgba(255,255,255,0.1)' : getVal(null, 'border_color', 'rgba(0,0,0,0.05)');
   const shadow = getVal(null, 'shadow', 'sm');

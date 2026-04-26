@@ -61,4 +61,5 @@ export interface EditorState {
   settingsValues: Record<string, any>;
   recentlyAddedModuleId?: string | null;
   totalModulesAdded?: number;
+  showMenuRecommendation?: boolean;
 }

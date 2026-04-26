@@ -4,6 +4,9 @@ import * as LucideIcons from 'lucide-react';
 import { ArrowRight } from 'lucide-react';
 import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
 import { TextRenderer } from '../TextRenderer';
+import { InlineEditableText } from '../InlineEditableText';
+import { useEditorStore } from '../../../store/editorStore';
+import { GLOBAL_ANIMATIONS, getGlobalAnimation } from '../../../constants/animations';
 
 const FeatureCard = ({ 
   feature, 
@@ -28,7 +31,10 @@ const FeatureCard = ({
   cardDescSize,
   cardDescWeight,
   cardTextAlign,
-  darkMode
+  darkMode,
+  moduleId,
+  isPreviewMode,
+  onSave
 }: any) => {
   const IconComponent = (LucideIcons as any)[feature.icon] || LucideIcons.Star;
   const isBento = layout === 'bento';
@@ -142,7 +148,14 @@ const FeatureCard = ({
               color: finalTitleColor
             }}
           >
-            {feature.title}
+            <InlineEditableText
+              moduleId={moduleId}
+              settingId={`item_${index}_title`}
+              value={feature.title}
+              tagName="span"
+              isPreviewMode={isPreviewMode}
+              onSave={(val: string) => onSave('title', val)}
+            />
           </h3>
           <p 
             className="text-lg leading-relaxed mb-8"
@@ -151,7 +164,14 @@ const FeatureCard = ({
               color: finalDescColor
             }}
           >
-            {feature.desc}
+            <InlineEditableText
+              moduleId={moduleId}
+              settingId={`item_${index}_desc`}
+              value={feature.desc}
+              tagName="span"
+              isPreviewMode={isPreviewMode}
+              onSave={(val: string) => onSave('desc', val)}
+            />
           </p>
           {hasLink && (
             <a 
@@ -173,6 +193,14 @@ const FeatureCard = ({
     <motion.div
       variants={staggerAnim ? itemVariants : {}}
       whileHover={hoverLift ? { y: -8 } : {}}
+      onClick={(e) => {
+        if (isPreviewMode) return;
+        e.stopPropagation();
+        // Use selectSection+selectElement to highlight the card element settings
+        const { selectSection, selectElement } = useEditorStore.getState();
+        selectSection(moduleId);
+        selectElement(`${moduleId}_el_feature_card`);
+      }}
       className={`group relative transition-all duration-300 ${bentoClass} flex ${isList ? 'flex-row gap-6 items-start' : 'flex-col'}`}
       style={{ 
         backgroundColor: finalCardBg,
@@ -200,7 +228,14 @@ const FeatureCard = ({
             color: finalTitleColor
           }}
         >
-          {feature.title}
+          <InlineEditableText
+            moduleId={moduleId}
+            settingId={`item_${index}_title`}
+            value={feature.title}
+            tagName="span"
+            isPreviewMode={isPreviewMode}
+            onSave={(val: string) => onSave('title', val)}
+          />
         </h3>
         <p 
           className="leading-relaxed mb-4"
@@ -211,11 +246,25 @@ const FeatureCard = ({
             color: finalDescColor
           }}
         >
-          {feature.desc}
+          <InlineEditableText
+            moduleId={moduleId}
+            settingId={`item_${index}_desc`}
+            value={feature.desc}
+            tagName="span"
+            isPreviewMode={isPreviewMode}
+            onSave={(val: string) => onSave('desc', val)}
+          />
         </p>
         {hasLink && feature.link_text && (
           <div className="inline-flex items-center gap-1 text-sm font-bold text-primary mt-auto">
-            {feature.link_text}
+            <InlineEditableText
+              moduleId={moduleId}
+              settingId={`item_${index}_link_text`}
+              value={feature.link_text}
+              tagName="span"
+              isPreviewMode={isPreviewMode}
+              onSave={(val: string) => onSave('link_text', val)}
+            />
             <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
           </div>
         )}
@@ -226,8 +275,10 @@ const FeatureCard = ({
 
 export const FeaturesModule: React.FC<{ 
   moduleId: string, 
-  settingsValues: Record<string, any> 
-}> = ({ moduleId, settingsValues }) => {
+  settingsValues: Record<string, any>,
+  isPreviewMode?: boolean
+}> = ({ moduleId, settingsValues, isPreviewMode = false }) => {
+  const { updateSectionSettings, selectSection, selectElement } = useEditorStore();
   const getVal = (elementId: string | null, settingId: string, defaultValue: any) => {
     const key = elementId ? `${elementId}_${settingId}` : `${moduleId}_global_${settingId}`;
     return settingsValues[key] !== undefined ? settingsValues[key] : defaultValue;
@@ -244,10 +295,14 @@ export const FeaturesModule: React.FC<{
   const gap = parseF(getVal(null, 'gap', 32), 32);
   const paddingY = parseF(getVal(null, 'padding_y', 100), 100);
   const darkMode = getVal(null, 'dark_mode', false);
-  const bgColor = darkMode ? '#0F172A' : getVal(null, 'bg_color', '#FFFFFF');
+  const bgColor = getVal(null, 'bg_color', darkMode ? '#0F172A' : '#FFFFFF');
   const sectionGradient = getVal(null, 'section_gradient', false);
   const bgGradient = getVal(null, 'bg_gradient', 'linear-gradient(to bottom, #FFFFFF, #F8FAFC)');
   const staggerAnim = getVal(null, 'stagger_anim', true);
+  const entranceAnim = getVal(null, 'entrance_anim', 'none');
+
+  // Animation Overrides
+  const globalAnimOverride = getGlobalAnimation(entranceAnim, 'feature');
 
   // Header Settings
   const eyebrow = getVal(`${moduleId}_el_features_header`, 'eyebrow', 'CARACTERÍSTICAS');
@@ -306,14 +361,21 @@ export const FeaturesModule: React.FC<{
     }
   };
 
-  const itemVariants = {
+  const itemVariants = globalAnimOverride || {
     hidden: { y: 20, opacity: 0 },
     visible: { y: 0, opacity: 1, transition: { duration: 0.5, ease: "easeOut" } }
   };
 
   return (
     <section 
+      id={moduleId}
       className="w-full relative overflow-hidden"
+      onClick={(e) => {
+        if (isPreviewMode) return;
+        e.stopPropagation();
+        selectSection(moduleId);
+        selectElement(`${moduleId}_global`);
+      }}
       style={{ 
         backgroundColor: bgColor,
         backgroundImage: (sectionGradient && typeof bgGradient === 'string' && !bgGradient.includes('NaN')) ? bgGradient : 'none',
@@ -328,15 +390,20 @@ export const FeaturesModule: React.FC<{
           style={{ marginBottom: `${headerMarginB}px` }}
         >
           {eyebrow && (
-            <span 
+            <InlineEditableText
+              moduleId={moduleId}
+              elementId={`${moduleId}_el_features_header`}
+              settingId="eyebrow"
+              value={eyebrow}
+              tagName="span"
+              isPreviewMode={isPreviewMode}
               className="text-[10px] font-bold tracking-[0.2em] uppercase mb-4 px-3 py-1 rounded-full"
               style={{ 
                 color: headerEyebrowColor,
-                backgroundColor: headerEyebrowBg
+                backgroundColor: headerEyebrowBg,
+                display: 'inline-block'
               }}
-            >
-              {eyebrow}
-            </span>
+            />
           )}
           <h2 
             className="mb-6"
@@ -347,21 +414,34 @@ export const FeaturesModule: React.FC<{
               textAlign: headerAlign as any
             }}
           >
-            <TextRenderer 
-              text={title} 
-              highlightType={titleHighlightType}
-              highlightColor={titleHighlightColor}
-              highlightGradient={titleHighlightGradient}
-              highlightBold={titleHighlightBold}
-            />
+            <InlineEditableText
+              moduleId={moduleId}
+              elementId={`${moduleId}_el_features_header`}
+              settingId="title"
+              value={title}
+              tagName="span"
+              isPreviewMode={isPreviewMode}
+            >
+              <TextRenderer 
+                text={title} 
+                highlightType={titleHighlightType}
+                highlightColor={titleHighlightColor}
+                highlightGradient={titleHighlightGradient}
+                highlightBold={titleHighlightBold}
+              />
+            </InlineEditableText>
           </h2>
           {subtitle && (
-            <p 
+            <InlineEditableText
+              moduleId={moduleId}
+              elementId={`${moduleId}_el_features_header`}
+              settingId="subtitle"
+              value={subtitle}
+              tagName="p"
+              isPreviewMode={isPreviewMode}
               className="max-w-2xl text-lg leading-relaxed"
               style={{ color: darkMode ? '#94A3B8' : '#64748B' }}
-            >
-              {subtitle}
-            </p>
+            />
           )}
         </div>
 
@@ -384,6 +464,13 @@ export const FeaturesModule: React.FC<{
                 cardDescWeight={cardDescWeight}
                 cardRadius={cardRadius}
                 darkMode={darkMode}
+                moduleId={moduleId}
+                isPreviewMode={isPreviewMode}
+                onSave={(field: string, val: string) => {
+                  const newItems = [...features];
+                  newItems[i] = { ...newItems[i], [field]: val };
+                  updateSectionSettings(moduleId, { [`${moduleId}_el_feature_card_items`]: newItems });
+                }}
               />
             ))}
           </div>
@@ -428,6 +515,13 @@ export const FeaturesModule: React.FC<{
                 cardDescWeight={cardDescWeight}
                 cardTextAlign={cardTextAlign}
                 darkMode={darkMode}
+                moduleId={moduleId}
+                isPreviewMode={isPreviewMode}
+                onSave={(field: string, val: string) => {
+                  const newItems = [...features];
+                  newItems[i] = { ...newItems[i], [field]: val };
+                  updateSectionSettings(moduleId, { [`${moduleId}_el_feature_card_items`]: newItems });
+                }}
               />
             ))}
           </motion.div>

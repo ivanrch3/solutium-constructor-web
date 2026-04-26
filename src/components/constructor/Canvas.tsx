@@ -4,11 +4,13 @@ import {
   Monitor, 
   Tablet, 
   Smartphone, 
-  RotateCcw 
+  RotateCcw,
+  Minimize 
 } from 'lucide-react';
 import { EditorState, WebModule } from '../../types/constructor';
 import { Product, Customer } from '../../types/schema';
 import { useEditorStore } from '../../store/editorStore';
+import { isDarkColor } from './utils';
 import { ProductsModule } from './modules/ProductsModule';
 import { HeroModule } from './modules/HeroModule';
 import { FeaturesModule } from './modules/FeaturesModule';
@@ -46,6 +48,7 @@ interface CanvasProps {
   setIsFullscreen: (f: boolean) => void;
   isPreviewMode: boolean;
   onSettingChange: (elementOrModuleId: string, settingId: string, value: any) => void;
+  onReload: () => void;
   reloadKey?: number;
 }
 
@@ -63,9 +66,10 @@ export const Canvas: React.FC<CanvasProps> = ({
   setIsFullscreen,
   isPreviewMode,
   onSettingChange,
+  onReload,
   reloadKey = 0
 }) => {
-  const { selectSection, selectedSectionId } = useEditorStore();
+  const { selectSection, selectedSectionId, siteContent } = useEditorStore();
   const lastModuleRef = React.useRef<HTMLDivElement>(null);
   const prevModulesLength = React.useRef(editorState.addedModules?.length || 0);
 
@@ -91,7 +95,7 @@ export const Canvas: React.FC<CanvasProps> = ({
 
   React.useEffect(() => {
     if (editorState.expandedModuleId) {
-      const element = document.getElementById(`module-${editorState.expandedModuleId}`);
+      const element = document.getElementById(editorState.expandedModuleId);
       if (element) {
         element.scrollIntoView({ 
           behavior: 'smooth', 
@@ -130,11 +134,18 @@ export const Canvas: React.FC<CanvasProps> = ({
           </div>
           <div className="w-px h-4 bg-border/50 mx-1" />
           <button 
+            onClick={onReload}
+            className="p-2 text-text/40 hover:text-primary transition-all"
+            title="Recargar página"
+          >
+            <RotateCcw size={16} />
+          </button>
+          <button 
             onClick={() => setIsFullscreen(false)}
             className="p-2 text-text/40 hover:text-rose-500 transition-all"
             title="Salir de Pantalla Completa"
           >
-            <RotateCcw size={16} />
+            <Minimize size={18} />
           </button>
         </div>
       )}
@@ -223,10 +234,43 @@ export const Canvas: React.FC<CanvasProps> = ({
                 // Higher z-index for earlier modules to ensure top bar is always on top
                 const stackingZIndex = 110 - index;
 
+                const theme = siteContent.theme;
+                const invert = theme.invertedAlternatingMode || false;
+                const isDarkForced = theme.alternatingDarkMode 
+                  ? (invert ? (index % 2 === 0) : (index % 2 !== 0)) 
+                  : false;
+                const isThemeForced = theme.alternatingThemeMode 
+                  ? (invert ? (index % 2 === 0) : (index % 2 !== 0)) 
+                  : false;
+                
+                // Create overrides for this specific module
+                const moduleOverrides: Record<string, any> = {};
+                
+                if (isDarkForced) {
+                  moduleOverrides[`${module.id}_global_dark_mode`] = true;
+                  moduleOverrides[`${module.id}_global_bg_color`] = '#0F172A';
+                  moduleOverrides[`${module.id}_global_bg_type`] = 'color';
+                } else if (isThemeForced) {
+                  const projectBg = theme.themeBackgroundColor || theme.secondaryColor;
+                  const isDark = isDarkColor(projectBg);
+                  
+                  moduleOverrides[`${module.id}_global_dark_mode`] = isDark;
+                  moduleOverrides[`${module.id}_global_bg_color`] = projectBg;
+                  moduleOverrides[`${module.id}_global_bg_type`] = 'color';
+                }
+
+                // If global animation is set and not custom, we want modules to use it
+                // We'll pass it as a special prop or via settings
+                if (theme.globalAnimationType && theme.globalAnimationType !== 'custom') {
+                  moduleOverrides[`${module.id}_global_entrance_anim`] = theme.globalAnimationType;
+                }
+
+                const finalSettings = { ...editorState.settingsValues, ...moduleOverrides };
+
                 return (
                   <div 
                     key={module.id} 
-                    id={`module-${module.id}`} 
+                    id={module.id} 
                     ref={isLast ? lastModuleRef : null} 
                     onClick={(e) => {
                       e.stopPropagation();
@@ -249,137 +293,157 @@ export const Canvas: React.FC<CanvasProps> = ({
                     {module.type === 'products' && (
                       <ProductsModule 
                         moduleId={module.id}
-                        settingsValues={editorState.settingsValues}
+                        settingsValues={finalSettings}
                         products={products}
                         isDevMode={isDevMode}
+                        isPreviewMode={isPreviewMode}
                       />
                     )}
                     {module.type === 'hero' && (
                       <HeroModule 
                         moduleId={module.id}
-                        settingsValues={editorState.settingsValues}
+                        settingsValues={finalSettings}
                         logoUrl={logoUrl}
                         logoWhiteUrl={logoWhiteUrl}
+                        isPreviewMode={isPreviewMode}
                       />
                     )}
                     {module.type === 'features' && (
                       <FeaturesModule 
                         moduleId={module.id}
-                        settingsValues={editorState.settingsValues}
+                        settingsValues={finalSettings}
+                        isPreviewMode={isPreviewMode}
                       />
                     )}
                     {module.type === 'about' && (
                       <AboutModule 
                         moduleId={module.id}
-                        settingsValues={editorState.settingsValues}
+                        settingsValues={finalSettings}
+                        isPreviewMode={isPreviewMode}
                       />
                     )}
                     {module.type === 'process' && (
                       <ProcessModule 
                         moduleId={module.id}
-                        settingsValues={editorState.settingsValues}
+                        settingsValues={finalSettings}
+                        isPreviewMode={isPreviewMode}
                       />
                     )}
                     {module.type === 'gallery' && (
                       <GalleryModule 
                         moduleId={module.id}
-                        settingsValues={editorState.settingsValues}
+                        settingsValues={finalSettings}
+                        isPreviewMode={isPreviewMode}
                       />
                     )}
                     {module.type === 'video' && (
                       <VideoModule 
                         moduleId={module.id}
-                        settingsValues={editorState.settingsValues}
+                        settingsValues={finalSettings}
+                        isPreviewMode={isPreviewMode}
                       />
                     )}
                     {module.type === 'testimonials' && (
                       <TestimonialsModule 
                         moduleId={module.id}
-                        settingsValues={editorState.settingsValues}
+                        settingsValues={finalSettings}
+                        isPreviewMode={isPreviewMode}
                       />
                     )}
                     {module.type === 'stats' && (
                       <StatsModule 
                         moduleId={module.id}
-                        settingsValues={editorState.settingsValues}
+                        settingsValues={finalSettings}
+                        isPreviewMode={isPreviewMode}
                       />
                     )}
                     {module.type === 'team' && (
                       <TeamModule 
                         moduleId={module.id}
-                        settingsValues={editorState.settingsValues}
+                        settingsValues={finalSettings}
+                        isPreviewMode={isPreviewMode}
                       />
                     )}
                     {module.type === 'pricing' && (
                       <PricingModule 
                         moduleId={module.id}
-                        settingsValues={editorState.settingsValues}
+                        settingsValues={finalSettings}
+                        isPreviewMode={isPreviewMode}
                       />
                     )}
                     {module.type === 'faq' && (
                       <FAQModule 
                         moduleId={module.id}
-                        settingsValues={editorState.settingsValues}
+                        settingsValues={finalSettings}
+                        isPreviewMode={isPreviewMode}
                       />
                     )}
                     {module.type === 'contact' && (
                       <ContactModule 
                         moduleId={module.id}
-                        settingsValues={editorState.settingsValues}
+                        settingsValues={finalSettings}
+                        isPreviewMode={isPreviewMode}
                       />
                     )}
                     {module.type === 'clients' && (
                       <ClientsModule 
                         moduleId={module.id}
-                        settingsValues={editorState.settingsValues}
+                        settingsValues={finalSettings}
                         customers={customers}
                         isDevMode={isDevMode}
+                        isPreviewMode={isPreviewMode}
                       />
                     )}
                     {module.type === 'cta' && (
                       <CTAModule 
                         moduleId={module.id}
-                        settingsValues={editorState.settingsValues}
+                        settingsValues={finalSettings}
+                        isPreviewMode={isPreviewMode}
                       />
                     )}
                     {module.type === 'newsletter' && (
                       <NewsletterModule 
                         moduleId={module.id}
-                        settingsValues={editorState.settingsValues}
+                        settingsValues={finalSettings}
+                        isPreviewMode={isPreviewMode}
                       />
                     )}
                     {module.type === 'conversion' && module.id.startsWith('mod_header_1') && (
                       <HeaderModule 
                         moduleId={module.id}
-                        settingsValues={editorState.settingsValues}
+                        settingsValues={finalSettings}
+                        isPreviewMode={isPreviewMode}
                       />
                     )}
                     {module.type === 'navegacion' && module.id.startsWith('mod_menu_1') && (
                       <MenuModule 
                         moduleId={module.id}
-                        settingsValues={editorState.settingsValues}
+                        settingsValues={finalSettings}
                         logoUrl={logoUrl}
                         logoWhiteUrl={logoWhiteUrl}
+                        isPreviewMode={isPreviewMode}
                       />
                     )}
                     {module.type === 'navegacion' && module.id.startsWith('mod_footer_1') && (
                       <FooterModule 
                         moduleId={module.id}
-                        settingsValues={editorState.settingsValues}
+                        settingsValues={finalSettings}
                         logoUrl={logoUrl}
                         logoWhiteUrl={logoWhiteUrl}
+                        isPreviewMode={isPreviewMode}
                       />
                     )}
                     {module.type === 'spacer' && (
                       <SpacerModule 
                         moduleId={module.id}
-                        settingsValues={editorState.settingsValues}
+                        settingsValues={finalSettings}
+                        isPreviewMode={isPreviewMode}
                       />
                     )}
                     {module.id.startsWith('mod_bento_1') && (
                       <BentoModule 
                         moduleId={module.id}
-                        settingsValues={editorState.settingsValues}
+                        settingsValues={finalSettings}
                         onSettingChange={onSettingChange}
                         isPreviewMode={isPreviewMode}
                       />
@@ -387,7 +451,7 @@ export const Canvas: React.FC<CanvasProps> = ({
                     {module.type === 'comparative' && (
                       <ComparisonModule 
                         moduleId={module.id}
-                        settingsValues={editorState.settingsValues}
+                        settingsValues={finalSettings}
                         preview={isPreviewMode}
                       />
                     )}

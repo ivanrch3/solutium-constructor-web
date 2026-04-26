@@ -5,8 +5,9 @@ import { ParallaxBackground } from '../ParallaxBackground';
 
 export const SpacerModule: React.FC<{ 
   moduleId: string, 
-  settingsValues: Record<string, any> 
-}> = ({ moduleId, settingsValues }) => {
+  settingsValues: Record<string, any>,
+  isPreviewMode?: boolean
+}> = ({ moduleId, settingsValues, isPreviewMode = false }) => {
   const getVal = (elementId: string | null, settingId: string, defaultValue: any) => {
     const key = elementId ? `${elementId}_${settingId}` : `${moduleId}_global_${settingId}`;
     return settingsValues[key] !== undefined ? settingsValues[key] : defaultValue;
@@ -34,7 +35,7 @@ export const SpacerModule: React.FC<{
   const type = getVal(null, 'type', 'none');
   const thickness = parseF(getVal(null, 'thickness', 1), 1);
   const color = darkMode ? 'rgba(255,255,255,0.1)' : getVal(null, 'color', '#E2E8F0');
-  const bgColor = darkMode ? '#0F172A' : getVal(null, 'bg_color', 'transparent');
+  const bgColor = getVal(null, 'bg_color', darkMode ? '#0F172A' : 'transparent');
   const showContent = getVal(null, 'show_content', false);
   const contentType = getVal(null, 'content_type', 'icon');
   const iconName = getVal(null, 'icon', 'Star');

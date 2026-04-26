@@ -4,6 +4,9 @@ import * as LucideIcons from 'lucide-react';
 import { CheckCircle2 } from 'lucide-react';
 import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
 import { TextRenderer } from '../TextRenderer';
+import { InlineEditableText } from '../InlineEditableText';
+import { useEditorStore } from '../../../store/editorStore';
+import { GLOBAL_ANIMATIONS, getGlobalAnimation } from '../../../constants/animations';
 
 const StepItem = ({ 
   step, 
@@ -31,7 +34,10 @@ const StepItem = ({
   descSize,
   textAlign,
   hoverGlow,
-  darkMode
+  darkMode,
+  moduleId,
+  isPreviewMode,
+  onSave
 }: any) => {
   const IconComponent = (LucideIcons as any)[step.icon] || CheckCircle2;
   const isHorizontal = layout === 'horizontal';
@@ -176,7 +182,13 @@ const StepItem = ({
               color: darkMode ? '#FFFFFF' : '#0F172A'
             }}
           >
-            {step.title}
+            <InlineEditableText
+              moduleId={moduleId}
+              settingId="title"
+              value={step.title}
+              isPreviewMode={isPreviewMode}
+              onSave={(val) => onSave('title', val)}
+            />
           </h3>
           <p 
             className="leading-relaxed" 
@@ -186,7 +198,13 @@ const StepItem = ({
               color: darkMode ? '#94A3B8' : '#64748B'
             }}
           >
-            {step.desc}
+            <InlineEditableText
+              moduleId={moduleId}
+              settingId="desc"
+              value={step.desc}
+              isPreviewMode={isPreviewMode}
+              onSave={(val) => onSave('desc', val)}
+            />
           </p>
           
           {hasLink && (
@@ -202,8 +220,10 @@ const StepItem = ({
 
 export const ProcessModule: React.FC<{ 
   moduleId: string, 
-  settingsValues: Record<string, any> 
-}> = ({ moduleId, settingsValues }) => {
+  settingsValues: Record<string, any>,
+  isPreviewMode?: boolean
+}> = ({ moduleId, settingsValues, isPreviewMode = false }) => {
+  const { updateSectionSettings } = useEditorStore();
   const getVal = (elementId: string | null, settingId: string, defaultValue: any) => {
     const key = elementId ? `${elementId}_${settingId}` : `${moduleId}_global_${settingId}`;
     return settingsValues[key] !== undefined ? settingsValues[key] : defaultValue;
@@ -220,12 +240,16 @@ export const ProcessModule: React.FC<{
   const paddingY = parseF(getVal(null, 'padding_y', 120), 120);
   const gap = parseF(getVal(null, 'gap', 40), 40);
   const darkMode = getVal(null, 'dark_mode', false);
-  const bgColor = darkMode ? '#0F172A' : getVal(null, 'bg_color', '#F8FAFC');
+  const bgColor = getVal(null, 'bg_color', darkMode ? '#0F172A' : '#F8FAFC');
   const sectionGradient = getVal(null, 'section_gradient', false);
   const bgGradient = getVal(null, 'bg_gradient', 'linear-gradient(to bottom, #F8FAFC, #FFFFFF)');
   const connectorStyle = getVal(null, 'connector_style', 'dashed');
   const connectorColor = darkMode ? 'rgba(255,255,255,0.1)' : getVal(null, 'connector_color', 'rgba(59, 130, 246, 0.2)');
-  const entranceAnim = getVal(null, 'entrance_anim', true);
+  const entranceAnim = getVal(null, 'entrance_anim', 'fade_up');
+
+  // Animation Overrides
+  const globalAnimOverride = getGlobalAnimation(entranceAnim, 'process');
+
   const drawConnectors = getVal(null, 'draw_connectors', true);
   const hoverGlow = getVal(null, 'hover_glow', true);
 
@@ -274,7 +298,7 @@ export const ProcessModule: React.FC<{
     }
   };
 
-  const itemVariants = {
+  const itemVariants = globalAnimOverride || {
     hidden: { y: 30, opacity: 0 },
     visible: { y: 0, opacity: 1, transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1] } }
   };
@@ -322,7 +346,13 @@ export const ProcessModule: React.FC<{
                 backgroundColor: headerEyebrowBg
               }}
             >
-              {eyebrow}
+              <InlineEditableText
+                moduleId={moduleId}
+                elementId={`${moduleId}_el_process_header`}
+                settingId="eyebrow"
+                value={eyebrow}
+                isPreviewMode={isPreviewMode}
+              />
             </span>
           )}
           <h2 
@@ -332,20 +362,34 @@ export const ProcessModule: React.FC<{
               color: headerTitleColor 
             }}
           >
-            <TextRenderer 
-              text={headerTitle}
-              highlightType={getVal(`${moduleId}_el_process_header`, 'title_highlight_type', 'gradient')}
-              highlightColor={getVal(`${moduleId}_el_process_header`, 'title_highlight_color', '#3B82F6')}
-              highlightGradient={getVal(`${moduleId}_el_process_header`, 'title_highlight_gradient', 'linear-gradient(to right, #3B82F6, #2563EB)')}
-              highlightBold={getVal(`${moduleId}_el_process_header`, 'title_highlight_bold', true)}
-            />
+            <InlineEditableText
+              moduleId={moduleId}
+              elementId={`${moduleId}_el_process_header`}
+              settingId="title"
+              value={headerTitle}
+              isPreviewMode={isPreviewMode}
+            >
+              <TextRenderer 
+                text={headerTitle}
+                highlightType={getVal(`${moduleId}_el_process_header`, 'title_highlight_type', 'gradient')}
+                highlightColor={getVal(`${moduleId}_el_process_header`, 'title_highlight_color', '#3B82F6')}
+                highlightGradient={getVal(`${moduleId}_el_process_header`, 'title_highlight_gradient', 'linear-gradient(to right, #3B82F6, #2563EB)')}
+                highlightBold={getVal(`${moduleId}_el_process_header`, 'title_highlight_bold', true)}
+              />
+            </InlineEditableText>
           </h2>
           {headerSubtitle && (
             <p 
               className="max-w-2xl text-base @md:text-lg"
               style={{ color: darkMode ? '#94A3B8' : '#64748B' }}
             >
-              {headerSubtitle}
+              <InlineEditableText
+                moduleId={moduleId}
+                elementId={`${moduleId}_el_process_header`}
+                settingId="subtitle"
+                value={headerSubtitle}
+                isPreviewMode={isPreviewMode}
+              />
             </p>
           )}
         </div>
@@ -388,6 +432,13 @@ export const ProcessModule: React.FC<{
               textAlign={stepTextAlign}
               hoverGlow={hoverGlow}
               darkMode={darkMode}
+              moduleId={moduleId}
+              isPreviewMode={isPreviewMode}
+              onSave={(field: string, val: string) => {
+                const newItems = [...steps];
+                newItems[i] = { ...newItems[i], [field]: val };
+                updateSectionSettings(moduleId, { [`${moduleId}_el_process_items_steps`]: newItems });
+              }}
             />
           ))}
         </motion.div>

@@ -3,13 +3,15 @@ import { motion } from 'motion/react';
 import * as LucideIcons from 'lucide-react';
 import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
 import { TextRenderer } from '../TextRenderer';
+import { InlineEditableText } from '../InlineEditableText';
 
 export const FooterModule: React.FC<{ 
   moduleId: string, 
   settingsValues: Record<string, any>,
   logoUrl?: string | null,
-  logoWhiteUrl?: string | null
-}> = ({ moduleId, settingsValues, logoUrl, logoWhiteUrl }) => {
+  logoWhiteUrl?: string | null,
+  isPreviewMode?: boolean
+}> = ({ moduleId, settingsValues, logoUrl, logoWhiteUrl, isPreviewMode = false }) => {
   const getVal = (elementId: string | null, settingId: string, defaultValue: any) => {
     const key = elementId ? `${elementId}_${settingId}` : `${moduleId}_global_${settingId}`;
     return settingsValues[key] !== undefined ? settingsValues[key] : defaultValue;
@@ -19,7 +21,7 @@ export const FooterModule: React.FC<{
   const paddingY = parseFloat(getVal(null, 'padding_y', 80)) || 80;
   const maxWidth = parseFloat(getVal(null, 'max_width', 1400)) || 1400;
   const darkMode = getVal(null, 'dark_mode', false);
-  const bgColor = darkMode ? '#0F172A' : getVal(null, 'bg_color', '#F8FAFC');
+  const bgColor = getVal(null, 'bg_color', darkMode ? '#0F172A' : '#F8FAFC');
   const textColor = darkMode ? '#94A3B8' : getVal(null, 'text_color', '#475569');
   const borderTop = getVal(null, 'border_top', true);
   const borderColor = darkMode ? 'rgba(255,255,255,0.1)' : getVal(null, 'border_color', '#E2E8F0');
@@ -131,7 +133,13 @@ export const FooterModule: React.FC<{
                 </div>
               )}
               <p className="text-sm leading-relaxed opacity-80 max-w-xs">
-                {bio}
+                <InlineEditableText
+                  moduleId={moduleId}
+                  elementId={`${moduleId}_el_footer_brand`}
+                  settingId="bio"
+                  value={bio}
+                  isPreviewMode={isPreviewMode}
+                />
               </p>
             </div>
 
@@ -141,19 +149,43 @@ export const FooterModule: React.FC<{
                   <div style={{ color: contactIconColor }}>
                     <LucideIcons.MapPin size={18} />
                   </div>
-                  <span>{address}</span>
+                  <span>
+                    <InlineEditableText
+                      moduleId={moduleId}
+                      elementId={`${moduleId}_el_footer_contact`}
+                      settingId="address"
+                      value={address}
+                      isPreviewMode={isPreviewMode}
+                    />
+                  </span>
                 </div>
                 <div className="flex items-center gap-3 text-sm opacity-80">
                   <div style={{ color: contactIconColor }}>
                     <LucideIcons.Phone size={18} />
                   </div>
-                  <span>{phone}</span>
+                  <span>
+                    <InlineEditableText
+                      moduleId={moduleId}
+                      elementId={`${moduleId}_el_footer_contact`}
+                      settingId="phone"
+                      value={phone}
+                      isPreviewMode={isPreviewMode}
+                    />
+                  </span>
                 </div>
                 <div className="flex items-center gap-3 text-sm opacity-80">
                   <div style={{ color: contactIconColor }}>
                     <LucideIcons.Mail size={18} />
                   </div>
-                  <span>{email}</span>
+                  <span>
+                    <InlineEditableText
+                      moduleId={moduleId}
+                      elementId={`${moduleId}_el_footer_contact`}
+                      settingId="email"
+                      value={email}
+                      isPreviewMode={isPreviewMode}
+                    />
+                  </span>
                 </div>
               </div>
             )}
@@ -220,30 +252,62 @@ export const FooterModule: React.FC<{
             <div className="@md:col-span-3 space-y-6">
               <div className="space-y-2">
                 <h4 className="font-bold uppercase tracking-widest" style={{ fontSize: `${TYPOGRAPHY_SCALE[titleSize as keyof typeof TYPOGRAPHY_SCALE]?.fontSize || 14}px`, color: darkMode ? '#FFFFFF' : 'inherit' }}>
-                  <TextRenderer 
-                    text={newsTitle}
-                    highlightType={getVal(`${moduleId}_el_footer_newsletter`, 'title_highlight_type', 'gradient')}
-                    highlightColor={getVal(`${moduleId}_el_footer_newsletter`, 'title_highlight_color', '#3B82F6')}
-                    highlightGradient={getVal(`${moduleId}_el_footer_newsletter`, 'title_highlight_gradient', 'linear-gradient(to right, #3B82F6, #2563EB)')}
-                    highlightBold={getVal(`${moduleId}_el_footer_newsletter`, 'title_highlight_bold', true)}
-                  />
+                  <InlineEditableText
+                    moduleId={moduleId}
+                    elementId={`${moduleId}_el_footer_newsletter`}
+                    settingId="news_title"
+                    value={newsTitle}
+                    isPreviewMode={isPreviewMode}
+                  >
+                    <TextRenderer 
+                      text={newsTitle}
+                      highlightType={getVal(`${moduleId}_el_footer_newsletter`, 'title_highlight_type', 'gradient')}
+                      highlightColor={getVal(`${moduleId}_el_footer_newsletter`, 'title_highlight_color', '#3B82F6')}
+                      highlightGradient={getVal(`${moduleId}_el_footer_newsletter`, 'title_highlight_gradient', 'linear-gradient(to right, #3B82F6, #2563EB)')}
+                      highlightBold={getVal(`${moduleId}_el_footer_newsletter`, 'title_highlight_bold', true)}
+                    />
+                  </InlineEditableText>
                 </h4>
                 <p className="text-sm opacity-70 leading-relaxed">
-                  {newsDesc}
+                  <InlineEditableText
+                    moduleId={moduleId}
+                    elementId={`${moduleId}_el_footer_newsletter`}
+                    settingId="news_desc"
+                    value={newsDesc}
+                    isPreviewMode={isPreviewMode}
+                  />
                 </p>
               </div>
               <div className="flex flex-col gap-2">
-                <input 
-                  type="email" 
-                  placeholder={newsPlaceholder}
-                  className={`px-4 py-3 rounded-xl text-sm border focus:ring-2 focus:ring-primary/20 outline-none transition-all ${darkMode ? 'border-white/10 text-white' : 'border-slate-200 text-slate-900'}`}
-                  style={{ backgroundColor: newsInputBg }}
-                />
+                <div className="relative">
+                  <input 
+                    type="email" 
+                    readOnly
+                    placeholder={newsPlaceholder}
+                    className={`w-full px-4 py-3 rounded-xl text-sm border focus:ring-2 focus:ring-primary/20 outline-none transition-all ${darkMode ? 'border-white/10 text-white' : 'border-slate-200 text-slate-900'}`}
+                    style={{ backgroundColor: newsInputBg }}
+                  />
+                  <div className="absolute inset-0 z-10 flex items-center px-4 pointer-events-none opacity-0">
+                    <InlineEditableText
+                      moduleId={moduleId}
+                      elementId={`${moduleId}_el_footer_newsletter`}
+                      settingId="placeholder"
+                      value={newsPlaceholder}
+                      isPreviewMode={isPreviewMode}
+                    />
+                  </div>
+                </div>
                 <button 
                   className="px-4 py-3 rounded-xl text-sm font-bold shadow-lg shadow-primary/10 hover:opacity-90 transition-all"
                   style={{ backgroundColor: newsBtnBg, color: newsBtnColor }}
                 >
-                  {newsBtnText}
+                  <InlineEditableText
+                    moduleId={moduleId}
+                    elementId={`${moduleId}_el_footer_newsletter`}
+                    settingId="btn_text"
+                    value={newsBtnText}
+                    isPreviewMode={isPreviewMode}
+                  />
                 </button>
               </div>
             </div>
@@ -261,7 +325,13 @@ export const FooterModule: React.FC<{
           }}
         >
           <p className="text-xs font-medium opacity-70">
-            {copyright}
+            <InlineEditableText
+              moduleId={moduleId}
+              elementId={`${moduleId}_el_footer_bottom`}
+              settingId="copyright"
+              value={copyright}
+              isPreviewMode={isPreviewMode}
+            />
           </p>
           <div className="flex items-center gap-6 text-xs font-medium">
             {legalLinks.map((link: any, idx: number) => (

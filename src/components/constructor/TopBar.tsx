@@ -6,6 +6,7 @@ import {
   Tablet, 
   Smartphone, 
   Maximize, 
+  Minimize,
   Check, 
   X, 
   Save, 
@@ -43,70 +44,76 @@ export const TopBar: React.FC<TopBarProps> = ({
   isPreviewMode
 }) => (
   <div className={`bg-surface border-b border-border/60 flex items-center justify-between px-4 md:px-6 z-20 ${isMobile ? 'h-[70px]' : 'h-[60px]'}`}>
-    <div className="flex items-center gap-3 md:gap-4">
-      <div className="flex flex-col">
-        <div className="flex items-center gap-2">
-          <h2 className={`${isMobile ? 'text-sm' : 'text-base'} font-bold text-text`}>
-            {isMobile ? 'Constructor Web' : 'Editor de Módulos'}
-          </h2>
-          {saveStatus === 'loading' && (
-            <div className="flex items-center gap-1.5 px-2 py-0.5 bg-primary/10 rounded-full">
-              <motion.div 
-                animate={{ rotate: 360 }} 
-                transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
-              >
-                <RotateCcw size={10} className="text-primary" />
-              </motion.div>
-              <span className="text-[9px] font-bold text-primary uppercase tracking-tighter">Sincronizando...</span>
-            </div>
-          )}
-        </div>
-        {!isMobile && <p className="text-xs font-semibold text-text/50 uppercase tracking-wider">Añade módulos para construir tu página</p>}
-      </div>
-    </div>
-
-    <div className="flex items-center gap-2 md:gap-4">
-      <div className="flex items-center gap-2 md:gap-3 border-r border-border/60 pr-2 md:pr-4">
-        {!isMobile && (
-          <button 
-            onClick={onReload}
-            className="p-1.5 text-text/60 hover:text-primary hover:bg-secondary rounded-lg transition-all"
-            title="Recargar página"
-          >
-            <RotateCcw size={16} />
-          </button>
-        )}
+    {/* Left Section: Viewports */}
+    <div className="flex-1 flex items-center gap-4">
+      {!isMobile && (
         <div className="flex items-center gap-1 bg-secondary p-1 rounded-xl">
           <button 
             onClick={() => setViewport('desktop')}
             className={`p-1.5 rounded-lg transition-all ${viewport === 'desktop' ? 'text-primary bg-surface shadow-sm' : 'text-text/60 hover:text-primary'}`}
             title="Vista de Escritorio"
           >
-            <Monitor size={isMobile ? 16 : 14} />
+            <Monitor size={14} />
           </button>
           <button 
             onClick={() => setViewport('tablet')}
             className={`p-1.5 rounded-lg transition-all ${viewport === 'tablet' ? 'text-primary bg-surface shadow-sm' : 'text-text/60 hover:text-primary'}`}
             title="Vista de Tablet"
           >
-            <Tablet size={isMobile ? 16 : 14} />
+            <Tablet size={14} />
           </button>
           <button 
             onClick={() => setViewport('mobile')}
             className={`p-1.5 rounded-lg transition-all ${viewport === 'mobile' ? 'text-primary bg-surface shadow-sm' : 'text-text/60 hover:text-primary'}`}
             title="Vista de Móvil"
           >
-            <Smartphone size={isMobile ? 16 : 14} />
+            <Smartphone size={14} />
           </button>
         </div>
+      )}
+    </div>
+
+    {/* Center Section: Brand/Status */}
+    <div className="flex-1 flex flex-col items-center justify-center">
+      <div className="flex items-center gap-2">
+        <h2 className={`${isMobile ? 'text-sm' : 'text-base'} font-bold text-text truncate`}>
+          {isMobile ? 'Constructor Web' : 'Editor de Módulos'}
+        </h2>
+        {saveStatus === 'loading' && (
+          <div className="flex items-center gap-1.5 px-2 py-0.5 bg-primary/10 rounded-full">
+            <motion.div 
+              animate={{ rotate: 360 }} 
+              transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+            >
+              <RotateCcw size={10} className="text-primary" />
+            </motion.div>
+            <span className="text-[9px] font-bold text-primary uppercase tracking-tighter shrink-0">Sincronizando...</span>
+          </div>
+        )}
+      </div>
+      {!isMobile && <p className="text-[9px] font-semibold text-text/30 uppercase tracking-[0.2em] whitespace-nowrap">Solutium UI Builder</p>}
+    </div>
+
+    {/* Right Section: Actions */}
+    <div className="flex-1 flex items-center justify-end gap-2 md:gap-4">
+      <div className="flex items-center gap-2 md:gap-3 border-r border-border/60 pr-2 md:pr-4">
         {!isMobile && (
-          <button 
-            onClick={() => setIsFullscreen(!isFullscreen)}
-            className={`p-1.5 rounded-lg transition-all ${isFullscreen ? 'text-primary bg-primary/10' : 'text-text/60 hover:text-primary hover:bg-secondary'}`}
-            title="Pantalla Completa"
-          >
-            <Maximize size={16} />
-          </button>
+          <div className="flex items-center gap-1">
+            <button 
+              onClick={onReload}
+              className="p-2 text-text/60 hover:text-primary hover:bg-secondary rounded-lg transition-all"
+              title="Recargar página"
+            >
+              <RotateCcw size={16} />
+            </button>
+            <button 
+              onClick={() => setIsFullscreen(!isFullscreen)}
+              className={`p-2 rounded-lg transition-all ${isFullscreen ? 'text-primary bg-primary/10' : 'text-text/60 hover:text-primary hover:bg-secondary'}`}
+              title={isFullscreen ? "Salir de Pantalla Completa" : "Pantalla Completa"}
+            >
+              {isFullscreen ? <Minimize size={18} /> : <Maximize size={18} />}
+            </button>
+          </div>
         )}
       </div>
 

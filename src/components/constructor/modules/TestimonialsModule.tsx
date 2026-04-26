@@ -44,6 +44,10 @@ const MOCK_TESTIMONIALS = [
   }
 ];
 
+import { InlineEditableText } from '../InlineEditableText';
+import { useEditorStore } from '../../../store/editorStore';
+import { GLOBAL_ANIMATIONS, getGlobalAnimation } from '../../../constants/animations';
+
 const TestimonialCard = ({ 
   testimonial, 
   entranceAnim, 
@@ -66,7 +70,10 @@ const TestimonialCard = ({
   quoteWeight,
   quoteAlign,
   showCompanyLogo,
-  darkMode
+  darkMode,
+  moduleId,
+  isPreviewMode,
+  onSave
 }: any) => {
   const avatarClass = useMemo(() => {
     switch (avatarShape) {
@@ -121,7 +128,14 @@ const TestimonialCard = ({
           color: finalQuoteColor
         }}
       >
-        "{testimonial.text}"
+        <InlineEditableText
+          moduleId={moduleId}
+          settingId="text"
+          value={testimonial.text}
+          isPreviewMode={isPreviewMode}
+          onSave={(val) => onSave('text', val)}
+          tagName="span"
+        />
       </p>
 
       <div className="flex items-center justify-between gap-4 mt-auto relative z-10">
@@ -132,8 +146,26 @@ const TestimonialCard = ({
             </div>
           )}
           <div className="flex flex-col min-w-0">
-            <span className="font-bold truncate" style={{ color: finalAuthorColor }}>{testimonial.author}</span>
-            <span className="text-xs truncate" style={{ color: finalRoleColor }}>{testimonial.role}</span>
+            <span className="font-bold truncate" style={{ color: finalAuthorColor }}>
+              <InlineEditableText
+                moduleId={moduleId}
+                settingId="author"
+                value={testimonial.author}
+                isPreviewMode={isPreviewMode}
+                onSave={(val) => onSave('author', val)}
+                tagName="span"
+              />
+            </span>
+            <span className="text-xs truncate" style={{ color: finalRoleColor }}>
+              <InlineEditableText
+                moduleId={moduleId}
+                settingId="role"
+                value={testimonial.role}
+                isPreviewMode={isPreviewMode}
+                onSave={(val) => onSave('role', val)}
+                tagName="span"
+              />
+            </span>
             {showStars && (
               <div className="flex gap-0.5 mt-1">
                 {[...Array(5)].map((_, i) => (
@@ -161,8 +193,10 @@ const TestimonialCard = ({
 
 export const TestimonialsModule: React.FC<{ 
   moduleId: string, 
-  settingsValues: Record<string, any> 
-}> = ({ moduleId, settingsValues }) => {
+  settingsValues: Record<string, any>,
+  isPreviewMode?: boolean
+}> = ({ moduleId, settingsValues, isPreviewMode = false }) => {
+  const { updateSectionSettings } = useEditorStore();
   const [activeIndex, setActiveIndex] = useState(0);
 
   const containerRef = useRef(null);
@@ -187,12 +221,15 @@ export const TestimonialsModule: React.FC<{
   const gap = parseF(getVal(null, 'gap', 30), 30);
   const paddingY = parseF(getVal(null, 'padding_y', 100), 100);
   const darkMode = getVal(null, 'dark_mode', false);
-  const bgColor = darkMode ? '#0F172A' : getVal(null, 'bg_color', '#F8FAFC');
+  const bgColor = getVal(null, 'bg_color', darkMode ? '#0F172A' : '#F8FAFC');
   const sectionGradient = getVal(null, 'section_gradient', false);
   const bgGradient = getVal(null, 'bg_gradient', 'linear-gradient(to bottom, #F8FAFC, #FFFFFF)');
   const autoplay = getVal(null, 'autoplay', true);
   const autoplaySpeed = parseF(getVal(null, 'autoplay_speed', 5000), 5000);
-  const entranceAnim = getVal(null, 'entrance_anim', true);
+  const entranceAnim = getVal(null, 'entrance_anim', 'fade_up');
+
+  // Animation Overrides
+  const globalAnimOverride = getGlobalAnimation(entranceAnim, 'testimonials');
 
   // Multimedia (Parallax Background)
   const bgParallaxEnabled = getVal(null, 'bg_parallax_enabled', false);
@@ -268,7 +305,7 @@ export const TestimonialsModule: React.FC<{
     }
   };
 
-  const itemVariants = {
+  const itemVariants = globalAnimOverride || {
     hidden: { y: 20, opacity: 0 },
     visible: { y: 0, opacity: 1, transition: { duration: 0.5, ease: "easeOut" } }
   };
@@ -340,7 +377,13 @@ export const TestimonialsModule: React.FC<{
               className="text-sm font-bold tracking-widest mb-3 uppercase"
               style={{ color: eyebrowColor }}
             >
-              {eyebrow}
+              <InlineEditableText
+                moduleId={moduleId}
+                elementId={`${moduleId}_el_testimonials_header`}
+                settingId="eyebrow"
+                value={eyebrow}
+                isPreviewMode={isPreviewMode}
+              />
             </span>
           )}
           <h2 
@@ -350,13 +393,21 @@ export const TestimonialsModule: React.FC<{
               color: headerTitleColor 
             }}
           >
-            <TextRenderer 
-              text={headerTitle} 
-              highlightType={titleHighlightType}
-              highlightColor={titleHighlightColor}
-              highlightGradient={titleHighlightGradient}
-              highlightBold={titleHighlightBold}
-            />
+            <InlineEditableText
+              moduleId={moduleId}
+              elementId={`${moduleId}_el_testimonials_header`}
+              settingId="title"
+              value={headerTitle}
+              isPreviewMode={isPreviewMode}
+            >
+              <TextRenderer 
+                text={headerTitle} 
+                highlightType={titleHighlightType}
+                highlightColor={titleHighlightColor}
+                highlightGradient={titleHighlightGradient}
+                highlightBold={titleHighlightBold}
+              />
+            </InlineEditableText>
           </h2>
           {headerSubtitle && (
             <p 
@@ -366,13 +417,21 @@ export const TestimonialsModule: React.FC<{
                 color: darkMode ? '#94A3B8' : '#64748B' 
               }}
             >
-              <TextRenderer 
-                text={headerSubtitle} 
-                highlightType={subtitleHighlightType}
-                highlightColor={subtitleHighlightColor}
-                highlightGradient={subtitleHighlightGradient}
-                highlightBold={subtitleHighlightBold}
-              />
+              <InlineEditableText
+                moduleId={moduleId}
+                elementId={`${moduleId}_el_testimonials_header`}
+                settingId="subtitle"
+                value={headerSubtitle}
+                isPreviewMode={isPreviewMode}
+              >
+                <TextRenderer 
+                  text={headerSubtitle} 
+                  highlightType={subtitleHighlightType}
+                  highlightColor={subtitleHighlightColor}
+                  highlightGradient={subtitleHighlightGradient}
+                  highlightBold={subtitleHighlightBold}
+                />
+              </InlineEditableText>
             </p>
           )}
         </div>
@@ -392,6 +451,13 @@ export const TestimonialsModule: React.FC<{
                   <TestimonialCard 
                     testimonial={testimonials[activeIndex]} 
                     {...cardProps}
+                    moduleId={moduleId}
+                    isPreviewMode={isPreviewMode}
+                    onSave={(field: string, val: string) => {
+                      const newItems = [...testimonials];
+                      newItems[activeIndex] = { ...newItems[activeIndex], [field]: val };
+                      updateSectionSettings(moduleId, { [`${moduleId}_el_testimonial_items_items`]: newItems });
+                    }}
                   />
                 </motion.div>
               </AnimatePresence>
@@ -443,6 +509,13 @@ export const TestimonialsModule: React.FC<{
                 <TestimonialCard 
                   testimonial={testimonial} 
                   {...cardProps}
+                  moduleId={moduleId}
+                  isPreviewMode={isPreviewMode}
+                  onSave={(field: string, val: string) => {
+                    const newItems = [...testimonials];
+                    newItems[i] = { ...newItems[i], [field]: val };
+                    updateSectionSettings(moduleId, { [`${moduleId}_el_testimonial_items_items`]: newItems });
+                  }}
                 />
               </div>
             ))}

@@ -7,6 +7,7 @@ import { TextRenderer } from '../TextRenderer';
 import { ParallaxBackground } from '../ParallaxBackground';
 import { parseNumSafe } from '../utils';
 import { Responsive, WidthProvider } from 'react-grid-layout/legacy';
+import { GLOBAL_ANIMATIONS, getGlobalAnimation } from '../../../constants/animations';
 import '/node_modules/react-grid-layout/css/styles.css';
 import '/node_modules/react-resizable/css/styles.css';
 
@@ -15,7 +16,9 @@ const ResponsiveGridLayout = WidthProvider(Responsive);
 // --- SUB-ELEMENT RENDERERS ---
 
 
-const BentoCellContent = ({ item, darkMode }: any) => {
+import { InlineEditableText } from '../InlineEditableText';
+
+const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave }: any) => {
   const {
     type,
     title,
@@ -45,7 +48,17 @@ const BentoCellContent = ({ item, darkMode }: any) => {
              <div className="p-2 bg-primary/10 rounded-xl text-primary">
                 <IconComponent size={24} />
              </div>
-             {eyebrow && <span className="text-[10px] font-bold tracking-widest uppercase opacity-60">{eyebrow}</span>}
+             {eyebrow && (
+               <InlineEditableText
+                 moduleId={moduleId}
+                 settingId="eyebrow"
+                 value={eyebrow}
+                 tagName="span"
+                 isPreviewMode={isPreviewMode}
+                 onSave={(val) => onSave('eyebrow', val)}
+                 className="text-[10px] font-bold tracking-widest uppercase opacity-60"
+               />
+             )}
           </div>
           <h4 
             className="leading-none mt-2"
@@ -55,7 +68,14 @@ const BentoCellContent = ({ item, darkMode }: any) => {
               color: finalTitleColor
             }}
           >
-            {title}
+            <InlineEditableText
+              moduleId={moduleId}
+              settingId="title"
+              value={title}
+              tagName="span"
+              isPreviewMode={isPreviewMode}
+              onSave={(val) => onSave('title', val)}
+            />
           </h4>
           {description && (
             <p 
@@ -65,7 +85,14 @@ const BentoCellContent = ({ item, darkMode }: any) => {
                 color: finalDescColor
               }}
             >
-              {description}
+              <InlineEditableText
+                moduleId={moduleId}
+                settingId="description"
+                value={description}
+                tagName="span"
+                isPreviewMode={isPreviewMode}
+                onSave={(val) => onSave('description', val)}
+              />
             </p>
           )}
         </div>
@@ -78,7 +105,17 @@ const BentoCellContent = ({ item, darkMode }: any) => {
             <IconComponent size={32} />
           </div>
           <div>
-            {eyebrow && <span className="text-[10px] font-bold tracking-widest uppercase opacity-60 mb-1 block">{eyebrow}</span>}
+            {eyebrow && (
+              <InlineEditableText
+                moduleId={moduleId}
+                settingId="eyebrow"
+                value={eyebrow}
+                tagName="span"
+                isPreviewMode={isPreviewMode}
+                onSave={(val) => onSave('eyebrow', val)}
+                className="text-[10px] font-bold tracking-widest uppercase opacity-60 mb-1 block"
+              />
+            )}
             <h3 
               className="mb-2 leading-tight"
               style={{ 
@@ -87,7 +124,14 @@ const BentoCellContent = ({ item, darkMode }: any) => {
                 color: finalTitleColor
               }}
             >
-              {title}
+              <InlineEditableText
+                moduleId={moduleId}
+                settingId="title"
+                value={title}
+                tagName="span"
+                isPreviewMode={isPreviewMode}
+                onSave={(val) => onSave('title', val)}
+              />
             </h3>
             {description && (
               <p 
@@ -97,7 +141,14 @@ const BentoCellContent = ({ item, darkMode }: any) => {
                   lineHeight: 1.5
                 }}
               >
-                {description}
+                <InlineEditableText
+                  moduleId={moduleId}
+                  settingId="description"
+                  value={description}
+                  tagName="span"
+                  isPreviewMode={isPreviewMode}
+                  onSave={(val) => onSave('description', val)}
+                />
               </p>
             )}
           </div>
@@ -116,34 +167,63 @@ const BentoCellContent = ({ item, darkMode }: any) => {
                 color: finalTitleColor
               }}
             >
-              {title}
+              <InlineEditableText
+                moduleId={moduleId}
+                settingId="title"
+                value={title}
+                tagName="span"
+                isPreviewMode={isPreviewMode}
+                onSave={(val) => onSave('title', val)}
+              />
             </h3>
-            {description && <p style={{ color: finalDescColor }}>{description}</p>}
+            {description && (
+              <p style={{ color: finalDescColor }}>
+                <InlineEditableText
+                  moduleId={moduleId}
+                  settingId="description"
+                  value={description}
+                  tagName="span"
+                  isPreviewMode={isPreviewMode}
+                  onSave={(val) => onSave('description', val)}
+                />
+              </p>
+            )}
           </div>
           <a 
             href={btn_url || '#'}
             target={btn_target === '_blank' ? '_blank' : undefined}
             className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-primary text-white rounded-2xl font-bold transition-all hover:scale-105 active:scale-95 group"
           >
-            {button_text}
+            <InlineEditableText
+              moduleId={moduleId}
+              settingId="button_text"
+              value={button_text}
+              tagName="span"
+              isPreviewMode={isPreviewMode}
+              onSave={(val) => onSave('button_text', val)}
+            />
             <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
           </a>
         </div>
       );
 
     case 'video':
-      return null; // Video handles its own background
+      return null;
 
-    default: // 'text' or 'image' (if text overlay)
+    default: // 'text' or 'image'
       return (
         <div className="flex flex-col gap-3 z-10 w-full h-full">
           {eyebrow && (
-            <span 
+            <InlineEditableText
+              moduleId={moduleId}
+              settingId="eyebrow"
+              value={eyebrow}
+              tagName="span"
+              isPreviewMode={isPreviewMode}
+              onSave={(val) => onSave('eyebrow', val)}
               className="text-xs font-bold tracking-[0.2em] uppercase opacity-70 mb-1 block"
               style={{ color: darkMode ? '#3B82F6' : 'var(--color-primary)' }}
-            >
-              {eyebrow}
-            </span>
+            />
           )}
           {title && (
             <h3 
@@ -154,7 +234,16 @@ const BentoCellContent = ({ item, darkMode }: any) => {
                 color: finalTitleColor
               }}
             >
-              <TextRenderer text={title} />
+              <InlineEditableText
+                moduleId={moduleId}
+                settingId="title"
+                value={title}
+                tagName="span"
+                isPreviewMode={isPreviewMode}
+                onSave={(val) => onSave('title', val)}
+              >
+                <TextRenderer text={title} />
+              </InlineEditableText>
             </h3>
           )}
           {description && (
@@ -166,7 +255,14 @@ const BentoCellContent = ({ item, darkMode }: any) => {
                 lineHeight: 1.6
               }}
             >
-              {description}
+              <InlineEditableText
+                moduleId={moduleId}
+                settingId="description"
+                value={description}
+                tagName="span"
+                isPreviewMode={isPreviewMode}
+                onSave={(val) => onSave('description', val)}
+              />
             </p>
           )}
         </div>
@@ -202,9 +298,13 @@ export const BentoModule: React.FC<{
   const paddingY = parseNumSafe(getVal(null, 'padding_y', 100), 100);
   const maxWidth = parseNumSafe(getVal(null, 'max_width', 1400), 1400);
   const darkMode = getVal(null, 'dark_mode', false);
-  const bgColor = darkMode ? '#0F172A' : getVal(null, 'bg_color', '#FFFFFF');
+  const bgColor = getVal(null, 'bg_color', darkMode ? '#0F172A' : '#FFFFFF');
   const sectionGradient = getVal(null, 'section_gradient', false);
   const bgGradient = getVal(null, 'bg_gradient', 'linear-gradient(to bottom, #FFFFFF, #F8FAFC)');
+  const entranceAnim = getVal(null, 'entrance_anim', 'fade_up');
+
+  // Animation Overrides
+  const globalAnimOverride = getGlobalAnimation(entranceAnim, 'bento');
 
   // Multimedia (Parallax Background)
   const bgParallaxEnabled = getVal(null, 'bg_parallax_enabled', false);
@@ -226,6 +326,11 @@ export const BentoModule: React.FC<{
       h: parseInt(item.row_span) || 2,
     }));
   }, [rawItems, columns]);
+
+  const itemVariants = globalAnimOverride || {
+    hidden: { y: 20, opacity: 0 },
+    visible: { y: 0, opacity: 1, transition: { duration: 0.5, ease: "easeOut" } }
+  };
 
   const handleLayoutChange = (newLayout: any) => {
     if (!onSettingChange || isPreviewMode) return;
@@ -447,57 +552,75 @@ export const BentoModule: React.FC<{
             const isSelected = selectedIndex === i;
 
             return (
-              <div 
-                key={i.toString()} 
-                onClick={() => setSelectedIndex(i)}
-                className={`overflow-hidden transition-all duration-300 group flex flex-col cursor-pointer ${shadowClass} ${hoverClass} ${alignClass} ${card_style === 'glass' ? 'backdrop-blur-xl' : ''} ${
-                  isSelected ? 'ring-2 ring-primary ring-offset-4' : ''
-                }`}
-                style={{
-                  backgroundColor: card_style !== 'gradient' ? finalBg : undefined,
-                  backgroundImage: card_style === 'gradient' ? finalBg : undefined,
-                  borderRadius: `${card_radius}px`,
-                  border: card_style === 'transparent' ? 'none' : `1px solid ${darkMode ? 'rgba(255,255,255,0.1)' : card_border}`,
-                  padding: item.type === 'image' && image_fit === 'cover' && !item.title ? 0 : `${padding}px`,
-                  zIndex: z_index
-                }}
-              >
-                 {/* Delete Button (Only in Constructor) */}
-                 {!isPreviewMode && (
-                   <button 
-                     onClick={(e) => { e.stopPropagation(); removeItem(i); }}
-                     className="absolute top-3 right-3 p-2 bg-rose-500 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity z-50 hover:scale-110 active:scale-95 shadow-lg"
-                     title="Eliminar celda"
-                   >
-                     <LucideIcons.Trash2 size={14} />
-                   </button>
-                 )}
+              <div key={i.toString()}>
+                <motion.div 
+                  variants={entranceAnim !== 'none' ? itemVariants : {}}
+                  initial={entranceAnim !== 'none' ? "hidden" : "visible"}
+                  whileInView={entranceAnim !== 'none' ? "visible" : "visible"}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.1 }}
+                  onClick={() => setSelectedIndex(i)}
+                  className={`w-full h-full overflow-hidden transition-all duration-300 group flex flex-col cursor-pointer ${shadowClass} ${hoverClass} ${alignClass} ${card_style === 'glass' ? 'backdrop-blur-xl' : ''} ${
+                    isSelected ? 'ring-2 ring-primary ring-offset-4' : ''
+                  }`}
+                  style={{
+                    backgroundColor: card_style !== 'gradient' ? finalBg : undefined,
+                    backgroundImage: card_style === 'gradient' ? finalBg : undefined,
+                    borderRadius: `${card_radius}px`,
+                    border: card_style === 'transparent' ? 'none' : `1px solid ${darkMode ? 'rgba(255,255,255,0.1)' : card_border}`,
+                    padding: item.type === 'image' && image_fit === 'cover' && !item.title ? 0 : `${padding}px`,
+                    zIndex: z_index
+                  }}
+                >
+                  {/* Delete Button (Only in Constructor) */}
+                  {!isPreviewMode && (
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); removeItem(i); }}
+                      className="absolute top-3 right-3 p-2 bg-rose-500 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity z-50 hover:scale-110 active:scale-95 shadow-lg"
+                      title="Eliminar celda"
+                    >
+                      <LucideIcons.Trash2 size={14} />
+                    </button>
+                  )}
 
-                 {/* Background Image / Video */}
-                 {(image || item.type === 'video') && (
-                    <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
-                      <img 
-                        src={image} 
-                        className={`w-full h-full transition-transform duration-700 ${hover_effect === 'zoom' ? 'group-hover:scale-110' : ''} ${image_fit === 'cover' ? 'object-cover' : 'object-contain'}`}
-                        referrerPolicy="no-referrer"
-                        alt=""
-                      />
-                      {overlay_opacity > 0 && (
-                        <div 
-                          className="absolute inset-0 bg-black" 
-                          style={{ opacity: overlay_opacity / 100 }}
+                  {/* Background Image / Video */}
+                  {(image || item.type === 'video') && (
+                      <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
+                        <img 
+                          src={image} 
+                          className={`w-full h-full transition-transform duration-700 ${hover_effect === 'zoom' ? 'group-hover:scale-110' : ''} ${image_fit === 'cover' ? 'object-cover' : 'object-contain'}`}
+                          referrerPolicy="no-referrer"
+                          alt=""
                         />
-                      )}
-                    </div>
-                 )}
+                        {overlay_opacity > 0 && (
+                          <div 
+                            className="absolute inset-0 bg-black" 
+                            style={{ opacity: overlay_opacity / 100 }}
+                          />
+                        )}
+                      </div>
+                  )}
 
-                 {/* Glow Effect */}
-                 {card_style === 'glow' && (
-                   <div className="absolute -inset-1 bg-gradient-to-r from-primary via-accent to-primary rounded-[inherit] opacity-20 blur-xl group-hover:opacity-40 transition-opacity z-[-1]" />
-                 )}
+                  {/* Glow Effect */}
+                  {card_style === 'glow' && (
+                    <div className="absolute -inset-1 bg-gradient-to-r from-primary via-accent to-primary rounded-[inherit] opacity-20 blur-xl group-hover:opacity-40 transition-opacity z-[-1]" />
+                  )}
 
-                 {/* Content */}
-                 <BentoCellContent item={item} darkMode={darkMode} />
+                  {/* Content */}
+                  <BentoCellContent 
+                      item={item} 
+                      darkMode={darkMode} 
+                      moduleId={moduleId}
+                      isPreviewMode={isPreviewMode}
+                      onSave={(field: string, val: string) => {
+                        const newItems = [...rawItems];
+                        newItems[i] = { ...newItems[i], [field]: val };
+                        if (onSettingChange) {
+                          onSettingChange(`${moduleId}_el_bento_items`, 'items', newItems);
+                        }
+                      }}
+                  />
+                </motion.div>
               </div>
             );
           })}

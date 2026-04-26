@@ -4,11 +4,17 @@ import { Linkedin, Twitter, Globe, X, ChevronLeft, ChevronRight } from 'lucide-r
 import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
 import { TextRenderer } from '../TextRenderer';
 import { parseNumSafe } from '../utils';
+import { GLOBAL_ANIMATIONS, getGlobalAnimation } from '../../../constants/animations';
+
+import { InlineEditableText } from '../InlineEditableText';
+import { useEditorStore } from '../../../store/editorStore';
 
 export const TeamModule: React.FC<{ 
   moduleId: string, 
-  settingsValues: Record<string, any> 
-}> = ({ moduleId, settingsValues }) => {
+  settingsValues: Record<string, any>,
+  isPreviewMode?: boolean
+}> = ({ moduleId, settingsValues, isPreviewMode = false }) => {
+  const { selectSection, selectElement } = useEditorStore();
   const [activeCategory, setActiveCategory] = useState('Todos');
   const [selectedMember, setSelectedMember] = useState<any>(null);
   const [carouselIndex, setCarouselIndex] = useState(0);
@@ -25,11 +31,14 @@ export const TeamModule: React.FC<{
   const gap = parseNumSafe(getVal(null, 'gap', 32), 32);
   const paddingY = parseNumSafe(getVal(null, 'padding_y', 100), 100);
   const darkMode = getVal(null, 'dark_mode', false);
-  const bgColor = darkMode ? '#0F172A' : getVal(null, 'bg_color', '#FFFFFF');
+  const bgColor = getVal(null, 'bg_color', darkMode ? '#0F172A' : '#FFFFFF');
   const sectionGradient = getVal(null, 'section_gradient', false);
   const bgGradient = getVal(null, 'bg_gradient', 'linear-gradient(to bottom, #FFFFFF, #F8FAFC)');
-  const entranceAnim = getVal(null, 'entrance_anim', true);
+  const entranceAnim = getVal(null, 'entrance_anim', 'none');
   const staggerAnim = getVal(null, 'stagger_anim', true);
+
+  // Animation Overrides
+  const globalAnimOverride = getGlobalAnimation(entranceAnim, 'team');
   const enableModal = getVal(null, 'enable_modal', true);
 
   // Element: Header
@@ -138,15 +147,12 @@ export const TeamModule: React.FC<{
     }
   };
 
-  const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: { y: 0, opacity: 1, transition: { duration: 0.5, ease: "easeOut" as any } }
-  };
-
-  const nextSlide = () => {
-    const pages = Math.ceil(filteredMembers.length / columns);
-    if (pages <= 0) return;
-    setCarouselIndex((prev) => (prev + 1) % pages);
+  const itemVariants = globalAnimOverride ? {
+    hidden: globalAnimOverride.hidden as any,
+    visible: globalAnimOverride.visible as any
+  } : {
+    hidden: { y: 20, opacity: 0 } as any,
+    visible: { y: 0, opacity: 1, transition: { duration: 0.5, ease: "easeOut" as any } } as any
   };
 
   const prevSlide = () => {
@@ -155,8 +161,28 @@ export const TeamModule: React.FC<{
     setCarouselIndex((prev) => (prev - 1 + pages) % pages);
   };
 
+  const nextSlide = () => {
+    const pages = Math.ceil(filteredMembers.length / columns);
+    if (pages <= 0) return;
+    setCarouselIndex((prev) => (prev + 1) % pages);
+  };
+
+  const handleUpdateMember = (index: number, field: string, newValue: string) => {
+    const updatedMembers = [...members];
+    updatedMembers[index] = { ...updatedMembers[index], [field]: newValue };
+    const { updateSectionSettings } = useEditorStore.getState();
+    updateSectionSettings(moduleId, { [`${moduleId}_el_team_items_members`]: updatedMembers });
+  };
+
   return (
     <section 
+      id={moduleId}
+      onClick={(e) => {
+        if (isPreviewMode) return;
+        e.stopPropagation();
+        selectSection(moduleId);
+        selectElement(`${moduleId}_global`);
+      }}
       className="w-full relative overflow-hidden"
       style={{ 
         backgroundColor: bgColor,
@@ -176,7 +202,13 @@ export const TeamModule: React.FC<{
               className="text-sm font-bold tracking-widest mb-3 uppercase"
               style={{ color: eyebrowColor }}
             >
-              {eyebrow}
+              <InlineEditableText
+                moduleId={moduleId}
+                elementId={`${moduleId}_el_team_header`}
+                settingId="eyebrow"
+                value={eyebrow}
+                isPreviewMode={isPreviewMode}
+              />
             </span>
           )}
           <h2 
@@ -186,13 +218,21 @@ export const TeamModule: React.FC<{
               color: headerTitleColor
             }}
           >
-            <TextRenderer 
-              text={headerTitle}
-              highlightType={titleHighlightType}
-              highlightColor={titleHighlightColor}
-              highlightGradient={titleHighlightGradient}
-              highlightBold={titleHighlightBold}
-            />
+            <InlineEditableText
+              moduleId={moduleId}
+              elementId={`${moduleId}_el_team_header`}
+              settingId="title"
+              value={headerTitle}
+              isPreviewMode={isPreviewMode}
+            >
+              <TextRenderer 
+                text={headerTitle}
+                highlightType={titleHighlightType}
+                highlightColor={titleHighlightColor}
+                highlightGradient={titleHighlightGradient}
+                highlightBold={titleHighlightBold}
+              />
+            </InlineEditableText>
           </h2>
           {headerSubtitle && (
             <p 
@@ -202,13 +242,21 @@ export const TeamModule: React.FC<{
                 color: darkMode ? '#94A3B8' : '#64748B' 
               }}
             >
-              <TextRenderer 
-                text={headerSubtitle} 
-                highlightType={subtitleHighlightType}
-                highlightColor={subtitleHighlightColor}
-                highlightGradient={subtitleHighlightGradient}
-                highlightBold={subtitleHighlightBold}
-              />
+              <InlineEditableText
+                moduleId={moduleId}
+                elementId={`${moduleId}_el_team_header`}
+                settingId="subtitle"
+                value={headerSubtitle}
+                isPreviewMode={isPreviewMode}
+              >
+                <TextRenderer 
+                  text={headerSubtitle} 
+                  highlightType={subtitleHighlightType}
+                  highlightColor={subtitleHighlightColor}
+                  highlightGradient={subtitleHighlightGradient}
+                  highlightBold={subtitleHighlightBold}
+                />
+              </InlineEditableText>
             </p>
           )}
         </div>
@@ -268,7 +316,13 @@ export const TeamModule: React.FC<{
                     exit={{ opacity: 0, scale: 0.9 }}
                     variants={itemVariants}
                     whileHover={hoverEffect === 'lift' ? { y: -10 } : {}}
-                    onClick={() => enableModal && setSelectedMember(member)}
+                    onClick={(e) => {
+                      if (isPreviewMode) return;
+                      e.stopPropagation();
+                      selectSection(moduleId);
+                      selectElement(`${moduleId}_el_team_items`);
+                      if (enableModal) setSelectedMember(member);
+                    }}
                     className={`group relative overflow-hidden transition-all duration-300 ${
                       layout === 'list' ? 'flex flex-col @md:flex-row items-center gap-8' : 
                       layout === 'carousel' ? `w-full shrink-0 px-[${gap/2}px]` : ''
@@ -333,41 +387,61 @@ export const TeamModule: React.FC<{
                       </div>
                     </div>
 
-                    {/* Info */}
-                    <div className={`flex-1 ${layout === 'list' ? 'text-left' : 'text-center'}`}>
-                      <h3 
-                        className="mb-1"
-                        style={{ 
-                          fontSize: `${TYPOGRAPHY_SCALE[nameSize as keyof typeof TYPOGRAPHY_SCALE]?.fontSize || 18}px`, 
-                          color: nameColor,
-                          fontWeight: FONT_WEIGHTS[nameWeight as keyof typeof FONT_WEIGHTS]?.value || 900
-                        }}
-                      >
-                        {member.name}
-                      </h3>
-                      <p 
-                        className="uppercase tracking-widest mb-3"
-                        style={{ 
-                          fontSize: `${TYPOGRAPHY_SCALE[roleSize as keyof typeof TYPOGRAPHY_SCALE]?.fontSize || 14}px`, 
-                          color: roleColor,
-                          fontWeight: FONT_WEIGHTS[roleWeight as keyof typeof FONT_WEIGHTS]?.value || 800
-                        }}
-                      >
-                        {member.role}
-                      </p>
-                      
-                      {(layout === 'list' || (member.bio && !enableModal)) && (
-                        <p 
-                          className="leading-relaxed line-clamp-3"
+                      <div className={`flex-1 ${layout === 'list' ? 'text-left' : 'text-center'}`}>
+                        <h3 
+                          className="mb-1"
                           style={{ 
-                            ...getTypographyStyle(bioSize, bioWeight),
-                            color: bioColor 
+                            fontSize: `${TYPOGRAPHY_SCALE[nameSize as keyof typeof TYPOGRAPHY_SCALE]?.fontSize || 18}px`, 
+                            color: nameColor,
+                            fontWeight: FONT_WEIGHTS[nameWeight as keyof typeof FONT_WEIGHTS]?.value || 900
                           }}
                         >
-                          {member.bio}
+                          <InlineEditableText
+                            moduleId={moduleId}
+                            elementId={`${moduleId}_el_team_items`}
+                            settingId={`member_${index}_name`}
+                            value={member.name}
+                            isPreviewMode={isPreviewMode}
+                            onSave={(val) => handleUpdateMember(index, 'name', val)}
+                          />
+                        </h3>
+                        <p 
+                          className="uppercase tracking-widest mb-3"
+                          style={{ 
+                            fontSize: `${TYPOGRAPHY_SCALE[roleSize as keyof typeof TYPOGRAPHY_SCALE]?.fontSize || 14}px`, 
+                            color: roleColor,
+                            fontWeight: FONT_WEIGHTS[roleWeight as keyof typeof FONT_WEIGHTS]?.value || 800
+                          }}
+                        >
+                          <InlineEditableText
+                            moduleId={moduleId}
+                            elementId={`${moduleId}_el_team_items`}
+                            settingId={`member_${index}_role`}
+                            value={member.role}
+                            isPreviewMode={isPreviewMode}
+                            onSave={(val) => handleUpdateMember(index, 'role', val)}
+                          />
                         </p>
-                      )}
-                    </div>
+                        
+                        {(layout === 'list' || (member.bio && !enableModal)) && (
+                          <div 
+                            className="leading-relaxed line-clamp-3"
+                            style={{ 
+                              ...getTypographyStyle(bioSize, bioWeight),
+                              color: bioColor 
+                            }}
+                          >
+                            <InlineEditableText
+                              moduleId={moduleId}
+                              elementId={`${moduleId}_el_team_items`}
+                              settingId={`member_${index}_bio`}
+                              value={member.bio}
+                              isPreviewMode={isPreviewMode}
+                              onSave={(val) => handleUpdateMember(index, 'bio', val)}
+                            />
+                          </div>
+                        )}
+                      </div>
                   </motion.div>
                 );
               })}

@@ -6,14 +6,20 @@ import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
 import { TextRenderer } from '../TextRenderer';
 import { ParallaxBackground } from '../ParallaxBackground';
 import { RotatingText } from '../RotatingText';
+import { InlineEditableText } from '../InlineEditableText';
 import { parseNumSafe } from '../utils';
+import { useEditorStore } from '../../../store/editorStore';
+
+import { GLOBAL_ANIMATIONS, getGlobalAnimation } from '../../../constants/animations';
 
 export const HeroModule: React.FC<{ 
   moduleId: string, 
   settingsValues: Record<string, any>,
   logoUrl?: string | null,
-  logoWhiteUrl?: string | null
-}> = ({ moduleId, settingsValues, logoUrl, logoWhiteUrl }) => {
+  logoWhiteUrl?: string | null,
+  isPreviewMode?: boolean
+}> = ({ moduleId, settingsValues, logoUrl, logoWhiteUrl, isPreviewMode = false }) => {
+  const { updateSectionSettings, selectSection, selectElement } = useEditorStore();
   const getVal = (elementId: string | null, settingId: string, defaultValue: any) => {
     const key = elementId ? `${elementId}_${settingId}` : `${moduleId}_global_${settingId}`;
     return settingsValues[key] !== undefined ? settingsValues[key] : defaultValue;
@@ -31,7 +37,7 @@ export const HeroModule: React.FC<{
   const maxWidth = parseNumSafe(getVal(null, 'max_width', 1200), 1200);
   const darkMode = getVal(null, 'dark_mode', false);
   const bgType = getVal(null, 'bg_type', 'color');
-  const bgColor = darkMode ? '#0F172A' : getVal(null, 'bg_color', '#FFFFFF');
+  const bgColor = getVal(null, 'bg_color', darkMode ? '#0F172A' : '#FFFFFF');
   const bgGradient = getVal(null, 'bg_gradient', 'linear-gradient(135deg, #F8FAFC 0%, #E2E8F0 100%)');
   const overlayColor = getVal(null, 'overlay_color', '#000000');
   const overlayOpacity = parseNumSafe(getVal(null, 'overlay_opacity', 0), 0);
@@ -40,6 +46,9 @@ export const HeroModule: React.FC<{
   const scrollIndicator = getVal(null, 'scroll_indicator', true);
   const scrollText = getVal(null, 'scroll_text', 'SCROLL');
   const entranceAnim = getVal(null, 'entrance_anim', 'fade_up');
+
+  // Animation Overrides
+  const globalAnimOverride = getGlobalAnimation(entranceAnim, 'hero');
 
   // Multimedia (Parallax Background)
   const bgParallaxEnabled = getVal(null, 'bg_parallax_enabled', false);
@@ -154,7 +163,7 @@ export const HeroModule: React.FC<{
     }
   };
 
-  const itemVariants: any = {
+  const itemVariants: any = globalAnimOverride || {
     fade_up: {
       hidden: { y: 30, opacity: 0 },
       visible: { y: 0, opacity: 1, transition: { duration: 0.8, ease: [0.22, 1, 0.36, 1] } }
@@ -189,13 +198,16 @@ export const HeroModule: React.FC<{
         style={{ marginBottom: `${typographyMarginB}px` }}
       >
       {eyebrow && (
-        <motion.span 
-          variants={itemVariants}
+        <InlineEditableText
+          moduleId={moduleId}
+          elementId={`${moduleId}_el_hero_typography`}
+          settingId="eyebrow"
+          value={eyebrow}
+          tagName="span"
+          isPreviewMode={isPreviewMode}
           className="px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em]"
-          style={{ backgroundColor: eyebrowBg, color: eyebrowColor }}
-        >
-          {eyebrow}
-        </motion.span>
+          style={{ backgroundColor: eyebrowBg, color: eyebrowColor, display: 'inline-block' }}
+        />
       )}
       
       <motion.h1 
@@ -214,15 +226,35 @@ export const HeroModule: React.FC<{
             gradient={rotatingGradient}
             speed={rotatingSpeed}
             animationType={rotatingAnim as any}
+            moduleId={moduleId}
+            isPreviewMode={isPreviewMode}
+            onSaveFixed={(val) => {
+              updateSectionSettings(moduleId, { [`${moduleId}_el_hero_typography_rotating_fixed`]: val });
+            }}
+            onSaveOption={(idx, val) => {
+              const newOptions = [...rotatingOptions];
+              newOptions[idx] = { ...newOptions[idx], text: val };
+              updateSectionSettings(moduleId, { [`${moduleId}_el_hero_typography_rotating_options`]: newOptions });
+            }}
           />
         ) : (
-          <TextRenderer 
-            text={title} 
-            highlightType={titleHighlightType}
-            highlightColor={titleHighlightColor}
-            highlightGradient={titleHighlightGradient}
-            highlightBold={titleHighlightBold}
-          />
+          <InlineEditableText
+            moduleId={moduleId}
+            elementId={`${moduleId}_el_hero_typography`}
+            settingId="title"
+            value={title}
+            tagName="span"
+            isPreviewMode={isPreviewMode}
+            style={{ display: 'inline-block', width: '100%' }}
+          >
+            <TextRenderer 
+              text={title} 
+              highlightType={titleHighlightType}
+              highlightColor={titleHighlightColor}
+              highlightGradient={titleHighlightGradient}
+              highlightBold={titleHighlightBold}
+            />
+          </InlineEditableText>
         )}
       </motion.h1>
 
@@ -235,13 +267,23 @@ export const HeroModule: React.FC<{
             color: darkMode ? '#94A3B8' : '#475569'
           }}
         >
-          <TextRenderer 
-            text={subtitle} 
-            highlightType={subtitleHighlightType}
-            highlightColor={subtitleHighlightColor}
-            highlightGradient={subtitleHighlightGradient}
-            highlightBold={subtitleHighlightBold}
-          />
+          <InlineEditableText
+            moduleId={moduleId}
+            elementId={`${moduleId}_el_hero_typography`}
+            settingId="subtitle"
+            value={subtitle}
+            tagName="span"
+            isPreviewMode={isPreviewMode}
+            style={{ display: 'inline-block', width: '100%' }}
+          >
+            <TextRenderer 
+              text={subtitle} 
+              highlightType={subtitleHighlightType}
+              highlightColor={subtitleHighlightColor}
+              highlightGradient={subtitleHighlightGradient}
+              highlightBold={subtitleHighlightBold}
+            />
+          </InlineEditableText>
         </motion.p>
       )}
 
@@ -260,6 +302,12 @@ export const HeroModule: React.FC<{
               boxShadow: [`0 0 0 0px ${primaryBg}40`, `0 0 0 15px ${primaryBg}00`]
             } : {}}
             transition={pulseEffect ? { repeat: Infinity, duration: 2 } : {}}
+            onClick={(e) => {
+              if (isPreviewMode) return;
+              e.stopPropagation();
+              selectSection(moduleId);
+              selectElement(`${moduleId}_el_hero_ctas`);
+            }}
             className={`group relative overflow-hidden flex items-center justify-center gap-2 px-8 py-4 font-black uppercase tracking-widest text-[11px] shadow-2xl transition-all ${btnWidthMobile === 'full' ? 'w-full sm:w-auto' : 'w-auto'}`}
             style={{ 
               backgroundColor: primaryBg,
@@ -270,7 +318,14 @@ export const HeroModule: React.FC<{
             {shimmerEffect && (
               <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full animate-[shimmer_2s_infinite]" />
             )}
-            {primaryText}
+            <InlineEditableText
+              moduleId={moduleId}
+              elementId={`${moduleId}_el_hero_ctas`}
+              settingId="primary_text"
+              value={primaryText}
+              tagName="span"
+              isPreviewMode={isPreviewMode}
+            />
             {primaryIcon && <IconRenderer name={primaryIcon} className="group-hover:translate-x-1 transition-transform" />}
           </motion.a>
         )}
@@ -282,6 +337,12 @@ export const HeroModule: React.FC<{
             rel={secondaryTarget === '_blank' ? 'noopener noreferrer' : undefined}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
+            onClick={(e) => {
+              if (isPreviewMode) return;
+              e.stopPropagation();
+              selectSection(moduleId);
+              selectElement(`${moduleId}_el_hero_ctas`);
+            }}
             className={`flex items-center justify-center gap-2 px-8 py-4 font-black uppercase tracking-widest text-[11px] transition-all ${btnWidthMobile === 'full' ? 'w-full sm:w-auto' : 'w-auto'}`}
             style={{ 
               backgroundColor: secondaryStyle === 'solid' ? (darkMode ? '#334155' : '#F1F5F9') : 'transparent',
@@ -290,7 +351,14 @@ export const HeroModule: React.FC<{
               borderRadius: `${btnRadius}px`
             }}
           >
-            {secondaryText}
+            <InlineEditableText
+              moduleId={moduleId}
+              elementId={`${moduleId}_el_hero_ctas`}
+              settingId="secondary_text"
+              value={secondaryText}
+              tagName="span"
+              isPreviewMode={isPreviewMode}
+            />
             {secondaryIcon && <IconRenderer name={secondaryIcon} />}
           </motion.a>
         )}
@@ -326,15 +394,19 @@ export const HeroModule: React.FC<{
               );
             })}
           </div>
-          <span 
+          <InlineEditableText
+            moduleId={moduleId}
+            elementId={`${moduleId}_el_hero_social_proof`}
+            settingId="proof_text"
+            value={proofText}
+            tagName="span"
+            isPreviewMode={isPreviewMode}
             className="opacity-60 uppercase tracking-wider"
             style={{ 
               fontSize: `${TYPOGRAPHY_SCALE[proofFontSize as keyof typeof TYPOGRAPHY_SCALE]?.fontSize || 12}px`,
               fontWeight: FONT_WEIGHTS[proofWeight as keyof typeof FONT_WEIGHTS]?.value || 800
             }}
-          >
-            {proofText}
-          </span>
+          />
         </motion.div>
       )}
     </motion.div>
@@ -356,6 +428,12 @@ export const HeroModule: React.FC<{
         scale: { duration: 1 }
       } : { duration: 1 }}
       viewport={{ once: true }}
+      onClick={(e) => {
+        if (isPreviewMode) return;
+        e.stopPropagation();
+        selectSection(moduleId);
+        selectElement(`${moduleId}_el_hero_media`);
+      }}
       className="relative z-30"
       style={{ perspective: `${perspective}px` }}
     >
@@ -455,8 +533,15 @@ export const HeroModule: React.FC<{
 
   return (
     <section 
+      id={moduleId}
       ref={containerRef}
       className={`relative w-full overflow-hidden flex items-center ${sectionHeight}`}
+      onClick={(e) => {
+        if (isPreviewMode) return;
+        e.stopPropagation();
+        selectSection(moduleId);
+        selectElement(`${moduleId}_global`);
+      }}
     >
       {renderBackground()}
 

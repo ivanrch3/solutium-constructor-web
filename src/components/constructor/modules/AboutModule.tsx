@@ -4,12 +4,17 @@ import * as LucideIcons from 'lucide-react';
 import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
 import { TextRenderer } from '../TextRenderer';
 import { ParallaxBackground } from '../ParallaxBackground';
+import { InlineEditableText } from '../InlineEditableText';
 import { parseNumSafe } from '../utils';
+import { useEditorStore } from '../../../store/editorStore';
+import { GLOBAL_ANIMATIONS, getGlobalAnimation } from '../../../constants/animations';
 
 export const AboutModule: React.FC<{ 
   moduleId: string, 
-  settingsValues: Record<string, any> 
-}> = ({ moduleId, settingsValues }) => {
+  settingsValues: Record<string, any>,
+  isPreviewMode?: boolean
+}> = ({ moduleId, settingsValues, isPreviewMode = false }) => {
+  const { selectSection, selectElement } = useEditorStore();
   const getVal = (elementId: string | null, settingId: string, defaultValue: any) => {
     const key = elementId ? `${elementId}_${settingId}` : `${moduleId}_global_${settingId}`;
     return settingsValues[key] !== undefined ? settingsValues[key] : defaultValue;
@@ -26,11 +31,14 @@ export const AboutModule: React.FC<{
   const paddingY = parseNumSafe(getVal(null, 'padding_y', 120), 120);
   const contentWidth = parseNumSafe(getVal(null, 'content_width', 1200), 1200);
   const darkMode = getVal(null, 'dark_mode', false);
-  const bgColor = darkMode ? '#0F172A' : getVal(null, 'bg_color', '#FFFFFF');
+  const bgColor = getVal(null, 'bg_color', darkMode ? '#0F172A' : '#FFFFFF');
   const sectionGradient = getVal(null, 'section_gradient', false);
   const bgGradient = getVal(null, 'bg_gradient', 'linear-gradient(to bottom, #FFFFFF, #F8FAFC)');
-  const entranceAnim = getVal(null, 'entrance_anim', true);
+  const entranceAnim = getVal(null, 'entrance_anim', 'none');
   const showDecor = getVal(null, 'show_decor', true);
+
+  // Animation Overrides
+  const globalAnimOverride = getGlobalAnimation(entranceAnim, 'about');
 
   // Multimedia (Parallax Background)
   const bgParallaxEnabled = getVal(null, 'bg_parallax_enabled', false);
@@ -97,7 +105,7 @@ export const AboutModule: React.FC<{
     }
   };
 
-  const itemVariants: any = {
+  const itemVariants: any = globalAnimOverride || {
     hidden: { y: 20, opacity: 0 },
     visible: { y: 0, opacity: 1, transition: { duration: 0.6, ease: "easeOut" } }
   };
@@ -116,7 +124,13 @@ export const AboutModule: React.FC<{
           className="font-bold tracking-[0.3em] text-[10px] @md:text-xs uppercase mb-6 block"
           style={{ color: eyebrowColor }}
         >
-          {eyebrow}
+          <InlineEditableText
+            moduleId={moduleId}
+            elementId={`${moduleId}_el_about_narrative`}
+            settingId="eyebrow"
+            value={eyebrow}
+            isPreviewMode={isPreviewMode}
+          />
         </motion.span>
       )}
       <motion.h2 
@@ -127,13 +141,21 @@ export const AboutModule: React.FC<{
           color: titleColor 
         }}
       >
-        <TextRenderer 
-          text={title}
-          highlightType={getVal(`${moduleId}_el_about_narrative`, 'title_highlight_type', 'gradient')}
-          highlightColor={getVal(`${moduleId}_el_about_narrative`, 'title_highlight_color', '#3B82F6')}
-          highlightGradient={getVal(`${moduleId}_el_about_narrative`, 'title_highlight_gradient', 'linear-gradient(to right, #3B82F6, #2563EB)')}
-          highlightBold={getVal(`${moduleId}_el_about_narrative`, 'title_highlight_bold', true)}
-        />
+        <InlineEditableText
+          moduleId={moduleId}
+          elementId={`${moduleId}_el_about_narrative`}
+          settingId="title"
+          value={title}
+          isPreviewMode={isPreviewMode}
+        >
+          <TextRenderer 
+            text={title}
+            highlightType={getVal(`${moduleId}_el_about_narrative`, 'title_highlight_type', 'gradient')}
+            highlightColor={getVal(`${moduleId}_el_about_narrative`, 'title_highlight_color', '#3B82F6')}
+            highlightGradient={getVal(`${moduleId}_el_about_narrative`, 'title_highlight_gradient', 'linear-gradient(to right, #3B82F6, #2563EB)')}
+            highlightBold={getVal(`${moduleId}_el_about_narrative`, 'title_highlight_bold', true)}
+          />
+        </InlineEditableText>
       </motion.h2>
       <motion.p 
         variants={entranceAnim ? itemVariants : {}}
@@ -143,7 +165,13 @@ export const AboutModule: React.FC<{
           color: darkMode ? '#94A3B8' : '#64748B'
         }}
       >
-        {description}
+        <InlineEditableText
+          moduleId={moduleId}
+          elementId={`${moduleId}_el_about_narrative`}
+          settingId="description"
+          value={description}
+          isPreviewMode={isPreviewMode}
+        />
       </motion.p>
 
       {quote && (
@@ -151,7 +179,13 @@ export const AboutModule: React.FC<{
           variants={entranceAnim ? itemVariants : {}}
           className={`border-l-4 border-primary/30 pl-6 py-2 mb-10 italic text-lg @md:text-xl font-serif ${darkMode ? 'text-slate-300' : 'text-slate-600'}`}
         >
-          "{quote}"
+          <InlineEditableText
+            moduleId={moduleId}
+            elementId={`${moduleId}_el_about_narrative`}
+            settingId="quote"
+            value={quote}
+            isPreviewMode={isPreviewMode}
+          />
         </motion.div>
       )}
 
@@ -168,7 +202,13 @@ export const AboutModule: React.FC<{
               rel={buttonTarget === '_blank' ? 'noopener noreferrer' : undefined}
               className="px-8 py-4 bg-primary text-white font-bold rounded-full hover:scale-105 transition-transform shadow-lg shadow-primary/20"
             >
-              {buttonText}
+              <InlineEditableText
+                moduleId={moduleId}
+                elementId={`${moduleId}_el_about_narrative`}
+                settingId="button_text"
+                value={buttonText}
+                isPreviewMode={isPreviewMode}
+              />
             </a>
           )}
           {signatureUrl && (
@@ -266,6 +306,12 @@ export const AboutModule: React.FC<{
       id={moduleId}
       ref={containerRef}
       className="w-full relative overflow-hidden"
+      onClick={(e) => {
+        if (isPreviewMode) return;
+        e.stopPropagation();
+        selectSection(moduleId);
+        selectElement(`${moduleId}_global`);
+      }}
       style={{ 
         backgroundColor: bgColor,
         backgroundImage: (sectionGradient && typeof bgGradient === 'string' && !bgGradient.includes('NaN')) ? bgGradient : 'none',

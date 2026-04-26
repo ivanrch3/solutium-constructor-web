@@ -5,10 +5,13 @@ import { MOCK_CUSTOMERS } from '../../../constants/mockData';
 import { Users } from 'lucide-react';
 import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
 import { TextRenderer } from '../TextRenderer';
+import { InlineEditableText } from '../InlineEditableText';
+import { GLOBAL_ANIMATIONS, getGlobalAnimation } from '../../../constants/animations';
 
 const LogoItem = ({ 
   customer, 
   entranceAnimation, 
+  itemVariantsActual,
   hoverReveal,
   hoverGlow,
   hoverScale, 
@@ -21,11 +24,6 @@ const LogoItem = ({
   showTooltips, 
   enableLinks 
 }: any) => {
-  const itemVariantsActual = {
-    hidden: { y: 20, opacity: 0 },
-    visible: { y: 0, opacity: 1, transition: { duration: 0.5 } }
-  };
-
   const content = (
     <motion.div
       variants={entranceAnimation ? itemVariantsActual : {}}
@@ -78,8 +76,9 @@ export const ClientsModule: React.FC<{
   moduleId: string, 
   settingsValues: Record<string, any>,
   customers?: Customer[],
-  isDevMode?: boolean
-}> = ({ moduleId, settingsValues, customers, isDevMode }) => {
+  isDevMode?: boolean,
+  isPreviewMode?: boolean
+}> = ({ moduleId, settingsValues, customers, isDevMode, isPreviewMode = false }) => {
   // Helper to get setting value
   const getVal = (elementId: string | null, settingId: string, defaultValue: any) => {
     const key = elementId ? `${elementId}_${settingId}` : `${moduleId}_global_${settingId}`;
@@ -107,13 +106,16 @@ export const ClientsModule: React.FC<{
   const gap = parseF(getVal(null, 'gap', 40), 40);
   const paddingY = parseF(getVal(null, 'padding_y', 80), 80);
   const darkMode = getVal(null, 'dark_mode', false);
-  const bgColor = darkMode ? '#0F172A' : getVal(null, 'bg_color', '#FFFFFF');
+  const bgColor = getVal(null, 'bg_color', darkMode ? '#0F172A' : '#FFFFFF');
   const sectionGradient = getVal(null, 'section_gradient', false);
   const bgGradient = getVal(null, 'bg_gradient', 'linear-gradient(to bottom, #FFFFFF, #F8FAFC)');
   const animationSpeed = parseF(getVal(null, 'animation_speed', 30), 30);
   const marqueeDirection = getVal(null, 'marquee_direction', 'left');
   const pauseOnHover = getVal(null, 'pause_on_hover', true);
-  const entranceAnimation = getVal(null, 'entrance_animation', true);
+  const entranceAnimation = getVal(null, 'entrance_animation', 'fade_up');
+
+  // Animation Overrides
+  const globalAnimOverride = getGlobalAnimation(entranceAnimation, 'clients');
 
   // Element Settings: Header
   const eyebrow = getVal(`${moduleId}_el_clients_header`, 'eyebrow', 'TRUSTED BY');
@@ -186,8 +188,14 @@ export const ClientsModule: React.FC<{
     }
   };
 
+  const itemVariantsActual = globalAnimOverride || {
+    hidden: { y: 20, opacity: 0 },
+    visible: { y: 0, opacity: 1, transition: { duration: 0.5 } }
+  };
+
   const logoProps = {
     entranceAnimation,
+    itemVariantsActual,
     hoverReveal,
     hoverGlow,
     hoverScale,
@@ -310,7 +318,13 @@ export const ClientsModule: React.FC<{
               className="text-sm font-bold tracking-widest mb-3 uppercase"
               style={{ color: eyebrowColor }}
             >
-              {eyebrow}
+              <InlineEditableText
+                moduleId={moduleId}
+                elementId={`${moduleId}_el_clients_header`}
+                settingId="eyebrow"
+                value={eyebrow}
+                isPreviewMode={isPreviewMode}
+              />
             </span>
           )}
           <h2 
@@ -320,13 +334,21 @@ export const ClientsModule: React.FC<{
               color: titleColor
             }}
           >
-            <TextRenderer 
-              text={titleText}
-              highlightType={titleHighlightType}
-              highlightColor={titleHighlightColor}
-              highlightGradient={titleHighlightGradient}
-              highlightBold={titleHighlightBold}
-            />
+            <InlineEditableText
+              moduleId={moduleId}
+              elementId={`${moduleId}_el_clients_header`}
+              settingId="title"
+              value={titleText}
+              isPreviewMode={isPreviewMode}
+            >
+              <TextRenderer 
+                text={titleText}
+                highlightType={titleHighlightType}
+                highlightColor={titleHighlightColor}
+                highlightGradient={titleHighlightGradient}
+                highlightBold={titleHighlightBold}
+              />
+            </InlineEditableText>
           </h2>
           {subtitleText && (
             <p 
@@ -336,13 +358,21 @@ export const ClientsModule: React.FC<{
                 color: darkMode ? '#94A3B8' : '#64748B' 
               }}
             >
-              <TextRenderer 
-                text={subtitleText}
-                highlightType={subtitleHighlightType}
-                highlightColor={subtitleHighlightColor}
-                highlightGradient={subtitleHighlightGradient}
-                highlightBold={subtitleHighlightBold}
-              />
+              <InlineEditableText
+                moduleId={moduleId}
+                elementId={`${moduleId}_el_clients_header`}
+                settingId="subtitle"
+                value={subtitleText}
+                isPreviewMode={isPreviewMode}
+              >
+                <TextRenderer 
+                  text={subtitleText}
+                  highlightType={subtitleHighlightType}
+                  highlightColor={subtitleHighlightColor}
+                  highlightGradient={subtitleHighlightGradient}
+                  highlightBold={subtitleHighlightBold}
+                />
+              </InlineEditableText>
             </p>
           )}
         </div>

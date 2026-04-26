@@ -13,6 +13,7 @@ export interface ProjectFormData {
 interface ProjectFormProps {
   onSubmit: (data: ProjectFormData) => void;
   onCancel: () => void;
+  onSkip?: () => void;
 }
 
 const INDUSTRIES = [
@@ -66,7 +67,7 @@ const STYLES = [
   'Atrevido'
 ];
 
-export const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, onCancel }) => {
+export const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, onCancel, onSkip }) => {
   const [step, setStep] = useState(1);
   const [customIndustry, setCustomIndustry] = useState('');
   const [formData, setFormData] = useState<ProjectFormData>({
@@ -248,6 +249,14 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, onCancel }) 
             </button>
             
             <div className="flex items-center gap-3">
+              {onSkip && (
+                <button
+                  onClick={onSkip}
+                  className="px-6 py-3 rounded-xl font-bold text-base text-text/30 hover:text-text/50 transition-all"
+                >
+                  Omitir paso
+                </button>
+              )}
               <button
                 disabled={step === 1 ? !isStep1Valid : !isStep2Valid}
                 onClick={handleNext}

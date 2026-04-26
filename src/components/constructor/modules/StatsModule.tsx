@@ -5,7 +5,7 @@ import { Star } from 'lucide-react';
 import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
 import { TextRenderer } from '../TextRenderer';
 import { ParallaxBackground } from '../ParallaxBackground';
-import { parseNumSafe } from '../utils';
+import { parseNumSafe, isDarkColor } from '../utils';
 
 const CountUp = ({ value, duration = 2, easing = 'spring' }: { value: number | string, duration?: number, easing?: string }) => {
   const ref = useRef(null);
@@ -169,10 +169,17 @@ const StatItem = ({
   );
 };
 
+import { InlineEditableText } from '../InlineEditableText';
+import { useEditorStore } from '../../../store/editorStore';
+
+import { GLOBAL_ANIMATIONS, getGlobalAnimation } from '../../../constants/animations';
+
 export const StatsModule: React.FC<{ 
   moduleId: string, 
-  settingsValues: Record<string, any> 
-}> = ({ moduleId, settingsValues }) => {
+  settingsValues: Record<string, any>,
+  isPreviewMode?: boolean
+}> = ({ moduleId, settingsValues, isPreviewMode = false }) => {
+  const { updateSectionSettings } = useEditorStore();
   const getVal = (elementId: string | null, settingId: string, defaultValue: any) => {
     const key = elementId ? `${elementId}_${settingId}` : `${moduleId}_global_${settingId}`;
     return settingsValues[key] !== undefined ? settingsValues[key] : defaultValue;
@@ -190,12 +197,19 @@ export const StatsModule: React.FC<{
   const gap = parseNumSafe(getVal(null, 'gap', 30), 30);
   const paddingY = parseNumSafe(getVal(null, 'padding_y', 100), 100);
   const darkMode = getVal(null, 'dark_mode', false);
-  const bgColor = darkMode ? '#0F172A' : getVal(null, 'bg_color', '#FFFFFF');
+  const bgColor = getVal(null, 'bg_color', darkMode ? '#0F172A' : '#FFFFFF');
   const sectionGradient = getVal(null, 'section_gradient', false);
   const bgGradient = getVal(null, 'bg_gradient', 'linear-gradient(to bottom, #FFFFFF, #F8FAFC)');
-  const entranceAnim = getVal(null, 'entrance_anim', true);
+  const entranceAnim = getVal(null, 'entrance_anim', 'slide-up');
   const countSpeed = parseNumSafe(getVal(null, 'count_speed', 2), 2);
   const countEasing = getVal(null, 'count_easing', 'spring');
+
+  const globalAnimOverride = getGlobalAnimation(entranceAnim, 'stats');
+  const itemVariants = globalAnimOverride || {
+    hidden: { y: 20, opacity: 0 },
+    visible: { y: 0, opacity: 1, transition: { duration: 0.5, ease: "easeOut" } }
+  };
+
 
   // Multimedia (Parallax Background)
   const bgParallaxEnabled = getVal(null, 'bg_parallax_enabled', false);
@@ -228,16 +242,17 @@ export const StatsModule: React.FC<{
   const subtitleHighlightGradient = getVal(`${moduleId}_el_stats_header`, 'subtitle_highlight_gradient', 'linear-gradient(to right, #3B82F6, #2563EB)');
   const subtitleHighlightBold = getVal(`${moduleId}_el_stats_header`, 'subtitle_highlight_bold', true);
 
-  const headerTitleColor = darkMode ? '#FFFFFF' : undefined;
+  const isBgDark = isDarkColor(bgColor);
+  const headerTitleColor = (darkMode || isBgDark) ? '#FFFFFF' : undefined;
 
   // Element: Stat Item Style
-  const cardBg = darkMode ? '#1E293B' : getVal(`${moduleId}_el_stat_item`, 'card_bg', 'transparent');
+  const cardBg = getVal(`${moduleId}_el_stat_item`, 'card_bg', darkMode ? '#1E293B' : 'transparent');
   const cardRadius = parseNumSafe(getVal(`${moduleId}_el_stat_item`, 'card_radius', 24), 24);
   const showBorder = getVal(`${moduleId}_el_stat_item`, 'show_border', false);
   const cardShadow = getVal(`${moduleId}_el_stat_item`, 'card_shadow', 'none');
-  const numberColor = getVal(`${moduleId}_el_stat_item`, 'number_color', darkMode ? '#FFFFFF' : '#0F172A');
-  const labelColor = getVal(`${moduleId}_el_stat_item`, 'label_color', darkMode ? '#94A3B8' : '#64748B');
-  const descColor = getVal(`${moduleId}_el_stat_item`, 'desc_color', darkMode ? '#64748B' : '#94A3B8');
+  const numberColor = getVal(`${moduleId}_el_stat_item`, 'number_color', (darkMode || isBgDark) ? '#FFFFFF' : '#0F172A');
+  const labelColor = getVal(`${moduleId}_el_stat_item`, 'label_color', (darkMode || isBgDark) ? '#94A3B8' : '#64748B');
+  const descColor = getVal(`${moduleId}_el_stat_item`, 'desc_color', (darkMode || isBgDark) ? '#64748B' : '#94A3B8');
   const numberSize = getVal(`${moduleId}_el_stat_item`, 'number_size', 't1');
   const numberWeight = getVal(`${moduleId}_el_stat_item`, 'number_weight', 'black');
   const hoverEffect = getVal(`${moduleId}_el_stat_item`, 'hover_effect', 'scale');
@@ -278,11 +293,6 @@ export const StatsModule: React.FC<{
     }
   };
 
-  const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: { y: 0, opacity: 1, transition: { duration: 0.5, ease: "easeOut" } }
-  };
-
   return (
     <section 
       id={moduleId}
@@ -318,7 +328,13 @@ export const StatsModule: React.FC<{
                   backgroundColor: headerEyebrowBg
                 }}
               >
-                {eyebrow}
+                <InlineEditableText
+                  moduleId={moduleId}
+                  elementId={`${moduleId}_el_stats_header`}
+                  settingId="eyebrow"
+                  value={eyebrow}
+                  isPreviewMode={isPreviewMode}
+                />
               </span>
             )}
             <h2 
@@ -328,13 +344,21 @@ export const StatsModule: React.FC<{
                 color: darkMode ? '#FFFFFF' : getVal(`${moduleId}_el_stats_header`, 'title_color', '#0F172A')
               }}
             >
-              <TextRenderer 
-                text={headerTitle}
-                highlightType={titleHighlightType}
-                highlightColor={titleHighlightColor}
-                highlightGradient={titleHighlightGradient}
-                highlightBold={titleHighlightBold}
-              />
+              <InlineEditableText
+                moduleId={moduleId}
+                elementId={`${moduleId}_el_stats_header`}
+                settingId="title"
+                value={headerTitle}
+                isPreviewMode={isPreviewMode}
+              >
+                <TextRenderer 
+                  text={headerTitle}
+                  highlightType={titleHighlightType}
+                  highlightColor={titleHighlightColor}
+                  highlightGradient={titleHighlightGradient}
+                  highlightBold={titleHighlightBold}
+                />
+              </InlineEditableText>
             </h2>
             {headerSubtitle && (
               <p 
@@ -344,13 +368,21 @@ export const StatsModule: React.FC<{
                   color: darkMode ? '#94A3B8' : getVal(`${moduleId}_el_stats_header`, 'subtitle_color', '#64748B') 
                 }}
               >
-                <TextRenderer 
-                  text={headerSubtitle}
-                  highlightType={subtitleHighlightType}
-                  highlightColor={subtitleHighlightColor}
-                  highlightGradient={subtitleHighlightGradient}
-                  highlightBold={subtitleHighlightBold}
-                />
+                <InlineEditableText
+                  moduleId={moduleId}
+                  elementId={`${moduleId}_el_stats_header`}
+                  settingId="subtitle"
+                  value={headerSubtitle}
+                  isPreviewMode={isPreviewMode}
+                >
+                  <TextRenderer 
+                    text={headerSubtitle}
+                    highlightType={subtitleHighlightType}
+                    highlightColor={subtitleHighlightColor}
+                    highlightGradient={subtitleHighlightGradient}
+                    highlightBold={subtitleHighlightBold}
+                  />
+                </InlineEditableText>
               </p>
             )}
           </div>

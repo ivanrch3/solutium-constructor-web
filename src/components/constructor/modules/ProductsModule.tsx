@@ -1,17 +1,22 @@
 import React, { useState, useMemo } from 'react';
+import { GLOBAL_ANIMATIONS, getGlobalAnimation } from '../../../constants/animations';
 import { Star, ShoppingCart, Eye, Heart, X, ChevronLeft, ChevronRight, Zap, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Product } from '../../../types/schema';
 import { MOCK_PRODUCTS } from '../../../constants/mockData';
 import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
 import { TextRenderer } from '../TextRenderer';
+import { InlineEditableText } from '../InlineEditableText';
+import { useEditorStore } from '../../../store/editorStore';
 
 export const ProductsModule: React.FC<{ 
   moduleId: string, 
   settingsValues: Record<string, any>,
   products?: Product[],
-  isDevMode?: boolean
-}> = ({ moduleId, settingsValues, products, isDevMode }) => {
+  isDevMode?: boolean,
+  isPreviewMode?: boolean
+}> = ({ moduleId, settingsValues, products, isDevMode, isPreviewMode = false }) => {
+  const { selectSection, selectElement } = useEditorStore();
   const [activeTab, setActiveTab] = useState('Todos');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [carouselIndex, setCarouselIndex] = useState(0);
@@ -56,10 +61,13 @@ export const ProductsModule: React.FC<{
   const columns = Math.max(1, parseInt(getVal(null, 'columns', 4)) || 4);
   const gap = parseF(getVal(null, 'gap', 24), 24);
   const darkMode = getVal(null, 'dark_mode', false);
-  const bgColor = getVal(null, 'bg_color', '#FFFFFF');
+  const bgColor = getVal(null, 'bg_color', darkMode ? '#0F172A' : '#FFFFFF');
   const sectionGradient = getVal(null, 'section_gradient', false);
   const bgGradient = getVal(null, 'bg_gradient', 'linear-gradient(to bottom, #FFFFFF, #F8FAFC)');
-  const entranceAnim = getVal(null, 'entrance_anim', true);
+  const entranceAnim = getVal(null, 'entrance_anim', 'none');
+
+  // Animation Overrides
+  const globalAnimOverride = getGlobalAnimation(entranceAnim, 'product');
   const enableQuickview = getVal(null, 'enable_quickview', true);
   const showPagination = getVal(null, 'show_pagination', true);
   const showUrgency = getVal(null, 'show_urgency', false);
@@ -168,9 +176,16 @@ export const ProductsModule: React.FC<{
 
   return (
     <section 
+      id={moduleId}
       className={`py-12 @md:py-20 @lg:py-24 px-8 w-full transition-colors duration-300 relative ${darkMode ? 'bg-slate-900' : ''}`}
+      onClick={(e) => {
+        if (isPreviewMode) return;
+        e.stopPropagation();
+        selectSection(moduleId);
+        selectElement(`${moduleId}_global`);
+      }}
       style={{ 
-        backgroundColor: darkMode ? undefined : bgColor,
+        backgroundColor: bgColor,
         backgroundImage: (sectionGradient && typeof bgGradient === 'string' && !bgGradient.includes('NaN')) ? bgGradient : 'none'
       }}
     >
@@ -183,13 +198,21 @@ export const ProductsModule: React.FC<{
             className={`mb-4 ${darkMode ? 'text-white' : 'text-slate-900'}`}
             style={getTypographyStyle(titleSize, titleWeight)}
           >
-            <TextRenderer 
-              text={sectionTitle}
-              highlightType={titleHighlightType}
-              highlightColor={titleHighlightColor}
-              highlightGradient={titleHighlightGradient}
-              highlightBold={titleHighlightBold}
-            />
+            <InlineEditableText
+              moduleId={moduleId}
+              elementId={`${moduleId}_el_products_header`}
+              settingId="title"
+              value={sectionTitle}
+              isPreviewMode={isPreviewMode}
+            >
+              <TextRenderer 
+                text={sectionTitle}
+                highlightType={titleHighlightType}
+                highlightColor={titleHighlightColor}
+                highlightGradient={titleHighlightGradient}
+                highlightBold={titleHighlightBold}
+              />
+            </InlineEditableText>
           </h2>
           <div className="w-20 h-1.5 bg-primary rounded-full mb-6"></div>
           {sectionDesc && (
@@ -197,13 +220,21 @@ export const ProductsModule: React.FC<{
               className={`max-w-2xl ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}
               style={getTypographyStyle(subtitleSize, subtitleWeight)}
             >
-              <TextRenderer 
-                text={sectionDesc}
-                highlightType={subtitleHighlightType}
-                highlightColor={subtitleHighlightColor}
-                highlightGradient={subtitleHighlightGradient}
-                highlightBold={subtitleHighlightBold}
-              />
+              <InlineEditableText
+                moduleId={moduleId}
+                elementId={`${moduleId}_el_products_header`}
+                settingId="subtitle"
+                value={sectionDesc}
+                isPreviewMode={isPreviewMode}
+              >
+                <TextRenderer 
+                  text={sectionDesc}
+                  highlightType={subtitleHighlightType}
+                  highlightColor={subtitleHighlightColor}
+                  highlightGradient={subtitleHighlightGradient}
+                  highlightBold={subtitleHighlightBold}
+                />
+              </InlineEditableText>
             </p>
           )}
         </div>
@@ -260,8 +291,8 @@ export const ProductsModule: React.FC<{
                       <motion.div 
                         key={product.id + idx}
                         layout
-                        initial={entranceAnim ? { opacity: 0, y: 20 } : false}
-                        animate={{ opacity: 1, y: 0 }}
+                        initial={(globalAnimOverride ? globalAnimOverride.hidden : (entranceAnim ? { opacity: 0, y: 20 } : false)) as any}
+                        animate={(globalAnimOverride ? globalAnimOverride.visible : (entranceAnim ? { opacity: 1, y: 0 } : false)) as any}
                         exit={{ opacity: 0, scale: 0.9 }}
                         className={`group flex flex-col transition-all duration-500 ${
                           layout === 'list' ? 'flex-row gap-8 items-center' : 

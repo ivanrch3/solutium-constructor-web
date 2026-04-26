@@ -1,10 +1,28 @@
-import { Theme } from '../types';
+import { Theme, VisualStyle as GlobalVisualStyle } from '../types';
 
 export type VisualStyle = 'minimalist' | 'bold' | 'corporate' | 'modern' | 'playful';
 
-export const mapStyleToTheme = (style: VisualStyle, brandColors: Record<string, string>): Theme => {
+const STYLE_MAPPING: Record<string, VisualStyle> = {
+  'Moderno': 'modern',
+  'Minimalista': 'minimalist',
+  'Corporativo': 'corporate',
+  'Divertido': 'playful',
+  'Atrevido': 'bold',
+  'Elegante': 'corporate',
+  'Creativo': 'modern',
+  'Clásico': 'corporate',
+  'modern': 'modern',
+  'minimalist': 'minimalist',
+  'corporate': 'corporate',
+  'playful': 'playful',
+  'bold': 'bold'
+};
+
+export const mapStyleToTheme = (style: string, brandColors: Record<string, string>): Theme => {
   const primary = brandColors.primary || '#3B82F6';
   const secondary = brandColors.secondary || '#1E293B';
+
+  const mappedStyle = STYLE_MAPPING[style] || 'modern';
 
   const baseThemes: Record<VisualStyle, Theme> = {
     minimalist: {
@@ -49,5 +67,5 @@ export const mapStyleToTheme = (style: VisualStyle, brandColors: Record<string, 
     }
   };
 
-  return baseThemes[style] || baseThemes.modern;
+  return baseThemes[mappedStyle] || baseThemes.modern;
 };

@@ -16,7 +16,8 @@ import {
   RotateCcw, 
   CheckCircle2, 
   HelpCircle,
-  Settings
+  Settings,
+  Palette
 } from 'lucide-react';
 import { Project } from '../../types/schema';
 import { WebModule } from '../../types/constructor';
@@ -132,7 +133,6 @@ export const MainSidebar: React.FC<MainSidebarProps> = ({
 
       {/* Navigation */}
       <div className="flex-1 px-4 space-y-1 overflow-y-auto custom-scrollbar pb-10">
-        {/* DISEÑO */}
         <div className="space-y-1">
           <button 
             onClick={() => toggleSection('diseno')}
@@ -147,8 +147,17 @@ export const MainSidebar: React.FC<MainSidebarProps> = ({
             <ChevronDown size={16} className={`transition-transform ${expandedSection === 'diseno' ? 'rotate-180' : ''}`} />
           </button>
           {expandedSection === 'diseno' && (
-            <div className="pl-12 py-2 space-y-2">
-              <p className="text-xs text-sidebar-foreground/40 font-normal uppercase tracking-widest">Opciones de diseño</p>
+            <div className="space-y-0.5 px-2 mb-2">
+              <ModuleItem 
+                icon={<Palette size={18} />}
+                label="Estilo"
+                onClick={() => onTabChange('design-style')}
+              />
+              <ModuleItem 
+                icon={<Sparkles size={18} />}
+                label="Animaciones"
+                onClick={() => onTabChange('design-animations')}
+              />
             </div>
           )}
         </div>

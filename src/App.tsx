@@ -308,6 +308,15 @@ const AppContent: React.FC = () => {
     }
   };
 
+  const handleFormSubmit = (data: ProjectFormData) => {
+    setFormData(data);
+    if (selectedMethod === 'ai') {
+      setCurrentView('generator');
+    } else {
+      setCurrentView('constructor');
+    }
+  };
+
   if (!isHandshakeComplete) {
     const isDevOrAIStudio = window.location.hostname.includes('run.app') || window.location.hostname.includes('localhost');
 

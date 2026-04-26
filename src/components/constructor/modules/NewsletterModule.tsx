@@ -6,10 +6,15 @@ import { TextRenderer } from '../TextRenderer';
 import { ParallaxBackground } from '../ParallaxBackground';
 import { parseNumSafe } from '../utils';
 
+import { InlineEditableText } from '../InlineEditableText';
+import { useEditorStore } from '../../../store/editorStore';
+import { GLOBAL_ANIMATIONS, getGlobalAnimation } from '../../../constants/animations';
+
 export const NewsletterModule: React.FC<{ 
   moduleId: string, 
-  settingsValues: Record<string, any> 
-}> = ({ moduleId, settingsValues }) => {
+  settingsValues: Record<string, any>,
+  isPreviewMode?: boolean
+}> = ({ moduleId, settingsValues, isPreviewMode = false }) => {
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [gdprAccepted, setGdprAccepted] = useState(false);
@@ -33,13 +38,16 @@ export const NewsletterModule: React.FC<{
   const paddingY = parseNumSafe(getVal(null, 'padding_y', 80), 80);
   const darkMode = getVal(null, 'dark_mode', false);
   const bgType = getVal(null, 'bg_type', 'color');
-  const bgColor = darkMode ? '#0F172A' : getVal(null, 'bg_color', '#FFFFFF');
+  const bgColor = getVal(null, 'bg_color', darkMode ? '#0F172A' : '#FFFFFF');
   const bgGradient = darkMode ? 'linear-gradient(135deg, #0F172A 0%, #1E293B 100%)' : getVal(null, 'bg_gradient', 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)');
   const bgPattern = getVal(null, 'bg_pattern', 'none');
   const backdropBlur = parseNumSafe(getVal(null, 'backdrop_blur', 0), 0);
   const borderRadius = parseNumSafe(getVal(null, 'border_radius', 32), 32);
   const showShadow = getVal(null, 'show_shadow', true);
-  const entranceAnim = getVal(null, 'entrance_anim', true);
+  const entranceAnim = getVal(null, 'entrance_anim', 'fade_up');
+
+  // Animation Overrides
+  const globalAnimOverride = getGlobalAnimation(entranceAnim, 'newsletter');
 
   // Multimedia (Parallax Background)
   const bgParallaxEnabled = getVal(null, 'bg_parallax_enabled', false);
@@ -137,12 +145,16 @@ export const NewsletterModule: React.FC<{
   }
   if (bgType === 'transparent') containerStyle.backgroundColor = 'transparent';
 
-  const animProps = entranceAnim ? {
+  const animProps = globalAnimOverride ? {
+    initial: globalAnimOverride.hidden as any,
+    whileInView: globalAnimOverride.visible as any,
+    viewport: { once: true },
+  } : (entranceAnim ? {
     initial: { opacity: 0, y: 20 },
     whileInView: { opacity: 1, y: 0 },
     viewport: { once: true },
     transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] as any }
-  } : {};
+  } : {});
 
   const renderPattern = () => {
     if (bgPattern === 'dots') {
@@ -290,13 +302,21 @@ export const NewsletterModule: React.FC<{
                 color: textColor 
               }}
             >
-              <TextRenderer 
-                text={title}
-                highlightType={titleHighlightType}
-                highlightColor={titleHighlightColor}
-                highlightGradient={titleHighlightGradient}
-                highlightBold={titleHighlightBold}
-              />
+              <InlineEditableText
+                moduleId={moduleId}
+                elementId={`${moduleId}_el_news_header`}
+                settingId="title"
+                value={title}
+                isPreviewMode={isPreviewMode}
+              >
+                <TextRenderer 
+                  text={title}
+                  highlightType={titleHighlightType}
+                  highlightColor={titleHighlightColor}
+                  highlightGradient={titleHighlightGradient}
+                  highlightBold={titleHighlightBold}
+                />
+              </InlineEditableText>
             </h2>
             {subtitle && (
               <p 
@@ -306,13 +326,21 @@ export const NewsletterModule: React.FC<{
                   color: textColor 
                 }}
               >
-                <TextRenderer 
-                  text={subtitle}
-                  highlightType={subtitleHighlightType}
-                  highlightColor={subtitleHighlightColor}
-                  highlightGradient={subtitleHighlightGradient}
-                  highlightBold={subtitleHighlightBold}
-                />
+                <InlineEditableText
+                  moduleId={moduleId}
+                  elementId={`${moduleId}_el_news_header`}
+                  settingId="subtitle"
+                  value={subtitle}
+                  isPreviewMode={isPreviewMode}
+                >
+                  <TextRenderer 
+                    text={subtitle}
+                    highlightType={subtitleHighlightType}
+                    highlightColor={subtitleHighlightColor}
+                    highlightGradient={subtitleHighlightGradient}
+                    highlightBold={subtitleHighlightBold}
+                  />
+                </InlineEditableText>
               </p>
             )}
           </div>

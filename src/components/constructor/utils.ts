@@ -51,3 +51,39 @@ export const getBorderRadius = (settingsValues: Record<string, any>): string => 
   const radius = settingsValues['global_theme_radius'] ?? 12;
   return `${radius}px`;
 };
+
+/**
+ * Determina si un color es oscuro para ajustar el contraste automáticamente.
+ */
+export const isDarkColor = (color: string): boolean => {
+  if (!color || typeof color !== 'string') return true;
+  
+  let r, g, b;
+  
+  if (color.startsWith('#')) {
+    let hex = color.replace('#', '');
+    if (hex.length === 3) hex = hex.split('').map(s => s + s).join('');
+    r = parseInt(hex.slice(0, 2), 16);
+    g = parseInt(hex.slice(2, 4), 16);
+    b = parseInt(hex.slice(4, 6), 16);
+  } else if (color.startsWith('rgb')) {
+    const match = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+    if (!match) return false;
+    r = parseInt(match[1]);
+    g = parseInt(match[2]);
+    b = parseInt(match[3]);
+  } else {
+    return false;
+  }
+  
+  if (isNaN(r) || isNaN(g) || isNaN(b)) return false;
+  
+  // HSP (Highly Sensitive Poo) color model
+  const hsp = Math.sqrt(
+    0.299 * (r * r) +
+    0.587 * (g * g) +
+    0.114 * (b * b)
+  );
+  
+  return hsp < 155; 
+};

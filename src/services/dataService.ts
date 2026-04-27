@@ -393,7 +393,8 @@ export const saveWebBuilderSiteDraft = async (site: Partial<WebBuilderSite>): Pr
       site_name: site.siteName || 'Mi Sitio Web',
       name: site.name || site.siteName || 'Mi Sitio Web',
       content_draft: site.contentDraft,
-      status: site.status || 'draft',
+      status: 'draft',
+      origin_app: 'Constructor Web',
       updated_at: new Date().toISOString()
     };
 
@@ -453,6 +454,7 @@ export const publishWebBuilderSite = async (site: Partial<PublishedSite>): Promi
         content_published: site.content,
         content_draft: site.content, // Sincronizar borrador con lo publicado
         status: 'published',
+        origin_app: 'Constructor Web',
         updated_at: now
       }, { onConflict: 'site_id' })
       .select()
@@ -467,9 +469,13 @@ export const publishWebBuilderSite = async (site: Partial<PublishedSite>): Promi
       site_id: site.siteId,
       site_name: site.siteName || 'Mi Sitio Web',
       user_id: userData.user?.id,
-      is_active: site.isActive !== undefined ? site.isActive : true,
+      is_active: true,
       content: site.content,
-      metadata: site.metadata,
+      metadata: { 
+        ...(site.metadata || {}), 
+        site_id: site.siteId,
+        origin_app: 'Constructor Web'
+      },
       updated_at: now
     };
 

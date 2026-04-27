@@ -864,8 +864,16 @@ const formatTimestampName = () => {
             if (isEyebrow) {
               content.eyebrow = value;
             } else if (isTitle && !content.title) {
+              // Priority variables for Portada (Hero) Module according to SIP v5.4
+              if (module.type === 'hero' || module.id.startsWith('mod_hero')) {
+                content.texto_principal = value;
+              }
               content.title = value;
             } else if (isSubtitle && !content.subtitle) {
+              // Priority variables for Portada (Hero) Module according to SIP v5.4
+              if (module.type === 'hero' || module.id.startsWith('mod_hero')) {
+                content.texto_secundario = value;
+              }
               content.subtitle = value;
             } else if (isImage && !content.image_url) {
               content.image_url = value;
@@ -878,16 +886,20 @@ const formatTimestampName = () => {
             } else if (isSecondaryCtaUrl) {
               content.secondary_cta.url = value;
             } else if (isRotatingFixed) {
-              content.texto_fijo = value;
+              content.texto_base = value;
             } else if (isRotatingOptions) {
               // Ensure we extract the array of strings from the repeater format
               if (Array.isArray(value)) {
-                content.palabras_dinamicas = value.map((item: any) => typeof item === 'object' ? (item.text || item.value || '') : item);
+                content.palabras_efecto = value.map((item: any) => typeof item === 'object' ? (item.text || item.value || '') : item);
               } else {
-                content.palabras_dinamicas = [value];
+                content.palabras_efecto = [value];
               }
             } else if (isRotatingEnabled) {
               content.is_rotating_active = value;
+            } else if (cleanKey.includes('rotating_speed')) {
+              content.intervalo_ms = value;
+            } else if (cleanKey.includes('rotating_gradient') || cleanKey.includes('rotating_color')) {
+              content.estilo_efecto = value;
             }
             
             // Style-specific Allocation
@@ -921,9 +933,35 @@ const formatTimestampName = () => {
           content.customerIds = getVal(module.id, null, 'select_customers', []);
         }
 
+        const isDynamic = content.is_rotating_active === true;
+        const tipo = isDynamic ? `${module.type}_dinamico` : module.type;
+
+        const baseSection = {
+          id: module.id,
+          tipo: tipo,
+          type: module.type as any, // Keep for backward compatibility if needed
+          content,
+          settings,
+          styles
+        };
+
+        if (isDynamic) {
+          const rawBase = content.texto_base || content.texto_principal || content.title || '';
+          const marcador = '%ROTATIVO%';
+          
+          content.config = {
+            texto_base: rawBase.includes(marcador) ? rawBase : `${rawBase} ${marcador}`,
+            palabras_efecto: content.palabras_efecto || [],
+            estilo_efecto: content.estilo_efecto || '',
+            intervalo_ms: content.intervalo_ms || 3000,
+            marcador_posicion: marcador
+          };
+        }
+
         return {
           id: module.id,
-          type: module.type as any,
+          tipo: tipo,
+          type: module.type as any, // Keep for backward compatibility if needed
           content,
           settings,
           styles
@@ -931,24 +969,47 @@ const formatTimestampName = () => {
       });
 
     // Generate CSS block for identical visualization
-    let cssBlock = `/* Solutium Generated CSS for Identical Visualization */\n`;
+    let cssBlock = `/* Solutium Generated CSS for Identical Visualization v5.5 */\n`;
     cssBlock += `:root { --primary-color: ${primaryColor}; }\n`;
     
     sections.forEach(section => {
-      const { id, styles } = section;
-      cssBlock += `\n#section-${id} {\n`;
+      const { id, styles, content } = section;
+      cssBlock += `\n/* Section ${id} Styles */\n`;
+      cssBlock += `#section-${id} {\n`;
       if (styles['border-radius']) cssBlock += `  border-radius: ${styles['border-radius']};\n`;
       if (styles['box-shadow']) cssBlock += `  box-shadow: ${styles['box-shadow']};\n`;
       if (styles['font-family']) cssBlock += `  font-family: ${styles['font-family']};\n`;
+      cssBlock += `}\n`;
+
+      // Highlight rules (.destacado) for rotating or special text
+      const highlightStyle = content?.config?.estilo_efecto || content?.estilo_efecto;
+      if (highlightStyle) {
+        cssBlock += `#section-${id} .destacado {\n`;
+        if (highlightStyle.includes('gradient')) {
+          cssBlock += `  background: ${highlightStyle};\n`;
+          cssBlock += `  -webkit-background-clip: text;\n`;
+          cssBlock += `  background-clip: text;\n`;
+          cssBlock += `  color: transparent;\n`;
+        } else {
+          cssBlock += `  color: ${highlightStyle};\n`;
+        }
+        cssBlock += `  font-weight: bold;\n`;
+        cssBlock += `  display: inline-block;\n`;
+        cssBlock += `}\n`;
+      }
       
       // Button styles nesting (simplified)
       if (styles['button-styles'] && typeof styles['button-styles'] === 'object') {
-        cssBlock += `}\n#section-${id} button {\n`;
+        cssBlock += `#section-${id} button {\n`;
         Object.entries(styles['button-styles']).forEach(([key, val]) => {
-          if (typeof val !== 'object') cssBlock += `  --${key}: ${val};\n`;
+          if (typeof val !== 'object') {
+             // Convert underscore to hyphen for CSS properties
+             const cssProp = key.replace(/_/g, '-');
+             cssBlock += `  ${cssProp}: ${val};\n`;
+          }
         });
+        cssBlock += `}\n`;
       }
-      cssBlock += `}\n`;
     });
 
     return {

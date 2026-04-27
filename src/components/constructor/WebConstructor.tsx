@@ -785,10 +785,16 @@ const formatTimestampName = () => {
   };
 
   const generateRenderingContract = (finalSiteName: string): RenderingContract => {
-    // Helper to get setting value with fallback
+    // Helper to get setting value with fallback and CLEAN value extraction
     const getVal = (moduleId: string, elementId: string | null, settingId: string, defaultValue: any) => {
       const key = elementId ? `${moduleId}_${elementId}_${settingId}` : `${moduleId}_global_${settingId}`;
-      return editorState.settingsValues[key] !== undefined ? editorState.settingsValues[key] : defaultValue;
+      const rawValue = editorState.settingsValues[key] !== undefined ? editorState.settingsValues[key] : defaultValue;
+      
+      // Clean value: If it's an object with a 'value' property (editor metadata), extract just the value
+      if (rawValue && typeof rawValue === 'object' && 'value' in rawValue && !Array.isArray(rawValue)) {
+        return rawValue.value;
+      }
+      return rawValue;
     };
 
     // 1. Determine Global Theme
@@ -814,15 +820,21 @@ const formatTimestampName = () => {
         const settings: any = {};
 
         // Extract ALL settings for this module
-        Object.entries(editorState.settingsValues).forEach(([key, value]) => {
+        Object.entries(editorState.settingsValues).forEach(([key, rawValue]) => {
           if (key.startsWith(module.id)) {
+            // Clean value: Extract primitive if it's an editor-wrapped object
+            let value = rawValue;
+            if (rawValue && typeof rawValue === 'object' && 'value' in rawValue && !Array.isArray(rawValue)) {
+              value = rawValue.value;
+            }
+
             // Remove module ID prefix
             const relativeKey = key.replace(`${module.id}_`, '');
             
             // Remove secondary technical prefixes like "el_hero_", "el_contact_", etc.
             const cleanKey = relativeKey.replace(/^el_[a-zA-Z0-9]+_/, '').replace(/^global_/, '');
             
-            // --- SEPARATION OF POWERS ---
+            // --- SEPARATION OF POWERS (Solutium Protocol) ---
             
             // Identify if it's a content field
             const isEyebrow = cleanKey.includes('eyebrow');
@@ -836,6 +848,7 @@ const formatTimestampName = () => {
             const isSecondaryCtaText = cleanKey.includes('secondary_cta') && cleanKey.includes('text');
             const isSecondaryCtaUrl = cleanKey.includes('secondary_cta') && cleanKey.includes('url');
 
+            // --- ALLOCATION ---
             if (isEyebrow) {
               content.eyebrow = value;
             } else if (isTitle && !content.title) {
@@ -853,14 +866,20 @@ const formatTimestampName = () => {
             } else if (isSecondaryCtaUrl) {
               content.secondary_cta.url = value;
             } else {
-              // Style and technical variables go to settings
-              settings[cleanKey] = value;
+              // --- SETTINGS (Aesthetic) ---
+              // Only include if it's not a known editor metadata key leakage
+              const forbiddenKeys = ['label', 'defaultValue', 'min', 'max', 'showIf', 'options', 'unit', 'step'];
+              if (!forbiddenKeys.includes(cleanKey)) {
+                settings[cleanKey] = value;
+              }
             }
           }
         });
 
         // Safeguard: Ensure content has meaningful values or generic placeholders
         if (!content.title) content.title = module.name;
+
+        // Specific overrides for modules that have multiple items (like products/clients)
         if (module.type === 'products') {
           content.productIds = getVal(module.id, null, 'select_products', []);
         }

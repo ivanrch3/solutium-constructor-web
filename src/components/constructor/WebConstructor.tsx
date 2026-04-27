@@ -804,6 +804,8 @@ const formatTimestampName = () => {
       : (project?.brandColors?.primary || '#2563EB');
 
     return {
+      layout: "full-width",
+      inject_tailwind: true,
       theme: {
         primaryColor,
         fontFamily: project?.fontFamily || 'Inter',

@@ -399,6 +399,12 @@ export const saveWebBuilderSiteDraft = async (site: Partial<WebBuilderSite>): Pr
 
     if (site.id) dbData.id = site.id;
 
+    // Output Validation: Verify that content_draft is not empty
+    if (!site.contentDraft || (Array.isArray((site.contentDraft as any).addedModules) && (site.contentDraft as any).addedModules.length === 0)) {
+      console.warn('[DataService] Intento de guardar borrador con contenido vacío. Operación cancelada.');
+      return null;
+    }
+
     const { data, error } = await supabase
       .from('web_builder_sites')
       .upsert(dbData, { onConflict: 'site_id' })
@@ -468,6 +474,12 @@ export const publishWebBuilderSite = async (site: Partial<PublishedSite>): Promi
     };
 
     if (site.id) dbData.id = site.id;
+
+    // Output Validation: Verify that content is not empty
+    if (!site.content || (typeof site.content === 'object' && Object.keys(site.content).length === 0)) {
+      console.warn('[DataService] Intento de publicar sitio con contenido vacío. Operación cancelada.');
+      return null;
+    }
 
     const { data, error } = await supabase
       .from('published_sites')

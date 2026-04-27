@@ -804,60 +804,42 @@ const formatTimestampName = () => {
       },
       sections: editorState.addedModules.map(module => {
         const content: any = {};
+        const settings: any = {};
 
-        // Extract specific content fields for the mother app's expected structure
-        if (module.type === 'hero') {
-          content.title = getVal(module.id, 'el_hero_title', 'text', '');
-          content.subtitle = getVal(module.id, 'el_hero_subtitle', 'text', '');
-          content.buttonText = getVal(module.id, 'el_hero_cta', 'text', '');
-          content.imageUrl = getVal(module.id, 'el_hero_visual', 'url', '');
-        } else if (module.type === 'features') {
-          content.title = getVal(module.id, 'el_features_header', 'title', '');
-          content.subtitle = getVal(module.id, 'el_features_header', 'subtitle', '');
-        } else if (module.type === 'contact') {
-          content.title = getVal(module.id, 'el_contact_info', 'title', '');
-          content.subtitle = getVal(module.id, 'el_contact_info', 'subtitle', '');
-          content.buttonText = getVal(module.id, 'el_contact_form', 'button_text', '');
-        } else if (module.type === 'team') {
-          content.title = getVal(module.id, 'el_team_header', 'title', '');
-          content.subtitle = getVal(module.id, 'el_team_header', 'subtitle', '');
-        } else if (module.type === 'pricing') {
-          content.title = getVal(module.id, 'el_pricing_header', 'title', '');
-          content.subtitle = getVal(module.id, 'el_pricing_header', 'subtitle', '');
-        } else if (module.type === 'faq') {
-          content.title = getVal(module.id, 'el_faq_header', 'title', '');
-          content.subtitle = getVal(module.id, 'el_faq_header', 'subtitle', '');
-        } else {
-          // Fallback for other modules
-          content.title = getVal(module.id, 'el_testimonials_header', 'title', 
-                          getVal(module.id, 'el_process_header', 'title', 
-                          getVal(module.id, 'el_stats_header', 'title', 
-                          getVal(module.id, 'el_team_header', 'title', 
-                          getVal(module.id, 'el_pricing_header', 'title', 
-                          getVal(module.id, 'el_faq_header', 'title', ''))))));
-          content.subtitle = getVal(module.id, 'el_testimonials_header', 'subtitle', 
-                             getVal(module.id, 'el_process_header', 'subtitle', 
-                             getVal(module.id, 'el_stats_header', 'subtitle', 
-                             getVal(module.id, 'el_team_header', 'subtitle', 
-                             getVal(module.id, 'el_pricing_header', 'subtitle', 
-                             getVal(module.id, 'el_faq_header', 'subtitle', ''))))));
-        }
+        // 1. Identify and extract content fields (Normalized Keys: title, subtitle, image_url, button_text)
+        // We look for specific patterns in the settingsValues keys
+        Object.entries(editorState.settingsValues).forEach(([key, value]) => {
+          if (key.startsWith(module.id)) {
+            const relativeKey = key.replace(`${module.id}_`, '');
+            
+            // Content Mandate: Textual content must reside in 'content' with normalized names
+            const isTitle = relativeKey.includes('_title') && (relativeKey.endsWith('_text') || relativeKey.endsWith('_title'));
+            const isSubtitle = relativeKey.includes('_subtitle') && (relativeKey.endsWith('_text') || relativeKey.endsWith('_subtitle'));
+            const isButton = relativeKey.includes('_cta') || relativeKey.endsWith('_button_text');
+            const isImage = relativeKey.endsWith('_url') || relativeKey.endsWith('_img');
 
+            if (isTitle && !content.title) {
+              content.title = value;
+            } else if (isSubtitle && !content.subtitle) {
+              content.subtitle = value;
+            } else if (isButton && !content.buttonText) {
+              content.buttonText = value;
+            } else if (isImage && !content.image_url) {
+              content.image_url = value;
+            } else {
+              // 2. Everything else (styles, layout, etc.) goes into settings
+              settings[relativeKey] = value;
+            }
+          }
+        });
+
+        // Specific overrides for modules that have multiple items (like products/clients)
         if (module.type === 'products') {
           content.productIds = getVal(module.id, null, 'select_products', []);
         }
         if (module.type === 'clients') {
           content.customerIds = getVal(module.id, null, 'select_customers', []);
         }
-
-        // Extract ALL settings for this module to preserve styling
-        const settings: any = {};
-        Object.entries(editorState.settingsValues).forEach(([key, value]) => {
-          if (key.startsWith(module.id)) {
-            const relativeKey = key.replace(`${module.id}_`, '');
-            settings[relativeKey] = value;
-          }
-        });
 
         return {
           id: module.id,

@@ -803,37 +803,64 @@ const formatTimestampName = () => {
         fontFamily: project?.fontFamily || 'Inter',
       },
       sections: editorState.addedModules.map(module => {
-        const content: any = {};
+        const content: any = {
+          eyebrow: '',
+          title: '',
+          subtitle: '',
+          primary_cta: { text: '', url: '' },
+          secondary_cta: { text: '', url: '' },
+          image_url: ''
+        };
         const settings: any = {};
 
-        // 1. Identify and extract content fields (Normalized Keys: title, subtitle, image_url, button_text)
-        // We look for specific patterns in the settingsValues keys
+        // Extract ALL settings for this module
         Object.entries(editorState.settingsValues).forEach(([key, value]) => {
           if (key.startsWith(module.id)) {
+            // Remove module ID prefix
             const relativeKey = key.replace(`${module.id}_`, '');
             
-            // Content Mandate: Textual content must reside in 'content' with normalized names
-            const isTitle = relativeKey.includes('_title') && (relativeKey.endsWith('_text') || relativeKey.endsWith('_title'));
-            const isSubtitle = relativeKey.includes('_subtitle') && (relativeKey.endsWith('_text') || relativeKey.endsWith('_subtitle'));
-            const isButton = relativeKey.includes('_cta') || relativeKey.endsWith('_button_text');
-            const isImage = relativeKey.endsWith('_url') || relativeKey.endsWith('_img');
+            // Remove secondary technical prefixes like "el_hero_", "el_contact_", etc.
+            const cleanKey = relativeKey.replace(/^el_[a-zA-Z0-9]+_/, '').replace(/^global_/, '');
+            
+            // --- SEPARATION OF POWERS ---
+            
+            // Identify if it's a content field
+            const isEyebrow = cleanKey.includes('eyebrow');
+            const isTitle = cleanKey === 'title' || (cleanKey.includes('title') && (cleanKey.endsWith('_text') || cleanKey.endsWith('_title')));
+            const isSubtitle = cleanKey === 'subtitle' || (cleanKey.includes('subtitle') && (cleanKey.endsWith('_text') || cleanKey.endsWith('_subtitle')));
+            const isImage = cleanKey.endsWith('_url') || cleanKey.endsWith('_img') || cleanKey.includes('image') || cleanKey.includes('visual');
+            
+            // CTA Handling
+            const isPrimaryCtaText = (cleanKey.includes('primary_cta') && cleanKey.includes('text')) || cleanKey === 'cta_text' || cleanKey === 'button_text';
+            const isPrimaryCtaUrl = (cleanKey.includes('primary_cta') && cleanKey.includes('url')) || cleanKey === 'cta_url' || cleanKey === 'button_url';
+            const isSecondaryCtaText = cleanKey.includes('secondary_cta') && cleanKey.includes('text');
+            const isSecondaryCtaUrl = cleanKey.includes('secondary_cta') && cleanKey.includes('url');
 
-            if (isTitle && !content.title) {
+            if (isEyebrow) {
+              content.eyebrow = value;
+            } else if (isTitle && !content.title) {
               content.title = value;
             } else if (isSubtitle && !content.subtitle) {
               content.subtitle = value;
-            } else if (isButton && !content.buttonText) {
-              content.buttonText = value;
             } else if (isImage && !content.image_url) {
               content.image_url = value;
+            } else if (isPrimaryCtaText) {
+              content.primary_cta.text = value;
+            } else if (isPrimaryCtaUrl) {
+              content.primary_cta.url = value;
+            } else if (isSecondaryCtaText) {
+              content.secondary_cta.text = value;
+            } else if (isSecondaryCtaUrl) {
+              content.secondary_cta.url = value;
             } else {
-              // 2. Everything else (styles, layout, etc.) goes into settings
-              settings[relativeKey] = value;
+              // Style and technical variables go to settings
+              settings[cleanKey] = value;
             }
           }
         });
 
-        // Specific overrides for modules that have multiple items (like products/clients)
+        // Safeguard: Ensure content has meaningful values or generic placeholders
+        if (!content.title) content.title = module.name;
         if (module.type === 'products') {
           content.productIds = getVal(module.id, null, 'select_products', []);
         }

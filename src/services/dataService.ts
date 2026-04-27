@@ -1,5 +1,5 @@
 import { getSupabase } from './supabaseClient';
-import { Profile, Project, Customer, Product, Asset, WebBuilderSite, PublishedSite, RenderingContract } from '../types/schema';
+import { Profile, Project, Customer, Product, Asset, WebBuilderSite, PublishedSite, RenderingContract, Page, EngineEvolutionBuffer } from '../types/schema';
 import { profileSchema, projectSchema, customerSchema, productSchema, webBuilderSiteSchema, publishedSiteSchema, assetSchema } from '../types/zodSchemas';
 import { z } from 'zod';
 
@@ -400,12 +400,6 @@ export const saveWebBuilderSiteDraft = async (site: Partial<WebBuilderSite>): Pr
 
     if (site.id) dbData.id = site.id;
 
-    // Output Validation: Verify that content_draft is not empty
-    if (!site.contentDraft || (Array.isArray((site.contentDraft as any).addedModules) && (site.contentDraft as any).addedModules.length === 0)) {
-      console.warn('[DataService] Intento de guardar borrador con contenido vacío. Operación cancelada.');
-      return null;
-    }
-
     const { data, error } = await supabase
       .from('web_builder_sites')
       .upsert(dbData, { onConflict: 'site_id' })
@@ -664,3 +658,99 @@ export const registerAsset = async (asset: Partial<Asset>): Promise<Asset | null
     return null;
   }
 };
+
+/**
+ * Realiza un upsert en la tabla pages para sincronizar el contenido con el motor de renderizado.
+ */
+export async function upsertPage(pageData: Partial<Page>): Promise<void> {
+  try {
+    const supabase = getSupabase();
+    if (!supabase) return;
+
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) return;
+
+    const now = new Date().toISOString();
+    
+    const payload = {
+      ...pageData,
+      user_id: userData.user.id,
+      updated_at: now
+    };
+
+    // SIP v6.1: On conflict check project_id AND slug OR web_builder_site_id if present
+    const conflictCols = pageData.web_builder_site_id ? 'web_builder_site_id,slug' : 'project_id,slug';
+
+    const { error } = await supabase
+      .from('pages')
+      .upsert(payload, { onConflict: conflictCols });
+
+    if (error) throw error;
+  } catch (error) {
+    console.error('Error upserting page:', error);
+    throw error;
+  }
+}
+
+/**
+ * Recupera una página por el ID del sitio del constructor web.
+ */
+export async function getPageBySiteId(siteId: string, slug: string = 'index'): Promise<Page | null> {
+  try {
+    const supabase = getSupabase();
+    if (!supabase) return null;
+
+    const { data, error } = await supabase
+      .from('pages')
+      .select('*')
+      .eq('web_builder_site_id', siteId)
+      .eq('slug', slug)
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!data) return null;
+
+    return {
+      id: data.id,
+      project_id: data.project_id,
+      web_builder_site_id: data.web_builder_site_id,
+      slug: data.slug,
+      title: data.title,
+      content: data.content,
+      metadata: data.metadata,
+      status: data.status,
+      updated_at: data.updated_at
+    };
+  } catch (error) {
+    console.error('Error getting page by site ID:', error);
+    return null;
+  }
+}
+
+/**
+ * Registra una solicitud de evolución en el buffer para parches del motor de renderizado.
+ */
+export async function logEvolutionRequest(feature: string, context: any): Promise<void> {
+  try {
+    const supabase = getSupabase();
+    if (!supabase) return;
+
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) return;
+
+    const payload: EngineEvolutionBuffer = {
+      project_id: userData.user.id,
+      feature_request: feature,
+      context,
+      status: 'pending'
+    };
+
+    const { error } = await supabase
+      .from('engine_evolution_buffer')
+      .insert(payload);
+
+    if (error) throw error;
+  } catch (error) {
+    console.error('Error logging evolution request:', error);
+  }
+}

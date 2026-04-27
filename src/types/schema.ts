@@ -202,3 +202,25 @@ export interface Asset {
   size?: number;
   updatedAt?: string;
 }
+
+export interface Page {
+  id?: string;
+  project_id: string;
+  user_id?: string;
+  web_builder_site_id?: string;
+  slug: string;
+  title: string;
+  content: RenderingContract;
+  metadata?: any;
+  status: 'draft' | 'published';
+  updated_at?: string;
+}
+
+export interface EngineEvolutionBuffer {
+  id?: string;
+  project_id: string;
+  feature_request: string;
+  context: any;
+  status: 'pending' | 'applied' | 'rejected';
+  created_at?: string;
+}

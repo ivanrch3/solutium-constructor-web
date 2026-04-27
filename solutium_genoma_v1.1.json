@@ -1,0 +1,182 @@
+{
+  "name": "Solutium Genoma",
+  "version": "1.1",
+  "description": "Master Dictionary for Solutium Web Engine - Full Module Suite",
+  "global_tokens": {
+    "styles": {
+      "colors": ["bg_color", "accent_color", "border_color", "text_color", "eyebrow_color", "title_color", "subtitle_color"],
+      "layout": ["padding_y", "max_width", "gap", "columns", "align"],
+      "typography": ["font_size", "font_weight", "text_align", "highlight_type", "highlight_color", "highlight_gradient"]
+    },
+    "features": ["dark_mode", "section_gradient", "entrance_anim", "parallax_background"]
+  },
+  "modules": [
+    {
+      "id": "header",
+      "technical_name": "HEADER_MODULE",
+      "description": "Barra superior de navegación y anuncios",
+      "properties": ["position", "layout_type", "bg_type", "bg_color", "accent_color", "border_color", "shadow", "shrink_on_scroll"],
+      "elements": ["el_header_marquee", "el_header_quick_reg", "el_header_actions"]
+    },
+    {
+      "id": "menu",
+      "technical_name": "MENU_MODULE",
+      "description": "Menú de navegación principal",
+      "properties": ["position", "layout", "align", "gap", "padding_y", "glass_effect"],
+      "elements": ["el_menu_logo", "el_menu_items", "el_menu_style"]
+    },
+    {
+      "id": "footer",
+      "technical_name": "FOOTER_MODULE",
+      "description": "Pie de página completo",
+      "properties": ["padding_y", "max_width", "bg_color", "text_color", "border_top"],
+      "elements": ["el_footer_brand", "el_footer_nav", "el_footer_social", "el_footer_contact", "el_footer_newsletter", "el_footer_bottom"]
+    },
+    {
+      "id": "spacer",
+      "technical_name": "SPACER_MODULE",
+      "description": "Espaciadores y divisores visuales",
+      "properties": ["height_desktop", "height_mobile", "width", "align", "type", "thickness", "color"],
+      "elements": []
+    },
+    {
+      "id": "products",
+      "technical_name": "PRODUCTS_MODULE",
+      "description": "Módulo de catálogo de productos premium",
+      "properties": ["layout", "columns", "gap", "padding_y", "enable_quickview"],
+      "elements": ["el_products_header", "el_products_config", "el_img", "el_product_card", "el_title", "el_price", "el_cta"]
+    },
+    {
+      "id": "hero",
+      "technical_name": "HERO_MODULE",
+      "description": "Sección de impacto principal con soporte rotativo",
+      "properties": ["layout", "height", "max_width", "bg_type", "overlay_opacity", "scroll_indicator"],
+      "elements": ["el_hero_typography", "el_hero_media", "el_hero_ctas", "el_hero_social_proof"],
+      "special_logic": {
+        "text_rotativo": {
+          "placeholder": "%ROTATIVO%",
+          "variables": ["rotating_enabled", "rotating_fixed", "rotating_options", "rotating_speed", "rotating_color"]
+        }
+      }
+    },
+    {
+      "id": "features",
+      "technical_name": "FEATURES_MODULE",
+      "description": "Grilla de características y beneficios",
+      "properties": ["layout", "columns", "gap", "padding_y", "stagger_anim"],
+      "elements": ["el_features_header", "el_feature_card"]
+    },
+    {
+      "id": "about",
+      "technical_name": "ABOUT_MODULE",
+      "description": "Sección corporativa / Nosotros",
+      "properties": ["layout", "content_width", "padding_y", "show_decor"],
+      "elements": ["el_about_narrative", "el_about_visual", "el_about_stats"]
+    },
+    {
+      "id": "process",
+      "technical_name": "PROCESS_MODULE",
+      "description": "Pasos de metodología o flujo",
+      "properties": ["layout", "columns", "gap", "padding_y", "connector_style"],
+      "elements": ["el_process_header", "el_process_step", "el_process_indicator", "el_process_items"]
+    },
+    {
+      "id": "gallery",
+      "technical_name": "GALLERY_MODULE",
+      "description": "Galería multimedia (Imágenes/Video)",
+      "properties": ["layout", "columns", "gap", "padding_y", "image_filter"],
+      "elements": ["el_gallery_header", "el_gallery_filters", "el_gallery_item", "el_gallery_captions", "el_gallery_items"]
+    },
+    {
+      "id": "video",
+      "technical_name": "VIDEO_MODULE",
+      "description": "Reproductor de video destacado",
+      "properties": ["layout", "aspect_ratio", "bg_color", "padding_y", "mask_shape"],
+      "elements": ["el_video_player", "el_video_text"]
+    },
+    {
+      "id": "testimonials",
+      "technical_name": "TESTIMONIALS_MODULE",
+      "description": "Prueba social y testimonios de clientes",
+      "properties": ["layout", "columns", "gap", "padding_y", "autoplay"],
+      "elements": ["el_testimonials_header", "el_testimonial_card", "el_testimonial_author", "el_testimonial_items"]
+    },
+    {
+      "id": "stats",
+      "technical_name": "STATS_MODULE",
+      "description": "Contadores y estadísticas de impacto",
+      "properties": ["layout", "columns", "gap", "count_speed", "count_easing"],
+      "elements": ["el_stats_header", "el_stat_item", "el_stat_icon", "el_stats_items"]
+    },
+    {
+      "id": "newsletter",
+      "technical_name": "NEWSLETTER_MODULE",
+      "description": "Suscripción a boletín",
+      "properties": ["layout", "max_width", "bg_type", "backdrop_blur", "show_confetti"],
+      "elements": ["el_news_header", "el_news_form", "el_news_magnet", "el_news_trust"]
+    },
+    {
+      "id": "contact",
+      "technical_name": "CONTACT_MODULE",
+      "description": "Información de contacto, mapa y formulario",
+      "properties": ["layout", "max_width", "bg_color", "padding_y"],
+      "elements": ["el_contact_header", "el_contact_info", "el_contact_form", "el_contact_integrations", "el_contact_map"]
+    },
+    {
+      "id": "team",
+      "technical_name": "TEAM_MODULE",
+      "description": "Presentación del equipo",
+      "properties": ["layout", "columns", "gap", "show_filters", "enable_modal"],
+      "elements": ["el_team_header", "el_team_items", "el_team_card", "el_team_image", "el_team_info"]
+    },
+    {
+      "id": "cta",
+      "technical_name": "CTA_MODULE",
+      "description": "Llamada a la acción persuasiva",
+      "properties": ["layout", "max_width", "bg_type", "overlay_opacity", "show_floating_assets"],
+      "elements": ["el_cta_content", "el_cta_actions", "el_cta_urgency", "el_cta_trust"]
+    },
+    {
+      "id": "pricing",
+      "technical_name": "PRICING_MODULE",
+      "description": "Tarjetas de precios y planes",
+      "properties": ["columns", "gap", "padding_y", "dark_mode"],
+      "elements": ["el_pricing_header", "el_pricing_toggle", "el_pricing_plans", "el_pricing_card", "el_pricing_price", "el_pricing_features", "el_pricing_trust"]
+    },
+    {
+      "id": "faq",
+      "technical_name": "FAQ_MODULE",
+      "description": "Preguntas frecuentes con buscador",
+      "properties": ["layout", "max_width", "item_gap", "single_open"],
+      "elements": ["el_faq_header", "el_faq_search", "el_faq_item", "el_faq_cta"]
+    },
+    {
+      "id": "clients",
+      "technical_name": "CLIENTS_MODULE",
+      "description": "Logotipos de clientes (Marquee/Grid)",
+      "properties": ["layout", "columns", "animation_speed", "logo_opacity", "hover_reveal"],
+      "elements": ["el_clients_header", "el_client_logo", "el_client_logos_data"]
+    },
+    {
+      "id": "comparative",
+      "technical_name": "COMPARISON_MODULE",
+      "description": "Slider comparativo (Antes/Después)",
+      "properties": ["max_width", "aspect_ratio", "handle_color", "show_labels"],
+      "elements": ["el_comp_text", "el_comp_images"]
+    },
+    {
+      "id": "bento",
+      "technical_name": "BENTO_MODULE",
+      "description": "Composición libre multiformato",
+      "properties": ["columns", "gap", "padding_y", "max_width"],
+      "elements": ["el_bento_header", "el_bento_items"]
+    }
+  ],
+  "variable_definitions": {
+    "colors_standard": "HEX or rgba strings",
+    "typography_size": ["t1", "t2", "t3", "p", "s"],
+    "font_weight": ["light", "normal", "medium", "semibold", "bold", "extrabold", "black"],
+    "alignment": ["left", "center", "right"],
+    "markdown_highlight": "Uso de dobles asteriscos **palabra** para aplicar clases de resaltado"
+  }
+}

@@ -1,0 +1,173 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Solutium Web Engine - Genoma v1.0",
+  "description": "Diccionario Maestro para el motor de renderizado de Solutium.",
+  "version": "1.0.0",
+  "author": "IA del Constructor",
+  "global_tokens": {
+    "colors": {
+      "primary": "Variable de color principal",
+      "accent": "Variable de color de acento",
+      "text": "Variable de color de texto base",
+      "bg": "Variable de color de fondo base"
+    },
+    "typography": {
+      "font_sans": "Fuente para UI y textos base",
+      "font_display": "Fuente para títulos de impacto",
+      "font_mono": "Fuente para datos técnicos",
+      "font_serif": "Fuente editorial"
+    },
+    "spacing": {
+      "base_unit": "4px",
+      "section_padding": "Clamp(40px, 8vh, 120px)"
+    }
+  },
+  "modules": {
+    "hero_v1": {
+      "id": "hero",
+      "name": "Sección de Impacto (Hero)",
+      "properties": {
+        "texto_principal": "Título H1 con soporte de Markdown (**bold** para resaltado)",
+        "texto_base": "Alias de texto_principal para compatibilidad H1",
+        "texto_secundario": "Descripción o bajada de título",
+        "texto_descripcion": "Alias de texto_secundario",
+        "eyebrow": "Texto pequeño superior",
+        "cta_principal": {
+          "label": "Texto del botón",
+          "url": "Destino (#seccion o URL)",
+          "style": ["solid", "outline", "ghost"]
+        },
+        "background": {
+          "type": ["color", "gradient", "image", "video"],
+          "url": "URL del recurso si aplica",
+          "overlay": "Opacidad del 0 al 100"
+        },
+        "marcador_especial": {
+          "rotativo": {
+            "token": "%ROTATIVO%",
+            "desc": "Se reemplaza por el componente de texto animado usando las opciones de 'rotating_options'"
+          }
+        }
+      }
+    },
+    "features_v1": {
+      "id": "features",
+      "name": "Características y Beneficios",
+      "properties": {
+        "items": "Array de objetos { icon, title, description }",
+        "columns": "Número de columnas (1-6)",
+        "layout": ["grid", "list", "bento"]
+      }
+    },
+    "products_v1": {
+      "id": "products",
+      "name": "Catálogo de Productos",
+      "properties": {
+        "selection_mode": ["manual", "automatic"],
+        "display_style": ["grid", "carousel", "list"],
+        "show_price": "boolean",
+        "show_cta": "boolean"
+      }
+    },
+    "about_v1": {
+      "id": "about",
+      "name": "Sobre Nosotros / Historia",
+      "properties": {
+        "image_position": ["left", "right"],
+        "stats_overlay": "boolean (Muestra mini-stats sobre la imagen)"
+      }
+    },
+    "process_v1": {
+      "id": "process",
+      "name": "Pasos / Metodología",
+      "properties": {
+        "steps": "Array de { number, title, description, icon }",
+        "variant": ["numbers", "icons", "timeline"]
+      }
+    },
+    "testimonials_v1": {
+      "id": "testimonials",
+      "name": "Prueba Social (Testimonios)",
+      "properties": {
+        "items": "Array de { quote, author, role, avatar, rating }",
+        "style": ["cards", "slider", "masonry"]
+      }
+    },
+    "pricing_v1": {
+      "id": "pricing",
+      "name": "Tablas de Precios",
+      "properties": {
+        "plans": "Array de { name, price, features[], cta, highlight }",
+        "currency": "Símbolo de moneda"
+      }
+    },
+    "faq_v1": {
+      "id": "faq",
+      "name": "Preguntas Frecuentes",
+      "properties": {
+        "items": "Array de { question, answer }",
+        "style": ["accordion", "grid"]
+      }
+    },
+    "contact_v1": {
+      "id": "contact",
+      "name": "Formulario de Contacto",
+      "properties": {
+        "fields": ["name", "email", "phone", "message", "subject"],
+        "layout": ["split", "centered"]
+      }
+    },
+    "footer_v1": {
+      "id": "footer",
+      "name": "Pie de Página",
+      "properties": {
+        "columns": "Navegación jerárquica",
+        "social": "Iconos vinculados",
+        "copyright": "Texto legal"
+      }
+    },
+    "spacer_v1": {
+      "id": "spacer",
+      "name": "Divisor de Secciones",
+      "properties": {
+        "height": "px",
+        "line_type": ["none", "solid", "dotted", "dashed"]
+      }
+    }
+  },
+  "styling_schema": {
+    "border_radius": {
+      "options": ["none", "sm", "md", "lg", "xl", "2xl", "full"],
+      "default": "xl"
+    },
+    "box_shadow": {
+      "options": ["none", "sm", "md", "lg", "xl", "2xl", "inner"],
+      "default": "sm"
+    },
+    "font_weight": {
+      "options": ["light", "normal", "medium", "semibold", "bold", "extrabold", "black"],
+      "default": "normal"
+    },
+    "animations": {
+      "entrances": ["fade_up", "fade_in", "zoom_in", "slide_left"],
+      "hovers": ["scale", "lift", "glow", "none"]
+    }
+  },
+  "logic_markers": [
+    {
+      "token": "%ROTATIVO%",
+      "context": "hero.title",
+      "description": "Inyecta un span con animación de ciclo infinito para frases de impacto."
+    },
+    {
+      "token": "%PRODUCT_COUNT%",
+      "context": "catalog",
+      "description": "Contador dinámico de existencias del inventario Solutium."
+    },
+    {
+      "token": "%USER_NAME%",
+      "context": "personalization",
+      "description": "Nombre del cliente logueado (Supabase Auth)."
+    }
+  ]
+}

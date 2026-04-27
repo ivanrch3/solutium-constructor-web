@@ -25,7 +25,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { DataTab } from '../DataTab';
-import { Project, RenderingContract, WebBuilderSite, PublishedSite } from '../../types/schema';
+import { Project, RenderingContract, WebBuilderSite, PublishedSite, Page } from '../../types/schema';
 import { WebModule, EditorState } from '../../types/constructor';
 import * as registryModules from './registry';
 import { 
@@ -37,7 +37,7 @@ import {
   CTA_MODULE, PRICING_MODULE, FAQ_MODULE, CLIENTS_MODULE,
   BENTO_MODULE, COMPARISON_MODULE
 } from './registry';
-import { saveWebBuilderSiteDraft, publishWebBuilderSite, getProducts, getCustomers } from '../../services/dataService';
+import { saveWebBuilderSiteDraft, publishWebBuilderSite, getProducts, getCustomers, upsertPage, logEvolutionRequest, getPageBySiteId } from '../../services/dataService';
 import { sendToMother } from '../../services/handshakeService';
 import { Product, Customer } from '../../types/schema';
 import { MOCK_PRODUCTS, MOCK_CUSTOMERS } from '../../constants/mockData';
@@ -65,6 +65,49 @@ import { useEditorStore } from '../../store/editorStore';
 import { PropertyEditor } from './PropertyEditor';
 
 // --- CONSTANTS ---
+const MASTER_DICTIONARY = {
+  modules: [
+    'hero', 'features', 'about', 'process', 'gallery', 'video', 'testimonials', 
+    'stats', 'newsletter', 'contact', 'team', 'cta', 'pricing', 'faq', 'clients', 
+    'bento', 'comparative', 'header', 'menu', 'footer', 'spacer', 'products'
+  ],
+  styles: [
+    'border_radius', 'box_shadow', 'font_family', 'button_styles', 
+    'bg_type', 'dark_mode', 'primary_color', 'accent_color', 'text_color'
+  ]
+};
+
+// --- HELPERS ---
+const checkDictionarySync = async (contract: RenderingContract): Promise<void> => {
+  const unknowns: any[] = [];
+  
+  contract.sections.forEach(section => {
+    // 1. Check Module Type
+    const baseType = section.type.split('_')[0]; 
+    if (!MASTER_DICTIONARY.modules.includes(baseType as any)) {
+      unknowns.push({ type: 'module', value: section.type, id: section.id });
+    }
+    
+    // 2. Check Styles
+    if (section.styles) {
+      Object.keys(section.styles).forEach(styleKey => {
+        const cleanKey = styleKey.replace(/-/g, '_');
+        if (!MASTER_DICTIONARY.styles.includes(cleanKey as any)) {
+          unknowns.push({ type: 'style', value: styleKey, id: section.id });
+        }
+      });
+    }
+  });
+
+  if (unknowns.length > 0) {
+    await logEvolutionRequest('Unknown Schema Detected', {
+      unknowns,
+      contract_timestamp: new Date().toISOString(),
+      status: 'pending'
+    });
+    console.warn(`[Sync Check] Se detectaron componentes o estilos desconocidos (${unknowns.length}). Registrados en Evolution Buffer.`);
+  }
+};
 
 // --- MODULE DEFINITIONS (Migrated to registry.tsx) ---
 
@@ -115,7 +158,7 @@ interface WebConstructorProps {
   logoUrl: string | null;
   logoWhiteUrl: string | null;
   project: Project | null;
-  initialPage?: WebBuilderSite | PublishedSite | null;
+  initialPage?: WebBuilderSite | PublishedSite | Page | null;
   creationMethod?: 'ai' | 'template' | 'scratch' | null;
 }
 
@@ -160,15 +203,17 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [moduleToDelete, setModuleToDelete] = useState<WebModule | null>(null);
   const [showPublishModal, setShowPublishModal] = useState(false);
-  const [siteName, setSiteName] = useState(initialPage?.siteName || '');
+  const [siteName, setSiteName] = useState(() => {
+    if (!initialPage) return '';
+    return (initialPage as any).siteName || (initialPage as any).title || '';
+  });
   
   const [currentSiteId] = useState(() => {
     // 1. Si estamos editando una página existente (Borrador o Publicada), usamos su siteId.
-    if (initialPage?.siteId) return initialPage.siteId;
+    if (initialPage && (initialPage as any).siteId) return (initialPage as any).siteId;
+    if (initialPage && (initialPage as any).web_builder_site_id) return (initialPage as any).web_builder_site_id;
     
-    // 2. Si es una página NUEVA, generamos un ID único para que sea independiente y no sobreescriba otras.
-    // Solo usamos el ID del proyecto si no hay ninguna otra página, para facilitar la configuración inicial,
-    // pero el usuario ha pedido independencia total para nuevos sitios.
+    // 2. Si es una página NUEVA, generamos un ID único para que sea independiente.
     return crypto.randomUUID();
   });
   const [isSaving, setIsSaving] = useState(false);
@@ -207,6 +252,18 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       totalModulesAdded: 0
     };
 
+    // SIP v6.1: Check for editor state in Page -> metadata -> editor_state
+    if (initialPage && 'metadata' in initialPage && (initialPage as any).metadata?.editor_state) {
+      const draft = (initialPage as any).metadata.editor_state as any;
+      const addedModules = Array.isArray(draft.addedModules) ? draft.addedModules : [];
+      return {
+        ...defaultState,
+        ...draft,
+        addedModules,
+        settingsValues: { ...defaultState.settingsValues, ...(draft.settingsValues || {}) }
+      };
+    }
+
     if (initialPage && 'contentDraft' in initialPage && initialPage.contentDraft) {
       const draft = initialPage.contentDraft as any;
       const addedModules = Array.isArray(draft.addedModules) ? draft.addedModules : [];
@@ -234,6 +291,20 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
 
     return defaultState;
   });
+
+  // Effect to load from pages table strictly if we only have a siteId (SIP v6.1)
+  useEffect(() => {
+    const loadFromPagesTable = async () => {
+      // If we have an initialPage but it lacks editor state, try fetching from 'pages'
+      if (initialPage && (initialPage as any).id && !(initialPage as any).contentDraft && !(initialPage as any).metadata?.editor_state) {
+        const page = await getPageBySiteId(currentSiteId);
+        if (page && page.metadata?.editor_state) {
+          setEditorState(page.metadata.editor_state);
+        }
+      }
+    };
+    loadFromPagesTable();
+  }, [currentSiteId, initialPage]);
   
   // AI Generation State
   const [onboardingFinished, setOnboardingFinished] = useState(() => {
@@ -1035,15 +1106,15 @@ const formatTimestampName = () => {
       const finalSiteName = siteName || formatTimestampName();
       const siteId = currentSiteId;
 
-      // Determine new status based on SIP v5.1 logic
+      // Determine new status
       let newStatus: 'draft' | 'published' | 'modified' = currentStatus;
-      
       if (typeof forcedStatus === 'string' && ['draft', 'published', 'modified'].includes(forcedStatus)) {
         newStatus = forcedStatus;
       } else if (currentStatus === 'published') {
         newStatus = 'modified';
       }
 
+      // 1. Update basic site info (no content_draft here as per SIP v6.1)
       const siteData: Partial<WebBuilderSite> = {
         projectId,
         appId: appId || '11111111-1111-1111-1111-111111111111',
@@ -1051,7 +1122,6 @@ const formatTimestampName = () => {
         siteId: siteId,
         siteName: finalSiteName,
         name: finalSiteName,
-        contentDraft: editorState,
         status: newStatus
       };
 
@@ -1060,13 +1130,33 @@ const formatTimestampName = () => {
       }
       
       const result = await saveWebBuilderSiteDraft(siteData);
+      
+      // 2. Generate Contract and Sync Check
+      const contract = generateRenderingContract(finalSiteName);
+      await checkDictionarySync(contract);
+
+      // 3. UPSERT to pages table (SIP v6.1 - Source of Truth)
+      // We store the RenderingContract in 'content' and EditorState in 'metadata'
+      await upsertPage({
+        project_id: projectId,
+        web_builder_site_id: siteId, // New relational field
+        slug: 'index',
+        title: finalSiteName,
+        content: contract,
+        status: newStatus === 'published' || newStatus === 'modified' ? 'published' : 'draft',
+        metadata: { 
+          origin_app: 'Constructor Web', 
+          version: '6.1',
+          editor_state: editorState // Saving editor state here now
+        }
+      });
+
       if (result) {
-        console.log(`[SIP v5.3] Borrador guardado con éxito (Status: ${newStatus})`);
+        console.log(`[SIP v6.1] Cambios sincronizados en tabla 'pages' (Status: ${newStatus})`);
         setSaveStatus('success');
         setHasUnsavedChanges(false);
         setCurrentStatus(newStatus);
-
-        // Notificar a la Madre (Opcional pero recomendado para UI de la Madre)
+        
         sendToMother('SOLUTIUM_SAVE', {
           site_id: siteId,
           site_name: finalSiteName,
@@ -1105,7 +1195,6 @@ const formatTimestampName = () => {
   const handlePublish = async () => {
     if (!projectId || isPreviewMode) return;
     
-    // Si no tiene nombre real, pedimos uno
     if (isDefaultName(siteName)) {
       setShowPublishModal(true);
       return;
@@ -1115,45 +1204,64 @@ const formatTimestampName = () => {
     setPublishStatus('loading');
     setIsSaving(true);
     try {
-      const renderingContract = generateRenderingContract(finalSiteName);
+      const contract = generateRenderingContract(finalSiteName);
       const siteId = currentSiteId;
 
-      // Sincronizar el borrador con el nuevo nombre antes de publicar
+      // Sync check before publish
+      await checkDictionarySync(contract);
+
+      // 1. Sync Site State
       const siteData: Partial<WebBuilderSite> = {
         projectId,
         appId: appId || '11111111-1111-1111-1111-111111111111',
         siteId: siteId,
         siteName: finalSiteName,
         name: finalSiteName,
-        contentDraft: editorState,
         status: 'published'
       };
       if (initialPage && 'id' in initialPage) siteData.id = initialPage.id;
       await saveWebBuilderSiteDraft(siteData);
 
+      // 2. Publish Site (Legacy published_sites sync)
       const publishData: Partial<PublishedSite> = {
         projectId,
         appId: appId || '11111111-1111-1111-1111-111111111111',
         siteId: siteId,
         siteName: finalSiteName,
-        content: renderingContract,
+        content: contract,
         isActive: true,
         metadata: {
           publishedAt: new Date().toISOString(),
-          editorVersion: '2.0'
+          origin: 'Constructor Web',
+          version: '6.1'
         }
       };
 
       const result = await publishWebBuilderSite(publishData);
       
+      // 3. UPSERT to pages table (SIP v6.1 - Engine Sync)
+      await upsertPage({
+        project_id: projectId,
+        web_builder_site_id: siteId,
+        slug: 'index',
+        title: finalSiteName,
+        content: contract,
+        status: 'published',
+        metadata: { 
+          origin_app: 'Constructor Web', 
+          version: '6.1', 
+          published_at: new Date().toISOString(),
+          editor_state: editorState
+        }
+      });
+
       if (result) {
-        console.log('[SIP v5.3] Sitio publicado con éxito.');
+        console.log('[SIP v6.1] Sitio publicado y sincronizado con Web Engine.');
         setPublishStatus('success');
         setCurrentStatus('published');
         setHasUnsavedChanges(false);
         setShowPublishModal(false);
 
-        // Notificar a la Madre (Opcional pero recomendado)
         sendToMother('SOLUTIUM_PUBLISH', {
           site_id: siteId,
           site_name: finalSiteName,

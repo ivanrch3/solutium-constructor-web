@@ -633,7 +633,7 @@ export const registerAsset = async (asset: Partial<Asset>): Promise<Asset | null
       name: asset.name,
       url: asset.url,
       type: asset.type,
-      origin_app: 'solutium constructor web',
+      origin_app: 'Constructor Web',
       metadata: asset.metadata,
       size: asset.size,
     };

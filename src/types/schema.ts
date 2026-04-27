@@ -197,7 +197,7 @@ export interface Asset {
   name: string;
   url: string;
   type: string;
-  originApp: 'solutium constructor web';
+  originApp: 'Constructor Web';
   metadata?: any;
   size?: number;
   updatedAt?: string;

@@ -864,15 +864,17 @@ const formatTimestampName = () => {
             if (isEyebrow) {
               content.eyebrow = value;
             } else if (isTitle && !content.title) {
-              // Priority variables for Portada (Hero) Module according to SIP v5.4
+              // Priority variables for Portada (Hero) Module according to SIP v5.x
               if (module.type === 'hero' || module.id.startsWith('mod_hero')) {
                 content.texto_principal = value;
+                content.texto_base = value; // Primary fixed variable
               }
               content.title = value;
             } else if (isSubtitle && !content.subtitle) {
-              // Priority variables for Portada (Hero) Module according to SIP v5.4
+              // Priority variables for Portada (Hero) Module according to SIP v5.x
               if (module.type === 'hero' || module.id.startsWith('mod_hero')) {
                 content.texto_secundario = value;
+                content.texto_descripcion = value; // Fallback description
               }
               content.subtitle = value;
             } else if (isImage && !content.image_url) {

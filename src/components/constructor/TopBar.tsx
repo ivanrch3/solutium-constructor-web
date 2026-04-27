@@ -77,7 +77,7 @@ export const TopBar: React.FC<TopBarProps> = ({
     <div className="flex-1 flex flex-col items-center justify-center">
       <div className="flex items-center gap-2">
         <h2 className={`${isMobile ? 'text-sm' : 'text-base'} font-bold text-text truncate`}>
-          {isMobile ? 'Constructor Web' : 'Editor de Módulos'}
+          Constructor Web
         </h2>
         {saveStatus === 'loading' && (
           <div className="flex items-center gap-1.5 px-2 py-0.5 bg-primary/10 rounded-full">
@@ -91,7 +91,7 @@ export const TopBar: React.FC<TopBarProps> = ({
           </div>
         )}
       </div>
-      {!isMobile && <p className="text-[9px] font-semibold text-text/30 uppercase tracking-[0.2em] whitespace-nowrap">Solutium UI Builder</p>}
+      {!isMobile && <p className="text-[9px] font-semibold text-text/30 uppercase tracking-[0.2em] whitespace-nowrap">Constructor Web</p>}
     </div>
 
     {/* Right Section: Actions */}

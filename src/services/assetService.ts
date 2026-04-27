@@ -2,7 +2,7 @@ import { getSupabase } from './supabaseClient';
 import { Asset } from '../types/schema';
 import { uploadToDO } from './doService';
 
-const APP_NAME = 'solutium constructor web';
+const APP_NAME = 'Constructor Web';
 
 /**
  * Sincroniza un activo con Digital Ocean y Supabase siguiendo el estándar de Solutium.

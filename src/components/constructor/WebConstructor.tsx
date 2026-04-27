@@ -296,15 +296,16 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   useEffect(() => {
     const loadFromPagesTable = async () => {
       // If we have an initialPage but it lacks editor state, try fetching from 'pages'
-      if (initialPage && (initialPage as any).id && !(initialPage as any).contentDraft && !(initialPage as any).metadata?.editor_state) {
-        const page = await getPageBySiteId(currentSiteId);
+      const pageId = (initialPage as any)?.id;
+      if (pageId && !(initialPage as any).contentDraft && !(initialPage as any).metadata?.editor_state) {
+        const page = await getPageBySiteId(pageId); // Using internal UUID id
         if (page && page.metadata?.editor_state) {
           setEditorState(page.metadata.editor_state);
         }
       }
     };
     loadFromPagesTable();
-  }, [currentSiteId, initialPage]);
+  }, [initialPage]);
   
   // AI Generation State
   const [onboardingFinished, setOnboardingFinished] = useState(() => {
@@ -1131,6 +1132,10 @@ const formatTimestampName = () => {
       
       const result = await saveWebBuilderSiteDraft(siteData);
       
+      if (!result) {
+        throw new Error('Error al guardar el borrador base');
+      }
+      
       // 2. Generate Contract and Sync Check
       const contract = generateRenderingContract(finalSiteName);
       await checkDictionarySync(contract);
@@ -1139,7 +1144,7 @@ const formatTimestampName = () => {
       // We store the RenderingContract in 'content' and EditorState in 'metadata'
       await upsertPage({
         project_id: projectId,
-        web_builder_site_id: siteId, // New relational field
+        web_builder_site_id: result.id, // Fixed: use real DB ID to avoid FK violation
         slug: 'index',
         title: finalSiteName,
         content: contract,
@@ -1220,7 +1225,8 @@ const formatTimestampName = () => {
         status: 'published'
       };
       if (initialPage && 'id' in initialPage) siteData.id = initialPage.id;
-      await saveWebBuilderSiteDraft(siteData);
+      const actualSite = await saveWebBuilderSiteDraft(siteData);
+      if (!actualSite) throw new Error('Error al actualizar registro de sitio');
 
       // 2. Publish Site (Legacy published_sites sync)
       const publishData: Partial<PublishedSite> = {
@@ -1242,7 +1248,7 @@ const formatTimestampName = () => {
       // 3. UPSERT to pages table (SIP v6.1 - Engine Sync)
       await upsertPage({
         project_id: projectId,
-        web_builder_site_id: siteId,
+        web_builder_site_id: actualSite.id, // Fixed: use real DB ID to avoid FK violation
         slug: 'index',
         title: finalSiteName,
         content: contract,

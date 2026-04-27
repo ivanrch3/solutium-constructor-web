@@ -164,6 +164,7 @@ export interface WebBuilderSite {
 export interface RenderingContract {
   layout?: "full-width" | "boxed";
   inject_tailwind?: boolean;
+  css?: string;
   theme: {
     primaryColor: string;
     fontFamily: string;
@@ -173,6 +174,7 @@ export interface RenderingContract {
     type: string;
     content: any;
     settings?: any;
+    styles?: any;
   }>;
 }
 

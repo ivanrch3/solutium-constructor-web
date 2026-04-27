@@ -803,14 +803,7 @@ const formatTimestampName = () => {
       ? getVal(firstModuleId, null, 'primary_color', project?.brandColors?.primary || '#2563EB')
       : (project?.brandColors?.primary || '#2563EB');
 
-    return {
-      layout: "full-width",
-      inject_tailwind: true,
-      theme: {
-        primaryColor,
-        fontFamily: project?.fontFamily || 'Inter',
-      },
-      sections: editorState.addedModules.map(module => {
+    const sections = editorState.addedModules.map(module => {
         const content: any = {
           eyebrow: '',
           title: '',
@@ -820,6 +813,12 @@ const formatTimestampName = () => {
           image_url: ''
         };
         const settings: any = {};
+        const styles: any = {
+          'border-radius': '',
+          'box-shadow': '',
+          'font-family': project?.fontFamily || 'Inter',
+          'button-styles': {}
+        };
 
         // Extract ALL settings for this module
         Object.entries(editorState.settingsValues).forEach(([key, rawValue]) => {
@@ -844,11 +843,22 @@ const formatTimestampName = () => {
             const isSubtitle = cleanKey === 'subtitle' || (cleanKey.includes('subtitle') && (cleanKey.endsWith('_text') || cleanKey.endsWith('_subtitle')));
             const isImage = cleanKey.endsWith('_url') || cleanKey.endsWith('_img') || cleanKey.includes('image') || cleanKey.includes('visual');
             
+            // Rotating Text Detection (Solutium Protocol)
+            const isRotatingFixed = cleanKey.includes('rotating_fixed');
+            const isRotatingOptions = cleanKey.includes('rotating_options');
+            const isRotatingEnabled = cleanKey.includes('rotating_enabled');
+
             // CTA Handling
             const isPrimaryCtaText = (cleanKey.includes('primary_cta') && cleanKey.includes('text')) || cleanKey === 'cta_text' || cleanKey === 'button_text';
             const isPrimaryCtaUrl = (cleanKey.includes('primary_cta') && cleanKey.includes('url')) || cleanKey === 'cta_url' || cleanKey === 'button_url';
             const isSecondaryCtaText = cleanKey.includes('secondary_cta') && cleanKey.includes('text');
             const isSecondaryCtaUrl = cleanKey.includes('secondary_cta') && cleanKey.includes('url');
+
+            // Style Specific Keys (Solutium Protocol v4.0+)
+            const isBorderRadius = cleanKey.includes('radius') || cleanKey.includes('rounded');
+            const isShadow = cleanKey.includes('shadow');
+            const isFontFamily = cleanKey === 'font_family' || cleanKey === 'fontFamily';
+            const isButtonStyles = cleanKey.includes('button_style') || cleanKey.includes('btn_');
 
             // --- ALLOCATION ---
             if (isEyebrow) {
@@ -867,13 +877,35 @@ const formatTimestampName = () => {
               content.secondary_cta.text = value;
             } else if (isSecondaryCtaUrl) {
               content.secondary_cta.url = value;
-            } else {
-              // --- SETTINGS (Aesthetic) ---
-              // Only include if it's not a known editor metadata key leakage
-              const forbiddenKeys = ['label', 'defaultValue', 'min', 'max', 'showIf', 'options', 'unit', 'step'];
-              if (!forbiddenKeys.includes(cleanKey)) {
-                settings[cleanKey] = value;
+            } else if (isRotatingFixed) {
+              content.texto_fijo = value;
+            } else if (isRotatingOptions) {
+              // Ensure we extract the array of strings from the repeater format
+              if (Array.isArray(value)) {
+                content.palabras_dinamicas = value.map((item: any) => typeof item === 'object' ? (item.text || item.value || '') : item);
+              } else {
+                content.palabras_dinamicas = [value];
               }
+            } else if (isRotatingEnabled) {
+              content.is_rotating_active = value;
+            }
+            
+            // Style-specific Allocation
+            if (isBorderRadius) {
+              styles['border-radius'] = value;
+            } else if (isShadow) {
+              styles['box-shadow'] = value;
+            } else if (isFontFamily) {
+              styles['font-family'] = value;
+            } else if (isButtonStyles) {
+              styles['button-styles'][cleanKey] = value;
+            }
+
+            // --- SETTINGS (Aesthetic) ---
+            // Only include if it's not a known editor metadata key leakage
+            const forbiddenKeys = ['label', 'defaultValue', 'min', 'max', 'showIf', 'options', 'unit', 'step'];
+            if (!forbiddenKeys.includes(cleanKey)) {
+              settings[cleanKey] = value;
             }
           }
         });
@@ -893,9 +925,41 @@ const formatTimestampName = () => {
           id: module.id,
           type: module.type as any,
           content,
-          settings
+          settings,
+          styles
         };
-      })
+      });
+
+    // Generate CSS block for identical visualization
+    let cssBlock = `/* Solutium Generated CSS for Identical Visualization */\n`;
+    cssBlock += `:root { --primary-color: ${primaryColor}; }\n`;
+    
+    sections.forEach(section => {
+      const { id, styles } = section;
+      cssBlock += `\n#section-${id} {\n`;
+      if (styles['border-radius']) cssBlock += `  border-radius: ${styles['border-radius']};\n`;
+      if (styles['box-shadow']) cssBlock += `  box-shadow: ${styles['box-shadow']};\n`;
+      if (styles['font-family']) cssBlock += `  font-family: ${styles['font-family']};\n`;
+      
+      // Button styles nesting (simplified)
+      if (styles['button-styles'] && typeof styles['button-styles'] === 'object') {
+        cssBlock += `}\n#section-${id} button {\n`;
+        Object.entries(styles['button-styles']).forEach(([key, val]) => {
+          if (typeof val !== 'object') cssBlock += `  --${key}: ${val};\n`;
+        });
+      }
+      cssBlock += `}\n`;
+    });
+
+    return {
+      layout: "full-width",
+      inject_tailwind: true,
+      css: cssBlock,
+      theme: {
+        primaryColor,
+        fontFamily: project?.fontFamily || 'Inter',
+      },
+      sections
     };
   };
 

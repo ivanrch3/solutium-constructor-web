@@ -300,7 +300,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       if (pageId && !(initialPage as any).contentDraft && !(initialPage as any).metadata?.editor_state) {
         const page = await getPageBySiteId(pageId, projectId); // Added projectId as fallback
         if (page && page.metadata?.editor_state) {
-          setEditorState(page.metadata.editor_state);
+          setEditorState(migrateEditorStateToUUIDs(page.metadata.editor_state));
         }
       }
     };
@@ -529,7 +529,8 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
           const baseModule = Object.values(registryModules).find((m: any) => (m as any).id === sec.moduleId) as WebModule;
           if (!baseModule) return;
 
-          const moduleId = `${baseModule.id}_${Date.now()}_${idx}`;
+          // Use persistent UUIDs (Solutium Protocol v2.0)
+          const moduleId = crypto.randomUUID();
           const newElements = baseModule.elements.map(el => {
             const elId = `${moduleId}_${el.id}`;
             Object.entries(sec.settingsValues).forEach(([key, val]) => {
@@ -575,7 +576,8 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
 
   const addModule = (module: WebModule) => {
     console.log('Adding module:', module.type);
-    const moduleId = `${module.id}_${Date.now()}`;
+    // Use persistent UUIDs (Solutium Protocol v2.0)
+    const moduleId = crypto.randomUUID();
     
     // Prefix element IDs to ensure uniqueness
     const newElements = module.elements.map(el => ({
@@ -821,6 +823,74 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
 
   // --- HELPERS ---
 
+// Helper to check for persistent UUIDs (Solutium Protocol v2.0)
+const isUUID = (str: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+
+const migrateEditorStateToUUIDs = (state: any): any => {
+  let changed = false;
+  let newState = { ...state };
+  let newSettings = { ...state.settingsValues };
+
+  const addedModules = state.addedModules || [];
+  const newAddedModules = addedModules.map((mod: any) => {
+    if (!isUUID(mod.id)) {
+      const oldId = mod.id;
+      const newId = crypto.randomUUID();
+      changed = true;
+      
+      const updatedMod = { ...mod, id: newId };
+      updatedMod.elements = (mod.elements || []).map((el: any) => {
+        const oldElId = el.id;
+        const newElId = el.id.replace(oldId, newId);
+        
+        Object.keys(newSettings).forEach(key => {
+          if (key.startsWith(oldElId)) {
+            const newKey = key.replace(oldElId, newElId);
+            newSettings[newKey] = newSettings[key];
+            delete newSettings[key];
+          }
+        });
+        
+        return { ...el, id: newElId };
+      });
+
+      Object.keys(newSettings).forEach(key => {
+        if (key.startsWith(`${oldId}_global`)) {
+          const newKey = key.replace(oldId, newId);
+          newSettings[newKey] = newSettings[key];
+          delete newSettings[key];
+        }
+      });
+
+      return updatedMod;
+    }
+    return mod;
+  });
+
+  if (changed) {
+    if (newState.expandedModuleId && !isUUID(newState.expandedModuleId)) {
+        const idx = addedModules.findIndex((m: any) => m.id === newState.expandedModuleId);
+        if (idx !== -1) newState.expandedModuleId = newAddedModules[idx].id;
+    }
+    if (newState.selectedElementId && !isUUID(newState.selectedElementId.split('_')[0])) {
+        const parts = newState.selectedElementId.split('_');
+        const oldId = parts[0];
+        const idx = addedModules.findIndex((m: any) => m.id === oldId);
+        if (idx !== -1) {
+            parts[0] = newAddedModules[idx].id;
+            newState.selectedElementId = parts.join('_');
+        }
+    }
+
+    return {
+      ...newState,
+      addedModules: newAddedModules,
+      settingsValues: newSettings
+    };
+  }
+  return state;
+};
+
 const formatTimestampName = () => {
     const now = new Date();
     const yy = now.getFullYear().toString().slice(-2);
@@ -856,11 +926,12 @@ const formatTimestampName = () => {
     onBackToDashboard();
   };
 
-  const generateRenderingContract = (finalSiteName: string): RenderingContract => {
+  const generateRenderingContract = (finalSiteName: string, stateToUse?: any): RenderingContract => {
+    const currentState = stateToUse || editorState;
     // Helper to get setting value with fallback and CLEAN value extraction
     const getVal = (moduleId: string, elementId: string | null, settingId: string, defaultValue: any) => {
       const key = elementId ? `${moduleId}_${elementId}_${settingId}` : `${moduleId}_global_${settingId}`;
-      const rawValue = editorState.settingsValues[key] !== undefined ? editorState.settingsValues[key] : defaultValue;
+      const rawValue = currentState.settingsValues[key] !== undefined ? currentState.settingsValues[key] : defaultValue;
       
       // Clean value: If it's an object with a 'value' property (editor metadata), extract just the value
       if (rawValue && typeof rawValue === 'object' && 'value' in rawValue && !Array.isArray(rawValue)) {
@@ -916,12 +987,12 @@ const formatTimestampName = () => {
     };
 
     // 1. Determine Global Theme
-    const firstModuleId = editorState.addedModules[0]?.id;
+    const firstModuleId = currentState.addedModules[0]?.id;
     const primaryColor = firstModuleId 
       ? getVal(firstModuleId, null, 'primary_color', project?.brandColors?.primary || '#2563EB')
       : (project?.brandColors?.primary || '#2563EB');
 
-    const sections = editorState.addedModules.map(module => {
+    const sections = currentState.addedModules.map(module => {
         const content: any = {
           eyebrow: '',
           title: '',
@@ -939,7 +1010,7 @@ const formatTimestampName = () => {
         };
 
         // Extract ALL settings for this module
-        Object.entries(editorState.settingsValues).forEach(([key, rawValue]) => {
+        Object.entries(currentState.settingsValues).forEach(([key, rawValue]) => {
           if (key.startsWith(module.id)) {
             // Clean value: Extract primitive if it's an editor-wrapped object
             let value = rawValue;
@@ -1185,15 +1256,23 @@ const formatTimestampName = () => {
         throw new Error('Error al guardar el borrador base');
       }
       
+      // --- PROTOCOLO SOLUTIUM v2.0: Identidad UUID Persistente ---
+      // Aseguramos que todas las secciones tengan un UUID antes de persistir
+      const migratedState = migrateEditorStateToUUIDs(editorState);
+      if (migratedState !== editorState) {
+        setEditorState(migratedState);
+      }
+      const activeState = migratedState;
+
       // 2. Generate Contract and Sync Check
-      const contract = generateRenderingContract(finalSiteName);
+      const contract = generateRenderingContract(finalSiteName, activeState);
       await checkDictionarySync(contract);
 
       // 3. UPSERT to pages table (SIP v6.1 - Source of Truth)
       // We store the RenderingContract in 'content' and EditorState in 'metadata'
       const savedPage = await upsertPage({
         project_id: projectId,
-        web_builder_site_id: result.id, // Fixed: use real DB ID to avoid FK violation
+        web_builder_site_id: result.id, 
         slug: 'index',
         title: finalSiteName,
         content: contract,
@@ -1201,19 +1280,20 @@ const formatTimestampName = () => {
         metadata: { 
           origin_app: 'Constructor Web', 
           version: '2.0-Atomic',
-          editor_state: editorState // Saving editor state here now
+          editor_state: activeState // Use migrated state
         }
       });
 
       // 4. ATOMIC SERIALIZATION V1.5: Save individual sections
       if (savedPage && savedPage.id) {
         const pageSections: Partial<PageSection>[] = contract.sections.map((section, idx) => ({
+          id: isUUID(section.id) ? section.id : undefined, // Prioritize UUID from contract
           page_id: savedPage.id!,
           section_type: section.tipo,
           content_json: section.content,
           styles_json: { ...section.styles, ...section.settings },
           order_index: idx,
-          metadata: { version: '1.5-Atomic' }
+          metadata: { version: '2.0-Atomic' }
         }));
         await upsertPageSections(savedPage.id!, pageSections);
       }
@@ -1271,7 +1351,14 @@ const formatTimestampName = () => {
     setPublishStatus('loading');
     setIsSaving(true);
     try {
-      const contract = generateRenderingContract(finalSiteName);
+      // --- PROTOCOLO SOLUTIUM v2.0: Identidad UUID Persistente ---
+      const migratedState = migrateEditorStateToUUIDs(editorState);
+      if (migratedState !== editorState) {
+        setEditorState(migratedState);
+      }
+      const activeState = migratedState;
+
+      const contract = generateRenderingContract(finalSiteName, activeState);
       const siteId = currentSiteId;
 
       // Sync check before publish
@@ -1319,19 +1406,20 @@ const formatTimestampName = () => {
           origin_app: 'Constructor Web', 
           version: '2.0-Atomic', 
           published_at: new Date().toISOString(),
-          editor_state: editorState
+          editor_state: activeState // Use migrated state
         }
       });
 
       // 4. ATOMIC SERIALIZATION V1.5: Save individual sections
       if (savedPage && savedPage.id) {
         const pageSections: Partial<PageSection>[] = contract.sections.map((section, idx) => ({
+          id: isUUID(section.id) ? section.id : undefined, // Prioritize UUID from contract
           page_id: savedPage.id!,
           section_type: section.tipo,
           content_json: section.content,
           styles_json: { ...section.styles, ...section.settings },
           order_index: idx,
-          metadata: { version: '1.5-Atomic' }
+          metadata: { version: '2.0-Atomic' }
         }));
         await upsertPageSections(savedPage.id!, pageSections);
       }

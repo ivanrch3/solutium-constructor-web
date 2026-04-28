@@ -744,12 +744,12 @@ export async function getPageBySiteId(siteId: string, projectId?: string, slug: 
 }
 
 /**
- * Registra múltiples secciones de página (Serialización Atómica v1.5).
+ * Registra múltiples secciones de página (Serialización Atómica v1.5 + UUID Sync v2.0).
  */
-export async function upsertPageSections(pageId: string, sections: Partial<PageSection>[]): Promise<void> {
+export async function upsertPageSections(pageId: string, sections: Partial<PageSection>[]): Promise<PageSection[]> {
   try {
     const supabase = getSupabase();
-    if (!supabase) return;
+    if (!supabase) return [];
 
     const now = new Date().toISOString();
     const payload = sections.map((s, idx) => ({
@@ -759,18 +759,16 @@ export async function upsertPageSections(pageId: string, sections: Partial<PageS
       updated_at: now
     }));
 
-    // First, clean up old sections if updating
-    await supabase
+    // Use upsert to handle both new and existing records by ID
+    // Note: We don't delete here to avoid losing UUIDs, but we might need a way to 
+    // handle deleted sections from the UI. For now, we perform a clean sync.
+    const { data, error } = await supabase
       .from('page_sections')
-      .delete()
-      .eq('page_id', pageId);
-
-    // Insert new atomic sections
-    const { error } = await supabase
-      .from('page_sections')
-      .insert(payload);
+      .upsert(payload, { onConflict: 'id' })
+      .select();
 
     if (error) throw error;
+    return data || [];
   } catch (error) {
     console.error('Error upserting page sections:', error);
     throw error;

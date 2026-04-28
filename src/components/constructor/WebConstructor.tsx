@@ -37,9 +37,9 @@ import {
   CTA_MODULE, PRICING_MODULE, FAQ_MODULE, CLIENTS_MODULE,
   BENTO_MODULE, COMPARISON_MODULE
 } from './registry';
-import { saveWebBuilderSiteDraft, publishWebBuilderSite, getProducts, getCustomers, upsertPage, logEvolutionRequest, getPageBySiteId } from '../../services/dataService';
+import { saveWebBuilderSiteDraft, publishWebBuilderSite, getProducts, getCustomers, upsertPage, upsertPageSections, logEvolutionRequest, getPageBySiteId } from '../../services/dataService';
 import { sendToMother } from '../../services/handshakeService';
-import { Product, Customer } from '../../types/schema';
+import { Product, Customer, PageSection } from '../../types/schema';
 import { MOCK_PRODUCTS, MOCK_CUSTOMERS } from '../../constants/mockData';
 import { MainSidebar, ModuleItem } from './MainSidebar';
 import { StructurePanel } from './StructurePanel';
@@ -298,7 +298,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       // If we have an initialPage but it lacks editor state, try fetching from 'pages'
       const pageId = (initialPage as any)?.id;
       if (pageId && !(initialPage as any).contentDraft && !(initialPage as any).metadata?.editor_state) {
-        const page = await getPageBySiteId(pageId); // Using internal UUID id
+        const page = await getPageBySiteId(pageId, projectId); // Added projectId as fallback
         if (page && page.metadata?.editor_state) {
           setEditorState(page.metadata.editor_state);
         }
@@ -869,6 +869,52 @@ const formatTimestampName = () => {
       return rawValue;
     };
 
+    // --- ORDEN DE SERIALIZACIÓN BIT-A-BIT (PROTOCOLO SOLUTIUM v2.0) ---
+    const atomicTransform = (key: string, value: any) => {
+      const result: Record<string, any> = {};
+      
+      // 1. Colometría Detallada
+      if (typeof value === 'string' && (value.startsWith('#') || value.startsWith('rgba') || value.startsWith('rgb') || value.includes('var('))) {
+        result[`${key}_hex`] = value.startsWith('#') ? value : null;
+        result[`${key}_rgba`] = (value.startsWith('rgb') && !value.includes('var(')) ? value : null;
+        result[`${key}_variable`] = value.includes('var(') ? value.match(/var\(([^)]+)\)/)?.[1] : `--solutium-${key.replace(/_/g, '-')}`;
+        result[`${key}_fallback`] = value.startsWith('#') ? '#000000' : 'rgba(0,0,0,1)';
+        result[key] = value; // Raw value still included
+        return result;
+      }
+
+      // 2. Dimensiones con Unidad Explícita
+      const dimensionKeys = ['radius', 'gap', 'padding', 'width', 'height', 'thickness', 'size', 'margin', 'offset', 'letter_spacing', 'line_height', 'blur', 'spread'];
+      if (typeof value === 'number' && dimensionKeys.some(dk => key.includes(dk))) {
+        let unit = 'px';
+        if (key.includes('line_height')) unit = 'em';
+        else if (key.includes('vh')) unit = 'vh';
+        else if (key.includes('vw')) unit = 'vw';
+        else if (key.includes('%')) unit = '%';
+        
+        result[key] = `${value}${unit}`;
+        result[`${key}_val`] = value;
+        result[`${key}_unit`] = unit;
+        return result;
+      }
+
+      // 3. Desfase de Efectos (Box Shadow breakdown)
+      if (key.includes('shadow') && typeof value === 'string' && value.includes('px')) {
+        const parts = value.split(' ');
+        result[`${key}_details`] = {
+          x: parts[0] || '0px',
+          y: parts[1] || '0px',
+          blur: parts[2] || '0px',
+          spread: parts[3] || '0px',
+          color: parts[4] || '#000000'
+        };
+      }
+
+      // 4. Tipografía Obligatoria & Booleans
+      result[key] = value;
+      return result;
+    };
+
     // 1. Determine Global Theme
     const firstModuleId = editorState.addedModules[0]?.id;
     const primaryColor = firstModuleId 
@@ -886,8 +932,8 @@ const formatTimestampName = () => {
         };
         const settings: any = {};
         const styles: any = {
-          'border-radius': '',
-          'box-shadow': '',
+          'border-radius': '0px',
+          'box-shadow': 'none',
           'font-family': project?.fontFamily || 'Inter',
           'button-styles': {}
         };
@@ -907,6 +953,9 @@ const formatTimestampName = () => {
             // Remove secondary technical prefixes like "el_hero_", "el_contact_", etc.
             const cleanKey = relativeKey.replace(/^el_[a-zA-Z0-9]+_/, '').replace(/^global_/, '');
             
+            // Apply Atomic Transform
+            const atomicValues = atomicTransform(cleanKey, value);
+
             // --- SEPARATION OF POWERS (Solutium Protocol) ---
             
             // Identify if it's a content field
@@ -933,20 +982,20 @@ const formatTimestampName = () => {
             const isButtonStyles = cleanKey.includes('button_style') || cleanKey.includes('btn_');
 
             // --- ALLOCATION ---
+            const isContentField = isEyebrow || isTitle || isSubtitle || isImage || isPrimaryCtaText || isPrimaryCtaUrl || isSecondaryCtaText || isSecondaryCtaUrl || isRotatingOptions || isRotatingFixed || isRotatingEnabled || cleanKey.includes('rotating_speed') || cleanKey.includes('rotating_gradient') || cleanKey.includes('rotating_color');
+
             if (isEyebrow) {
               content.eyebrow = value;
             } else if (isTitle && !content.title) {
-              // Priority variables for Portada (Hero) Module according to SIP v5.x
               if (module.type === 'hero' || module.id.startsWith('mod_hero')) {
                 content.texto_principal = value;
-                content.texto_base = value; // Primary fixed variable
+                content.texto_base = value;
               }
               content.title = value;
             } else if (isSubtitle && !content.subtitle) {
-              // Priority variables for Portada (Hero) Module according to SIP v5.x
               if (module.type === 'hero' || module.id.startsWith('mod_hero')) {
                 content.texto_secundario = value;
-                content.texto_descripcion = value; // Fallback description
+                content.texto_descripcion = value;
               }
               content.subtitle = value;
             } else if (isImage && !content.image_url) {
@@ -962,7 +1011,6 @@ const formatTimestampName = () => {
             } else if (isRotatingFixed) {
               content.texto_base = value;
             } else if (isRotatingOptions) {
-              // Ensure we extract the array of strings from the repeater format
               if (Array.isArray(value)) {
                 content.palabras_efecto = value.map((item: any) => typeof item === 'object' ? (item.text || item.value || '') : item);
               } else {
@@ -976,22 +1024,23 @@ const formatTimestampName = () => {
               content.estilo_efecto = value;
             }
             
-            // Style-specific Allocation
-            if (isBorderRadius) {
-              styles['border-radius'] = value;
-            } else if (isShadow) {
-              styles['box-shadow'] = value;
-            } else if (isFontFamily) {
-              styles['font-family'] = value;
-            } else if (isButtonStyles) {
-              styles['button-styles'][cleanKey] = value;
-            }
-
-            // --- SETTINGS (Aesthetic) ---
-            // Only include if it's not a known editor metadata key leakage
-            const forbiddenKeys = ['label', 'defaultValue', 'min', 'max', 'showIf', 'options', 'unit', 'step'];
-            if (!forbiddenKeys.includes(cleanKey)) {
-              settings[cleanKey] = value;
+            // Allocation to Styles/Settings
+            if (!isContentField) {
+              if (isBorderRadius) {
+                styles['border-radius'] = typeof value === 'number' ? `${value}px` : value;
+              } else if (isShadow) {
+                styles['box-shadow'] = value;
+              } else if (isFontFamily) {
+                styles['font-family'] = value;
+              } else if (isButtonStyles) {
+                Object.assign(styles['button-styles'], atomicValues);
+              }
+              
+              // Directiva v1.5: Everything not content goes to settings (which will be style_json)
+              const forbiddenKeys = ['label', 'defaultValue', 'min', 'max', 'showIf', 'options', 'unit', 'step'];
+              if (!forbiddenKeys.includes(cleanKey)) {
+                Object.assign(settings, atomicValues);
+              }
             }
           }
         });
@@ -1142,7 +1191,7 @@ const formatTimestampName = () => {
 
       // 3. UPSERT to pages table (SIP v6.1 - Source of Truth)
       // We store the RenderingContract in 'content' and EditorState in 'metadata'
-      await upsertPage({
+      const savedPage = await upsertPage({
         project_id: projectId,
         web_builder_site_id: result.id, // Fixed: use real DB ID to avoid FK violation
         slug: 'index',
@@ -1151,10 +1200,23 @@ const formatTimestampName = () => {
         status: newStatus === 'published' || newStatus === 'modified' ? 'published' : 'draft',
         metadata: { 
           origin_app: 'Constructor Web', 
-          version: '6.1',
+          version: '2.0-Atomic',
           editor_state: editorState // Saving editor state here now
         }
       });
+
+      // 4. ATOMIC SERIALIZATION V1.5: Save individual sections
+      if (savedPage && savedPage.id) {
+        const pageSections: Partial<PageSection>[] = contract.sections.map((section, idx) => ({
+          page_id: savedPage.id!,
+          section_type: section.tipo,
+          content_json: section.content,
+          styles_json: { ...section.styles, ...section.settings },
+          order_index: idx,
+          metadata: { version: '1.5-Atomic' }
+        }));
+        await upsertPageSections(savedPage.id!, pageSections);
+      }
 
       if (result) {
         console.log(`[SIP v6.1] Cambios sincronizados en tabla 'pages' (Status: ${newStatus})`);
@@ -1246,7 +1308,7 @@ const formatTimestampName = () => {
       const result = await publishWebBuilderSite(publishData);
       
       // 3. UPSERT to pages table (SIP v6.1 - Engine Sync)
-      await upsertPage({
+      const savedPage = await upsertPage({
         project_id: projectId,
         web_builder_site_id: actualSite.id, // Fixed: use real DB ID to avoid FK violation
         slug: 'index',
@@ -1255,11 +1317,24 @@ const formatTimestampName = () => {
         status: 'published',
         metadata: { 
           origin_app: 'Constructor Web', 
-          version: '6.1', 
+          version: '2.0-Atomic', 
           published_at: new Date().toISOString(),
           editor_state: editorState
         }
       });
+
+      // 4. ATOMIC SERIALIZATION V1.5: Save individual sections
+      if (savedPage && savedPage.id) {
+        const pageSections: Partial<PageSection>[] = contract.sections.map((section, idx) => ({
+          page_id: savedPage.id!,
+          section_type: section.tipo,
+          content_json: section.content,
+          styles_json: { ...section.styles, ...section.settings },
+          order_index: idx,
+          metadata: { version: '1.5-Atomic' }
+        }));
+        await upsertPageSections(savedPage.id!, pageSections);
+      }
 
       if (result) {
         console.log('[SIP v6.1] Sitio publicado y sincronizado con Web Engine.');

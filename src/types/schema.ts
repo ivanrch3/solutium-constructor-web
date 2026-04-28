@@ -172,6 +172,7 @@ export interface RenderingContract {
   sections: Array<{
     id: string;
     type: string;
+    tipo: string;
     content: any;
     settings?: any;
     styles?: any;
@@ -213,6 +214,17 @@ export interface Page {
   content: RenderingContract;
   metadata?: any;
   status: 'draft' | 'published';
+  updated_at?: string;
+}
+
+export interface PageSection {
+  id?: string;
+  page_id: string;
+  section_type: string;
+  content_json: any;
+  styles_json: any;
+  order_index: number;
+  metadata?: any;
   updated_at?: string;
 }
 

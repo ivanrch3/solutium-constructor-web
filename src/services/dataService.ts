@@ -1,5 +1,5 @@
 import { getSupabase } from './supabaseClient';
-import { Profile, Project, Customer, Product, Asset, WebBuilderSite, PublishedSite, RenderingContract, Page, EngineEvolutionBuffer } from '../types/schema';
+import { Profile, Project, Customer, Product, Asset, WebBuilderSite, PublishedSite, RenderingContract, Page, PageSection, EngineEvolutionBuffer } from '../types/schema';
 import { profileSchema, projectSchema, customerSchema, productSchema, webBuilderSiteSchema, publishedSiteSchema, assetSchema } from '../types/zodSchemas';
 import { z } from 'zod';
 
@@ -662,13 +662,13 @@ export const registerAsset = async (asset: Partial<Asset>): Promise<Asset | null
 /**
  * Realiza un upsert en la tabla pages para sincronizar el contenido con el motor de renderizado.
  */
-export async function upsertPage(pageData: Partial<Page>): Promise<void> {
+export async function upsertPage(pageData: Partial<Page>): Promise<Page | null> {
   try {
     const supabase = getSupabase();
-    if (!supabase) return;
+    if (!supabase) return null;
 
     const { data: userData } = await supabase.auth.getUser();
-    if (!userData.user) return;
+    if (!userData.user) return null;
 
     const now = new Date().toISOString();
     
@@ -678,14 +678,15 @@ export async function upsertPage(pageData: Partial<Page>): Promise<void> {
       updated_at: now
     };
 
-    // SIP v6.1: On conflict check project_id AND slug OR web_builder_site_id if present
-    const conflictCols = pageData.web_builder_site_id ? 'web_builder_site_id,slug' : 'project_id,slug';
-
-    const { error } = await supabase
+    // SIP v6.1: Resolved conflict target to project_id,slug as per DB constraint pages_project_id_slug_key
+    const { data, error } = await supabase
       .from('pages')
-      .upsert(payload, { onConflict: conflictCols });
+      .upsert(payload, { onConflict: 'project_id,slug' })
+      .select()
+      .single();
 
     if (error) throw error;
+    return data;
   } catch (error) {
     console.error('Error upserting page:', error);
     throw error;
@@ -693,19 +694,33 @@ export async function upsertPage(pageData: Partial<Page>): Promise<void> {
 }
 
 /**
- * Recupera una página por el ID del sitio del constructor web.
+ * Recupera una página por el ID del sitio o por proyecto/slug como respaldo (SIP v6.1).
  */
-export async function getPageBySiteId(siteId: string, slug: string = 'index'): Promise<Page | null> {
+export async function getPageBySiteId(siteId: string, projectId?: string, slug: string = 'index'): Promise<Page | null> {
   try {
     const supabase = getSupabase();
     if (!supabase) return null;
 
-    const { data, error } = await supabase
+    // First try by specific site ID
+    let query = supabase
       .from('pages')
       .select('*')
       .eq('web_builder_site_id', siteId)
-      .eq('slug', slug)
-      .maybeSingle();
+      .eq('slug', slug);
+
+    let { data, error } = await query.maybeSingle();
+
+    // If not found and we have a projectId, try the project default
+    if (!data && projectId) {
+      const { data: fallbackData, error: fallbackError } = await supabase
+        .from('pages')
+        .select('*')
+        .eq('project_id', projectId)
+        .eq('slug', slug)
+        .maybeSingle();
+      
+      if (!fallbackError) data = fallbackData;
+    }
 
     if (error) throw error;
     if (!data) return null;
@@ -713,6 +728,7 @@ export async function getPageBySiteId(siteId: string, slug: string = 'index'): P
     return {
       id: data.id,
       project_id: data.project_id,
+      user_id: data.user_id,
       web_builder_site_id: data.web_builder_site_id,
       slug: data.slug,
       title: data.title,
@@ -722,8 +738,42 @@ export async function getPageBySiteId(siteId: string, slug: string = 'index'): P
       updated_at: data.updated_at
     };
   } catch (error) {
-    console.error('Error getting page by site ID:', error);
+    console.error('Error getting page:', error);
     return null;
+  }
+}
+
+/**
+ * Registra múltiples secciones de página (Serialización Atómica v1.5).
+ */
+export async function upsertPageSections(pageId: string, sections: Partial<PageSection>[]): Promise<void> {
+  try {
+    const supabase = getSupabase();
+    if (!supabase) return;
+
+    const now = new Date().toISOString();
+    const payload = sections.map((s, idx) => ({
+      ...s,
+      page_id: pageId,
+      order_index: s.order_index ?? idx,
+      updated_at: now
+    }));
+
+    // First, clean up old sections if updating
+    await supabase
+      .from('page_sections')
+      .delete()
+      .eq('page_id', pageId);
+
+    // Insert new atomic sections
+    const { error } = await supabase
+      .from('page_sections')
+      .insert(payload);
+
+    if (error) throw error;
+  } catch (error) {
+    console.error('Error upserting page sections:', error);
+    throw error;
   }
 }
 

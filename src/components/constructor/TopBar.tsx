@@ -27,6 +27,9 @@ interface TopBarProps {
   publishStatus: 'idle' | 'loading' | 'success' | 'error';
   isMobile: boolean;
   isPreviewMode: boolean;
+  hasUnsavedChanges?: boolean;
+  currentStatus?: 'draft' | 'published' | 'modified';
+  isNewSite?: boolean;
 }
 
 export const TopBar: React.FC<TopBarProps> = ({ 
@@ -41,7 +44,10 @@ export const TopBar: React.FC<TopBarProps> = ({
   saveStatus,
   publishStatus,
   isMobile,
-  isPreviewMode
+  isPreviewMode,
+  hasUnsavedChanges = false,
+  currentStatus = 'draft',
+  isNewSite = true
 }) => (
   <div className={`bg-surface border-b border-border/60 flex items-center justify-between px-4 md:px-6 z-20 ${isMobile ? 'h-[70px]' : 'h-[60px]'}`}>
     {/* Left Section: Viewports */}
@@ -119,14 +125,15 @@ export const TopBar: React.FC<TopBarProps> = ({
 
       <div className="flex items-center gap-1.5 md:gap-2">
         <motion.button 
-          whileHover={saveStatus === 'idle' ? { scale: 1.02 } : {}}
-          whileTap={saveStatus === 'idle' ? { scale: 0.98 } : {}}
-          onClick={saveStatus === 'idle' ? onSave : undefined}
-          disabled={saveStatus !== 'idle'}
+          whileHover={(saveStatus === 'idle' && hasUnsavedChanges) ? { scale: 1.02 } : {}}
+          whileTap={(saveStatus === 'idle' && hasUnsavedChanges) ? { scale: 0.98 } : {}}
+          onClick={(saveStatus === 'idle' && hasUnsavedChanges) ? onSave : undefined}
+          disabled={saveStatus !== 'idle' || !hasUnsavedChanges}
           className={`flex items-center gap-2 px-3 md:px-4 py-2 font-bold text-[10px] md:text-xs rounded-xl transition-all ${
             saveStatus === 'success' ? 'bg-green-500/10 text-green-600' : 
             saveStatus === 'error' ? 'bg-red-500/10 text-red-600' : 
-            'bg-secondary text-text/80'
+            hasUnsavedChanges ? 'bg-secondary text-text/80 shadow-sm border border-primary/20' :
+            'bg-secondary/50 text-text/30 cursor-not-allowed'
           }`}
         >
           {saveStatus === 'loading' ? (
@@ -134,16 +141,22 @@ export const TopBar: React.FC<TopBarProps> = ({
               <RotateCcw size={14} />
             </motion.div>
           ) : saveStatus === 'success' ? <Check size={14} /> : saveStatus === 'error' ? <X size={14} /> : <Save size={14} />}
-          {isMobile ? 'Guardar' : (saveStatus === 'loading' ? 'Guardando...' : saveStatus === 'success' ? 'Guardado' : saveStatus === 'error' ? 'Error' : 'Guardar Borrador')}
+          {isMobile ? (isNewSite ? 'Guardar' : 'Actualizar') : (
+            saveStatus === 'loading' ? 'Guardando...' : 
+            saveStatus === 'success' ? 'Guardado' : 
+            saveStatus === 'error' ? 'Error' : 
+            (isNewSite ? 'Guardar Borrador' : 'Guardar Cambios')
+          )}
         </motion.button>
         <motion.button 
-          whileHover={publishStatus === 'idle' ? { scale: 1.02 } : {}}
-          whileTap={publishStatus === 'idle' ? { scale: 0.98 } : {}}
-          onClick={publishStatus === 'idle' ? onPublish : undefined}
-          disabled={publishStatus !== 'idle'}
+          whileHover={(publishStatus === 'idle' && !hasUnsavedChanges) ? { scale: 1.02 } : {}}
+          whileTap={(publishStatus === 'idle' && !hasUnsavedChanges) ? { scale: 0.98 } : {}}
+          onClick={(publishStatus === 'idle' && !hasUnsavedChanges) ? onPublish : undefined}
+          disabled={publishStatus !== 'idle' || hasUnsavedChanges}
           className={`flex items-center gap-2 px-3 md:px-5 py-2 font-bold text-[10px] md:text-xs rounded-xl shadow-lg transition-all ${
             publishStatus === 'success' ? 'bg-green-500 text-white shadow-green-500/20' : 
             publishStatus === 'error' ? 'bg-red-500 text-white shadow-red-500/20' : 
+            hasUnsavedChanges ? 'bg-primary/40 text-white/50 shadow-none cursor-not-allowed' :
             'bg-primary text-white shadow-primary/20'
           }`}
         >
@@ -152,7 +165,12 @@ export const TopBar: React.FC<TopBarProps> = ({
               <RotateCcw size={14} />
             </motion.div>
           ) : publishStatus === 'success' ? <Check size={14} /> : publishStatus === 'error' ? <X size={14} /> : <Send size={14} />}
-          {isMobile ? 'Publicar' : (publishStatus === 'loading' ? 'Publicando...' : publishStatus === 'success' ? 'Publicado' : publishStatus === 'error' ? 'Error' : 'Publicar')}
+          {isMobile ? (currentStatus === 'published' ? 'Actualizar' : 'Publicar') : (
+            publishStatus === 'loading' ? 'Publicando...' : 
+            publishStatus === 'success' ? 'Publicado' : 
+            publishStatus === 'error' ? 'Error' : 
+            (currentStatus === 'published' || currentStatus === 'modified' ? 'Actualizar Sitio' : 'Publicar Sitio')
+          )}
         </motion.button>
       </div>
     </div>

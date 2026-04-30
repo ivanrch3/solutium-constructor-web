@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import * as LucideIcons from 'lucide-react';
 import { 
   Monitor, 
@@ -357,6 +357,15 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   const [reloadKey, setReloadKey] = useState(0);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [showUnsavedModal, setShowUnsavedModal] = useState(false);
+  const isInitialLoad = useRef(true);
+
+  // Mark initial load as finished after a short delay to allow sync effects to run
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      isInitialLoad.current = false;
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Apply Global Theme to CSS Variables
   useEffect(() => {
@@ -429,14 +438,14 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   const updateEditorState = (updater: (prev: EditorState) => EditorState) => {
     setEditorState(prev => {
       const next = updater(prev);
-      if (next !== prev) setHasUnsavedChanges(true);
+      if (next !== prev && !isInitialLoad.current) setHasUnsavedChanges(true);
       return next;
     });
   };
 
   const updateSiteName = (name: string) => {
     setSiteName(name);
-    setHasUnsavedChanges(true);
+    if (!isInitialLoad.current) setHasUnsavedChanges(true);
   };
 
   // Synchronize store settings back to local editorState
@@ -583,6 +592,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       });
 
       setSiteName(data.name);
+      setHasUnsavedChanges(true);
       setIsGeneratingAI(false);
     } catch (error: any) {
       console.error("Error en Solutium AI Engine:", error);
@@ -750,7 +760,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   };
 
   const moveModule = (moduleId: string, direction: 'up' | 'down') => {
-    setEditorState(prev => {
+    updateEditorState(prev => {
       const addedModules = prev.addedModules || [];
       const index = addedModules.findIndex(m => m.id === moduleId);
       if (index === -1) return prev;
@@ -1561,6 +1571,9 @@ const formatTimestampName = () => {
                     publishStatus={publishStatus}
                     isMobile={true}
                     isPreviewMode={isPreviewMode}
+                    hasUnsavedChanges={hasUnsavedChanges}
+                    currentStatus={currentStatus}
+                    isNewSite={!initialPage}
                   />
                 )}
                 
@@ -1733,6 +1746,9 @@ const formatTimestampName = () => {
                       publishStatus={publishStatus}
                       isMobile={false}
                       isPreviewMode={isPreviewMode}
+                      hasUnsavedChanges={hasUnsavedChanges}
+                      currentStatus={currentStatus}
+                      isNewSite={!initialPage}
                     />
                   )}
                   <div className="flex-1 flex overflow-hidden">

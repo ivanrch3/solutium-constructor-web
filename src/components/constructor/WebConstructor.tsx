@@ -337,6 +337,23 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     const params = new URLSearchParams(window.location.search);
     return params.get('mode') === 'preview';
   });
+
+  // --- PROTOCOLO SOLUTIUM v5.2: Dynamic Gateway Detection ---
+  const [isExternalRender] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('external_render') === 'true';
+  });
+
+  const [gatewayToken] = useState(() => {
+    const hash = window.location.hash;
+    if (hash.startsWith('#token=')) {
+      return hash.replace('#token=', '');
+    }
+    return null;
+  });
+
+  // Integrity Hash for Master App Audit
+  const SOLUTIUM_MODULES_HASH = "v5.2-sha256-render-engine-stable";
   const [reloadKey, setReloadKey] = useState(0);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [showUnsavedModal, setShowUnsavedModal] = useState(false);
@@ -940,21 +957,22 @@ const formatTimestampName = () => {
       return rawValue;
     };
 
-    // --- ORDEN DE SERIALIZACIÓN BIT-A-BIT (PROTOCOLO SOLUTIUM v2.0) ---
+    // --- ORDEN DE SERIALIZACIÓN BIT-A-BIT (PROTOCOLO SOLUTIUM v2.3) ---
     const atomicTransform = (key: string, value: any) => {
       const result: Record<string, any> = {};
       
-      // 1. Colometría Detallada
+      // 1. Colometría Detallada (Standard --sv-)
       if (typeof value === 'string' && (value.startsWith('#') || value.startsWith('rgba') || value.startsWith('rgb') || value.includes('var('))) {
+        const varName = value.includes('var(') ? value.match(/var\(([^)]+)\)/)?.[1] : `--sv-${key.replace(/_/g, '-')}`;
         result[`${key}_hex`] = value.startsWith('#') ? value : null;
         result[`${key}_rgba`] = (value.startsWith('rgb') && !value.includes('var(')) ? value : null;
-        result[`${key}_variable`] = value.includes('var(') ? value.match(/var\(([^)]+)\)/)?.[1] : `--solutium-${key.replace(/_/g, '-')}`;
+        result[`${key}_variable`] = varName;
         result[`${key}_fallback`] = value.startsWith('#') ? '#000000' : 'rgba(0,0,0,1)';
-        result[key] = value; // Raw value still included
+        result[key] = value;
         return result;
       }
 
-      // 2. Dimensiones con Unidad Explícita
+      // 2. Dimensiones Bit-a-Bit con Unidad Explícita
       const dimensionKeys = ['radius', 'gap', 'padding', 'width', 'height', 'thickness', 'size', 'margin', 'offset', 'letter_spacing', 'line_height', 'blur', 'spread'];
       if (typeof value === 'number' && dimensionKeys.some(dk => key.includes(dk))) {
         let unit = 'px';
@@ -969,7 +987,7 @@ const formatTimestampName = () => {
         return result;
       }
 
-      // 3. Desfase de Efectos (Box Shadow breakdown)
+      // 3. Desfase de Efectos (Audit Ready)
       if (key.includes('shadow') && typeof value === 'string' && value.includes('px')) {
         const parts = value.split(' ');
         result[`${key}_details`] = {
@@ -984,6 +1002,18 @@ const formatTimestampName = () => {
       // 4. Tipografía Obligatoria & Booleans
       result[key] = value;
       return result;
+    };
+
+    // Helper for Config Hash (Solutium Protocol v2.3 compliant)
+    const computeConfigHash = (obj: any): string => {
+        const str = JSON.stringify(obj);
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) {
+            const char = str.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash = hash & hash;
+        }
+        return `sha23-${Math.abs(hash).toString(16)}`;
     };
 
     // 1. Determine Global Theme
@@ -1008,6 +1038,7 @@ const formatTimestampName = () => {
           'font-family': project?.fontFamily || 'Inter',
           'button-styles': {}
         };
+        const audit_specs: any = {};
 
         // Extract ALL settings for this module
         Object.entries(currentState.settingsValues).forEach(([key, rawValue]) => {
@@ -1095,16 +1126,25 @@ const formatTimestampName = () => {
               content.estilo_efecto = value;
             }
             
-            // Allocation to Styles/Settings
+            // Allocation to Styles/Settings & Audit Specs (Solutium Protocol v2.3)
             if (!isContentField) {
+              // Standard mapping for common containers
               if (isBorderRadius) {
                 styles['border-radius'] = typeof value === 'number' ? `${value}px` : value;
+                audit_specs['.module-container'] = { ...audit_specs['.module-container'], 'border-radius': styles['border-radius'] };
               } else if (isShadow) {
                 styles['box-shadow'] = value;
+                audit_specs['.module-container'] = { ...audit_specs['.module-container'], 'box-shadow': value };
               } else if (isFontFamily) {
                 styles['font-family'] = value;
+                audit_specs['.module-container'] = { ...audit_specs['.module-container'], 'font-family': value };
               } else if (isButtonStyles) {
                 Object.assign(styles['button-styles'], atomicValues);
+                audit_specs['.btn-primary'] = { ...audit_specs['.btn-primary'], ...atomicValues };
+              } else if (cleanKey.includes('color') || cleanKey.includes('bg_') || cleanKey.includes('text_')) {
+                // Map all colors to common selectors
+                const targetSelector = cleanKey.includes('text') ? '.title-element' : '.module-container';
+                audit_specs[targetSelector] = { ...audit_specs[targetSelector], ...atomicValues };
               }
               
               // Directiva v1.5: Everything not content goes to settings (which will be style_json)
@@ -1130,15 +1170,6 @@ const formatTimestampName = () => {
         const isDynamic = content.is_rotating_active === true;
         const tipo = isDynamic ? `${module.type}_dinamico` : module.type;
 
-        const baseSection = {
-          id: module.id,
-          tipo: tipo,
-          type: module.type as any, // Keep for backward compatibility if needed
-          content,
-          settings,
-          styles
-        };
-
         if (isDynamic) {
           const rawBase = content.texto_base || content.texto_principal || content.title || '';
           const marcador = '%ROTATIVO%';
@@ -1158,7 +1189,9 @@ const formatTimestampName = () => {
           type: module.type as any, // Keep for backward compatibility if needed
           content,
           settings,
-          styles
+          styles,
+          audit_specs,
+          config_hash: computeConfigHash({ content, styles, settings, audit_specs })
         };
       });
 
@@ -1227,6 +1260,13 @@ const formatTimestampName = () => {
       const finalSiteName = siteName || formatTimestampName();
       const siteId = currentSiteId;
 
+      // --- PROTOCOLO SOLUTIUM v6.2: Prep Editor State before saving ---
+      const migratedState = migrateEditorStateToUUIDs(editorState);
+      if (migratedState !== editorState) {
+        setEditorState(migratedState);
+      }
+      const activeState = migratedState;
+
       // Determine new status
       let newStatus: 'draft' | 'published' | 'modified' = currentStatus;
       if (typeof forcedStatus === 'string' && ['draft', 'published', 'modified'].includes(forcedStatus)) {
@@ -1235,7 +1275,7 @@ const formatTimestampName = () => {
         newStatus = 'modified';
       }
 
-      // 1. Update basic site info (no content_draft here as per SIP v6.1)
+      // 1. Update basic site info with editor state (SIP v6.2)
       const siteData: Partial<WebBuilderSite> = {
         projectId,
         appId: appId || '11111111-1111-1111-1111-111111111111',
@@ -1243,6 +1283,7 @@ const formatTimestampName = () => {
         siteId: siteId,
         siteName: finalSiteName,
         name: finalSiteName,
+        contentDraft: activeState, 
         status: newStatus
       };
 
@@ -1255,14 +1296,6 @@ const formatTimestampName = () => {
       if (!result) {
         throw new Error('Error al guardar el borrador base');
       }
-      
-      // --- PROTOCOLO SOLUTIUM v2.0: Identidad UUID Persistente ---
-      // Aseguramos que todas las secciones tengan un UUID antes de persistir
-      const migratedState = migrateEditorStateToUUIDs(editorState);
-      if (migratedState !== editorState) {
-        setEditorState(migratedState);
-      }
-      const activeState = migratedState;
 
       // 2. Generate Contract and Sync Check
       const contract = generateRenderingContract(finalSiteName, activeState);
@@ -1279,21 +1312,25 @@ const formatTimestampName = () => {
         status: newStatus === 'published' || newStatus === 'modified' ? 'published' : 'draft',
         metadata: { 
           origin_app: 'Constructor Web', 
-          version: '2.0-Atomic',
+          version: '2.3-Atomic',
           editor_state: activeState // Use migrated state
         }
       });
 
-      // 4. ATOMIC SERIALIZATION V1.5: Save individual sections
+      // 4. ATOMIC SERIALIZATION V2.3: Save individual sections with Audit Data
       if (savedPage && savedPage.id) {
-        const pageSections: Partial<PageSection>[] = contract.sections.map((section, idx) => ({
+        const pageSections: Partial<PageSection>[] = contract.sections.map((section: any, idx) => ({
           id: isUUID(section.id) ? section.id : undefined, // Prioritize UUID from contract
           page_id: savedPage.id!,
           section_type: section.tipo,
           content_json: section.content,
           styles_json: { ...section.styles, ...section.settings },
           order_index: idx,
-          metadata: { version: '2.0-Atomic' }
+          metadata: { 
+            version: '2.3-Atomic',
+            audit_specs: section.audit_specs,
+            config_hash: section.config_hash
+          }
         }));
         await upsertPageSections(savedPage.id!, pageSections);
       }
@@ -1364,13 +1401,14 @@ const formatTimestampName = () => {
       // Sync check before publish
       await checkDictionarySync(contract);
 
-      // 1. Sync Site State
+      // 1. Sync Site State (SIP v6.2: Preserve current draft state during publish)
       const siteData: Partial<WebBuilderSite> = {
         projectId,
         appId: appId || '11111111-1111-1111-1111-111111111111',
         siteId: siteId,
         siteName: finalSiteName,
         name: finalSiteName,
+        contentDraft: activeState,
         status: 'published'
       };
       if (initialPage && 'id' in initialPage) siteData.id = initialPage.id;
@@ -1404,22 +1442,26 @@ const formatTimestampName = () => {
         status: 'published',
         metadata: { 
           origin_app: 'Constructor Web', 
-          version: '2.0-Atomic', 
+          version: '2.3-Atomic', 
           published_at: new Date().toISOString(),
           editor_state: activeState // Use migrated state
         }
       });
 
-      // 4. ATOMIC SERIALIZATION V1.5: Save individual sections
+      // 4. ATOMIC SERIALIZATION V2.3: Save individual sections with Audit Data
       if (savedPage && savedPage.id) {
-        const pageSections: Partial<PageSection>[] = contract.sections.map((section, idx) => ({
+        const pageSections: Partial<PageSection>[] = contract.sections.map((section: any, idx) => ({
           id: isUUID(section.id) ? section.id : undefined, // Prioritize UUID from contract
           page_id: savedPage.id!,
           section_type: section.tipo,
           content_json: section.content,
           styles_json: { ...section.styles, ...section.settings },
           order_index: idx,
-          metadata: { version: '2.0-Atomic' }
+          metadata: { 
+            version: '2.3-Atomic',
+            audit_specs: section.audit_specs,
+            config_hash: section.config_hash
+          }
         }));
         await upsertPageSections(savedPage.id!, pageSections);
       }
@@ -1484,9 +1526,9 @@ const formatTimestampName = () => {
   };
 
   return (
-    <div className={`h-screen w-screen flex overflow-hidden bg-surface font-sans antialiased ${isPreviewMode ? 'p-0' : ''}`}>
+    <div className={`h-screen w-screen flex overflow-hidden bg-surface font-sans antialiased ${(isPreviewMode || isExternalRender) ? 'p-0' : ''}`}>
       {/* Desktop Sidebar */}
-      {!isMobile && !isPreviewMode && (
+      {!isMobile && !isPreviewMode && !isExternalRender && (
         <MainSidebar 
           activeTab={activeTab} 
           onTabChange={setActiveTab} 
@@ -1505,7 +1547,7 @@ const formatTimestampName = () => {
             {/* Mobile Layout */}
             {isMobile ? (
               <div className="flex flex-col flex-1 h-full overflow-hidden pb-[80px]">
-                {!isPreviewMode && (
+                {!isPreviewMode && !isExternalRender && (
                   <TopBar 
                     onSave={handleSaveDraft} 
                     onPublish={handlePublish} 
@@ -1523,7 +1565,7 @@ const formatTimestampName = () => {
                 )}
                 
                 <div className="flex-1 overflow-hidden relative">
-                  {(activeTab === 'constructor' && mobileTab === 'constructor' && !isPreviewMode) && (
+                  {(activeTab === 'constructor' && mobileTab === 'constructor' && !isPreviewMode && !isExternalRender) && (
                     <div className="h-full overflow-y-auto bg-sidebar-bg custom-scrollbar">
                       <div className="p-6">
                         <h3 className="text-[10px] font-bold text-sidebar-foreground/40 uppercase tracking-[0.2em] mb-8 text-left px-2">Catálogo de Módulos</h3>
@@ -1634,7 +1676,7 @@ const formatTimestampName = () => {
                     </div>
                   )}
                   
-                  {mobileTab === 'preview' || isPreviewMode ? (
+                  {mobileTab === 'preview' || isPreviewMode || isExternalRender ? (
                     <div className="h-full overflow-hidden" onClickCapture={handlePreviewClick}>
                       <Canvas 
                         editorState={editorState} 
@@ -1648,7 +1690,7 @@ const formatTimestampName = () => {
                         setViewport={setViewport}
                         isFullscreen={false}
                         setIsFullscreen={() => {}}
-                        isPreviewMode={isPreviewMode}
+                        isPreviewMode={isPreviewMode || isExternalRender}
                         onSettingChange={handleSettingChange}
                         onReload={handleReload}
                       />
@@ -1656,12 +1698,12 @@ const formatTimestampName = () => {
                   ) : null}
                 </div>
                 
-                {!isPreviewMode && <MobileBottomNav activeTab={mobileTab} onTabChange={handleMobileTabChange} />}
+                {!isPreviewMode && !isExternalRender && <MobileBottomNav activeTab={mobileTab} onTabChange={handleMobileTabChange} />}
               </div>
             ) : (
               /* Desktop Layout */
               <>
-                {!isPreviewMode && (
+                {!isPreviewMode && !isExternalRender && (
                   <StructurePanel 
                     editorState={editorState} 
                     setEditorState={setEditorState} 
@@ -1677,7 +1719,7 @@ const formatTimestampName = () => {
                   />
                 )}
                 <div className="flex-1 flex flex-col h-full">
-                  {!isPreviewMode && (
+                  {!isPreviewMode && !isExternalRender && (
                     <TopBar 
                       onSave={handleSaveDraft} 
                       onPublish={handlePublish} 
@@ -1707,7 +1749,7 @@ const formatTimestampName = () => {
                         setViewport={setViewport}
                         isFullscreen={isFullscreen}
                         setIsFullscreen={setIsFullscreen}
-                        isPreviewMode={isPreviewMode}
+                        isPreviewMode={isPreviewMode || isExternalRender}
                         onSettingChange={handleSettingChange}
                         onReload={handleReload}
                         reloadKey={reloadKey}

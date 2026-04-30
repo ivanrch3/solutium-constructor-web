@@ -393,7 +393,7 @@ export const saveWebBuilderSiteDraft = async (site: Partial<WebBuilderSite>): Pr
       site_name: site.siteName || 'Mi Sitio Web',
       name: site.name || site.siteName || 'Mi Sitio Web',
       content_draft: site.contentDraft,
-      status: 'draft',
+      status: site.status || 'draft',
       origin_app: 'Constructor Web',
       updated_at: new Date().toISOString()
     };
@@ -446,7 +446,6 @@ export const publishWebBuilderSite = async (site: Partial<PublishedSite>): Promi
         site_id: site.siteId,
         site_name: site.siteName || 'Mi Sitio Web',
         content_published: site.content,
-        content_draft: site.content, // Sincronizar borrador con lo publicado
         status: 'published',
         origin_app: 'Constructor Web',
         updated_at: now

@@ -176,6 +176,8 @@ export interface RenderingContract {
     content: any;
     settings?: any;
     styles?: any;
+    audit_specs?: any;
+    config_hash?: string;
   }>;
 }
 

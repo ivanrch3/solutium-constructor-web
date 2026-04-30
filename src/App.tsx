@@ -50,6 +50,21 @@ const AppContent: React.FC = () => {
     if (fontParam) {
       applyTheme({ fontFamily: fontParam });
     }
+
+    // --- PROTOCOLO SOLUTIUM v5.2: Gateway Override ---
+    const isExternal = params.get('external_render') === 'true';
+    const assetId = params.get('asset_id');
+    const satelliteId = params.get('satellite_id');
+
+    if (isExternal && satelliteId) {
+      console.log(`[GATEWAY v5.2] Detectado renderizado externo para Satélite: ${satelliteId}, Asset: ${assetId}`);
+      setProjectId(satelliteId);
+      if (assetId) {
+        // Preparamos el estado para que el constructor cargue este asset
+        setSelectedPage({ siteId: assetId, name: 'Cargando sitio...' } as any);
+        setCurrentView('constructor');
+      }
+    }
     
     const favicon = params.get('faviconUrl') || params.get('favicon_url');
     if (favicon) {
@@ -152,8 +167,9 @@ const AppContent: React.FC = () => {
           console.warn('[HANDSHAKE] Faltan credenciales de almacenamiento. La subida de archivos podría fallar.');
         }
 
-        if (payload.projectId) {
-          setProjectId(payload.projectId);
+        if (payload.projectId || projectId) {
+          const finalProjectId = payload.projectId || projectId;
+          setProjectId(finalProjectId);
           
           // Extraer appId (con fallback al ID estándar si no viene)
           const handshakeAppId = payload.appId || (payload as any).app_id || '11111111-1111-1111-1111-111111111111';
@@ -165,7 +181,7 @@ const AppContent: React.FC = () => {
               setUrlLogoWhite(payload.project.logoWhiteUrl || payload.project.logo_white_url);
             }
           } else {
-            const projectData = await getProject(payload.projectId);
+            const projectData = await getProject(finalProjectId!);
             if (projectData) {
               setProject(projectData);
               if (projectData.logoWhiteUrl) {
@@ -175,13 +191,13 @@ const AppContent: React.FC = () => {
           }
 
           // Fetch assets for the project
-          const projectAssets = await getAssets(payload.projectId, 'web_page');
+          const projectAssets = await getAssets(finalProjectId!, 'web_page');
           setAssets(projectAssets);
 
           // Fetch pages (drafts and published)
           const [drafts, published] = await Promise.all([
-            getWebBuilderSites(payload.projectId),
-            getPublishedSites(payload.projectId)
+            getWebBuilderSites(finalProjectId!),
+            getPublishedSites(finalProjectId!)
           ]);
           
           // Group by siteId to show unique websites (SIP v5.0)

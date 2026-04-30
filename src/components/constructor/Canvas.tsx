@@ -273,13 +273,14 @@ export const Canvas: React.FC<CanvasProps> = ({
                     id={module.id} 
                     ref={isLast ? lastModuleRef : null} 
                     onClick={(e) => {
+                      if (isPreviewMode) return;
                       e.stopPropagation();
                       selectSection(module.id);
                     }}
-                    className={`w-full group relative cursor-pointer outline-none transition-all duration-300 ${isSticky || isFixed ? 'sticky' : 'relative'} ${
-                      selectedSectionId === module.id 
-                        ? 'ring-2 ring-blue-500 ring-inset shadow-2xl z-50' 
-                        : 'hover:ring-1 hover:ring-blue-300/50 ring-inset'
+                    className={`w-full group relative outline-none transition-all duration-300 ${isSticky || isFixed ? 'sticky' : 'relative'} ${
+                      (!isPreviewMode && selectedSectionId === module.id) 
+                        ? 'ring-2 ring-blue-500 ring-inset shadow-2xl z-50 cursor-pointer' 
+                        : !isPreviewMode ? 'hover:ring-1 hover:ring-blue-300/50 ring-inset cursor-pointer' : ''
                     }`}
                     style={{ 
                       top: isSticky || isFixed ? `${topOffset}px` : undefined,

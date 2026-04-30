@@ -38,8 +38,208 @@ const AppContent: React.FC = () => {
   const [urlLogoWhite, setUrlLogoWhite] = useState<string | null>(null);
   const { applyTheme } = useTheme();
 
+  // --- PERSISTENCE PROTOCOL v1.0 ---
+  const saveSession = () => {
+    try {
+      const session = {
+        projectId,
+        appId,
+        currentView,
+        selectedPage,
+        activeTab
+      };
+      localStorage.setItem('solutium_session_v2', JSON.stringify(session));
+    } catch (e) {
+      console.warn('[SESSION] Error saving session:', e);
+    }
+  };
+
+  // Sync state to local storage
   useEffect(() => {
+    if (projectId || currentView !== 'dashboard') {
+      saveSession();
+    }
+  }, [projectId, appId, currentView, selectedPage, activeTab]);
+
+  const processHandshake = async (payload: any) => {
+    try {
+      // Cache the handshake data for literal reloads
+      localStorage.setItem('solutium_handshake_cache', JSON.stringify(payload));
+
+      // Actualizar configuración dinámica (API Keys) desde la Madre
+      configService.updateConfig({
+        geminiApiKey: payload.gemini_api_key || payload.VITE_GEMINI_API_KEY || null,
+        pexelsApiKey: payload.pexels_api_key || payload.VITE_PEXELS_API_KEY || null
+      });
+
+      const supabase = initSupabase(
+        payload.supabase_url,
+        payload.supabase_anon_key,
+        payload.session_token
+      );
+
+      // Extraer fontFamily con máxima cobertura de claves posibles
+      const handshakeFont = 
+        payload.fontFamily || 
+        (payload as any).font_family || 
+        (payload as any).font ||
+        payload.project?.fontFamily || 
+        payload.project?.font_family ||
+        payload.project?.font ||
+        payload.activeThemeData?.fontFamily ||
+        payload.activeThemeData?.font_family ||
+        payload.activeThemeData?.font ||
+        payload.activeThemeData?.theme?.fontFamily ||
+        payload.activeThemeData?.theme?.font_family ||
+        (payload as any).theme?.fontFamily ||
+        (payload as any).theme?.font_family ||
+        (payload as any).theme_data?.fontFamily ||
+        (payload as any).theme_data?.font_family ||
+        payload.profile?.fontFamily ||
+        payload.profile?.font_family ||
+        payload.profile?.font ||
+        '';
+
+      console.log('[HANDSHAKE] fontFamily detectada:', handshakeFont || 'NINGUNA (vacia)');
+      
+      // Update favicon if provided
+      const handshakeFavicon = 
+        payload.favicon_url || 
+        payload.faviconUrl || 
+        payload.project?.favicon_url || 
+        payload.project?.faviconUrl ||
+        payload.activeThemeData?.favicon_url ||
+        payload.activeThemeData?.faviconUrl;
+
+      if (handshakeFavicon) {
+        let link: HTMLLinkElement | null = document.querySelector("link[rel~='icon']");
+        if (!link) {
+          link = document.createElement('link');
+          link.rel = 'icon';
+          document.getElementsByTagName('head')[0].appendChild(link);
+        }
+        link.href = handshakeFavicon;
+      }
+
+      // Configuration fallbacks from environment with more variants (SIP v5.4)
+      const finalEndpoint = payload.do_endpoint || payload.STORAGE_ENDPOINT || payload.storage_endpoint || import.meta.env.VITE_STORAGE_ENDPOINT || (import.meta as any).env?.STORAGE_ENDPOINT;
+      const finalAccessKey = payload.do_access_key || payload.STORAGE_ACCESS_KEY || payload.storage_access_key || import.meta.env.VITE_STORAGE_ACCESS_KEY || (import.meta as any).env?.STORAGE_ACCESS_KEY;
+      const finalSecretKey = payload.do_secret_key || payload.STORAGE_SECRET_KEY || payload.storage_secret_key || import.meta.env.VITE_STORAGE_SECRET_KEY || (import.meta as any).env?.STORAGE_SECRET_KEY;
+      const finalBucket = payload.do_bucket || payload.STORAGE_BUCKET || payload.storage_bucket || import.meta.env.VITE_STORAGE_BUCKET || (import.meta as any).env?.STORAGE_BUCKET;
+
+      if (finalEndpoint && finalAccessKey && finalSecretKey && finalBucket) {
+        initDOClient(finalEndpoint, finalAccessKey, finalSecretKey, finalBucket);
+      }
+
+      if (payload.projectId || projectId) {
+        const finalProjectId = payload.projectId || projectId;
+        setProjectId(finalProjectId);
+        
+        const handshakeAppId = payload.appId || (payload as any).app_id || '11111111-1111-1111-1111-111111111111';
+        setAppId(handshakeAppId);
+        
+        if (payload.project) {
+          setProject(payload.project);
+          if (payload.project.logoWhiteUrl || payload.project.logo_white_url) {
+            setUrlLogoWhite(payload.project.logoWhiteUrl || payload.project.logo_white_url);
+          }
+        } else if (finalProjectId) {
+          const projectData = await getProject(finalProjectId);
+          if (projectData) {
+            setProject(projectData);
+            if (projectData.logoWhiteUrl) setUrlLogoWhite(projectData.logoWhiteUrl);
+          }
+        }
+
+        if (finalProjectId) {
+          const projectAssets = await getAssets(finalProjectId, 'web_page');
+          setAssets(projectAssets);
+
+          const [drafts, published] = await Promise.all([
+            getWebBuilderSites(finalProjectId),
+            getPublishedSites(finalProjectId)
+          ]);
+          
+          const sitesMap = new Map<string, WebBuilderSite | PublishedSite>();
+          published.forEach(p => { if (p.siteId) sitesMap.set(p.siteId, p); });
+          drafts.forEach(d => { if (d.siteId) sitesMap.set(d.siteId, d); });
+
+          const allPages = Array.from(sitesMap.values()).sort((a, b) => {
+            const dateA = new Date(a.updatedAt || 0).getTime();
+            const dateB = new Date(b.updatedAt || 0).getTime();
+            return dateB - dateA;
+          });
+          
+          setPages(allPages);
+
+          if (payload.site_id) {
+            const existingPage = allPages.find(p => p.siteId === payload.site_id);
+            if (existingPage) {
+              setSelectedPage(existingPage);
+              setCurrentView('constructor');
+            } else {
+              setSelectedPage({ siteId: payload.site_id, name: payload.siteName || 'Nuevo Sitio' } as any);
+              setCurrentView('constructor');
+            }
+          }
+        }
+      }
+
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (user && !userError) {
+        const mappedProfile = await getProfile(user.id);
+        const handshakeThemeData = payload.activeThemeData;
+        const handshakeThemeName = payload.profile?.activeTheme || payload.project?.activeTheme;
+        const hasThemeData = handshakeThemeData && Object.keys(handshakeThemeData).length > 0;
+        const themeToApply = (hasThemeData ? handshakeThemeData : null) || handshakeThemeName || mappedProfile?.activeTheme || 'blue-light';
+
+        if (mappedProfile) {
+          setProfile(mappedProfile);
+        } else {
+          setProfile({ id: user.id, email: user.email, role: 'user', activeTheme: (typeof themeToApply === 'string' ? themeToApply : 'blue-light') as any });
+        }
+
+        if (typeof themeToApply === 'object') {
+          applyTheme({ ...themeToApply, fontFamily: handshakeFont || themeToApply.fontFamily || themeToApply.font_family });
+        } else {
+          applyTheme(themeToApply);
+          if (handshakeFont) applyTheme({ fontFamily: handshakeFont });
+        }
+      }
+      
+      setIsHandshakeComplete(true);
+    } catch (err) {
+      console.error('Error processing handshake:', err);
+    }
+  };
+
+  useEffect(() => {
+    // 1. Recover basic session if URL params are missing
     const params = new URLSearchParams(window.location.search);
+    const hasInitParams = params.get('satellite_id') || params.get('site_id');
+    
+    if (!hasInitParams) {
+      try {
+        const saved = localStorage.getItem('solutium_session_v2');
+        if (saved) {
+          const session = JSON.parse(saved);
+          console.log('[SESSION] Recuperando sesión persistente:', session);
+          if (session.projectId) setProjectId(session.projectId);
+          if (session.appId) setAppId(session.appId);
+          if (session.currentView) setCurrentView(session.currentView);
+          if (session.selectedPage) setSelectedPage(session.selectedPage);
+          if (session.activeTab) setActiveTab(session.activeTab);
+          
+          const savedHandshake = localStorage.getItem('solutium_handshake_cache');
+          if (savedHandshake) {
+            processHandshake(JSON.parse(savedHandshake));
+          }
+        }
+      } catch (e) {
+        console.warn('[SESSION] Error recovering session:', e);
+      }
+    }
+
     const logo = params.get('logoUrl') || params.get('logo_url') || params.get('isoUrl') || params.get('iso_url');
     if (logo) setUrlLogo(logo);
 
@@ -86,214 +286,8 @@ const AppContent: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    startHandshake(async (payload) => {
-      try {
-        // Actualizar configuración dinámica (API Keys) desde la Madre
-        configService.updateConfig({
-          geminiApiKey: payload.gemini_api_key || payload.VITE_GEMINI_API_KEY || null,
-          pexelsApiKey: payload.pexels_api_key || payload.VITE_PEXELS_API_KEY || null
-        });
-
-        const supabase = initSupabase(
-          payload.supabase_url,
-          payload.supabase_anon_key,
-          payload.session_token
-        );
-
-        // Extraer fontFamily con máxima cobertura de claves posibles
-        const handshakeFont = 
-          payload.fontFamily || 
-          (payload as any).font_family || 
-          (payload as any).font ||
-          payload.project?.fontFamily || 
-          payload.project?.font_family ||
-          payload.project?.font ||
-          payload.activeThemeData?.fontFamily ||
-          payload.activeThemeData?.font_family ||
-          payload.activeThemeData?.font ||
-          payload.activeThemeData?.theme?.fontFamily ||
-          payload.activeThemeData?.theme?.font_family ||
-          (payload as any).theme?.fontFamily ||
-          (payload as any).theme?.font_family ||
-          (payload as any).theme_data?.fontFamily ||
-          (payload as any).theme_data?.font_family ||
-          payload.profile?.fontFamily ||
-          payload.profile?.font_family ||
-          payload.profile?.font ||
-          '';
-
-        console.log('[HANDSHAKE] fontFamily detectada:', handshakeFont || 'NINGUNA (vacia)');
-        
-        // Update favicon if provided
-        const handshakeFavicon = 
-          payload.favicon_url || 
-          payload.faviconUrl || 
-          payload.project?.favicon_url || 
-          payload.project?.faviconUrl ||
-          payload.activeThemeData?.favicon_url ||
-          payload.activeThemeData?.faviconUrl;
-
-        if (handshakeFavicon) {
-          let link: HTMLLinkElement | null = document.querySelector("link[rel~='icon']");
-          if (!link) {
-            link = document.createElement('link');
-            link.rel = 'icon';
-            document.getElementsByTagName('head')[0].appendChild(link);
-          }
-          link.href = handshakeFavicon;
-        }
-
-        // Configuration fallbacks from environment with more variants (SIP v5.4)
-        const finalEndpoint = payload.do_endpoint || payload.STORAGE_ENDPOINT || payload.storage_endpoint || import.meta.env.VITE_STORAGE_ENDPOINT || (import.meta as any).env?.STORAGE_ENDPOINT;
-        const finalAccessKey = payload.do_access_key || payload.STORAGE_ACCESS_KEY || payload.storage_access_key || import.meta.env.VITE_STORAGE_ACCESS_KEY || (import.meta as any).env?.STORAGE_ACCESS_KEY;
-        const finalSecretKey = payload.do_secret_key || payload.STORAGE_SECRET_KEY || payload.storage_secret_key || import.meta.env.VITE_STORAGE_SECRET_KEY || (import.meta as any).env?.STORAGE_SECRET_KEY;
-        const finalBucket = payload.do_bucket || payload.STORAGE_BUCKET || payload.storage_bucket || import.meta.env.VITE_STORAGE_BUCKET || (import.meta as any).env?.STORAGE_BUCKET;
-
-        console.log('[HANDSHAKE] Detectando configuración de almacenamiento:', {
-          hasEndpoint: !!finalEndpoint,
-          hasAccessKey: !!finalAccessKey,
-          hasSecretKey: !!finalSecretKey,
-          hasBucket: !!finalBucket
-        });
-
-        if (finalEndpoint && finalAccessKey && finalSecretKey && finalBucket) {
-          initDOClient(
-            finalEndpoint,
-            finalAccessKey,
-            finalSecretKey,
-            finalBucket
-          );
-        } else {
-          console.warn('[HANDSHAKE] Faltan credenciales de almacenamiento. La subida de archivos podría fallar.');
-        }
-
-        if (payload.projectId || projectId) {
-          const finalProjectId = payload.projectId || projectId;
-          setProjectId(finalProjectId);
-          
-          // Extraer appId (con fallback al ID estándar si no viene)
-          const handshakeAppId = payload.appId || (payload as any).app_id || '11111111-1111-1111-1111-111111111111';
-          setAppId(handshakeAppId);
-          
-          if (payload.project) {
-            setProject(payload.project);
-            if (payload.project.logoWhiteUrl || payload.project.logo_white_url) {
-              setUrlLogoWhite(payload.project.logoWhiteUrl || payload.project.logo_white_url);
-            }
-          } else {
-            const projectData = await getProject(finalProjectId!);
-            if (projectData) {
-              setProject(projectData);
-              if (projectData.logoWhiteUrl) {
-                setUrlLogoWhite(projectData.logoWhiteUrl);
-              }
-            }
-          }
-
-          // Fetch assets for the project
-          const projectAssets = await getAssets(finalProjectId!, 'web_page');
-          setAssets(projectAssets);
-
-          // Fetch pages (drafts and published)
-          const [drafts, published] = await Promise.all([
-            getWebBuilderSites(finalProjectId!),
-            getPublishedSites(finalProjectId!)
-          ]);
-          
-          // Group by siteId to show unique websites (SIP v5.0)
-          // We want to show one entry per website, prioritizing the draft if it exists
-          const sitesMap = new Map<string, WebBuilderSite | PublishedSite>();
-          
-          // 1. Add published sites first
-          published.forEach(p => {
-            if (p.siteId) sitesMap.set(p.siteId, p);
-          });
-          
-          // 2. Add drafts, overwriting published entries for the same siteId
-          // This ensures the dashboard shows the "latest working version"
-          drafts.forEach(d => {
-            if (d.siteId) sitesMap.set(d.siteId, d);
-          });
-
-          const allPages = Array.from(sitesMap.values()).sort((a, b) => {
-            const dateA = new Date(a.updatedAt || 0).getTime();
-            const dateB = new Date(b.updatedAt || 0).getTime();
-            return dateB - dateA;
-          });
-          
-          console.log(`[APP] Cargados ${allPages.length} sitios únicos para el proyecto ${payload.projectId}:`, 
-            allPages.map(p => ({ id: p.id, siteId: p.siteId, type: 'contentDraft' in p ? 'draft' : 'published' }))
-          );
-          
-          setPages(allPages);
-
-          // SIP v5.1: Si la Madre provee un site_id, intentamos abrir ese sitio directamente
-          if (payload.site_id) {
-            console.log(`[SIP v5.1] Detectado site_id en handshake: ${payload.site_id}. Intentando abrir...`);
-            const existingPage = allPages.find(p => p.siteId === payload.site_id);
-            if (existingPage) {
-              setSelectedPage(existingPage);
-              setCurrentView('constructor');
-            } else {
-              // Si no existe, preparamos un objeto mínimo para que el constructor lo reconozca como nuevo con ese ID
-              setSelectedPage({ siteId: payload.site_id, name: payload.siteName || 'Nuevo Sitio' } as any);
-              setCurrentView('constructor');
-            }
-          }
-        }
-
-        // Fetch user
-        const { data: { user }, error: userError } = await supabase.auth.getUser();
-        
-        if (userError || !user) {
-          console.error('Error fetching user:', userError);
-          return;
-        }
-
-        const mappedProfile = await getProfile(user.id);
-        const handshakeThemeData = payload.activeThemeData;
-        const handshakeThemeName = payload.profile?.activeTheme || payload.project?.activeTheme;
-        
-        // Solo usamos handshakeThemeData si tiene propiedades, de lo contrario preferimos el nombre o el perfil
-        const hasThemeData = handshakeThemeData && Object.keys(handshakeThemeData).length > 0;
-        const themeToApply = (hasThemeData ? handshakeThemeData : null) || handshakeThemeName || mappedProfile?.activeTheme || 'blue-light';
-
-        if (mappedProfile) {
-          setProfile(mappedProfile);
-        } else {
-          const fallbackProfile: Profile = {
-            id: user.id,
-            email: user.email,
-            role: 'user',
-            activeTheme: (typeof themeToApply === 'string' ? themeToApply : 'blue-light') as any
-          };
-          setProfile(fallbackProfile);
-        }
-
-        // Apply theme
-        if (typeof themeToApply === 'object') {
-          applyTheme({ 
-            ...themeToApply, 
-            fontFamily: handshakeFont || themeToApply.fontFamily || themeToApply.font_family 
-          });
-        } else {
-          applyTheme(themeToApply);
-          if (handshakeFont) {
-            applyTheme({ fontFamily: handshakeFont });
-          }
-        }
-        
-        if (window.history && window.history.replaceState) {
-          const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
-          window.history.replaceState({ path: cleanUrl }, '', cleanUrl);
-        }
-        
-        setIsHandshakeComplete(true);
-      } catch (err) {
-        console.error('Handshake processing error:', err);
-      }
-    });
-  }, [applyTheme]);
+    startHandshake(processHandshake);
+  }, [applyTheme, projectId]);
 
   const handleNewPage = () => {
     setCurrentView('selection-method');

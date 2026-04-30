@@ -1285,6 +1285,9 @@ const formatTimestampName = () => {
         newStatus = 'modified';
       }
 
+      // PROTOCOLO v5.2: DB Compatibility mapping for 'modified' status
+      const dbStatus = (newStatus === 'modified') ? 'published' : newStatus;
+
       // 1. Update basic site info with editor state (SIP v6.2)
       const siteData: Partial<WebBuilderSite> = {
         projectId,
@@ -1294,7 +1297,7 @@ const formatTimestampName = () => {
         siteName: finalSiteName,
         name: finalSiteName,
         contentDraft: activeState, 
-        status: newStatus
+        status: dbStatus as any
       };
 
       if (initialPage && 'id' in initialPage) {

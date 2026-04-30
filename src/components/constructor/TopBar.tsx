@@ -149,14 +149,14 @@ export const TopBar: React.FC<TopBarProps> = ({
           )}
         </motion.button>
         <motion.button 
-          whileHover={(publishStatus === 'idle' && !hasUnsavedChanges) ? { scale: 1.02 } : {}}
-          whileTap={(publishStatus === 'idle' && !hasUnsavedChanges) ? { scale: 0.98 } : {}}
-          onClick={(publishStatus === 'idle' && !hasUnsavedChanges) ? onPublish : undefined}
-          disabled={publishStatus !== 'idle' || hasUnsavedChanges}
+          whileHover={(publishStatus === 'idle' && !hasUnsavedChanges && currentStatus !== 'published') ? { scale: 1.02 } : {}}
+          whileTap={(publishStatus === 'idle' && !hasUnsavedChanges && currentStatus !== 'published') ? { scale: 0.98 } : {}}
+          onClick={(publishStatus === 'idle' && !hasUnsavedChanges && currentStatus !== 'published') ? onPublish : undefined}
+          disabled={publishStatus !== 'idle' || hasUnsavedChanges || currentStatus === 'published'}
           className={`flex items-center gap-2 px-3 md:px-5 py-2 font-bold text-[10px] md:text-xs rounded-xl shadow-lg transition-all ${
             publishStatus === 'success' ? 'bg-green-500 text-white shadow-green-500/20' : 
             publishStatus === 'error' ? 'bg-red-500 text-white shadow-red-500/20' : 
-            hasUnsavedChanges ? 'bg-primary/40 text-white/50 shadow-none cursor-not-allowed' :
+            (hasUnsavedChanges || currentStatus === 'published') ? 'bg-primary/40 text-white/50 shadow-none cursor-not-allowed' :
             'bg-primary text-white shadow-primary/20'
           }`}
         >

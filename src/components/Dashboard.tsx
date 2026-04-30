@@ -74,7 +74,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
             {pages.length > 0 ? (
               <div className="grid grid-cols-1 gap-3">
                 {pages.map((page) => {
-                  const isPublished = !('contentDraft' in page);
+                  const status = (page as any).status || (!('contentDraft' in page) ? 'published' : 'draft');
+                  const isPublished = status === 'published' || status === 'modified';
+                  
                   return (
                     <button
                       key={page.id}
@@ -140,9 +142,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
                               </>
                             )}
                             <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold uppercase ${
-                              isPublished ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
+                              status === 'published' ? 'bg-green-100 text-green-700' : 
+                              status === 'modified' ? 'bg-blue-100 text-blue-700' : 
+                              'bg-amber-100 text-amber-700'
                             }`}>
-                              {isPublished ? 'Publicado' : 'Borrador'}
+                              {status === 'published' ? 'Publicado' : status === 'modified' ? 'Modificado' : 'Borrador'}
                             </span>
                           </div>
                           <p className="text-xs text-text/80 font-medium">

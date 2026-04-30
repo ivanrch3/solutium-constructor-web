@@ -409,14 +409,14 @@ export const Canvas: React.FC<CanvasProps> = ({
                         isPreviewMode={isPreviewMode}
                       />
                     )}
-                    {module.type === 'conversion' && module.id.startsWith('mod_header_1') && (
+                    {module.type === 'conversion' && (module.templateId === 'mod_header_1' || module.id.startsWith('mod_header_1')) && (
                       <HeaderModule 
                         moduleId={module.id}
                         settingsValues={finalSettings}
                         isPreviewMode={isPreviewMode}
                       />
                     )}
-                    {module.type === 'navegacion' && module.id.startsWith('mod_menu_1') && (
+                    {(module.type === 'navegacion' || module.type === 'menu') && (module.templateId === 'mod_menu_1' || module.id.startsWith('mod_menu_1')) && (
                       <MenuModule 
                         moduleId={module.id}
                         settingsValues={finalSettings}
@@ -425,7 +425,7 @@ export const Canvas: React.FC<CanvasProps> = ({
                         isPreviewMode={isPreviewMode}
                       />
                     )}
-                    {module.type === 'navegacion' && module.id.startsWith('mod_footer_1') && (
+                    {(module.type === 'footer' || module.type === 'navegacion') && (module.templateId === 'mod_footer_1' || module.id.startsWith('mod_footer_1')) && (
                       <FooterModule 
                         moduleId={module.id}
                         settingsValues={finalSettings}
@@ -441,7 +441,7 @@ export const Canvas: React.FC<CanvasProps> = ({
                         isPreviewMode={isPreviewMode}
                       />
                     )}
-                    {module.id.startsWith('mod_bento_1') && (
+                    {(module.templateId === 'mod_bento_1' || module.id.startsWith('mod_bento_1')) && (
                       <BentoModule 
                         moduleId={module.id}
                         settingsValues={finalSettings}

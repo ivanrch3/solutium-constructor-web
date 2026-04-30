@@ -45,6 +45,7 @@ export interface ModuleElement {
 
 export interface WebModule {
   id: string;
+  templateId?: string;
   type: string;
   iconKey?: string;
   name: string;

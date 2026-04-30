@@ -186,17 +186,17 @@ const AppContent: React.FC = () => {
           const sitesMap = new Map<string, WebBuilderSite | PublishedSite>();
           published.forEach(p => { 
             if (p.siteId) {
-              (p as any).status = 'published';
-              sitesMap.set(p.siteId, p); 
+              const siteWithStatus = { ...p, status: 'published' as const };
+              sitesMap.set(p.siteId, siteWithStatus); 
             }
           });
           drafts.forEach(d => { 
             if (d.siteId) {
               const existing = sitesMap.get(d.siteId);
-              if (existing) {
-                (d as any).status = 'modified';
-              }
-              sitesMap.set(d.siteId, d); 
+              // Use the status from the draft record, it's the source of truth for changes
+              const status = d.status || (existing ? 'modified' : 'draft');
+              const siteWithStatus = { ...d, status };
+              sitesMap.set(d.siteId, siteWithStatus); 
             }
           });
 
@@ -210,28 +210,43 @@ const AppContent: React.FC = () => {
 
           if (payload.site_id) {
             const existingPage = allPages.find(p => p.siteId === payload.site_id);
-            if (existingPage) {
-              setSelectedPage(existingPage);
-            } else {
-              setSelectedPage({ siteId: payload.site_id, name: payload.siteName || 'Nuevo Sitio' } as any);
-            }
+            let finalPage = existingPage;
             
-            // Si hay force_render o render_mode='published', ya se maneja abajo, de lo contrario por defecto constructor
-            if (!payload.force_render && payload.render_mode !== 'published') {
+            // SIP v5.5 (Protocolo 10.2): Robust hydration from payload
+            const providedContent = payload.site_content || payload.site_data || payload.content || payload.full_site;
+            
+            if (providedContent) {
+              console.log('[GATEWAY] Hidratando sitio desde payload (Protocolo 10.2)');
+              finalPage = { 
+                ...(existingPage || {}),
+                siteId: payload.site_id, 
+                name: payload.siteName || (existingPage as any)?.name || 'Sitio Remoto',
+                content: providedContent,
+                isActive: payload.isActive ?? (existingPage as any)?.isActive ?? true
+              } as any;
+            } else if (existingPage) {
+              finalPage = existingPage;
+            } else {
+              finalPage = { siteId: payload.site_id, name: payload.siteName || 'Nuevo Sitio' } as any;
+            }
+
+            setSelectedPage(finalPage);
+            
+            // Handle rendering modes directly using local variable since state updates are async
+            if (payload.force_render || payload.render_mode === 'published') {
+              console.log('[GATEWAY] Forzando renderizado directo:', payload.render_mode);
+              if (payload.render_mode === 'published') {
+                setCurrentView('viewer');
+              } else {
+                setCurrentView('constructor');
+              }
+            } else {
               setCurrentView('constructor');
             }
           }
         }
       }
       
-      // Handle rendering modes
-      if (payload.force_render || payload.render_mode === 'published') {
-        console.log('[GATEWAY] Forzando renderizado directo:', payload.render_mode);
-        if (payload.site_id || selectedPage) {
-          setCurrentView(payload.render_mode === 'published' ? 'viewer' : 'constructor');
-        }
-      }
-
       setIsHandshakeComplete(true);
     } catch (err) {
       console.error('Error processing handshake:', err);
@@ -506,6 +521,11 @@ const AppContent: React.FC = () => {
           />
         );
       case 'viewer':
+        if (!selectedPage) return (
+          <div className="min-h-screen bg-background flex items-center justify-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+          </div>
+        );
         return (
           <Viewer 
             site={selectedPage as PublishedSite}

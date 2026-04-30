@@ -54,27 +54,58 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
   }
 
   const { content } = site;
+  
+  // SIP v5.5 (Protocolo 10.2) - Integrity Check
+  if (!content || !content.theme || !Array.isArray(content.sections)) {
+    console.error('❌ [VIEWER] Error de Integridad: Campos obligatorios faltantes (content.theme, content.sections).');
+    return (
+      <div className="min-h-screen bg-secondary flex flex-col items-center justify-center p-6 text-center">
+        <div className="bg-surface p-12 rounded-3xl shadow-xl border border-border max-w-md w-full flex flex-col items-center border-rose-200">
+          <div className="w-20 h-20 bg-rose-100 rounded-full flex items-center justify-center mb-6">
+            <AlertCircle className="w-10 h-10 text-rose-600" />
+          </div>
+          <h1 className="text-2xl font-bold text-text mb-4">Error de Hidratación</h1>
+          <p className="text-text/60 mb-8 leading-relaxed text-sm">
+            La integridad del sitio no pudo ser validada. Asegúrate de que el payload contenga <code className="bg-secondary px-1 py-0.5 rounded">theme</code> y <code className="bg-secondary px-1 py-0.5 rounded">sections</code> válidos (Protocolo 10.2).
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   const { theme, sections } = content;
 
   return (
     <div 
       className="min-h-screen bg-surface"
       style={{ 
-        '--primary-color': theme.primaryColor,
-        fontFamily: theme.fontFamily 
+        '--primary-color': theme.primaryColor || '#3B82F6',
+        fontFamily: theme.fontFamily || 'sans-serif'
       } as React.CSSProperties}
     >
       {sections.map((section) => {
         const moduleId = section.id;
-        const type = section.type;
-        const settings = section.settings || {};
+        // SOP: Fallback entre 'type' y 'tipo' para máxima compatibilidad
+        const type = section.type || section.tipo; 
+        const settings = section.settings || section.content || {};
 
-        // SIP v5.0: Adapt settings for modules that expect moduleId prefix
+        if (!moduleId) {
+          console.warn('⚠️ [VIEWER] Saltando sección sin ID.');
+          return null;
+        }
+
+        // SIP v5.5: Adapt settings for modules that expect moduleId prefix
         const settingsValues = Object.entries(settings).reduce((acc, [key, value]) => {
-          if (key.startsWith('global_')) {
+          // Si la clave ya tiene el prefijo del módulo, la dejamos como está
+          if (key.startsWith(moduleId)) {
+            acc[key] = value;
+          } else if (key.startsWith('global_')) {
             acc[`${moduleId}_${key}`] = value;
           } else {
+            // Si es una clave plana, intentamos mapearla (por ejemplo, 'title' -> 'mod_id_el_module_type_typography_title')
+            // Esto es un fallback agresivo para payloads directos menos estructurados
             acc[key] = value;
+            acc[`${moduleId}_${key}`] = value;
           }
           return acc;
         }, {} as Record<string, any>);

@@ -556,7 +556,8 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
           if (!baseModule) return;
 
           // Use persistent UUIDs (Solutium Protocol v2.0)
-          const moduleId = crypto.randomUUID();
+          const rawId = crypto.randomUUID();
+          const moduleId = `mod_${rawId}`;
           const newElements = baseModule.elements.map(el => {
             const elId = `${moduleId}_${el.id}`;
             Object.entries(sec.settingsValues).forEach(([key, val]) => {
@@ -579,6 +580,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
           newAddedModules.push({
             ...baseModule,
             id: moduleId,
+            templateId: baseModule.id,
             elements: newElements
           });
         });
@@ -604,7 +606,8 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   const addModule = (module: WebModule) => {
     console.log('Adding module:', module.type);
     // Use persistent UUIDs (Solutium Protocol v2.0)
-    const moduleId = crypto.randomUUID();
+    const rawId = crypto.randomUUID();
+    const moduleId = `mod_${rawId}`;
     
     // Prefix element IDs to ensure uniqueness
     const newElements = module.elements.map(el => ({
@@ -615,6 +618,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     const newModule = { 
       ...module, 
       id: moduleId,
+      templateId: module.id,
       elements: newElements
     };
 

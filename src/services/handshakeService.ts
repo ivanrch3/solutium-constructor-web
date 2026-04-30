@@ -55,8 +55,14 @@ export const startHandshake = (
 
         if (event.data.type === 'SOLUTIUM_CONFIG' || event.data.type === 'SOLUTIUM_CONFIG_RESPONSE' || event.data.type === 'SOLUTIUM_SET_CONFIG') {
           console.log(`✅ [SIP v5.2] Configuración recibida (${event.data.type}).`);
-          processConfig(event.data.payload || event.data.config);
-          sendToMother({ type: 'SOLUTIUM_ACK', status: 'success' });
+          // SOP: Max robustness - check payload, config, or root if it looks like a config
+          const dataPayload = event.data.payload || event.data.config || (event.data.projectId || event.data.satellite_id ? event.data : null);
+          if (dataPayload) {
+            processConfig(dataPayload);
+            sendToMother({ type: 'SOLUTIUM_ACK', status: 'success' });
+          } else {
+            console.warn("⚠️ [SIP v5.2] Recibido mensaje SOLUTIUM_CONFIG pero el payload está vacío.");
+          }
         }
       }
     });

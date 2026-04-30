@@ -161,8 +161,22 @@ const AppContent: React.FC = () => {
           ]);
           
           const sitesMap = new Map<string, WebBuilderSite | PublishedSite>();
-          published.forEach(p => { if (p.siteId) sitesMap.set(p.siteId, p); });
-          drafts.forEach(d => { if (d.siteId) sitesMap.set(d.siteId, d); });
+          published.forEach(p => { 
+            if (p.siteId) {
+              (p as any).status = 'published';
+              sitesMap.set(p.siteId, p); 
+            }
+          });
+          drafts.forEach(d => { 
+            if (d.siteId) {
+              const existing = sitesMap.get(d.siteId);
+              if (existing) {
+                // If there's a draft and a published version, it's modified
+                (d as any).status = 'modified';
+              }
+              sitesMap.set(d.siteId, d); 
+            }
+          });
 
           const allPages = Array.from(sitesMap.values()).sort((a, b) => {
             const dateA = new Date(a.updatedAt || 0).getTime();

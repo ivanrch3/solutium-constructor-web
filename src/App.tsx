@@ -63,6 +63,7 @@ const AppContent: React.FC = () => {
 
   const processHandshake = async (payload: any) => {
     try {
+      console.log('[HANDSHAKE] Procesando payload:', payload);
       // Cache the handshake data for literal reloads
       localStorage.setItem('solutium_handshake_cache', JSON.stringify(payload));
 
@@ -71,12 +72,6 @@ const AppContent: React.FC = () => {
         geminiApiKey: payload.gemini_api_key || payload.VITE_GEMINI_API_KEY || null,
         pexelsApiKey: payload.pexels_api_key || payload.VITE_PEXELS_API_KEY || null
       });
-
-      const supabase = initSupabase(
-        payload.supabase_url,
-        payload.supabase_anon_key,
-        payload.session_token
-      );
 
       // Extraer fontFamily con máxima cobertura de claves posibles
       const handshakeFont = 
@@ -89,18 +84,46 @@ const AppContent: React.FC = () => {
         payload.activeThemeData?.fontFamily ||
         payload.activeThemeData?.font_family ||
         payload.activeThemeData?.font ||
-        payload.activeThemeData?.theme?.fontFamily ||
-        payload.activeThemeData?.theme?.font_family ||
-        (payload as any).theme?.fontFamily ||
-        (payload as any).theme?.font_family ||
-        (payload as any).theme_data?.fontFamily ||
-        (payload as any).theme_data?.font_family ||
-        payload.profile?.fontFamily ||
-        payload.profile?.font_family ||
-        payload.profile?.font ||
         '';
 
-      console.log('[HANDSHAKE] fontFamily detectada:', handshakeFont || 'NINGUNA (vacia)');
+      // Si hay datos de Supabase, inicializamos y cargamos perfil
+      if (payload.supabase_url && payload.supabase_anon_key && payload.session_token) {
+        const supabase = initSupabase(
+          payload.supabase_url,
+          payload.supabase_anon_key,
+          payload.session_token
+        );
+
+        // Intento de obtener usuario con timeout para no bloquear el splash screen infinitamente
+        const userPromise = supabase.auth.getUser();
+        const userResult = await Promise.race([
+          userPromise,
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Supabase timeout')), 5000))
+        ]).catch(e => ({ data: { user: null }, error: e }));
+
+        const { data: { user }, error: userError } = userResult as any;
+        
+        if (user && !userError) {
+          const mappedProfile = await getProfile(user.id);
+          const handshakeThemeData = payload.activeThemeData;
+          const handshakeThemeName = payload.profile?.activeTheme || payload.project?.activeTheme;
+          const hasThemeData = handshakeThemeData && Object.keys(handshakeThemeData).length > 0;
+          const themeToApply = (hasThemeData ? handshakeThemeData : null) || handshakeThemeName || mappedProfile?.activeTheme || 'blue-light';
+
+          if (mappedProfile) {
+            setProfile(mappedProfile);
+          } else {
+            setProfile({ id: user.id, email: user.email, role: 'user', activeTheme: (typeof themeToApply === 'string' ? themeToApply : 'blue-light') as any });
+          }
+
+          if (typeof themeToApply === 'object') {
+            applyTheme({ ...themeToApply, fontFamily: handshakeFont || themeToApply.fontFamily || themeToApply.font_family });
+          } else {
+            applyTheme(themeToApply);
+            if (handshakeFont) applyTheme({ fontFamily: handshakeFont });
+          }
+        }
+      }
       
       // Update favicon if provided
       const handshakeFavicon = 
@@ -171,7 +194,6 @@ const AppContent: React.FC = () => {
             if (d.siteId) {
               const existing = sitesMap.get(d.siteId);
               if (existing) {
-                // If there's a draft and a published version, it's modified
                 (d as any).status = 'modified';
               }
               sitesMap.set(d.siteId, d); 
@@ -190,40 +212,30 @@ const AppContent: React.FC = () => {
             const existingPage = allPages.find(p => p.siteId === payload.site_id);
             if (existingPage) {
               setSelectedPage(existingPage);
-              setCurrentView('constructor');
             } else {
               setSelectedPage({ siteId: payload.site_id, name: payload.siteName || 'Nuevo Sitio' } as any);
+            }
+            
+            // Si hay force_render o render_mode='published', ya se maneja abajo, de lo contrario por defecto constructor
+            if (!payload.force_render && payload.render_mode !== 'published') {
               setCurrentView('constructor');
             }
           }
         }
       }
-
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (user && !userError) {
-        const mappedProfile = await getProfile(user.id);
-        const handshakeThemeData = payload.activeThemeData;
-        const handshakeThemeName = payload.profile?.activeTheme || payload.project?.activeTheme;
-        const hasThemeData = handshakeThemeData && Object.keys(handshakeThemeData).length > 0;
-        const themeToApply = (hasThemeData ? handshakeThemeData : null) || handshakeThemeName || mappedProfile?.activeTheme || 'blue-light';
-
-        if (mappedProfile) {
-          setProfile(mappedProfile);
-        } else {
-          setProfile({ id: user.id, email: user.email, role: 'user', activeTheme: (typeof themeToApply === 'string' ? themeToApply : 'blue-light') as any });
-        }
-
-        if (typeof themeToApply === 'object') {
-          applyTheme({ ...themeToApply, fontFamily: handshakeFont || themeToApply.fontFamily || themeToApply.font_family });
-        } else {
-          applyTheme(themeToApply);
-          if (handshakeFont) applyTheme({ fontFamily: handshakeFont });
+      
+      // Handle rendering modes
+      if (payload.force_render || payload.render_mode === 'published') {
+        console.log('[GATEWAY] Forzando renderizado directo:', payload.render_mode);
+        if (payload.site_id || selectedPage) {
+          setCurrentView(payload.render_mode === 'published' ? 'viewer' : 'constructor');
         }
       }
-      
+
       setIsHandshakeComplete(true);
     } catch (err) {
       console.error('Error processing handshake:', err);
+      setIsHandshakeComplete(true);
     }
   };
 

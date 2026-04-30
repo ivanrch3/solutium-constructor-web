@@ -53,9 +53,9 @@ export const startHandshake = (
           console.log("✅ [SIP v5.2] Conexión estabilizada con la App Madre.");
         }
 
-        if (event.data.type === 'SOLUTIUM_CONFIG') {
-          console.log("✅ [SIP v5.2] Configuración recibida vía Heartbeat.");
-          processConfig(event.data.payload);
+        if (event.data.type === 'SOLUTIUM_CONFIG' || event.data.type === 'SOLUTIUM_CONFIG_RESPONSE' || event.data.type === 'SOLUTIUM_SET_CONFIG') {
+          console.log(`✅ [SIP v5.2] Configuración recibida (${event.data.type}).`);
+          processConfig(event.data.payload || event.data.config);
           sendToMother({ type: 'SOLUTIUM_ACK', status: 'success' });
         }
       }

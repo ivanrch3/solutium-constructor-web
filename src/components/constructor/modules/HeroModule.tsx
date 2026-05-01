@@ -20,6 +20,7 @@ export const HeroModule: React.FC<{
   isPreviewMode?: boolean
 }> = ({ moduleId, settingsValues, logoUrl, logoWhiteUrl, isPreviewMode = false }) => {
   const { updateSectionSettings, selectSection, selectElement } = useEditorStore();
+  
   const getVal = (elementId: string | null, settingId: string, defaultValue: any) => {
     const key = elementId ? `${elementId}_${settingId}` : `${moduleId}_global_${settingId}`;
     return settingsValues[key] !== undefined ? settingsValues[key] : defaultValue;

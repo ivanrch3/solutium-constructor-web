@@ -71,15 +71,6 @@ export const Canvas: React.FC<CanvasProps> = ({
 }) => {
   const { selectSection, selectedSectionId, siteContent } = useEditorStore();
 
-  console.log('[CANVAS_RENDER_DEBUG]', {
-    modulesCount: editorState.addedModules?.length,
-    settingsValuesCount: Object.keys(editorState.settingsValues || {}).length,
-    heroTitle: editorState.settingsValues?.['b40b8a95-9f81-4def-8fb4-0b9a013525fa_el_hero_typography_title'],
-    heroSubtitle: editorState.settingsValues?.['b40b8a95-9f81-4def-8fb4-0b9a013525fa_el_hero_typography_subtitle'],
-    primaryText: editorState.settingsValues?.['b40b8a95-9f81-4def-8fb4-0b9a013525fa_el_hero_ctas_primary_text'],
-    globalLayout: editorState.settingsValues?.['b40b8a95-9f81-4def-8fb4-0b9a013525fa_global_layout']
-  });
-
   const lastModuleRef = React.useRef<HTMLDivElement>(null);
   const prevModulesLength = React.useRef(editorState.addedModules?.length || 0);
 
@@ -245,6 +236,7 @@ export const Canvas: React.FC<CanvasProps> = ({
                 const stackingZIndex = 110 - index;
 
                 const theme = siteContent.theme;
+                
                 const invert = theme.invertedAlternatingMode || false;
                 const isDarkForced = theme.alternatingDarkMode 
                   ? (invert ? (index % 2 === 0) : (index % 2 !== 0)) 
@@ -273,7 +265,16 @@ export const Canvas: React.FC<CanvasProps> = ({
                   moduleOverrides[`${section.id}_global_entrance_anim`] = theme.globalAnimationType;
                 }
 
-                const finalSettings = { ...section.settings, ...moduleOverrides };
+                // PROTOCOLO SOLUTIUM v7.5: Reconstrucción de settingsValues para el Canvas
+                // Fusionamos:
+                // 1. editorState.settingsValues (Estado vivo del editor - Prioridad Alta)
+                // 2. section.settings (Estado del store/db - Fallback)
+                // 3. moduleOverrides (Tematización global/alternante - Prioridad Máxima)
+                const finalSettings = { 
+                  ...section.settings, 
+                  ...editorState.settingsValues,
+                  ...moduleOverrides 
+                };
 
                 return (
                   <div 

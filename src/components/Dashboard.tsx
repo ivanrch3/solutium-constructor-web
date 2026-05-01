@@ -150,7 +150,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                             </span>
                           </div>
                           <p className="text-xs text-text/80 font-medium">
-                            Actualizado el {new Date(page.updatedAt || '').toLocaleDateString()}
+                            Actualizado el {new Date(page.updatedAt || '').toLocaleString([], { day: 'numeric', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                           </p>
                         </div>
                       </div>

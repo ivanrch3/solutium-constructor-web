@@ -87,7 +87,8 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
         const moduleId = section.id;
         // SOP: Fallback entre 'type' y 'tipo' para máxima compatibilidad
         const type = section.type || section.tipo; 
-        const settings = section.settings || section.content || {};
+        const settings = section.settings || {};
+        const content = section.content || {};
 
         if (!moduleId) {
           console.warn('⚠️ [VIEWER] Saltando sección sin ID.');
@@ -111,47 +112,74 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
           return acc;
         }, {} as Record<string, any>);
 
+        const finalSettingsValues = { ...settingsValues };
+
+        // Compatibility bridge for Hero (Módulo Crítico)
+        if (type === 'hero') {
+          const bridge: Record<string, any> = {
+            [`${moduleId}_el_hero_typography_title`]: content.title ?? content.texto_principal,
+            [`${moduleId}_el_hero_typography_subtitle`]: content.subtitle ?? content.texto_secundario ?? content.texto_descripcion,
+            [`${moduleId}_el_hero_typography_eyebrow`]: content.eyebrow,
+            [`${moduleId}_el_hero_media_image`]: content.image_url,
+            [`${moduleId}_el_hero_ctas_primary_text`]: content.primary_cta?.text,
+            [`${moduleId}_el_hero_ctas_primary_url`]: content.primary_cta?.url,
+            [`${moduleId}_el_hero_ctas_secondary_text`]: content.secondary_cta?.text,
+            [`${moduleId}_el_hero_ctas_secondary_url`]: content.secondary_cta?.url
+          };
+
+          Object.entries(bridge).forEach(([key, value]) => {
+            if (
+              value !== undefined &&
+              value !== null &&
+              value !== '' &&
+              finalSettingsValues[key] === undefined
+            ) {
+              finalSettingsValues[key] = value;
+            }
+          });
+        }
+
         switch (type) {
           case 'header':
-            return <HeaderModule key={moduleId} moduleId={moduleId} settingsValues={settingsValues} />;
+            return <HeaderModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} />;
           case 'hero':
-            return <HeroModule key={moduleId} moduleId={moduleId} settingsValues={settingsValues} />;
+            return <HeroModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} />;
           case 'features':
-            return <FeaturesModule key={moduleId} moduleId={moduleId} settingsValues={settingsValues} />;
+            return <FeaturesModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} />;
           case 'about':
-            return <AboutModule key={moduleId} moduleId={moduleId} settingsValues={settingsValues} />;
+            return <AboutModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} />;
           case 'process':
-            return <ProcessModule key={moduleId} moduleId={moduleId} settingsValues={settingsValues} />;
+            return <ProcessModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} />;
           case 'gallery':
-            return <GalleryModule key={moduleId} moduleId={moduleId} settingsValues={settingsValues} />;
+            return <GalleryModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} />;
           case 'testimonials':
-            return <TestimonialsModule key={moduleId} moduleId={moduleId} settingsValues={settingsValues} />;
+            return <TestimonialsModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} />;
           case 'stats':
-            return <StatsModule key={moduleId} moduleId={moduleId} settingsValues={settingsValues} />;
+            return <StatsModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} />;
           case 'team':
-            return <TeamModule key={moduleId} moduleId={moduleId} settingsValues={settingsValues} />;
+            return <TeamModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} />;
           case 'pricing':
-            return <PricingModule key={moduleId} moduleId={moduleId} settingsValues={settingsValues} />;
+            return <PricingModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} />;
           case 'faq':
-            return <FAQModule key={moduleId} moduleId={moduleId} settingsValues={settingsValues} />;
+            return <FAQModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} />;
           case 'contact':
-            return <ContactModule key={moduleId} moduleId={moduleId} settingsValues={settingsValues} />;
+            return <ContactModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} />;
           case 'products':
-            return <ProductsModule key={moduleId} moduleId={moduleId} settingsValues={settingsValues} products={[]} />;
+            return <ProductsModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} products={[]} />;
           case 'clients':
-            return <ClientsModule key={moduleId} moduleId={moduleId} settingsValues={settingsValues} customers={[]} />;
+            return <ClientsModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} customers={[]} />;
           case 'cta':
-            return <CTAModule key={moduleId} moduleId={moduleId} settingsValues={settingsValues} />;
+            return <CTAModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} />;
           case 'newsletter':
-            return <NewsletterModule key={moduleId} moduleId={moduleId} settingsValues={settingsValues} />;
+            return <NewsletterModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} />;
           case 'video':
-            return <VideoModule key={moduleId} moduleId={moduleId} settingsValues={settingsValues} />;
+            return <VideoModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} />;
           case 'spacer':
-            return <SpacerModule key={moduleId} moduleId={moduleId} settingsValues={settingsValues} />;
+            return <SpacerModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} />;
           case 'menu':
-            return <MenuModule key={moduleId} moduleId={moduleId} settingsValues={settingsValues} />;
+            return <MenuModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} />;
           case 'footer':
-            return <FooterModule key={moduleId} moduleId={moduleId} settingsValues={settingsValues} />;
+            return <FooterModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} />;
           default:
             return null;
         }

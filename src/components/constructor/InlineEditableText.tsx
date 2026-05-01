@@ -40,6 +40,7 @@ export const InlineEditableText: React.FC<InlineEditableTextProps> = ({
   
   const [localValue, setLocalValue] = useState(value);
   const textRef = useRef<HTMLDivElement>(null);
+  const isBlurring = useRef(false);
 
   useEffect(() => {
     if (!isEditing) {
@@ -48,24 +49,26 @@ export const InlineEditableText: React.FC<InlineEditableTextProps> = ({
   }, [value, isEditing]);
 
   const handleBlur = () => {
+    if (isBlurring.current) return;
+    isBlurring.current = true;
+
     if (textRef.current) {
       const newValue = textRef.current.innerText;
       if (newValue !== value) {
+        setLocalValue(newValue); // Update local state immediately
         if (onSave) {
           onSave(newValue);
         } else {
-          // If we are in the constructor, we might need to call a prop-drilled handler
-          // but for now we update the store. 
-          // To ensure WebConstructor (which uses state) reflects this, 
-          // we might need a bridge.
           updateSectionSettings(moduleId, { [fullId]: newValue });
-          
-          // Also try to find and call the onSettingChange from context or props if possible?
-          // Since we can't easily prop-drill through modules, we'll rely on store sync.
         }
       }
     }
     setInlineEditingId(null);
+    
+    // Reset blurring flag after a tick to allow for state propagation
+    setTimeout(() => {
+      isBlurring.current = false;
+    }, 100);
   };
 
   const handleClick = (e: React.MouseEvent) => {

@@ -169,7 +169,7 @@ export const TopBar: React.FC<TopBarProps> = ({
             publishStatus === 'loading' ? 'Publicando...' : 
             publishStatus === 'success' ? 'Publicado' : 
             publishStatus === 'error' ? 'Error' : 
-            (currentStatus === 'published' || currentStatus === 'modified' ? 'Actualizar Sitio' : 'Publicar Sitio')
+            (currentStatus === 'published' || currentStatus === 'modified' ? 'Actualizar' : 'Publicar')
           )}
         </motion.button>
       </div>

@@ -39,6 +39,7 @@ export interface Section {
   id: string;
   type: string;
   name: string;
+  templateId?: string;
   elements: ModuleElement[];
   settings: Record<string, any>;
   moduleId?: string;

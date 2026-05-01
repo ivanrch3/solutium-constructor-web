@@ -178,12 +178,12 @@ export const Canvas: React.FC<CanvasProps> = ({
                 </p>
               </div>
             ) : (
-              (editorState.addedModules || []).map((module, index) => {
-                const isLast = index === (editorState.addedModules?.length || 0) - 1;
+              (siteContent.sections || []).map((section, index) => {
+                const isLast = index === (siteContent.sections?.length || 0) - 1;
                 
                 // Determine if this module wrapper should be sticky/fixed
-                const modulePos = editorState.settingsValues[`${module.id}_global_position`];
-                const menuSticky = editorState.settingsValues[`${module.id}_global_sticky`];
+                const modulePos = section.settings[`${section.id}_global_position`];
+                const menuSticky = section.settings[`${section.id}_global_sticky`];
                 const isSticky = modulePos === 'sticky' || menuSticky === true;
                 const isFixed = modulePos === 'fixed';
 
@@ -191,26 +191,26 @@ export const Canvas: React.FC<CanvasProps> = ({
                 let topOffset = 0;
                 if (isSticky || isFixed) {
                   for (let i = 0; i < index; i++) {
-                    const prev = editorState.addedModules[i];
-                    const prevPos = editorState.settingsValues[`${prev.id}_global_position`];
-                    const prevSticky = editorState.settingsValues[`${prev.id}_global_sticky`];
+                    const prev = siteContent.sections[i];
+                    const prevPos = prev.settings[`${prev.id}_global_position`];
+                    const prevSticky = prev.settings[`${prev.id}_global_sticky`];
                     const isPrevFloating = prevPos === 'sticky' || prevPos === 'fixed' || prevSticky === true;
                     
                     if (isPrevFloating) {
                       if (prev.type === 'conversion' || prev.type === 'header') {
-                        const showMarquee = editorState.settingsValues[`${prev.id}_el_header_marquee_show_marquee`] ?? true;
-                        const showReg = editorState.settingsValues[`${prev.id}_el_header_quick_reg_show_reg`] ?? false;
-                        const showActions = editorState.settingsValues[`${prev.id}_el_header_actions_show_actions`] ?? true;
+                        const showMarquee = prev.settings[`${prev.id}_el_header_marquee_show_marquee`] ?? true;
+                        const showReg = prev.settings[`${prev.id}_el_header_quick_reg_show_reg`] ?? false;
+                        const showActions = prev.settings[`${prev.id}_el_header_actions_show_actions`] ?? true;
                         
                         // Determine if content actually renders (Sync with HeaderModule.tsx)
-                        const primaryUrl = editorState.settingsValues[`${prev.id}_el_header_actions_primary_url`] || '';
-                        const secondaryUrl = editorState.settingsValues[`${prev.id}_el_header_actions_secondary_url`] || '';
+                        const primaryUrl = prev.settings[`${prev.id}_el_header_actions_primary_url`] || '';
+                        const secondaryUrl = prev.settings[`${prev.id}_el_header_actions_secondary_url`] || '';
                         const hasPrimary = primaryUrl !== '';
                         const hasSecondary = secondaryUrl !== '';
                         const hasButtons = showActions && (hasPrimary || hasSecondary);
                         const hasContent = showReg || hasButtons;
                         
-                        const layoutType = editorState.settingsValues[`${prev.id}_global_layout_type`] || 'standard';
+                        const layoutType = prev.settings[`${prev.id}_global_layout_type`] || 'standard';
                         const isCompact = layoutType === 'compact';
                         
                         let h = 0;
@@ -223,7 +223,7 @@ export const Canvas: React.FC<CanvasProps> = ({
                         
                         topOffset += h;
                       } else if (prev.type === 'navegacion' || prev.type === 'menu') {
-                        const pyValue = editorState.settingsValues[`${prev.id}_global_padding_y`];
+                        const pyValue = prev.settings[`${prev.id}_global_padding_y`];
                         const py = (typeof pyValue === 'number' ? pyValue : parseFloat(pyValue)) || 20;
                         topOffset += (isNaN(py) ? 20 : py * 2) + 40;
                       }
@@ -247,211 +247,209 @@ export const Canvas: React.FC<CanvasProps> = ({
                 const moduleOverrides: Record<string, any> = {};
                 
                 if (isDarkForced) {
-                  moduleOverrides[`${module.id}_global_dark_mode`] = true;
-                  moduleOverrides[`${module.id}_global_bg_color`] = '#0F172A';
-                  moduleOverrides[`${module.id}_global_bg_type`] = 'color';
+                  moduleOverrides[`${section.id}_global_dark_mode`] = true;
+                  moduleOverrides[`${section.id}_global_bg_color`] = '#0F172A';
+                  moduleOverrides[`${section.id}_global_bg_type`] = 'color';
                 } else if (isThemeForced) {
                   const projectBg = theme.themeBackgroundColor || theme.secondaryColor;
                   const isDark = isDarkColor(projectBg);
                   
-                  moduleOverrides[`${module.id}_global_dark_mode`] = isDark;
-                  moduleOverrides[`${module.id}_global_bg_color`] = projectBg;
-                  moduleOverrides[`${module.id}_global_bg_type`] = 'color';
+                  moduleOverrides[`${section.id}_global_dark_mode`] = isDark;
+                  moduleOverrides[`${section.id}_global_bg_color`] = projectBg;
+                  moduleOverrides[`${section.id}_global_bg_type`] = 'color';
                 }
 
-                // If global animation is set and not custom, we want modules to use it
-                // We'll pass it as a special prop or via settings
                 if (theme.globalAnimationType && theme.globalAnimationType !== 'custom') {
-                  moduleOverrides[`${module.id}_global_entrance_anim`] = theme.globalAnimationType;
+                  moduleOverrides[`${section.id}_global_entrance_anim`] = theme.globalAnimationType;
                 }
 
-                const finalSettings = { ...editorState.settingsValues, ...moduleOverrides };
+                const finalSettings = { ...section.settings, ...moduleOverrides };
 
                 return (
                   <div 
-                    key={module.id} 
-                    id={module.id} 
+                    key={section.id} 
+                    id={section.id} 
                     ref={isLast ? lastModuleRef : null} 
                     onClick={(e) => {
                       if (isPreviewMode) return;
                       e.stopPropagation();
-                      selectSection(module.id);
+                      selectSection(section.id);
                     }}
                     className={`w-full group relative outline-none transition-all duration-300 ${isSticky || isFixed ? 'sticky' : 'relative'} ${
-                      (!isPreviewMode && selectedSectionId === module.id) 
+                      (!isPreviewMode && selectedSectionId === section.id) 
                         ? 'ring-2 ring-blue-500 ring-inset shadow-2xl z-50 cursor-pointer' 
                         : !isPreviewMode ? 'hover:ring-1 hover:ring-blue-300/50 ring-inset cursor-pointer' : ''
                     }`}
                     style={{ 
                       top: isSticky || isFixed ? `${topOffset}px` : undefined,
-                      zIndex: isSticky || isFixed ? stackingZIndex : (selectedSectionId === module.id ? 50 : 1)
+                      zIndex: isSticky || isFixed ? stackingZIndex : (selectedSectionId === section.id ? 50 : 1)
                     }}
                   >
                     {/* Indicador de Selección */}
-                    {selectedSectionId === module.id && !isPreviewMode && (
+                    {selectedSectionId === section.id && !isPreviewMode && (
                       <div className="absolute -left-1 top-0 bottom-0 w-1 bg-blue-500 z-50 rounded-full" />
                     )}
-                    {module.type === 'products' && (
+                    {section.type === 'products' && (
                       <ProductsModule 
-                        moduleId={module.id}
+                        moduleId={section.id}
                         settingsValues={finalSettings}
                         products={products}
                         isDevMode={isDevMode}
                         isPreviewMode={isPreviewMode}
                       />
                     )}
-                    {module.type === 'hero' && (
+                    {section.type === 'hero' && (
                       <HeroModule 
-                        moduleId={module.id}
+                        moduleId={section.id}
                         settingsValues={finalSettings}
                         logoUrl={logoUrl}
                         logoWhiteUrl={logoWhiteUrl}
                         isPreviewMode={isPreviewMode}
                       />
                     )}
-                    {module.type === 'features' && (
+                    {section.type === 'features' && (
                       <FeaturesModule 
-                        moduleId={module.id}
+                        moduleId={section.id}
                         settingsValues={finalSettings}
                         isPreviewMode={isPreviewMode}
                       />
                     )}
-                    {module.type === 'about' && (
+                    {section.type === 'about' && (
                       <AboutModule 
-                        moduleId={module.id}
+                        moduleId={section.id}
                         settingsValues={finalSettings}
                         isPreviewMode={isPreviewMode}
                       />
                     )}
-                    {module.type === 'process' && (
+                    {section.type === 'process' && (
                       <ProcessModule 
-                        moduleId={module.id}
+                        moduleId={section.id}
                         settingsValues={finalSettings}
                         isPreviewMode={isPreviewMode}
                       />
                     )}
-                    {module.type === 'gallery' && (
+                    {section.type === 'gallery' && (
                       <GalleryModule 
-                        moduleId={module.id}
+                        moduleId={section.id}
                         settingsValues={finalSettings}
                         isPreviewMode={isPreviewMode}
                       />
                     )}
-                    {module.type === 'video' && (
+                    {section.type === 'video' && (
                       <VideoModule 
-                        moduleId={module.id}
+                        moduleId={section.id}
                         settingsValues={finalSettings}
                         isPreviewMode={isPreviewMode}
                       />
                     )}
-                    {module.type === 'testimonials' && (
+                    {section.type === 'testimonials' && (
                       <TestimonialsModule 
-                        moduleId={module.id}
+                        moduleId={section.id}
                         settingsValues={finalSettings}
                         isPreviewMode={isPreviewMode}
                       />
                     )}
-                    {module.type === 'stats' && (
+                    {section.type === 'stats' && (
                       <StatsModule 
-                        moduleId={module.id}
+                        moduleId={section.id}
                         settingsValues={finalSettings}
                         isPreviewMode={isPreviewMode}
                       />
                     )}
-                    {module.type === 'team' && (
+                    {section.type === 'team' && (
                       <TeamModule 
-                        moduleId={module.id}
+                        moduleId={section.id}
                         settingsValues={finalSettings}
                         isPreviewMode={isPreviewMode}
                       />
                     )}
-                    {module.type === 'pricing' && (
+                    {section.type === 'pricing' && (
                       <PricingModule 
-                        moduleId={module.id}
+                        moduleId={section.id}
                         settingsValues={finalSettings}
                         isPreviewMode={isPreviewMode}
                       />
                     )}
-                    {module.type === 'faq' && (
+                    {section.type === 'faq' && (
                       <FAQModule 
-                        moduleId={module.id}
+                        moduleId={section.id}
                         settingsValues={finalSettings}
                         isPreviewMode={isPreviewMode}
                       />
                     )}
-                    {module.type === 'contact' && (
+                    {section.type === 'contact' && (
                       <ContactModule 
-                        moduleId={module.id}
+                        moduleId={section.id}
                         settingsValues={finalSettings}
                         isPreviewMode={isPreviewMode}
                       />
                     )}
-                    {module.type === 'clients' && (
+                    {section.type === 'clients' && (
                       <ClientsModule 
-                        moduleId={module.id}
+                        moduleId={section.id}
                         settingsValues={finalSettings}
                         customers={customers}
                         isDevMode={isDevMode}
                         isPreviewMode={isPreviewMode}
                       />
                     )}
-                    {module.type === 'cta' && (
+                    {section.type === 'cta' && (
                       <CTAModule 
-                        moduleId={module.id}
+                        moduleId={section.id}
                         settingsValues={finalSettings}
                         isPreviewMode={isPreviewMode}
                       />
                     )}
-                    {module.type === 'newsletter' && (
+                    {section.type === 'newsletter' && (
                       <NewsletterModule 
-                        moduleId={module.id}
+                        moduleId={section.id}
                         settingsValues={finalSettings}
                         isPreviewMode={isPreviewMode}
                       />
                     )}
-                    {module.type === 'conversion' && (module.templateId === 'mod_header_1' || module.id.startsWith('mod_header_1')) && (
+                    {section.type === 'conversion' && (section.templateId === 'mod_header_1' || section.id.startsWith('mod_header_1')) && (
                       <HeaderModule 
-                        moduleId={module.id}
+                        moduleId={section.id}
                         settingsValues={finalSettings}
                         isPreviewMode={isPreviewMode}
                       />
                     )}
-                    {(module.type === 'navegacion' || module.type === 'menu') && (module.templateId === 'mod_menu_1' || module.id.startsWith('mod_menu_1')) && (
+                    {(section.type === 'navegacion' || section.type === 'menu') && (section.templateId === 'mod_menu_1' || section.id.startsWith('mod_menu_1')) && (
                       <MenuModule 
-                        moduleId={module.id}
+                        moduleId={section.id}
                         settingsValues={finalSettings}
                         logoUrl={logoUrl}
                         logoWhiteUrl={logoWhiteUrl}
                         isPreviewMode={isPreviewMode}
                       />
                     )}
-                    {(module.type === 'footer' || module.type === 'navegacion') && (module.templateId === 'mod_footer_1' || module.id.startsWith('mod_footer_1')) && (
+                    {(section.type === 'footer' || section.type === 'navegacion') && (section.templateId === 'mod_footer_1' || section.id.startsWith('mod_footer_1')) && (
                       <FooterModule 
-                        moduleId={module.id}
+                        moduleId={section.id}
                         settingsValues={finalSettings}
                         logoUrl={logoUrl}
                         logoWhiteUrl={logoWhiteUrl}
                         isPreviewMode={isPreviewMode}
                       />
                     )}
-                    {module.type === 'spacer' && (
+                    {section.type === 'spacer' && (
                       <SpacerModule 
-                        moduleId={module.id}
+                        moduleId={section.id}
                         settingsValues={finalSettings}
                         isPreviewMode={isPreviewMode}
                       />
                     )}
-                    {(module.templateId === 'mod_bento_1' || module.id.startsWith('mod_bento_1')) && (
+                    {(section.templateId === 'mod_bento_1' || section.id.startsWith('mod_bento_1')) && (
                       <BentoModule 
-                        moduleId={module.id}
+                        moduleId={section.id}
                         settingsValues={finalSettings}
                         onSettingChange={onSettingChange}
                         isPreviewMode={isPreviewMode}
                       />
                     )}
-                    {module.type === 'comparative' && (
+                    {section.type === 'comparative' && (
                       <ComparisonModule 
-                        moduleId={module.id}
+                        moduleId={section.id}
                         settingsValues={finalSettings}
                         preview={isPreviewMode}
                       />

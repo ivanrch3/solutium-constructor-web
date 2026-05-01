@@ -61,6 +61,49 @@ const AppContent: React.FC = () => {
     }
   }, [projectId, appId, currentView, selectedPage, activeTab]);
 
+  const refreshData = async (fProjectId?: string) => {
+    const idToUse = fProjectId || projectId;
+    if (!idToUse) return [];
+
+    try {
+      const projectAssets = await getAssets(idToUse, 'web_page');
+      setAssets(projectAssets);
+
+      const [drafts, published] = await Promise.all([
+        getWebBuilderSites(idToUse),
+        getPublishedSites(idToUse)
+      ]);
+      
+      const sitesMap = new Map<string, WebBuilderSite | PublishedSite>();
+      published.forEach(p => { 
+        if (p.siteId) {
+          const siteWithStatus = { ...p, status: 'published' as const };
+          sitesMap.set(p.siteId, siteWithStatus); 
+        }
+      });
+      drafts.forEach(d => { 
+        if (d.siteId) {
+          const existing = sitesMap.get(d.siteId);
+          const status = d.status || (existing ? 'modified' : 'draft');
+          const siteWithStatus = { ...d, status };
+          sitesMap.set(d.siteId, siteWithStatus); 
+        }
+      });
+
+      const allPages = Array.from(sitesMap.values()).sort((a, b) => {
+        const dateA = new Date(a.updatedAt || 0).getTime();
+        const dateB = new Date(b.updatedAt || 0).getTime();
+        return dateB - dateA;
+      });
+      
+      setPages(allPages);
+      return allPages;
+    } catch (error) {
+      console.error('[DATA] Error refreshing data:', error);
+      return [];
+    }
+  };
+
   const processHandshake = async (payload: any) => {
     try {
       console.log('[HANDSHAKE] Procesando payload:', payload);
@@ -174,38 +217,7 @@ const AppContent: React.FC = () => {
         }
 
         if (finalProjectId) {
-          const projectAssets = await getAssets(finalProjectId, 'web_page');
-          setAssets(projectAssets);
-
-          const [drafts, published] = await Promise.all([
-            getWebBuilderSites(finalProjectId),
-            getPublishedSites(finalProjectId)
-          ]);
-          
-          const sitesMap = new Map<string, WebBuilderSite | PublishedSite>();
-          published.forEach(p => { 
-            if (p.siteId) {
-              const siteWithStatus = { ...p, status: 'published' as const };
-              sitesMap.set(p.siteId, siteWithStatus); 
-            }
-          });
-          drafts.forEach(d => { 
-            if (d.siteId) {
-              const existing = sitesMap.get(d.siteId);
-              // Use the status from the draft record, it's the source of truth for changes
-              const status = d.status || (existing ? 'modified' : 'draft');
-              const siteWithStatus = { ...d, status };
-              sitesMap.set(d.siteId, siteWithStatus); 
-            }
-          });
-
-          const allPages = Array.from(sitesMap.values()).sort((a, b) => {
-            const dateA = new Date(a.updatedAt || 0).getTime();
-            const dateB = new Date(b.updatedAt || 0).getTime();
-            return dateB - dateA;
-          });
-          
-          setPages(allPages);
+          const allPages = await refreshData(finalProjectId);
 
           if (payload.site_id) {
             const existingPage = allPages.find(p => p.siteId === payload.site_id);
@@ -498,6 +510,7 @@ const AppContent: React.FC = () => {
         return (
           <WebConstructor 
             onBackToDashboard={() => {
+              refreshData();
               setSelectedPage(null);
               setSelectedMethod(null);
               setCurrentView('dashboard');

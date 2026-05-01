@@ -78,23 +78,23 @@ export const useEditorStore = create<EditorStoreState>((set, get) => ({
     
     set({ isGenerating: true, generationStep: 0 });
     
-    // Simular progreso para UX de valor añadido
     const progressInterval = setInterval(() => {
-      const { generationStep, generationSteps } = get();
-      if (generationStep < generationSteps.length - 2) {
-        set({ generationStep: generationStep + 1 });
-      }
+      set((state) => {
+        if (state.generationStep < state.generationSteps.length - 2) {
+          return { generationStep: state.generationStep + 1 };
+        }
+        return state;
+      });
     }, 2500);
 
     try {
       const content = await generateSiteContent(brief);
       clearInterval(progressInterval);
       
-      set({ 
-        generationStep: get().generationSteps.length - 1,
-      });
+      set((state) => ({ 
+        generationStep: state.generationSteps.length - 1,
+      }));
 
-      // Breve pausa para que se vea el último paso
       setTimeout(() => {
         get().setSiteContent(content);
         set({ isGenerating: false, generationStep: 0 });
@@ -110,14 +110,16 @@ export const useEditorStore = create<EditorStoreState>((set, get) => ({
   setGenerationStep: (step) => set({ generationStep: step }),
 
   setSiteContent: (content) => {
-    const { history, historyIndex } = get();
-    const newHistory = history.slice(0, historyIndex + 1);
-    newHistory.push(content);
-    
-    set({ 
-      siteContent: content, 
-      history: newHistory,
-      historyIndex: newHistory.length - 1
+    set((state) => {
+      const { history, historyIndex } = state;
+      const newHistory = history.slice(0, historyIndex + 1);
+      newHistory.push(content);
+      
+      return { 
+        siteContent: content, 
+        history: newHistory,
+        historyIndex: newHistory.length - 1
+      };
     });
   },
 
@@ -126,46 +128,101 @@ export const useEditorStore = create<EditorStoreState>((set, get) => ({
   selectElement: (id) => set({ selectedElementId: id }),
 
   updateTheme: (themeUpdate) => {
-    const { siteContent } = get();
-    const newContent = {
-      ...siteContent,
-      theme: { ...siteContent.theme, ...themeUpdate }
-    };
-    get().setSiteContent(newContent);
+    set((state) => {
+      const newContent = {
+        ...state.siteContent,
+        theme: { ...state.siteContent.theme, ...themeUpdate }
+      };
+      
+      // Also update history by calling setSiteContent logic
+      const { history, historyIndex } = state;
+      const newHistory = history.slice(0, historyIndex + 1);
+      newHistory.push(newContent);
+
+      return {
+        siteContent: newContent,
+        history: newHistory,
+        historyIndex: newHistory.length - 1
+      };
+    });
   },
 
   updateSectionSettings: (sectionId, settingsUpdate) => {
-    const { siteContent } = get();
-    const newSections = siteContent.sections.map(s => 
-      s.id === sectionId 
-        ? { ...s, settings: { ...s.settings, ...settingsUpdate } }
-        : s
-    );
-    get().setSiteContent({ ...siteContent, sections: newSections });
+    set((state) => {
+      const { siteContent, history, historyIndex } = state;
+      const newSections = siteContent.sections.map(s => 
+        s.id === sectionId 
+          ? { ...s, settings: { ...s.settings, ...settingsUpdate } }
+          : s
+      );
+      const newContent = { ...siteContent, sections: newSections };
+      
+      const newHistory = history.slice(0, historyIndex + 1);
+      newHistory.push(newContent);
+
+      return { 
+        siteContent: newContent,
+        history: newHistory,
+        historyIndex: newHistory.length - 1
+      };
+    });
   },
 
   addSection: (section) => {
-    const { siteContent } = get();
-    get().setSiteContent({
-      ...siteContent,
-      sections: [...siteContent.sections, section]
+    set((state) => {
+      const { siteContent, history, historyIndex } = state;
+      const newContent = {
+        ...siteContent,
+        sections: [...siteContent.sections, section]
+      };
+
+      const newHistory = history.slice(0, historyIndex + 1);
+      newHistory.push(newContent);
+
+      return {
+        siteContent: newContent,
+        history: newHistory,
+        historyIndex: newHistory.length - 1
+      };
     });
   },
 
   removeSection: (id) => {
-    const { siteContent } = get();
-    get().setSiteContent({
-      ...siteContent,
-      sections: siteContent.sections.filter(s => s.id !== id)
+    set((state) => {
+      const { siteContent, history, historyIndex } = state;
+      const newContent = {
+        ...siteContent,
+        sections: siteContent.sections.filter(s => s.id !== id)
+      };
+
+      const newHistory = history.slice(0, historyIndex + 1);
+      newHistory.push(newContent);
+
+      return {
+        siteContent: newContent,
+        history: newHistory,
+        historyIndex: newHistory.length - 1
+      };
     });
   },
 
   reorderSections: (startIndex, endIndex) => {
-    const { siteContent } = get();
-    const newSections = Array.from(siteContent.sections);
-    const [removed] = newSections.splice(startIndex, 1);
-    newSections.splice(endIndex, 0, removed);
-    get().setSiteContent({ ...siteContent, sections: newSections });
+    set((state) => {
+      const { siteContent, history, historyIndex } = state;
+      const newSections = Array.from(siteContent.sections);
+      const [removed] = newSections.splice(startIndex, 1);
+      newSections.splice(endIndex, 0, removed);
+      const newContent = { ...siteContent, sections: newSections };
+
+      const newHistory = history.slice(0, historyIndex + 1);
+      newHistory.push(newContent);
+
+      return {
+        siteContent: newContent,
+        history: newHistory,
+        historyIndex: newHistory.length - 1
+      };
+    });
   },
 
   undo: () => {

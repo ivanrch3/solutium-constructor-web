@@ -176,7 +176,7 @@ export const PublishModal: React.FC<{
       <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mb-6">
         <Send className="text-primary w-8 h-8" />
       </div>
-      <h3 className="text-xl font-bold text-text mb-2">Publicar Sitio</h3>
+      <h3 className="text-xl font-bold text-text mb-2">Publicar</h3>
       <p className="text-sm text-text/60 mb-6 leading-relaxed">
         Asigna un nombre a tu página para identificarla en tu panel de Solutium.
       </p>
@@ -207,7 +207,7 @@ export const PublishModal: React.FC<{
           disabled={!siteName || isSaving}
           className="flex-1 px-6 py-3 bg-primary hover:bg-primary/90 text-white font-bold rounded-2xl shadow-lg shadow-primary/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {isSaving ? 'Publicando...' : 'Publicar Ahora'}
+          {isSaving ? 'Publicando...' : 'Publicar'}
         </button>
       </div>
     </motion.div>

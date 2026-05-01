@@ -107,6 +107,16 @@ const AppContent: React.FC = () => {
   const processHandshake = async (payload: any) => {
     try {
       console.log('[HANDSHAKE] Procesando payload:', payload);
+      
+      // LOG DE DIAGNÓSTICO SOLICITADO
+      console.log('[CONSTRUCTOR_MESSAGE_RECEIVED_DEBUG]', {
+        eventType: payload.type, // Note: payload here is the config object from handshakeService
+        topLevelFirstSectionContent: payload.sections?.[0]?.content,
+        contentFirstSectionContent: payload.content?.sections?.[0]?.content,
+        configFirstSectionContent: payload.config?.sections?.[0]?.content,
+        fullFirstSection: payload.sections?.[0]
+      });
+
       // Cache the handshake data for literal reloads
       localStorage.setItem('solutium_handshake_cache', JSON.stringify(payload));
 
@@ -535,6 +545,14 @@ const AppContent: React.FC = () => {
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
           </div>
         );
+
+        // LOG DE DIAGNÓSTICO SOLICITADO
+        console.log('[CONSTRUCTOR_BEFORE_VIEWER_DEBUG]', {
+          firstSection: (selectedPage as any).content?.sections?.[0],
+          firstSectionContent: (selectedPage as any).content?.sections?.[0]?.content,
+          firstSectionSettingsKeys: Object.keys((selectedPage as any).content?.sections?.[0]?.settings || {})
+        });
+
         return (
           <Viewer 
             site={selectedPage as PublishedSite}

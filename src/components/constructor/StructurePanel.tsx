@@ -22,6 +22,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { EditorState, WebModule, ModuleElement, SettingGroupType } from '../../types/constructor';
 import { Product, Customer } from '../../types/schema';
+import { useEditorStore } from '../../store/editorStore';
 import { MODULE_INFO, GROUP_LABELS, BENTO_MODULE } from './registry';
 import { SettingControl } from './SettingControl';
 import { GlobalSettingsPanel } from './GlobalSettingsPanel';
@@ -55,6 +56,7 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
   isMobile,
   activeTab = 'constructor'
 }) => {
+  const { siteContent } = useEditorStore();
   const containerRef = React.useRef<HTMLDivElement>(null);
   const [shiningGroup, setShiningGroup] = React.useState<string | null>(null);
   const [expandedBentoItem, setExpandedBentoItem] = React.useState<number | null>(null);
@@ -284,7 +286,7 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
           </div>
         ) : (
           <>
-            {(!editorState.addedModules || editorState.addedModules.length === 0) && (
+            {(!siteContent.sections || siteContent.sections.length === 0) && (
           <div className={`p-8 text-center space-y-4 ${isCollapsed ? 'px-2' : ''}`}>
             <div className="w-12 h-12 bg-secondary rounded-full flex items-center justify-center mx-auto">
               <Layout className="text-text/40 w-6 h-6" />

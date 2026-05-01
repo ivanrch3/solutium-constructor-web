@@ -95,6 +95,20 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
           return null;
         }
 
+        // DIAGNÓSTICO PROFUNDO
+        const isRenderMode = window.location.search.includes('mode=render') || window.location.search.includes('external_render=true');
+        if (isRenderMode) {
+          console.log('[VIEWER_SECTION_DEBUG]', {
+            moduleId,
+            type,
+            hasContent: !!section.content,
+            contentKeys: section.content ? Object.keys(section.content) : [],
+            title: section.content?.title,
+            subtitle: section.content?.subtitle,
+            settingsKeys: section.settings ? Object.keys(section.settings) : []
+          });
+        }
+
         // SIP v5.5: Adapt settings for modules that expect moduleId prefix
         // Now using relativeKey-preserving contract (Protocolo 12.0)
         const settingsValues = Object.entries(settings).reduce((acc, [key, value]) => {

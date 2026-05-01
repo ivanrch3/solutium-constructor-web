@@ -191,6 +191,15 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   } = useEditorStore();
 
   useEffect(() => {
+    if (initialPage && 'content' in initialPage && (initialPage as any).content) {
+      setSiteContent((initialPage as any).content);
+    } else if (initialPage && 'contentDraft' in initialPage && initialPage.contentDraft) {
+      // If it's a draft, it might have a contract inside or it might be just editor state
+      // This is a bit ambiguous in the current implementation, but usually we save RenderingContract as 'content'
+    }
+  }, []);
+
+  useEffect(() => {
     if (project) {
       setProject(project);
     }
@@ -447,6 +456,22 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     setSiteName(name);
     if (!isInitialLoad.current) setHasUnsavedChanges(true);
   };
+
+  // Synchronize local editorState TO store siteContent whenever it changes
+  useEffect(() => {
+    if (isInitialLoad.current && (!editorState.addedModules || editorState.addedModules.length === 0)) return;
+    
+    // Generar el contrato de renderizado (SiteContent)
+    const contract = generateRenderingContract(siteName);
+    
+    // Solo actualizar si realmente hay cambios para evitar bucles infinitos
+    const currentSectionsHash = JSON.stringify(siteContent.sections);
+    const newSectionsHash = JSON.stringify(contract.sections);
+    
+    if (currentSectionsHash !== newSectionsHash) {
+      setSiteContent(contract as any);
+    }
+  }, [editorState.addedModules, editorState.settingsValues, siteName]);
 
   // Synchronize store settings back to local editorState
   useEffect(() => {

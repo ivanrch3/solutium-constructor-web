@@ -55,6 +55,16 @@ export const startHandshake = (
 
         if (event.data.type === 'SOLUTIUM_CONFIG' || event.data.type === 'SOLUTIUM_CONFIG_RESPONSE' || event.data.type === 'SOLUTIUM_SET_CONFIG') {
           console.log(`✅ [SIP v5.2] Configuración recibida (${event.data.type}).`);
+          
+          // LOG DE DIAGNÓSTICO SOLICITADO
+          console.log('[CONSTRUCTOR_MESSAGE_RECEIVED_DEBUG]', {
+            eventType: event.data.type,
+            topLevelFirstSectionContent: event.data.sections?.[0]?.content,
+            contentFirstSectionContent: event.data.content?.sections?.[0]?.content,
+            configFirstSectionContent: event.data.config?.sections?.[0]?.content,
+            fullFirstSection: event.data.sections?.[0] || event.data.content?.sections?.[0] || event.data.config?.sections?.[0]
+          });
+
           // SOP: Max robustness - check payload, config, or root if it looks like a config
           const dataPayload = event.data.payload || event.data.config || (event.data.projectId || event.data.satellite_id ? event.data : null);
           if (dataPayload) {

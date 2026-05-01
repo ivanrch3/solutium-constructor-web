@@ -167,7 +167,7 @@ export const Canvas: React.FC<CanvasProps> = ({
             </div>
           )}
           <div className="w-full" key={reloadKey}>
-            {(!editorState.addedModules || editorState.addedModules.length === 0) && !isPreviewMode ? (
+            {(!siteContent.sections || siteContent.sections.length === 0) && !isPreviewMode ? (
               <div className="flex flex-col items-center justify-center py-32 px-6 text-center">
                 <div className="w-20 h-20 bg-secondary rounded-3xl flex items-center justify-center mb-6 text-text/20">
                   <PlusCircle size={40} />

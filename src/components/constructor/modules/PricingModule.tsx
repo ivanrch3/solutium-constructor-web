@@ -141,7 +141,19 @@ export const PricingModule: React.FC<{
     { icon: 'CreditCard', text: 'Pagos Seguros' }
   ]);
 
-  const plans = getVal(null, 'plans', [
+  const plansSettings = settingsValues[`${moduleId}_el_pricing_plans_plans`] || settingsValues[`${moduleId}_global_plans`];
+  
+  console.log('[PRICING_PLANS_SOURCE_DEBUG]', {
+    moduleId,
+    directPlans: settingsValues[`${moduleId}_el_pricing_plans_plans`],
+    globalPlans: settingsValues[`${moduleId}_global_plans`],
+    selectedPlans: plansSettings,
+    directFirstPlan: settingsValues[`${moduleId}_el_pricing_plans_plans`]?.[0],
+    globalFirstPlan: settingsValues[`${moduleId}_global_plans`]?.[0],
+    selectedFirstPlan: plansSettings?.[0]
+  });
+
+  const plans = plansSettings || [
     {
       name: 'Básico',
       description: 'Ideal para individuos y proyectos pequeños.',
@@ -173,7 +185,7 @@ export const PricingModule: React.FC<{
       icon: 'Shield',
       highlight: false
     }
-  ]);
+  ];
 
   const rawHeaderTitle = settingsValues?.[`${moduleId}_el_pricing_header_title`];
   const rawPlans = settingsValues?.[`${moduleId}_global_plans`];

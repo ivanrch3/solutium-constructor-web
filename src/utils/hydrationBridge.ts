@@ -53,14 +53,14 @@ const MODULE_ADAPTERS: Record<string, ModuleBridgeAdapter> = {
       'title': 'el_pricing_header_title',
       'subtitle': 'el_pricing_header_subtitle',
       'eyebrow': 'el_pricing_header_eyebrow',
-      'plans': 'global_plans'
+      'plans': 'el_pricing_plans_plans'
     },
     settingsToDeep: {
       'columns': 'global_columns',
       'gap': 'global_gap',
       'layout': 'global_layout',
-      'plans': 'global_plans',
-      'el_pricing_plans_plans': 'global_plans'
+      'plans': 'el_pricing_plans_plans',
+      'el_pricing_plans_plans': 'el_pricing_plans_plans'
     }
   }
 };

@@ -261,24 +261,28 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       totalModulesAdded: 0
     };
 
-    // SIP v6.1: Check for editor state in Page -> metadata -> editor_state
-    if (initialPage && 'metadata' in initialPage && (initialPage as any).metadata?.editor_state) {
-      const draft = (initialPage as any).metadata.editor_state as any;
-      const addedModules = Array.isArray(draft.addedModules) ? draft.addedModules : [];
-      return {
-        ...defaultState,
-        ...draft,
-        addedModules,
-        settingsValues: { ...defaultState.settingsValues, ...(draft.settingsValues || {}) }
-      };
-    }
+    // DIAGNÓSTICO DE CARGA (SIP v7.0)
+    console.log('[CONSTRUCTOR_LOAD_SITE_DEBUG]', {
+      siteId: (initialPage as any)?.siteId || (initialPage as any)?.web_builder_site_id,
+      hasMetadata: !!(initialPage as any)?.metadata,
+      hasEditorStateInMetadata: !!(initialPage as any)?.metadata?.editor_state,
+      hasContentDraft: !!(initialPage as any)?.contentDraft,
+      hasContent: !!(initialPage as any)?.content,
+      sectionsCount: (initialPage as any)?.content?.sections?.length || 0
+    });
 
-    if (initialPage && 'contentDraft' in initialPage && initialPage.contentDraft) {
-      const draft = initialPage.contentDraft as any;
-      const addedModules = Array.isArray(draft.addedModules) ? draft.addedModules : [];
+    const site = initialPage as any;
+    const isValidDraft = site?.contentDraft && 
+                         Array.isArray(site.contentDraft.addedModules) && 
+                         site.contentDraft.settingsValues && 
+                         typeof site.contentDraft.settingsValues === 'object';
+
+    // 1. PRIORIDAD: contentDraft (Tabla web_builder_sites) - SIP v7.1
+    if (isValidDraft) {
+      const draft = site.contentDraft;
+      const addedModules = draft.addedModules;
       
-      // Merge draft values over default theme values to preserve user customizations
-      return {
+      const hydrated = {
         ...defaultState,
         ...draft,
         addedModules,
@@ -289,14 +293,113 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         },
         totalModulesAdded: draft.totalModulesAdded !== undefined ? draft.totalModulesAdded : addedModules.length
       };
+
+      console.log('[CONSTRUCTOR_HYDRATION_SOURCE]', {
+        siteId: site.id || site.web_builder_site_id,
+        used: 'content_draft',
+        hasValidDraft: true,
+        addedModulesCount: hydrated.addedModules?.length,
+        settingsValuesCount: Object.keys(hydrated.settingsValues || {}).length,
+        heroTitleValue: hydrated.settingsValues?.['b40b8a95-9f81-4def-8fb4-0b9a013525fa_el_hero_typography_title'],
+        globalLayoutValue: hydrated.settingsValues?.['b40b8a95-9f81-4def-8fb4-0b9a013525fa_global_layout']
+      });
+
+      return hydrated;
     }
-    
-    // Fallback for PublishedSite if contentDraft is missing but content exists
-    if (initialPage && 'content' in initialPage && (initialPage as any).content) {
-      // If it's a published site, we might need to reconstruct the editor state
-      // but usually we save a draft alongside the publication.
-      // For now, just return default if no draft.
+
+    // 2. SEGUNDA PRIORIDAD: metadata.editor_state (Fallback App Madre)
+    if (site?.metadata?.editor_state) {
+      const draft = site.metadata.editor_state as any;
+      const addedModules = Array.isArray(draft.addedModules) ? draft.addedModules : [];
+      
+      const hydrated = {
+        ...defaultState,
+        ...draft,
+        addedModules,
+        settingsValues: { ...defaultState.settingsValues, ...(draft.settingsValues || {}) }
+      };
+
+      console.log('[CONSTRUCTOR_HYDRATION_SOURCE]', {
+        siteId: site.id || site.web_builder_site_id,
+        used: 'metadata_editor_state',
+        hasValidDraft: false,
+        addedModulesCount: hydrated.addedModules?.length,
+        settingsValuesCount: Object.keys(hydrated.settingsValues || {}).length
+      });
+
+      return hydrated;
     }
+
+    // 3. TERCERA PRIORIDAD: Reconstrucción desde Contrato (PublishedSite sin draft)
+    if (site?.content) {
+      const contract = site.content as RenderingContract;
+      if (contract.sections && Array.isArray(contract.sections)) {
+        const reconstructedModules: WebModule[] = [];
+        const reconstructedSettings: Record<string, any> = { ...defaultState.settingsValues };
+
+        contract.sections.forEach(section => {
+          // Reconstruir módulo
+          reconstructedModules.push({
+            id: section.id,
+            type: section.type || (section as any).tipo,
+            name: section.name || section.type || (section as any).tipo,
+            elements: [],
+            settings: {}
+          });
+
+          // Re-aplanar settings y content
+          const prefix = section.id;
+          
+          if (section.settings) {
+            Object.entries(section.settings).forEach(([k, v]) => {
+              const key = k.startsWith(prefix) ? k : `${prefix}_${k}`;
+              reconstructedSettings[key] = v;
+            });
+          }
+
+          if (section.content) {
+            Object.entries(section.content).forEach(([k, v]) => {
+              // Mapeo inverso de content a deep settings keys
+              if (k === 'title' || k === 'texto_principal' || k === 'texto_base') {
+                reconstructedSettings[`${prefix}_el_hero_typography_title`] = v;
+              } else if (k === 'subtitle' || k === 'texto_secundario' || k === 'texto_descripcion') {
+                reconstructedSettings[`${prefix}_el_hero_typography_subtitle`] = v;
+              } else if (k === 'eyebrow') {
+                reconstructedSettings[`${prefix}_el_hero_typography_eyebrow`] = v;
+              } else if (k === 'image_url') {
+                reconstructedSettings[`${prefix}_el_hero_media_image`] = v;
+              }
+              if (k === 'primary_cta' && v && typeof v === 'object') {
+                reconstructedSettings[`${prefix}_el_hero_ctas_primary_text`] = (v as any).text;
+                reconstructedSettings[`${prefix}_el_hero_ctas_primary_url`] = (v as any).url;
+              }
+            });
+          }
+        });
+
+        const hydrated = {
+          ...defaultState,
+          addedModules: reconstructedModules,
+          settingsValues: reconstructedSettings,
+          totalModulesAdded: reconstructedModules.length
+        };
+
+        console.log('[CONSTRUCTOR_HYDRATION_SOURCE]', {
+          siteId: site.id || site.web_builder_site_id,
+          used: 'rendering_contract_reconstruction',
+          hasValidDraft: false,
+          addedModulesCount: hydrated.addedModules?.length,
+          settingsValuesCount: Object.keys(hydrated.settingsValues || {}).length
+        });
+
+        return hydrated;
+      }
+    }
+
+    console.log('[CONSTRUCTOR_HYDRATION_SOURCE]', {
+      used: 'defaults'
+    });
+
 
     return defaultState;
   });
@@ -1101,21 +1204,21 @@ const formatTimestampName = () => {
             // --- SEPARATION OF POWERS (Solutium Protocol) ---
             
             // Identify if it's a content field
-            const isEyebrow = cleanKey.includes('eyebrow');
-            const isTitle = cleanKey === 'title' || (cleanKey.includes('title') && (cleanKey.endsWith('_text') || cleanKey.endsWith('_title')));
-            const isSubtitle = cleanKey === 'subtitle' || (cleanKey.includes('subtitle') && (cleanKey.endsWith('_text') || cleanKey.endsWith('_subtitle')));
-            const isImage = cleanKey.endsWith('_url') || cleanKey.endsWith('_img') || cleanKey.includes('image') || cleanKey.includes('visual');
+            const isEyebrow = cleanKey === 'eyebrow' || cleanKey === 'texto_eyebrow' || cleanKey === 'label_eyebrow';
+            const isTitle = cleanKey === 'title' || cleanKey === 'texto_principal' || cleanKey === 'texto_base' || (cleanKey.includes('title') && (cleanKey.endsWith('_text') || cleanKey.endsWith('_title')));
+            const isSubtitle = cleanKey === 'subtitle' || cleanKey === 'texto_secundario' || cleanKey === 'texto_descripcion' || (cleanKey.includes('subtitle') && (cleanKey.endsWith('_text') || cleanKey.endsWith('_subtitle')));
+            const isImage = cleanKey === 'image' || cleanKey === 'image_url' || cleanKey.endsWith('_url') || cleanKey.endsWith('_img') || cleanKey.includes('visual');
             
             // Rotating Text Detection (Solutium Protocol)
-            const isRotatingFixed = cleanKey.includes('rotating_fixed');
-            const isRotatingOptions = cleanKey.includes('rotating_options');
-            const isRotatingEnabled = cleanKey.includes('rotating_enabled');
+            const isRotatingFixed = cleanKey === 'rotating_fixed';
+            const isRotatingOptions = cleanKey === 'rotating_options';
+            const isRotatingEnabled = cleanKey === 'rotating_enabled';
 
             // CTA Handling
-            const isPrimaryCtaText = (cleanKey.includes('primary_cta') && cleanKey.includes('text')) || cleanKey === 'cta_text' || cleanKey === 'button_text';
-            const isPrimaryCtaUrl = (cleanKey.includes('primary_cta') && cleanKey.includes('url')) || cleanKey === 'cta_url' || cleanKey === 'button_url';
-            const isSecondaryCtaText = cleanKey.includes('secondary_cta') && cleanKey.includes('text');
-            const isSecondaryCtaUrl = cleanKey.includes('secondary_cta') && cleanKey.includes('url');
+            const isPrimaryCtaText = cleanKey === 'primary_text' || cleanKey === 'button_text' || (cleanKey.includes('primary_cta') && cleanKey.includes('text')) || cleanKey === 'cta_text';
+            const isPrimaryCtaUrl = cleanKey === 'primary_url' || cleanKey === 'button_url' || (cleanKey.includes('primary_cta') && cleanKey.includes('url')) || cleanKey === 'cta_url';
+            const isSecondaryCtaText = cleanKey === 'secondary_text' || (cleanKey.includes('secondary_cta') && cleanKey.includes('text'));
+            const isSecondaryCtaUrl = cleanKey === 'secondary_url' || (cleanKey.includes('secondary_cta') && cleanKey.includes('url'));
 
             // Style Specific Keys (Solutium Protocol v4.0+)
             const isBorderRadius = cleanKey.includes('radius') || cleanKey.includes('rounded');

@@ -115,8 +115,8 @@ export const HeroModule: React.FC<{
   const secondaryUrl = getVal(`${moduleId}_el_hero_ctas`, 'secondary_url', '');
   const secondaryTarget = getVal(`${moduleId}_el_hero_ctas`, 'secondary_target', '_self');
 
-  const hasPrimary = primaryUrl && primaryUrl !== '#' && primaryUrl !== '';
-  const hasSecondary = secondaryUrl && secondaryUrl !== '#' && secondaryUrl !== '';
+  const hasPrimary = primaryUrl && primaryUrl !== '';
+  const hasSecondary = secondaryUrl && secondaryUrl !== '';
 
   const primaryBg = getVal(`${moduleId}_el_hero_ctas`, 'primary_bg', 'var(--primary-color)');
   const primaryColor = getVal(`${moduleId}_el_hero_ctas`, 'primary_color', '#FFFFFF');

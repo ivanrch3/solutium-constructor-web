@@ -748,6 +748,23 @@ export const SettingControl: React.FC<SettingControlProps> = ({
           </div>
         </div>
       );
+    case 'textarea':
+      return (
+        <div className={`space-y-1.5 ${isDisabled ? 'opacity-50 pointer-events-none grayscale' : ''}`}>
+          <div className="flex items-center justify-between">
+            <label className="text-[10px] font-bold text-text/40">{setting.label}</label>
+            {isDisabled && <span className="text-[8px] font-bold text-red-500/60 italic">{setting.disabledMessage}</span>}
+          </div>
+          <textarea 
+            value={currentValue} 
+            disabled={isDisabled}
+            onChange={(e) => onChange(e.target.value)}
+            rows={4}
+            className="w-full p-2 border border-border rounded-xl text-[10px] font-medium focus:outline-none focus:border-primary/30 bg-surface min-h-[80px] resize-none" 
+          />
+        </div>
+      );
+    case 'text':
     default:
       return (
         <div className={`space-y-1.5 ${isDisabled ? 'opacity-50 pointer-events-none grayscale' : ''}`}>

@@ -176,22 +176,6 @@ export const PricingModule: React.FC<{
   const rawLayout = settingsValues?.[`${moduleId}_global_layout`];
   const rawGap = settingsValues?.[`${moduleId}_global_gap`];
 
-  console.log('[PRICING_RENDER_DEBUG]', {
-    moduleId,
-    title: headerTitle,
-    subtitle: headerSubtitle,
-    plansCount: plans?.length,
-    firstPlan: plans?.[0],
-    highlightedPlan: plans?.find((p: any) => p.highlight)?.name,
-    columns,
-    gap,
-    rawHeaderTitle,
-    rawPlans,
-    rawColumns,
-    rawLayout,
-    rawGap
-  });
-
   const getTypographyStyle = (sizeToken: string, weightToken: string, alignToken?: string) => {
     const size = TYPOGRAPHY_SCALE[sizeToken as keyof typeof TYPOGRAPHY_SCALE] || TYPOGRAPHY_SCALE.p;
     const weight = FONT_WEIGHTS[weightToken as keyof typeof FONT_WEIGHTS] || FONT_WEIGHTS.normal;
@@ -337,7 +321,7 @@ export const PricingModule: React.FC<{
         >
           {plans.map((plan: any, i: number) => {
             const planFeatures = typeof plan.features === 'string' 
-              ? plan.features.split('\n').filter((f: string) => f.trim() !== '')
+              ? plan.features.split(/\n|,|;/).filter((f: string) => f.trim() !== '')
               : Array.isArray(plan.features) ? plan.features : [];
 
             return (

@@ -2472,7 +2472,7 @@ export const PRICING_MODULE: WebModule = {
             { id: 'description', label: 'Descripción Corta', type: 'text', defaultValue: '' },
             { id: 'monthlyPrice', label: 'Precio Mensual', type: 'number', defaultValue: 0 },
             { id: 'yearlyPrice', label: 'Precio Anual (por mes)', type: 'number', defaultValue: 0 },
-            { id: 'features', label: 'Características (una por línea, usa "-" para negativas)', type: 'text', defaultValue: '' },
+            { id: 'features', label: 'Características (una por línea, usa "-" para negativas)', type: 'textarea', defaultValue: '' },
             { id: 'cta', label: 'Texto del Botón', type: 'text', defaultValue: 'Elegir Plan' },
             ...BUTTON_LINK_SETTINGS('cta'),
             { id: 'icon', label: 'Icono (Lucide)', type: 'icon', defaultValue: 'Zap' },

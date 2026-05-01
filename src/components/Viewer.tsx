@@ -95,17 +95,18 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
         }
 
         // SIP v5.5: Adapt settings for modules that expect moduleId prefix
+        // Now using relativeKey-preserving contract (Protocolo 12.0)
         const settingsValues = Object.entries(settings).reduce((acc, [key, value]) => {
-          // Si la clave ya tiene el prefijo del módulo, la dejamos como está
+          // If the key is already prefixed with the moduleId, use it as is
           if (key.startsWith(moduleId)) {
             acc[key] = value;
-          } else if (key.startsWith('global_')) {
-            acc[`${moduleId}_${key}`] = value;
           } else {
-            // Si es una clave plana, intentamos mapearla (por ejemplo, 'title' -> 'mod_id_el_module_type_typography_title')
-            // Esto es un fallback agresivo para payloads directos menos estructurados
-            acc[key] = value;
+            // Reconstruct the full key by prepending the moduleId (e.g., el_hero_title -> mod_123_el_hero_title)
             acc[`${moduleId}_${key}`] = value;
+            
+            // Fallback: If it's a legacy flat key (e.g., 'title'), we still set it 
+            // the module might have logic to handle both or we might need it for global_ defaults
+            acc[key] = value;
           }
           return acc;
         }, {} as Record<string, any>);

@@ -1066,11 +1066,12 @@ const formatTimestampName = () => {
             // Remove module ID prefix
             const relativeKey = key.replace(`${module.id}_`, '');
             
-            // Remove secondary technical prefixes like "el_hero_", "el_contact_", etc.
+            // Remove secondary technical prefixes like "el_hero_", "el_contact_", etc. 
+            // for INTERNAL detection logic (not for storage)
             const cleanKey = relativeKey.replace(/^el_[a-zA-Z0-9]+_/, '').replace(/^global_/, '');
             
-            // Apply Atomic Transform
-            const atomicValues = atomicTransform(cleanKey, value);
+            // Apply Atomic Transform using the FULL relative key to preserve fidelity
+            const atomicValues = atomicTransform(relativeKey, value);
 
             // --- SEPARATION OF POWERS (Solutium Protocol) ---
             

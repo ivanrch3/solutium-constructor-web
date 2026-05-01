@@ -151,21 +151,29 @@ class StorageService {
       });
 
       if (!response.ok) {
+        const errorText = await response.text();
         let errorMsg = `Proxy upload failed with status ${response.status}`;
+        
         try {
-          const errorData = await response.json();
+          const errorData = JSON.parse(errorText);
           errorMsg = errorData.error || errorMsg;
         } catch (e) {
-          const text = await response.text();
-          errorMsg = text || errorMsg;
+          errorMsg = errorText || errorMsg;
         }
-        console.error(`[StorageService] Proxy upload error:`, errorMsg);
+        
+        console.error(`[StorageService] Proxy upload error (${response.status}):`, errorMsg);
         throw new Error(errorMsg);
       }
 
-      const data = await response.json();
-      console.log(`[StorageService] Proxy upload successful: ${data.url}`);
-      return data.url;
+      const responseText = await response.text();
+      try {
+        const data = JSON.parse(responseText);
+        console.log(`[StorageService] Proxy upload successful: ${data.url}`);
+        return data.url;
+      } catch (e) {
+        console.error('[StorageService] Failed to parse success response as JSON:', responseText);
+        throw new Error('Invalid response from upload proxy');
+      }
     } catch (proxyError: any) {
       console.warn('[StorageService] Proxy upload failed, attempting direct upload:', proxyError);
       

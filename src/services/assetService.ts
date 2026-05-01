@@ -108,7 +108,11 @@ export const syncAsset = async (
       timestamp: new Date().toISOString(),
       error: error instanceof Error ? error.message : String(error)
     });
-    localStorage.setItem('pending_assets', JSON.stringify(pendingAssets));
+    try {
+      localStorage.setItem('pending_assets', JSON.stringify(pendingAssets));
+    } catch (e) {
+      console.warn('[AssetService] No se pudo guardar en localStorage (QuotaExceeded). Los datos no se persistirán localmente.');
+    }
     
     // Informar al usuario (el componente que llama debe manejar este error)
     const displayError = error instanceof Error ? error.message : String(error);

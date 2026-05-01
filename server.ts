@@ -16,6 +16,12 @@ async function startServer() {
   const upload = multer({ storage: multer.memoryStorage() });
 
   app.use(express.json());
+  
+  // Debug logger for all requests
+  app.use((req, res, next) => {
+    console.log(`[Server] ${req.method} ${req.url}`);
+    next();
+  });
 
   // Health check
   app.get("/api/health", (req, res) => {

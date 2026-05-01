@@ -348,9 +348,9 @@ export const FeaturesModule: React.FC<{
 
   logDebug('[FEATURES_RENDER_DEBUG]', {
     moduleId,
+    eyebrow,
     title,
     subtitle,
-    eyebrow,
     itemsCount: features?.length,
     firstItem: features?.[0],
     layout,
@@ -358,7 +358,10 @@ export const FeaturesModule: React.FC<{
     gap,
     cardRadius,
     hoverLift,
-    settingsKeys: Object.keys(settingsValues || {}).filter(k => k.includes(moduleId)).slice(0, 30)
+    rawHeaderTitle: settingsValues?.[`${moduleId}_el_features_header_title`],
+    rawHeaderSubtitle: settingsValues?.[`${moduleId}_el_features_header_subtitle`],
+    rawHeaderEyebrow: settingsValues?.[`${moduleId}_el_features_header_eyebrow`],
+    rawItems: settingsValues?.[`${moduleId}_el_feature_card_items`]
   });
 
   const getShadowClass = (s: string) => {

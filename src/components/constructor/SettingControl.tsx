@@ -235,46 +235,59 @@ export const SettingControl: React.FC<SettingControlProps> = ({
       );
     case 'image':
       return (
-        <div className={`space-y-1.5 ${isDisabled ? 'opacity-50 pointer-events-none grayscale' : ''}`}>
+        <div className={`space-y-2 ${isDisabled ? 'opacity-50 pointer-events-none grayscale' : ''}`}>
           <div className="flex items-center justify-between">
             <label className="text-[10px] font-bold text-text/40">{setting.label}</label>
             {isDisabled && <span className="text-[8px] font-bold text-red-500/60 italic">{setting.disabledMessage}</span>}
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-lg bg-secondary border border-border overflow-hidden flex-shrink-0">
-              {currentValue ? (
-                <img src={currentValue} alt="Preview" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-text/20">
-                  <ImageIcon size={14} />
+          
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-3">
+              <div className="w-14 h-14 rounded-xl bg-secondary border border-border overflow-hidden flex-shrink-0 shadow-inner">
+                {currentValue ? (
+                  <img src={currentValue} alt="Preview" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-text/20">
+                    <ImageIcon size={20} />
+                  </div>
+                )}
+              </div>
+              <div className="flex-1 space-y-1">
+                <div className="relative">
+                   <input 
+                    type="text" 
+                    value={currentValue || ''} 
+                    onChange={(e) => onChange(e.target.value)}
+                    placeholder="Pega la URL de la imagen aquí..."
+                    className="w-full pl-8 pr-3 py-2 border border-border rounded-xl text-[10px] font-medium focus:outline-none focus:border-primary/50 bg-white shadow-sm transition-all" 
+                  />
+                  <LucideIcons.Globe size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text/30" />
                 </div>
-              )}
+                <p className="text-[9px] text-text/30">Se recomienda usar URLs seguras (https)</p>
+              </div>
             </div>
-            <div className="flex-1">
-              <label className="cursor-pointer">
-                <input 
-                  type="file" 
-                  className="hidden" 
-                  accept="image/*"
-                  onChange={handleFileChange}
-                  disabled={isUploading}
-                />
-                <div className={`flex items-center justify-center gap-2 py-1.5 px-3 border border-border rounded-md text-[10px] font-bold transition-all ${
-                  isUploading ? 'bg-secondary text-text/40' : 'bg-surface text-primary hover:bg-primary/10 hover:border-primary/20'
-                }`}>
-                  {isUploading ? (
-                    <>
-                      <Loader2 size={12} className="animate-spin" />
-                      Subiendo...
-                    </>
-                  ) : (
-                    <>
-                      <Upload size={12} />
-                      Subir Imagen
-                    </>
-                  )}
+
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <div className="group relative">
+                  <div className="flex items-center justify-center gap-2 py-2 px-3 border border-dashed border-border/50 rounded-xl text-[10px] font-bold bg-secondary/30 text-text/20 cursor-not-allowed">
+                    <Upload size={12} />
+                    Subir Archivo (Desactivado)
+                  </div>
+                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-secondary/80 rounded-xl">
+                    <span className="text-[9px] font-bold text-text/60">Subida desactivada temporalmente</span>
+                  </div>
                 </div>
-              </label>
+              </div>
+              {currentValue && (
+                <button 
+                  onClick={() => onChange('')}
+                  className="px-3 py-2 bg-red-50 text-red-500 border border-red-100 rounded-xl hover:bg-red-100 transition-colors"
+                  title="Liminar imagen"
+                >
+                  <Trash2 size={14} />
+                </button>
+              )}
             </div>
           </div>
         </div>

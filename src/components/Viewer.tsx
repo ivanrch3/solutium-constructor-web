@@ -22,6 +22,7 @@ import { SpacerModule } from './constructor/modules/SpacerModule';
 import { MenuModule } from './constructor/modules/MenuModule';
 import { AlertCircle } from 'lucide-react';
 import { logDebug } from '../utils/debug';
+import { bridgeModuleContent } from '../utils/hydrationBridge';
 
 interface ViewerProps {
   site: PublishedSite;
@@ -127,77 +128,23 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
           return acc;
         }, {} as Record<string, any>);
 
-        const finalSettingsValues = { ...settingsValues };
+        // SIP v5.5 (Protocolo 10.5) - Centralized Hydration Bridge
+        const finalSettingsValues = bridgeModuleContent({
+          type,
+          moduleId,
+          content,
+          settings,
+          existingDeepValues: settingsValues
+        });
 
-        // Compatibility bridge for Hero (Módulo Crítico)
-        if (type === 'hero') {
-          const bridge: Record<string, any> = {
-            [`${moduleId}_el_hero_typography_title`]: content.title ?? content.texto_principal ?? content.texto_base,
-            [`${moduleId}_el_hero_typography_subtitle`]: content.subtitle ?? content.texto_secundario ?? content.texto_descripcion,
-            [`${moduleId}_el_hero_typography_eyebrow`]: content.eyebrow,
-            [`${moduleId}_el_hero_media_image`]: content.image_url,
-            [`${moduleId}_el_hero_ctas_primary_text`]: content.primary_cta?.text,
-            [`${moduleId}_el_hero_ctas_primary_url`]: content.primary_cta?.url,
-            [`${moduleId}_el_hero_ctas_secondary_text`]: content.secondary_cta?.text,
-            [`${moduleId}_el_hero_ctas_secondary_url`]: content.secondary_cta?.url,
-            // Bridge for global settings if they came without prefix in section.settings
-            [`${moduleId}_global_layout`]: settings.global_layout ?? settings.layout,
-            [`${moduleId}_global_height`]: settings.global_height ?? settings.height,
-            [`${moduleId}_global_bg_type`]: settings.global_bg_type ?? settings.bg_type,
-            [`${moduleId}_global_bg_gradient`]: settings.global_bg_gradient ?? settings.bg_gradient,
-            [`${moduleId}_global_entrance_anim`]: settings.global_entrance_anim ?? settings.entrance_anim,
-            // Bridge for alignment
-            [`${moduleId}_el_hero_typography_align`]: settings.el_hero_typography_align ?? settings.align
-          };
-
-          Object.entries(bridge).forEach(([key, value]) => {
-            if (
-              value !== undefined &&
-              value !== null &&
-              value !== '' &&
-              finalSettingsValues[key] === undefined
-            ) {
-              finalSettingsValues[key] = value;
-            }
-          });
-
-          // Log de diagnóstico enfocado (solo en modo render/publicado)
-          const isRenderMode = window.location.search.includes('mode=render') || window.location.search.includes('external_render=true');
-          if (isRenderMode) {
-            logDebug('[SOLUTIUM_RENDER_DEBUG]', {
-              type,
-              moduleId,
-              contentTitle: content?.title,
-              contentSubtitle: content?.subtitle,
-              hasSettingsTitle: Boolean(settings?.el_hero_typography_title),
-              finalTitle: finalSettingsValues[`${moduleId}_el_hero_typography_title`],
-              finalSubtitle: finalSettingsValues[`${moduleId}_el_hero_typography_subtitle`],
-              iframeUrl: window.location.href
-            });
-          }
-        }
-
-        // Compatibility bridge for Features
-        if (type === 'features') {
-          const bridge: Record<string, any> = {
-            [`${moduleId}_el_features_header_title`]: content.title,
-            [`${moduleId}_el_features_header_subtitle`]: content.subtitle,
-            [`${moduleId}_el_features_header_eyebrow`]: content.eyebrow,
-            // Bridge for global settings
-            [`${moduleId}_global_layout`]: settings.global_layout ?? settings.layout,
-            [`${moduleId}_global_columns`]: settings.global_columns ?? settings.columns,
-            [`${moduleId}_global_gap`]: settings.global_gap ?? settings.gap
-          };
-
-          Object.entries(bridge).forEach(([key, value]) => {
-            if (
-              value !== undefined &&
-              value !== null &&
-              value !== '' &&
-              finalSettingsValues[key] === undefined
-            ) {
-              finalSettingsValues[key] = value;
-            }
+        // Debug diagnostic for rendered sections
+        if (isRenderMode && (type === 'hero' || type === 'features')) {
+          logDebug('[SOLUTIUM_RENDER_DEBUG]', {
+            type,
+            moduleId,
+            contentTitle: content?.title,
+            finalTitle: finalSettingsValues[`${moduleId}_el_${type === 'hero' ? 'hero_typography' : 'features_header'}_title`],
+            iframeUrl: window.location.href
           });
         }
 

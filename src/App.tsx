@@ -230,7 +230,8 @@ const AppContent: React.FC = () => {
           const allPages = await refreshData(finalProjectId);
 
           if (payload.site_id) {
-            const existingPage = allPages.find(p => p.siteId === payload.site_id);
+            // SIP v7.2: Robust search by either logical siteId or primary key id
+            const existingPage = allPages.find(p => p.siteId === payload.site_id || (p as any).id === payload.site_id);
             let finalPage = existingPage;
             
             // SIP v5.5 (Protocolo 10.2): Robust hydration from payload

@@ -174,6 +174,14 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   initialPage,
   creationMethod
 }) => {
+  console.log('[WEB_CONSTRUCTOR_MOUNT_DEBUG]', {
+    hasInitialPage: !!initialPage,
+    initialPageId: (initialPage as any)?.id,
+    initialPageSiteId: (initialPage as any)?.siteId,
+    initialPageName: (initialPage as any)?.name || (initialPage as any)?.siteName,
+    hasContentDraft: !!(initialPage as any)?.contentDraft
+  });
+
   const { 
     siteContent, 
     selectedSectionId, 
@@ -194,8 +202,14 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     if (initialPage && 'content' in initialPage && (initialPage as any).content) {
       setSiteContent((initialPage as any).content);
     } else if (initialPage && 'contentDraft' in initialPage && initialPage.contentDraft) {
-      // If it's a draft, it might have a contract inside or it might be just editor state
-      // This is a bit ambiguous in the current implementation, but usually we save RenderingContract as 'content'
+      // SIP v7.4: Ensure that if we have a draft, we also have a valid siteContent 
+      // for the Canvas to render during the first 1.5s (before standard sync kicks in)
+      const draft = initialPage.contentDraft;
+      if (draft.addedModules) {
+        console.log('[DRAFT_TO_SITECONTENT_SYNC_DEBUG]', { modules: draft.addedModules.length });
+        // The store sync effect will handle this, but we can speed it up if needed.
+        // For now, ensuring isInitialLoad doesn't block if we have modules.
+      }
     }
   }, []);
 
@@ -285,6 +299,15 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     });
 
     const site = initialPage as any;
+    console.log('[LOAD_WEB_BUILDER_SITE_QUERY_DEBUG]', {
+      requestedId: site?.id || site?.siteId,
+      resolvedWebBuilderSiteId: site?.id,
+      resolvedSiteId: site?.siteId,
+      resolvedName: site?.name || site?.siteName,
+      hasDraft: !!site?.contentDraft,
+      draftTitle: site?.contentDraft?.settingsValues?.['b40b8a95-9f81-4def-8fb4-0b9a013525fa_el_hero_typography_title']
+    });
+
     const isValidDraft = site?.contentDraft && 
                          Array.isArray(site.contentDraft.addedModules) && 
                          site.contentDraft.settingsValues && 

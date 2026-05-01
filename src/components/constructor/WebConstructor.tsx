@@ -321,14 +321,15 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         const reconstructedSettings: Record<string, any> = { ...defaultState.settingsValues };
 
         contract.sections.forEach(section => {
-          // Reconstruir módulo
+          // Reconstruir módulo con fidelidad de tipos (SIP v7.0)
           reconstructedModules.push({
             id: section.id,
-            type: section.type || (section as any).tipo,
-            name: section.name || section.type || (section as any).tipo,
+            type: section.type || section.tipo,
+            name: (section as any).name || section.type || section.tipo || 'Módulo',
             elements: [],
-            settings: {}
-          });
+            globalGroups: [],
+            globalSettings: {}
+          } as WebModule);
 
           // Re-aplanar settings y content
           const prefix = section.id;

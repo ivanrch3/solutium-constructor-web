@@ -65,7 +65,8 @@ export const HeroModule: React.FC<{
     finalPrimaryUrl: getVal(`${moduleId}_el_hero_ctas`, 'primary_url', ''),
     finalEyebrow: getVal(`${moduleId}_el_hero_typography`, 'eyebrow', ''),
     finalEyebrowColor: getVal(`${moduleId}_el_hero_typography`, 'eyebrow_color', ''),
-    finalEyebrowBg: getVal(`${moduleId}_el_hero_typography`, 'eyebrow_bg', '')
+    finalEyebrowBg: getVal(`${moduleId}_el_hero_typography`, 'eyebrow_bg', ''),
+    finalAlign: getVal(`${moduleId}_el_hero_typography`, 'align', 'inherit')
   });
 
   const height = getVal(null, 'height', 'screen');
@@ -566,11 +567,22 @@ export const HeroModule: React.FC<{
     );
   };
 
+  const containerClassName = `relative w-full overflow-hidden flex items-center ${sectionHeight} @container`;
+  
+  console.log('[HERO_LAYOUT_DEBUG]', {
+    moduleId,
+    layout,
+    isPreviewMode,
+    windowWidth: window.innerWidth,
+    containerClassName,
+    maxWidth
+  });
+
   return (
     <section 
       id={moduleId}
       ref={containerRef}
-      className={`relative w-full overflow-hidden flex items-center ${sectionHeight}`}
+      className={containerClassName}
       onClick={(e) => {
         if (isPreviewMode) return;
         e.stopPropagation();

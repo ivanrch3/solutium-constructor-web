@@ -2,7 +2,15 @@ import { logDebug } from './debug';
 
 /**
  * [SIP v10.5] Hydration Bridge Registry
- * Centraliza la compatibilidad entre el contrato de contenido plano y las llaves profundas del constructor.
+ * Centraliza la compatibilidad entre el contrato de contenido plano (SIP) y las llaves profundas del constructor.
+ * 
+ * REGLAS TÉCNICAS:
+ * 1. content_draft es la fuente del editor; Canvas usa settingsValues (llaves profundas).
+ * 2. content_published usa section.content + section.settings planos.
+ * 3. Este bridge mapea content plano hacia deep keys para el Viewer.
+ * 4. PRIORIDAD: Si una deep key ya existe en existingDeepValues, se PRESERVA. No se sobrescribe.
+ * 5. VALIDACIÓN: No usar if(value); usar null/undefined check explícito (0, "", false son válidos).
+ * 6. REPEATERS: Mapear hacia las llaves reales del registry para asegurar persistencia.
  */
 
 /**
@@ -61,6 +69,30 @@ const MODULE_ADAPTERS: Record<string, ModuleBridgeAdapter> = {
       'layout': 'global_layout',
       'plans': 'el_pricing_plans_plans',
       'el_pricing_plans_plans': 'el_pricing_plans_plans'
+    }
+  },
+  menu: {
+    contentToSettings: {
+      'logo_text': 'el_menu_logo_logo_text',
+      'logo_url': 'el_menu_logo_logo_img',
+      'links': 'el_menu_items_links',
+      'items': 'el_menu_items_links'
+    },
+    settingsToDeep: {
+      'sticky': 'global_sticky',
+      'position': 'global_position'
+    }
+  },
+  navegacion: {
+    contentToSettings: {
+      'logo_text': 'el_menu_logo_logo_text',
+      'logo_url': 'el_menu_logo_logo_img',
+      'links': 'el_menu_items_links',
+      'items': 'el_menu_items_links'
+    },
+    settingsToDeep: {
+      'sticky': 'global_sticky',
+      'position': 'global_position'
     }
   }
 };

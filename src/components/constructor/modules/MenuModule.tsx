@@ -22,7 +22,8 @@ export const MenuModule: React.FC<{
   };
 
   // Element: Items
-  const links = getVal(`${moduleId}_el_menu_items`, 'links', []);
+  const rawLinks = getVal(`${moduleId}_el_menu_items`, 'links', []);
+  const links = Array.isArray(rawLinks) ? rawLinks : [];
 
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
 

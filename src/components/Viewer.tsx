@@ -186,6 +186,7 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
           case 'spacer':
             return <SpacerModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} />;
           case 'menu':
+          case 'navegacion':
             return <MenuModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} />;
           case 'footer':
             return <FooterModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} />;

@@ -1,6 +1,7 @@
 import { getSupabase } from './supabaseClient';
 import { Asset } from '../types/schema';
 import { uploadToDO } from './doService';
+import { logDebug } from '../utils/debug';
 
 const APP_NAME = 'Constructor Web';
 
@@ -36,11 +37,11 @@ export const syncAsset = async (
   }
   
   try {
-    console.log(`[AssetService] Sincronizando activo: ${fileName} (${fileSize} bytes)`);
+    logDebug(`[AssetService] Sincronizando activo: ${fileName} (${fileSize} bytes)`);
     
     // 1. Subir a Digital Ocean Spaces
     const url = await uploadToDO(fileName, file, contentType);
-    console.log(`[AssetService] Subida a DO exitosa: ${url}`);
+    logDebug(`[AssetService] Subida a DO exitosa: ${url}`);
 
     // 2. Preparar datos para la tabla assets de Supabase
     const assetName = assetDisplayName 
@@ -66,7 +67,7 @@ export const syncAsset = async (
     const supabase = getSupabase();
     if (!supabase) throw new Error('Supabase no inicializado');
 
-    console.log('[AssetService] Registrando en Supabase:', assetData);
+    logDebug('[AssetService] Registrando en Supabase:', assetData);
     const { error } = await supabase.from('assets').upsert(assetData);
 
     if (error) {
@@ -74,7 +75,7 @@ export const syncAsset = async (
       throw error;
     }
 
-    console.log('[AssetService] Registro en Supabase exitoso');
+    logDebug('[AssetService] Registro en Supabase exitoso');
     return url;
   } catch (error: any) {
     console.error('Error detallado en syncAsset:', error);
@@ -127,7 +128,7 @@ export const syncPendingAssets = async () => {
   const pendingAssets = JSON.parse(localStorage.getItem('pending_assets') || '[]');
   if (pendingAssets.length === 0) return;
 
-  console.log(`Intentando sincronizar ${pendingAssets.length} activos pendientes...`);
+  logDebug(`Intentando sincronizar ${pendingAssets.length} activos pendientes...`);
   
   // Nota: Esta es una implementación simplificada. 
   // En una app real, necesitaríamos el contenido del archivo original, 

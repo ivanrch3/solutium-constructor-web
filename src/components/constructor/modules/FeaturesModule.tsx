@@ -7,6 +7,7 @@ import { TextRenderer } from '../TextRenderer';
 import { InlineEditableText } from '../InlineEditableText';
 import { useEditorStore } from '../../../store/editorStore';
 import { GLOBAL_ANIMATIONS, getGlobalAnimation } from '../../../constants/animations';
+import { logDebug } from '../../../utils/debug';
 
 const FeatureCard = ({ 
   feature, 
@@ -344,6 +345,21 @@ export const FeaturesModule: React.FC<{
   const iconStyle = getVal(`${moduleId}_el_feature_card`, 'icon_style', 'soft');
 
   const features = getVal(`${moduleId}_el_feature_card`, 'items', []);
+
+  logDebug('[FEATURES_RENDER_DEBUG]', {
+    moduleId,
+    title,
+    subtitle,
+    eyebrow,
+    itemsCount: features?.length,
+    firstItem: features?.[0],
+    layout,
+    columns,
+    gap,
+    cardRadius,
+    hoverLift,
+    settingsKeys: Object.keys(settingsValues || {}).filter(k => k.includes(moduleId)).slice(0, 30)
+  });
 
   const getShadowClass = (s: string) => {
     switch (s) {

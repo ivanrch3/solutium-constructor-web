@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect } from 'react';
 import { Theme } from '../types/schema';
+import { logDebug } from '../utils/debug';
 
 export const SOLUTIUM_COLORS = {
   green: '#004D61',
@@ -123,7 +124,7 @@ const loadGoogleFont = (fontFamily: string) => {
   link.rel = 'stylesheet';
   link.href = `https://fonts.googleapis.com/css2?family=${mainFont.replace(/\s+/g, '+')}:wght@300;400;600;800;900&display=swap`;
   document.head.appendChild(link);
-  console.log(`[THEME] Cargando Google Font: ${mainFont}`);
+  logDebug(`[THEME] Cargando Google Font: ${mainFont}`);
 };
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -133,7 +134,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     // Si recibimos un nombre de tema (string), buscamos en nuestros temas predefinidos
     if (typeof themeData === 'string') {
       const normalizedName = themeData.toLowerCase();
-      console.log(`[THEME] Aplicando tema predefinido: "${themeData}"`);
+      logDebug(`[THEME] Aplicando tema predefinido: "${themeData}"`);
       
       const theme = SOLUTIUM_THEMES.find(t => t.name.toLowerCase() === normalizedName) || SOLUTIUM_THEMES[2];
       
@@ -168,7 +169,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     // Si recibimos un objeto de tema calculado por la App Madre
     const theme = themeData || {};
-    console.log('[THEME] Aplicando tema calculado:', theme);
+    logDebug('[THEME] Aplicando tema calculado:', theme);
 
     // Detección robusta de colores con fallbacks seguros
     const primary = theme.primary || theme.primaryColor || SOLUTIUM_COLORS.blue;
@@ -205,7 +206,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     // Tipografía - Máxima robustez en detección de claves
     const font = theme.fontFamily || theme.font_family || theme.font || theme.font_family_base || theme.fontFamilyBase || theme.typography?.fontFamily || theme.typography?.font_family;
     if (font) {
-      console.log('[THEME] Aplicando fontFamily:', font);
+      logDebug('[THEME] Aplicando fontFamily:', font);
       loadGoogleFont(font);
       
       const cleanFont = font.split(',')[0].trim().replace(/['"]/g, '');

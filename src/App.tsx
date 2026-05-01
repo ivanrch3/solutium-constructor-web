@@ -14,6 +14,7 @@ import { WebConstructor } from './components/constructor/WebConstructor';
 import { AIGenerationOverlay } from './components/constructor/AIGenerationOverlay';
 import { useEditorStore } from './store/editorStore';
 import { Viewer } from './components/Viewer';
+import { logDebug } from './utils/debug';
 import { Profile, Project, Asset, WebBuilderSite, PublishedSite } from './types/schema';
 import { getAssets } from './services/dataService';
 
@@ -106,10 +107,10 @@ const AppContent: React.FC = () => {
 
   const processHandshake = async (payload: any) => {
     try {
-      console.log('[HANDSHAKE] Procesando payload:', payload);
+      logDebug('[HANDSHAKE] Procesando payload:', payload);
       
       // LOG DE DIAGNÓSTICO SOLICITADO
-      console.log('[CONSTRUCTOR_MESSAGE_RECEIVED_DEBUG]', {
+      logDebug('[CONSTRUCTOR_MESSAGE_RECEIVED_DEBUG]', {
         eventType: payload.type, // Note: payload here is the config object from handshakeService
         topLevelFirstSectionContent: payload.sections?.[0]?.content,
         contentFirstSectionContent: payload.content?.sections?.[0]?.content,
@@ -238,7 +239,7 @@ const AppContent: React.FC = () => {
             const providedContent = payload.site_content || payload.site_data || payload.content || payload.full_site;
             
             if (providedContent) {
-              console.log('[GATEWAY] Hidratando sitio desde payload (Protocolo 10.2)');
+              logDebug('[GATEWAY] Hidratando sitio desde payload (Protocolo 10.2)');
               finalPage = { 
                 ...(existingPage || {}),
                 siteId: payload.site_id, 
@@ -256,7 +257,7 @@ const AppContent: React.FC = () => {
             
             // Handle rendering modes directly using local variable since state updates are async
             if (payload.force_render || payload.render_mode === 'published') {
-              console.log('[GATEWAY] Forzando renderizado directo:', payload.render_mode);
+              logDebug('[GATEWAY] Forzando renderizado directo:', payload.render_mode);
               if (payload.render_mode === 'published') {
                 setCurrentView('viewer');
               } else {
@@ -286,7 +287,7 @@ const AppContent: React.FC = () => {
         const saved = localStorage.getItem('solutium_session_v2');
         if (saved) {
           const session = JSON.parse(saved);
-          console.log('[SESSION] Recuperando sesión persistente:', session);
+          logDebug('[SESSION] Recuperando sesión persistente:', session);
           if (session.projectId) setProjectId(session.projectId);
           if (session.appId) setAppId(session.appId);
           if (session.currentView) setCurrentView(session.currentView);
@@ -320,7 +321,7 @@ const AppContent: React.FC = () => {
     const satelliteId = params.get('satellite_id');
 
     if (isExternal && satelliteId) {
-      console.log(`[GATEWAY v5.2] Detectado renderizado externo para Satélite: ${satelliteId}, Asset: ${assetId}`);
+      logDebug(`[GATEWAY v5.2] Detectado renderizado externo para Satélite: ${satelliteId}, Asset: ${assetId}`);
       setProjectId(satelliteId);
       if (assetId) {
         // Preparamos el estado para que el constructor cargue este asset
@@ -340,12 +341,12 @@ const AppContent: React.FC = () => {
       link.href = favicon;
     }
     
-    console.log("--- DIAGNÓSTICO SIP v5.2 ---");
-    console.log("1. window.name contenido:", window.name ? (window.name.substring(0, 50) + "...") : "VACÍO");
-    console.log("2. ¿Tiene abridor (window.opener)?:", !!window.opener);
-    console.log("3. ¿Está en iframe?:", window.parent !== window);
-    console.log("4. URL actual:", window.location.href);
-    console.log("---------------------------------");
+    logDebug("--- DIAGNÓSTICO SIP v5.2 ---");
+    logDebug("1. window.name contenido:", window.name ? (window.name.substring(0, 50) + "...") : "VACÍO");
+    logDebug("2. ¿Tiene abridor (window.opener)?:", !!window.opener);
+    logDebug("3. ¿Está en iframe?:", window.parent !== window);
+    logDebug("4. URL actual:", window.location.href);
+    logDebug("---------------------------------");
   }, []);
 
   useEffect(() => {
@@ -549,7 +550,7 @@ const AppContent: React.FC = () => {
         );
 
         // LOG DE DIAGNÓSTICO SOLICITADO
-        console.log('[CONSTRUCTOR_BEFORE_VIEWER_DEBUG]', {
+        logDebug('[CONSTRUCTOR_BEFORE_VIEWER_DEBUG]', {
           firstSection: (selectedPage as any).content?.sections?.[0],
           firstSectionContent: (selectedPage as any).content?.sections?.[0]?.content,
           firstSectionSettingsKeys: Object.keys((selectedPage as any).content?.sections?.[0]?.settings || {})

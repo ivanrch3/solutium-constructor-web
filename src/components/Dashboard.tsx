@@ -3,6 +3,8 @@ import { PlusSquare, FileText, ExternalLink, Eye, Edit2, Check, X } from 'lucide
 import { Asset, WebBuilderSite, PublishedSite } from '../types/schema';
 import { motion } from 'motion/react';
 
+import { logDebug } from '../utils/debug';
+
 interface DashboardProps {
   assets: Asset[];
   pages: (WebBuilderSite | PublishedSite)[];
@@ -81,13 +83,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     <button
                       key={page.id}
                       onClick={() => {
-                        console.log('[OPEN_SAVED_SITE_CLICK_DEBUG]', {
+                        logDebug('[OPEN_SAVED_SITE_CLICK_DEBUG]', {
                           siteId: page.siteId,
                           id: page.id,
                           siteName: page.siteName,
                           source: 'created_pages_list'
                         });
-                        console.log('[OPEN_SAVED_SITE_ID_RESOLUTION_DEBUG]', {
+                        logDebug('[OPEN_SAVED_SITE_ID_RESOLUTION_DEBUG]', {
                           clickedId: page.siteId,
                           clickedRecordId: page.id,
                           clickedRecordSiteId: page.siteId,

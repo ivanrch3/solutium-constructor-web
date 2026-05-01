@@ -21,6 +21,7 @@ import { VideoModule } from './constructor/modules/VideoModule';
 import { SpacerModule } from './constructor/modules/SpacerModule';
 import { MenuModule } from './constructor/modules/MenuModule';
 import { AlertCircle } from 'lucide-react';
+import { logDebug } from '../utils/debug';
 
 interface ViewerProps {
   site: PublishedSite;
@@ -98,7 +99,7 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
         // DIAGNÓSTICO PROFUNDO
         const isRenderMode = window.location.search.includes('mode=render') || window.location.search.includes('external_render=true');
         if (isRenderMode) {
-          console.log('[VIEWER_SECTION_DEBUG]', {
+          logDebug('[VIEWER_SECTION_DEBUG]', {
             moduleId,
             type,
             hasContent: !!section.content,
@@ -163,7 +164,7 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
           // Log de diagnóstico enfocado (solo en modo render/publicado)
           const isRenderMode = window.location.search.includes('mode=render') || window.location.search.includes('external_render=true');
           if (isRenderMode) {
-            console.log('[SOLUTIUM_RENDER_DEBUG]', {
+            logDebug('[SOLUTIUM_RENDER_DEBUG]', {
               type,
               moduleId,
               contentTitle: content?.title,

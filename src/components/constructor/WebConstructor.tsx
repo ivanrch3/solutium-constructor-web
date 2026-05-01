@@ -63,6 +63,7 @@ import { AIGenerationContext } from '../../types/ai';
 import { ProjectForm, ProjectFormData } from '../ProjectForm';
 import { useEditorStore } from '../../store/editorStore';
 import { PropertyEditor } from './PropertyEditor';
+import { logDebug } from '../../utils/debug';
 
 // --- CONSTANTS ---
 const MASTER_DICTIONARY = {
@@ -105,7 +106,7 @@ const checkDictionarySync = async (contract: RenderingContract): Promise<void> =
       contract_timestamp: new Date().toISOString(),
       status: 'pending'
     });
-    console.warn(`[Sync Check] Se detectaron componentes o estilos desconocidos (${unknowns.length}). Registrados en Evolution Buffer.`);
+    logDebug(`[Sync Check] Se detectaron componentes o estilos desconocidos (${unknowns.length}). Registrados en Evolution Buffer.`);
   }
 };
 
@@ -300,7 +301,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         settingsValues: { ...defaultState.settingsValues, ...(draft.settingsValues || {}) }
       };
 
-      console.log('[CONSTRUCTOR_HYDRATION_SOURCE]', {
+      logDebug('[CONSTRUCTOR_HYDRATION_SOURCE]', {
         siteId: site.id || site.web_builder_site_id,
         used: 'metadata_editor_state',
         hasValidDraft: false,
@@ -308,7 +309,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         settingsValuesCount: Object.keys(hydrated.settingsValues || {}).length
       });
 
-      console.log('[EDITOR_STATE_AFTER_HYDRATION_DEBUG]', hydrated);
+      logDebug('[EDITOR_STATE_AFTER_HYDRATION_DEBUG]', hydrated);
 
       return hydrated;
     }
@@ -368,7 +369,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
           totalModulesAdded: reconstructedModules.length
         };
 
-        console.log('[CONSTRUCTOR_HYDRATION_SOURCE]', {
+        logDebug('[CONSTRUCTOR_HYDRATION_SOURCE]', {
           siteId: site.id || site.web_builder_site_id,
           used: 'rendering_contract_reconstruction',
           hasValidDraft: false,
@@ -376,13 +377,13 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
           settingsValuesCount: Object.keys(hydrated.settingsValues || {}).length
         });
 
-        console.log('[EDITOR_STATE_AFTER_HYDRATION_DEBUG]', hydrated);
+        logDebug('[EDITOR_STATE_AFTER_HYDRATION_DEBUG]', hydrated);
 
         return hydrated;
       }
     }
 
-    console.log('[CONSTRUCTOR_HYDRATION_SOURCE]', {
+    logDebug('[CONSTRUCTOR_HYDRATION_SOURCE]', {
       used: 'defaults'
     });
 
@@ -718,7 +719,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   };
 
   const addModule = (module: WebModule) => {
-    console.log('Adding module:', module.type);
+    logDebug('Adding module:', module.type);
     // Use persistent UUIDs (Solutium Protocol v2.0)
     const rawId = crypto.randomUUID();
     const moduleId = `mod_${rawId}`;
@@ -1466,7 +1467,7 @@ const formatTimestampName = () => {
       }
 
       if (result) {
-        console.log(`[SIP v6.1] Cambios sincronizados en tabla 'pages' (Status: ${newStatus})`);
+        logDebug(`[SIP v6.1] Cambios sincronizados en tabla 'pages' (Status: ${newStatus})`);
         setSaveStatus('success');
         setHasUnsavedChanges(false);
         setCurrentStatus(newStatus);
@@ -1597,7 +1598,7 @@ const formatTimestampName = () => {
       }
 
       if (result) {
-        console.log('[SIP v6.1] Sitio publicado y sincronizado con Web Engine.');
+        logDebug('[SIP v6.1] Sitio publicado y sincronizado con Web Engine.');
         setPublishStatus('success');
         setCurrentStatus('published');
         setHasUnsavedChanges(false);

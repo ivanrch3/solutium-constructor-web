@@ -2,6 +2,7 @@
  * Servicio de Configuración Dinámica (Runtime Config)
  * Soluciona el problema de variables quemadas en el build de Vite.
  */
+import { logDebug } from '../utils/debug';
 
 interface AppConfig {
   geminiApiKey: string | null;
@@ -64,7 +65,7 @@ class ConfigService {
 
   updateConfig(newConfig: Partial<AppConfig>) {
     this.extractFromObject(newConfig);
-    console.log("⚡ [ConfigService] Configuración de runtime sincronizada.");
+    logDebug("⚡ [ConfigService] Configuración de runtime sincronizada.");
   }
 
   get geminiApiKey(): string | null {

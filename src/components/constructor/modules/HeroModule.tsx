@@ -12,6 +12,8 @@ import { useEditorStore } from '../../../store/editorStore';
 
 import { GLOBAL_ANIMATIONS, getGlobalAnimation } from '../../../constants/animations';
 
+import { logDebug } from '../../../utils/debug';
+
 export const HeroModule: React.FC<{ 
   moduleId: string, 
   settingsValues: Record<string, any>,
@@ -57,7 +59,7 @@ export const HeroModule: React.FC<{
   // Global Settings
   const layout = getVal(null, 'layout', 'split');
   
-  console.log('[SOLUTIUM_RENDER_DEBUG]', {
+  logDebug('[SOLUTIUM_RENDER_DEBUG]', {
     moduleId,
     finalLayout: layout,
     finalBgType: getVal(null, 'bg_type', 'color'),
@@ -569,7 +571,7 @@ export const HeroModule: React.FC<{
 
   const containerClassName = `relative w-full overflow-hidden flex items-center ${sectionHeight} @container`;
   
-  console.log('[HERO_LAYOUT_DEBUG]', {
+  logDebug('[HERO_LAYOUT_DEBUG]', {
     moduleId,
     layout,
     isPreviewMode,

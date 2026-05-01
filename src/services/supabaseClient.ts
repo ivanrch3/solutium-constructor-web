@@ -1,4 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { logDebug } from '../utils/debug';
 
 let supabaseInstance: SupabaseClient | null = null;
 
@@ -16,7 +17,7 @@ export const initSupabase = (url: string, key: string, token: string) => {
         },
       },
     });
-    console.log('[Supabase] Client initialized successfully');
+    logDebug('[Supabase] Client initialized successfully');
   } catch (error) {
     console.error('[Supabase] Initialization failed:', error);
     supabaseInstance = null;

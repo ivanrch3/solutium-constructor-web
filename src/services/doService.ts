@@ -1,4 +1,5 @@
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { logDebug } from '../utils/debug';
 
 /**
  * [SIP v5.4] Secure Storage Service
@@ -22,7 +23,7 @@ class StorageService {
     const envBucket = import.meta.env.VITE_STORAGE_BUCKET;
 
     if (envEndpoint && envAccessKey && envSecretKey && envBucket) {
-      console.log('[StorageService] Autoinicializando con variables de entorno...');
+      logDebug('[StorageService] Autoinicializando con variables de entorno...');
       this.init(envEndpoint, envAccessKey, envSecretKey, envBucket);
     }
   }
@@ -64,7 +65,7 @@ class StorageService {
       this.secretKey = secretKey;
       this.initialized = true;
       
-      console.log(`[StorageService] Initialized (Ready for proxy/direct). Bucket: ${bucket || 'unknown (server-side fallback)'}`);
+      logDebug(`[StorageService] Initialized (Ready for proxy/direct). Bucket: ${bucket || 'unknown (server-side fallback)'}`);
     } catch (error) {
       console.error('[StorageService] Initialization failed:', error);
       throw new Error('Failed to initialize storage service');
@@ -77,7 +78,7 @@ class StorageService {
   private async ensureInitialized(): Promise<void> {
     if (this.initialized) return;
     
-    console.log('[StorageService] Waiting for initialization...');
+    logDebug('[StorageService] Waiting for initialization...');
     
     // If not initialized, we wait for a reasonable time or throw
     // This handles cases where upload is called before handshake completes
@@ -90,7 +91,7 @@ class StorageService {
       
       // Every 10 attempts, log progress
       if (attempts % 10 === 0) {
-        console.log(`[StorageService] Still waiting for initialization... attempt ${attempts}/${maxAttempts}`);
+        logDebug(`[StorageService] Still waiting for initialization... attempt ${attempts}/${maxAttempts}`);
       }
     }
 
@@ -104,7 +105,7 @@ class StorageService {
       if (!this.bucket) missing.push('Bucket');
       
       if (missing.length > 0) {
-        console.warn(`[StorageService] Missing client-side keys: ${missing.join(', ')}. Proceeding anyway, hoping the server has secrets.`);
+        logDebug(`[StorageService] Missing client-side keys: ${missing.join(', ')}. Proceeding anyway, hoping the server has secrets.`);
       }
       
       // We consider it "ready to try" even if not fully initialized with client keys
@@ -141,12 +142,12 @@ class StorageService {
       formData.append('fileName', fileName);
       formData.append('contentType', contentType);
 
-      console.log(`[StorageService] Attempting proxy upload to /api/upload-proxy for ${fileName}`);
-      console.log(`[StorageService] Current origin: ${window.location.origin}`);
-      console.log(`[StorageService] Endpoint: ${this.endpoint}, Bucket: ${this.bucket}`);
+      logDebug(`[StorageService] Attempting proxy upload to /api/upload-proxy for ${fileName}`);
+      logDebug(`[StorageService] Current origin: ${window.location.origin}`);
+      logDebug(`[StorageService] Endpoint: ${this.endpoint}, Bucket: ${this.bucket}`);
       
       const proxyUrl = `${window.location.origin}/api/upload-proxy`;
-      console.log(`[StorageService] Target Proxy URL: ${proxyUrl}`);
+      logDebug(`[StorageService] Target Proxy URL: ${proxyUrl}`);
       
       const response = await fetch(proxyUrl, {
         method: 'POST',
@@ -172,14 +173,14 @@ class StorageService {
 
       try {
         const data = JSON.parse(responseText);
-        console.log(`[StorageService] Proxy upload successful: ${data.url}`);
+        logDebug(`[StorageService] Proxy upload successful: ${data.url}`);
         return data.url;
       } catch (e) {
         console.error('[StorageService] Failed to parse success response as JSON:', responseText);
         throw new Error('Invalid response from upload proxy');
       }
     } catch (proxyError: any) {
-      console.warn('[StorageService] Proxy upload failed (this is expected if running on a static staging without backend), attempting direct upload:', proxyError);
+      logDebug('[StorageService] Proxy upload failed (this is expected if running on a static staging without backend), attempting direct upload:', proxyError);
       
       // If it's a NetworkError, it might be a connectivity issue
       if (proxyError.name === 'TypeError' && proxyError.message === 'Failed to fetch') {

@@ -1,3 +1,5 @@
+import { logDebug } from '../utils/debug';
+
 export interface HandshakePayload {
   projectId: string;
   supabase_url: string;
@@ -18,7 +20,7 @@ let isStable = false;
 export const startHandshake = (
   onConfig: (payload: HandshakePayload) => void
 ) => {
-  console.log("🛠️ [SIP v5.2] Iniciando protocolo de arranque...");
+  logDebug("🛠️ [SIP v5.2] Iniciando protocolo de arranque...");
 
   const processConfig = (payload: any) => {
     if (!payload) return;
@@ -50,14 +52,14 @@ export const startHandshake = (
         if (event.source && event.source !== window) {
           motherWindow = event.source;
           isStable = true;
-          console.log("✅ [SIP v5.2] Conexión estabilizada con la App Madre.");
+          logDebug("✅ [SIP v5.2] Conexión estabilizada con la App Madre.");
         }
 
         if (event.data.type === 'SOLUTIUM_CONFIG' || event.data.type === 'SOLUTIUM_CONFIG_RESPONSE' || event.data.type === 'SOLUTIUM_SET_CONFIG') {
-          console.log(`✅ [SIP v5.2] Configuración recibida (${event.data.type}).`);
+          logDebug(`✅ [SIP v5.2] Configuración recibida (${event.data.type}).`);
           
           // LOG DE DIAGNÓSTICO SOLICITADO
-          console.log('[CONSTRUCTOR_MESSAGE_RECEIVED_DEBUG]', {
+          logDebug('[CONSTRUCTOR_MESSAGE_RECEIVED_DEBUG]', {
             eventType: event.data.type,
             topLevelFirstSectionContent: event.data.sections?.[0]?.content,
             contentFirstSectionContent: event.data.content?.sections?.[0]?.content,
@@ -71,7 +73,7 @@ export const startHandshake = (
             processConfig(dataPayload);
             sendToMother({ type: 'SOLUTIUM_ACK', status: 'success' });
           } else {
-            console.warn("⚠️ [SIP v5.2] Recibido mensaje SOLUTIUM_CONFIG pero el payload está vacío.");
+            logDebug("⚠️ [SIP v5.2] Recibido mensaje SOLUTIUM_CONFIG pero el payload está vacío.");
           }
         }
       }
@@ -92,7 +94,7 @@ export const startHandshake = (
   };
 
   if (configFromUrl.supabase_url && configFromUrl.session_token) {
-    console.log("🚀 [SIP v5.2] Configuración recuperada desde URL.");
+    logDebug("🚀 [SIP v5.2] Configuración recuperada desde URL.");
     processConfig(configFromUrl);
     setupMessageListener(); // Solo para escuchar futuras órdenes
     return;
@@ -103,7 +105,7 @@ export const startHandshake = (
     try {
       const data = JSON.parse(window.name);
       if (data.type === 'SOLUTIUM_DIRECT_INJECTION' || data.type === 'SOLUTIUM_CONFIG') {
-        console.log("📦 [SIP v5.2] Configuración recuperada desde window.name.");
+        logDebug("📦 [SIP v5.2] Configuración recuperada desde window.name.");
         processConfig(data.payload);
         setupMessageListener();
         return;
@@ -112,13 +114,13 @@ export const startHandshake = (
   }
 
   // PRIORIDAD 3: Escucha Pasiva (Esperar a la Madre) y Solicitud Proactiva
-  console.log("⏳ [SIP v5.2] Esperando configuración de la App Madre...");
+  logDebug("⏳ [SIP v5.2] Esperando configuración de la App Madre...");
   setupMessageListener();
   
   // Solicitar proactivamente si tardamos más de 500ms
   setTimeout(() => {
     if (!isStable) {
-      console.log("📡 [SIP v5.2] Solicitando configuración (SOLUTIUM_GET_CONFIG)...");
+      logDebug("📡 [SIP v5.2] Solicitando configuración (SOLUTIUM_GET_CONFIG)...");
       sendToMother({ type: 'SOLUTIUM_GET_CONFIG' });
     }
   }, 500);

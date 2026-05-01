@@ -170,6 +170,28 @@ export const PricingModule: React.FC<{
     }
   ]);
 
+  const rawHeaderTitle = settingsValues?.[`${moduleId}_el_pricing_header_title`];
+  const rawPlans = settingsValues?.[`${moduleId}_global_plans`];
+  const rawColumns = settingsValues?.[`${moduleId}_global_columns`];
+  const rawLayout = settingsValues?.[`${moduleId}_global_layout`];
+  const rawGap = settingsValues?.[`${moduleId}_global_gap`];
+
+  console.log('[PRICING_RENDER_DEBUG]', {
+    moduleId,
+    title: headerTitle,
+    subtitle: headerSubtitle,
+    plansCount: plans?.length,
+    firstPlan: plans?.[0],
+    highlightedPlan: plans?.find((p: any) => p.highlight)?.name,
+    columns,
+    gap,
+    rawHeaderTitle,
+    rawPlans,
+    rawColumns,
+    rawLayout,
+    rawGap
+  });
+
   const getTypographyStyle = (sizeToken: string, weightToken: string, alignToken?: string) => {
     const size = TYPOGRAPHY_SCALE[sizeToken as keyof typeof TYPOGRAPHY_SCALE] || TYPOGRAPHY_SCALE.p;
     const weight = FONT_WEIGHTS[weightToken as keyof typeof FONT_WEIGHTS] || FONT_WEIGHTS.normal;
@@ -213,7 +235,7 @@ export const PricingModule: React.FC<{
         backgroundImage: (sectionGradient && typeof bgGradient === 'string' && !bgGradient.includes('NaN')) ? bgGradient : 'none'
       }}
     >
-      <div className="max-w-7xl mx-auto px-8">
+      <div className="max-w-7xl mx-auto px-8 @container">
         {/* Header */}
         <div 
           className={`mb-12 flex flex-col ${headerAlign === 'center' ? 'items-center text-center' : 'items-start text-left'}`}

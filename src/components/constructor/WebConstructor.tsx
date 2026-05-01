@@ -1181,55 +1181,47 @@ const formatTimestampName = () => {
             
             // Remove secondary technical prefixes like "el_hero_", "el_contact_", etc. 
             // for INTERNAL detection logic (not for storage)
-            const cleanKey = relativeKey.replace(/^el_[a-zA-Z0-9]+_/, '').replace(/^global_/, '');
-            
             // Apply Atomic Transform using the FULL relative key to preserve fidelity
             const atomicValues = atomicTransform(relativeKey, value);
 
-            // --- SEPARATION OF POWERS (Solutium Protocol) ---
+            // --- SEPARATION OF POWERS (Solutium Protocol v7.7) ---
+            // High fidelity identification using exact suffixes
+            const isEyebrowText = relativeKey.endsWith('_eyebrow') && !relativeKey.includes('_color') && !relativeKey.includes('_bg');
+            const isTitleText = (relativeKey.endsWith('_title') || relativeKey.endsWith('_texto_principal')) && !relativeKey.includes('_color') && !relativeKey.includes('_size') && !relativeKey.includes('_weight') && !relativeKey.includes('_highlight');
+            const isSubtitleText = (relativeKey.endsWith('_subtitle') || relativeKey.endsWith('_texto_secundario')) && !relativeKey.includes('_color') && !relativeKey.includes('_size') && !relativeKey.includes('_weight') && !relativeKey.includes('_highlight');
             
-            // Identify if it's a content field
-            const isEyebrow = cleanKey === 'eyebrow' || cleanKey === 'texto_eyebrow' || cleanKey === 'label_eyebrow';
-            const isTitle = cleanKey === 'title' || cleanKey === 'texto_principal' || cleanKey === 'texto_base' || (cleanKey.includes('title') && (cleanKey.endsWith('_text') || cleanKey.endsWith('_title')));
-            const isSubtitle = cleanKey === 'subtitle' || cleanKey === 'texto_secundario' || cleanKey === 'texto_descripcion' || (cleanKey.includes('subtitle') && (cleanKey.endsWith('_text') || cleanKey.endsWith('_subtitle')));
-            const isImage = cleanKey === 'image' || cleanKey === 'image_url' || cleanKey.endsWith('_url') || cleanKey.endsWith('_img') || cleanKey.includes('visual');
+            const isPrimaryCtaText = relativeKey.endsWith('_primary_text') || relativeKey.endsWith('_cta_text');
+            const isPrimaryCtaUrl = relativeKey.endsWith('_primary_url') || relativeKey.endsWith('_cta_url');
+            const isSecondaryCtaText = relativeKey.endsWith('_secondary_text');
+            const isSecondaryCtaUrl = relativeKey.endsWith('_secondary_url');
+
+            const isImageField = (relativeKey.endsWith('_image') || relativeKey.endsWith('_image_url') || relativeKey.endsWith('_img')) && !isPrimaryCtaUrl && !isSecondaryCtaUrl;
+            
+            // Map legacy cleanKey for other detections
+            const cleanKey = relativeKey.replace(/^el_[a-zA-Z0-9]+_/, '').replace(/^global_/, '');
             
             // Rotating Text Detection (Solutium Protocol)
-            const isRotatingFixed = cleanKey === 'rotating_fixed';
-            const isRotatingOptions = cleanKey === 'rotating_options';
-            const isRotatingEnabled = cleanKey === 'rotating_enabled';
+            const isRotatingFixed = cleanKey === 'rotating_fixed' || cleanKey.endsWith('_rotating_fixed');
+            const isRotatingOptions = cleanKey === 'rotating_options' || cleanKey.endsWith('_rotating_options');
+            const isRotatingEnabled = cleanKey === 'rotating_enabled' || cleanKey.endsWith('_rotating_enabled');
 
-            // CTA Handling
-            const isPrimaryCtaText = cleanKey === 'primary_text' || cleanKey === 'button_text' || (cleanKey.includes('primary_cta') && cleanKey.includes('text')) || cleanKey === 'cta_text';
-            const isPrimaryCtaUrl = cleanKey === 'primary_url' || cleanKey === 'button_url' || (cleanKey.includes('primary_cta') && cleanKey.includes('url')) || cleanKey === 'cta_url';
-            const isSecondaryCtaText = cleanKey === 'secondary_text' || (cleanKey.includes('secondary_cta') && cleanKey.includes('text'));
-            const isSecondaryCtaUrl = cleanKey === 'secondary_url' || (cleanKey.includes('secondary_cta') && cleanKey.includes('url'));
+            // --- ALLOCATION (Solutium v7.7 - Order Sensitive) ---
+            const isContentField = isEyebrowText || isTitleText || isSubtitleText || isImageField || isPrimaryCtaText || isPrimaryCtaUrl || isSecondaryCtaText || isSecondaryCtaUrl || isRotatingOptions || isRotatingFixed || isRotatingEnabled || cleanKey.includes('rotating_speed');
 
-            // Style Specific Keys (Solutium Protocol v4.0+)
-            const isBorderRadius = cleanKey.includes('radius') || cleanKey.includes('rounded');
-            const isShadow = cleanKey.includes('shadow');
-            const isFontFamily = cleanKey === 'font_family' || cleanKey === 'fontFamily';
-            const isButtonStyles = cleanKey.includes('button_style') || cleanKey.includes('btn_');
-
-            // --- ALLOCATION ---
-            const isContentField = isEyebrow || isTitle || isSubtitle || isImage || isPrimaryCtaText || isPrimaryCtaUrl || isSecondaryCtaText || isSecondaryCtaUrl || isRotatingOptions || isRotatingFixed || isRotatingEnabled || cleanKey.includes('rotating_speed') || cleanKey.includes('rotating_gradient') || cleanKey.includes('rotating_color');
-
-            if (isEyebrow) {
+            if (isEyebrowText) {
               content.eyebrow = value;
-            } else if (isTitle && !content.title) {
+            } else if (isTitleText && !content.title) {
               if (module.type === 'hero' || module.id.startsWith('mod_hero')) {
                 content.texto_principal = value;
                 content.texto_base = value;
               }
               content.title = value;
-            } else if (isSubtitle && !content.subtitle) {
+            } else if (isSubtitleText && !content.subtitle) {
               if (module.type === 'hero' || module.id.startsWith('mod_hero')) {
                 content.texto_secundario = value;
                 content.texto_descripcion = value;
               }
               content.subtitle = value;
-            } else if (isImage && !content.image_url) {
-              content.image_url = value;
             } else if (isPrimaryCtaText) {
               content.primary_cta.text = value;
             } else if (isPrimaryCtaUrl) {
@@ -1238,6 +1230,8 @@ const formatTimestampName = () => {
               content.secondary_cta.text = value;
             } else if (isSecondaryCtaUrl) {
               content.secondary_cta.url = value;
+            } else if (isImageField && !content.image_url) {
+              content.image_url = value;
             } else if (isRotatingFixed) {
               content.texto_base = value;
             } else if (isRotatingOptions) {
@@ -1250,13 +1244,17 @@ const formatTimestampName = () => {
               content.is_rotating_active = value;
             } else if (cleanKey.includes('rotating_speed')) {
               content.intervalo_ms = value;
-            } else if (cleanKey.includes('rotating_gradient') || cleanKey.includes('rotating_color')) {
-              content.estilo_efecto = value;
             }
             
             // Allocation to Styles/Settings & Audit Specs (Solutium Protocol v2.3)
-            if (!isContentField) {
+            // Note: Colors and styles should ALWAYS go to settings, even if they contain text-like keywords
+            if (!isContentField || isPrimaryCtaUrl || isPrimaryCtaText || isEyebrowText) {
               // Standard mapping for common containers
+              const isBorderRadius = cleanKey.includes('radius') || cleanKey.includes('rounded');
+              const isShadow = cleanKey.includes('shadow');
+              const isFontFamily = cleanKey === 'font_family' || cleanKey === 'fontFamily';
+              const isButtonStyles = cleanKey.includes('button_style') || cleanKey.includes('btn_');
+
               if (isBorderRadius) {
                 styles['border-radius'] = typeof value === 'number' ? `${value}px` : value;
                 audit_specs['.module-container'] = { ...audit_specs['.module-container'], 'border-radius': styles['border-radius'] };
@@ -1275,7 +1273,7 @@ const formatTimestampName = () => {
                 audit_specs[targetSelector] = { ...audit_specs[targetSelector], ...atomicValues };
               }
               
-              // Directiva v1.5: Everything not content goes to settings (which will be style_json)
+              // Directiva v1.5: Everything not explicitly forbidden goes to settings
               const forbiddenKeys = ['label', 'defaultValue', 'min', 'max', 'showIf', 'options', 'unit', 'step'];
               if (!forbiddenKeys.includes(cleanKey)) {
                 Object.assign(settings, atomicValues);

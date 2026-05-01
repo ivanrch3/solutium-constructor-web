@@ -23,7 +23,29 @@ export const HeroModule: React.FC<{
   
   const getVal = (elementId: string | null, settingId: string, defaultValue: any) => {
     const key = elementId ? `${elementId}_${settingId}` : `${moduleId}_global_${settingId}`;
-    return settingsValues[key] !== undefined ? settingsValues[key] : defaultValue;
+    
+    if (settingsValues[key] !== undefined) {
+      const val = settingsValues[key];
+      return (val && typeof val === 'object' && 'value' in val && !Array.isArray(val)) ? val.value : val;
+    }
+
+    // PROTOCOLO SOLUTIUM v7.8: Búsqueda resiliente (con/sin prefijo de moduleId)
+    // Útil para contratos publicados donde las keys en style_json no llevan el ID de instancia
+    if (elementId && elementId.startsWith(`${moduleId}_`)) {
+      const fallbackElementId = elementId.replace(`${moduleId}_`, '');
+      const fallbackKey = `${fallbackElementId}_${settingId}`;
+      if (settingsValues[fallbackKey] !== undefined) {
+        const val = settingsValues[fallbackKey];
+        return (val && typeof val === 'object' && 'value' in val && !Array.isArray(val)) ? val.value : val;
+      }
+    }
+    
+    // También intentar buscar el settingId directamente si es global
+    if (!elementId) {
+      if (settingsValues[settingId] !== undefined) return settingsValues[settingId];
+    }
+
+    return defaultValue;
   };
 
   const containerRef = React.useRef(null);
@@ -34,6 +56,18 @@ export const HeroModule: React.FC<{
 
   // Global Settings
   const layout = getVal(null, 'layout', 'split');
+  
+  console.log('[SOLUTIUM_RENDER_DEBUG]', {
+    moduleId,
+    finalLayout: layout,
+    finalBgType: getVal(null, 'bg_type', 'color'),
+    finalPrimaryText: getVal(`${moduleId}_el_hero_ctas`, 'primary_text', ''),
+    finalPrimaryUrl: getVal(`${moduleId}_el_hero_ctas`, 'primary_url', ''),
+    finalEyebrow: getVal(`${moduleId}_el_hero_typography`, 'eyebrow', ''),
+    finalEyebrowColor: getVal(`${moduleId}_el_hero_typography`, 'eyebrow_color', ''),
+    finalEyebrowBg: getVal(`${moduleId}_el_hero_typography`, 'eyebrow_bg', '')
+  });
+
   const height = getVal(null, 'height', 'screen');
   const maxWidth = parseNumSafe(getVal(null, 'max_width', 1200), 1200);
   const darkMode = getVal(null, 'dark_mode', false);

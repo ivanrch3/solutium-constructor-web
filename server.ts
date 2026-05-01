@@ -25,11 +25,11 @@ async function startServer() {
   // API Route for Proxy Upload
   app.post("/api/upload-proxy", upload.single("file"), async (req, res) => {
     try {
-      // Prioritize request body but fall back to server environment variables
-      const endpoint = req.body.endpoint || process.env.STORAGE_ENDPOINT || process.env.VITE_STORAGE_ENDPOINT;
-      const accessKey = req.body.accessKey || process.env.STORAGE_ACCESS_KEY || process.env.VITE_STORAGE_ACCESS_KEY;
-      const secretKey = req.body.secretKey || process.env.STORAGE_SECRET_KEY || process.env.VITE_STORAGE_SECRET_KEY;
-      const bucket = req.body.bucket || process.env.STORAGE_BUCKET || process.env.VITE_STORAGE_BUCKET;
+      // Prioritize server environment variables (secrets) over request body
+      const endpoint = process.env.STORAGE_ENDPOINT || process.env.VITE_STORAGE_ENDPOINT || req.body.endpoint;
+      const accessKey = process.env.STORAGE_ACCESS_KEY || process.env.VITE_STORAGE_ACCESS_KEY || req.body.accessKey;
+      const secretKey = process.env.STORAGE_SECRET_KEY || process.env.VITE_STORAGE_SECRET_KEY || req.body.secretKey;
+      const bucket = process.env.STORAGE_BUCKET || process.env.VITE_STORAGE_BUCKET || req.body.bucket;
       const { fileName, contentType } = req.body;
       const file = req.file;
 

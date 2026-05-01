@@ -145,14 +145,13 @@ const AppContent: React.FC = () => {
       }
 
       // Configuration fallbacks from environment with more variants (SIP v5.4)
-      const finalEndpoint = payload.do_endpoint || payload.STORAGE_ENDPOINT || payload.storage_endpoint || import.meta.env.VITE_STORAGE_ENDPOINT || (import.meta as any).env?.STORAGE_ENDPOINT;
-      const finalAccessKey = payload.do_access_key || payload.STORAGE_ACCESS_KEY || payload.storage_access_key || import.meta.env.VITE_STORAGE_ACCESS_KEY || (import.meta as any).env?.STORAGE_ACCESS_KEY;
-      const finalSecretKey = payload.do_secret_key || payload.STORAGE_SECRET_KEY || payload.storage_secret_key || import.meta.env.VITE_STORAGE_SECRET_KEY || (import.meta as any).env?.STORAGE_SECRET_KEY;
-      const finalBucket = payload.do_bucket || payload.STORAGE_BUCKET || payload.storage_bucket || import.meta.env.VITE_STORAGE_BUCKET || (import.meta as any).env?.STORAGE_BUCKET;
+      const finalEndpoint = payload.do_endpoint || payload.STORAGE_ENDPOINT || payload.storage_endpoint || import.meta.env.VITE_STORAGE_ENDPOINT || (import.meta as any).env?.STORAGE_ENDPOINT || '';
+      const finalAccessKey = payload.do_access_key || payload.STORAGE_ACCESS_KEY || payload.storage_access_key || import.meta.env.VITE_STORAGE_ACCESS_KEY || (import.meta as any).env?.STORAGE_ACCESS_KEY || '';
+      const finalSecretKey = payload.do_secret_key || payload.STORAGE_SECRET_KEY || payload.storage_secret_key || import.meta.env.VITE_STORAGE_SECRET_KEY || (import.meta as any).env?.STORAGE_SECRET_KEY || '';
+      const finalBucket = payload.do_bucket || payload.STORAGE_BUCKET || payload.storage_bucket || import.meta.env.VITE_STORAGE_BUCKET || (import.meta as any).env?.STORAGE_BUCKET || '';
 
-      if (finalEndpoint && finalAccessKey && finalSecretKey && finalBucket) {
-        initDOClient(finalEndpoint, finalAccessKey, finalSecretKey, finalBucket);
-      }
+      // Initialize storage service even with empty strings to allow server-side secrets fallback
+      initDOClient(finalEndpoint, finalAccessKey, finalSecretKey, finalBucket);
 
       if (payload.projectId || projectId) {
         const finalProjectId = payload.projectId || projectId;

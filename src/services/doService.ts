@@ -39,26 +39,32 @@ class StorageService {
    * In a production environment, these should ideally be handled server-side.
    */
   public init(endpoint: string, accessKey: string, secretKey: string, bucket: string): void {
-    if (this.initialized) return;
+    // If we're already fully initialized with real data, don't re-initialize with empty data
+    if (this.initialized && this.accessKey && this.secretKey) return;
 
-    const formattedEndpoint = endpoint.startsWith('http') ? endpoint : `https://${endpoint}`;
+    const formattedEndpoint = endpoint ? (endpoint.startsWith('http') ? endpoint : `https://${endpoint}`) : '';
     
     try {
-      this.client = new S3Client({
-        endpoint: formattedEndpoint,
-        region: 'us-east-1', // DigitalOcean Spaces uses us-east-1 for compatibility
-        credentials: {
-          accessKeyId: accessKey,
-          secretAccessKey: secretKey,
-        },
-      });
+      // Only create the S3 client if we have at least an endpoint and keys
+      // Otherwise, the service will rely exclusively on the server-side proxy
+      if (formattedEndpoint && accessKey && secretKey) {
+        this.client = new S3Client({
+          endpoint: formattedEndpoint,
+          region: 'us-east-1',
+          credentials: {
+            accessKeyId: accessKey,
+            secretAccessKey: secretKey,
+          },
+        });
+      }
+      
       this.bucket = bucket;
       this.endpoint = formattedEndpoint;
       this.accessKey = accessKey;
       this.secretKey = secretKey;
       this.initialized = true;
       
-      console.log(`[StorageService] Initialized for bucket: ${bucket}`);
+      console.log(`[StorageService] Initialized (Ready for proxy/direct). Bucket: ${bucket || 'unknown (server-side fallback)'}`);
     } catch (error) {
       console.error('[StorageService] Initialization failed:', error);
       throw new Error('Failed to initialize storage service');
@@ -89,18 +95,21 @@ class StorageService {
     }
 
     if (!this.initialized) {
+      // If we're missing keys, we don't throw yet because the server-side proxy
+      // might have the secrets configured in its environment (SIP v5.5)
       const missing = [];
       if (!this.endpoint) missing.push('Endpoint');
       if (!this.accessKey) missing.push('AccessKey');
       if (!this.secretKey) missing.push('SecretKey');
       if (!this.bucket) missing.push('Bucket');
       
-      const errorMsg = missing.length > 0 
-        ? `Storage service failed to initialize because the following keys are missing: ${missing.join(', ')}.` 
-        : 'Storage service not initialized. Handshake might have failed or timed out.';
+      if (missing.length > 0) {
+        console.warn(`[StorageService] Missing client-side keys: ${missing.join(', ')}. Proceeding anyway, hoping the server has secrets.`);
+      }
       
-      console.error(`[StorageService] CRITICAL: ${errorMsg}`);
-      throw new Error(`${errorMsg} Please ensure the Mother App (Solutium) is providing these credentials or they are set in the environment.`);
+      // We consider it "ready to try" even if not fully initialized with client keys
+      // as long as we have been through the waiting period.
+      // We set a flag or just return to allow the attempt.
     }
   }
 

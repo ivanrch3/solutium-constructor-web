@@ -47,6 +47,21 @@ const MODULE_ADAPTERS: Record<string, ModuleBridgeAdapter> = {
       'layout': 'global_layout',
       'items': 'el_feature_card_items'
     }
+  },
+  pricing: {
+    contentToSettings: {
+      'title': 'el_pricing_header_title',
+      'subtitle': 'el_pricing_header_subtitle',
+      'eyebrow': 'el_pricing_header_eyebrow',
+      'plans': 'global_plans'
+    },
+    settingsToDeep: {
+      'columns': 'global_columns',
+      'gap': 'global_gap',
+      'layout': 'global_layout',
+      'plans': 'global_plans',
+      'el_pricing_plans_plans': 'global_plans'
+    }
   }
 };
 

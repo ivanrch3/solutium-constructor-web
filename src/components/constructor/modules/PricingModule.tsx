@@ -80,6 +80,7 @@ export const PricingModule: React.FC<{
   const globalAnimOverride = getGlobalAnimation(entranceAnim, 'pricing');
 
   // Element: Header
+  const headerEyebrow = getVal(`${moduleId}_el_pricing_header`, 'eyebrow', '');
   const headerTitle = getVal(`${moduleId}_el_pricing_header`, 'title', 'Planes diseñados para tu éxito');
   const headerSubtitle = getVal(`${moduleId}_el_pricing_header`, 'subtitle', 'Elige el plan que mejor se adapte a tus necesidades actuales.');
   const headerSubtitleSize = getVal(`${moduleId}_el_pricing_header`, 'subtitle_size', 'p');
@@ -88,6 +89,10 @@ export const PricingModule: React.FC<{
   const headerTitleSize = getVal(`${moduleId}_el_pricing_header`, 'title_size', 't2');
   const headerTitleWeight = getVal(`${moduleId}_el_pricing_header`, 'title_weight', 'bold');
   const headerMarginB = parseNumSafe(getVal(`${moduleId}_el_pricing_header`, 'margin_b', 60), 60);
+
+  const eyebrowColor = getVal(`${moduleId}_el_pricing_header`, 'eyebrow_color', 'var(--primary-color)');
+  const eyebrowWeight = getVal(`${moduleId}_el_pricing_header`, 'eyebrow_weight', 'bold');
+  const eyebrowSize = getVal(`${moduleId}_el_pricing_header`, 'eyebrow_size', 's');
 
   const titleHighlightType = getVal(`${moduleId}_el_pricing_header`, 'title_highlight_type', 'gradient');
   const titleHighlightColor = getVal(`${moduleId}_el_pricing_header`, 'title_highlight_color', '#3B82F6');
@@ -176,6 +181,24 @@ export const PricingModule: React.FC<{
   const rawLayout = settingsValues?.[`${moduleId}_global_layout`];
   const rawGap = settingsValues?.[`${moduleId}_global_gap`];
 
+  console.log('[PRICING_RENDER_DEBUG]', {
+    moduleId,
+    title: headerTitle,
+    subtitle: headerSubtitle,
+    eyebrow: headerEyebrow,
+    plansCount: plans?.length,
+    firstPlan: plans?.[0],
+    highlightedPlan: plans?.find((p: any) => p.highlight || p.highlighted || p.featured)?.name,
+    columns,
+    gap,
+    rawHeaderTitle: settingsValues?.[`${moduleId}_el_pricing_header_title`],
+    rawHeaderSubtitle: settingsValues?.[`${moduleId}_el_pricing_header_subtitle`],
+    rawHeaderEyebrow: settingsValues?.[`${moduleId}_el_pricing_header_eyebrow`],
+    rawPlans: settingsValues?.[`${moduleId}_global_plans`],
+    rawColumns: settingsValues?.[`${moduleId}_global_columns`],
+    rawGap: settingsValues?.[`${moduleId}_global_gap`]
+  });
+
   const getTypographyStyle = (sizeToken: string, weightToken: string, alignToken?: string) => {
     const size = TYPOGRAPHY_SCALE[sizeToken as keyof typeof TYPOGRAPHY_SCALE] || TYPOGRAPHY_SCALE.p;
     const weight = FONT_WEIGHTS[weightToken as keyof typeof FONT_WEIGHTS] || FONT_WEIGHTS.normal;
@@ -225,6 +248,25 @@ export const PricingModule: React.FC<{
           className={`mb-12 flex flex-col ${headerAlign === 'center' ? 'items-center text-center' : 'items-start text-left'}`}
           style={{ marginBottom: `${headerMarginB}px` }}
         >
+          {headerEyebrow && (
+            <span 
+              className="mb-3 uppercase tracking-widest"
+              style={{
+                ...getTypographyStyle(eyebrowSize as any, eyebrowWeight, headerAlign),
+                color: eyebrowColor
+              }}
+            >
+              <InlineEditableText
+                moduleId={moduleId}
+                elementId={`${moduleId}_el_pricing_header`}
+                settingId="eyebrow"
+                value={headerEyebrow}
+                isPreviewMode={isPreviewMode}
+              >
+                {headerEyebrow}
+              </InlineEditableText>
+            </span>
+          )}
           <h2 
             className="mb-4 leading-tight"
             style={{ 
@@ -455,11 +497,11 @@ export const PricingModule: React.FC<{
                   })}
                 </div>
 
-                {plan.cta && plan.cta_url && plan.cta_url !== '#' && (
+                {plan.cta && (
                   <a 
-                    href={plan.cta_url}
-                    target={plan.cta_target === '_blank' ? '_blank' : '_self'}
-                    rel={plan.cta_target === '_blank' ? 'noopener noreferrer' : undefined}
+                    href={plan.cta_url || plan.url || plan.link || '#'}
+                    target={(plan.cta_target || plan.target) === '_blank' ? '_blank' : '_self'}
+                    rel={(plan.cta_target || plan.target) === '_blank' ? 'noopener noreferrer' : undefined}
                     className="w-full py-4 rounded-2xl font-black text-sm transition-all active:scale-95 overflow-hidden relative group/btn text-center block"
                     style={{ 
                       backgroundColor: plan.highlight ? highlightColor : (darkMode ? '#334155' : '#F1F5F9'),

@@ -142,30 +142,34 @@ class StorageService {
       formData.append('contentType', contentType);
 
       console.log(`[StorageService] Attempting proxy upload to /api/upload-proxy for ${fileName}`);
+      console.log(`[StorageService] Current origin: ${window.location.origin}`);
       console.log(`[StorageService] Endpoint: ${this.endpoint}, Bucket: ${this.bucket}`);
       
       const proxyUrl = `${window.location.origin}/api/upload-proxy`;
+      console.log(`[StorageService] Target Proxy URL: ${proxyUrl}`);
+      
       const response = await fetch(proxyUrl, {
         method: 'POST',
         body: formData,
       });
 
+      // Read the body once and preserve it
+      const responseText = await response.text();
+
       if (!response.ok) {
-        const errorText = await response.text();
         let errorMsg = `Proxy upload failed with status ${response.status}`;
         
         try {
-          const errorData = JSON.parse(errorText);
+          const errorData = JSON.parse(responseText);
           errorMsg = errorData.error || errorMsg;
         } catch (e) {
-          errorMsg = errorText || errorMsg;
+          errorMsg = responseText || errorMsg;
         }
         
         console.error(`[StorageService] Proxy upload error (${response.status}):`, errorMsg);
         throw new Error(errorMsg);
       }
 
-      const responseText = await response.text();
       try {
         const data = JSON.parse(responseText);
         console.log(`[StorageService] Proxy upload successful: ${data.url}`);
@@ -175,7 +179,7 @@ class StorageService {
         throw new Error('Invalid response from upload proxy');
       }
     } catch (proxyError: any) {
-      console.warn('[StorageService] Proxy upload failed, attempting direct upload:', proxyError);
+      console.warn('[StorageService] Proxy upload failed (this is expected if running on a static staging without backend), attempting direct upload:', proxyError);
       
       // If it's a NetworkError, it might be a connectivity issue
       if (proxyError.name === 'TypeError' && proxyError.message === 'Failed to fetch') {

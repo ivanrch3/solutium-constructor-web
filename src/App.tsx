@@ -393,9 +393,6 @@ const AppContent: React.FC = () => {
           ) : null}
           
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-          <div className="text-center space-y-2">
-            <p className="text-text/80">Sincronizando con Solutium...</p>
-          </div>
         </div>
 
         {/* Botón de Emergencia para Desarrollo */}

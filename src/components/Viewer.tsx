@@ -177,6 +177,30 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
           }
         }
 
+        // Compatibility bridge for Features
+        if (type === 'features') {
+          const bridge: Record<string, any> = {
+            [`${moduleId}_el_features_header_title`]: content.title,
+            [`${moduleId}_el_features_header_subtitle`]: content.subtitle,
+            [`${moduleId}_el_features_header_eyebrow`]: content.eyebrow,
+            // Bridge for global settings
+            [`${moduleId}_global_layout`]: settings.global_layout ?? settings.layout,
+            [`${moduleId}_global_columns`]: settings.global_columns ?? settings.columns,
+            [`${moduleId}_global_gap`]: settings.global_gap ?? settings.gap
+          };
+
+          Object.entries(bridge).forEach(([key, value]) => {
+            if (
+              value !== undefined &&
+              value !== null &&
+              value !== '' &&
+              finalSettingsValues[key] === undefined
+            ) {
+              finalSettingsValues[key] = value;
+            }
+          });
+        }
+
         switch (type) {
           case 'header':
             return <HeaderModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} />;

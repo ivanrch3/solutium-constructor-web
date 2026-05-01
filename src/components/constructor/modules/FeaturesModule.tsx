@@ -361,7 +361,10 @@ export const FeaturesModule: React.FC<{
     rawHeaderTitle: settingsValues?.[`${moduleId}_el_features_header_title`],
     rawHeaderSubtitle: settingsValues?.[`${moduleId}_el_features_header_subtitle`],
     rawHeaderEyebrow: settingsValues?.[`${moduleId}_el_features_header_eyebrow`],
-    rawItems: settingsValues?.[`${moduleId}_el_feature_card_items`]
+    rawItems: settingsValues?.[`${moduleId}_el_feature_card_items`],
+    rawColumns: settingsValues?.[`${moduleId}_global_columns`],
+    rawLayout: settingsValues?.[`${moduleId}_global_layout`],
+    rawGap: settingsValues?.[`${moduleId}_global_gap`]
   });
 
   const getShadowClass = (s: string) => {
@@ -402,7 +405,7 @@ export const FeaturesModule: React.FC<{
         paddingBottom: `${paddingY}px`
       }}
     >
-      <div className="max-w-7xl mx-auto px-8">
+      <div className="max-w-7xl mx-auto px-8 @container">
         {/* Header */}
         <div 
           className={`flex flex-col w-full ${headerAlign === 'center' ? 'items-center text-center' : headerAlign === 'right' ? 'items-end text-right' : 'items-start text-left'}`}

@@ -137,6 +137,21 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
               finalSettingsValues[key] = value;
             }
           });
+
+          // Log de diagnóstico enfocado (solo en modo render/publicado)
+          const isRenderMode = window.location.search.includes('mode=render') || window.location.search.includes('external_render=true');
+          if (isRenderMode) {
+            console.log('[SOLUTIUM_RENDER_DEBUG]', {
+              type,
+              moduleId,
+              contentTitle: content?.title,
+              contentSubtitle: content?.subtitle,
+              hasSettingsTitle: Boolean(settings?.el_hero_typography_title),
+              finalTitle: finalSettingsValues[`${moduleId}_el_hero_typography_title`],
+              finalSubtitle: finalSettingsValues[`${moduleId}_el_hero_typography_subtitle`],
+              iframeUrl: window.location.href
+            });
+          }
         }
 
         switch (type) {

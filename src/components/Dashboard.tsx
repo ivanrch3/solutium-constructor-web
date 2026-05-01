@@ -80,7 +80,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   return (
                     <button
                       key={page.id}
-                      onClick={() => onSelectPage(page)}
+                      onClick={() => {
+                        console.log('[OPEN_SAVED_SITE_CLICK_DEBUG]', {
+                          siteId: page.siteId,
+                          siteName: page.siteName,
+                          source: 'created_pages_list'
+                        });
+                        onSelectPage(page);
+                      }}
                       className="flex items-center justify-between p-3.5 rounded-xl border border-border hover:border-primary/30 hover:bg-primary/5 transition-all group text-left"
                     >
                       <div className="flex items-center gap-3">

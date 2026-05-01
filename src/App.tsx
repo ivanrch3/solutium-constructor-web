@@ -519,6 +519,7 @@ const AppContent: React.FC = () => {
       case 'constructor':
         return (
           <WebConstructor 
+            key={selectedPage?.id || (selectedPage as any)?.siteId || 'new-constructor'}
             onBackToDashboard={() => {
               refreshData();
               setSelectedPage(null);

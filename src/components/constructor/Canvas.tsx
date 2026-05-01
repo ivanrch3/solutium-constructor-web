@@ -70,6 +70,16 @@ export const Canvas: React.FC<CanvasProps> = ({
   reloadKey = 0
 }) => {
   const { selectSection, selectedSectionId, siteContent } = useEditorStore();
+
+  console.log('[CANVAS_RENDER_DEBUG]', {
+    modulesCount: editorState.addedModules?.length,
+    settingsValuesCount: Object.keys(editorState.settingsValues || {}).length,
+    heroTitle: editorState.settingsValues?.['b40b8a95-9f81-4def-8fb4-0b9a013525fa_el_hero_typography_title'],
+    heroSubtitle: editorState.settingsValues?.['b40b8a95-9f81-4def-8fb4-0b9a013525fa_el_hero_typography_subtitle'],
+    primaryText: editorState.settingsValues?.['b40b8a95-9f81-4def-8fb4-0b9a013525fa_el_hero_ctas_primary_text'],
+    globalLayout: editorState.settingsValues?.['b40b8a95-9f81-4def-8fb4-0b9a013525fa_global_layout']
+  });
+
   const lastModuleRef = React.useRef<HTMLDivElement>(null);
   const prevModulesLength = React.useRef(editorState.addedModules?.length || 0);
 

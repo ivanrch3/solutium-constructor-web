@@ -200,10 +200,23 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   }, []);
 
   useEffect(() => {
+    if (initialPage) {
+      console.log('[LOAD_SITE_FROM_SUPABASE_DEBUG]', {
+        siteId: (initialPage as any)?.id || (initialPage as any)?.siteId,
+        siteName: (initialPage as any)?.name || (initialPage as any)?.site_name,
+        hasContentDraft: !!(initialPage as any)?.contentDraft,
+        draftKeys: Object.keys((initialPage as any)?.contentDraft || {}),
+        hasSettingsValues: !!(initialPage as any)?.contentDraft?.settingsValues,
+        settingsValuesCount: Object.keys((initialPage as any)?.contentDraft?.settingsValues || {}).length,
+        heroTitle: (initialPage as any)?.contentDraft?.settingsValues?.['b40b8a95-9f81-4def-8fb4-0b9a013525fa_el_hero_typography_title'],
+        globalLayout: (initialPage as any)?.contentDraft?.settingsValues?.['b40b8a95-9f81-4def-8fb4-0b9a013525fa_global_layout']
+      });
+    }
+
     if (project) {
       setProject(project);
     }
-  }, [project, setProject]);
+  }, [project, initialPage, setProject]);
 
   const [activeTab, setActiveTab] = useState('constructor');
   const [mobileTab, setMobileTab] = useState<'constructor' | 'structure' | 'preview'>('constructor');
@@ -304,6 +317,8 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         globalLayoutValue: hydrated.settingsValues?.['b40b8a95-9f81-4def-8fb4-0b9a013525fa_global_layout']
       });
 
+      console.log('[EDITOR_STATE_AFTER_HYDRATION_DEBUG]', hydrated);
+
       return hydrated;
     }
 
@@ -326,6 +341,8 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         addedModulesCount: hydrated.addedModules?.length,
         settingsValuesCount: Object.keys(hydrated.settingsValues || {}).length
       });
+
+      console.log('[EDITOR_STATE_AFTER_HYDRATION_DEBUG]', hydrated);
 
       return hydrated;
     }
@@ -391,6 +408,8 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
           addedModulesCount: hydrated.addedModules?.length,
           settingsValuesCount: Object.keys(hydrated.settingsValues || {}).length
         });
+
+        console.log('[EDITOR_STATE_AFTER_HYDRATION_DEBUG]', hydrated);
 
         return hydrated;
       }

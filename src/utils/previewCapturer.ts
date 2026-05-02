@@ -69,6 +69,71 @@ const isCanvasBlank = (canvas: HTMLCanvasElement): { isBlank: boolean, whiteRati
 };
 
 /**
+ * Revierte colores oklch() a rgb() para compatibilidad con html2canvas
+ */
+const sanitizeOklchColors = (root: HTMLElement) => {
+  const elements = Array.from(root.querySelectorAll('*'));
+  elements.push(root); // Incluir el root mismo
+  
+  let sanitizedCount = 0;
+  const oklchProperties = [
+    'color', 'background-color', 'border-top-color', 'border-right-color', 
+    'border-bottom-color', 'border-left-color', 'outline-color', 
+    'text-decoration-color', 'fill', 'stroke'
+  ];
+
+  // Helper para convertir oklch a rgb usando el motor del navegador
+  const convertColor = (val: string): string | null => {
+    if (!val || !val.includes('oklch')) return null;
+    const temp = document.createElement('div');
+    temp.style.color = val;
+    document.body.appendChild(temp);
+    const rgb = getComputedStyle(temp).color;
+    document.body.removeChild(temp);
+    // Si sigue siendo oklch, el navegador no hizo la conversión automática en computed style (raro en navegadores modernos)
+    return (rgb && !rgb.includes('oklch')) ? rgb : null;
+  };
+
+  elements.forEach((el) => {
+    const htmlEl = el as HTMLElement;
+    const computed = window.getComputedStyle(htmlEl);
+    
+    oklchProperties.forEach(prop => {
+      const val = computed.getPropertyValue(prop);
+      if (val && val.includes('oklch')) {
+        const rgb = convertColor(val);
+        if (rgb) {
+          htmlEl.style.setProperty(prop, rgb, 'important');
+          sanitizedCount++;
+        } else {
+          // Fallback manual si falla la conversión del navegador
+          if (prop === 'color' || prop === 'fill' || prop === 'stroke') {
+            htmlEl.style.setProperty(prop, '#0f172a', 'important');
+          } else {
+            htmlEl.style.setProperty(prop, 'rgba(0,0,0,0)', 'important');
+          }
+        }
+      }
+    });
+
+    // También sanear variables CSS comunes que podrían tener oklch
+    const commonVars = ['--background', '--foreground', '--primary', '--primary-foreground', '--border', '--ring', '--muted', '--muted-foreground', '--accent', '--accent-foreground'];
+    commonVars.forEach(v => {
+      const val = computed.getPropertyValue(v);
+      if (val && val.includes('oklch')) {
+        const rgb = convertColor(val);
+        if (rgb) {
+          htmlEl.style.setProperty(v, rgb, 'important');
+          sanitizedCount++;
+        }
+      }
+    });
+  });
+
+  return sanitizedCount;
+};
+
+/**
  * Captura una imagen del Canvas y la sube al sistema de activos de la App Madre.
  */
 export const capturePreview = async (
@@ -197,7 +262,10 @@ export const capturePreview = async (
       }
     });
 
-    // 4. Desactivar animaciones y esperar render estable
+    // 4. Desactivar animaciones y saneamiento de estilos
+    const oklchSanitized = sanitizeOklchColors(clone);
+    stats.oklchSanitizedCount = oklchSanitized;
+
     const allElements = clone.querySelectorAll('*');
     allElements.forEach(el => {
       const htmlEl = el as HTMLElement;
@@ -208,9 +276,9 @@ export const capturePreview = async (
     });
 
     if (document.fonts) await document.fonts.ready;
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise(resolve => setTimeout(resolve, 1200)); // Un poco más de tiempo para que se aplique el style inline secundario
 
-    // 5. Captura Real con html2canvas para mayor estabilidad en composición
+    // 5. Captura Real con html2canvas
     const canvas = await html2canvas(frame, {
       useCORS: true,
       allowTaint: false,
@@ -219,7 +287,12 @@ export const capturePreview = async (
       width: 1440,
       height: 900,
       logging: false,
-      imageTimeout: 5000
+      imageTimeout: 5000,
+      onclone: (clonedDoc) => {
+        // Asegurar que el fondo del frame esté correcto en el clon interno de html2canvas
+        const f = clonedDoc.getElementById('preview-capture-frame');
+        if (f) (f as HTMLElement).style.backgroundColor = '#ffffff';
+      }
     });
 
     // 6. VALIDACIÓN ANTI-BLANCO

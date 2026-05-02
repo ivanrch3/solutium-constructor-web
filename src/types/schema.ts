@@ -161,6 +161,7 @@ export interface WebBuilderSite {
   updatedAt?: string;
   // Visual Preview Fields
   previewImageUrl?: string;
+  previewThumbnailUrl?: string;
   previewImagePath?: string;
   previewImageUpdatedAt?: string;
   previewImageHash?: string;
@@ -199,6 +200,7 @@ export interface PublishedSite {
   updatedAt?: string;
   // Visual Preview Fields
   previewImageUrl?: string;
+  previewThumbnailUrl?: string;
   previewImagePath?: string;
   previewImageUpdatedAt?: string;
   previewImageHash?: string;

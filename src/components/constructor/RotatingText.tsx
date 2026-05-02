@@ -79,7 +79,7 @@ export const RotatingText: React.FC<RotatingTextProps> = ({
   };
 
   return (
-    <div className={`inline-flex flex-wrap items-baseline gap-[0.25em] ${className}`}>
+    <span className={`inline ${className}`}>
       {moduleId ? (
         <InlineEditableText
           moduleId={moduleId}
@@ -89,11 +89,12 @@ export const RotatingText: React.FC<RotatingTextProps> = ({
           isPreviewMode={isPreviewMode}
           onSave={onSaveFixed}
           tagName="span"
+          className="inline"
         />
       ) : (
         <span>{fixedText}</span>
       )}
-      <div className="relative inline-flex overflow-hidden py-[0.1em] -my-[0.1em] items-baseline">
+      <span className="relative inline-block overflow-hidden py-[0.1em] -my-[0.1em] align-baseline ml-[0.25em]">
         <AnimatePresence mode="wait">
           <motion.span
             key={`${index}-${currentOptionValue}`}
@@ -101,7 +102,7 @@ export const RotatingText: React.FC<RotatingTextProps> = ({
             animate={currentVariant.animate}
             exit={currentVariant.exit}
             transition={{ duration: 0.5, ease: "easeOut" }}
-            className="whitespace-nowrap inline-flex items-baseline"
+            className="whitespace-nowrap inline-block align-baseline"
           >
             <ScaledOption 
               value={currentOptionValue}
@@ -114,8 +115,8 @@ export const RotatingText: React.FC<RotatingTextProps> = ({
             />
           </motion.span>
         </AnimatePresence>
-      </div>
-    </div>
+      </span>
+    </span>
   );
 };
 

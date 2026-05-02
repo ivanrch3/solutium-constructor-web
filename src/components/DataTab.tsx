@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getProfiles, getProjects, getCustomers, getProducts } from '../services/dataService';
 import { syncAsset } from '../services/assetService';
-import { isStorageReady } from '../services/doService';
+import { uploadAsset } from '../services/assetsClient';
 import { 
   Users, 
   Briefcase, 
@@ -34,7 +34,7 @@ export const DataTab: React.FC<DataTabProps> = ({ projectId, currentUserId }) =>
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
-  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [testResult, setTestResult] = useState<{ success: boolean; message: string; data?: any } | null>(null);
   const [storageStatus, setStorageStatus] = useState<boolean>(false);
   const pageSize = 12; // Adjusted for grid layout
 
@@ -72,13 +72,13 @@ export const DataTab: React.FC<DataTabProps> = ({ projectId, currentUserId }) =>
 
   useEffect(() => {
     fetchData(activeSubTab, page);
-    setStorageStatus(isStorageReady());
+    setStorageStatus(!!import.meta.env.VITE_APP_MADRE_API_URL);
   }, [activeSubTab, page, projectId, currentUserId]);
 
   // Periodic check for storage status
   useEffect(() => {
     const interval = setInterval(() => {
-      setStorageStatus(isStorageReady());
+      setStorageStatus(!!import.meta.env.VITE_APP_MADRE_API_URL);
     }, 5000);
     return () => clearInterval(interval);
   }, []);
@@ -106,7 +106,7 @@ export const DataTab: React.FC<DataTabProps> = ({ projectId, currentUserId }) =>
       };
 
       const testContent = `Archivo de prueba generado el ${new Date().toLocaleString()}`;
-      const url = await syncAsset(
+      const { url } = await syncAsset(
         testEntity,
         'test',
         testContent,
@@ -124,6 +124,54 @@ export const DataTab: React.FC<DataTabProps> = ({ projectId, currentUserId }) =>
       setTestResult({ 
         success: false, 
         message: err instanceof Error ? err.message : 'Error desconocido en la prueba.' 
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleTestAssetUpload = async () => {
+    setLoading(true);
+    setTestResult(null);
+    try {
+      // 1. Crear un pequeño blob de prueba (un cuadrado azul de 1x1 en canvas)
+      const canvas = document.createElement('canvas');
+      canvas.width = 100;
+      canvas.height = 100;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.fillStyle = '#3b82f6'; // Azul primario
+        ctx.fillRect(0, 0, 100, 100);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 12px Arial';
+        ctx.fillText('TEST UPLOAD', 10, 50);
+      }
+      
+      const blob = await new Promise<Blob>((resolve) => {
+        canvas.toBlob((b) => resolve(b || new Blob()), 'image/png');
+      });
+
+      // 2. Ejecutar upload con los IDs específicos solicitados
+      const result = await uploadAsset(blob, {
+        projectId: '5210c610-776e-4736-b3f6-5c176e9a771b',
+        siteId: '59a75271-2d5a-4c2f-9c8a-c6584b33b755',
+        webBuilderSiteId: '77042df2-0c01-46cd-8acc-e874ebade1e4',
+        assetType: 'image',
+        sourceApp: 'constructor_web',
+        fileName: `test-validation-${Date.now()}.png`,
+        contentType: 'image/png'
+      });
+
+      setTestResult({ 
+        success: true, 
+        message: '¡Subida centralizada validada exitosamente!',
+        data: result
+      });
+    } catch (err: any) {
+      console.error('Error en validación de subida:', err);
+      setTestResult({ 
+        success: false, 
+        message: err instanceof Error ? err.message : 'Error desconocido en la subida.' 
       });
     } finally {
       setLoading(false);
@@ -302,6 +350,18 @@ export const DataTab: React.FC<DataTabProps> = ({ projectId, currentUserId }) =>
                 {loading ? 'SINCRONIZANDO...' : 'EJECUTAR PRUEBA DE ALTA FIDELIDAD'}
               </button>
 
+              <div className="mt-4 pt-4 border-t border-border/10">
+                <p className="text-[10px] font-bold text-text/40 mb-4 uppercase tracking-wider">Validación Especial (App Madre)</p>
+                <button
+                  onClick={handleTestAssetUpload}
+                  disabled={loading}
+                  className="w-full bg-secondary text-text font-black py-3 rounded-xl border border-border/50 hover:bg-secondary/80 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+                >
+                  {loading ? <RefreshCw className="animate-spin" size={16} /> : <Cloud size={16} />}
+                  VALIDAR UPLOAD CENTRALIZADO
+                </button>
+              </div>
+
               {testResult && (
                 <div className={`mt-8 p-6 rounded-xl border-2 animate-in fade-in slide-in-from-top-2 ${
                   testResult.success 
@@ -312,7 +372,15 @@ export const DataTab: React.FC<DataTabProps> = ({ projectId, currentUserId }) =>
                     {testResult.success ? <CheckCircle2 size={24} /> : <AlertCircle size={24} />}
                     <span className="text-lg font-black uppercase">{testResult.success ? 'Diagnóstico Positivo' : 'Fallo de Handshake'}</span>
                   </div>
-                  <p className="text-sm leading-relaxed font-medium break-words opacity-80">{testResult.message}</p>
+                  <p className="text-sm leading-relaxed font-medium break-words opacity-80 mb-4">{testResult.message}</p>
+                  
+                  {testResult.data && (
+                    <div className="mt-4 p-3 bg-white/50 rounded-lg border border-current/10 font-mono text-[10px] space-y-1">
+                      <p><strong>Asset ID:</strong> {testResult.data.asset_id}</p>
+                      <p className="truncate"><strong>Public URL:</strong> <a href={testResult.data.public_url || testResult.data.url} target="_blank" rel="noreferrer" className="underline">{testResult.data.public_url || testResult.data.url}</a></p>
+                      <p><strong>Storage Path:</strong> {testResult.data.storage_path}</p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

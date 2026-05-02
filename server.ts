@@ -2,8 +2,6 @@ import express from "express";
 import path from "path";
 import { fileURLToPath } from "url";
 import { createServer as createViteServer } from "vite";
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
-import multer from "multer";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -11,9 +9,6 @@ const __dirname = path.dirname(__filename);
 async function startServer() {
   const app = express();
   const PORT = 3000;
-
-  // Configure multer for memory storage
-  const upload = multer({ storage: multer.memoryStorage() });
 
   app.use(express.json());
   
@@ -26,101 +21,6 @@ async function startServer() {
   // Health check
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
-  });
-
-  // API Route for Proxy Upload
-  app.post("/api/upload-proxy", upload.single("file"), async (req, res) => {
-    console.log(`[Server] Received upload-proxy request for ${req.body.fileName}`);
-    try {
-      // Prioritize server environment variables (secrets) over request body
-      const endpoint = process.env.STORAGE_ENDPOINT || process.env.VITE_STORAGE_ENDPOINT || req.body.endpoint;
-      const accessKey = process.env.STORAGE_ACCESS_KEY || process.env.VITE_STORAGE_ACCESS_KEY || req.body.accessKey;
-      const secretKey = process.env.STORAGE_SECRET_KEY || process.env.VITE_STORAGE_SECRET_KEY || req.body.secretKey;
-      const bucket = process.env.STORAGE_BUCKET || process.env.VITE_STORAGE_BUCKET || req.body.bucket;
-      
-      const { fileName, contentType } = req.body;
-      const file = req.file;
-
-      console.log(`[Server] Proxy Upload Start: ${fileName}`);
-      console.log(`[Server] Config: Bucket=${bucket}, Endpoint=${endpoint}`);
-      
-      if (!accessKey || !secretKey) {
-        console.error('[Server] CRITICAL ERROR: Missing storage credentials in environment variables.');
-        return res.status(500).json({ error: "Server storage credentials not configured." });
-      }
-
-      console.log(`[Proxy] Recibida petición de subida para: ${fileName}`);
-      console.log(`[Proxy] Configuración: endpoint=${endpoint}, bucket=${bucket}, hasAccessKey=${!!accessKey}`);
-
-      if (!file || !endpoint || !accessKey || !secretKey || !bucket || !fileName) {
-        const missing = [];
-        if (!file) missing.push("file");
-        if (!endpoint) missing.push("endpoint");
-        if (!accessKey) missing.push("accessKey");
-        if (!secretKey) missing.push("secretKey");
-        if (!bucket) missing.push("bucket");
-        if (!fileName) missing.push("fileName");
-        
-        return res.status(400).json({ 
-          error: `Missing required parameters: ${missing.join(", ")}`,
-          received: { endpoint, bucket, fileName, hasFile: !!file }
-        });
-      }
-
-      // DigitalOcean Spaces normalization: ensure we don't have the bucket in the endpoint
-      // and that it starts with https://
-      let cleanEndpoint = endpoint;
-      if (!cleanEndpoint.startsWith('http')) cleanEndpoint = `https://${cleanEndpoint}`;
-      
-      // If endpoint contains the bucket (e.g. bucket.nyc3.digitaloceanspaces.com), strip it for S3Client
-      const urlObj = new URL(cleanEndpoint);
-      if (urlObj.hostname.startsWith(`${bucket}.`)) {
-        urlObj.hostname = urlObj.hostname.replace(`${bucket}.`, '');
-        cleanEndpoint = urlObj.toString();
-      }
-
-      const client = new S3Client({
-        endpoint: cleanEndpoint,
-        region: "us-east-1", // DO Spaces uses us-east-1 for compatibility
-        credentials: {
-          accessKeyId: accessKey,
-          secretAccessKey: secretKey,
-        },
-        forcePathStyle: false, // DO Spaces usually uses virtual-host style
-      });
-
-      const command = new PutObjectCommand({
-        Bucket: bucket,
-        Key: fileName,
-        Body: file.buffer,
-        ContentType: contentType || file.mimetype,
-        ACL: "public-read",
-      });
-
-      console.log(`[Proxy] Ejecutando PutObjectCommand en bucket: ${bucket}, key: ${fileName}`);
-      await client.send(command);
-
-      // Construct public URL
-      // If endpoint is https://nyc3.digitaloceanspaces.com, URL is https://bucket.nyc3.digitaloceanspaces.com/key
-      const finalUrl = new URL(cleanEndpoint);
-      const publicUrl = `https://${bucket}.${finalUrl.hostname}/${fileName}`;
-
-      console.log(`[Proxy] Subida exitosa: ${publicUrl}`);
-      res.json({ url: publicUrl });
-    } catch (error: any) {
-      console.error("[Server] Upload proxy failed:", error);
-      
-      let errorMessage = error.message || "Upload failed";
-      if (error.Code === 'NoSuchBucket' || error.name === 'NoSuchBucket') {
-        errorMessage = `The specified bucket does not exist in this endpoint. Verified bucket: ${req.body.bucket || process.env.STORAGE_BUCKET}`;
-      } else if (error.Code === 'InvalidAccessKeyId' || error.name === 'InvalidAccessKeyId') {
-        errorMessage = "Invalid Access Key ID. Check your credentials.";
-      } else if (error.Code === 'SignatureDoesNotMatch' || error.name === 'SignatureDoesNotMatch') {
-        errorMessage = "Secret Access Key does not match. Check your credentials.";
-      }
-
-      res.status(500).json({ error: errorMessage });
-    }
   });
 
   // Pexels Proxy

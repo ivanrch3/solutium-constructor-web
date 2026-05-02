@@ -1,19 +1,17 @@
 import { getSupabase } from './supabaseClient';
 import { Asset } from '../types/schema';
-import { uploadToDO } from './doService';
+import { uploadAsset } from './assetsClient';
 import { logDebug } from '../utils/debug';
 
 const APP_NAME = 'Constructor Web';
 
+export interface SyncAssetResult {
+  url: string;
+  storagePath: string;
+}
+
 /**
- * Sincroniza un activo con Digital Ocean y Supabase siguiendo el estándar de Solutium.
- * 
- * @param entity El objeto de la entidad (ej: oferta, factura)
- * @param type El tipo de activo (ej: 'offer', 'invoice')
- * @param file El contenido del archivo
- * @param extension La extensión del archivo (sin punto, ej: 'pdf')
- * @param contentType El tipo MIME del archivo
- * @param assetDisplayName Nombre legible para el activo (ej: "Juan Pérez")
+ * Sincroniza un activo con la App Madre y Supabase siguiendo el estándar de Solutium.
  */
 export const syncAsset = async (
   entity: { id: string; projectId: string; status?: string; [key: string]: any },
@@ -22,11 +20,8 @@ export const syncAsset = async (
   extension: string,
   contentType: string,
   assetDisplayName?: string
-): Promise<string> => {
-  // Convención de rutas en Digital Ocean: [tipo_de_activo]s/[project_id]/[id_del_activo].[extensión]
-  const fileName = `${type}s/${entity.projectId}/${entity.id}.${extension}`;
-  
-  // Calcular tamaño en bytes
+): Promise<SyncAssetResult> => {
+  // Calcular tamaño en bytes para registro
   let fileSize = 0;
   if (file instanceof Blob) {
     fileSize = file.size;
@@ -36,12 +31,29 @@ export const syncAsset = async (
     fileSize = new Blob([file]).size;
   }
   
+  const fileName = `${entity.id}.${extension}`;
+  
   try {
-    logDebug(`[AssetService] Sincronizando activo: ${fileName} (${fileSize} bytes)`);
+    logDebug(`[AssetService] Sincronizando activo tipo ${type} (${fileSize} bytes)`);
     
-    // 1. Subir a Digital Ocean Spaces
-    const url = await uploadToDO(fileName, file, contentType);
-    logDebug(`[AssetService] Subida a DO exitosa: ${url}`);
+    // 1. Subir a través de la App Madre
+    let blob: Blob;
+    if (file instanceof Blob) {
+      blob = file;
+    } else {
+      blob = new Blob([file], { type: contentType });
+    }
+
+    const { public_url, storage_path } = await uploadAsset(blob, {
+      projectId: entity.projectId,
+      siteId: entity.metadata?.siteId,
+      webBuilderSiteId: entity.metadata?.webBuilderSiteId,
+      assetType: type as any,
+      fileName,
+      contentType
+    });
+
+    logDebug(`[AssetService] Subida a App Madre exitosa: ${public_url}`);
 
     // 2. Preparar datos para la tabla assets de Supabase
     const assetName = assetDisplayName 
@@ -54,10 +66,11 @@ export const syncAsset = async (
       origin_app: APP_NAME,
       name: assetName,
       type: type,
-      url: url,
+      url: public_url,
       size: fileSize,
       metadata: {
         assetName: assetName,
+        path: storage_path,
         ...entity.metadata
       },
       updated_at: new Date().toISOString()
@@ -76,7 +89,7 @@ export const syncAsset = async (
     }
 
     logDebug('[AssetService] Registro en Supabase exitoso');
-    return url;
+    return { url: public_url, storagePath: storage_path };
   } catch (error: any) {
     console.error('Error detallado en syncAsset:', error);
     

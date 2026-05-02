@@ -1520,12 +1520,12 @@ const formatTimestampName = () => {
         setTimeout(() => setSaveStatus('idle'), 3000);
 
         // --- BACKGROUND TASK: Capture Preview ---
-        // We do this in background to not block the main UI feedback
         (async () => {
           try {
-            const preview = await captureAndUploadPreview(projectId, siteId);
+            const webBuilderSiteId = initialPage?.id;
+            const preview = await captureAndUploadPreview(projectId, siteId, webBuilderSiteId);
             if (preview) {
-              await saveWebBuilderSiteDraft({
+              const result = await saveWebBuilderSiteDraft({
                 projectId,
                 siteId: siteId,
                 previewImageUrl: preview.url,
@@ -1533,10 +1533,14 @@ const formatTimestampName = () => {
                 previewImageHash: preview.hash,
                 previewImageUpdatedAt: preview.updatedAt
               });
-              logDebug('[Preview] Preview updated successfully after save');
+              logDebug('[PREVIEW_CAPTURE_DEBUG] Preview updated in web_builder_sites:', { 
+                siteId, 
+                success: !!result,
+                url: preview.url 
+              });
             }
           } catch (pError) {
-            console.error('[Preview] Error in background capture:', pError);
+            console.error('[PREVIEW_CAPTURE_DEBUG] Error en capture background (Save):', pError);
           }
         })();
       } else {
@@ -1675,9 +1679,9 @@ const formatTimestampName = () => {
         // --- BACKGROUND TASK: Capture Preview ---
         (async () => {
           try {
-            const preview = await captureAndUploadPreview(projectId, siteId);
+            const webBuilderSiteId = initialPage?.id;
+            const preview = await captureAndUploadPreview(projectId, siteId, webBuilderSiteId);
             if (preview) {
-              // Update both draft and published records
               const previewData = {
                 previewImageUrl: preview.url,
                 previewImagePath: preview.path,
@@ -1685,14 +1689,19 @@ const formatTimestampName = () => {
                 previewImageUpdatedAt: preview.updatedAt
               };
               
-              await Promise.all([
+              const [draftRes, publishRes] = await Promise.all([
                 saveWebBuilderSiteDraft({ projectId, siteId: siteId, ...previewData }),
                 publishWebBuilderSite({ projectId, siteId: siteId, ...previewData })
               ]);
-              logDebug('[Preview] Preview updated successfully after publish');
+              
+              logDebug('[PREVIEW_CAPTURE_DEBUG] Preview updated in all records after Publish:', {
+                draftSuccess: !!draftRes,
+                publishSuccess: !!publishRes,
+                url: preview.url
+              });
             }
           } catch (pError) {
-            console.error('[Preview] Error in background capture:', pError);
+            console.error('[PREVIEW_CAPTURE_DEBUG] Error en capture background (Publish):', pError);
           }
         })();
       } else {
@@ -1745,7 +1754,8 @@ const formatTimestampName = () => {
     if (!projectId || isPreviewMode) return;
     setPreviewStatus('loading');
     try {
-      const preview = await captureAndUploadPreview(projectId, currentSiteId);
+      const webBuilderSiteId = initialPage?.id;
+      const preview = await captureAndUploadPreview(projectId, currentSiteId, webBuilderSiteId);
       if (preview) {
         const previewData = {
           previewImageUrl: preview.url,

@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { startHandshake } from './services/handshakeService';
 import { configService } from './services/configService';
 import { initSupabase } from './services/supabaseClient';
-import { initDOClient } from './services/doService';
 import { getProfile, getProject, getWebBuilderSites, getPublishedSites, renameWebBuilderSite } from './services/dataService';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { Sidebar } from './components/Sidebar';
@@ -197,15 +196,6 @@ const AppContent: React.FC = () => {
         }
         link.href = handshakeFavicon;
       }
-
-      // Configuration fallbacks from environment with more variants (SIP v5.4)
-      const finalEndpoint = payload.do_endpoint || payload.STORAGE_ENDPOINT || payload.storage_endpoint || import.meta.env.VITE_STORAGE_ENDPOINT || (import.meta as any).env?.STORAGE_ENDPOINT || '';
-      const finalAccessKey = payload.do_access_key || payload.STORAGE_ACCESS_KEY || payload.storage_access_key || import.meta.env.VITE_STORAGE_ACCESS_KEY || (import.meta as any).env?.STORAGE_ACCESS_KEY || '';
-      const finalSecretKey = payload.do_secret_key || payload.STORAGE_SECRET_KEY || payload.storage_secret_key || import.meta.env.VITE_STORAGE_SECRET_KEY || (import.meta as any).env?.STORAGE_SECRET_KEY || '';
-      const finalBucket = payload.do_bucket || payload.STORAGE_BUCKET || payload.storage_bucket || import.meta.env.VITE_STORAGE_BUCKET || (import.meta as any).env?.STORAGE_BUCKET || '';
-
-      // Initialize storage service even with empty strings to allow server-side secrets fallback
-      initDOClient(finalEndpoint, finalAccessKey, finalSecretKey, finalBucket);
 
       if (payload.projectId || projectId) {
         const finalProjectId = payload.projectId || projectId;
@@ -429,12 +419,6 @@ const AppContent: React.FC = () => {
                   'https://placeholder-project.supabase.co',
                   'placeholder-key',
                   'placeholder-token'
-                );
-                initDOClient(
-                  import.meta.env.VITE_STORAGE_ENDPOINT || 'nyc3.digitaloceanspaces.com',
-                  import.meta.env.VITE_STORAGE_ACCESS_KEY || 'mock-key',
-                  import.meta.env.VITE_STORAGE_SECRET_KEY || 'mock-secret',
-                  import.meta.env.VITE_STORAGE_BUCKET || 'mock-bucket'
                 );
                 setProjectId('dev-project-id');
                 setProfile({

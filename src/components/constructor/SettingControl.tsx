@@ -150,9 +150,9 @@ export const SettingControl: React.FC<SettingControlProps> = ({
     setIsUploading(true);
     try {
       const extension = file.name.split('.').pop() || 'png';
-      const url = await syncAsset(
-        { id: `asset_${Date.now()}`, projectId },
-        'web_builder_asset',
+      const { url } = await syncAsset(
+        { id: `asset_${Date.now()}`, projectId, metadata: { fileName: file.name } },
+        'image',
         file,
         extension,
         file.type,
@@ -269,14 +269,24 @@ export const SettingControl: React.FC<SettingControlProps> = ({
 
             <div className="flex gap-2">
               <div className="flex-1">
-                <div className="group relative">
-                  <div className="flex items-center justify-center gap-2 py-2 px-3 border border-dashed border-border/50 rounded-xl text-[10px] font-bold bg-secondary/30 text-text/20 cursor-not-allowed">
-                    <Upload size={12} />
-                    Subir Archivo (Desactivado)
-                  </div>
-                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-secondary/80 rounded-xl">
-                    <span className="text-[9px] font-bold text-text/60">Subida desactivada temporalmente</span>
-                  </div>
+                <div className="relative">
+                   <button 
+                    disabled={isUploading || isDisabled}
+                    className="w-full flex items-center justify-center gap-2 py-2 px-3 border border-dashed border-border rounded-xl text-[10px] font-bold bg-secondary/30 text-text/60 hover:bg-secondary/50 hover:border-primary/30 transition-all overflow-hidden"
+                  >
+                    {isUploading ? (
+                      <Loader2 size={12} className="animate-spin text-primary" />
+                    ) : (
+                      <Upload size={12} />
+                    )}
+                    {isUploading ? 'Subiendo...' : 'Subir Archivo'}
+                    <input 
+                      type="file" 
+                      accept="image/*"
+                      onChange={handleFileChange}
+                      className="absolute inset-0 opacity-0 cursor-pointer disabled:cursor-not-allowed"
+                    />
+                  </button>
                 </div>
               </div>
               {currentValue && (

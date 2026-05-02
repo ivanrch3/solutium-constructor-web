@@ -31,8 +31,6 @@ export const RotatingText: React.FC<RotatingTextProps> = ({
 }) => {
   const [index, setIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
-  const [fontSizeScale, setFontSizeScale] = useState(1);
-  const wordRef = React.useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
     if (index >= options.length) {
@@ -71,38 +69,6 @@ export const RotatingText: React.FC<RotatingTextProps> = ({
   const currentVariant = variants[animationType] || variants.fade;
   const currentOptionValue = options[index] || '';
 
-  // Logic for Auto-Fitting long words on mobile (Solutium v8.3)
-  useEffect(() => {
-    const measureAndScale = () => {
-      if (!wordRef.current) return;
-      
-      // Calculate available width (90% of viewport width or parent container if we had a reliable ref)
-      // We use viewport width as a safe boundary for mobile
-      const viewportPadding = 48; // px
-      const availableWidth = window.innerWidth - viewportPadding;
-      
-      // Reset scale to measure true width
-      wordRef.current.style.fontSize = '1em';
-      const actualWidth = wordRef.current.offsetWidth;
-      
-      if (actualWidth > availableWidth) {
-        const ratio = availableWidth / actualWidth;
-        setFontSizeScale(Math.max(0.4, ratio)); // Min scale 0.4 to keep it legible
-      } else {
-        setFontSizeScale(1);
-      }
-    };
-
-    // Small delay to ensure text is rendered (especially with typewriter or fade)
-    const timeout = setTimeout(measureAndScale, 50);
-    
-    window.addEventListener('resize', measureAndScale);
-    return () => {
-      clearTimeout(timeout);
-      window.removeEventListener('resize', measureAndScale);
-    };
-  }, [index, options, currentOptionValue]);
-
   const isSafeGradient = gradient && !String(gradient).includes('NaN');
   const textStyle: React.CSSProperties = {
     color: isSafeGradient ? 'transparent' : color,
@@ -131,41 +97,100 @@ export const RotatingText: React.FC<RotatingTextProps> = ({
         <AnimatePresence mode="wait">
           <motion.span
             key={`${index}-${currentOptionValue}`}
-            ref={wordRef}
             initial={currentVariant.initial}
             animate={currentVariant.animate}
             exit={currentVariant.exit}
             transition={{ duration: 0.5, ease: "easeOut" }}
-            style={{
-              ...textStyle,
-              fontSize: fontSizeScale < 1 ? `${fontSizeScale}em` : 'inherit',
-              lineHeight: 1.1
-            }}
-            className="whitespace-nowrap inline-block"
+            className="whitespace-nowrap inline-flex items-baseline"
           >
-            {moduleId ? (
-              <InlineEditableText
-                moduleId={moduleId}
-                elementId={`${moduleId}_el_hero_typography`}
-                settingId="rotating_options"
-                value={currentOptionValue}
-                isPreviewMode={isPreviewMode}
-                onSave={(val) => {
-                  onSaveOption?.(index, val);
-                  setIsPaused(false);
-                }}
-                tagName="span"
-                onClick={(e) => {
-                  setIsPaused(true);
-                  // Ensure we select the element too
-                }}
-              />
-            ) : (
-              currentOptionValue
-            )}
+            <ScaledOption 
+              value={currentOptionValue}
+              index={index}
+              moduleId={moduleId}
+              isPreviewMode={isPreviewMode}
+              onSaveOption={onSaveOption}
+              style={textStyle}
+              setIsPaused={setIsPaused}
+            />
           </motion.span>
         </AnimatePresence>
       </div>
     </div>
+  );
+};
+
+/**
+ * ScaledOption handles the auto-fit scaling logic for individual words.
+ * Moving this to a sub-component ensures measurement happens correctly 
+ * when the word is actually mounted during transitions.
+ */
+const ScaledOption: React.FC<{
+  value: string;
+  index: number;
+  moduleId?: string;
+  isPreviewMode: boolean;
+  onSaveOption?: (index: number, val: string) => void;
+  style: React.CSSProperties;
+  setIsPaused: (paused: boolean) => void;
+}> = ({ value, index, moduleId, isPreviewMode, onSaveOption, style, setIsPaused }) => {
+  const [scale, setScale] = useState(1);
+  const ref = React.useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    const measure = () => {
+      if (!ref.current) return;
+      
+      const viewportPadding = 48; 
+      const availableWidth = window.innerWidth - viewportPadding;
+      
+      const originalFS = ref.current.style.fontSize;
+      ref.current.style.fontSize = '1em';
+      const actualWidth = ref.current.offsetWidth;
+      ref.current.style.fontSize = originalFS;
+
+      if (actualWidth > availableWidth) {
+        setScale(Math.max(0.4, availableWidth / actualWidth));
+      } else {
+        setScale(1);
+      }
+    };
+
+    const timeout = setTimeout(measure, 50);
+    window.addEventListener('resize', measure);
+    
+    return () => {
+      clearTimeout(timeout);
+      window.removeEventListener('resize', measure);
+    };
+  }, [value]);
+
+  return (
+    <span 
+      ref={ref}
+      style={{
+        ...style,
+        fontSize: scale < 1 ? `${scale}em` : 'inherit',
+        lineHeight: 1.1
+      }}
+      className="inline-block"
+    >
+      {moduleId ? (
+        <InlineEditableText
+          moduleId={moduleId}
+          elementId={`${moduleId}_el_hero_typography`}
+          settingId="rotating_options"
+          value={value}
+          isPreviewMode={isPreviewMode}
+          onSave={(val) => {
+            onSaveOption?.(index, val);
+            setIsPaused(false);
+          }}
+          tagName="span"
+          onClick={() => setIsPaused(true)}
+        />
+      ) : (
+        value
+      )}
+    </span>
   );
 };

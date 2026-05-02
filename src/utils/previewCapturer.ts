@@ -57,7 +57,11 @@ export const captureAndUploadPreview = async (
 
     const rect = element.getBoundingClientRect();
     stats.targetFound = true;
-    stats.targetSize = `${Math.round(rect.width)}x${Math.round(rect.height)}`;
+    stats.targetClientWidth = element.clientWidth;
+    stats.targetClientHeight = element.clientHeight;
+    stats.targetScrollWidth = element.scrollWidth;
+    stats.targetScrollHeight = element.scrollHeight;
+    stats.captureMode = 'thumbnail'; // Default 1440x900 above the fold
 
     // Helper para esperar a que todas las imágenes del contenedor carguen y manejar CORS
     const waitForImages = async (container: HTMLElement) => {
@@ -118,30 +122,63 @@ export const captureAndUploadPreview = async (
 
     // 2. Generar Screenshot
     element.classList.add('capturing-preview');
+    
+    // Guardar estilos originales para restaurar
+    const originalStyle = {
+      width: element.style.width,
+      height: element.style.height,
+      minHeight: element.style.minHeight,
+      transform: element.style.transform,
+      overflow: element.style.overflow,
+      maxWidth: element.style.maxWidth,
+      border: element.style.border,
+      boxShadow: element.style.boxShadow,
+      borderRadius: element.style.borderRadius
+    };
+
     let dataUrl = '';
     let captureMethod = 'html-to-image';
+    const captureWidth = 1440;
+    const captureHeight = 900;
+    stats.captureWidth = captureWidth;
+    stats.captureHeight = captureHeight;
 
     try {
       // Intentar primero con html-to-image (evitando cssRules problemáticos y embedding de fuentes)
       dataUrl = await toPng(element, {
         cacheBust: true,
-        fontEmbedCSS: '', // CRITICAL: EVITA EL ERROR DE CSSRULES CON GOOGLE FONTS EXTERNOS
-        skipFonts: true,  // No intentar embeber fuentes externas que causan errores de seguridad
+        width: captureWidth,
+        height: captureHeight,
+        fontEmbedCSS: '', 
+        skipFonts: true,
+        style: {
+          transform: 'scale(1)',
+          width: `${captureWidth}px`,
+          maxWidth: 'none',
+          height: 'auto',
+          minHeight: `${captureHeight}px`,
+          overflow: 'visible',
+          border: 'none',
+          boxShadow: 'none',
+          borderRadius: '0',
+          margin: '0',
+          padding: '0'
+        },
         filter: (node) => {
           if (node instanceof HTMLElement) {
             // Excluir elementos marcados explícitamente para no aparecer en preview
             const noPreview = node.getAttribute('data-no-preview') === 'true';
             const isEditorUI = node.classList.contains('editor-ui-overlay') || 
                              node.classList.contains('property-panel') ||
-                             node.classList.contains('add-module-divider');
+                             node.classList.contains('add-module-divider') ||
+                             node.classList.contains('selection-indicator');
             return !noPreview && !isEditorUI;
           }
           return true;
         },
-        quality: 0.85,
+        quality: 0.95,
         pixelRatio: 1.0,
         backgroundColor: '#ffffff',
-        // Placeholder en caso de que alguna imagen falle por CORS
         imagePlaceholder: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg=='
       });
     } catch (err: any) {
@@ -153,10 +190,25 @@ export const captureAndUploadPreview = async (
         allowTaint: true,
         backgroundColor: '#ffffff',
         scale: 1,
+        width: captureWidth,
+        height: captureHeight,
+        windowWidth: captureWidth,
+        windowHeight: captureHeight,
         logging: false,
         onclone: (clonedDoc) => {
           const el = clonedDoc.querySelector(selector) as HTMLElement;
-          if (el) el.classList.add('capturing-preview');
+          if (el) {
+            el.classList.add('capturing-preview');
+            el.style.width = `${captureWidth}px`;
+            el.style.maxWidth = 'none';
+            el.style.height = 'auto';
+            el.style.minHeight = `${captureHeight}px`;
+            el.style.transform = 'scale(1)';
+            el.style.overflow = 'visible';
+            el.style.border = 'none';
+            el.style.boxShadow = 'none';
+            el.style.borderRadius = '0';
+          }
         },
         ignoreElements: (node) => {
            if (node instanceof HTMLElement) {
@@ -171,6 +223,17 @@ export const captureAndUploadPreview = async (
       dataUrl = canvas.toDataURL('image/png');
     } finally {
       element.classList.remove('capturing-preview');
+      // Restaurar estilos
+      element.style.width = originalStyle.width;
+      element.style.height = originalStyle.height;
+      element.style.minHeight = originalStyle.minHeight;
+      element.style.transform = originalStyle.transform;
+      element.style.overflow = originalStyle.overflow;
+      element.style.maxWidth = originalStyle.maxWidth;
+      element.style.border = originalStyle.border;
+      element.style.boxShadow = originalStyle.boxShadow;
+      element.style.borderRadius = originalStyle.borderRadius;
+      
       // Restaurar imágenes originales
       originalSources.forEach((src, img) => {
         img.src = src;

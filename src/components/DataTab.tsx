@@ -34,9 +34,14 @@ export const DataTab: React.FC<DataTabProps> = ({ projectId, currentUserId }) =>
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
-  const [testResult, setTestResult] = useState<{ success: boolean; message: string; data?: any } | null>(null);
+  const [testResult, setTestResult] = useState<{ success: boolean; message: string; data?: any; debug?: any } | null>(null);
   const [storageStatus, setStorageStatus] = useState<boolean>(false);
   const pageSize = 12; // Adjusted for grid layout
+
+  const isStaging = window.location.hostname.includes('ondigitalocean.app') || window.location.hostname.includes('staging') || window.location.hostname.includes('ais-dev');
+  const apiMadreUrl = import.meta.env.VITE_APP_MADRE_API_URL || '';
+  const isApiProduction = apiMadreUrl.includes('solutium.app') && !apiMadreUrl.includes('staging') && !apiMadreUrl.includes('ondigitalocean');
+  const envMismatch = isStaging && isApiProduction;
 
   const fetchData = async (tab: SubTab, pageIndex: number) => {
     if (!projectId || !currentUserId) {
@@ -134,7 +139,16 @@ export const DataTab: React.FC<DataTabProps> = ({ projectId, currentUserId }) =>
     setLoading(true);
     setTestResult(null);
     try {
-      // 1. Crear un pequeño blob de prueba (un cuadrado azul de 1x1 en canvas)
+      const debugInfo = {
+        apiBase: apiMadreUrl,
+        projectId: '5210c610-776e-4736-b3f6-5c176e9a771b',
+        siteId: '59a75271-2d5a-4c2f-9c8a-c6584b33b755',
+        webBuilderSiteId: '77042df2-0c01-46cd-8acc-e874ebade1e4',
+        environment: isStaging ? 'Staging/Dev' : 'Production',
+        host: window.location.hostname
+      };
+
+      // 1. Crear un pequeño blob de prueba
       const canvas = document.createElement('canvas');
       canvas.width = 100;
       canvas.height = 100;
@@ -165,13 +179,19 @@ export const DataTab: React.FC<DataTabProps> = ({ projectId, currentUserId }) =>
       setTestResult({ 
         success: true, 
         message: '¡Subida centralizada validada exitosamente!',
-        data: result
+        data: result,
+        debug: debugInfo
       });
     } catch (err: any) {
       console.error('Error en validación de subida:', err);
       setTestResult({ 
         success: false, 
-        message: err instanceof Error ? err.message : 'Error desconocido en la subida.' 
+        message: err instanceof Error ? err.message : 'Error desconocido en la subida.',
+        debug: {
+          apiBase: apiMadreUrl,
+          host: window.location.hostname,
+          error: err.message || err
+        }
       });
     } finally {
       setLoading(false);
@@ -352,6 +372,16 @@ export const DataTab: React.FC<DataTabProps> = ({ projectId, currentUserId }) =>
 
               <div className="mt-4 pt-4 border-t border-border/10">
                 <p className="text-[10px] font-bold text-text/40 mb-4 uppercase tracking-wider">Validación Especial (App Madre)</p>
+                
+                {envMismatch && (
+                  <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2 text-amber-800">
+                    <AlertCircle size={14} className="mt-0.5 shrink-0" />
+                    <p className="text-[10px] font-medium">
+                      <span className="font-bold">Aviso de Ambiente:</span> Estás en Constructor staging pero el API apunta a producción. Verifica VITE_APP_MADRE_API_URL.
+                    </p>
+                  </div>
+                )}
+
                 <button
                   onClick={handleTestAssetUpload}
                   disabled={loading}
@@ -379,6 +409,15 @@ export const DataTab: React.FC<DataTabProps> = ({ projectId, currentUserId }) =>
                       <p><strong>Asset ID:</strong> {testResult.data.asset_id}</p>
                       <p className="truncate"><strong>Public URL:</strong> <a href={testResult.data.public_url || testResult.data.url} target="_blank" rel="noreferrer" className="underline">{testResult.data.public_url || testResult.data.url}</a></p>
                       <p><strong>Storage Path:</strong> {testResult.data.storage_path}</p>
+                    </div>
+                  )}
+
+                  {testResult.debug && (
+                    <div className="mt-2 p-3 bg-black/5 rounded-lg border border-current/5 font-mono text-[9px] text-text/60 space-y-1 overflow-hidden">
+                      <p className="font-bold uppercase mb-1">Debug Info:</p>
+                      <p className="truncate">API: {testResult.debug.apiBase || 'No definida'}</p>
+                      <p>Env: {testResult.debug.environment}</p>
+                      <p>Host: {testResult.debug.host}</p>
                     </div>
                   )}
                 </div>

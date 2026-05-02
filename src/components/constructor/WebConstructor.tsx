@@ -1319,10 +1319,17 @@ const formatTimestampName = () => {
           draftEnabled: currentState.settingsValues?.[`${module.id}_el_hero_typography_rotating_enabled`],
           draftFixed: currentState.settingsValues?.[`${module.id}_el_hero_typography_rotating_fixed`],
           draftOptions: currentState.settingsValues?.[`${module.id}_el_hero_typography_rotating_options`],
+          draftSpeed: currentState.settingsValues?.[`${module.id}_el_hero_typography_rotating_speed`],
+          draftAnim: currentState.settingsValues?.[`${module.id}_el_hero_typography_rotating_anim`],
+          draftColor: currentState.settingsValues?.[`${module.id}_el_hero_typography_rotating_color`],
+          draftGradient: currentState.settingsValues?.[`${module.id}_el_hero_typography_rotating_gradient`],
+
           contractEnabled: content.is_rotating_active,
           contractFixed: content.texto_base,
           contractOptions: content.palabras_efecto,
-          settingsOptions: settings.el_hero_typography_rotating_options
+          contractSpeed: content.intervalo_ms,
+          settingsOptions: settings.el_hero_typography_rotating_options,
+          settingsSpeed: settings.el_hero_typography_rotating_speed
         });
 
         return {

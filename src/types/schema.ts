@@ -234,7 +234,7 @@ export interface EngineEvolutionBuffer {
   id?: string;
   project_id: string;
   feature_request: string;
-  context: any;
+  metadata: any;
   status: 'pending' | 'applied' | 'rejected';
   created_at?: string;
 }

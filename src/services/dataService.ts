@@ -788,7 +788,7 @@ export async function logEvolutionRequest(feature: string, context: any): Promis
     const payload: EngineEvolutionBuffer = {
       project_id: userData.user.id,
       feature_request: feature,
-      context,
+      metadata: context,
       status: 'pending'
     };
 

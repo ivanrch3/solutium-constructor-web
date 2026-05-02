@@ -46,6 +46,7 @@ import { StructurePanel } from './StructurePanel';
 import { TopBar } from './TopBar';
 import { Canvas } from './Canvas';
 import { GlobalSettingsPanel } from './GlobalSettingsPanel';
+import { captureAndUploadPreview } from '../../utils/previewCapturer';
 import { 
   MobileBottomNav, 
   UnsavedChangesModal, 
@@ -231,6 +232,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [publishStatus, setPublishStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [previewStatus, setPreviewStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [currentStatus, setCurrentStatus] = useState<'draft' | 'published' | 'modified'>(() => {
     if (initialPage && 'status' in initialPage) {
       return (initialPage as any).status || 'draft';
@@ -538,14 +540,29 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   const updateEditorState = (updater: (prev: EditorState) => EditorState) => {
     setEditorState(prev => {
       const next = updater(prev);
-      if (next !== prev && !isInitialLoad.current) setHasUnsavedChanges(true);
+      if (next !== prev && !isInitialLoad.current) {
+        // Only mark as dirty if functional editor state changed (SIP v7.5)
+        const dataChanged = 
+          next.addedModules !== prev.addedModules || 
+          next.settingsValues !== prev.settingsValues;
+
+        if (dataChanged) {
+          setHasUnsavedChanges(true);
+          setSaveStatus('idle');
+          setPublishStatus('idle');
+        }
+      }
       return next;
     });
   };
 
   const updateSiteName = (name: string) => {
     setSiteName(name);
-    if (!isInitialLoad.current) setHasUnsavedChanges(true);
+    if (!isInitialLoad.current) {
+      setHasUnsavedChanges(true);
+      setSaveStatus('idle');
+      setPublishStatus('idle');
+    }
   };
 
   // Synchronize local editorState TO store siteContent whenever it changes
@@ -1501,6 +1518,27 @@ const formatTimestampName = () => {
         });
 
         setTimeout(() => setSaveStatus('idle'), 3000);
+
+        // --- BACKGROUND TASK: Capture Preview ---
+        // We do this in background to not block the main UI feedback
+        (async () => {
+          try {
+            const preview = await captureAndUploadPreview(projectId, siteId);
+            if (preview) {
+              await saveWebBuilderSiteDraft({
+                projectId,
+                siteId: siteId,
+                previewImageUrl: preview.url,
+                previewImagePath: preview.path,
+                previewImageHash: preview.hash,
+                previewImageUpdatedAt: preview.updatedAt
+              });
+              logDebug('[Preview] Preview updated successfully after save');
+            }
+          } catch (pError) {
+            console.error('[Preview] Error in background capture:', pError);
+          }
+        })();
       } else {
         throw new Error('Error al guardar el borrador');
       }
@@ -1631,6 +1669,32 @@ const formatTimestampName = () => {
           status: 'published',
           timestamp: new Date().toISOString()
         });
+
+        setTimeout(() => setPublishStatus('idle'), 3000);
+
+        // --- BACKGROUND TASK: Capture Preview ---
+        (async () => {
+          try {
+            const preview = await captureAndUploadPreview(projectId, siteId);
+            if (preview) {
+              // Update both draft and published records
+              const previewData = {
+                previewImageUrl: preview.url,
+                previewImagePath: preview.path,
+                previewImageHash: preview.hash,
+                previewImageUpdatedAt: preview.updatedAt
+              };
+              
+              await Promise.all([
+                saveWebBuilderSiteDraft({ projectId, siteId: siteId, ...previewData }),
+                publishWebBuilderSite({ projectId, siteId: siteId, ...previewData })
+              ]);
+              logDebug('[Preview] Preview updated successfully after publish');
+            }
+          } catch (pError) {
+            console.error('[Preview] Error in background capture:', pError);
+          }
+        })();
       } else {
         throw new Error('Error al publicar el sitio');
       }
@@ -1675,6 +1739,35 @@ const formatTimestampName = () => {
     url.searchParams.set('mode', 'preview');
     url.searchParams.set('site_id', currentSiteId);
     window.open(url.toString(), '_blank');
+  };
+
+  const handleUpdatePreview = async () => {
+    if (!projectId || isPreviewMode) return;
+    setPreviewStatus('loading');
+    try {
+      const preview = await captureAndUploadPreview(projectId, currentSiteId);
+      if (preview) {
+        const previewData = {
+          previewImageUrl: preview.url,
+          previewImagePath: preview.path,
+          previewImageHash: preview.hash,
+          previewImageUpdatedAt: preview.updatedAt
+        };
+        
+        await saveWebBuilderSiteDraft({ projectId, siteId: currentSiteId, ...previewData });
+        if (currentStatus === 'published' || currentStatus === 'modified') {
+          await publishWebBuilderSite({ projectId, siteId: currentSiteId, ...previewData });
+        }
+        setPreviewStatus('success');
+        setTimeout(() => setPreviewStatus('idle'), 3000);
+      } else {
+        throw new Error('No se pudo generar la vista previa. Asegúrate de que el canvas sea visible.');
+      }
+    } catch (error) {
+      console.error('Manual preview update failed:', error);
+      setPreviewStatus('error');
+      setTimeout(() => setPreviewStatus('idle'), 3000);
+    }
   };
 
   return (
@@ -1879,6 +1972,7 @@ const formatTimestampName = () => {
                       onSave={handleSaveDraft} 
                       onPublish={handlePublish} 
                       onReload={handleReload}
+                      onUpdatePreview={handleUpdatePreview}
                       logoUrl={logoUrl}
                       viewport={viewport}
                       setViewport={setViewport}
@@ -1886,6 +1980,7 @@ const formatTimestampName = () => {
                       setIsFullscreen={setIsFullscreen}
                       saveStatus={saveStatus}
                       publishStatus={publishStatus}
+                      previewStatus={previewStatus}
                       isMobile={false}
                       isPreviewMode={isPreviewMode}
                       hasUnsavedChanges={hasUnsavedChanges}

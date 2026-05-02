@@ -89,24 +89,31 @@ export const Dashboard: React.FC<DashboardProps> = ({
                           siteName: page.siteName,
                           source: 'created_pages_list'
                         });
-                        logDebug('[OPEN_SAVED_SITE_ID_RESOLUTION_DEBUG]', {
-                          clickedId: page.siteId,
-                          clickedRecordId: page.id,
-                          clickedRecordSiteId: page.siteId,
-                          usingForEditor: page.id,
-                          mistakenSiteIdUsage: page.id === page.siteId
-                        });
                         onSelectPage(page);
                       }}
-                      className="flex items-center justify-between p-3.5 rounded-xl border border-border hover:border-primary/30 hover:bg-primary/5 transition-all group text-left"
+                      className="flex items-center justify-between p-3 rounded-xl border border-border hover:border-primary/30 hover:bg-primary/5 transition-all group text-left"
                     >
                       <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${
-                          isPublished ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-600'
+                        <div className={`w-14 h-10 rounded-lg flex items-center justify-center transition-colors overflow-hidden border border-border/40 shrink-0 ${
+                          isPublished ? 'bg-green-50 text-green-600' : 'bg-amber-50 text-amber-600'
                         }`}>
-                          <FileText className="w-5 h-5" />
+                          {page.previewImageUrl ? (
+                            <img 
+                              src={page.previewImageUrl} 
+                              alt={page.siteName} 
+                              className="w-full h-full object-cover" 
+                              referrerPolicy="no-referrer"
+                              onError={(e) => {
+                                // Fallback if image fails to load
+                                (e.target as HTMLImageElement).style.display = 'none';
+                                (e.target as HTMLImageElement).parentElement?.classList.add('flex-col');
+                              }}
+                            />
+                          ) : (
+                            <FileText className="w-5 h-5 opacity-40" />
+                          )}
                         </div>
-                        <div>
+                        <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
                             {editingSiteId === page.siteId ? (
                               <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>

@@ -394,6 +394,10 @@ export const saveWebBuilderSiteDraft = async (site: Partial<WebBuilderSite>): Pr
       name: site.name || site.siteName || 'Mi Sitio Web',
       content_draft: site.contentDraft,
       status: site.status || 'draft',
+      preview_image_url: site.previewImageUrl,
+      preview_image_path: site.previewImagePath,
+      preview_image_updated_at: site.previewImageUpdatedAt,
+      preview_image_hash: site.previewImageHash,
       origin_app: 'Constructor Web',
       updated_at: new Date().toISOString()
     };
@@ -420,6 +424,10 @@ export const saveWebBuilderSiteDraft = async (site: Partial<WebBuilderSite>): Pr
       status: data.status,
       createdAt: data.created_at,
       updatedAt: data.updated_at,
+      previewImageUrl: data.preview_image_url,
+      previewImagePath: data.preview_image_path,
+      previewImageUpdatedAt: data.preview_image_updated_at,
+      previewImageHash: data.preview_image_hash,
     };
 
     return validateData(webBuilderSiteSchema, mapped, 'saveWebBuilderSiteDraft');
@@ -447,6 +455,10 @@ export const publishWebBuilderSite = async (site: Partial<PublishedSite>): Promi
         site_name: site.siteName || 'Mi Sitio Web',
         content_published: site.content,
         status: 'published',
+        preview_image_url: site.previewImageUrl,
+        preview_image_path: site.previewImagePath,
+        preview_image_updated_at: site.previewImageUpdatedAt,
+        preview_image_hash: site.previewImageHash,
         origin_app: 'Constructor Web',
         updated_at: now
       }, { onConflict: 'site_id' })
@@ -464,6 +476,10 @@ export const publishWebBuilderSite = async (site: Partial<PublishedSite>): Promi
       user_id: userData.user?.id,
       is_active: true,
       content: site.content,
+      preview_image_url: site.previewImageUrl,
+      preview_image_path: site.previewImagePath,
+      preview_image_updated_at: site.previewImageUpdatedAt,
+      preview_image_hash: site.previewImageHash,
       metadata: { 
         ...(site.metadata || {}), 
         site_id: site.siteId,
@@ -499,6 +515,10 @@ export const publishWebBuilderSite = async (site: Partial<PublishedSite>): Promi
       metadata: data.metadata,
       createdAt: data.created_at,
       updatedAt: data.updated_at,
+      previewImageUrl: data.preview_image_url,
+      previewImagePath: data.preview_image_path,
+      previewImageUpdatedAt: data.preview_image_updated_at,
+      previewImageHash: data.preview_image_hash,
     };
 
     return validateData(publishedSiteSchema, mapped, 'publishWebBuilderSite');
@@ -534,6 +554,10 @@ export const getWebBuilderSites = async (projectId: string): Promise<WebBuilderS
       status: item.status,
       createdAt: item.created_at,
       updatedAt: item.updated_at,
+      previewImageUrl: item.preview_image_url,
+      previewImagePath: item.preview_image_path,
+      previewImageUpdatedAt: item.preview_image_updated_at,
+      previewImageHash: item.preview_image_hash,
     }));
 
     return mappedData
@@ -570,6 +594,10 @@ export const getPublishedSites = async (projectId: string): Promise<PublishedSit
       metadata: item.metadata,
       createdAt: item.created_at,
       updatedAt: item.updated_at,
+      previewImageUrl: item.preview_image_url,
+      previewImagePath: item.preview_image_path,
+      previewImageUpdatedAt: item.preview_image_updated_at,
+      previewImageHash: item.preview_image_hash,
     }));
 
     return mappedData

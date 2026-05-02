@@ -159,6 +159,11 @@ export interface WebBuilderSite {
   status: 'draft' | 'published' | 'modified';
   createdAt?: string;
   updatedAt?: string;
+  // Visual Preview Fields
+  previewImageUrl?: string;
+  previewImagePath?: string;
+  previewImageUpdatedAt?: string;
+  previewImageHash?: string;
 }
 
 export interface RenderingContract {
@@ -192,6 +197,11 @@ export interface PublishedSite {
   metadata?: any;
   createdAt?: string;
   updatedAt?: string;
+  // Visual Preview Fields
+  previewImageUrl?: string;
+  previewImagePath?: string;
+  previewImageUpdatedAt?: string;
+  previewImageHash?: string;
 }
 
 export interface Asset {

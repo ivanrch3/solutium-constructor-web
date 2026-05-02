@@ -153,6 +153,7 @@ export const Canvas: React.FC<CanvasProps> = ({
       )}
       <div className={`flex justify-center min-h-full transition-all duration-500 ${isFullscreen ? 'p-12 pt-24' : isPreviewMode ? 'p-0' : 'p-12'}`}>
         <div 
+          id="constructor-canvas-render"
           className={`bg-surface relative transition-all duration-500 ease-in-out @container ${
             isPreviewMode ? 'w-full max-w-none border-none rounded-none shadow-none' : 
             isFullscreen ? 'rounded-3xl border border-border/50 shadow-2xl' : 'rounded-2xl border border-border/50 shadow-2xl'

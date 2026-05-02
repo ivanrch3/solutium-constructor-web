@@ -10,7 +10,8 @@ import {
   Check, 
   X, 
   Save, 
-  Send 
+  Send,
+  Image as ImageIcon
 } from 'lucide-react';
 import { motion } from 'motion/react';
 
@@ -18,6 +19,7 @@ interface TopBarProps {
   onSave: () => void;
   onPublish: () => void;
   onReload: () => void;
+  onUpdatePreview?: () => void;
   logoUrl: string | null;
   viewport: 'desktop' | 'tablet' | 'mobile';
   setViewport: (v: 'desktop' | 'tablet' | 'mobile') => void;
@@ -25,6 +27,7 @@ interface TopBarProps {
   setIsFullscreen: (f: boolean) => void;
   saveStatus: 'idle' | 'loading' | 'success' | 'error';
   publishStatus: 'idle' | 'loading' | 'success' | 'error';
+  previewStatus?: 'idle' | 'loading' | 'success' | 'error';
   isMobile: boolean;
   isPreviewMode: boolean;
   hasUnsavedChanges?: boolean;
@@ -36,6 +39,7 @@ export const TopBar: React.FC<TopBarProps> = ({
   onSave, 
   onPublish, 
   onReload,
+  onUpdatePreview,
   logoUrl,
   viewport,
   setViewport,
@@ -43,6 +47,7 @@ export const TopBar: React.FC<TopBarProps> = ({
   setIsFullscreen,
   saveStatus,
   publishStatus,
+  previewStatus = 'idle',
   isMobile,
   isPreviewMode,
   hasUnsavedChanges = false,
@@ -112,6 +117,25 @@ export const TopBar: React.FC<TopBarProps> = ({
             >
               <RotateCcw size={16} />
             </button>
+            {onUpdatePreview && (
+              <button 
+                onClick={onUpdatePreview}
+                disabled={previewStatus === 'loading'}
+                className={`p-2 rounded-lg transition-all relative ${
+                  previewStatus === 'success' ? 'text-green-600 bg-green-50' : 
+                  previewStatus === 'error' ? 'text-red-600 bg-red-50' : 
+                  'text-text/60 hover:text-primary hover:bg-secondary'
+                }`}
+                title="Actualizar Vista Previa"
+              >
+                {previewStatus === 'loading' ? (
+                  <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: "linear" }}>
+                    <RotateCcw size={16} />
+                  </motion.div>
+                ) : <ImageIcon size={16} />}
+                {previewStatus === 'success' && <div className="absolute top-1 right-1 w-2 h-2 bg-green-500 rounded-full border border-white" />}
+              </button>
+            )}
             <button 
               onClick={() => setIsFullscreen(!isFullscreen)}
               className={`p-2 rounded-lg transition-all ${isFullscreen ? 'text-primary bg-primary/10' : 'text-text/60 hover:text-primary hover:bg-secondary'}`}

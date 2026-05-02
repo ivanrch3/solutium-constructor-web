@@ -137,6 +137,10 @@ export const webBuilderSiteSchema = z.object({
   status: z.enum(['draft', 'published', 'modified']),
   createdAt: z.string().optional().nullable(),
   updatedAt: z.string().optional().nullable(),
+  previewImageUrl: z.string().optional().nullable(),
+  previewImagePath: z.string().optional().nullable(),
+  previewImageUpdatedAt: z.string().optional().nullable(),
+  previewImageHash: z.string().optional().nullable(),
 });
 
 export const publishedSiteSchema = z.object({
@@ -150,6 +154,10 @@ export const publishedSiteSchema = z.object({
   metadata: z.any().optional().nullable(),
   createdAt: z.string().optional().nullable(),
   updatedAt: z.string().optional().nullable(),
+  previewImageUrl: z.string().optional().nullable(),
+  previewImagePath: z.string().optional().nullable(),
+  previewImageUpdatedAt: z.string().optional().nullable(),
+  previewImageHash: z.string().optional().nullable(),
 });
 
 export const assetSchema = z.object({

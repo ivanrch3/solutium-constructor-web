@@ -276,6 +276,23 @@ export const Canvas: React.FC<CanvasProps> = ({
                   ...moduleOverrides 
                 };
 
+                console.log('[CANVAS_MENU_DETECTION_DEBUG]', {
+                  moduleId: section.id,
+                  moduleType: section.type,
+                  moduleTipo: (section as any).tipo,
+                  willRenderAsMenu:
+                    section.type === 'menu' ||
+                    section.type === 'navegacion' ||
+                    (section as any).tipo === 'menu' ||
+                    (section as any).tipo === 'navegacion',
+                  hasMenuLinks: Boolean(finalSettings?.[`${section.id}_el_menu_items_links`]),
+                  linksCount: Array.isArray(finalSettings?.[`${section.id}_el_menu_items_links`])
+                    ? finalSettings?.[`${section.id}_el_menu_items_links`].length
+                    : null,
+                  logoText: finalSettings?.[`${section.id}_el_menu_logo_logo_text`],
+                  logoType: finalSettings?.[`${section.id}_el_menu_logo_logo_type`]
+                });
+
                 return (
                   <div 
                     key={section.id} 
@@ -425,7 +442,7 @@ export const Canvas: React.FC<CanvasProps> = ({
                         isPreviewMode={isPreviewMode}
                       />
                     )}
-                    {(section.type === 'navegacion' || section.type === 'menu') && (section.templateId === 'mod_menu_1' || section.id.startsWith('mod_menu_1')) && (
+                    {(section.type === 'navegacion' || section.type === 'menu') && (
                       <MenuModule 
                         moduleId={section.id}
                         settingsValues={finalSettings}

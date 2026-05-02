@@ -27,6 +27,20 @@ export const MenuModule: React.FC<{
 
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
 
+  console.log('[MENU_PREVIEW_RENDER_DEBUG]', {
+    moduleId,
+    isPreviewMode,
+    logoType: getVal(`${moduleId}_el_menu_logo`, 'logo_type', 'image'),
+    logoText: getVal(`${moduleId}_el_menu_logo`, 'logo_text', 'MI MARCA'),
+    linksCount: links.length,
+    firstLink: links[0],
+    position: getVal(null, 'position', getVal(null, 'sticky', false) ? 'sticky' : 'relative'),
+    sticky: getVal(null, 'sticky', false),
+    rawLinks: settingsValues[`${moduleId}_el_menu_items_links`],
+    rawLogoText: settingsValues[`${moduleId}_el_menu_logo_logo_text`],
+    rawLogoType: settingsValues[`${moduleId}_el_menu_logo_logo_type`]
+  });
+
   // Scroll Spy Logic
   useEffect(() => {
     if (!isPreviewMode) return;

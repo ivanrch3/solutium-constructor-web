@@ -150,7 +150,7 @@ export const HeroModule: React.FC<{
 
   const rotatingOptions = normalizeRotatingItems(rawRotatingOptions);
 
-  console.log('[HERO_DYNAMIC_TEXT_DEBUG]', {
+  logDebug('[HERO_DYNAMIC_TEXT_DEBUG]', {
     moduleId,
     rotatingEnabled,
     rotatingFixed,

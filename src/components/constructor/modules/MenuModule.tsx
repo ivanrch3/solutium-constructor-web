@@ -5,6 +5,7 @@ import { Menu as HamburgerIcon, X as CloseIcon, Info, Sparkles, Link } from 'luc
 import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
 import { InlineEditableText } from '../InlineEditableText';
 import { useEditorStore } from '../../../store/editorStore';
+import { logDebug } from '../../../utils/debug';
 
 export const MenuModule: React.FC<{ 
   moduleId: string, 
@@ -46,7 +47,7 @@ export const MenuModule: React.FC<{
 
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
 
-  console.log('[MENU_PUBLIC_LAYOUT_DEBUG]', {
+  logDebug('[MENU_PUBLIC_LAYOUT_DEBUG]', {
     moduleId,
     isPreviewMode,
     windowWidth: typeof window !== 'undefined' ? window.innerWidth : null,
@@ -67,7 +68,7 @@ export const MenuModule: React.FC<{
     rawLayout: settingsValues?.[`${moduleId}_global_layout`]
   });
 
-  console.log('[MENU_LOGO_SOURCE_DEBUG]', {
+  logDebug('[MENU_LOGO_SOURCE_DEBUG]', {
     moduleId,
     logoType,
     logoImg,

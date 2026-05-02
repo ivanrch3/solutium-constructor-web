@@ -51,6 +51,7 @@ const AnimatedPrice: React.FC<{ value: number, color: string, size: string, weig
 
 import { InlineEditableText } from '../InlineEditableText';
 import { useEditorStore } from '../../../store/editorStore';
+import { logDebug } from '../../../utils/debug';
 
 import { GLOBAL_ANIMATIONS, getGlobalAnimation } from '../../../constants/animations';
 
@@ -143,7 +144,7 @@ export const PricingModule: React.FC<{
 
   const plansSettings = settingsValues[`${moduleId}_el_pricing_plans_plans`] || settingsValues[`${moduleId}_global_plans`];
   
-  console.log('[PRICING_PLANS_SOURCE_DEBUG]', {
+  logDebug('[PRICING_PLANS_SOURCE_DEBUG]', {
     moduleId,
     directPlans: settingsValues[`${moduleId}_el_pricing_plans_plans`],
     globalPlans: settingsValues[`${moduleId}_global_plans`],
@@ -193,7 +194,7 @@ export const PricingModule: React.FC<{
   const rawLayout = settingsValues?.[`${moduleId}_global_layout`];
   const rawGap = settingsValues?.[`${moduleId}_global_gap`];
 
-  console.log('[PRICING_RENDER_DEBUG]', {
+  logDebug('[PRICING_RENDER_DEBUG]', {
     moduleId,
     title: headerTitle,
     subtitle: headerSubtitle,

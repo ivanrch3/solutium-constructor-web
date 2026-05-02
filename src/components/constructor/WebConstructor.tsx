@@ -1313,7 +1313,7 @@ const formatTimestampName = () => {
           };
         }
 
-        console.log('[HERO_DYNAMIC_PUBLISH_DEBUG]', {
+        logDebug('[HERO_DYNAMIC_PUBLISH_DEBUG]', {
           moduleId: module.id,
           tipo,
           draftEnabled: currentState.settingsValues?.[`${module.id}_el_hero_typography_rotating_enabled`],

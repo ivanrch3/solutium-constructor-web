@@ -11,6 +11,7 @@ import { EditorState, WebModule } from '../../types/constructor';
 import { Product, Customer } from '../../types/schema';
 import { useEditorStore } from '../../store/editorStore';
 import { isDarkColor } from './utils';
+import { logDebug } from '../../utils/debug';
 import { ProductsModule } from './modules/ProductsModule';
 import { HeroModule } from './modules/HeroModule';
 import { FeaturesModule } from './modules/FeaturesModule';
@@ -276,7 +277,7 @@ export const Canvas: React.FC<CanvasProps> = ({
                   ...moduleOverrides 
                 };
 
-                console.log('[CANVAS_MENU_DETECTION_DEBUG]', {
+                logDebug('[CANVAS_MENU_DETECTION_DEBUG]', {
                   moduleId: section.id,
                   moduleType: section.type,
                   moduleTipo: (section as any).tipo,

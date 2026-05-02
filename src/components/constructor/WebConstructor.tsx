@@ -1742,6 +1742,21 @@ const formatTimestampName = () => {
     window.open(url.toString(), '_blank');
   };
 
+  // --- AUTO CAPTURE PROTOCOL ---
+  useEffect(() => {
+    if (projectId && currentSiteId) {
+      const shouldAutoCapture = sessionStorage.getItem(`auto_capture_${currentSiteId}`) === 'true';
+      if (shouldAutoCapture) {
+        logDebug(`[AUTO_CAPTURE] Detectada bandera para sitio: ${currentSiteId}. Iniciando captura automática...`);
+        sessionStorage.removeItem(`auto_capture_${currentSiteId}`);
+        // Esperamos un momento a que el canvas se hidrate completamente
+        setTimeout(() => {
+          handleUpdatePreview();
+        }, 1500);
+      }
+    }
+  }, [projectId, currentSiteId, currentStatus]);
+
   const handleUpdatePreview = async () => {
     if (!projectId || isPreviewMode) return;
     setPreviewStatus('loading');
@@ -1756,7 +1771,16 @@ const formatTimestampName = () => {
           previewImageHash: preview.hash,
         };
         
-        await updateSitePreview(currentSiteId, previewData);
+        const success = await updateSitePreview(currentSiteId, previewData);
+        
+        const isDebug = new URLSearchParams(window.location.search).get('debug_render') === 'true';
+        if (isDebug) {
+          logDebug('[PREVIEW_CAPTURE_DEBUG] DB Updated', {
+            siteId: currentSiteId,
+            success,
+            previewData
+          });
+        }
         
         setPreviewStatus('success');
         setTimeout(() => setPreviewStatus('idle'), 3000);

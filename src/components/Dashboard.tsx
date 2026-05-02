@@ -78,6 +78,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 {pages.map((page) => {
                   const status = (page as any).status || (!('contentDraft' in page) ? 'published' : 'draft');
                   const isPublished = status === 'published' || status === 'modified';
+                  const isDebug = new URLSearchParams(window.location.search).get('debug_render') === 'true';
                   
                   return (
                     <button
@@ -93,7 +94,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       }}
                       className="flex items-center justify-between p-3 rounded-xl border border-border hover:border-primary/30 hover:bg-primary/5 transition-all group text-left"
                     >
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 shrink-0 min-w-0">
                         <div className={`w-14 h-10 rounded-lg flex items-center justify-center transition-colors overflow-hidden border border-border/40 shrink-0 ${
                           isPublished ? 'bg-green-50 text-green-600' : 'bg-amber-50 text-amber-600'
                         }`}>
@@ -121,7 +122,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                   type="text"
                                   value={tempName}
                                   onChange={(e) => setTempName(e.target.value)}
-                                  className="text-sm font-bold bg-secondary border border-primary/30 rounded px-2 py-0.5 outline-none focus:ring-1 focus:ring-primary/50"
+                                  className="text-sm font-bold bg-secondary border border-primary/30 rounded px-2 py-0.5 outline-none focus:ring-1 focus:ring-primary/50 w-full"
                                   autoFocus
                                   onKeyDown={(e) => {
                                     if (e.key === 'Enter') {
@@ -150,7 +151,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                               </div>
                             ) : (
                               <>
-                                <h3 className="text-base font-bold text-text group-hover:text-primary transition-colors">
+                                <h3 className="text-base font-bold text-text group-hover:text-primary transition-colors truncate">
                                   {page.siteName || 'Sin nombre'}
                                 </h3>
                                 <button 
@@ -165,7 +166,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                 </button>
                               </>
                             )}
-                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold uppercase ${
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold uppercase shrink-0 ${
                               status === 'published' ? 'bg-green-100 text-green-700' : 
                               status === 'modified' ? 'bg-blue-100 text-blue-700' : 
                               'bg-amber-100 text-amber-700'
@@ -173,20 +174,33 @@ export const Dashboard: React.FC<DashboardProps> = ({
                               {status === 'published' ? 'Publicado' : status === 'modified' ? 'Modificado' : 'Borrador'}
                             </span>
                           </div>
-                          <p className="text-xs text-text/80 font-medium">
+                          <p className="text-xs text-text/80 font-medium truncate">
                             Actualizado el {new Date(page.updatedAt || '').toLocaleString([], { day: 'numeric', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1 ml-2">
+                        {(isDebug || true) && (
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              // Guardar en sessionStorage que este sitio requiere captura automática al abrirse
+                              sessionStorage.setItem(`auto_capture_${page.siteId}`, 'true');
+                              onSelectPage(page);
+                            }}
+                            className="p-2 text-text/20 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all"
+                            title="Actualizar preview"
+                          >
+                            <Eye size={16} />
+                          </button>
+                        )}
                         <button 
                           onClick={(e) => handlePreview(e, page.siteId || '')}
                           className="p-2 text-text/30 hover:text-primary transition-all"
                           title="Previsualizar"
                         >
-                          <Eye className="w-4 h-4" />
+                          <ExternalLink className="w-4 h-4" />
                         </button>
-                        <ExternalLink className="w-4 h-4 text-text/50 group-hover:text-primary transition-colors" />
                       </div>
                     </button>
                   );

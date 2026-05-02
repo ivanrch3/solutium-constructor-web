@@ -121,19 +121,23 @@ export const TopBar: React.FC<TopBarProps> = ({
               <button 
                 onClick={onUpdatePreview}
                 disabled={previewStatus === 'loading'}
-                className={`p-2 rounded-lg transition-all relative ${
-                  previewStatus === 'success' ? 'text-green-600 bg-green-50' : 
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-xl transition-all relative ${
+                  previewStatus === 'success' ? 'text-green-600 bg-green-50 animate-pulse' : 
                   previewStatus === 'error' ? 'text-red-600 bg-red-50' : 
-                  'text-text/60 hover:text-primary hover:bg-secondary'
+                  previewStatus === 'loading' ? 'bg-secondary text-primary' :
+                  'text-text/60 hover:text-primary hover:bg-secondary border border-transparent hover:border-primary/20'
                 }`}
-                title="Actualizar Vista Previa"
+                title="Actualizar Vista Previa (Screenshot)"
               >
                 {previewStatus === 'loading' ? (
                   <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: "linear" }}>
                     <RotateCcw size={16} />
                   </motion.div>
                 ) : <ImageIcon size={16} />}
-                {previewStatus === 'success' && <div className="absolute top-1 right-1 w-2 h-2 bg-green-500 rounded-full border border-white" />}
+                <span className="text-[10px] font-bold uppercase tracking-tight hidden md:block">
+                  {previewStatus === 'loading' ? 'Capturando...' : 'Actualizar Preview'}
+                </span>
+                {previewStatus === 'success' && <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white shadow-sm" />}
               </button>
             )}
             <button 

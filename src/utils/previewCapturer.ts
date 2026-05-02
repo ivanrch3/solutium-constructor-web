@@ -20,17 +20,43 @@ export const captureAndUploadPreview = async (
 ): Promise<PreviewResult | null> => {
   try {
     const element = document.querySelector(selector) as HTMLElement;
+    const isDebug = new URLSearchParams(window.location.search).get('debug_render') === 'true';
+
+    // Helper para esperar a que todas las imágenes del contenedor carguen
+    const waitForImages = async (container: HTMLElement) => {
+      const images = Array.from(container.querySelectorAll('img'));
+      const promises = images.map(img => {
+        if (img.complete) return Promise.resolve();
+        return new Promise(resolve => {
+          img.onload = resolve;
+          img.onerror = resolve;
+        });
+      });
+      await Promise.all(promises);
+    };
+
     if (!element) {
-      logDebug(`[PREVIEW_CAPTURE_DEBUG] Error: Elemento con selector ${selector} no encontrado.`);
+      if (isDebug) logDebug(`[PREVIEW_CAPTURE_DEBUG] { targetFound: false, selector: "${selector}" }`);
       return null;
     }
 
-    logDebug(`[PREVIEW_CAPTURE_DEBUG] Iniciando captura para sitio ${siteId}...`);
+    const rect = element.getBoundingClientRect();
+    const stats: any = {
+      targetFound: true,
+      targetSize: `${Math.round(rect.width)}x${Math.round(rect.height)}`,
+      siteId
+    };
 
     // 1. Esperar a que carguen las fuentes y un delay de render
     if (document.fonts) {
       await document.fonts.ready;
+      stats.fontsReady = true;
     }
+    
+    // Esperar a que carguen las imágenes
+    await waitForImages(element);
+    stats.imagesReady = true;
+
     await new Promise(resolve => setTimeout(resolve, 600));
 
     // 2. Generar Screenshot usando html-to-image
@@ -61,13 +87,12 @@ export const captureAndUploadPreview = async (
     // 3. Convertir dataUrl a Blob
     const fetchResponse = await fetch(dataUrl);
     const blob = await fetchResponse.blob();
+    stats.blobSize = `${(blob.size / 1024).toFixed(2)} KB`;
 
     // 4. Subir vía assetsClient (Upload Centralizado)
     const timestamp = Date.now();
     const hash = `v${timestamp}`;
     const fileName = `preview-${siteId}.png`;
-    
-    logDebug(`[PREVIEW_CAPTURE_DEBUG] Subiendo asset centralizado...`);
     
     const result = await uploadAsset(blob, {
       projectId,
@@ -82,7 +107,11 @@ export const captureAndUploadPreview = async (
     const previewUrl = result.public_url || (result as any).url;
     const storagePath = result.storage_path;
 
-    logDebug(`[PREVIEW_CAPTURE_DEBUG] Captura exitosa. URL: ${previewUrl}`);
+    stats.uploadSuccess = !!previewUrl;
+    stats.publicUrl = previewUrl;
+    stats.storagePath = storagePath;
+
+    if (isDebug) logDebug(`[PREVIEW_CAPTURE_DEBUG]`, stats);
 
     return {
       url: previewUrl,

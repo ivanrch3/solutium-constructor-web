@@ -69,68 +69,109 @@ const isCanvasBlank = (canvas: HTMLCanvasElement): { isBlank: boolean, whiteRati
 };
 
 /**
- * Revierte colores oklch() a rgb() para compatibilidad con html2canvas
+ * Sanatiza colores modernos (oklch, oklab, lab, lch, color, color-mix) a rgb() para compatibilidad con html2canvas
  */
-const sanitizeOklchColors = (root: HTMLElement) => {
+const sanitizeModernColors = (root: HTMLElement) => {
   const elements = Array.from(root.querySelectorAll('*'));
-  elements.push(root); // Incluir el root mismo
+  elements.push(root); 
+
+  const debug: any = {
+    unsupportedFound: {
+      oklch: 0, oklab: 0, lab: 0, lch: 0, color: 0, colorMix: 0
+    },
+    affectedElements: 0,
+    affectedVars: 0
+  };
+
+  const UNSUPPORTED_COLOR_FN_RE = /\b(oklch|oklab|lab|lch|color|color-mix)\(/i;
   
-  let sanitizedCount = 0;
-  const oklchProperties = [
+  const propertiesToSanitize = [
     'color', 'background-color', 'border-top-color', 'border-right-color', 
     'border-bottom-color', 'border-left-color', 'outline-color', 
-    'text-decoration-color', 'fill', 'stroke'
+    'text-decoration-color', 'fill', 'stroke', 'box-shadow', 'text-shadow',
+    'filter', 'backdrop-filter', 'accent-color', 'caret-color'
   ];
 
-  // Helper para convertir oklch a rgb usando el motor del navegador
   const convertColor = (val: string): string | null => {
-    if (!val || !val.includes('oklch')) return null;
+    if (!val || !UNSUPPORTED_COLOR_FN_RE.test(val)) return null;
+    
+    // Contar para debug
+    if (val.includes('oklch')) debug.unsupportedFound.oklch++;
+    if (val.includes('oklab')) debug.unsupportedFound.oklab++;
+    if (val.includes('lab(')) debug.unsupportedFound.lab++;
+    if (val.includes('lch(')) debug.unsupportedFound.lch++;
+    if (val.includes('color(')) debug.unsupportedFound.color++;
+    if (val.includes('color-mix(')) debug.unsupportedFound.colorMix++;
+
     const temp = document.createElement('div');
     temp.style.color = val;
     document.body.appendChild(temp);
     const rgb = getComputedStyle(temp).color;
     document.body.removeChild(temp);
-    // Si sigue siendo oklch, el navegador no hizo la conversión automática en computed style (raro en navegadores modernos)
-    return (rgb && !rgb.includes('oklch')) ? rgb : null;
+    
+    return (rgb && !UNSUPPORTED_COLOR_FN_RE.test(rgb)) ? rgb : null;
   };
 
   elements.forEach((el) => {
     const htmlEl = el as HTMLElement;
     const computed = window.getComputedStyle(htmlEl);
+    let elementAffected = false;
+
+    // 1. Sanear inline styles si existen
+    const inlineStyle = htmlEl.getAttribute('style');
+    if (inlineStyle && UNSUPPORTED_COLOR_FN_RE.test(inlineStyle)) {
+       // Si el inline style tiene basuras, el computed style lo reflejará, 
+       // pero html2canvas a veces lee directo el atributo.
+       // No intentamos un parse complejo, mejor dejamos que el loop de propiedades lo pise.
+    }
     
-    oklchProperties.forEach(prop => {
+    // 2. Sanear propiedades computadas
+    propertiesToSanitize.forEach(prop => {
       const val = computed.getPropertyValue(prop);
-      if (val && val.includes('oklch')) {
+      if (val && UNSUPPORTED_COLOR_FN_RE.test(val)) {
         const rgb = convertColor(val);
         if (rgb) {
           htmlEl.style.setProperty(prop, rgb, 'important');
-          sanitizedCount++;
+          elementAffected = true;
         } else {
-          // Fallback manual si falla la conversión del navegador
-          if (prop === 'color' || prop === 'fill' || prop === 'stroke') {
+          // Fallback agresivo para evitar errores de parseo en la librería
+          if (prop.includes('shadow') || prop.includes('filter')) {
+            htmlEl.style.setProperty(prop, 'none', 'important');
+          } else if (prop === 'color' || prop === 'fill' || prop === 'stroke') {
             htmlEl.style.setProperty(prop, '#0f172a', 'important');
           } else {
-            htmlEl.style.setProperty(prop, 'rgba(0,0,0,0)', 'important');
+            htmlEl.style.setProperty(prop, 'transparent', 'important');
+          }
+          elementAffected = true;
+        }
+      }
+    });
+
+    // 3. Sanear variables CSS
+    // Recorremos todas las variables definidas en este elemento
+    const styleObj = (htmlEl as any).style;
+    if (styleObj) {
+      // Nota: getComputedStyle(htmlEl) devuelve variables también
+      for (let i = 0; i < computed.length; i++) {
+        const propName = computed[i];
+        if (propName.startsWith('--')) {
+          const val = computed.getPropertyValue(propName);
+          if (val && UNSUPPORTED_COLOR_FN_RE.test(val)) {
+            const rgb = convertColor(val);
+            if (rgb) {
+              htmlEl.style.setProperty(propName, rgb, 'important');
+              debug.affectedVars++;
+              elementAffected = true;
+            }
           }
         }
       }
-    });
+    }
 
-    // También sanear variables CSS comunes que podrían tener oklch
-    const commonVars = ['--background', '--foreground', '--primary', '--primary-foreground', '--border', '--ring', '--muted', '--muted-foreground', '--accent', '--accent-foreground'];
-    commonVars.forEach(v => {
-      const val = computed.getPropertyValue(v);
-      if (val && val.includes('oklch')) {
-        const rgb = convertColor(val);
-        if (rgb) {
-          htmlEl.style.setProperty(v, rgb, 'important');
-          sanitizedCount++;
-        }
-      }
-    });
+    if (elementAffected) debug.affectedElements++;
   });
 
-  return sanitizedCount;
+  return debug;
 };
 
 /**
@@ -262,9 +303,12 @@ export const capturePreview = async (
       }
     });
 
-    // 4. Desactivar animaciones y saneamiento de estilos
-    const oklchSanitized = sanitizeOklchColors(clone);
-    stats.oklchSanitizedCount = oklchSanitized;
+    // 4. Desactivar animaciones y saneamiento de estilos robusto
+    const colorSanitization = sanitizeModernColors(clone);
+    stats.colorSanitization = colorSanitization;
+
+    const isDebugColors = new URLSearchParams(window.location.search).get('debug_colors') === 'true';
+    if (isDebugColors) logDebug(`[PREVIEW_COLOR_SANITIZE_DEBUG]`, colorSanitization);
 
     const allElements = clone.querySelectorAll('*');
     allElements.forEach(el => {

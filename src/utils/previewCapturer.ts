@@ -218,7 +218,7 @@ export const capturePreview = async (
       top: '0',
       width: '1440px',
       height: '900px',
-      backgroundColor: 'white',
+      backgroundColor: '#ffffff',
       overflow: 'hidden',
       zIndex: '-2000', // Detrás de todo el bloque de edición
       visibility: 'visible',
@@ -227,21 +227,22 @@ export const capturePreview = async (
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
-      justifyContent: 'flex-start'
+      justifyContent: 'center' // CENTRAR EL CONTENIDO EN EL CANVAS DE EXPORTACIÓN
     });
     document.body.appendChild(frame);
 
     // 2. Clonar el elemento
     const clone = element.cloneNode(true) as HTMLElement;
     
-    // Forzar estilos base en el clon para composición perfecta 16:9
+    // Forzar estilos base en el clon para composición DESKTOP (Split layout etc)
     Object.assign(clone.style, {
       width: '1440px',
-      maxWidth: 'none',
+      minWidth: '1440px',
+      maxWidth: '1440px',
       height: 'auto',
       minHeight: '900px',
       transform: 'none',
-      margin: '0 auto',
+      margin: '0',
       padding: '0',
       display: 'block',
       position: 'relative',
@@ -253,7 +254,7 @@ export const capturePreview = async (
     });
 
     // Limpiar UI del editor en el clon
-    const noise = clone.querySelectorAll('.editor-ui-overlay, .property-panel, .add-module-divider, .selection-indicator, [data-no-preview="true"]');
+    const noise = clone.querySelectorAll('.editor-ui-overlay, .property-panel, .add-module-divider, .selection-indicator, [data-no-preview="true"], .resizer-handle, .selection-border');
     noise.forEach(n => n.remove());
 
     frame.appendChild(clone);
@@ -310,17 +311,42 @@ export const capturePreview = async (
     const isDebugColors = new URLSearchParams(window.location.search).get('debug_colors') === 'true';
     if (isDebugColors) logDebug(`[PREVIEW_COLOR_SANITIZE_DEBUG]`, colorSanitization);
 
+    // Congelar estados dinámicos (Texto rotativo, animaciones)
     const allElements = clone.querySelectorAll('*');
     allElements.forEach(el => {
       const htmlEl = el as HTMLElement;
+      
+      // Congelar animaciones CSS
       htmlEl.style.transition = 'none';
       htmlEl.style.animation = 'none';
-      htmlEl.style.opacity = '1';
-      htmlEl.style.transform = 'none';
+      
+      // Congelar motion properties
+      if (htmlEl.style.opacity === '0') htmlEl.style.opacity = '1';
+      if (htmlEl.style.visibility === 'hidden') htmlEl.style.visibility = 'visible';
+      
+      // Si es un motion.span o similar que está a mitad de camino
+      const transform = window.getComputedStyle(htmlEl).transform;
+      if (transform && transform !== 'none') {
+        htmlEl.style.transform = 'none';
+      }
+    });
+
+    // Específico para RotatingText: Buscar el primer item y forzar su visibilidad
+    const rotatingContainers = clone.querySelectorAll('.relative.inline-block.overflow-hidden');
+    rotatingContainers.forEach(container => {
+      // Intentar encontrar el motion.span dentro
+      const spans = container.querySelectorAll('span');
+      spans.forEach(span => {
+        const s = span as HTMLElement;
+        s.style.opacity = '1';
+        s.style.transform = 'none';
+        s.style.display = 'inline-block';
+        s.style.position = 'relative';
+      });
     });
 
     if (document.fonts) await document.fonts.ready;
-    await new Promise(resolve => setTimeout(resolve, 1200)); // Un poco más de tiempo para que se aplique el style inline secundario
+    await new Promise(resolve => setTimeout(resolve, 1500)); // Más tiempo para estabilidad de layout desktop
 
     // 5. Captura Real con html2canvas
     const canvas = await html2canvas(frame, {

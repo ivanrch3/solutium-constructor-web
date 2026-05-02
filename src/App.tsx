@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { startHandshake } from './services/handshakeService';
 import { configService } from './services/configService';
 import { initSupabase } from './services/supabaseClient';
+import { captureAuthToken } from './services/authTokenProvider';
 import { getProfile, getProject, getWebBuilderSites, getPublishedSites, renameWebBuilderSite } from './services/dataService';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { Sidebar } from './components/Sidebar';

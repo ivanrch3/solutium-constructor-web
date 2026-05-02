@@ -1,6 +1,6 @@
 import { toPng } from 'html-to-image';
 import { logDebug } from './debug';
-import { syncAsset } from '../services/assetService';
+import { uploadAsset } from '../services/assetsClient';
 
 export interface PreviewResult {
   url: string;
@@ -10,7 +10,7 @@ export interface PreviewResult {
 }
 
 /**
- * Captura una imagen del Canvas y la sube al sistema de activos.
+ * Captura una imagen del Canvas y la sube al sistema de activos de la App Madre.
  */
 export const captureAndUploadPreview = async (
   projectId: string,
@@ -34,6 +34,8 @@ export const captureAndUploadPreview = async (
     await new Promise(resolve => setTimeout(resolve, 600));
 
     // 2. Generar Screenshot usando html-to-image
+    element.classList.add('capturing-preview');
+    
     const dataUrl = await toPng(element, {
       cacheBust: true,
       filter: (node) => {
@@ -41,43 +43,44 @@ export const captureAndUploadPreview = async (
           // Excluir elementos marcados explícitamente para no aparecer en preview
           const noPreview = node.getAttribute('data-no-preview') === 'true';
           const isEditorUI = node.classList.contains('editor-ui-overlay') || 
-                           node.classList.contains('property-panel');
+                           node.classList.contains('property-panel') ||
+                           node.classList.contains('add-module-divider');
           return !noPreview && !isEditorUI;
         }
         return true;
       },
       quality: 0.85,
-      pixelRatio: 1.2, // Balance entre calidad y peso
+      pixelRatio: 1.0, // Reducimos a 1.0 para evitar archivos pesados en preview
       backgroundColor: '#ffffff'
     });
+
+    element.classList.remove('capturing-preview');
 
     logDebug(`[PREVIEW_CAPTURE_DEBUG] Screenshot generado (length: ${dataUrl.length}). Convirtiendo a blob...`);
 
     // 3. Convertir dataUrl a Blob
-    const response = await fetch(dataUrl);
-    const blob = await response.blob();
+    const fetchResponse = await fetch(dataUrl);
+    const blob = await fetchResponse.blob();
 
-    // 4. Subir vía assetService
+    // 4. Subir vía assetsClient (Upload Centralizado)
     const timestamp = Date.now();
     const hash = `v${timestamp}`;
-    const extension = 'png';
-    const contentType = 'image/png';
+    const fileName = `preview-${siteId}.png`;
     
-    logDebug(`[PREVIEW_CAPTURE_DEBUG] Subiendo asset...`);
+    logDebug(`[PREVIEW_CAPTURE_DEBUG] Subiendo asset centralizado...`);
     
-    // El assetService.syncAsset sube el archivo y devuelve la URL pública y el path
-    const { url: previewUrl, storagePath } = await syncAsset(
-      { 
-        id: `${siteId}-preview-v${timestamp}`, 
-        projectId,
-        metadata: { siteId, webBuilderSiteId, type: 'preview', timestamp } 
-      },
-      'preview', 
-      blob,
-      extension,
-      contentType,
-      `Preview for Site: ${siteId}`
-    );
+    const result = await uploadAsset(blob, {
+      projectId,
+      siteId,
+      webBuilderSiteId,
+      assetType: 'preview',
+      sourceApp: 'constructor_web',
+      fileName,
+      contentType: 'image/png'
+    });
+
+    const previewUrl = result.public_url || (result as any).url;
+    const storagePath = result.storage_path;
 
     logDebug(`[PREVIEW_CAPTURE_DEBUG] Captura exitosa. URL: ${previewUrl}`);
 

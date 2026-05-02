@@ -318,7 +318,7 @@ export const Canvas: React.FC<CanvasProps> = ({
                   >
                     {/* Indicador de Selección */}
                     {selectedSectionId === section.id && !isPreviewMode && (
-                      <div className="absolute -left-1 top-0 bottom-0 w-1 bg-blue-500 z-50 rounded-full" />
+                      <div className="absolute -left-1 top-0 bottom-0 w-1 bg-blue-500 z-50 rounded-full selection-indicator" />
                     )}
                     {section.type === 'products' && (
                       <ProductsModule 

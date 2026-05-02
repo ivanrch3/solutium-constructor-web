@@ -836,3 +836,56 @@ export async function logEvolutionRequest(feature: string, context: any): Promis
     console.error('Error logging evolution request:', error);
   }
 }
+
+/**
+ * Actualiza los metadatos de preview de un sitio en web_builder_sites y published_sites.
+ */
+export const updateSitePreview = async (
+  siteId: string,
+  previewData: {
+    previewImageUrl: string;
+    previewThumbnailUrl: string;
+    previewImagePath: string;
+    previewImageHash: string;
+  }
+): Promise<boolean> => {
+  try {
+    const supabase = getSupabase();
+    if (!supabase) return false;
+
+    const now = new Date().toISOString();
+    const updatePayload = {
+      preview_image_url: previewData.previewImageUrl,
+      preview_thumbnail_url: previewData.previewThumbnailUrl,
+      preview_image_path: previewData.previewImagePath,
+      preview_image_updated_at: now,
+      preview_image_hash: previewData.previewImageHash,
+      updated_at: now
+    };
+
+    // 1. Actualizar web_builder_sites
+    const { error: webError } = await supabase
+      .from('web_builder_sites')
+      .update(updatePayload)
+      .eq('site_id', siteId);
+
+    if (webError) {
+      console.warn('[DataService] Error actualizando preview en web_builder_sites:', webError);
+    }
+
+    // 2. Actualizar published_sites (puede no existir si nunca se publicó)
+    const { error: pubError } = await supabase
+      .from('published_sites')
+      .update(updatePayload)
+      .eq('site_id', siteId);
+
+    if (pubError && pubError.code !== 'PGRST116') {
+      console.warn('[DataService] Error actualizando preview en published_sites:', pubError);
+    }
+    
+    return true;
+  } catch (err) {
+    console.error('Error in updateSitePreview:', err);
+    return false;
+  }
+};

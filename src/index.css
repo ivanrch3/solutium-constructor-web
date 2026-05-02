@@ -115,3 +115,17 @@ body {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* Solutium Preview Capture Overrides */
+.capturing-preview [data-no-preview="true"],
+.capturing-preview .editor-ui-overlay,
+.capturing-preview .add-module-divider,
+.capturing-preview .selection-indicator {
+  display: none !important;
+}
+
+.capturing-preview .ring-2,
+.capturing-preview .ring-1 {
+  --tw-ring-width: 0px !important;
+  box-shadow: none !important;
+}

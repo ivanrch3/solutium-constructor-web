@@ -37,7 +37,7 @@ import {
   CTA_MODULE, PRICING_MODULE, FAQ_MODULE, CLIENTS_MODULE,
   BENTO_MODULE, COMPARISON_MODULE
 } from './registry';
-import { saveWebBuilderSiteDraft, publishWebBuilderSite, getProducts, getCustomers, upsertPage, upsertPageSections, logEvolutionRequest, getPageBySiteId } from '../../services/dataService';
+import { saveWebBuilderSiteDraft, publishWebBuilderSite, getProducts, getCustomers, upsertPage, upsertPageSections, logEvolutionRequest, getPageBySiteId, updateSitePreview } from '../../services/dataService';
 import { sendToMother } from '../../services/handshakeService';
 import { Product, Customer, PageSection } from '../../types/schema';
 import { MOCK_PRODUCTS, MOCK_CUSTOMERS } from '../../constants/mockData';
@@ -1522,20 +1522,18 @@ const formatTimestampName = () => {
         // --- BACKGROUND TASK: Capture Preview ---
         (async () => {
           try {
-            const webBuilderSiteId = initialPage?.id;
+            const webBuilderSiteId = initialPage?.id || (window as any).WEB_BUILDER_SITE_ID;
             const preview = await captureAndUploadPreview(projectId, siteId, webBuilderSiteId);
             if (preview) {
-              const result = await saveWebBuilderSiteDraft({
-                projectId,
-                siteId: siteId,
+              const success = await updateSitePreview(siteId, {
                 previewImageUrl: preview.url,
+                previewThumbnailUrl: preview.url,
                 previewImagePath: preview.path,
                 previewImageHash: preview.hash,
-                previewImageUpdatedAt: preview.updatedAt
               });
-              logDebug('[PREVIEW_CAPTURE_DEBUG] Preview updated in web_builder_sites:', { 
+              logDebug('[PREVIEW_CAPTURE_DEBUG] Preview updated in web_builder_sites (Save):', { 
                 siteId, 
-                success: !!result,
+                success,
                 url: preview.url 
               });
             }
@@ -1679,24 +1677,18 @@ const formatTimestampName = () => {
         // --- BACKGROUND TASK: Capture Preview ---
         (async () => {
           try {
-            const webBuilderSiteId = initialPage?.id;
+            const webBuilderSiteId = initialPage?.id || (window as any).WEB_BUILDER_SITE_ID;
             const preview = await captureAndUploadPreview(projectId, siteId, webBuilderSiteId);
             if (preview) {
-              const previewData = {
+              const success = await updateSitePreview(siteId, {
                 previewImageUrl: preview.url,
+                previewThumbnailUrl: preview.url,
                 previewImagePath: preview.path,
                 previewImageHash: preview.hash,
-                previewImageUpdatedAt: preview.updatedAt
-              };
-              
-              const [draftRes, publishRes] = await Promise.all([
-                saveWebBuilderSiteDraft({ projectId, siteId: siteId, ...previewData }),
-                publishWebBuilderSite({ projectId, siteId: siteId, ...previewData })
-              ]);
+              });
               
               logDebug('[PREVIEW_CAPTURE_DEBUG] Preview updated in all records after Publish:', {
-                draftSuccess: !!draftRes,
-                publishSuccess: !!publishRes,
+                success,
                 url: preview.url
               });
             }
@@ -1754,20 +1746,18 @@ const formatTimestampName = () => {
     if (!projectId || isPreviewMode) return;
     setPreviewStatus('loading');
     try {
-      const webBuilderSiteId = initialPage?.id;
+      const webBuilderSiteId = initialPage?.id || (window as any).WEB_BUILDER_SITE_ID;
       const preview = await captureAndUploadPreview(projectId, currentSiteId, webBuilderSiteId);
       if (preview) {
         const previewData = {
           previewImageUrl: preview.url,
+          previewThumbnailUrl: preview.url, // Usar la misma por ahora
           previewImagePath: preview.path,
           previewImageHash: preview.hash,
-          previewImageUpdatedAt: preview.updatedAt
         };
         
-        await saveWebBuilderSiteDraft({ projectId, siteId: currentSiteId, ...previewData });
-        if (currentStatus === 'published' || currentStatus === 'modified') {
-          await publishWebBuilderSite({ projectId, siteId: currentSiteId, ...previewData });
-        }
+        await updateSitePreview(currentSiteId, previewData);
+        
         setPreviewStatus('success');
         setTimeout(() => setPreviewStatus('idle'), 3000);
       } else {

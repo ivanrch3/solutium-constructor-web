@@ -40,7 +40,11 @@ const MODULE_ADAPTERS: Record<string, ModuleBridgeAdapter> = {
       'primary_cta.text': 'el_hero_ctas_primary_text',
       'primary_cta.url': 'el_hero_ctas_primary_url',
       'secondary_cta.text': 'el_hero_ctas_secondary_text',
-      'secondary_cta.url': 'el_hero_ctas_secondary_url'
+      'secondary_cta.url': 'el_hero_ctas_secondary_url',
+      'is_rotating_active': 'el_hero_typography_rotating_enabled',
+      'texto_base': 'el_hero_typography_rotating_fixed',
+      'palabras_efecto': 'el_hero_typography_rotating_options',
+      'intervalo_ms': 'el_hero_typography_rotating_speed'
     }
   },
   features: {

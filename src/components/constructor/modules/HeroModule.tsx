@@ -50,6 +50,34 @@ export const HeroModule: React.FC<{
     return defaultValue;
   };
 
+  /**
+   * PROTOCOLO SOLUTIUM v8.1: Normalización robusta de items rotativos.
+   * Acepta arrays de objetos, arrays de strings o strings delimitados.
+   */
+  const normalizeRotatingItems = (raw: any): string[] => {
+    if (!raw) return [];
+    
+    // Si es un string (ej. multilinea de un textarea)
+    if (typeof raw === 'string') {
+      return raw.split(/\n|,|;/).map(s => s.trim()).filter(Boolean);
+    }
+    
+    // Si es un array (estándar de repeater)
+    if (Array.isArray(raw)) {
+      return raw.map(item => {
+        if (!item) return '';
+        if (typeof item === 'string') return item;
+        if (typeof item === 'object') {
+          // Intentar varias propiedades comunes según evolución del registry
+          return item.text || item.phrase || item.label || item.value || '';
+        }
+        return String(item);
+      }).filter(Boolean);
+    }
+    
+    return [];
+  };
+
   const containerRef = React.useRef(null);
   const { scrollYProgress } = useScroll({
     target: containerRef,
@@ -112,8 +140,26 @@ export const HeroModule: React.FC<{
 
   // Rotating Text Settings
   const rotatingEnabled = getVal(`${moduleId}_el_hero_typography`, 'rotating_enabled', false);
-  const rotatingFixed = getVal(`${moduleId}_el_hero_typography`, 'rotating_fixed', 'Mi sueño en esta vida es');
-  const rotatingOptions = getVal(`${moduleId}_el_hero_typography`, 'rotating_options', []);
+  const rotatingFixed = getVal(`${moduleId}_el_hero_typography`, 'rotating_fixed', 'Solutium es la mejor alternativa para ');
+  
+  // Búsqueda de items con fallback de IDs
+  let rawRotatingOptions = getVal(`${moduleId}_el_hero_typography`, 'rotating_options', null);
+  if (!rawRotatingOptions) rawRotatingOptions = getVal(`${moduleId}_el_hero_typography`, 'rotating_items', null);
+  if (!rawRotatingOptions) rawRotatingOptions = getVal(`${moduleId}_el_hero_typography`, 'rotating_words', null);
+  if (!rawRotatingOptions) rawRotatingOptions = [];
+
+  const rotatingOptions = normalizeRotatingItems(rawRotatingOptions);
+
+  console.log('[HERO_DYNAMIC_TEXT_DEBUG]', {
+    moduleId,
+    rotatingEnabled,
+    rotatingFixed,
+    rawRotatingOptions,
+    normalizedCount: rotatingOptions.length,
+    rotatingOptions,
+    titleFallback: title
+  });
+
   const rotatingAnim = getVal(`${moduleId}_el_hero_typography`, 'rotating_anim', 'fade');
   const rotatingSpeed = getVal(`${moduleId}_el_hero_typography`, 'rotating_speed', 3000);
   const rotatingColor = getVal(`${moduleId}_el_hero_typography`, 'rotating_color', '#3B82F6');
@@ -256,10 +302,10 @@ export const HeroModule: React.FC<{
           color: darkMode ? '#FFFFFF' : '#0F172A'
         }}
       >
-        {rotatingEnabled ? (
+        {rotatingEnabled && rotatingOptions.length > 0 ? (
           <RotatingText 
             fixedText={rotatingFixed}
-            options={rotatingOptions.map((opt: any) => opt.text)}
+            options={rotatingOptions}
             color={rotatingColor}
             gradient={rotatingGradient}
             speed={rotatingSpeed}
@@ -270,8 +316,13 @@ export const HeroModule: React.FC<{
               updateSectionSettings(moduleId, { [`${moduleId}_el_hero_typography_rotating_fixed`]: val });
             }}
             onSaveOption={(idx, val) => {
-              const newOptions = [...rotatingOptions];
-              newOptions[idx] = { ...newOptions[idx], text: val };
+              // Reconstruir array de objetos para persistencia (usando 'text' como ID del registry)
+              const rawItemsArray = Array.isArray(rawRotatingOptions) ? rawRotatingOptions : [];
+              const newOptions = [...rawItemsArray];
+              newOptions[idx] = typeof newOptions[idx] === 'object' 
+                ? { ...newOptions[idx], text: val }
+                : { text: val };
+              
               updateSectionSettings(moduleId, { [`${moduleId}_el_hero_typography_rotating_options`]: newOptions });
             }}
           />

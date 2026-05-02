@@ -27,10 +27,13 @@ export const MenuModule: React.FC<{
   const layout = getVal(null, 'layout', 'horizontal');
   const desktopHamburger = getVal(null, 'desktop_hamburger', false);
 
-  // Element: Logo
+  // Logo Resolution with Priority
   const logoType = getVal(`${moduleId}_el_menu_logo`, 'logo_type', 'image');
   const logoText = getVal(`${moduleId}_el_menu_logo`, 'logo_text', 'MI MARCA');
-  const logoImg = getVal(`${moduleId}_el_menu_logo`, 'logo_img', '');
+  const logoImgSetting = getVal(`${moduleId}_el_menu_logo`, 'logo_img', '');
+  const logoImgFallback = settingsValues[`${moduleId}_el_menu_logo_logo_img`] || settingsValues[`el_menu_logo_logo_img`] || '';
+  const logoImg = logoImgSetting || logoImgFallback || logoUrl || '';
+  
   const logoImgAlt = getVal(`${moduleId}_el_menu_logo`, 'logo_img_alt', '');
   const logoWidth = parseFloat(getVal(`${moduleId}_el_menu_logo`, 'logo_width', 120)) || 120;
   const logoColor = getVal(`${moduleId}_el_menu_logo`, 'text_color', '#0F172A');
@@ -62,6 +65,16 @@ export const MenuModule: React.FC<{
     rawDesktopHamburger: settingsValues?.[`${moduleId}_global_desktop_hamburger`],
     rawPosition: settingsValues?.[`${moduleId}_global_position`],
     rawLayout: settingsValues?.[`${moduleId}_global_layout`]
+  });
+
+  console.log('[MENU_LOGO_SOURCE_DEBUG]', {
+    moduleId,
+    logoType,
+    logoImg,
+    logoUrl,
+    rawDeepLogoImg: settingsValues?.[`${moduleId}_el_menu_logo_logo_img`],
+    rawRelativeLogoImg: settingsValues?.[`el_menu_logo_logo_img`],
+    rawLogoType: settingsValues?.[`${moduleId}_el_menu_logo_logo_type`]
   });
 
   // Scroll Spy Logic
@@ -176,7 +189,7 @@ export const MenuModule: React.FC<{
     position: position as any,
     top: isFloating ? 0 : 'auto',
     width: '100%',
-    zIndex: 100,
+    zIndex: 1000,
     borderBottom: isFloating ? `1px solid ${darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'}` : 'none'
   };
 
@@ -320,11 +333,11 @@ export const MenuModule: React.FC<{
             ) : (
               /* Responsive Logic (Links on Desktop, Hamburger on Mobile) */
               <>
-                <div className="hidden @md:flex items-center gap-4">
+                <div className="hidden @md:flex md:flex items-center gap-4">
                   {renderLinks()}
                 </div>
                 
-                <div className="@md:hidden flex items-center">
+                <div className="@md:hidden md:hidden flex items-center">
                   <button 
                     onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                     className="p-2 rounded-full hover:bg-black/5 transition-colors"
@@ -345,7 +358,7 @@ export const MenuModule: React.FC<{
               initial={{ opacity: 0, scale: 0.95, y: -20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: -20 }}
-              className="absolute top-full left-4 right-4 mt-2 p-6 rounded-3xl shadow-2xl z-[100] border overflow-hidden"
+              className="absolute top-full left-4 right-4 mt-2 p-6 rounded-3xl shadow-2xl z-[1001] border overflow-hidden"
               style={{ 
                 backgroundColor: darkMode ? '#1E293B' : '#FFFFFF',
                 borderColor: darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'

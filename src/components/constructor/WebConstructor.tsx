@@ -1250,7 +1250,7 @@ const formatTimestampName = () => {
             
             // Allocation to Styles/Settings & Audit Specs (Solutium Protocol v2.3)
             // Note: Colors and styles should ALWAYS go to settings, even if they contain text-like keywords
-            if (!isContentField || isPrimaryCtaUrl || isPrimaryCtaText || isEyebrowText) {
+            if (!isContentField || isPrimaryCtaUrl || isPrimaryCtaText || isEyebrowText || isImageField) {
               // Standard mapping for common containers
               const isBorderRadius = cleanKey.includes('radius') || cleanKey.includes('rounded');
               const isShadow = cleanKey.includes('shadow');

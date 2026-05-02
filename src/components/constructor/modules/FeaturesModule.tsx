@@ -65,7 +65,7 @@ const FeatureCard = ({
 
   const renderMedia = () => {
     if (feature.media_type === 'image') {
-      const featureImg = feature.image || `https://picsum.photos/seed/feature-${index}/800/600`;
+      const featureImg = feature.image || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAwIiBoZWlnaHQ9IjYwMCIgdmlld0JveD0iMCAwIDgwMCA2MDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjgwMCIgaGVpZ2h0PSI2MDAiIGZpbGw9IiNFMkU4RjAiLz48cGF0aCBkPSJNMzAwIDMwMEw0MDAgMjAwTDUwMCAzMDBWNDAwSDMwMFYzMDBaIiBmaWxsPSIjOTRBM0NCIi8+PC9zdmc+';
       return (
         <div 
           className={`overflow-hidden mb-6 ${isList ? 'w-24 h-24' : 'w-full aspect-video'}`}
@@ -127,7 +127,7 @@ const FeatureCard = ({
             style={{ borderRadius: `${cardRadius}px` }}
           >
             <img 
-              src={feature.image || `https://picsum.photos/seed/${index}/800/600`} 
+              src={feature.image || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAwIiBoZWlnaHQ9IjYwMCIgdmlld0JveD0iMCAwIDgwMCA2MDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjgwMCIgaGVpZ2h0PSI2MDAiIGZpbGw9IiNFMkU4RjAiLz48cGF0aCBkPSJNMzAwIDMwMEw0MDAgMjAwTDUwMCAzMDBWNDAwSDMwMFYzMDBaIiBmaWxsPSIjOTRBM0NCIi8+PC9zdmc+'} 
               alt={feature.title} 
               className="w-full h-auto block"
               referrerPolicy="no-referrer"

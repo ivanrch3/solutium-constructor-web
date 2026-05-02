@@ -43,8 +43,16 @@ export const captureAndUploadPreview = async (
   selector: string = '[data-preview-root="true"]'
 ): Promise<PreviewResult | null> => {
   const isDebug = new URLSearchParams(window.location.search).get('debug_render') === 'true';
-  const stats: any = { siteId, targetFound: false };
+  const stats: any = { 
+    siteId, 
+    targetFound: false,
+    captureMode: 'thumbnail',
+    usedClone: true,
+    captureWidth: 1440,
+    captureHeight: 900
+  };
   
+  let frame: HTMLDivElement | null = null;
   const originalSources = new Map<HTMLImageElement, string>();
 
   try {
@@ -55,238 +63,221 @@ export const captureAndUploadPreview = async (
       return null;
     }
 
-    const rect = element.getBoundingClientRect();
     stats.targetFound = true;
-    stats.targetClientWidth = element.clientWidth;
-    stats.targetClientHeight = element.clientHeight;
-    stats.targetScrollWidth = element.scrollWidth;
-    stats.targetScrollHeight = element.scrollHeight;
-    stats.captureMode = 'thumbnail'; // Default 1440x900 above the fold
+    stats.originalTargetWidth = element.offsetWidth;
+    stats.originalTargetHeight = element.offsetHeight;
+    stats.originalTargetScrollWidth = element.scrollWidth;
+    stats.originalTargetScrollHeight = element.scrollHeight;
 
-    // Helper para esperar a que todas las imágenes del contenedor carguen y manejar CORS
-    const waitForImages = async (container: HTMLElement) => {
-      const images = Array.from(container.querySelectorAll('img'));
-      stats.imageCount = images.length;
-      
-      const untrustedImages = images.filter(img => !isTrustedDomain(img.src));
-      stats.externalImages = untrustedImages.length;
-      stats.blockedImageDomains = Array.from(new Set(untrustedImages.map(img => {
-        try { return new URL(img.src).hostname; } catch(e) { return 'unknown'; }
-      })));
+    // 1. Crear frame de captura off-screen pero en DOM
+    frame = document.createElement('div');
+    frame.id = 'preview-capture-frame';
+    Object.assign(frame.style, {
+      position: 'fixed',
+      left: '-99999px',
+      top: '0',
+      width: '1440px',
+      height: '900px',
+      backgroundColor: 'white',
+      overflow: 'hidden',
+      zIndex: '-1000',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'flex-start'
+    });
+    document.body.appendChild(frame);
 
-      // Temporalmente reemplazar imágenes no confiables (Pravatar, etc) para evitar errores CORS
-      untrustedImages.forEach(img => {
-        originalSources.set(img, img.src);
+    // 2. Clonar el elemento
+    const clone = element.cloneNode(true) as HTMLElement;
+    
+    // Forzar estilos base en el clon para que ocupe el ancho del frame
+    Object.assign(clone.style, {
+      width: '1440px',
+      maxWidth: 'none',
+      height: 'auto',
+      minHeight: '900px',
+      transform: 'none',
+      margin: '0 auto',
+      padding: '0',
+      overflow: 'visible',
+      border: 'none',
+      boxShadow: 'none',
+      borderRadius: '0',
+      position: 'relative',
+      opacity: '1',
+      display: 'block'
+    });
+
+    // Limpiar UI del editor en el clon si se coló algo
+    const noise = clone.querySelectorAll('.editor-ui-overlay, .property-panel, .add-module-divider, .selection-indicator, [data-no-preview="true"]');
+    noise.forEach(n => n.remove());
+
+    frame.appendChild(clone);
+
+    stats.cloneWidth = clone.offsetWidth;
+    stats.cloneHeight = clone.offsetHeight;
+    const computed = window.getComputedStyle(clone);
+    stats.cloneComputedDisplay = computed.display;
+    stats.cloneComputedOverflow = computed.overflow;
+
+    // 3. Preparar imágenes y detectar Hero
+    const images = Array.from(clone.querySelectorAll('img'));
+    stats.imagesTotal = images.length;
+    stats.heroImagesDetected = 0;
+    let imagesLoaded = 0;
+    let imagesFailed = 0;
+
+    const imagePromises = images.map(img => {
+      // Reemplazar Pravatar etc con placeholder
+      if (!isTrustedDomain(img.src)) {
         img.src = PLACEHOLDER_AVATAR;
-      });
+        return Promise.resolve();
+      }
 
-      const promises = images.map(img => {
-        // Intentar habilitar CORS para imágenes de dominios de confianza
-        if (img.src.startsWith('http') && !img.src.includes(window.location.hostname) && !img.src.startsWith('data:')) {
-          if (!img.crossOrigin) {
-            img.crossOrigin = "anonymous";
+      // Habilitar CORS para dominios confiables si no está
+      if (img.src.startsWith('http') && !img.src.includes(window.location.hostname)) {
+        img.crossOrigin = "anonymous";
+      }
+
+      // Forzar carga eager
+      img.loading = "eager";
+
+      // Detección de Hero Image (grande y arriba)
+      const rect = img.getBoundingClientRect();
+      if (rect.width > 200 && rect.top < 600) {
+        stats.heroImagesDetected++;
+        stats.heroImageSrc = img.src;
+        stats.heroImageRect = `${Math.round(rect.width)}x${Math.round(rect.height)} at ${Math.round(rect.left)},${Math.round(rect.top)}`;
+      }
+
+      if (img.complete && img.naturalWidth > 0) {
+        imagesLoaded++;
+        return Promise.resolve();
+      }
+
+      return new Promise(resolve => {
+        img.onload = () => { imagesLoaded++; resolve(null); };
+        img.onerror = () => { imagesFailed++; resolve(null); };
+        setTimeout(resolve, 3000);
+      });
+    });
+
+    // También buscar background-images en el clone
+    const bgElements = clone.querySelectorAll('[style*="background-image"]');
+    bgElements.forEach(el => {
+      const style = (el as HTMLElement).style.backgroundImage;
+      if (style && style.includes('url(')) {
+        const urlMatch = style.match(/url\(["']?([^"']+)["']?\)/);
+        if (urlMatch && urlMatch[1]) {
+          const url = urlMatch[1];
+          if (!isTrustedDomain(url)) {
+             (el as HTMLElement).style.backgroundImage = `url(${PLACEHOLDER_AVATAR})`;
           }
         }
-
-        if (img.complete && img.naturalWidth !== 0) return Promise.resolve();
-        return new Promise(resolve => {
-          img.onload = resolve;
-          img.onerror = () => {
-             logDebug(`[PREVIEW_CAPTURE_DEBUG] Failed to load image (CORS or path): ${img.src}`);
-             resolve(null);
-          };
-          setTimeout(resolve, 3000);
-        });
-      });
-      await Promise.all(promises);
-    };
-
-    // 1. Preparación
-    if (document.fonts) {
-      try {
-        await Promise.race([
-          document.fonts.ready,
-          new Promise(resolve => setTimeout(resolve, 1500)) // Max 1.5s wait for fonts
-        ]);
-        stats.fontsReady = true;
-      } catch (e) {
-        stats.fontsReady = false;
       }
-    }
-    
-    await waitForImages(element);
-    stats.imagesReady = true;
+    });
 
-    // Pequeña espera extra para que el layout se asiente después de crossOrigin
-    await new Promise(resolve => setTimeout(resolve, 500));
+    await Promise.all(imagePromises);
+    stats.imagesLoaded = imagesLoaded;
+    stats.imagesFailed = imagesFailed;
 
-    // 2. Generar Screenshot
-    element.classList.add('capturing-preview');
-    
-    // Guardar estilos originales para restaurar
-    const originalStyle = {
-      width: element.style.width,
-      height: element.style.height,
-      minHeight: element.style.minHeight,
-      transform: element.style.transform,
-      overflow: element.style.overflow,
-      maxWidth: element.style.maxWidth,
-      border: element.style.border,
-      boxShadow: element.style.boxShadow,
-      borderRadius: element.style.borderRadius
-    };
+    // 4. Desactivar animaciones en el clon para el screenshot
+    const allElements = clone.querySelectorAll('*');
+    allElements.forEach(el => {
+      const htmlEl = el as HTMLElement;
+      htmlEl.style.transition = 'none';
+      htmlEl.style.animation = 'none';
+      htmlEl.style.opacity = '1';
+      htmlEl.style.transform = 'none';
+    });
 
+    // 5. Esperar asentamiento
+    if (document.fonts) await document.fonts.ready;
+    await new Promise(resolve => setTimeout(resolve, 800));
+
+    // 6. Captura
     let dataUrl = '';
     let captureMethod = 'html-to-image';
-    const captureWidth = 1440;
-    const captureHeight = 900;
-    stats.captureWidth = captureWidth;
-    stats.captureHeight = captureHeight;
 
     try {
-      // Intentar primero con html-to-image (evitando cssRules problemáticos y embedding de fuentes)
-      dataUrl = await toPng(element, {
-        cacheBust: true,
-        width: captureWidth,
-        height: captureHeight,
-        fontEmbedCSS: '', 
-        skipFonts: true,
-        style: {
-          transform: 'scale(1)',
-          width: `${captureWidth}px`,
-          maxWidth: 'none',
-          height: 'auto',
-          minHeight: `${captureHeight}px`,
-          overflow: 'visible',
-          border: 'none',
-          boxShadow: 'none',
-          borderRadius: '0',
-          margin: '0',
-          padding: '0'
-        },
-        filter: (node) => {
-          if (node instanceof HTMLElement) {
-            // Excluir elementos marcados explícitamente para no aparecer en preview
-            const noPreview = node.getAttribute('data-no-preview') === 'true';
-            const isEditorUI = node.classList.contains('editor-ui-overlay') || 
-                             node.classList.contains('property-panel') ||
-                             node.classList.contains('add-module-divider') ||
-                             node.classList.contains('selection-indicator');
-            return !noPreview && !isEditorUI;
-          }
-          return true;
-        },
-        quality: 0.95,
+      dataUrl = await toPng(frame, {
+        width: 1440,
+        height: 900,
         pixelRatio: 1.0,
+        quality: 0.95,
         backgroundColor: '#ffffff',
+        fontEmbedCSS: '',
+        skipFonts: true,
         imagePlaceholder: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg=='
       });
     } catch (err: any) {
-      logDebug(`[PREVIEW_CAPTURE_DEBUG] html-to-image falló (${err.message}). Usando fallback html2canvas...`);
+      logDebug(`[PREVIEW_CAPTURE_DEBUG] html-to-image falló. Usando html2canvas...`);
       captureMethod = 'html2canvas';
-      
-      const canvas = await html2canvas(element, {
+      const canvas = await html2canvas(frame, {
         useCORS: true,
-        allowTaint: true,
+        allowTaint: false,
         backgroundColor: '#ffffff',
         scale: 1,
-        width: captureWidth,
-        height: captureHeight,
-        windowWidth: captureWidth,
-        windowHeight: captureHeight,
-        logging: false,
-        onclone: (clonedDoc) => {
-          const el = clonedDoc.querySelector(selector) as HTMLElement;
-          if (el) {
-            el.classList.add('capturing-preview');
-            el.style.width = `${captureWidth}px`;
-            el.style.maxWidth = 'none';
-            el.style.height = 'auto';
-            el.style.minHeight = `${captureHeight}px`;
-            el.style.transform = 'scale(1)';
-            el.style.overflow = 'visible';
-            el.style.border = 'none';
-            el.style.boxShadow = 'none';
-            el.style.borderRadius = '0';
-          }
-        },
-        ignoreElements: (node) => {
-           if (node instanceof HTMLElement) {
-             return node.getAttribute('data-no-preview') === 'true' || 
-                    node.classList.contains('editor-ui-overlay') || 
-                    node.classList.contains('add-module-divider') ||
-                    node.classList.contains('selection-indicator');
-           }
-           return false;
-        }
+        width: 1440,
+        height: 900,
+        logging: false
       });
       dataUrl = canvas.toDataURL('image/png');
-    } finally {
-      element.classList.remove('capturing-preview');
-      // Restaurar estilos
-      element.style.width = originalStyle.width;
-      element.style.height = originalStyle.height;
-      element.style.minHeight = originalStyle.minHeight;
-      element.style.transform = originalStyle.transform;
-      element.style.overflow = originalStyle.overflow;
-      element.style.maxWidth = originalStyle.maxWidth;
-      element.style.border = originalStyle.border;
-      element.style.boxShadow = originalStyle.boxShadow;
-      element.style.borderRadius = originalStyle.borderRadius;
-      
-      // Restaurar imágenes originales
-      originalSources.forEach((src, img) => {
-        img.src = src;
-      });
     }
 
     stats.captureMethod = captureMethod;
+    stats.blobGenerated = !!dataUrl;
 
-    if (!dataUrl || dataUrl.length < 100) {
-       throw new Error("La imagen generada está vacía o es inválida.");
+    if (!dataUrl || dataUrl.length < 500) {
+      throw new Error("Screenshot generado vacío o demasiado pequeño");
     }
 
-    // 3. Convertir dataUrl a Blob
-    const fetchResponse = await fetch(dataUrl);
-    const blob = await fetchResponse.blob();
-    stats.blobGenerated = true;
+    // 7. Estimación de espacio vacío a la derecha
+    // Si el scrollWidth del clone es mucho menor que 1440 en el frame
+    if (clone.scrollWidth < 1200) {
+      stats.frameHasEmptyRightSpaceEstimate = true;
+    }
+
+    // 8. Convertir y Subir
+    const response = await fetch(dataUrl);
+    const blob = await response.blob();
     stats.blobSize = `${(blob.size / 1024).toFixed(2)} KB`;
 
-    // 4. Subir vía assetsClient (Upload Centralizado)
     const timestamp = Date.now();
     const hash = `v${timestamp}`;
-    const fileName = `preview-${siteId}.png`;
-    
     const result = await uploadAsset(blob, {
       projectId,
       siteId,
       webBuilderSiteId,
       assetType: 'preview',
       sourceApp: 'constructor_web',
-      fileName,
+      fileName: `preview-${siteId}.png`,
       contentType: 'image/png'
     });
 
     const previewUrl = result.public_url || (result as any).url;
-    const storagePath = result.storage_path;
-
     stats.uploadSuccess = !!previewUrl;
     stats.publicUrl = previewUrl;
-    stats.storagePath = storagePath;
 
     if (isDebug) logDebug(`[PREVIEW_CAPTURE_DEBUG]`, stats);
 
     return {
       url: previewUrl,
-      path: storagePath,
+      path: result.storage_path,
       hash: hash,
       updatedAt: new Date().toISOString()
     };
+
   } catch (error: any) {
     stats.errorName = error.name;
     stats.errorMessage = error.message;
-    console.error('[PREVIEW_CAPTURE_DEBUG] Error fatal en captura:', error);
+    console.error('[PREVIEW_CAPTURE_DEBUG] Error fatal:', error);
     if (isDebug) logDebug(`[PREVIEW_CAPTURE_DEBUG]`, stats);
     return null;
+  } finally {
+    if (frame && document.body.contains(frame)) {
+      document.body.removeChild(frame);
+    }
   }
 };

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Database, Home, Settings, User } from 'lucide-react';
+import { Database, Home, Settings, User, Cloud } from 'lucide-react';
 import { Profile, Project } from '../types/schema';
 
 interface SidebarProps {
@@ -13,6 +13,7 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ profile, project, urlLogo, activeTab, onTabChange }) => {
   const role = profile?.role || 'user';
   const isSuperAdmin = role.toLowerCase().replace('-', '') === 'superadmin';
+  const isDebug = new URLSearchParams(window.location.search).get('debug_render') === 'true';
 
   // Sidebar styles are derived from CSS variables set by ThemeContext
   const sidebarStyle = {
@@ -85,6 +86,19 @@ export const Sidebar: React.FC<SidebarProps> = ({ profile, project, urlLogo, act
           >
             <Database size={18} />
             <span className="text-base font-medium">Datos</span>
+          </button>
+        )}
+
+        {isDebug && !isSuperAdmin && (
+          <button
+            onClick={() => onTabChange('datos')}
+            className={`w-full flex items-center space-x-3 px-4 py-2.5 rounded-lg transition-all duration-200 border border-amber-500/20 bg-amber-500/5 ${
+              activeTab === 'datos' ? '' : 'hover:bg-amber-500/10'
+            }`}
+            style={activeTab === 'datos' ? { backgroundColor: 'rgb(245 158 11 / 0.2)' } : {}}
+          >
+            <Cloud size={18} className="text-amber-600" />
+            <span className="text-base font-bold text-amber-900">DEBUG ASSETS</span>
           </button>
         )}
       </nav>

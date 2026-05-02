@@ -337,6 +337,43 @@ const AppContent: React.FC = () => {
     logDebug("3. ¿Está en iframe?:", window.parent !== window);
     logDebug("4. URL actual:", window.location.href);
     logDebug("---------------------------------");
+
+    // Expose test function to console for validation
+    (window as any).SOLUTIUM_TEST_UPLOAD_ASSET = async () => {
+      console.log("%c[SOLUTIUM] Iniciando validación de upload centralizado...", "color: #3b82f6; font-weight: bold;");
+      const { uploadAsset } = await import('./services/assetsClient');
+      
+      try {
+        // Crear un pequeño blob de prueba
+        const canvas = document.createElement('canvas');
+        canvas.width = 100; canvas.height = 100;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.fillStyle = '#3b82f6';
+          ctx.fillRect(0, 0, 100, 100);
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 10px Arial';
+          ctx.fillText('CONSOLE TEST', 10, 50);
+        }
+        const blob = await new Promise<Blob>((resolve) => canvas.toBlob((b) => resolve(b || new Blob()), 'image/png'));
+
+        const result = await uploadAsset(blob, {
+          projectId: '5210c610-776e-4736-b3f6-5c176e9a771b',
+          siteId: '59a75271-2d5a-4c2f-9c8a-c6584b33b755',
+          webBuilderSiteId: '77042df2-0c01-46cd-8acc-e874ebade1e4',
+          assetType: 'image',
+          sourceApp: 'constructor_web',
+          fileName: `console-test-${Date.now()}.png`
+        });
+
+        console.log("%c[SOLUTIUM] ¡Subida exitosa!", "color: #10b981; font-weight: bold;");
+        console.table(result);
+        return result;
+      } catch (err: any) {
+        console.error("[SOLUTIUM] Error en validación:", err.message);
+        return { error: err.message };
+      }
+    };
   }, []);
 
   useEffect(() => {

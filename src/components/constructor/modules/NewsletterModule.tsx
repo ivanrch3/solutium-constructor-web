@@ -463,7 +463,7 @@ export const NewsletterModule: React.FC<{
                 >
                   <div className="flex -space-x-2">
                     {[1, 2, 3, 4].map(i => (
-                      <img key={i} src={`https://i.pravatar.cc/100?u=${i + 100}`} className={`w-6 h-6 rounded-full border-2 shadow-sm ${darkMode ? 'border-slate-800' : 'border-white'}`} alt="user" referrerPolicy="no-referrer" />
+                      <img key={i} src={'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMDAiIGZpbGw9IiNFMkU4RjAiLz48Y2lyY2xlIGN4PSI1MCIgY3k9IjQwIiByPSIyMCIgZmlsbD0iIzk0QTNDQiIvPjxwYXRoIGQ9Ik0yMCA4MEMyMCA2OC45NTQzIDI4Ljk1NDMgNjAgNDAgNjBINTBDNjEuMDQ1NyA2MCA3MCA2OC45NTQzIDcwIDgwVjg1SDIwVjgwWiIgZmlsbD0iIzk0QTNDQiIvPjwvc3ZnPg=='} className={`w-6 h-6 rounded-full border-2 shadow-sm ${darkMode ? 'border-slate-800' : 'border-white'}`} alt="user" referrerPolicy="no-referrer" />
                     ))}
                   </div>
                   <span className="font-black tracking-tight" style={{ fontSize: '11px', color: trustTextColor }}>{subscriberCount}</span>

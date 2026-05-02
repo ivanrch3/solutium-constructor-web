@@ -10,6 +10,29 @@ export interface PreviewResult {
   updatedAt: string;
 }
 
+const TRUSTED_DOMAINS = [
+  'solutium-space.nyc3.digitaloceanspaces.com',
+  'nyc3.digitaloceanspaces.com',
+  'solutium.app',
+  'solutium-constructor-web-g9777.ondigitalocean.app',
+  'solutium-app-maestra-ld25z.ondigitalocean.app',
+  'ondigitalocean.app',
+  'digitaloceanspaces.com'
+];
+
+const PLACEHOLDER_AVATAR = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMDAiIGZpbGw9IiNFMkU4RjAiLz48Y2lyY2xlIGN4PSI1MCIgY3k9IjQwIiByPSIyMCIgZmlsbD0iIzk0QTNDQiIvPjxwYXRoIGQ9Ik0yMCA4MEMyMCA2OC45NTQzIDI4Ljk1NDMgNjAgNDAgNjBINTBDNjEuMDQ1NyA2MCA3MCA2OC45NTQzIDcwIDgwVjg1SDIwVjgwWiIgZmlsbD0iIzk0QTNDQiIvPjwvc3ZnPg==';
+
+const isTrustedDomain = (src: string) => {
+  if (!src || src.startsWith('data:') || src.startsWith('blob:') || src.startsWith('/') || !src.startsWith('http')) return true;
+  try {
+    const url = new URL(src);
+    if (url.hostname === window.location.hostname) return true;
+    return TRUSTED_DOMAINS.some(domain => url.hostname.endsWith(domain));
+  } catch (e) {
+    return false;
+  }
+};
+
 /**
  * Captura una imagen del Canvas y la sube al sistema de activos de la App Madre.
  */
@@ -22,6 +45,8 @@ export const captureAndUploadPreview = async (
   const isDebug = new URLSearchParams(window.location.search).get('debug_render') === 'true';
   const stats: any = { siteId, targetFound: false };
   
+  const originalSources = new Map<HTMLImageElement, string>();
+
   try {
     const element = document.querySelector(selector) as HTMLElement;
 
@@ -38,11 +63,22 @@ export const captureAndUploadPreview = async (
     const waitForImages = async (container: HTMLElement) => {
       const images = Array.from(container.querySelectorAll('img'));
       stats.imageCount = images.length;
-      stats.externalImages = images.filter(img => img.src.startsWith('http') && !img.src.includes(window.location.hostname)).length;
       
+      const untrustedImages = images.filter(img => !isTrustedDomain(img.src));
+      stats.externalImages = untrustedImages.length;
+      stats.blockedImageDomains = Array.from(new Set(untrustedImages.map(img => {
+        try { return new URL(img.src).hostname; } catch(e) { return 'unknown'; }
+      })));
+
+      // Temporalmente reemplazar imágenes no confiables (Pravatar, etc) para evitar errores CORS
+      untrustedImages.forEach(img => {
+        originalSources.set(img, img.src);
+        img.src = PLACEHOLDER_AVATAR;
+      });
+
       const promises = images.map(img => {
-        // Intentar habilitar CORS para imágenes externas si son de dominios conocidos o si no tienen crossOrigin
-        if (img.src.startsWith('http') && !img.src.includes(window.location.hostname)) {
+        // Intentar habilitar CORS para imágenes de dominios de confianza
+        if (img.src.startsWith('http') && !img.src.includes(window.location.hostname) && !img.src.startsWith('data:')) {
           if (!img.crossOrigin) {
             img.crossOrigin = "anonymous";
           }
@@ -55,7 +91,6 @@ export const captureAndUploadPreview = async (
              logDebug(`[PREVIEW_CAPTURE_DEBUG] Failed to load image (CORS or path): ${img.src}`);
              resolve(null);
           };
-          // Timeout de seguridad por imagen: 3 segundos
           setTimeout(resolve, 3000);
         });
       });
@@ -136,6 +171,10 @@ export const captureAndUploadPreview = async (
       dataUrl = canvas.toDataURL('image/png');
     } finally {
       element.classList.remove('capturing-preview');
+      // Restaurar imágenes originales
+      originalSources.forEach((src, img) => {
+        img.src = src;
+      });
     }
 
     stats.captureMethod = captureMethod;

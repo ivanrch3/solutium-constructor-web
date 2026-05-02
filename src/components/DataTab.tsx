@@ -373,18 +373,54 @@ export const DataTab: React.FC<DataTabProps> = ({ projectId, currentUserId }) =>
               <div className="mt-4 pt-4 border-t border-border/10">
                 <p className="text-[10px] font-bold text-text/40 mb-4 uppercase tracking-wider">Validación Especial (App Madre)</p>
                 
-                {envMismatch && (
-                  <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2 text-amber-800">
-                    <AlertCircle size={14} className="mt-0.5 shrink-0" />
-                    <p className="text-[10px] font-medium">
-                      <span className="font-bold">Aviso de Ambiente:</span> Estás en Constructor staging pero el API apunta a producción. Verifica VITE_APP_MADRE_API_URL.
-                    </p>
+                <div className="mb-6 p-4 bg-secondary/30 rounded-2xl border border-border/10 space-y-3">
+                  <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-text/40">
+                    <span>Configuración de Ambiente</span>
+                    <span className={isStaging ? 'text-amber-600' : 'text-green-600'}>{isStaging ? 'STAGING' : 'PRODUCCIÓN'}</span>
                   </div>
-                )}
+                  
+                  <div className="space-y-2">
+                    <div>
+                      <p className="text-[10px] text-text/40 mb-1 uppercase font-bold">API Base (VITE_APP_MADRE_API_URL):</p>
+                      {apiMadreUrl ? (
+                        <code className="text-[11px] block p-2 bg-white/50 rounded-lg border border-border/10 break-all">{apiMadreUrl}</code>
+                      ) : (
+                        <div className="p-3 bg-red-50 border border-red-100 rounded-lg text-red-600 text-[10px] font-bold">
+                          ⚠️ Variable VITE_APP_MADRE_API_URL no configurada en el build actual. Configúrala en DigitalOcean y redeploya el Constructor.
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div>
+                      <p className="text-[10px] text-text/40 mb-1 uppercase font-bold">Hostname Actual:</p>
+                      <code className="text-[11px] block p-2 bg-white/50 rounded-lg border border-border/10">{window.location.hostname}</code>
+                    </div>
+
+                    {isStaging && (
+                      <div className="mt-2 p-3 bg-blue-50 border border-blue-100 rounded-lg text-blue-700">
+                        <p className="text-[10px] font-bold uppercase mb-1">Recomendación Staging:</p>
+                        <p className="text-[10px] leading-tight">Usa: <code className="bg-white/50 px-1">https://solutium-app-maestra-ld25z.ondigitalocean.app</code></p>
+                      </div>
+                    )}
+                  </div>
+
+                  {envMismatch && (
+                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2 text-amber-800">
+                      <AlertCircle size={14} className="mt-0.5 shrink-0" />
+                      <p className="text-[10px] font-medium leading-tight">
+                        <span className="font-bold">Conflicto Detectado:</span> Estás en Constructor staging pero el API apunta a producción.
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="p-2 border-t border-border/10 text-[9px] text-text/30 italic">
+                    Nota: Los cambios en variables requieren un nuevo rebuild/redeploy en Vite.
+                  </div>
+                </div>
 
                 <button
                   onClick={handleTestAssetUpload}
-                  disabled={loading}
+                  disabled={loading || !apiMadreUrl}
                   className="w-full bg-secondary text-text font-black py-3 rounded-xl border border-border/50 hover:bg-secondary/80 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
                 >
                   {loading ? <RefreshCw className="animate-spin" size={16} /> : <Cloud size={16} />}

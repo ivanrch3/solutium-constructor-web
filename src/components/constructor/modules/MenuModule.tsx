@@ -21,24 +21,47 @@ export const MenuModule: React.FC<{
     return settingsValues[key] !== undefined ? settingsValues[key] : defaultValue;
   };
 
+  // Global Settings
+  const sticky = getVal(null, 'sticky', false);
+  const position = getVal(null, 'position', sticky ? 'sticky' : 'relative');
+  const layout = getVal(null, 'layout', 'horizontal');
+  const desktopHamburger = getVal(null, 'desktop_hamburger', false);
+
+  // Element: Logo
+  const logoType = getVal(`${moduleId}_el_menu_logo`, 'logo_type', 'image');
+  const logoText = getVal(`${moduleId}_el_menu_logo`, 'logo_text', 'MI MARCA');
+  const logoImg = getVal(`${moduleId}_el_menu_logo`, 'logo_img', '');
+  const logoImgAlt = getVal(`${moduleId}_el_menu_logo`, 'logo_img_alt', '');
+  const logoWidth = parseFloat(getVal(`${moduleId}_el_menu_logo`, 'logo_width', 120)) || 120;
+  const logoColor = getVal(`${moduleId}_el_menu_logo`, 'text_color', '#0F172A');
+  const logoFontSize = getVal(`${moduleId}_el_menu_logo`, 'font_size', 't3');
+  const logoFontWeight = getVal(`${moduleId}_el_menu_logo`, 'font_weight', 'bold');
+
   // Element: Items
   const rawLinks = getVal(`${moduleId}_el_menu_items`, 'links', []);
   const links = Array.isArray(rawLinks) ? rawLinks : [];
 
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
 
-  console.log('[MENU_PREVIEW_RENDER_DEBUG]', {
+  console.log('[MENU_PUBLIC_LAYOUT_DEBUG]', {
     moduleId,
     isPreviewMode,
-    logoType: getVal(`${moduleId}_el_menu_logo`, 'logo_type', 'image'),
-    logoText: getVal(`${moduleId}_el_menu_logo`, 'logo_text', 'MI MARCA'),
+    windowWidth: typeof window !== 'undefined' ? window.innerWidth : null,
+    logoType,
+    logoText,
+    logoImg,
     linksCount: links.length,
-    firstLink: links[0],
-    position: getVal(null, 'position', getVal(null, 'sticky', false) ? 'sticky' : 'relative'),
-    sticky: getVal(null, 'sticky', false),
-    rawLinks: settingsValues[`${moduleId}_el_menu_items_links`],
-    rawLogoText: settingsValues[`${moduleId}_el_menu_logo_logo_text`],
-    rawLogoType: settingsValues[`${moduleId}_el_menu_logo_logo_type`]
+    layout,
+    position,
+    sticky,
+    desktopHamburger,
+    isOpen: isMobileMenuOpen,
+    rawLogoImg: settingsValues?.[`${moduleId}_el_menu_logo_logo_img`],
+    rawLogoText: settingsValues?.[`${moduleId}_el_menu_logo_logo_text`],
+    rawLogoType: settingsValues?.[`${moduleId}_el_menu_logo_logo_type`],
+    rawDesktopHamburger: settingsValues?.[`${moduleId}_global_desktop_hamburger`],
+    rawPosition: settingsValues?.[`${moduleId}_global_position`],
+    rawLayout: settingsValues?.[`${moduleId}_global_layout`]
   });
 
   // Scroll Spy Logic
@@ -71,16 +94,13 @@ export const MenuModule: React.FC<{
   }, [isPreviewMode, links.length]);
 
   // Global Settings
-  const layout = getVal(null, 'layout', 'horizontal');
   const align = getVal(null, 'align', 'center');
   const gap = parseFloat(getVal(null, 'gap', 24)) || 24;
   const paddingY = parseFloat(getVal(null, 'padding_y', 20)) || 20;
   const darkMode = getVal(null, 'dark_mode', false);
   const rawBgColor = getVal(null, 'bg_color', darkMode ? '#0F172A' : 'transparent');
   const glassEffect = getVal(null, 'glass_effect', false);
-  const position = getVal(null, 'position', getVal(null, 'sticky', false) ? 'sticky' : 'relative');
   const isFloating = position === 'sticky' || position === 'fixed';
-  const desktopHamburger = getVal(null, 'desktop_hamburger', false);
 
   const bgColor = (isFloating && rawBgColor === 'transparent') 
     ? (darkMode ? '#1E293B' : '#FFFFFF') 
@@ -106,16 +126,6 @@ export const MenuModule: React.FC<{
     if (color.startsWith('#') && color.length === 7) return `${color}CC`;
     return color;
   };
-
-  // Element: Logo
-  const logoType = getVal(`${moduleId}_el_menu_logo`, 'logo_type', 'image');
-  const logoText = getVal(`${moduleId}_el_menu_logo`, 'logo_text', 'MI MARCA');
-  const logoImg = getVal(`${moduleId}_el_menu_logo`, 'logo_img', '');
-  const logoImgAlt = getVal(`${moduleId}_el_menu_logo`, 'logo_img_alt', '');
-  const logoWidth = parseFloat(getVal(`${moduleId}_el_menu_logo`, 'logo_width', 120)) || 120;
-  const logoColor = getVal(`${moduleId}_el_menu_logo`, 'text_color', '#0F172A');
-  const logoFontSize = getVal(`${moduleId}_el_menu_logo`, 'font_size', 't3');
-  const logoFontWeight = getVal(`${moduleId}_el_menu_logo`, 'font_weight', 'bold');
 
   const fontSize = getVal(`${moduleId}_el_menu_items`, 'font_size', 'p');
   const fontWeight = getVal(`${moduleId}_el_menu_items`, 'font_weight', 'medium');
@@ -153,7 +163,7 @@ export const MenuModule: React.FC<{
   } : {};
 
   const activeLogo = darkMode 
-    ? (logoImgAlt || logoWhiteUrl) 
+    ? (logoImgAlt || logoWhiteUrl || logoImg || logoUrl) 
     : (logoImg || logoUrl);
 
   const navStyle: React.CSSProperties = {
@@ -163,9 +173,10 @@ export const MenuModule: React.FC<{
     borderRadius: isFloating ? '0px' : `${borderRadius}px`,
     paddingTop: `${paddingY}px`,
     paddingBottom: `${paddingY}px`,
-    position: 'relative',
+    position: position as any,
+    top: isFloating ? 0 : 'auto',
     width: '100%',
-    zIndex: 1,
+    zIndex: 100,
     borderBottom: isFloating ? `1px solid ${darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'}` : 'none'
   };
 
@@ -255,14 +266,14 @@ export const MenuModule: React.FC<{
     });
   };
 
-  return (
-    <>
-      <nav className="w-full" style={navStyle}>
-        <motion.div 
-          {...animProps}
-          className={`${containerClasses[layout as keyof typeof containerClasses]} w-full mx-auto px-6 flex items-center gap-8 ${invertOrder && layout === 'horizontal' ? 'flex-row-reverse' : ''} ${layout === 'vertical' ? alignmentClasses[align as keyof typeof alignmentClasses] : ''}`}
-          style={{ gap: `${gap}px` }}
-        >
+    return (
+      <div className={`w-full max-w-7xl mx-auto @container ${isPreviewMode ? '' : 'px-6'}`}>
+        <nav className={`w-full transition-all duration-300 ${isFloating ? 'fixed top-0 left-0 right-0 shadow-sm' : ''}`} style={navStyle}>
+          <motion.div 
+            {...animProps}
+            className={`${containerClasses[layout as keyof typeof containerClasses]} w-full mx-auto px-6 flex items-center gap-8 ${invertOrder && layout === 'horizontal' ? 'flex-row-reverse' : ''} ${layout === 'vertical' ? alignmentClasses[align as keyof typeof alignmentClasses] : ''}`}
+            style={{ gap: `${gap}px` }}
+          >
           {/* Logo */}
           <div className="flex-shrink-0">
             {logoType === 'image' && activeLogo ? (
@@ -353,6 +364,6 @@ export const MenuModule: React.FC<{
           )}
         </AnimatePresence>
       </nav>
-    </>
+    </div>
   );
 };

@@ -75,6 +75,7 @@ const MODULE_ADAPTERS: Record<string, ModuleBridgeAdapter> = {
     contentToSettings: {
       'logo_text': 'el_menu_logo_logo_text',
       'logo_url': 'el_menu_logo_logo_img',
+      'image_url': 'el_menu_logo_logo_img',
       'links': 'el_menu_items_links',
       'items': 'el_menu_items_links'
     },
@@ -87,6 +88,7 @@ const MODULE_ADAPTERS: Record<string, ModuleBridgeAdapter> = {
     contentToSettings: {
       'logo_text': 'el_menu_logo_logo_text',
       'logo_url': 'el_menu_logo_logo_img',
+      'image_url': 'el_menu_logo_logo_img',
       'links': 'el_menu_items_links',
       'items': 'el_menu_items_links'
     },

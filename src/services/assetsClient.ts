@@ -1,5 +1,5 @@
 import { logDebug } from '../utils/debug';
-import { getSupabase } from './supabaseClient';
+import { getUploadAuthToken } from './authTokenProvider';
 
 export interface AssetUploadResponse {
   asset_id?: string;
@@ -39,6 +39,23 @@ export const uploadAsset = async (
   const baseUrl = apiBaseUrl.replace(/\/$/, "");
   const uploadUrl = `${baseUrl}/api/assets/upload`;
 
+  // Obtener el token de autenticación usando el nuevo provider
+  const { token, source: tokenSource } = await getUploadAuthToken();
+
+  logDebug(`[ASSET_UPLOAD_AUTH_DEBUG]`, {
+    apiBase: apiBaseUrl,
+    tokenSource,
+    hasFinalToken: !!token,
+    tokenPreview: token ? `${token.substring(0, 4)}...${token.substring(token.length - 4)}` : 'none',
+    currentHostname: window.location.hostname,
+    isEmbeddedMode: window.parent !== window,
+    uploadUrl
+  });
+
+  if (!token) {
+    throw new Error("No hay token de autenticación disponible para subir archivos. Por favor, inicia sesión.");
+  }
+
   logDebug(`[AssetsClient] Iniciando subida de activo a ${uploadUrl}...`, options);
 
   try {
@@ -56,15 +73,9 @@ export const uploadAsset = async (
     if (options.fileName) formData.append('file_name', options.fileName);
     if (options.contentType) formData.append('content_type', options.contentType || (fileOrBlob as any).type);
 
-    // Obtener el token de Supabase para la autenticación
-    const supabase = getSupabase();
-    const { data: { session } } = await supabase?.auth.getSession() || { data: { session: null } };
-    const token = session?.access_token;
-
-    const headers: Record<string, string> = {};
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
+    const headers: Record<string, string> = {
+      'Authorization': `Bearer ${token}`
+    };
     
     const response = await fetch(uploadUrl, {
       method: 'POST',

@@ -177,7 +177,7 @@ export const HeroModule: React.FC<{
 
   // Element: Media
   const mediaType = getVal(`${moduleId}_el_hero_media`, 'media_type', 'image');
-  const visualImage = getVal(`${moduleId}_el_hero_media`, 'image', 'https://picsum.photos/seed/hero/1200/800') || 'https://picsum.photos/seed/hero/1200/800';
+  const visualImage = getVal(`${moduleId}_el_hero_media`, 'image', 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwMCIgaGVpZ2h0PSI4MDAiIHZpZXdCb3g9IjAgMCAxMjAwIDgwMCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTIwMCIgaGVpZ2h0PSI4MDAiIGZpbGw9IiNFMkU4RjAiLz48cGF0aCBkPSJNNTAwIDQwMEw2MDAgMzAwTDcwMCA0MDBWNTUwSDUwMFY0MDBaIiBmaWxsPSIjOTRBM0NCIi8+PC9zdmc+') || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwMCIgaGVpZ2h0PSI4MDAiIHZpZXdCb3g9IjAgMCAxMjAwIDgwMCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTIwMCIgaGVpZ2h0PSI4MDAiIGZpbGw9IiNFMkU4RjAiLz48cGF0aCBkPSJNNTAwIDQwMEw2MDAgMzAwTDcwMCA0MDBWNTUwSDUwMFY0MDBaIiBmaWxsPSIjOTRBM0NCIi8+PC9zdmc+';
   const visualVideo = getVal(`${moduleId}_el_hero_media`, 'video_url', '');
   const visualRadius = parseNumSafe(getVal(`${moduleId}_el_hero_media`, 'border_radius', 24), 24);
   const visualShadow = getVal(`${moduleId}_el_hero_media`, 'shadow', 'lg');

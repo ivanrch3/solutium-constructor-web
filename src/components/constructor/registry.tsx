@@ -802,7 +802,7 @@ export const HERO_MODULE: WebModule = {
     { id: 'el_hero_media', name: 'Multimedia Principal', type: 'multimedia', groups: ['multimedia', 'estilo', 'estructura', 'interaccion'], settings: {
       multimedia: [
         { id: 'media_type', label: 'Tipo', type: 'select', defaultValue: 'image', options: [{label:'Imagen', value:'image'}, {label:'Video', value:'video'}]},
-        { id: 'image', label: 'Imagen', type: 'image', defaultValue: 'https://picsum.photos/seed/hero/1200/800', showIf: { settingId: 'media_type', value: 'image' } },
+        { id: 'image', label: 'Imagen', type: 'image', defaultValue: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwMCIgaGVpZ2h0PSI4MDAiIHZpZXdCb3g9IjAgMCAxMjAwIDgwMCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTIwMCIgaGVpZ2h0PSI4MDAiIGZpbGw9IiNFMkU4RjAiLz48cGF0aCBkPSJNNTAwIDQwMEw2MDAgMzAwTDcwMCA0MDBWNTUwSDUwMFY0MDBaIiBmaWxsPSIjOTRBM0NCIi8+PC9zdmc+', showIf: { settingId: 'media_type', value: 'image' } },
         { id: 'video_url', label: 'URL Video (MP4)', type: 'text', defaultValue: '', showIf: { settingId: 'media_type', value: 'video' } }
       ],
       estilo: [

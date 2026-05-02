@@ -46,7 +46,7 @@ import { StructurePanel } from './StructurePanel';
 import { TopBar } from './TopBar';
 import { Canvas } from './Canvas';
 import { GlobalSettingsPanel } from './GlobalSettingsPanel';
-import { captureAndUploadPreview } from '../../utils/previewCapturer';
+import { capturePreview } from '../../utils/previewCapturer';
 import { 
   MobileBottomNav, 
   UnsavedChangesModal, 
@@ -1523,7 +1523,7 @@ const formatTimestampName = () => {
         (async () => {
           try {
             const webBuilderSiteId = initialPage?.id || (window as any).WEB_BUILDER_SITE_ID;
-            const preview = await captureAndUploadPreview(projectId, siteId, webBuilderSiteId);
+            const preview = await capturePreview(projectId, siteId, webBuilderSiteId);
             if (preview) {
               const success = await updateSitePreview(siteId, {
                 previewImageUrl: preview.url,
@@ -1678,7 +1678,7 @@ const formatTimestampName = () => {
         (async () => {
           try {
             const webBuilderSiteId = initialPage?.id || (window as any).WEB_BUILDER_SITE_ID;
-            const preview = await captureAndUploadPreview(projectId, siteId, webBuilderSiteId);
+            const preview = await capturePreview(projectId, siteId, webBuilderSiteId);
             if (preview) {
               const success = await updateSitePreview(siteId, {
                 previewImageUrl: preview.url,
@@ -1762,7 +1762,7 @@ const formatTimestampName = () => {
     setPreviewStatus('loading');
     try {
       const webBuilderSiteId = initialPage?.id || (window as any).WEB_BUILDER_SITE_ID;
-      const preview = await captureAndUploadPreview(projectId, currentSiteId, webBuilderSiteId);
+      const preview = await capturePreview(projectId, currentSiteId, webBuilderSiteId);
       if (preview) {
         const previewData = {
           previewImageUrl: preview.url,

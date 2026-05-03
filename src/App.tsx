@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { startHandshake } from './services/handshakeService';
 import { configService } from './services/configService';
 import { initSupabase } from './services/supabaseClient';
@@ -429,30 +430,76 @@ const AppContent: React.FC = () => {
   };
 
   if (!isHandshakeComplete) {
-    const isDevOrAIStudio = window.location.hostname.includes('run.app') || window.location.hostname.includes('localhost');
-
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center text-text p-6">
-        <div className="flex flex-col items-center space-y-12">
-          {urlLogo && !loadingLogoError ? (
-            <img 
-              src={urlLogo} 
-              alt="Loading Logo" 
-              className="h-24 w-auto object-contain animate-pulse" 
-              referrerPolicy="no-referrer" 
-              onError={() => setLoadingLogoError(true)}
-            />
-          ) : null}
-          
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-        </div>
+      <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center p-6 font-sans">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
+          className="flex flex-col items-center space-y-10"
+        >
+          {/* Solutium Isotipo central */}
+          <div className="relative">
+            <motion.div
+              animate={{ 
+                scale: [1, 1.05, 1],
+                opacity: [0.8, 1, 0.8]
+              }}
+              transition={{ 
+                duration: 3, 
+                repeat: Infinity, 
+                ease: "easeInOut" 
+              }}
+              className="relative z-10"
+            >
+              <img 
+                src="https://nyc3.digitaloceanspaces.com/solutium-space/9e52afcf-2229-4b3a-9206-1a0c4bf404b9-solutium-isotipo.png" 
+                alt="Solutium" 
+                className="h-24 w-24 object-contain drop-shadow-2xl" 
+                referrerPolicy="no-referrer" 
+                onError={() => setLoadingLogoError(true)}
+              />
+            </motion.div>
+            
+            {/* Círculo de Carga animado */}
+            <div className="absolute inset-0 flex items-center justify-center -m-4">
+              <svg className="w-32 h-32 transform -rotate-90">
+                <circle
+                  cx="64"
+                  cy="64"
+                  r="60"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  fill="transparent"
+                  className="text-slate-100"
+                />
+                <motion.circle
+                  cx="64"
+                  cy="64"
+                  r="60"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  fill="transparent"
+                  strokeDasharray="377"
+                  initial={{ strokeDashoffset: 377 }}
+                  animate={{ strokeDashoffset: 0 }}
+                  transition={{ 
+                    duration: 2, 
+                    repeat: Infinity, 
+                    ease: "easeInOut" 
+                  }}
+                  className="text-primary"
+                />
+              </svg>
+            </div>
+          </div>
+        </motion.div>
 
-        {/* Botón de Emergencia para Desarrollo */}
-        {isDevOrAIStudio && (
-          <div className="absolute bottom-10">
+        {/* Botón de Emergencia DISCRETO para Desarrollo */}
+        {(window.location.hostname.includes('run.app') || window.location.hostname.includes('localhost')) && (
+          <div className="absolute bottom-6 opacity-20 hover:opacity-100 transition-opacity">
             <button 
               onClick={() => {
-                // Inicialización de emergencia con datos de prueba
                 initSupabase(
                   'https://placeholder-project.supabase.co',
                   'placeholder-key',
@@ -467,9 +514,9 @@ const AppContent: React.FC = () => {
                 });
                 setIsHandshakeComplete(true);
               }}
-              className="px-6 py-2 bg-secondary hover:bg-secondary/80 text-text/40 rounded-xl text-sm font-medium transition-all border border-border shadow-sm"
+              className="px-4 py-1 text-[10px] uppercase tracking-widest font-bold text-text/40 hover:text-primary transition-colors"
             >
-              Saltar Handshake (Modo Dev)
+              Skip
             </button>
           </div>
         )}

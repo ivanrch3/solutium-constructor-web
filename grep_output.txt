@@ -1,0 +1,29 @@
+src/components/ProjectForm.tsx:                    ? 'bg-solutium-dark text-white shadow-primary/10 hover:opacity-90 border-black/5' 
+src/components/ProjectForm.tsx:                    : 'bg-solutium-dark/30 text-white cursor-not-allowed shadow-none border-transparent'
+src/components/DataTab.tsx:  const isApiProduction = apiMadreUrl.includes('solutium.app') && !apiMadreUrl.includes('staging') && !apiMadreUrl.includes('ondigitalocean');
+src/components/DataTab.tsx:                        <p className="text-[10px] leading-tight">Usa: <code className="bg-white/50 px-1">https://solutium-app-maestra-ld25z.ondigitalocean.app</code></p>
+src/components/constructor/WebConstructor.tsx:    root.style.setProperty('--solutium-font', `"${fontSans}", sans-serif`);
+src/components/constructor/StructurePanel.tsx:    // Add default solutium primary if not exists
+src/components/Dashboard.tsx:            className="flex items-center justify-center gap-2 bg-solutium-dark hover:opacity-90 text-white font-bold py-3 px-6 rounded-xl transition-all shadow-lg shadow-primary/20 w-fit group border border-black/5"
+src/components/MethodSelection.tsx:          className="bg-solutium-dark rounded-3xl p-8 text-left flex flex-col h-[400px] shadow-xl shadow-primary/10 group transition-all border border-black/5"
+src/App.tsx:      localStorage.setItem('solutium_session_v2', JSON.stringify(session));
+src/App.tsx:      localStorage.setItem('solutium_handshake_cache', JSON.stringify(payload));
+src/App.tsx:        const saved = localStorage.getItem('solutium_session_v2');
+src/App.tsx:          const savedHandshake = localStorage.getItem('solutium_handshake_cache');
+src/App.tsx:                  email: 'admin@solutium.com',
+src/services/authTokenProvider.ts:  const sessionToken = sessionStorage.getItem('solutium_upload_token');
+src/services/authTokenProvider.ts:    const savedHandshake = localStorage.getItem('solutium_handshake_cache');
+src/services/authTokenProvider.ts:    sessionStorage.setItem('solutium_upload_token', token);
+src/context/ThemeContext.tsx:      root.style.setProperty('--solutium-dark', theme.colors.text);
+src/context/ThemeContext.tsx:      root.style.setProperty('--solutium-font', fontValue);
+src/context/ThemeContext.tsx:    const solutiumDark = theme.dark || theme.solutiumDark || theme.primaryDark || SOLUTIUM_COLORS.deepGray;
+src/context/ThemeContext.tsx:    root.style.setProperty('--solutium-dark', solutiumDark);
+src/context/ThemeContext.tsx:      root.style.setProperty('--solutium-font', fontValue);
+src/utils/previewCapturer.ts:  'solutium-space.nyc3.digitaloceanspaces.com',
+src/utils/previewCapturer.ts:  'solutium.app',
+src/utils/previewCapturer.ts:  'solutium-constructor-web-g9777.ondigitalocean.app',
+src/utils/previewCapturer.ts:  'solutium-app-maestra-ld25z.ondigitalocean.app',
+src/index.css:  --font-sans: var(--solutium-font, "Inter", sans-serif);
+src/index.css:  --color-solutium-dark: var(--solutium-dark, #0F172A);
+src/index.css:  background-color: var(--color-solutium-dark, #0F172A);
+src/types/schema.ts:  uiStyle?: 'windows' | 'solutium';

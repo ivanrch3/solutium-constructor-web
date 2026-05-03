@@ -177,7 +177,8 @@ export const HeroModule: React.FC<{
 
   // Element: Media
   const mediaType = getVal(`${moduleId}_el_hero_media`, 'media_type', 'image');
-  const visualImage = getVal(`${moduleId}_el_hero_media`, 'image', 'https://images.unsplash.com/photo-1551434678-e076c223a692?q=80&w=1440&auto=format&fit=crop');
+  const defaultVisualImage = 'https://images.unsplash.com/photo-1551434678-e076c223a692?q=80&w=1440&auto=format&fit=crop';
+  const visualImage = getVal(`${moduleId}_el_hero_media`, 'image', defaultVisualImage) || defaultVisualImage;
   const visualVideo = getVal(`${moduleId}_el_hero_media`, 'video_url', '');
   const visualRadius = parseNumSafe(getVal(`${moduleId}_el_hero_media`, 'border_radius', 24), 24);
   const visualShadow = getVal(`${moduleId}_el_hero_media`, 'shadow', 'lg');
@@ -214,7 +215,8 @@ export const HeroModule: React.FC<{
   // Element: Social Proof
   const showProof = getVal(`${moduleId}_el_hero_social_proof`, 'show_proof', true);
   const proofText = getVal(`${moduleId}_el_hero_social_proof`, 'proof_text', 'Confiado por +500 empresas');
-  const avatars = getVal(`${moduleId}_el_hero_social_proof`, 'avatars', []);
+  const rawAvatars = getVal(`${moduleId}_el_hero_social_proof`, 'avatars', []);
+  const avatars = Array.isArray(rawAvatars) ? rawAvatars : [];
   const proofFontSize = getVal(`${moduleId}_el_hero_social_proof`, 'font_size', 's');
   const proofWeight = getVal(`${moduleId}_el_hero_social_proof`, 'font_weight', 'bold');
   const proofMarginB = parseNumSafe(getVal(`${moduleId}_el_hero_social_proof`, 'margin_b', 0), 0);
@@ -460,11 +462,20 @@ export const HeroModule: React.FC<{
           className="flex items-center gap-4 mt-4"
           style={{ marginBottom: `${proofMarginB}px` }}
         >
-          <div className="flex -space-x-3">
+            <div className="flex -space-x-3">
             {[1,2,3,4].map((_, i: number) => {
               const baseSize = TYPOGRAPHY_SCALE[proofFontSize as keyof typeof TYPOGRAPHY_SCALE]?.fontSize || 12;
               const avatarSize = Math.max(32, baseSize * 2.5);
-              const avatarUrl = avatars[i]?.img || `https://i.pravatar.cc/150?u=${i + moduleId}`;
+              
+              // Protocol v8.2: Enhanced fallback for avatars
+              let avatarUrl = '';
+              if (avatars && avatars[i]) {
+                avatarUrl = typeof avatars[i] === 'string' ? avatars[i] : (avatars[i].img || avatars[i].url || '');
+              }
+              
+              if (!avatarUrl) {
+                avatarUrl = `https://i.pravatar.cc/150?u=${i + (moduleId || 'hero')}`;
+              }
               
               return (
                 <div 
@@ -478,7 +489,7 @@ export const HeroModule: React.FC<{
                 >
                   <img 
                     src={avatarUrl} 
-                    alt="User" 
+                    alt={`User ${i}`} 
                     className="w-full h-full object-cover"
                     referrerPolicy="no-referrer"
                   />

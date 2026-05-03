@@ -152,8 +152,10 @@ const ScaledOption: React.FC<{
   const ref = React.useRef<HTMLSpanElement>(null);
 
   useLayoutEffect(() => {
+    let mounted = true;
+    
     const measure = () => {
-      if (!ref.current) return;
+      if (!ref.current || !mounted) return;
       
       // Better measurement: look for the nearest container that defines the text width
       let container: HTMLElement | null = ref.current.parentElement;
@@ -163,25 +165,29 @@ const ScaledOption: React.FC<{
       
       const availableWidth = container ? container.clientWidth - 20 : window.innerWidth - 60;
       
-      // Temporal measurement without scaling
+      // Temporal measurement without scaling to find natural width
       const originalFS = ref.current.style.fontSize;
       ref.current.style.fontSize = '1em';
       const actualWidth = ref.current.offsetWidth;
       ref.current.style.fontSize = originalFS;
-
+      
       if (actualWidth > availableWidth && availableWidth > 0) {
-        setScale(Math.max(0.3, availableWidth / actualWidth));
+        const newScale = Math.max(0.3, availableWidth / actualWidth);
+        setScale(newScale);
       } else {
         setScale(1);
       }
       
+      // All these state updates happen synchronously in the browser's layout phase
       setIsReady(true);
     };
 
     measure();
+    
     window.addEventListener('resize', measure);
     
     return () => {
+      mounted = false;
       window.removeEventListener('resize', measure);
     };
   }, [value]);
@@ -193,8 +199,9 @@ const ScaledOption: React.FC<{
         ...style,
         fontSize: scale < 1 ? `${scale}em` : 'inherit',
         lineHeight: 1.1,
-        opacity: isReady ? 1 : 0, // Hidden while measuring
-        transition: isReady ? 'opacity 0.2s ease-out' : 'none'
+        opacity: isReady ? 1 : 0, 
+        visibility: isReady ? 'visible' : 'hidden',
+        transition: isReady ? 'opacity 0.3s ease-out' : 'none'
       }}
       className="inline-block"
     >

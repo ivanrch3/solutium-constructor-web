@@ -332,7 +332,7 @@ export const capturePreview = async (
     });
 
     // Específico para RotatingText: Buscar el primer item y forzar su visibilidad
-    const rotatingContainers = clone.querySelectorAll('.relative.inline-block.overflow-hidden');
+    const rotatingContainers = clone.querySelectorAll('.relative.inline-block.overflow-hidden, .relative.inline-flex.overflow-hidden');
     rotatingContainers.forEach(container => {
       // Intentar encontrar el motion.span dentro
       const spans = container.querySelectorAll('span');

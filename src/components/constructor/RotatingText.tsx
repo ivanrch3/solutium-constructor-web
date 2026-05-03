@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useLayoutEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { InlineEditableText } from './InlineEditableText';
 
@@ -12,6 +12,7 @@ interface RotatingTextProps {
   className?: string;
   moduleId?: string;
   isPreviewMode?: boolean;
+  align?: 'left' | 'center' | 'right' | 'inherit';
   onSaveFixed?: (val: string) => void;
   onSaveOption?: (index: number, val: string) => void;
 }
@@ -26,6 +27,7 @@ export const RotatingText: React.FC<RotatingTextProps> = ({
   className = '',
   moduleId,
   isPreviewMode = false,
+  align = 'inherit',
   onSaveFixed,
   onSaveOption
 }) => {
@@ -78,23 +80,34 @@ export const RotatingText: React.FC<RotatingTextProps> = ({
     display: 'inline-block'
   };
 
+  const isCentered = align === 'center';
+
   return (
-    <span className={`inline ${className}`}>
-      {moduleId ? (
-        <InlineEditableText
-          moduleId={moduleId}
-          elementId={`${moduleId}_el_hero_typography`}
-          settingId="rotating_fixed"
-          value={fixedText}
-          isPreviewMode={isPreviewMode}
-          onSave={onSaveFixed}
-          tagName="span"
-          className="inline"
-        />
-      ) : (
-        <span>{fixedText}</span>
+    <span 
+      className={`${isCentered ? 'flex flex-col items-center text-center w-full' : 'inline whitespace-normal'} ${className}`}
+      style={{ 
+        textAlign: align === 'inherit' ? 'inherit' : align,
+      }}
+    >
+      {fixedText && (
+        <span className={`${isCentered ? 'block' : 'inline'} mr-[0.25em]`}>
+          {moduleId ? (
+            <InlineEditableText
+              moduleId={moduleId}
+              elementId={`${moduleId}_el_hero_typography`}
+              settingId="rotating_fixed"
+              value={fixedText}
+              isPreviewMode={isPreviewMode}
+              onSave={onSaveFixed}
+              tagName="span"
+              className="inline"
+            />
+          ) : (
+            <span>{fixedText}</span>
+          )}
+        </span>
       )}
-      <span className="relative inline-block overflow-hidden py-[0.1em] -my-[0.1em] align-baseline ml-[0.25em]">
+      <span className="relative inline-flex items-baseline overflow-hidden py-[0.1em] -my-[0.1em] min-h-[1.1em] max-w-full align-baseline">
         <AnimatePresence mode="wait">
           <motion.span
             key={`${index}-${currentOptionValue}`}
@@ -102,7 +115,7 @@ export const RotatingText: React.FC<RotatingTextProps> = ({
             animate={currentVariant.animate}
             exit={currentVariant.exit}
             transition={{ duration: 0.5, ease: "easeOut" }}
-            className="whitespace-nowrap inline-block align-baseline"
+            className="whitespace-nowrap inline-block align-baseline max-w-full"
           >
             <ScaledOption 
               value={currentOptionValue}
@@ -122,8 +135,8 @@ export const RotatingText: React.FC<RotatingTextProps> = ({
 
 /**
  * ScaledOption handles the auto-fit scaling logic for individual words.
- * Moving this to a sub-component ensures measurement happens correctly 
- * when the word is actually mounted during transitions.
+ * Using useLayoutEffect ensures measurement happens before the first paint,
+ * avoiding the visual "jump" when text scales down.
  */
 const ScaledOption: React.FC<{
   value: string;
@@ -135,32 +148,40 @@ const ScaledOption: React.FC<{
   setIsPaused: (paused: boolean) => void;
 }> = ({ value, index, moduleId, isPreviewMode, onSaveOption, style, setIsPaused }) => {
   const [scale, setScale] = useState(1);
+  const [isReady, setIsReady] = useState(false);
   const ref = React.useRef<HTMLSpanElement>(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const measure = () => {
       if (!ref.current) return;
       
-      const viewportPadding = 48; 
-      const availableWidth = window.innerWidth - viewportPadding;
+      // Better measurement: look for the nearest container that defines the text width
+      let container: HTMLElement | null = ref.current.parentElement;
+      while (container && container.clientWidth === 0) {
+        container = container.parentElement;
+      }
       
+      const availableWidth = container ? container.clientWidth - 20 : window.innerWidth - 60;
+      
+      // Temporal measurement without scaling
       const originalFS = ref.current.style.fontSize;
       ref.current.style.fontSize = '1em';
       const actualWidth = ref.current.offsetWidth;
       ref.current.style.fontSize = originalFS;
 
-      if (actualWidth > availableWidth) {
-        setScale(Math.max(0.4, availableWidth / actualWidth));
+      if (actualWidth > availableWidth && availableWidth > 0) {
+        setScale(Math.max(0.3, availableWidth / actualWidth));
       } else {
         setScale(1);
       }
+      
+      setIsReady(true);
     };
 
-    const timeout = setTimeout(measure, 50);
+    measure();
     window.addEventListener('resize', measure);
     
     return () => {
-      clearTimeout(timeout);
       window.removeEventListener('resize', measure);
     };
   }, [value]);
@@ -171,7 +192,9 @@ const ScaledOption: React.FC<{
       style={{
         ...style,
         fontSize: scale < 1 ? `${scale}em` : 'inherit',
-        lineHeight: 1.1
+        lineHeight: 1.1,
+        opacity: isReady ? 1 : 0, // Hidden while measuring
+        transition: isReady ? 'opacity 0.2s ease-out' : 'none'
       }}
       className="inline-block"
     >
@@ -195,3 +218,4 @@ const ScaledOption: React.FC<{
     </span>
   );
 };
+

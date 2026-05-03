@@ -177,7 +177,7 @@ export const HeroModule: React.FC<{
 
   // Element: Media
   const mediaType = getVal(`${moduleId}_el_hero_media`, 'media_type', 'image');
-  const visualImage = getVal(`${moduleId}_el_hero_media`, 'image', 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwMCIgaGVpZ2h0PSI4MDAiIHZpZXdCb3g9IjAgMCAxMjAwIDgwMCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTIwMCIgaGVpZ2h0PSI4MDAiIGZpbGw9IiNFMkU4RjAiLz48cGF0aCBkPSJNNTAwIDQwMEw2MDAgMzAwTDcwMCA0MDBWNTUwSDUwMFY0MDBaIiBmaWxsPSIjOTRBM0NCIi8+PC9zdmc+') || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwMCIgaGVpZ2h0PSI4MDAiIHZpZXdCb3g9IjAgMCAxMjAwIDgwMCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTIwMCIgaGVpZ2h0PSI4MDAiIGZpbGw9IiNFMkU4RjAiLz48cGF0aCBkPSJNNTAwIDQwMEw2MDAgMzAwTDcwMCA0MDBWNTUwSDUwMFY0MDBaIiBmaWxsPSIjOTRBM0NCIi8+PC9zdmc+';
+  const visualImage = getVal(`${moduleId}_el_hero_media`, 'image', 'https://images.unsplash.com/photo-1551434678-e076c223a692?q=80&w=1440&auto=format&fit=crop');
   const visualVideo = getVal(`${moduleId}_el_hero_media`, 'video_url', '');
   const visualRadius = parseNumSafe(getVal(`${moduleId}_el_hero_media`, 'border_radius', 24), 24);
   const visualShadow = getVal(`${moduleId}_el_hero_media`, 'shadow', 'lg');
@@ -190,17 +190,17 @@ export const HeroModule: React.FC<{
   const primaryText = getVal(`${moduleId}_el_hero_ctas`, 'primary_text', 'Comenzar Ahora');
   const primaryIcon = getVal(`${moduleId}_el_hero_ctas`, 'primary_icon', 'ArrowRight');
   const primaryType = getVal(`${moduleId}_el_hero_ctas`, 'primary_link_type', 'external');
-  const primaryUrl = getVal(`${moduleId}_el_hero_ctas`, 'primary_url', '');
+  const primaryUrl = getVal(`${moduleId}_el_hero_ctas`, 'primary_url', '#');
   const primaryTarget = getVal(`${moduleId}_el_hero_ctas`, 'primary_target', '_self');
   
   const secondaryText = getVal(`${moduleId}_el_hero_ctas`, 'secondary_text', 'Saber Más');
   const secondaryIcon = getVal(`${moduleId}_el_hero_ctas`, 'secondary_icon', '');
   const secondaryType = getVal(`${moduleId}_el_hero_ctas`, 'secondary_link_type', 'external');
-  const secondaryUrl = getVal(`${moduleId}_el_hero_ctas`, 'secondary_url', '');
+  const secondaryUrl = getVal(`${moduleId}_el_hero_ctas`, 'secondary_url', '#');
   const secondaryTarget = getVal(`${moduleId}_el_hero_ctas`, 'secondary_target', '_self');
 
-  const hasPrimary = primaryUrl && primaryUrl !== '';
-  const hasSecondary = secondaryUrl && secondaryUrl !== '';
+  const hasPrimary = true;
+  const hasSecondary = true;
 
   const primaryBg = getVal(`${moduleId}_el_hero_ctas`, 'primary_bg', 'var(--primary-color)');
   const primaryColor = getVal(`${moduleId}_el_hero_ctas`, 'primary_color', '#FFFFFF');
@@ -274,11 +274,11 @@ export const HeroModule: React.FC<{
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true }}
-        className={`flex flex-col w-full ${
+        className={`flex flex-col w-full relative z-30 ${
           finalAlign === 'center' ? 'items-center text-center mx-auto' : 
           finalAlign === 'right' ? 'items-end text-right ml-auto' : 
           'items-start text-left mr-auto'
-        } gap-6 max-w-2xl relative z-30`}
+        } gap-6 max-w-2xl overflow-hidden`}
         style={{ marginBottom: `${typographyMarginB}px` }}
       >
       {eyebrow && (
@@ -296,7 +296,7 @@ export const HeroModule: React.FC<{
       
       <motion.h1 
         variants={itemVariants}
-        className="leading-[1.1] tracking-tight"
+        className="leading-[1.1] tracking-tight max-w-full"
         style={{ 
           ...getTypographyStyle(titleSize, titleWeight),
           color: darkMode ? '#FFFFFF' : '#0F172A'
@@ -312,6 +312,7 @@ export const HeroModule: React.FC<{
             animationType={rotatingAnim as any}
             moduleId={moduleId}
             isPreviewMode={isPreviewMode}
+            align={finalAlign}
             onSaveFixed={(val) => {
               updateSectionSettings(moduleId, { [`${moduleId}_el_hero_typography_rotating_fixed`]: val });
             }}
@@ -334,7 +335,7 @@ export const HeroModule: React.FC<{
             value={title}
             tagName="span"
             isPreviewMode={isPreviewMode}
-            style={{ display: 'inline-block', width: '100%' }}
+            style={{ display: 'inline-block' }}
           >
             <TextRenderer 
               text={title} 
@@ -350,7 +351,7 @@ export const HeroModule: React.FC<{
       {subtitle && (
         <motion.p
           variants={itemVariants}
-          className="text-lg leading-relaxed opacity-70"
+          className="text-lg leading-relaxed opacity-70 w-full"
           style={{ 
             ...getTypographyStyle(subtitleSize, subtitleWeight),
             color: darkMode ? '#94A3B8' : '#475569'
@@ -460,9 +461,11 @@ export const HeroModule: React.FC<{
           style={{ marginBottom: `${proofMarginB}px` }}
         >
           <div className="flex -space-x-3">
-            {(avatars.length > 0 ? avatars : [1,2,3,4]).map((avatar: any, i: number) => {
+            {[1,2,3,4].map((_, i: number) => {
               const baseSize = TYPOGRAPHY_SCALE[proofFontSize as keyof typeof TYPOGRAPHY_SCALE]?.fontSize || 12;
               const avatarSize = Math.max(32, baseSize * 2.5);
+              const avatarUrl = avatars[i]?.img || `https://i.pravatar.cc/150?u=${i + moduleId}`;
+              
               return (
                 <div 
                   key={i} 
@@ -474,7 +477,7 @@ export const HeroModule: React.FC<{
                   }}
                 >
                   <img 
-                    src={avatar.img || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMDAiIGZpbGw9IiNFMkU4RjAiLz48Y2lyY2xlIGN4PSI1MCIgY3k9IjQwIiByPSIyMCIgZmlsbD0iIzk0QTNDQiIvPjxwYXRoIGQ9Ik0yMCA4MEMyMCA2OC45NTQzIDI4Ljk1NDMgNjAgNDAgNjBINTBDNjEuMDQ1NyA2MCA3MCA2OC45NTQzIDcwIDgwVjg1SDIwVjgwWiIgZmlsbD0iIzk0QTNDQiIvPjwvc3ZnPg=='} 
+                    src={avatarUrl} 
                     alt="User" 
                     className="w-full h-full object-cover"
                     referrerPolicy="no-referrer"

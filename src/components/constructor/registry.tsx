@@ -802,7 +802,7 @@ export const HERO_MODULE: WebModule = {
     { id: 'el_hero_media', name: 'Multimedia Principal', type: 'multimedia', groups: ['multimedia', 'estilo', 'estructura', 'interaccion'], settings: {
       multimedia: [
         { id: 'media_type', label: 'Tipo', type: 'select', defaultValue: 'image', options: [{label:'Imagen', value:'image'}, {label:'Video', value:'video'}]},
-        { id: 'image', label: 'Imagen', type: 'image', defaultValue: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwMCIgaGVpZ2h0PSI4MDAiIHZpZXdCb3g9IjAgMCAxMjAwIDgwMCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTIwMCIgaGVpZ2h0PSI4MDAiIGZpbGw9IiNFMkU4RjAiLz48cGF0aCBkPSJNNTAwIDQwMEw2MDAgMzAwTDcwMCA0MDBWNTUwSDUwMFY0MDBaIiBmaWxsPSIjOTRBM0NCIi8+PC9zdmc+', showIf: { settingId: 'media_type', value: 'image' } },
+        { id: 'image', label: 'Imagen', type: 'image', defaultValue: 'https://images.unsplash.com/photo-1551434678-e076c223a692?q=80&w=1440&auto=format&fit=crop', showIf: { settingId: 'media_type', value: 'image' } },
         { id: 'video_url', label: 'URL Video (MP4)', type: 'text', defaultValue: '', showIf: { settingId: 'media_type', value: 'video' } }
       ],
       estilo: [
@@ -823,10 +823,10 @@ export const HERO_MODULE: WebModule = {
       contenido: [
         { id: 'primary_text', label: 'Botón Primario', type: 'text', defaultValue: 'Comenzar Ahora' },
         { id: 'primary_icon', label: 'Icono Primario', type: 'icon', defaultValue: 'ArrowRight' },
-        ...BUTTON_LINK_SETTINGS('primary'),
+        ...BUTTON_LINK_SETTINGS('primary', '#'),
         { id: 'secondary_text', label: 'Botón Secundario', type: 'text', defaultValue: 'Saber Más' },
         { id: 'secondary_icon', label: 'Icono Secundario', type: 'icon', defaultValue: '' },
-        ...BUTTON_LINK_SETTINGS('secondary')
+        ...BUTTON_LINK_SETTINGS('secondary', '#')
       ],
       estilo: [
         { id: 'primary_bg', label: 'Fondo Primario', type: 'color', defaultValue: '#3B82F6' },
@@ -853,7 +853,12 @@ export const HERO_MODULE: WebModule = {
         { id: 'margin_b', label: 'Margen Inferior', type: 'range', defaultValue: 0, min: 0, max: 100, unit: 'px' }
       ],
       multimedia: [
-        { id: 'avatars', label: 'Avatares (Imágenes)', type: 'repeater', defaultValue: [], fields: [{id:'img', label:'Imagen', type:'image', defaultValue: ''}]}
+        { id: 'avatars', label: 'Avatares (Imágenes)', type: 'repeater', defaultValue: [
+          {img: 'https://i.pravatar.cc/150?u=1'},
+          {img: 'https://i.pravatar.cc/150?u=2'},
+          {img: 'https://i.pravatar.cc/150?u=3'},
+          {img: 'https://i.pravatar.cc/150?u=4'}
+        ], fields: [{id:'img', label:'Imagen', type:'image', defaultValue: ''}]}
       ],
       tipografia: [
         { id: 'font_size', label: 'Tamaño', type: 'typography_size', defaultValue: 's', allowedLevels: ['t3', 'p', 's'] },

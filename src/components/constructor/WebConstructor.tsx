@@ -37,7 +37,7 @@ import {
   CTA_MODULE, PRICING_MODULE, FAQ_MODULE, CLIENTS_MODULE,
   BENTO_MODULE, COMPARISON_MODULE
 } from './registry';
-import { saveWebBuilderSiteDraft, publishWebBuilderSite, getProducts, getCustomers, upsertPage, upsertPageSections, logEvolutionRequest, getPageBySiteId, updateSitePreview } from '../../services/dataService';
+import { saveWebBuilderSiteDraft, publishWebBuilderSite, getProducts, getCustomers, upsertPage, upsertPageSections, logEvolutionRequest, getPageBySiteId, updateSitePreview, generatePreviewServerSide } from '../../services/dataService';
 import { sendToMother } from '../../services/handshakeService';
 import { Product, Customer, PageSection } from '../../types/schema';
 import { MOCK_PRODUCTS, MOCK_CUSTOMERS } from '../../constants/mockData';
@@ -46,7 +46,6 @@ import { StructurePanel } from './StructurePanel';
 import { TopBar } from './TopBar';
 import { Canvas } from './Canvas';
 import { GlobalSettingsPanel } from './GlobalSettingsPanel';
-import { capturePreview } from '../../utils/previewCapturer';
 import { 
   MobileBottomNav, 
   UnsavedChangesModal, 
@@ -1519,26 +1518,37 @@ const formatTimestampName = () => {
 
         setTimeout(() => setSaveStatus('idle'), 3000);
 
-        // --- BACKGROUND TASK: Capture Preview ---
+        // --- BACKGROUND TASK: Generate Server-Side Preview ---
         (async () => {
           try {
             const webBuilderSiteId = initialPage?.id || (window as any).WEB_BUILDER_SITE_ID;
-            const preview = await capturePreview(projectId, siteId, webBuilderSiteId);
-            if (preview) {
-              const success = await updateSitePreview(siteId, {
-                previewImageUrl: preview.url,
-                previewThumbnailUrl: preview.url,
-                previewImagePath: preview.path,
-                previewImageHash: preview.hash,
+            const previewResult = await generatePreviewServerSide({
+              project_id: projectId!,
+              site_id: siteId,
+              web_builder_site_id: webBuilderSiteId,
+              mode: 'thumbnail'
+            });
+
+            if (previewResult.success && previewResult.preview_image_url) {
+              await updateSitePreview(siteId, {
+                previewImageUrl: previewResult.preview_image_url,
+                previewThumbnailUrl: previewResult.preview_image_url,
+                previewImagePath: '', // Server-side handles paths
+                previewImageHash: '', // Server-side handles hash
               });
-              logDebug('[PREVIEW_CAPTURE_DEBUG] Preview updated in web_builder_sites (Save):', { 
+              
+              sendToMother('SOLUTIUM_PREVIEW_GENERATED', {
+                site_id: siteId,
+                preview_image_url: previewResult.preview_image_url
+              });
+
+              logDebug('[PREVIEW_CAPTURE_DEBUG] Server-side preview generated (Save):', { 
                 siteId, 
-                success,
-                url: preview.url 
+                url: previewResult.preview_image_url 
               });
             }
           } catch (pError) {
-            console.error('[PREVIEW_CAPTURE_DEBUG] Error en capture background (Save):', pError);
+            console.error('[PREVIEW_CAPTURE_DEBUG] Error en preview server-side (Save):', pError);
           }
         })();
       } else {
@@ -1674,26 +1684,37 @@ const formatTimestampName = () => {
 
         setTimeout(() => setPublishStatus('idle'), 3000);
 
-        // --- BACKGROUND TASK: Capture Preview ---
+        // --- BACKGROUND TASK: Generate Server-Side Preview ---
         (async () => {
           try {
             const webBuilderSiteId = initialPage?.id || (window as any).WEB_BUILDER_SITE_ID;
-            const preview = await capturePreview(projectId, siteId, webBuilderSiteId);
-            if (preview) {
-              const success = await updateSitePreview(siteId, {
-                previewImageUrl: preview.url,
-                previewThumbnailUrl: preview.url,
-                previewImagePath: preview.path,
-                previewImageHash: preview.hash,
+            const previewResult = await generatePreviewServerSide({
+              project_id: projectId!,
+              site_id: siteId,
+              web_builder_site_id: webBuilderSiteId,
+              mode: 'thumbnail'
+            });
+
+            if (previewResult.success && previewResult.preview_image_url) {
+              await updateSitePreview(siteId, {
+                previewImageUrl: previewResult.preview_image_url,
+                previewThumbnailUrl: previewResult.preview_image_url,
+                previewImagePath: '',
+                previewImageHash: '',
               });
               
-              logDebug('[PREVIEW_CAPTURE_DEBUG] Preview updated in all records after Publish:', {
-                success,
-                url: preview.url
+              sendToMother('SOLUTIUM_PREVIEW_GENERATED', {
+                site_id: siteId,
+                preview_image_url: previewResult.preview_image_url
+              });
+
+              logDebug('[PREVIEW_CAPTURE_DEBUG] Server-side preview generated (Publish):', {
+                siteId,
+                url: previewResult.preview_image_url
               });
             }
           } catch (pError) {
-            console.error('[PREVIEW_CAPTURE_DEBUG] Error en capture background (Publish):', pError);
+            console.error('[PREVIEW_CAPTURE_DEBUG] Error en preview server-side (Publish):', pError);
           }
         })();
       } else {
@@ -1762,32 +1783,36 @@ const formatTimestampName = () => {
     setPreviewStatus('loading');
     try {
       const webBuilderSiteId = initialPage?.id || (window as any).WEB_BUILDER_SITE_ID;
-      const preview = await capturePreview(projectId, currentSiteId, webBuilderSiteId);
-      if (preview) {
+      
+      const result = await generatePreviewServerSide({
+        project_id: projectId,
+        site_id: currentSiteId,
+        web_builder_site_id: webBuilderSiteId,
+        mode: 'thumbnail'
+      });
+
+      if (result.success && result.preview_image_url) {
         const previewData = {
-          previewImageUrl: preview.url,
-          previewThumbnailUrl: preview.url, // Usar la misma por ahora
-          previewImagePath: preview.path,
-          previewImageHash: preview.hash,
+          previewImageUrl: result.preview_image_url,
+          previewThumbnailUrl: result.preview_image_url,
+          previewImagePath: '',
+          previewImageHash: '',
         };
         
-        const success = await updateSitePreview(currentSiteId, previewData);
+        await updateSitePreview(currentSiteId, previewData);
         
-        const isDebug = new URLSearchParams(window.location.search).get('debug_render') === 'true';
-        if (isDebug) {
-          logDebug('[PREVIEW_CAPTURE_DEBUG] DB Updated', {
-            siteId: currentSiteId,
-            success,
-            previewData
-          });
-        }
-        
+        // Notificar a la App Madre para que refresque la miniatura en su UI
+        sendToMother('SOLUTIUM_PREVIEW_GENERATED', {
+          site_id: currentSiteId,
+          preview_image_url: result.preview_image_url
+        });
+
         setPreviewStatus('success');
         setTimeout(() => setPreviewStatus('idle'), 3000);
       } else {
-        throw new Error('No se pudo generar la vista previa. Asegúrate de que el canvas sea visible.');
+        throw new Error(result.error || 'No se pudo generar la vista previa server-side.');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Manual preview update failed:', error);
       setPreviewStatus('error');
       setTimeout(() => setPreviewStatus('idle'), 3000);

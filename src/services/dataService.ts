@@ -2,6 +2,8 @@ import { getSupabase } from './supabaseClient';
 import { Profile, Project, Customer, Product, Asset, WebBuilderSite, PublishedSite, RenderingContract, Page, PageSection, EngineEvolutionBuffer } from '../types/schema';
 import { profileSchema, projectSchema, customerSchema, productSchema, webBuilderSiteSchema, publishedSiteSchema, assetSchema } from '../types/zodSchemas';
 import { z } from 'zod';
+import { getUploadAuthToken } from './authTokenProvider';
+import { logDebug } from '../utils/debug';
 
 // Helper to handle validation and logging
 const validateData = <T>(schema: z.ZodType<T>, data: unknown, context: string): T | null => {
@@ -887,5 +889,53 @@ export const updateSitePreview = async (
   } catch (err) {
     console.error('Error in updateSitePreview:', err);
     return false;
+  }
+};
+
+/**
+ * Solicita la generación de un preview al servidor (App Madre) usando Playwright.
+ */
+export const generatePreviewServerSide = async (params: {
+  project_id: string;
+  site_id: string;
+  web_builder_site_id: string;
+  mode: 'thumbnail' | 'full';
+}): Promise<{ success: boolean; preview_image_url?: string; error?: string }> => {
+  try {
+    const { token } = await getUploadAuthToken();
+    if (!token) throw new Error('No auth token available');
+
+    // @ts-ignore
+    const appMadreUrl = import.meta.env.VITE_APP_MADRE_API_URL;
+    if (!appMadreUrl) throw new Error('VITE_APP_MADRE_API_URL not configured');
+
+    const cleanUrl = appMadreUrl.endsWith('/') ? appMadreUrl.slice(0, -1) : appMadreUrl;
+    const endpoint = `${cleanUrl}/api/previews/generate`;
+
+    logDebug('[SERVER_PREVIEW_REQUEST_DEBUG]', { endpoint, payload: params });
+
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(params)
+    });
+
+    const data = await response.json();
+    logDebug('[SERVER_PREVIEW_RESPONSE_DEBUG]', { status: response.status, data });
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to generate server-side preview');
+    }
+
+    return { 
+      success: true, 
+      preview_image_url: data.preview_image_url 
+    };
+  } catch (error: any) {
+    console.error('Error generating server-side preview:', error);
+    return { success: false, error: error.message };
   }
 };

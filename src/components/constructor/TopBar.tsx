@@ -135,7 +135,7 @@ export const TopBar: React.FC<TopBarProps> = ({
                   </motion.div>
                 ) : <ImageIcon size={16} />}
                 <span className="text-[10px] font-bold uppercase tracking-tight hidden md:block">
-                  {previewStatus === 'loading' ? 'Capturando...' : 'Actualizar Preview'}
+                  {previewStatus === 'loading' ? 'Generando preview...' : 'Actualizar Preview'}
                 </span>
                 {previewStatus === 'success' && <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white shadow-sm" />}
               </button>

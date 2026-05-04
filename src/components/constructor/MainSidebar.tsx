@@ -370,7 +370,7 @@ export const MainSidebar: React.FC<MainSidebarProps> = ({
                 )}
               </div>
 
-              {/* E-COMMERCE */}
+              {/* CATÁLOGO */}
               <div className="space-y-2">
                 <button 
                   onClick={() => toggleCategory('ecommerce')}
@@ -378,14 +378,14 @@ export const MainSidebar: React.FC<MainSidebarProps> = ({
                     expandedCategory === 'ecommerce' ? 'font-bold text-sidebar-foreground' : 'font-normal text-sidebar-foreground/80'
                   }`}
                 >
-                  E-commerce
+                  Catálogo
                   <ChevronDown size={12} className={`transition-transform ${expandedCategory === 'ecommerce' ? 'rotate-180' : ''}`} />
                 </button>
                 {expandedCategory === 'ecommerce' && (
                   <div className="space-y-0.5 px-2">
                     <ModuleItem 
                       icon={React.createElement(MODULE_INFO.products.icon, { size: 18 })} 
-                      label="Productos" 
+                      label="Productos & Servicios" 
                       onClick={() => onAddModule(PRODUCTS_MODULE)}
                     />
                   </div>

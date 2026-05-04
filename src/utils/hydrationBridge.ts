@@ -1,7 +1,7 @@
-import { logDebug } from './debug';
+import { logDebug, isRenderDebugEnabled } from './debug';
 
 /**
- * [SIP v10.5] Hydration Bridge Registry
+ * [SIP v10.6] Hydration Bridge Registry
  * Centraliza la compatibilidad entre el contrato de contenido plano (SIP) y las llaves profundas del constructor.
  * 
  * REGLAS TÉCNICAS:
@@ -18,6 +18,7 @@ import { logDebug } from './debug';
  */
 function getByPath(obj: any, path: string): any {
   if (!obj) return undefined;
+  if (!path.includes('.')) return obj[path];
   return path.split('.').reduce((acc, key) => acc?.[key], obj);
 }
 
@@ -28,7 +29,6 @@ interface ModuleBridgeAdapter {
 
 /**
  * Registro de adaptadores certificados por módulo.
- * Solo incluimos Hero y Features inicialmente como se solicitó.
  */
 const MODULE_ADAPTERS: Record<string, ModuleBridgeAdapter> = {
   hero: {
@@ -41,10 +41,16 @@ const MODULE_ADAPTERS: Record<string, ModuleBridgeAdapter> = {
       'primary_cta.url': 'el_hero_ctas_primary_url',
       'secondary_cta.text': 'el_hero_ctas_secondary_text',
       'secondary_cta.url': 'el_hero_ctas_secondary_url',
+      // Dynamic Text Compatibility (Legacy Spanish keys)
       'is_rotating_active': 'el_hero_typography_rotating_enabled',
       'texto_base': 'el_hero_typography_rotating_fixed',
       'palabras_efecto': 'el_hero_typography_rotating_options',
-      'intervalo_ms': 'el_hero_typography_rotating_speed'
+      'intervalo_ms': 'el_hero_typography_rotating_speed',
+      // Dynamic Text Compatibility (New English keys from content.config)
+      'config.texto_base': 'el_hero_typography_rotating_fixed',
+      'config.palabras_efecto': 'el_hero_typography_rotating_options',
+      'config.intervalo_ms': 'el_hero_typography_rotating_speed',
+      'config.estilo_efecto': 'el_hero_typography_rotating_color'
     }
   },
   features: {
@@ -71,8 +77,7 @@ const MODULE_ADAPTERS: Record<string, ModuleBridgeAdapter> = {
       'columns': 'global_columns',
       'gap': 'global_gap',
       'layout': 'global_layout',
-      'plans': 'el_pricing_plans_plans',
-      'el_pricing_plans_plans': 'el_pricing_plans_plans'
+      'plans': 'el_pricing_plans_plans'
     }
   },
   menu: {
@@ -112,6 +117,28 @@ interface BridgeParams {
 }
 
 /**
+ * Fallback genérico para hidratación.
+ * Si una key existe en content (ej. "title"), genera una key prefijada (ej. "mod_123_title")
+ * solo si no existe ya en el resultado.
+ */
+function applyGenericFallback(moduleId: string, data: any, result: Record<string, any>, prefix: string = '') {
+  if (!data || typeof data !== 'object') return;
+
+  Object.entries(data).forEach(([key, value]) => {
+    // Evitar hidratar objetos complejos de configuración a bajo nivel (config, style, etc)
+    // a menos que sean de primer nivel y simples.
+    if (key === 'config' || key === 'styles' || key === 'settings') return;
+
+    const fullKey = `${moduleId}_${prefix}${key}`;
+    const hasValue = value !== undefined && value !== null;
+
+    if (result[fullKey] === undefined && hasValue) {
+      result[fullKey] = value;
+    }
+  });
+}
+
+/**
  * Mapea valores desde content/settings raíz hacia settingsValues profundos
  * Respetando la prioridad de los valores existentes.
  */
@@ -122,40 +149,65 @@ export const bridgeModuleContent = ({
   settings,
   existingDeepValues
 }: BridgeParams): Record<string, any> => {
-  const adapter = MODULE_ADAPTERS[type];
+  // Limpiar tipo si viene con sufijo _dinamico
+  const baseType = type.replace('_dinamico', '');
+  const adapter = MODULE_ADAPTERS[baseType];
   const result = { ...existingDeepValues };
+  
+  const debug = isRenderDebugEnabled();
+  const originalKeys = Object.keys(result);
+  let strategy: 'explicit' | 'generic-fallback' | 'explicit+fallback' = 'generic-fallback';
 
-  if (!adapter) return result;
+  // 1. Aplicar adaptador explícito si existe
+  if (adapter) {
+    strategy = 'explicit+fallback';
+    
+    // Content Bridge
+    if (content) {
+      Object.entries(adapter.contentToSettings || {}).forEach(([contentPath, relativeKey]) => {
+        const fullKey = `${moduleId}_${relativeKey}`;
+        const value = getByPath(content, contentPath);
+        const hasValue = value !== undefined && value !== null;
 
-  // 1. Content Bridge (Prioridad: section.content -> deep keys)
-  if (content) {
-    Object.entries(adapter.contentToSettings || {}).forEach(([contentPath, relativeKey]) => {
-      const fullKey = `${moduleId}_${relativeKey}`;
-      const value = getByPath(content, contentPath);
+        if (result[fullKey] === undefined && hasValue) {
+          result[fullKey] = value;
+        }
+      });
+    }
 
-      // Verificación explícita de valores (0, "", false son válidos)
-      const hasValue = value !== undefined && value !== null;
+    // Settings Bridge
+    if (settings) {
+      Object.entries(adapter.settingsToDeep || {}).forEach(([settingsPath, relativeKey]) => {
+        const fullKey = `${moduleId}_${relativeKey}`;
+        const value = getByPath(settings, settingsPath);
+        const hasValue = value !== undefined && value !== null;
 
-      // Solo aplicamos si la key NO existe ya en el resultado (preservar prioridad del editor)
-      if (result[fullKey] === undefined && hasValue) {
-        result[fullKey] = value;
-      }
-    });
+        if (result[fullKey] === undefined && hasValue) {
+          result[fullKey] = value;
+        }
+      });
+    }
   }
 
-  // 2. Settings Aliases Bridge (Prioridad: section.settings raíz -> deep keys)
-  if (settings) {
-    Object.entries(adapter.settingsToDeep || {}).forEach(([settingsPath, relativeKey]) => {
-      const fullKey = `${moduleId}_${relativeKey}`;
-      const value = getByPath(settings, settingsPath);
+  // 2. Aplicar Fallback Genérico (asegura que keys como 'title' lleguen como 'mod_123_title')
+  applyGenericFallback(moduleId, content, result);
+  applyGenericFallback(moduleId, settings, result);
 
-      const hasValue = value !== undefined && value !== null;
-
-      if (result[fullKey] === undefined && hasValue) {
-        result[fullKey] = value;
-      }
+  if (debug) {
+    const finalKeys = Object.keys(result);
+    const addedKeys = finalKeys.filter(k => !originalKeys.includes(k));
+    
+    logDebug('[HYDRATION_BRIDGE_DEBUG]', {
+      moduleId,
+      moduleType: type,
+      baseType,
+      strategy,
+      originalContentKeys: content ? Object.keys(content) : [],
+      addedKeys,
+      totalKeys: finalKeys.length
     });
   }
 
   return result;
 };
+

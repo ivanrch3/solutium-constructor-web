@@ -396,14 +396,27 @@ export const saveWebBuilderSiteDraft = async (site: Partial<WebBuilderSite>): Pr
       name: site.name || site.siteName || 'Mi Sitio Web',
       content_draft: site.contentDraft,
       status: site.status || 'draft',
-      preview_image_url: site.previewImageUrl,
-      preview_thumbnail_url: site.previewThumbnailUrl,
-      preview_image_path: site.previewImagePath,
-      preview_image_updated_at: site.previewImageUpdatedAt,
-      preview_image_hash: site.previewImageHash,
       origin_app: 'Constructor Web',
       updated_at: new Date().toISOString()
     };
+
+    if (site.previewImageUrl !== undefined || site.previewThumbnailUrl !== undefined || site.previewImagePath !== undefined || site.previewImageHash !== undefined) {
+      console.log('[PREVIEW_OVERWRITE_AUDIT]', {
+        source: 'constructor',
+        table: 'web_builder_sites',
+        operation: 'saveDraft',
+        siteId: site.siteId,
+        preview_image_url: site.previewImageUrl,
+        preview_image_path: site.previewImagePath,
+        preview_image_hash: site.previewImageHash
+      });
+    }
+
+    if (site.previewImageUrl !== undefined) dbData.preview_image_url = site.previewImageUrl;
+    if (site.previewThumbnailUrl !== undefined) dbData.preview_thumbnail_url = site.previewThumbnailUrl;
+    if (site.previewImagePath !== undefined) dbData.preview_image_path = site.previewImagePath;
+    if (site.previewImageUpdatedAt !== undefined) dbData.preview_image_updated_at = site.previewImageUpdatedAt;
+    if (site.previewImageHash !== undefined) dbData.preview_image_hash = site.previewImageHash;
 
     if (site.id) dbData.id = site.id;
 
@@ -450,23 +463,38 @@ export const publishWebBuilderSite = async (site: Partial<PublishedSite>): Promi
     const now = new Date().toISOString();
 
     // 1. Actualizar estado y contenido publicado en web_builder_sites
+    const builderUpdate: any = {
+      project_id: site.projectId,
+      app_id: site.appId || '11111111-1111-1111-1111-111111111111',
+      site_id: site.siteId,
+      site_name: site.siteName || 'Mi Sitio Web',
+      content_published: site.content,
+      status: 'published',
+      origin_app: 'Constructor Web',
+      updated_at: now
+    };
+
+    if (site.previewImageUrl !== undefined || site.previewThumbnailUrl !== undefined || site.previewImagePath !== undefined || site.previewImageHash !== undefined) {
+      console.log('[PREVIEW_OVERWRITE_AUDIT]', {
+        source: 'constructor',
+        table: 'web_builder_sites',
+        operation: 'publish',
+        siteId: site.siteId,
+        preview_image_url: site.previewImageUrl,
+        preview_image_path: site.previewImagePath,
+        preview_image_hash: site.previewImageHash
+      });
+    }
+
+    if (site.previewImageUrl !== undefined) builderUpdate.preview_image_url = site.previewImageUrl;
+    if (site.previewThumbnailUrl !== undefined) builderUpdate.preview_thumbnail_url = site.previewThumbnailUrl;
+    if (site.previewImagePath !== undefined) builderUpdate.preview_image_path = site.previewImagePath;
+    if (site.previewImageUpdatedAt !== undefined) builderUpdate.preview_image_updated_at = site.previewImageUpdatedAt;
+    if (site.previewImageHash !== undefined) builderUpdate.preview_image_hash = site.previewImageHash;
+
     const { data: siteRecord, error: upsertError } = await supabase
       .from('web_builder_sites')
-      .upsert({
-        project_id: site.projectId,
-        app_id: site.appId || '11111111-1111-1111-1111-111111111111',
-        site_id: site.siteId,
-        site_name: site.siteName || 'Mi Sitio Web',
-        content_published: site.content,
-        status: 'published',
-        preview_image_url: site.previewImageUrl,
-        preview_thumbnail_url: site.previewThumbnailUrl,
-        preview_image_path: site.previewImagePath,
-        preview_image_updated_at: site.previewImageUpdatedAt,
-        preview_image_hash: site.previewImageHash,
-        origin_app: 'Constructor Web',
-        updated_at: now
-      }, { onConflict: 'site_id' })
+      .upsert(builderUpdate, { onConflict: 'site_id' })
       .select()
       .single();
 
@@ -481,11 +509,6 @@ export const publishWebBuilderSite = async (site: Partial<PublishedSite>): Promi
       user_id: userData.user?.id,
       is_active: true,
       content: site.content,
-      preview_image_url: site.previewImageUrl,
-      preview_thumbnail_url: site.previewThumbnailUrl,
-      preview_image_path: site.previewImagePath,
-      preview_image_updated_at: site.previewImageUpdatedAt,
-      preview_image_hash: site.previewImageHash,
       metadata: { 
         ...(site.metadata || {}), 
         site_id: site.siteId,
@@ -493,6 +516,12 @@ export const publishWebBuilderSite = async (site: Partial<PublishedSite>): Promi
       },
       updated_at: now
     };
+
+    if (site.previewImageUrl !== undefined) dbData.preview_image_url = site.previewImageUrl;
+    if (site.previewThumbnailUrl !== undefined) dbData.preview_thumbnail_url = site.previewThumbnailUrl;
+    if (site.previewImagePath !== undefined) dbData.preview_image_path = site.previewImagePath;
+    if (site.previewImageUpdatedAt !== undefined) dbData.preview_image_updated_at = site.previewImageUpdatedAt;
+    if (site.previewImageHash !== undefined) dbData.preview_image_hash = site.previewImageHash;
 
     if (site.id) dbData.id = site.id;
 
@@ -847,23 +876,39 @@ export const updateSitePreview = async (
   previewData: {
     previewImageUrl: string;
     previewThumbnailUrl: string;
-    previewImagePath: string;
-    previewImageHash: string;
+    previewImagePath?: string;
+    previewImageHash?: string;
   }
 ): Promise<boolean> => {
   try {
     const supabase = getSupabase();
     if (!supabase) return false;
 
+    // [PREVIEW_OVERWRITE_AUDIT]
+    console.log('[PREVIEW_OVERWRITE_AUDIT]', {
+      source: 'constructor',
+      table: 'web_builder_sites/published_sites',
+      siteId,
+      preview_image_url: previewData.previewImageUrl,
+      preview_image_path: previewData.previewImagePath,
+      preview_image_hash: previewData.previewImageHash
+    });
+
     const now = new Date().toISOString();
-    const updatePayload = {
+    const updatePayload: any = {
       preview_image_url: previewData.previewImageUrl,
       preview_thumbnail_url: previewData.previewThumbnailUrl,
-      preview_image_path: previewData.previewImagePath,
       preview_image_updated_at: now,
-      preview_image_hash: previewData.previewImageHash,
       updated_at: now
     };
+
+    // Only include path and hash if they are provided (prevent overwrite with empty string)
+    if (previewData.previewImagePath !== undefined) {
+      updatePayload.preview_image_path = previewData.previewImagePath;
+    }
+    if (previewData.previewImageHash !== undefined) {
+      updatePayload.preview_image_hash = previewData.previewImageHash;
+    }
 
     // 1. Actualizar web_builder_sites
     const { error: webError } = await supabase
@@ -900,7 +945,14 @@ export const generatePreviewServerSide = async (params: {
   site_id: string;
   web_builder_site_id: string;
   mode: 'thumbnail' | 'full';
-}): Promise<{ success: boolean; preview_image_url?: string; error?: string }> => {
+}): Promise<{ 
+  success: boolean; 
+  preview_image_url?: string; 
+  preview_thumbnail_url?: string;
+  preview_image_path?: string;
+  preview_image_hash?: string;
+  error?: string;
+}> => {
   try {
     const { token } = await getUploadAuthToken();
     if (!token) throw new Error('No auth token available');
@@ -932,7 +984,10 @@ export const generatePreviewServerSide = async (params: {
 
     return { 
       success: true, 
-      preview_image_url: data.preview_image_url 
+      preview_image_url: data.preview_image_url,
+      preview_thumbnail_url: data.preview_thumbnail_url || data.preview_image_url,
+      preview_image_path: data.preview_image_path,
+      preview_image_hash: data.preview_image_hash
     };
   } catch (error: any) {
     console.error('Error generating server-side preview:', error);

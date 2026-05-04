@@ -11,7 +11,8 @@ import {
   Sparkles,
   MousePointer2,
   Layout,
-  AlertCircle
+  AlertCircle,
+  Settings
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { SettingControl } from './SettingControl';
@@ -37,6 +38,7 @@ export const GlobalSettingsPanel: React.FC<GlobalSettingsPanelProps> = ({
 }) => {
   const { siteContent, updateTheme } = useEditorStore();
   const theme = siteContent.theme;
+  const [activeInternalTab, setActiveInternalTab] = React.useState<'seo' | 'marketing' | 'conversion' | 'style'>('style');
 
   const getVal = (settingId: string, defaultValue: any) => {
     return settingsValues[`global_theme_${settingId}`] !== undefined 
@@ -64,6 +66,126 @@ export const GlobalSettingsPanel: React.FC<GlobalSettingsPanelProps> = ({
     { id: 'rotate', label: 'Rotate', desc: 'Dinámica', icon: <LucideIcons.RefreshCw size={18} /> },
     { id: 'focus', label: 'Focus', desc: 'Precisa', icon: <LucideIcons.Target size={18} /> },
   ];
+
+  const ChecklistItem = ({ title, checked = false }: { title: string, checked?: boolean }) => (
+    <div className="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-100 group hover:border-primary/20 transition-all">
+      <div className={`w-5 h-5 rounded-md flex items-center justify-center transition-all ${checked ? 'bg-primary text-white' : 'bg-slate-50 text-slate-300 border border-slate-200 group-hover:border-primary/30'}`}>
+        {checked && <LucideIcons.Check size={14} strokeWidth={3} />}
+      </div>
+      <span className={`text-sm font-medium ${checked ? 'text-slate-900' : 'text-slate-400 italic'}`}>
+        {title}
+      </span>
+      {checked && (
+        <div className="ml-auto flex items-center gap-1.5 px-2 py-0.5 bg-primary/5 text-primary rounded-full">
+          <LucideIcons.Zap size={10} fill="currentColor" />
+          <span className="text-[9px] font-black uppercase tracking-tighter">Motor Activo</span>
+        </div>
+      )}
+    </div>
+  );
+
+  const TabButton = ({ id, label, icon: Icon, active, onClick }: { id: string, label: string, icon: any, active: boolean, onClick: () => void }) => (
+    <button
+      onClick={onClick}
+      className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all border-2 text-sm font-bold ${
+        active 
+          ? 'bg-primary border-primary text-white shadow-lg shadow-primary/20 scale-105 z-10' 
+          : 'bg-white border-slate-100 text-slate-400 hover:border-slate-200 hover:text-slate-600'
+      }`}
+    >
+      <Icon size={16} />
+      {label}
+    </button>
+  );
+
+  // SEO View Content
+  const renderSEOView = () => (
+    <div className="space-y-8">
+      <div className="p-6 bg-blue-50 rounded-3xl border border-blue-100 space-y-3">
+        <div className="flex items-center gap-3 text-blue-700">
+          <Globe size={24} />
+          <h3 className="text-lg font-black tracking-tight">Estrategia de SEO & Visibilidad</h3>
+        </div>
+        <p className="text-sm text-blue-800/70 font-medium">
+          Controlamos cada aspecto técnico para garantizar que tu sitio escale posiciones en los motores de búsqueda de forma orgánica.
+        </p>
+      </div>
+
+      <div className="space-y-3">
+        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block mb-4">Checklist de Implementación SEO</label>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <ChecklistItem title="Configuración de Meta Títulos dinámicos" checked />
+          <ChecklistItem title="Meta Descripciones optimizadas por página" checked />
+          <ChecklistItem title="Sitemap.xml automatizado (vía Genoma)" checked />
+          <ChecklistItem title="Robots.txt personalizable" checked />
+          <ChecklistItem title="Marcado de Datos Estructurados (Schema.org)" />
+          <ChecklistItem title="Atributos ALT automáticos (AI Engine)" />
+          <ChecklistItem title="Gestión de Slugs y URLs amigables" checked />
+          <ChecklistItem title="Etiquetas Canonical automáticas" />
+          <ChecklistItem title="Compresión Activa de Imágenes (Punto de Crítica)" checked />
+          <ChecklistItem title="Lazy Loading nativo para Core Web Vitals" checked />
+        </div>
+      </div>
+    </div>
+  );
+
+  // Marketing View Content
+  const renderMarketingView = () => (
+    <div className="space-y-8">
+      <div className="p-6 bg-purple-50 rounded-3xl border border-purple-100 space-y-3">
+        <div className="flex items-center gap-3 text-purple-700">
+          <MousePointer2 size={24} />
+          <h3 className="text-lg font-black tracking-tight">Marketing, Tracking & Datos</h3>
+        </div>
+        <p className="text-sm text-purple-800/70 font-medium">
+          Mide cada interacción del usuario para optimizar tus presupuestos publicitarios y entender el comportamiento de tu audiencia.
+        </p>
+      </div>
+
+      <div className="space-y-3">
+        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block mb-4">Medición y Píxeles</label>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <ChecklistItem title="Inyección de Meta Pixel (Eventos Estándar)" checked />
+          <ChecklistItem title="Google Analytics 4 (Handshake ID)" checked />
+          <ChecklistItem title="Contenedor Google Tag Manager" />
+          <ChecklistItem title="API de Conversiones (CAPI) Server-side" />
+          <ChecklistItem title="Verificación de Dominio DNS" checked />
+          <ChecklistItem title="Seguimiento de Conversiones Personalizadas" />
+          <ChecklistItem title="Parámetros UTM dinámicos para Campañas" />
+          <ChecklistItem title="Retargeting Activo de Visitantes" />
+        </div>
+      </div>
+    </div>
+  );
+
+  // Conversion View Content
+  const renderConversionView = () => (
+    <div className="space-y-8">
+      <div className="p-6 bg-emerald-50 rounded-3xl border border-emerald-100 space-y-3">
+        <div className="flex items-center gap-3 text-emerald-700">
+          <Sparkles size={24} />
+          <h3 className="text-lg font-black tracking-tight">Conversión & Funnels</h3>
+        </div>
+        <p className="text-sm text-emerald-800/70 font-medium">
+          Transforma visitantes en leads calificados mediante flujos de conversión optimizados y herramientas de persuasión.
+        </p>
+      </div>
+
+      <div className="space-y-3">
+        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block mb-4">Optimización de Resultados</label>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <ChecklistItem title="Integración Nativa con CRM (Hubspot/Solutium)" />
+          <ChecklistItem title="Captura de Leads vía Webhooks seguros" checked />
+          <ChecklistItem title="Pop-ups de Exit Intent dinámicos" />
+          <ChecklistItem title="Pruebas A/B de Títulos y Botones" />
+          <ChecklistItem title="Chat Directo con Agentes (WhatsApp/Intercom)" checked />
+          <ChecklistItem title="Mapas de Calor y Grabación de Sesiones" />
+          <ChecklistItem title="Validación de Formularios en tiempo real" checked />
+          <ChecklistItem title="Encuestas de Satisfacción Post-Conversión" />
+        </div>
+      </div>
+    </div>
+  );
 
   if (view === 'design-style') {
     return (
@@ -382,105 +504,145 @@ export const GlobalSettingsPanel: React.FC<GlobalSettingsPanelProps> = ({
   ];
 
   return (
-    <div className="max-w-4xl w-full mx-auto p-8 space-y-12">
-      <div className="flex flex-col space-y-2">
-        <h2 className="text-3xl font-black text-slate-900 tracking-tight flex items-center gap-3">
-          <Sparkles className="text-primary w-8 h-8" />
-          Ajustes Globales de Estilo
-        </h2>
-        <p className="text-slate-500 font-medium">Configura el ADN visual de tu proyecto para mantener la consistencia en todos los módulos.</p>
+    <div className="max-w-4xl w-full mx-auto p-8 space-y-10">
+      {/* Tab Navigation */}
+      <div className="flex flex-col space-y-6">
+        <div className="flex flex-col space-y-2">
+          <h2 className="text-3xl font-black text-slate-900 tracking-tight flex items-center gap-3">
+            <Settings className="text-primary w-8 h-8" />
+            Centro de Control Global
+          </h2>
+          <p className="text-slate-500 font-medium">Gestiona la identidad visual y las capacidades estratégicas de tu ecosistema digital.</p>
+        </div>
+
+        <div className="flex flex-wrap gap-2 p-1 bg-slate-50 rounded-2xl border border-slate-100 self-start">
+          <TabButton 
+            id="style" 
+            label="Estilo" 
+            icon={Palette} 
+            active={activeInternalTab === 'style'} 
+            onClick={() => setActiveInternalTab('style')} 
+          />
+          <TabButton 
+            id="seo" 
+            label="SEO" 
+            icon={Globe} 
+            active={activeInternalTab === 'seo'} 
+            onClick={() => setActiveInternalTab('seo')} 
+          />
+          <TabButton 
+            id="marketing" 
+            label="Marketing" 
+            icon={MousePointer2} 
+            active={activeInternalTab === 'marketing'} 
+            onClick={() => setActiveInternalTab('marketing')} 
+          />
+          <TabButton 
+            id="conversion" 
+            label="Conversión" 
+            icon={Sparkles} 
+            active={activeInternalTab === 'conversion'} 
+            onClick={() => setActiveInternalTab('conversion')} 
+          />
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        <div className="md:col-span-1 space-y-4">
-          <div className="p-6 bg-white rounded-3xl border border-slate-100 shadow-sm space-y-4">
-            <h3 className="font-bold text-slate-900 flex items-center gap-2">
-              <MousePointer2 className="w-4 h-4 text-primary" />
-              Vista Previa
-            </h3>
-            <div className="space-y-3">
-              <div 
-                className="h-20 rounded-2xl flex items-center justify-center text-white font-bold p-4 text-center text-xs"
-                style={{ 
-                  backgroundColor: getVal('primary_color', project?.brandColors?.primary || '#3B82F6'),
-                  borderRadius: `${parseNumSafe(getVal('radius', 12), 12)}px`
-                }}
-              >
-                Botón Principal
-              </div>
-              <div className="flex gap-2">
-                <div 
-                  className="flex-1 h-10 rounded-xl border border-slate-200"
-                  style={{ backgroundColor: getVal('secondary_color', '#F1F5F9'), borderRadius: `${parseNumSafe(getVal('radius', 12), 12) * 0.8}px` }}
-                />
-                <div 
-                  className="flex-1 h-10 rounded-xl"
-                  style={{ backgroundColor: getVal('accent_color', '#7C3AED'), borderRadius: `${parseNumSafe(getVal('radius', 12), 12) * 0.8}px` }}
-                />
-              </div>
-              <div className="pt-2">
-                <p 
-                  className="text-lg font-bold"
-                  style={{ fontFamily: getVal('font_heading', 'Inter'), color: getVal('text_color', '#0F172A') }}
-                >
-                  Título de Ejemplo
-                </p>
-                <p 
-                  className="text-xs text-slate-400 mt-1"
-                  style={{ fontFamily: getVal('font_sans', 'Inter') }}
-                >
-                  Este es un ejemplo de cómo se verá el cuerpo de texto en tu sitio web.
-                </p>
+      <motion.div
+        key={activeInternalTab}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+      >
+        {activeInternalTab === 'seo' && renderSEOView()}
+        {activeInternalTab === 'marketing' && renderMarketingView()}
+        {activeInternalTab === 'conversion' && renderConversionView()}
+        
+        {activeInternalTab === 'style' && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-1 space-y-4">
+              <div className="p-6 bg-white rounded-3xl border border-slate-100 shadow-sm space-y-4 sticky top-6">
+                <h3 className="font-bold text-slate-900 flex items-center gap-2">
+                  <MousePointer2 className="w-4 h-4 text-primary" />
+                  Visualizador de Marca
+                </h3>
+                <div className="space-y-3">
+                  <div 
+                    className="h-20 rounded-2xl flex items-center justify-center text-white font-bold p-4 text-center text-xs"
+                    style={{ 
+                      backgroundColor: getVal('primary_color', project?.brandColors?.primary || '#3B82F6'),
+                      borderRadius: `${parseNumSafe(getVal('radius', 12), 12)}px`
+                    }}
+                  >
+                    Botón Principal
+                  </div>
+                  <div className="flex gap-2">
+                    <div 
+                      className="flex-1 h-10 rounded-xl border border-slate-200"
+                      style={{ backgroundColor: getVal('secondary_color', '#F1F5F9'), borderRadius: `${parseNumSafe(getVal('radius', 12), 12) * 0.8}px` }}
+                    />
+                    <div 
+                      className="flex-1 h-10 rounded-xl"
+                      style={{ backgroundColor: getVal('accent_color', '#7C3AED'), borderRadius: `${parseNumSafe(getVal('radius', 12), 12) * 0.8}px` }}
+                    />
+                  </div>
+                  <div className="pt-2">
+                    <p 
+                      className="text-lg font-bold"
+                      style={{ fontFamily: getVal('font_heading', 'Inter'), color: getVal('text_color', '#0F172A') }}
+                    >
+                      Título de Ejemplo
+                    </p>
+                    <p 
+                      className="text-xs text-slate-400 mt-1"
+                      style={{ fontFamily: getVal('font_sans', 'Inter') }}
+                    >
+                      Este es un ejemplo de cómo se verá el cuerpo de texto en tu sitio web.
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="p-6 bg-primary/5 rounded-3xl border border-primary/10 space-y-2">
-            <h4 className="text-xs font-black text-primary uppercase tracking-widest">Tip Pro</h4>
-            <p className="text-xs text-slate-600 leading-relaxed">
-              Los cambios que realices aquí se aplicarán automáticamente a todos los módulos que no tengan configuraciones manuales de color.
-            </p>
-          </div>
-        </div>
-
-        <div className="md:col-span-2 space-y-10">
-          {sections.map((section) => (
-            <section key={section.id} className="space-y-6">
-              <div className="flex items-center gap-4 border-b border-slate-100 pb-4">
-                <div className="w-10 h-10 bg-white rounded-2xl border border-slate-100 flex items-center justify-center shadow-sm text-primary">
-                  {section.icon}
-                </div>
-                <div>
-                  <h3 className="font-bold text-slate-900">{section.title}</h3>
-                  <p className="text-xs text-slate-500">{section.description}</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-6">
-                {section.settings.map((setting) => (
-                  <div key={setting.id} className="space-y-2">
-                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest">
-                      {setting.label}
-                    </label>
-                    <SettingControl
-                      setting={setting as any}
-                      value={getVal(setting.id, setting.defaultValue)}
-                      onChange={(val) => handleThemeChange(setting.id, val)}
-                      projectId={projectId}
-                      projectColors={projectColors}
-                    />
-                    {setting.description && (
-                      <p className="text-[10px] text-slate-400 font-medium italic mt-1">
-                        {setting.description}
-                      </p>
-                    )}
+            <div className="lg:col-span-2 space-y-10">
+              {sections.map((section) => (
+                <section key={section.id} className="space-y-6">
+                  <div className="flex items-center gap-4 border-b border-slate-100 pb-4">
+                    <div className="w-10 h-10 bg-white rounded-2xl border border-slate-100 flex items-center justify-center shadow-sm text-primary">
+                      {section.icon}
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-slate-900">{section.title}</h3>
+                      <p className="text-xs text-slate-500">{section.description}</p>
+                    </div>
                   </div>
-                ))}
-              </div>
-            </section>
-          ))}
-        </div>
-      </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-6">
+                    {section.settings.map((setting) => (
+                      <div key={setting.id} className="space-y-2">
+                        <label className="text-xs font-black text-slate-400 uppercase tracking-widest">
+                          {setting.label}
+                        </label>
+                        <SettingControl
+                          setting={setting as any}
+                          value={getVal(setting.id, setting.defaultValue)}
+                          onChange={(val) => handleThemeChange(setting.id, val)}
+                          projectId={projectId}
+                          projectColors={projectColors}
+                        />
+                        {setting.description && (
+                          <p className="text-[10px] text-slate-400 font-medium italic mt-1">
+                            {setting.description}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              ))}
+            </div>
+          </div>
+        )}
+      </motion.div>
     </div>
   );
 };

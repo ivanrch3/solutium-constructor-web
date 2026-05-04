@@ -1532,9 +1532,9 @@ const formatTimestampName = () => {
             if (previewResult.success && previewResult.preview_image_url) {
               await updateSitePreview(siteId, {
                 previewImageUrl: previewResult.preview_image_url,
-                previewThumbnailUrl: previewResult.preview_image_url,
-                previewImagePath: '', // Server-side handles paths
-                previewImageHash: '', // Server-side handles hash
+                previewThumbnailUrl: previewResult.preview_thumbnail_url || previewResult.preview_image_url,
+                previewImagePath: previewResult.preview_image_path,
+                previewImageHash: previewResult.preview_image_hash,
               });
               
               sendToMother('SOLUTIUM_PREVIEW_GENERATED', {
@@ -1698,9 +1698,9 @@ const formatTimestampName = () => {
             if (previewResult.success && previewResult.preview_image_url) {
               await updateSitePreview(siteId, {
                 previewImageUrl: previewResult.preview_image_url,
-                previewThumbnailUrl: previewResult.preview_image_url,
-                previewImagePath: '',
-                previewImageHash: '',
+                previewThumbnailUrl: previewResult.preview_thumbnail_url || previewResult.preview_image_url,
+                previewImagePath: previewResult.preview_image_path,
+                previewImageHash: previewResult.preview_image_hash,
               });
               
               sendToMother('SOLUTIUM_PREVIEW_GENERATED', {
@@ -1794,9 +1794,9 @@ const formatTimestampName = () => {
       if (result.success && result.preview_image_url) {
         const previewData = {
           previewImageUrl: result.preview_image_url,
-          previewThumbnailUrl: result.preview_image_url,
-          previewImagePath: '',
-          previewImageHash: '',
+          previewThumbnailUrl: result.preview_thumbnail_url || result.preview_image_url,
+          previewImagePath: result.preview_image_path,
+          previewImageHash: result.preview_image_hash,
         };
         
         await updateSitePreview(currentSiteId, previewData);

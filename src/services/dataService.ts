@@ -862,21 +862,34 @@ export async function logEvolutionRequest(feature: string, context: any): Promis
     const cleanUrl = appMadreUrl.endsWith('/') ? appMadreUrl.slice(0, -1) : appMadreUrl;
     const endpoint = `${cleanUrl}/api/previews/evolution`;
 
-    // Intentamos recuperar IDs para el payload
-    const web_builder_site_id = context?.web_builder_site_id || (window as any).WEB_BUILDER_SITE_ID;
-    const project_id = context?.project_id || (window as any).PROJECT_ID;
+    // Intentamos recuperar IDs para el payload con prioridad: context -> globals -> window
+    const project_id = context?.project_id || (window as any).PROJECT_ID || (window as any).currentProject?.id;
+    const web_builder_site_id = context?.web_builder_site_id || (window as any).WEB_BUILDER_SITE_ID || (window as any).currentSite?.id || (window as any).webBuilderSite?.id;
+    const site_id = context?.site_id || (window as any).SITE_ID || (window as any).currentSite?.site_id;
 
-    const payload: Partial<EngineEvolutionBuffer> = {
-      project_id: project_id || 'unknown',
-      web_builder_site_id: web_builder_site_id,
+    console.log('[EVOLUTION_BACKEND_PAYLOAD_DEBUG]', { 
+      project_id, 
+      web_builder_site_id, 
+      site_id,
+      hasProjectId: Boolean(project_id),
+      hasWebBuilderSiteId: Boolean(web_builder_site_id)
+    });
+
+    if (!project_id || !web_builder_site_id) {
+      console.log('[EVOLUTION_BACKEND_SKIPPED] Missing IDs');
+      return;
+    }
+
+    const payload = {
+      project_id,
+      web_builder_site_id,
+      site_id,
       feature_request: feature,
       metadata: context,
       detected_changes: context?.detected_changes,
       generated_patch: context?.generated_patch,
       status: context?.status || 'pending'
     };
-
-    logDebug('[EVOLUTION_LOGGING_DEBUG]', { endpoint, payload });
 
     const response = await fetch(endpoint, {
       method: 'POST',
@@ -894,7 +907,7 @@ export async function logEvolutionRequest(feature: string, context: any): Promis
 
     logDebug('[EVOLUTION_LOGGING_SUCCESS]', { feature });
   } catch (error) {
-    console.error('Error logging evolution request to backend:', error);
+    console.warn('Error logging evolution request to backend:', error);
     // No bloqueamos el flujo principal si el logging falla
   }
 }

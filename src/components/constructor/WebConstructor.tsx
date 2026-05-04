@@ -220,7 +220,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     if (!initialPage) return '';
     return (initialPage as any).siteName || (initialPage as any).title || '';
   });
-  
+
   const [currentSiteId] = useState(() => {
     // 1. Si estamos editando una página existente (Borrador o Publicada), usamos su siteId.
     if (initialPage && (initialPage as any).siteId) return (initialPage as any).siteId;
@@ -229,6 +229,19 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     // 2. Si es una página NUEVA, generamos un ID único para que sea independiente.
     return crypto.randomUUID();
   });
+
+  useEffect(() => {
+    // Synchronize IDs with window for evolution logging fallbacks
+    // Use snake_case as requested for consistency
+    (window as any).PROJECT_ID = projectId;
+    (window as any).WEB_BUILDER_SITE_ID = initialPage?.id;
+    (window as any).SITE_ID = currentSiteId;
+    
+    // Also provide as objects for more robust fallbacks
+    (window as any).currentProject = { id: projectId };
+    (window as any).currentSite = { id: initialPage?.id, site_id: currentSiteId };
+    (window as any).webBuilderSite = { id: initialPage?.id };
+  }, [projectId, initialPage, currentSiteId]);
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [publishStatus, setPublishStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');

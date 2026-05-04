@@ -245,8 +245,11 @@ export interface PageSection {
 export interface EngineEvolutionBuffer {
   id?: string;
   project_id: string;
+  web_builder_site_id?: string;
   feature_request: string;
-  metadata: any;
-  status: 'pending' | 'applied' | 'rejected';
+  metadata?: any;
+  detected_changes?: any;
+  generated_patch?: any;
+  status: 'pending' | 'applied' | 'rejected' | string;
   created_at?: string;
 }

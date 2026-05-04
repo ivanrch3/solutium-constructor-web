@@ -842,29 +842,60 @@ export async function upsertPageSections(pageId: string, sections: Partial<PageS
 
 /**
  * Registra una solicitud de evolución en el buffer para parches del motor de renderizado.
+ * SIP v10.6: Envía la solicitud al backend (App Madre) en lugar de insertar directamente en Supabase.
  */
 export async function logEvolutionRequest(feature: string, context: any): Promise<void> {
   try {
-    const supabase = getSupabase();
-    if (!supabase) return;
+    const { token } = await getUploadAuthToken();
+    if (!token) {
+      console.warn('[EVOLUTION_LOG] No auth token available, skipping evolution log.');
+      return;
+    }
 
-    const { data: userData } = await supabase.auth.getUser();
-    if (!userData.user) return;
+    // @ts-ignore
+    const appMadreUrl = import.meta.env.VITE_APP_MADRE_API_URL;
+    if (!appMadreUrl) {
+      console.warn('[EVOLUTION_LOG] VITE_APP_MADRE_API_URL not configured');
+      return;
+    }
 
-    const payload: EngineEvolutionBuffer = {
-      project_id: userData.user.id,
+    const cleanUrl = appMadreUrl.endsWith('/') ? appMadreUrl.slice(0, -1) : appMadreUrl;
+    const endpoint = `${cleanUrl}/api/previews/evolution`;
+
+    // Intentamos recuperar IDs para el payload
+    const web_builder_site_id = context?.web_builder_site_id || (window as any).WEB_BUILDER_SITE_ID;
+    const project_id = context?.project_id || (window as any).PROJECT_ID;
+
+    const payload: Partial<EngineEvolutionBuffer> = {
+      project_id: project_id || 'unknown',
+      web_builder_site_id: web_builder_site_id,
       feature_request: feature,
       metadata: context,
-      status: 'pending'
+      detected_changes: context?.detected_changes,
+      generated_patch: context?.generated_patch,
+      status: context?.status || 'pending'
     };
 
-    const { error } = await supabase
-      .from('engine_evolution_buffer')
-      .insert(payload);
+    logDebug('[EVOLUTION_LOGGING_DEBUG]', { endpoint, payload });
 
-    if (error) throw error;
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `HTTP error ${response.status}`);
+    }
+
+    logDebug('[EVOLUTION_LOGGING_SUCCESS]', { feature });
   } catch (error) {
-    console.error('Error logging evolution request:', error);
+    console.error('Error logging evolution request to backend:', error);
+    // No bloqueamos el flujo principal si el logging falla
   }
 }
 

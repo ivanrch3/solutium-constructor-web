@@ -1366,35 +1366,64 @@ const formatTimestampName = () => {
             });
           }
 
-          // Enrichment logic
+          // Enrichment logic - Update BOTH content and settings to ensure persistence and bridge compatibility
           if (isDefault(currentState.settingsValues[`${module.id}_el_footer_brand_bio`], defaults.bio)) {
-            content.bio = project?.industry || `Servicios profesionales de ${project?.name || 'nuestro negocio'}`;
-            content.brand = { ...(content.brand || {}), bio: content.bio, description: content.bio };
+            const bioVal = project?.industry || `Servicios profesionales de ${project?.name || 'nuestro negocio'}`;
+            content.bio = bioVal;
+            content.brand = { ...(content.brand || {}), bio: bioVal, description: bioVal };
+            settings[`${module.id}_el_footer_brand_bio`] = bioVal;
           }
           if (isDefault(currentState.settingsValues[`${module.id}_el_footer_contact_email`], defaults.email) && project?.email) {
             content.contacto = { ...(content.contacto || {}), email: project.email };
             content.email = project.email;
+            settings[`${module.id}_el_footer_contact_email`] = project.email;
+            settings[`${module.id}_el_footer_contact_show_contact`] = true;
           }
           if (isDefault(currentState.settingsValues[`${module.id}_el_footer_contact_phone`], defaults.phone) && project?.whatsapp) {
             content.contacto = { ...(content.contacto || {}), telefono: project.whatsapp };
             content.phone = project.whatsapp;
+            settings[`${module.id}_el_footer_contact_phone`] = project.whatsapp;
+            settings[`${module.id}_el_footer_contact_show_contact`] = true;
           }
           if (isDefault(currentState.settingsValues[`${module.id}_el_footer_contact_address`], defaults.address) && project?.address) {
             content.contacto = { ...(content.contacto || {}), direccion: project.address };
             content.address = project.address;
+            settings[`${module.id}_el_footer_contact_address`] = project.address;
+            settings[`${module.id}_el_footer_contact_show_contact`] = true;
           }
           if (isDefault(currentState.settingsValues[`${module.id}_el_footer_bottom_copyright`], defaults.copyright)) {
-            content.copyright = `© ${new Date().getFullYear()} ${project?.name || 'Solutium'}. Todos los derechos reservados.`;
+            const copyVal = `© ${new Date().getFullYear()} ${project?.name || 'Solutium'}. Todos los derechos reservados.`;
+            content.copyright = copyVal;
+            settings[`${module.id}_el_footer_bottom_copyright`] = copyVal;
           }
           
           // Social links enrichment if empty
           const currentSocials = currentState.settingsValues[`${module.id}_el_footer_social_social_links`];
           if ((!currentSocials || (Array.isArray(currentSocials) && currentSocials.length === 0)) && project?.socials) {
             if (typeof project.socials === 'object' && !Array.isArray(project.socials)) {
-              content.redes_sociales = Object.entries(project.socials)
+              const socialList = Object.entries(project.socials)
                 .filter(([_, url]) => !!url)
-                .map(([platform, url]) => ({ plataforma: platform, url }));
+                .map(([platform, url]) => {
+                  let icon = 'Globe';
+                  const p = platform.toLowerCase();
+                  if (p.includes('facebook')) icon = 'Facebook';
+                  else if (p.includes('instagram')) icon = 'Instagram';
+                  else if (p.includes('twitter')) icon = 'Twitter';
+                  else if (p.includes('linkedin')) icon = 'Linkedin';
+                  return { icon, url, plataforma: platform };
+                });
+              content.redes_sociales = socialList;
+              settings[`${module.id}_el_footer_social_social_links`] = socialList;
             }
+          }
+
+          // BRAND LOGO Enrichment
+          const currentLogo = currentState.settingsValues[`${module.id}_el_footer_brand_logo_img`];
+          if (!currentLogo && project?.logoUrl) {
+            content.logo_url = project.logoUrl;
+            content.brand = { ...(content.brand || {}), logo: project.logoUrl, logo_url: project.logoUrl };
+            settings[`${module.id}_el_footer_brand_logo_img`] = project.logoUrl;
+            settings[`${module.id}_el_footer_brand_show_logo`] = true;
           }
         }
 

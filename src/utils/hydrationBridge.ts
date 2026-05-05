@@ -480,6 +480,29 @@ export const bridgeModuleContent = ({
 
     // --- Specialized Footer Module Logic ---
     if (baseType === 'footer' && content) {
+      const isDebug = isRenderDebugEnabled();
+      
+      // Detected defaults for overridable logic
+      const defaults = {
+        bio: 'Creamos soluciones digitales innovadoras para impulsar el crecimiento de tu negocio en la era moderna.',
+        address: 'Calle Innovación 123, Ciudad Digital',
+        phone: '+1 (555) 000-0000',
+        email: 'hola@mimarca.com',
+        copyright: '© 2026 Mi Marca. Todos los derechos reservados.'
+      };
+
+      const isDefault = (val: any, d: string) => !val || val === d;
+
+      if (isDebug) {
+        console.log('[FOOTER_PROJECT_PROFILE_DEBUG]', {
+          runtime: typeof window !== 'undefined' && (window as any).WEB_BUILDER_SITE_ID ? 'constructor' : 'published_viewer',
+          moduleId,
+          footerCurrentEmail: result[`${moduleId}_el_footer_contact_email`],
+          contentEmail: content.email || getByPath(content, 'contacto.email'),
+          sourceUsed: isDefault(result[`${moduleId}_el_footer_contact_email`], defaults.email) ? 'content_sync' : 'manual_settings'
+        });
+      }
+
       // 1. Navigation Columns Normalization
       const navKey = `${moduleId}_el_footer_nav_columns`;
       const navSource = content.columns || content.columnas || content.nav_columns || content.navigation || content.navegacion || content.enlaces || content.links;
@@ -509,6 +532,28 @@ export const bridgeModuleContent = ({
         }
         mappedKeys.push(navKey);
       }
+
+      // Enrichment logic: If result has defaults, allow content to override even if not undefined
+      Object.entries(adapter.contentToSettings || {}).forEach(([contentPath, relativeKey]) => {
+        const fullKey = `${moduleId}_${relativeKey}`;
+        const value = getByPath(content, contentPath);
+        const hasValue = value !== undefined && value !== null;
+        
+        // Find which default to check against
+        let defaultValue: string | undefined = undefined;
+        if (relativeKey === 'el_footer_brand_bio') defaultValue = defaults.bio;
+        else if (relativeKey === 'el_footer_contact_email') defaultValue = defaults.email;
+        else if (relativeKey === 'el_footer_contact_phone') defaultValue = defaults.phone;
+        else if (relativeKey === 'el_footer_contact_address') defaultValue = defaults.address;
+        else if (relativeKey === 'el_footer_bottom_copyright') defaultValue = defaults.copyright;
+
+        if (hasValue) {
+          const isCurrentlyDefault = defaultValue !== undefined && isDefault(result[fullKey], defaultValue);
+          if (result[fullKey] === undefined || isCurrentlyDefault) {
+            result[fullKey] = value;
+          }
+        }
+      });
 
       // 2. Social Links Normalization
       const socialKey = `${moduleId}_el_footer_social_social_links`;

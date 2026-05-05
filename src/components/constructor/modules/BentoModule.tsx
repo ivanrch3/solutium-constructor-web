@@ -422,6 +422,15 @@ export const BentoModule: React.FC<{
     onSettingChange(`${moduleId}_el_bento_items`, 'items', newItems);
   };
 
+  // Header Values
+  const headerEyebrow = getVal(`${moduleId}_el_bento_header`, 'eyebrow', '');
+  const headerTitle = getVal(`${moduleId}_el_bento_header`, 'title', '');
+  const headerSubtitle = getVal(`${moduleId}_el_bento_header`, 'subtitle', '');
+  const headerAlign = getVal(`${moduleId}_el_bento_header`, 'align', 'center');
+  const headerMarginB = parseNumSafe(getVal(`${moduleId}_el_bento_header`, 'margin_b', 60), 60);
+
+  const showHeader = headerEyebrow || headerTitle || headerSubtitle;
+
   return (
     <section 
       id={moduleId}
@@ -444,6 +453,86 @@ export const BentoModule: React.FC<{
       />
       <div className="mx-auto px-4 sm:px-8" style={{ maxWidth: `${maxWidth}px` }}>
         
+        {/* Header Section */}
+        {showHeader && (
+          <div 
+            className={`flex flex-col mb-12 relative z-20 ${
+              headerAlign === 'center' ? 'items-center text-center' : 
+              headerAlign === 'right' ? 'items-end text-right' : 
+              'items-start text-left'
+            }`}
+            style={{ marginBottom: `${headerMarginB}px` }}
+          >
+            {headerEyebrow && (
+              <motion.span
+                variants={itemVariants}
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true }}
+                className="text-xs font-bold tracking-[0.2em] uppercase mb-4 block"
+                style={{ color: darkMode ? '#3B82F6' : 'var(--color-primary)' }}
+              >
+                <InlineEditableText
+                  moduleId={moduleId}
+                  settingId="el_bento_header_eyebrow"
+                  value={headerEyebrow}
+                  tagName="span"
+                  isPreviewMode={isPreviewMode}
+                  onSave={(val) => onSettingChange?.(`${moduleId}_el_bento_header`, 'eyebrow', val)}
+                />
+              </motion.span>
+            )}
+            {headerTitle && (
+              <motion.h2
+                variants={itemVariants}
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true }}
+                className="max-w-3xl leading-[1.1] mb-6"
+                style={{ 
+                  fontSize: `${TYPOGRAPHY_SCALE.t2.fontSize}px`,
+                  fontWeight: 900,
+                  color: darkMode ? '#FFFFFF' : '#0F172A'
+                }}
+              >
+                <InlineEditableText
+                  moduleId={moduleId}
+                  settingId="el_bento_header_title"
+                  value={headerTitle}
+                  tagName="span"
+                  isPreviewMode={isPreviewMode}
+                  onSave={(val) => onSettingChange?.(`${moduleId}_el_bento_header`, 'title', val)}
+                >
+                  <TextRenderer text={headerTitle} />
+                </InlineEditableText>
+              </motion.h2>
+            )}
+            {headerSubtitle && (
+              <motion.p
+                variants={itemVariants}
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true }}
+                className="max-w-2xl"
+                style={{ 
+                  fontSize: `${TYPOGRAPHY_SCALE.p.fontSize}px`,
+                  color: darkMode ? '#94A3B8' : '#64748B',
+                  lineHeight: 1.6
+                }}
+              >
+                <InlineEditableText
+                  moduleId={moduleId}
+                  settingId="el_bento_header_subtitle"
+                  value={headerSubtitle}
+                  tagName="span"
+                  isPreviewMode={isPreviewMode}
+                  onSave={(val) => onSettingChange?.(`${moduleId}_el_bento_header`, 'subtitle', val)}
+                />
+              </motion.p>
+            )}
+          </div>
+        )}
+
         {/* Grid Guide - Only visible in constructor */}
         {!isPreviewMode && (
           <div className="absolute inset-0 pointer-events-none opacity-[0.05] z-0" style={{ margin: `0 ${gap}px` }}>

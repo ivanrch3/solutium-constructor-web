@@ -13,6 +13,7 @@ Estos módulos tienen mapeos específicos para asegurar que llaves complejas (ej
 - **About**: Normalizacion de stats (numero/texto/icon), composición Misión/Visión, y mapeo de layout.
 - **Process**: Normalización de arrays de pasos (`pasos`, `steps`, `workflow`). Mapeo interno de items (title, desc, icon, badge) y layouts (`horizontal`, `vertical`, `alternating`).
 - **Footer**: Hidratación completa de marca, columnas de navegación, redes sociales normalizadas, datos de contacto, newsletter y enlaces legales.
+- **Bento**: Adaptador avanzado con auto-layout para evitar solapamientos. Normaliza celdas de diversos tipos (stat, image, cta, text) y mapea global settings (grid columns, gap). Soporta múltiples alias para celdas (`items`, `cards`, `blocks`).
 
 ## Fallback Genérico (Novedad v10.6)
 Para todos los demás módulos, se aplica una estrategia de "Auto-Prefijado" no destructiva:

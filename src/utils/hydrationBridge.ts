@@ -281,6 +281,35 @@ const MODULE_ADAPTERS: Record<string, ModuleBridgeAdapter> = {
       'layout': 'global_layout',
       'background': 'global_background'
     }
+  },
+  bento: {
+    contentToSettings: {
+      'eyebrow': 'el_bento_header_eyebrow',
+      'kicker': 'el_bento_header_eyebrow',
+      'label': 'el_bento_header_eyebrow',
+      'etiqueta': 'el_bento_header_eyebrow',
+      
+      'title': 'el_bento_header_title',
+      'titulo': 'el_bento_header_title',
+      'heading': 'el_bento_header_title',
+      'headline': 'el_bento_header_title',
+      'nombre': 'el_bento_header_title',
+
+      'subtitle': 'el_bento_header_subtitle',
+      'subtitulo': 'el_bento_header_subtitle',
+      'description': 'el_bento_header_subtitle',
+      'descripcion': 'el_bento_header_subtitle',
+      'summary': 'el_bento_header_subtitle',
+      'resumen': 'el_bento_header_subtitle',
+      'intro': 'el_bento_header_subtitle',
+      'texto': 'el_bento_header_subtitle'
+    },
+    settingsToDeep: {
+      'columns': 'global_columns',
+      'gap': 'global_gap',
+      'bg_color': 'global_bg_color',
+      'dark_mode': 'global_dark_mode'
+    }
   }
 };
 
@@ -627,6 +656,119 @@ export const bridgeModuleContent = ({
         mappedKeys.push(showNewsKey);
       }
     }
+
+    // --- Specialized Bento Module Logic ---
+    if (baseType === 'bento' && content) {
+      // 1. Items Normalization & Auto-Layout
+      const itemsKey = `${moduleId}_el_bento_items_items`;
+      const itemsSource = content.items || content.cards || content.bloques || content.blocks || 
+                         content.celdas || content.cells || content.features || content.beneficios || 
+                         content.soluciones || content.apps || content.recursos || content.grid_items || 
+                         content.bento_items;
+
+      if (Array.isArray(itemsSource) && itemsSource.length > 0 && result[itemsKey] === undefined) {
+        const columns = parseInt(String(settings.columns || content.columns || content.layout?.columns || content.layout?.columnas || 4), 10) || 4;
+        let cursorX = 0;
+        let cursorY = 0;
+
+        result[itemsKey] = itemsSource.map((item) => {
+          // Normalize Item Structure
+          const rawType = item.type || item.tipo || item.kind;
+          let type: "text" | "image" | "icon_text" | "stat" | "cta" | "video" = "icon_text";
+          
+          if (rawType && ["text", "image", "icon_text", "stat", "cta", "video"].includes(rawType)) {
+            type = rawType;
+          } else {
+            // Infer type
+            if (item.button_text || item.btn_text || item.cta_text || item.cta?.label || item.boton) type = "cta";
+            else if (item.image || item.image_url || item.imagen || item.img) type = "image";
+            else if (item.value !== undefined || item.stat || item.metric) type = "stat";
+            else if (item.icon || item.icono) type = "icon_text";
+          }
+
+          const itemTitle = item.title || item.titulo || item.heading || item.nombre || item.name || "";
+          const itemDesc = item.description || item.descripcion || item.text || item.texto || item.summary || item.resumen || item.desc || "";
+          const itemIcon = item.icon || item.icono || item.lucideIcon || "Sparkles";
+          const itemImage = item.image || item.image_url || item.imagen || item.img || item.media?.url || item.image?.url || "";
+          const itemBtnText = item.button_text || item.btn_text || item.cta_text || item.cta?.label || item.cta?.text || item.boton || item.boton_texto || "Explorar";
+          const itemBtnUrl = item.btn_url || item.button_url || item.cta_url || item.cta?.url || item.cta?.href || item.url || item.href || item.link || "#";
+          const itemStyle = item.card_style || item.style || item.estilo || item.variant || "solid";
+
+          // Calculate Spans
+          const col_span = Math.max(1, Math.min(columns, parseInt(String(item.col_span || item.colSpan || item.cols || item.columnas || (type === "cta" || type === "image" ? 2 : 1)), 10)));
+          const row_span = Math.max(1, Math.min(8, parseInt(String(item.row_span || item.rowSpan || item.rows || item.filas || (type === "image" ? 2 : 1)), 10)));
+
+          // Auto-Layout Logic
+          let x = item.x !== undefined ? parseInt(String(item.x), 10) : -1;
+          let y = item.y !== undefined ? parseInt(String(item.y), 10) : -1;
+
+          if (x === -1 || y === -1) {
+            if (cursorX + col_span > columns) {
+              cursorX = 0;
+              cursorY += 1;
+            }
+            x = cursorX;
+            y = cursorY;
+            cursorX += col_span;
+          }
+
+          return {
+            type,
+            title: String(itemTitle),
+            description: String(itemDesc),
+            icon: String(itemIcon),
+            image: String(itemImage),
+            button_text: String(itemBtnText),
+            btn_url: String(itemBtnUrl),
+            card_style: itemStyle,
+            col_span,
+            row_span,
+            x,
+            y
+          };
+        });
+        
+        mappedKeys.push(itemsKey);
+        aliasesUsed.push('auto-layout-applied');
+      }
+
+      // 2. Global Mappings for Bento
+      const gColsKey = `${moduleId}_global_columns`;
+      if (result[gColsKey] === undefined) {
+        const val = settings.columns || content.columns || content.layout?.columns || content.layout?.columnas;
+        if (val) {
+          result[gColsKey] = parseInt(String(val), 10) || 4;
+          mappedKeys.push(gColsKey);
+        }
+      }
+
+      const gGapKey = `${moduleId}_global_gap`;
+      if (result[gGapKey] === undefined) {
+        const val = settings.gap || content.gap || content.layout?.gap || content.espaciado;
+        if (val) {
+          result[gGapKey] = parseInt(String(val), 10) || 20;
+          mappedKeys.push(gGapKey);
+        }
+      }
+
+      const gBgKey = `${moduleId}_global_bg_color`;
+      if (result[gBgKey] === undefined) {
+        const val = settings.bg_color || content.bg_color || content.background || content.background_color;
+        if (val) {
+          result[gBgKey] = val;
+          mappedKeys.push(gBgKey);
+        }
+      }
+
+      const gDarkKey = `${moduleId}_global_dark_mode`;
+      if (result[gDarkKey] === undefined) {
+        const val = settings.dark_mode || content.dark_mode || content.dark || content.modo_oscuro;
+        if (val !== undefined) {
+          result[gDarkKey] = !!val;
+          mappedKeys.push(gDarkKey);
+        }
+      }
+    }
   }
 
   // 2. Aplicar Fallback Genérico (asegura que keys como 'title' lleguen como 'mod_123_title')
@@ -656,6 +798,8 @@ export const bridgeModuleContent = ({
       statsCount: baseType === 'about' ? (result[`${moduleId}_el_about_stats_stats_list`]?.length || 0) : 0,
       ctaDetected: Boolean(result[`${moduleId}_el_about_narrative_button_text`]),
       imageDetected: Boolean(result[`${moduleId}_el_about_visual_image_url`]),
+      bentoItemsCount: baseType === 'bento' ? (result[`${moduleId}_el_bento_items_items`]?.length || 0) : 0,
+      bentoAutoLayout: baseType === 'bento' && aliasesUsed.includes('auto-layout-applied'),
       originalContentKeys: content ? Object.keys(content) : [],
       addedKeys,
       totalKeys: finalKeys.length

@@ -824,6 +824,19 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
               val = project.logoWhiteUrl;
             }
 
+            // SIP v11.2: Footer specific project data initialization
+            if (module.type === 'footer') {
+              if (setting.id === 'email' && project?.email) val = project.email;
+              if (setting.id === 'phone' && project?.whatsapp) val = project.whatsapp;
+              if (setting.id === 'address' && project?.address) val = project.address;
+              if (setting.id === 'bio' && (project?.industry || project?.name)) {
+                val = project?.industry || `Servicios profesionales de ${project?.name}`;
+              }
+              if (setting.id === 'copyright' && project?.name) {
+                val = `© ${new Date().getFullYear()} ${project.name}. Todos los derechos reservados.`;
+              }
+            }
+
             // The element.id already contains the moduleId prefix
             initialValues[`${element.id}_${setting.id}`] = val;
           });
@@ -1326,6 +1339,63 @@ const formatTimestampName = () => {
         }
         if (module.type === 'clients') {
           content.customerIds = getVal(module.id, null, 'select_customers', []);
+        }
+
+        // SIP v11.3: Specialized project profile enrichment for Footer
+        if (module.type === 'footer' || module.id.startsWith('mod_footer')) {
+          const defaults = {
+            bio: 'Creamos soluciones digitales innovadoras para impulsar el crecimiento de tu negocio en la era moderna.',
+            address: 'Calle Innovación 123, Ciudad Digital',
+            phone: '+1 (555) 000-0000',
+            email: 'hola@mimarca.com',
+            copyright: '© 2026 Mi Marca. Todos los derechos reservados.'
+          };
+
+          const isDefault = (val: any, d: string) => !val || val === d;
+          
+          // Debug project profile
+          if (window.location.search.includes('debug_render=true')) {
+            console.log('[FOOTER_PROJECT_PROFILE_DEBUG]', {
+              moduleId: module.id,
+              hasProjectProfile: !!project,
+              projectName: project?.name,
+              projectEmail: project?.email,
+              projectPhone: project?.whatsapp,
+              footerCurrentEmail: currentState.settingsValues[`${module.id}_el_footer_contact_email`],
+              sourceUsed: isDefault(currentState.settingsValues[`${module.id}_el_footer_contact_email`], defaults.email) ? 'project_profile' : 'manual'
+            });
+          }
+
+          // Enrichment logic
+          if (isDefault(currentState.settingsValues[`${module.id}_el_footer_brand_bio`], defaults.bio)) {
+            content.bio = project?.industry || `Servicios profesionales de ${project?.name || 'nuestro negocio'}`;
+            content.brand = { ...(content.brand || {}), bio: content.bio, description: content.bio };
+          }
+          if (isDefault(currentState.settingsValues[`${module.id}_el_footer_contact_email`], defaults.email) && project?.email) {
+            content.contacto = { ...(content.contacto || {}), email: project.email };
+            content.email = project.email;
+          }
+          if (isDefault(currentState.settingsValues[`${module.id}_el_footer_contact_phone`], defaults.phone) && project?.whatsapp) {
+            content.contacto = { ...(content.contacto || {}), telefono: project.whatsapp };
+            content.phone = project.whatsapp;
+          }
+          if (isDefault(currentState.settingsValues[`${module.id}_el_footer_contact_address`], defaults.address) && project?.address) {
+            content.contacto = { ...(content.contacto || {}), direccion: project.address };
+            content.address = project.address;
+          }
+          if (isDefault(currentState.settingsValues[`${module.id}_el_footer_bottom_copyright`], defaults.copyright)) {
+            content.copyright = `© ${new Date().getFullYear()} ${project?.name || 'Solutium'}. Todos los derechos reservados.`;
+          }
+          
+          // Social links enrichment if empty
+          const currentSocials = currentState.settingsValues[`${module.id}_el_footer_social_social_links`];
+          if ((!currentSocials || (Array.isArray(currentSocials) && currentSocials.length === 0)) && project?.socials) {
+            if (typeof project.socials === 'object' && !Array.isArray(project.socials)) {
+              content.redes_sociales = Object.entries(project.socials)
+                .filter(([_, url]) => !!url)
+                .map(([platform, url]) => ({ plataforma: platform, url }));
+            }
+          }
         }
 
         const isDynamic = content.is_rotating_active === true;
@@ -2120,6 +2190,7 @@ const formatTimestampName = () => {
                         isDevMode={projectId === 'dev-project-id'}
                         logoUrl={logoUrl}
                         logoWhiteUrl={logoWhiteUrl}
+                        project={project}
                         viewport={viewport}
                         setViewport={setViewport}
                         isFullscreen={false}
@@ -2184,6 +2255,7 @@ const formatTimestampName = () => {
                         isDevMode={projectId === 'dev-project-id'}
                         logoUrl={logoUrl}
                         logoWhiteUrl={logoWhiteUrl}
+                        project={project}
                         viewport={viewport}
                         setViewport={setViewport}
                         isFullscreen={isFullscreen}

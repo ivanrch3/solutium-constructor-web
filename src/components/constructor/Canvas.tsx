@@ -48,6 +48,7 @@ interface CanvasProps {
   isFullscreen: boolean;
   setIsFullscreen: (f: boolean) => void;
   isPreviewMode: boolean;
+  project?: any;
   onSettingChange: (elementOrModuleId: string, settingId: string, value: any) => void;
   onReload: () => void;
   reloadKey?: number;
@@ -66,6 +67,7 @@ export const Canvas: React.FC<CanvasProps> = ({
   isFullscreen, 
   setIsFullscreen,
   isPreviewMode,
+  project,
   onSettingChange,
   onReload,
   reloadKey = 0
@@ -266,6 +268,66 @@ export const Canvas: React.FC<CanvasProps> = ({
 
                 if (theme.globalAnimationType && theme.globalAnimationType !== 'custom') {
                   moduleOverrides[`${section.id}_global_entrance_anim`] = theme.globalAnimationType;
+                }
+
+                // SIP v11.4: Dynamic enrichment for live preview (Constructor)
+                if (section.type === 'footer') {
+                  const defaults = {
+                    bio: 'Creamos soluciones digitales innovadoras para impulsar el crecimiento de tu negocio en la era moderna.',
+                    address: 'Calle Innovación 123, Ciudad Digital',
+                    phone: '+1 (555) 000-0000',
+                    email: 'hola@mimarca.com',
+                    copyright: '© 2026 Mi Marca. Todos los derechos reservados.'
+                  };
+
+                  const isDefault = (val: any, d: string) => !val || val === d;
+
+                  // Enrich if missing or default in settingsValues + section.settings
+                  const currentEmail = editorState.settingsValues[`${section.id}_el_footer_contact_email`] || section.settings[`${section.id}_el_footer_contact_email`];
+                  if (isDefault(currentEmail, defaults.email) && project?.email) {
+                    moduleOverrides[`${section.id}_el_footer_contact_email`] = project.email;
+                    moduleOverrides[`${section.id}_el_footer_contact_show_contact`] = true;
+                  }
+
+                  const currentPhone = editorState.settingsValues[`${section.id}_el_footer_contact_phone`] || section.settings[`${section.id}_el_footer_contact_phone`];
+                  if (isDefault(currentPhone, defaults.phone) && project?.whatsapp) {
+                    moduleOverrides[`${section.id}_el_footer_contact_phone`] = project.whatsapp;
+                    moduleOverrides[`${section.id}_el_footer_contact_show_contact`] = true;
+                  }
+
+                  const currentAddress = editorState.settingsValues[`${section.id}_el_footer_contact_address`] || section.settings[`${section.id}_el_footer_contact_address`];
+                  if (isDefault(currentAddress, defaults.address) && project?.address) {
+                    moduleOverrides[`${section.id}_el_footer_contact_address`] = project.address;
+                    moduleOverrides[`${section.id}_el_footer_contact_show_contact`] = true;
+                  }
+
+                  const currentBio = editorState.settingsValues[`${section.id}_el_footer_brand_bio`] || section.settings[`${section.id}_el_footer_brand_bio`];
+                  if (isDefault(currentBio, defaults.bio) && (project?.industry || project?.name)) {
+                    moduleOverrides[`${section.id}_el_footer_brand_bio`] = project?.industry || `Servicios profesionales de ${project?.name || 'nuestro negocio'}`;
+                  }
+
+                  const currentCopy = editorState.settingsValues[`${section.id}_el_footer_bottom_copyright`] || section.settings[`${section.id}_el_footer_bottom_copyright`];
+                  if (isDefault(currentCopy, defaults.copyright)) {
+                    moduleOverrides[`${section.id}_el_footer_bottom_copyright`] = `© ${new Date().getFullYear()} ${project?.name || 'Solutium'}. Todos los derechos reservados.`;
+                  }
+                  
+                  // Social links
+                  const currentSocials = editorState.settingsValues[`${section.id}_el_footer_social_social_links`] || section.settings[`${section.id}_el_footer_social_social_links`];
+                  if ((!currentSocials || (Array.isArray(currentSocials) && currentSocials.length === 0)) && project?.socials) {
+                    if (typeof project.socials === 'object' && !Array.isArray(project.socials)) {
+                      moduleOverrides[`${section.id}_el_footer_social_social_links`] = Object.entries(project.socials)
+                        .filter(([_, url]) => !!url)
+                        .map(([platform, url]) => {
+                           let icon = 'Globe';
+                           const p = platform.toLowerCase();
+                           if (p.includes('facebook')) icon = 'Facebook';
+                           else if (p.includes('instagram')) icon = 'Instagram';
+                           else if (p.includes('twitter')) icon = 'Twitter';
+                           else if (p.includes('linkedin')) icon = 'Linkedin';
+                           return { icon, url };
+                        });
+                    }
+                  }
                 }
 
                 // PROTOCOLO SOLUTIUM v7.5: Reconstrucción de settingsValues para el Canvas

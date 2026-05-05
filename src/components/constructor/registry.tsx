@@ -383,13 +383,29 @@ export const FOOTER_MODULE: WebModule = {
           label: 'Redes Sociales', 
           type: 'repeater', 
           defaultValue: [
-            {icon: 'Facebook', url: ''},
-            {icon: 'Instagram', url: ''},
-            {icon: 'Linkedin', url: ''}
+            {platform: 'facebook', icon: 'Facebook', url: ''},
+            {platform: 'instagram', icon: 'Instagram', url: ''},
+            {platform: 'linkedin', icon: 'Linkedin', url: ''}
           ],
           fields: [
-            { id: 'icon', label: 'Icono', type: 'icon', defaultValue: 'Link', socialOnly: true },
-            { id: 'url', label: 'URL', type: 'text', defaultValue: '#' }
+            { 
+              id: 'platform', 
+              label: 'Plataforma', 
+              type: 'select', 
+              defaultValue: 'facebook',
+              options: [
+                { label: 'Facebook', value: 'facebook' },
+                { label: 'Instagram', value: 'instagram' },
+                { label: 'TikTok', value: 'tiktok' },
+                { label: 'X (Twitter)', value: 'x' },
+                { label: 'LinkedIn', value: 'linkedin' },
+                { label: 'YouTube', value: 'youtube' },
+                { label: 'WhatsApp', value: 'whatsapp' },
+                { label: 'Sitio Web', value: 'website' }
+              ]
+            },
+            { id: 'url', label: 'Nombre de usuario o URL', type: 'text', defaultValue: 'usuario' },
+            { id: 'icon', label: 'Icono (Automático)', type: 'icon', defaultValue: 'Facebook', socialOnly: true, disabledMessage: 'Se asigna según plataforma' }
           ]
         }
       ],

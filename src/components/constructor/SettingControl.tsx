@@ -24,6 +24,8 @@ import { syncAsset } from '../../services/assetService';
 import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../constants/typography';
 import { MOCK_PRODUCTS, MOCK_CUSTOMERS } from '../../constants/mockData';
 
+import { normalizeSocialPlatform, SOCIAL_PLATFORMS, getIconForPlatform } from '../../utils/socialUtils';
+
 interface SettingControlProps {
   setting: SettingDefinition;
   value: any;
@@ -588,7 +590,24 @@ export const SettingControl: React.FC<SettingControlProps> = ({
                       customers={customers}
                       onChange={(val) => {
                         const newItems = [...items];
-                        newItems[index] = { ...item, [field.id]: val };
+                        let updatedItem = { ...item, [field.id]: val };
+                        
+                        // SIP v11.4: Special logic for social platform dependency
+                        if (field.id === 'platform') {
+                          const norm = normalizeSocialPlatform(val);
+                          if (norm && SOCIAL_PLATFORMS[norm as any]) {
+                            const platformConfig = SOCIAL_PLATFORMS[norm as any];
+                            updatedItem.icon = platformConfig.icon;
+                            updatedItem.label = platformConfig.label;
+                            
+                            // If URL is empty or a generic placeholder, suggest a better one
+                            if (!updatedItem.url || updatedItem.url === 'usuario' || updatedItem.url === '#' || updatedItem.url === '') {
+                              updatedItem.url = 'usuario';
+                            }
+                          }
+                        }
+                        
+                        newItems[index] = updatedItem;
                         onChange(newItems);
                       }}
                     />

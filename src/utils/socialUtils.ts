@@ -25,31 +25,73 @@ export const FOOTER_DEFAULTS = {
   ]
 };
 
+export const normalizeSocialPlatform = (input: string): SocialPlatform | undefined => {
+  if (!input) return undefined;
+  const p = input.toLowerCase().trim();
+  
+  if (['facebook', 'fb', 'facebook.com'].includes(p)) return 'facebook';
+  if (['instagram', 'ig', 'instagram.com'].includes(p)) return 'instagram';
+  if (['tiktok', 'tik_tok', 'tt', 'music2', 'tiktok.com'].includes(p)) return 'tiktok';
+  if (['x', 'twitter', 'twitter.com'].includes(p)) return 'x';
+  if (['linkedin', 'linkedin.com'].includes(p)) return 'linkedin';
+  if (['youtube', 'yt', 'youtube.com'].includes(p)) return 'youtube';
+  if (['whatsapp', 'wa', 'wa.me'].includes(p)) return 'whatsapp';
+  if (['website', 'web', 'globe', 'site'].includes(p)) return 'website';
+  
+  // Extra mapping for common icon names
+  if (p === 'twitter') return 'x';
+  if (p === 'music2') return 'tiktok';
+  if (p === 'messagecircle') return 'whatsapp';
+  if (p === 'globe') return 'website';
+  
+  return undefined;
+};
+
 export const normalizeSocialUrl = (platform: string, value: string): string => {
   if (!value) return '';
   const trimmed = value.trim();
-  if (trimmed === '' || trimmed === '#' || trimmed === 'usuario' || trimmed === '@usuario') return '';
+  if (trimmed === '' || trimmed === '#' || trimmed === 'usuario' || trimmed === '@usuario' || trimmed === 'tu_usuario') return '';
   
+  // If it's already a full URL, return it
   if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
   
-  const p = platform.toLowerCase() as SocialPlatform;
-  const config = SOCIAL_PLATFORMS[p];
+  const normPlatform = normalizeSocialPlatform(platform);
+  if (!normPlatform) return trimmed;
+  
+  const config = SOCIAL_PLATFORMS[normPlatform];
   if (!config) return trimmed;
 
   let username = trimmed;
   if (username.startsWith('@')) username = username.substring(1);
   
-  // Special case for TikTok which often uses @ in URL but baseUrl might already have it or not
-  if (p === 'tiktok' && config.baseUrl.endsWith('@') && username.startsWith('@')) {
+  // Special case for TikTok: baseUrl + @username
+  if (normPlatform === 'tiktok' && config.baseUrl.endsWith('@') && username.startsWith('@')) {
     username = username.substring(1);
   }
   
   return `${config.baseUrl}${username}`;
 };
 
+export const isRealSocialLink = (item: any): boolean => {
+  if (!item) return false;
+  
+  const platform = normalizeSocialPlatform(item.platform || item.icon || item.label);
+  const url = String(item.url || item.value || '').trim();
+  
+  const isInvalid = !url || url === '' || url === '#' || url === 'usuario' || url === '@usuario' || url === 'tu_usuario';
+  if (isInvalid) return false;
+  
+  // If it's already a full URL, it's real
+  if (url.startsWith('http')) return true;
+  
+  // If we have a platform and some value that isn't a placeholder, it might be real
+  // but if it's too short (like single char) maybe not? we'll be generous
+  return Boolean(platform) && url.length > 1;
+};
+
 export const getIconForPlatform = (platform: string): string => {
-  const p = platform.toLowerCase() as SocialPlatform;
-  return SOCIAL_PLATFORMS[p]?.icon || 'Link';
+  const norm = normalizeSocialPlatform(platform);
+  return norm ? SOCIAL_PLATFORMS[norm].icon : 'Link';
 };
 
 export interface SocialLink {
@@ -66,20 +108,20 @@ export const resolveFooterSocialLinks = (
 ): SocialLink[] => {
   const { debug = false, moduleId = '' } = options;
   
-  // 1. Identify manual real links (those that have a real URL)
-  // [SIP v11.3] A link counts as manual real ONLY if it has a non-empty, non-placeholder URL
-  const realManualLinks = (manualLinks || []).filter(link => {
-    if (!link.url) return false;
-    const u = link.url.trim();
-    return u !== '' && u !== '#' && u !== 'usuario' && u !== '@usuario';
-  });
+  // 1. Identify manual real links
+  const realManualLinks = (manualLinks || []).filter(item => isRealSocialLink(item)).map(item => ({
+    platform: normalizeSocialPlatform(item.platform || item.icon || item.label) || 'website',
+    icon: item.icon || getIconForPlatform(item.platform || 'website'),
+    url: normalizeSocialUrl(item.platform || item.icon || 'website', item.url),
+    label: item.label || SOCIAL_PLATFORMS[normalizeSocialPlatform(item.platform || item.icon || 'website') || 'website']?.label || 'Link'
+  }));
 
   if (realManualLinks.length > 0) {
     if (debug) {
       console.log('[FOOTER_SOCIAL_RESOLUTION_DEBUG]', {
         moduleId,
         manualRealSocials: realManualLinks,
-        source: "manual_real",
+        source: "manual",
         placeholderMode: false
       });
     }
@@ -87,62 +129,67 @@ export const resolveFooterSocialLinks = (
   }
 
   // 2. Fallback to Project Profile socials
-  if (projectSocials && typeof projectSocials === 'object' && !Array.isArray(projectSocials)) {
-    const projectLinks: SocialLink[] = [];
-    
-    // Check for both explicit platform keys and common variants
-    const possiblePlatforms = Object.keys(SOCIAL_PLATFORMS) as SocialPlatform[];
-    
-    possiblePlatforms.forEach(p => {
-      // Check for exact key or variants like "facebook_url", "facebookLink"
-      const candidates = [p, `${p}_url`, `${p}Url`, `${p}_link`, `${p}Link`];
-      let value = '';
-      
-      for (const cand of candidates) {
-        if (projectSocials[cand]) {
-          value = String(projectSocials[cand]).trim();
-          if (value && value !== '' && value !== '#' && value !== 'usuario') break;
+  const projectLinks: SocialLink[] = [];
+  
+  if (projectSocials) {
+    if (Array.isArray(projectSocials)) {
+      // Case if it's an array of { platform, value } or similar
+      projectSocials.forEach(item => {
+        const pStr = String(item.platform || item.label || item.key || '').trim();
+        const vStr = String(item.value || item.url || item.username || '').trim();
+        const normP = normalizeSocialPlatform(pStr);
+        if (normP && vStr && !['', '#', 'usuario'].includes(vStr)) {
+          projectLinks.push({
+            platform: normP,
+            icon: SOCIAL_PLATFORMS[normP].icon,
+            url: normalizeSocialUrl(normP, vStr),
+            label: SOCIAL_PLATFORMS[normP].label
+          });
         }
-      }
-      
-      if (value && value !== '' && value !== '#' && value !== 'usuario') {
-        projectLinks.push({
-          platform: p,
-          icon: getIconForPlatform(p),
-          url: normalizeSocialUrl(p, value),
-          label: SOCIAL_PLATFORMS[p].label
-        });
-      }
-    });
-
-    if (projectLinks.length > 0) {
-      if (debug) {
-        console.log('[FOOTER_SOCIAL_RESOLUTION_DEBUG]', {
-          moduleId,
-          projectSocialsRaw: projectSocials,
-          finalSocialLinks: projectLinks,
-          configuredSocialsCount: projectLinks.length,
-          placeholderMode: false,
-          source: "project_profile"
-        });
-      }
-      return projectLinks;
+      });
+    } else if (typeof projectSocials === 'object') {
+      // Case if it's an object with keys as platforms
+      Object.entries(projectSocials).forEach(([key, value]) => {
+        const normP = normalizeSocialPlatform(key);
+        const vStr = String(value || '').trim();
+        if (normP && vStr && !['', '#', 'usuario'].includes(vStr)) {
+          projectLinks.push({
+            platform: normP,
+            icon: SOCIAL_PLATFORMS[normP].icon,
+            url: normalizeSocialUrl(normP, vStr),
+            label: SOCIAL_PLATFORMS[normP].label
+          });
+        }
+      });
     }
   }
 
-  // 3. Fallback to placeholders ONLY if no real socials found in manual OR project profile
+  if (projectLinks.length > 0) {
+    if (debug) {
+      console.log('[FOOTER_SOCIAL_RESOLUTION_DEBUG]', {
+        moduleId,
+        projectSocialsRaw: projectSocials,
+        finalSocialLinks: projectLinks,
+        source: "project_profile",
+        placeholderMode: false
+      });
+    }
+    return projectLinks;
+  }
+
+  // 3. Fallback to placeholders
   const placeholders = [
-    { platform: 'facebook', icon: 'Facebook', url: '', label: 'Facebook' },
-    { platform: 'instagram', icon: 'Instagram', url: '', label: 'Instagram' },
-    { platform: 'linkedin', icon: 'Linkedin', url: '', label: 'LinkedIn' }
+    { platform: 'facebook' as SocialPlatform, icon: 'Facebook', url: '', label: 'Facebook' },
+    { platform: 'instagram' as SocialPlatform, icon: 'Instagram', url: '', label: 'Instagram' },
+    { platform: 'linkedin' as SocialPlatform, icon: 'Linkedin', url: '', label: 'LinkedIn' }
   ];
 
   if (debug) {
     console.log('[FOOTER_SOCIAL_RESOLUTION_DEBUG]', {
       moduleId,
       finalSocialLinks: placeholders,
-      placeholderMode: true,
-      source: "defaults"
+      source: "defaults",
+      placeholderMode: true
     });
   }
 

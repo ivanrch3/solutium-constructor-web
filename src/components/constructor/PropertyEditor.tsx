@@ -16,6 +16,7 @@ import {
   Hash
 } from 'lucide-react';
 import * as registryModules from './registry';
+import { SettingControl } from './SettingControl';
 
 const PILLAR_ICONS: Record<string, React.ReactNode> = {
   contenido: <Type size={16} />,
@@ -182,7 +183,8 @@ export const PropertyEditor: React.FC = () => {
                   >
                     <div className="px-4 pb-5 space-y-5">
                       {fields.map(({ label, setting, contextId }) => {
-                        const value = selectedSection.settings[`${contextId}_${setting.id}`] ?? setting.defaultValue;
+                        const defaultValue = setting.defaultValue;
+                        const value = selectedSection.settings[`${contextId}_${setting.id}`] ?? defaultValue;
                         
                         if (setting.id === 'social_links' && selectedSection.type === 'footer') {
                           console.log('[FOOTER_PROPERTY_EDITOR_SOCIAL_STATE_DEBUG]', {
@@ -195,151 +197,24 @@ export const PropertyEditor: React.FC = () => {
                           });
                         }
 
+                        // Get project data from store for SettingControl
+                        const project = useEditorStore.getState().project;
+                        const brandColors = project?.brandColors ? Object.values(project.brandColors).filter(c => typeof c === 'string') as string[] : [];
+
                         return (
-                          <div key={`${contextId}_${setting.id}`} className="space-y-2">
-                            <div className="flex items-center justify-between group/label">
-                              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
-                                {label}
-                                {setting.description && (
-                                  <div className="relative group/desc">
-                                    <HelpCircle size={10} className="text-gray-300 hover:text-blue-500 cursor-help" />
-                                    <div className="absolute left-0 bottom-full mb-1 w-48 p-2 bg-gray-900 text-white text-[10px] rounded shadow-xl hidden group-hover/desc:block z-50 normal-case tracking-normal">
-                                      {setting.description}
-                                    </div>
-                                  </div>
-                                )}
-                              </label>
-                            </div>
-
-                            {/* Renderizado de Controles basado en el tipo del setting */}
-                            {setting.type === 'text' && (
-                              <textarea
-                                value={value}
-                                onChange={(e) => handleFieldChange(contextId, setting.id, e.target.value)}
-                                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all min-h-[40px] resize-y"
-                                rows={value?.length > 40 ? 3 : 1}
-                              />
+                          <div key={`${contextId}_${setting.id}`} className="space-y-1">
+                            <SettingControl 
+                              setting={{ ...setting, label }} // Forward label to SettingControl
+                              value={value}
+                              onChange={(val) => handleFieldChange(contextId, setting.id, val)}
+                              projectId={project?.id || null}
+                              products={project?.products || []}
+                              customers={project?.customers || []}
+                              projectColors={brandColors}
+                            />
+                            {setting.description && (
+                              <p className="text-[10px] text-gray-400 mt-1 italic pl-1">{setting.description}</p>
                             )}
-
-                            {(setting.type === 'color') && (
-                              <div className="space-y-3">
-                                {/* Sugerencias de Colores Heredados */}
-                                {useEditorStore.getState().project?.brandColors && (
-                                  <div className="flex flex-wrap gap-1.5 px-0.5">
-                                    {Object.entries(useEditorStore.getState().project.brandColors).map(([name, color]: [string, any]) => (
-                                      <button
-                                        key={name}
-                                        onClick={() => handleFieldChange(contextId, setting.id, color)}
-                                        className="relative group/swatch"
-                                        title={`${name}: ${color}`}
-                                      >
-                                        <div 
-                                          className="w-6 h-6 rounded-md border border-gray-200 shadow-sm transition-transform hover:scale-110 active:scale-95 cursor-pointer"
-                                          style={{ backgroundColor: color }}
-                                        />
-                                        <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 px-2 py-1 bg-gray-900 text-white text-[9px] rounded hidden group-hover/swatch:block z-50 whitespace-nowrap">
-                                          {name}
-                                        </div>
-                                      </button>
-                                    ))}
-                                    <div className="w-px h-6 bg-gray-100 mx-1" />
-                                    {/* Otros colores comunes */}
-                                    {['#FFFFFF', '#000000', '#F1F5F9', '#94A3B8'].map(c => (
-                                      <button
-                                        key={c}
-                                        onClick={() => handleFieldChange(contextId, setting.id, c)}
-                                        className="w-6 h-6 rounded-md border border-gray-200 shadow-sm hover:scale-110 transition-transform cursor-pointer"
-                                        style={{ backgroundColor: c }}
-                                      />
-                                    ))}
-                                  </div>
-                                )}
-                                
-                                <div className="flex items-center gap-2">
-                                  <div className="relative w-10 h-10 shrink-0 overflow-hidden rounded-lg border border-gray-200 shadow-sm">
-                                    <input
-                                      type="color"
-                                      value={value}
-                                      onChange={(e) => handleFieldChange(contextId, setting.id, e.target.value)}
-                                      className="absolute inset-[-50%] w-[200%] h-[200%] cursor-pointer border-none p-0"
-                                    />
-                                  </div>
-                                  <div className="flex-1 flex items-center bg-gray-50 rounded-lg border border-gray-100 px-3 py-2">
-                                    <Hash size={12} className="text-gray-400 mr-1" />
-                                    <input
-                                      type="text"
-                                      value={value?.toUpperCase()}
-                                      onChange={(e) => handleFieldChange(contextId, setting.id, e.target.value)}
-                                      className="w-full bg-transparent text-xs font-mono font-bold text-gray-700 outline-none"
-                                    />
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-
-                            {setting.type === 'range' && (
-                              <div className="space-y-3 pt-1">
-                                <input
-                                  type="range"
-                                  min={setting.min ?? 0}
-                                  max={setting.max ?? 100}
-                                  step={setting.step ?? 1}
-                                  value={value}
-                                  onChange={(e) => handleFieldChange(contextId, setting.id, parseInt(e.target.value))}
-                                  className="w-full h-1.5 bg-gray-100 rounded-full appearance-none cursor-pointer accent-blue-600"
-                                />
-                                <div className="flex justify-between items-center px-1">
-                                  <span className="text-[10px] text-gray-400 font-medium">
-                                    {(setting.min ?? 0)}{setting.unit}
-                                  </span>
-                                  <span className="px-2 py-0.5 bg-blue-50 text-blue-600 rounded text-[10px] font-bold">
-                                    {value}{setting.unit}
-                                  </span>
-                                  <span className="text-[10px] text-gray-400 font-medium">
-                                    {(setting.max ?? 100)}{setting.unit}
-                                  </span>
-                                </div>
-                              </div>
-                            )}
-
-                            {setting.type === 'boolean' && (
-                              <button
-                                onClick={() => handleFieldChange(contextId, setting.id, !value)}
-                                className={`w-full group flex items-center justify-between p-3 rounded-xl border transition-all ${
-                                  value 
-                                    ? 'bg-blue-50/50 border-blue-200 shadow-sm' 
-                                    : 'bg-white border-gray-100 hover:border-gray-200 hover:bg-gray-50/50'
-                                }`}
-                              >
-                                <span className={`text-xs font-semibold ${value ? 'text-blue-700' : 'text-gray-500'}`}>
-                                  {value ? 'Activado' : 'Desactivado'}
-                                </span>
-                                <div className={`w-10 h-5 rounded-full relative transition-colors duration-300 ${value ? 'bg-blue-600' : 'bg-gray-200'}`}>
-                                  <motion.div 
-                                    animate={{ x: value ? 20 : 2 }}
-                                    transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                                    className="absolute top-1 w-3 h-3 bg-white rounded-full shadow-sm" 
-                                  />
-                                </div>
-                              </button>
-                            )}
-
-                            {setting.type === 'select' && (
-                              <div className="relative">
-                                <select
-                                  value={value}
-                                  onChange={(e) => handleFieldChange(contextId, setting.id, e.target.value)}
-                                  className="w-full px-3 py-2 text-xs font-medium border border-gray-200 rounded-lg bg-white focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 outline-none appearance-none cursor-pointer"
-                                >
-                                  {setting.options?.map((opt: any) => (
-                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                  ))}
-                                </select>
-                                <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                              </div>
-                            )}
-
-                            {/* Otros tipos de controles se añadirán según necesidad */}
                           </div>
                         );
                       })}

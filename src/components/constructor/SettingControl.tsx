@@ -46,6 +46,8 @@ const PRESET_COLORS = [
   '#000000', '#1E293B', '#475569', '#94A3B8', '#F8FAFC', '#FFFFFF' // Neutrals
 ];
 
+const SOCIAL_ICONS = ['Facebook', 'Instagram', 'Twitter', 'Linkedin', 'Youtube', 'Github', 'Twitch', 'MessageCircle', 'Music2', 'Globe', 'Link'];
+
 const InlineColorPicker = ({ value, onChange, label, projectColors }: { value: string, onChange: (v: string) => void, label?: string, projectColors?: string[] }) => {
   return (
     <div className="space-y-3 p-3 bg-secondary/30 rounded-2xl border border-border/50 animate-in fade-in slide-in-from-top-2 duration-300">
@@ -451,10 +453,16 @@ export const SettingControl: React.FC<SettingControlProps> = ({
       );
     case 'icon':
       const [searchTerm, setSearchTerm] = useState('');
-      const ALL_ICON_NAMES = Object.keys(LucideIcons).filter(name => 
+      
+      let ALL_ICON_NAMES = Object.keys(LucideIcons).filter(name => 
         typeof (LucideIcons as any)[name] === 'function' || 
         (typeof (LucideIcons as any)[name] === 'object' && (LucideIcons as any)[name].$$typeof)
       );
+
+      // SIP v11.5: Filter social icons if socialOnly is enabled
+      if ((setting as any).socialOnly) {
+        ALL_ICON_NAMES = ALL_ICON_NAMES.filter(name => SOCIAL_ICONS.includes(name));
+      }
       
       const filteredIcons = searchTerm 
         ? ALL_ICON_NAMES.filter(name => name.toLowerCase().includes(searchTerm.toLowerCase())).slice(0, 100)

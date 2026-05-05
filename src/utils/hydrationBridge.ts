@@ -1,4 +1,5 @@
 import { logDebug, isRenderDebugEnabled } from './debug';
+import { normalizeSocialUrl, getIconForPlatform } from './socialUtils';
 
 /**
  * [SIP v10.6] Hydration Bridge Registry
@@ -533,6 +534,37 @@ export const bridgeModuleContent = ({
         mappedKeys.push(navKey);
       }
 
+      // 2. Social Links Normalization
+      const socialKey = `${moduleId}_el_footer_social_social_links`;
+      const socialSource = content.redes_sociales || content.social_links || content.socials || content.redes;
+      
+      if (Array.isArray(socialSource) && socialSource.length > 0 && 
+         (!result[socialKey] || (Array.isArray(result[socialKey]) && result[socialKey].length === 0))) {
+        result[socialKey] = socialSource.map(s => ({
+          platform: s.platform || s.plataforma || '',
+          icon: s.icon || getIconForPlatform(s.platform || s.plataforma || ''),
+          url: s.url || normalizeSocialUrl(s.platform || s.plataforma || '', s.username || s.usuario || '#')
+        }));
+        mappedKeys.push(socialKey);
+      } else if (!result[socialKey] || (Array.isArray(result[socialKey]) && result[socialKey].length === 0)) {
+        // Default placeholders if nothing exists
+        result[socialKey] = [
+          { platform: 'facebook', icon: 'Facebook', url: '' },
+          { platform: 'instagram', icon: 'Instagram', url: '' },
+          { platform: 'linkedin', icon: 'Linkedin', url: '' }
+        ];
+        mappedKeys.push(socialKey);
+      }
+
+      // 3. Brand Logo
+      const logoKey = `${moduleId}_el_footer_brand_logo_img`;
+      const logoSource = content.logo_url || getByPath(content, 'brand.logo') || getByPath(content, 'brand.logo_url');
+      if (logoSource && !result[logoKey]) {
+        result[logoKey] = logoSource;
+        result[`${moduleId}_el_footer_brand_show_logo`] = true;
+        mappedKeys.push(logoKey);
+      }
+
       // Enrichment logic: If result has defaults, allow content to override even if not undefined
       Object.entries(adapter.contentToSettings || {}).forEach(([contentPath, relativeKey]) => {
         const fullKey = `${moduleId}_${relativeKey}`;
@@ -555,34 +587,7 @@ export const bridgeModuleContent = ({
         }
       });
 
-      // 2. Social Links Normalization
-      const socialKey = `${moduleId}_el_footer_social_social_links`;
-      const socialSource = content.social_links || content.redes_sociales || content.social || content.redes || getByPath(content, 'brand.social_links') || getByPath(content, 'marca.redes_sociales');
-      
-      if (Array.isArray(socialSource) && socialSource.length > 0 && result[socialKey] === undefined) {
-        result[socialKey] = socialSource.map(item => {
-          const rawIcon = String(item.icon || item.icono || item.platform || item.plataforma || item.name || item.nombre || 'Globe').toLowerCase();
-          
-          let normalizedIcon = 'Globe';
-          if (rawIcon.includes('facebook')) normalizedIcon = 'Facebook';
-          else if (rawIcon.includes('instagram')) normalizedIcon = 'Instagram';
-          else if (rawIcon.includes('linkedin')) normalizedIcon = 'Linkedin';
-          else if (rawIcon.includes('twitter') || rawIcon.includes(' x ')) normalizedIcon = 'Twitter';
-          else if (rawIcon === 'x' ) normalizedIcon = 'Twitter';
-          else if (rawIcon.includes('youtube')) normalizedIcon = 'Youtube';
-          else if (rawIcon.includes('tiktok')) normalizedIcon = 'Music2';
-          else if (rawIcon.includes('whatsapp')) normalizedIcon = 'MessageCircle';
-          else normalizedIcon = item.icon || item.icono || 'Globe';
-
-          return {
-            icon: normalizedIcon,
-            url: String(item.url || item.href || item.link || '#')
-          };
-        });
-        mappedKeys.push(socialKey);
-      }
-
-      // 3. Legal Links Normalization
+      // 4. Legal Links Normalization
       const legalKey = `${moduleId}_el_footer_bottom_legal_links`;
       const legalSource = content.legal_links || content.enlaces_legales || getByPath(content, 'legal.links') || getByPath(content, 'legal.enlaces') || getByPath(content, 'bottom.legal_links');
       

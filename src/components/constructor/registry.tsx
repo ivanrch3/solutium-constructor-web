@@ -383,12 +383,12 @@ export const FOOTER_MODULE: WebModule = {
           label: 'Redes Sociales', 
           type: 'repeater', 
           defaultValue: [
-            {icon: 'Twitter', url: '#'},
-            {icon: 'Instagram', url: '#'},
-            {icon: 'Linkedin', url: '#'}
+            {icon: 'Facebook', url: ''},
+            {icon: 'Instagram', url: ''},
+            {icon: 'Linkedin', url: ''}
           ],
           fields: [
-            { id: 'icon', label: 'Icono', type: 'icon', defaultValue: 'Link' },
+            { id: 'icon', label: 'Icono', type: 'icon', defaultValue: 'Link', socialOnly: true },
             { id: 'url', label: 'URL', type: 'text', defaultValue: '#' }
           ]
         }

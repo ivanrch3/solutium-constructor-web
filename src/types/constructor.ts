@@ -33,6 +33,7 @@ export interface SettingDefinition {
   disabledMessage?: string;
   showIf?: SettingCondition;
   disabledIf?: SettingCondition;
+  socialOnly?: boolean;
 }
 
 export interface ModuleElement {

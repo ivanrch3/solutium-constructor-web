@@ -35,6 +35,8 @@ import { SpacerModule } from './modules/SpacerModule';
 import { BentoModule } from './modules/BentoModule';
 import { ComparisonModule } from './modules/ComparisonModule';
 
+import { normalizeSocialUrl, getIconForPlatform } from '../../utils/socialUtils';
+
 interface CanvasProps {
   editorState: EditorState;
   onAddModule: (module: WebModule) => void;
@@ -313,20 +315,42 @@ export const Canvas: React.FC<CanvasProps> = ({
                   
                   // Social links
                   const currentSocials = editorState.settingsValues[`${section.id}_el_footer_social_social_links`] || section.settings[`${section.id}_el_footer_social_social_links`];
-                  if ((!currentSocials || (Array.isArray(currentSocials) && currentSocials.length === 0)) && project?.socials) {
-                    if (typeof project.socials === 'object' && !Array.isArray(project.socials)) {
-                      moduleOverrides[`${section.id}_el_footer_social_social_links`] = Object.entries(project.socials)
-                        .filter(([_, url]) => !!url)
-                        .map(([platform, url]) => {
-                           let icon = 'Globe';
-                           const p = platform.toLowerCase();
-                           if (p.includes('facebook')) icon = 'Facebook';
-                           else if (p.includes('instagram')) icon = 'Instagram';
-                           else if (p.includes('twitter')) icon = 'Twitter';
-                           else if (p.includes('linkedin')) icon = 'Linkedin';
-                           return { icon, url };
-                        });
+                  const hasManualSocials = Array.isArray(currentSocials) && currentSocials.length > 0 && 
+                                          currentSocials.some(s => s.url && s.url !== '#' && s.url !== '');
+
+                  if (!hasManualSocials) {
+                    if (project?.socials && typeof project.socials === 'object' && !Array.isArray(project.socials)) {
+                      const socialEntries = Object.entries(project.socials as Record<string, any>)
+                        .filter(([_, value]) => !!value && String(value).trim() !== '')
+                        .map(([platform, value]) => ({
+                          platform,
+                          url: normalizeSocialUrl(platform, String(value)),
+                          icon: getIconForPlatform(platform)
+                        }));
+
+                      if (socialEntries.length > 0) {
+                        moduleOverrides[`${section.id}_el_footer_social_social_links`] = socialEntries;
+                      } else {
+                        moduleOverrides[`${section.id}_el_footer_social_social_links`] = [
+                          { platform: 'facebook', icon: 'Facebook', url: '' },
+                          { platform: 'instagram', icon: 'Instagram', url: '' },
+                          { platform: 'linkedin', icon: 'Linkedin', url: '' }
+                        ];
+                      }
+                    } else {
+                      moduleOverrides[`${section.id}_el_footer_social_social_links`] = [
+                        { platform: 'facebook', icon: 'Facebook', url: '' },
+                        { platform: 'instagram', icon: 'Instagram', url: '' },
+                        { platform: 'linkedin', icon: 'Linkedin', url: '' }
+                      ];
                     }
+                  }
+
+                  // Brand Logo
+                  const currentLogo = editorState.settingsValues[`${section.id}_el_footer_brand_logo_img`] || section.settings[`${section.id}_el_footer_brand_logo_img`];
+                  if (!currentLogo && project?.logoUrl) {
+                    moduleOverrides[`${section.id}_el_footer_brand_logo_img`] = project.logoUrl;
+                    moduleOverrides[`${section.id}_el_footer_brand_show_logo`] = true;
                   }
                 }
 

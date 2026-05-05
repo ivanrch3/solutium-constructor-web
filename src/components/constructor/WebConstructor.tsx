@@ -46,6 +46,7 @@ import { StructurePanel } from './StructurePanel';
 import { TopBar } from './TopBar';
 import { Canvas } from './Canvas';
 import { GlobalSettingsPanel } from './GlobalSettingsPanel';
+import { normalizeSocialUrl, getIconForPlatform } from '../../utils/socialUtils';
 import { 
   MobileBottomNav, 
   UnsavedChangesModal, 
@@ -1397,33 +1398,79 @@ const formatTimestampName = () => {
             settings[`${module.id}_el_footer_bottom_copyright`] = copyVal;
           }
           
-          // Social links enrichment if empty
+          // Social links enrichment logic
           const currentSocials = currentState.settingsValues[`${module.id}_el_footer_social_social_links`];
-          if ((!currentSocials || (Array.isArray(currentSocials) && currentSocials.length === 0)) && project?.socials) {
-            if (typeof project.socials === 'object' && !Array.isArray(project.socials)) {
-              const socialList = Object.entries(project.socials)
-                .filter(([_, url]) => !!url)
-                .map(([platform, url]) => {
-                  let icon = 'Globe';
-                  const p = platform.toLowerCase();
-                  if (p.includes('facebook')) icon = 'Facebook';
-                  else if (p.includes('instagram')) icon = 'Instagram';
-                  else if (p.includes('twitter')) icon = 'Twitter';
-                  else if (p.includes('linkedin')) icon = 'Linkedin';
-                  return { icon, url, plataforma: platform };
-                });
-              content.redes_sociales = socialList;
-              settings[`${module.id}_el_footer_social_social_links`] = socialList;
+          const hasManualSocials = Array.isArray(currentSocials) && currentSocials.length > 0 && 
+                                  currentSocials.some(s => s.url && s.url !== '#' && s.url !== '');
+
+          let finalSocialLinks = currentSocials;
+
+          if (!hasManualSocials) {
+            if (project?.socials && typeof project.socials === 'object' && !Array.isArray(project.socials)) {
+              const socialEntries = Object.entries(project.socials as Record<string, any>)
+                .filter(([_, value]) => !!value && String(value).trim() !== '')
+                .map(([platform, value]) => ({
+                  platform,
+                  url: normalizeSocialUrl(platform, String(value)),
+                  icon: getIconForPlatform(platform)
+                }));
+
+              if (socialEntries.length > 0) {
+                finalSocialLinks = socialEntries;
+                settings[`${module.id}_el_footer_social_social_links`] = socialEntries;
+                content.redes_sociales = socialEntries;
+              } else {
+                // Default placeholders if project has no socials
+                const placeholders = [
+                  { platform: 'facebook', icon: 'Facebook', url: '' },
+                  { platform: 'instagram', icon: 'Instagram', url: '' },
+                  { platform: 'linkedin', icon: 'Linkedin', url: '' }
+                ];
+                finalSocialLinks = placeholders;
+                settings[`${module.id}_el_footer_social_social_links`] = placeholders;
+                content.redes_sociales = placeholders;
+              }
+            } else {
+              // Default placeholders if no project data
+              const placeholders = [
+                { platform: 'facebook', icon: 'Facebook', url: '' },
+                { platform: 'instagram', icon: 'Instagram', url: '' },
+                { platform: 'linkedin', icon: 'Linkedin', url: '' }
+              ];
+              finalSocialLinks = placeholders;
+              settings[`${module.id}_el_footer_social_social_links`] = placeholders;
+              content.redes_sociales = placeholders;
             }
           }
 
-          // BRAND LOGO Enrichment
+          // BRAND LOGO Enrichment - Prioritize manual, then project, then default
           const currentLogo = currentState.settingsValues[`${module.id}_el_footer_brand_logo_img`];
-          if (!currentLogo && project?.logoUrl) {
+          const isLogoDefault = !currentLogo; // if empty, it's default or not set
+          
+          if (isLogoDefault && project?.logoUrl) {
             content.logo_url = project.logoUrl;
             content.brand = { ...(content.brand || {}), logo: project.logoUrl, logo_url: project.logoUrl };
             settings[`${module.id}_el_footer_brand_logo_img`] = project.logoUrl;
             settings[`${module.id}_el_footer_brand_show_logo`] = true;
+          }
+
+          // Debug logs for social and logo resolution
+          if (window.location.search.includes('debug_render=true')) {
+            console.log('[FOOTER_SOCIAL_RESOLUTION_DEBUG]', {
+              moduleId: module.id,
+              projectSocialsRaw: project?.socials,
+              finalSocialLinks,
+              hasManualSocials,
+              source: hasManualSocials ? 'manual' : (project?.socials ? 'project_profile' : 'placeholder')
+            });
+
+            console.log('[FOOTER_LOGO_RESOLUTION_DEBUG]', {
+              moduleId: module.id,
+              manualLogo: currentLogo,
+              projectLogo: project?.logoUrl,
+              finalLogo: settings[`${module.id}_el_footer_brand_logo_img`] || currentLogo,
+              source: currentLogo ? 'manual' : (project?.logoUrl ? 'project_profile' : 'default')
+            });
           }
         }
 

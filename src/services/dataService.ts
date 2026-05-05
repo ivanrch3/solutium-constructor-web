@@ -922,6 +922,7 @@ export const updateSitePreview = async (
     previewThumbnailUrl: string;
     previewImagePath?: string;
     previewImageHash?: string;
+    previewImageUpdatedAt?: string;
   }
 ): Promise<boolean> => {
   try {
@@ -935,14 +936,15 @@ export const updateSitePreview = async (
       siteId,
       preview_image_url: previewData.previewImageUrl,
       preview_image_path: previewData.previewImagePath,
-      preview_image_hash: previewData.previewImageHash
+      preview_image_hash: previewData.previewImageHash,
+      preview_image_updated_at: previewData.previewImageUpdatedAt
     });
 
     const now = new Date().toISOString();
     const updatePayload: any = {
       preview_image_url: previewData.previewImageUrl,
       preview_thumbnail_url: previewData.previewThumbnailUrl,
-      preview_image_updated_at: now,
+      preview_image_updated_at: previewData.previewImageUpdatedAt || now,
       updated_at: now
     };
 
@@ -995,6 +997,7 @@ export const generatePreviewServerSide = async (params: {
   preview_thumbnail_url?: string;
   preview_image_path?: string;
   preview_image_hash?: string;
+  preview_image_updated_at?: string;
   error?: string;
 }> => {
   try {
@@ -1064,7 +1067,8 @@ export const generatePreviewServerSide = async (params: {
       preview_image_url: data.preview_image_url,
       preview_thumbnail_url: data.preview_thumbnail_url || data.preview_image_url,
       preview_image_path: data.preview_image_path,
-      preview_image_hash: data.preview_image_hash
+      preview_image_hash: data.preview_image_hash,
+      preview_image_updated_at: data.preview_image_updated_at
     };
   } catch (error: any) {
     console.error('Error generating server-side preview:', error);

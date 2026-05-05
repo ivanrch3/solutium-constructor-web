@@ -257,6 +257,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   const [structurePanelCollapsed, setStructurePanelCollapsed] = useState(false);
   const [viewport, setViewport] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
 
   const [editorState, setEditorState] = useState<EditorState>(() => {
     const defaultState: EditorState = {
@@ -1698,23 +1699,48 @@ const formatTimestampName = () => {
 
         setTimeout(() => setPublishStatus('idle'), 3000);
 
-        // --- BACKGROUND TASK: Generate Server-Side Preview ---
+        // --- BACKGROUND TASK: Generate Server-Side Preview automatically on publish ---
         (async () => {
+          if (isGeneratingPreview) return;
+          
           try {
             const webBuilderSiteId = initialPage?.id || (window as any).WEB_BUILDER_SITE_ID;
+            
+            if (!projectId || !siteId || !webBuilderSiteId) {
+              console.warn('[AUTO_PREVIEW_ON_PUBLISH_SKIPPED] Missing IDs for preview generation', { project_id: projectId, site_id: siteId, web_builder_site_id: webBuilderSiteId });
+              return;
+            }
+
+            setIsGeneratingPreview(true);
+            setPreviewStatus('loading');
+            
+            logDebug('[AUTO_PREVIEW_ON_PUBLISH_START]', {
+              project_id: projectId,
+              site_id: siteId,
+              web_builder_site_id: webBuilderSiteId
+            });
+
             const previewResult = await generatePreviewServerSide({
-              project_id: projectId!,
+              project_id: projectId,
               site_id: siteId,
               web_builder_site_id: webBuilderSiteId,
               mode: 'thumbnail'
             });
 
             if (previewResult.success && previewResult.preview_image_url) {
+              logDebug('[AUTO_PREVIEW_ON_PUBLISH_SUCCESS]', {
+                preview_image_url: previewResult.preview_image_url,
+                preview_image_path: previewResult.preview_image_path,
+                preview_image_hash: previewResult.preview_image_hash
+              });
+
+              // Crucial: Object contains ALL fields from backend to avoid overwriting with empties
               await updateSitePreview(siteId, {
                 previewImageUrl: previewResult.preview_image_url,
                 previewThumbnailUrl: previewResult.preview_thumbnail_url || previewResult.preview_image_url,
                 previewImagePath: previewResult.preview_image_path,
                 previewImageHash: previewResult.preview_image_hash,
+                previewImageUpdatedAt: previewResult.preview_image_updated_at
               });
               
               sendToMother('SOLUTIUM_PREVIEW_GENERATED', {
@@ -1722,13 +1748,18 @@ const formatTimestampName = () => {
                 preview_image_url: previewResult.preview_image_url
               });
 
-              logDebug('[PREVIEW_CAPTURE_DEBUG] Server-side preview generated (Publish):', {
-                siteId,
-                url: previewResult.preview_image_url
-              });
+              setPreviewStatus('success');
+              setTimeout(() => setPreviewStatus('idle'), 3000);
+            } else {
+              throw new Error(previewResult.error || 'Preview response was empty or unsuccessful');
             }
-          } catch (pError) {
+          } catch (pError: any) {
+            logDebug('[AUTO_PREVIEW_ON_PUBLISH_ERROR]', { message: pError.message });
             console.error('[PREVIEW_CAPTURE_DEBUG] Error en preview server-side (Publish):', pError);
+            setPreviewStatus('error');
+            setTimeout(() => setPreviewStatus('idle'), 3000);
+          } finally {
+            setIsGeneratingPreview(false);
           }
         })();
       } else {
@@ -1793,15 +1824,16 @@ const formatTimestampName = () => {
   }, [projectId, currentSiteId, currentStatus]);
 
   const handleUpdatePreview = async () => {
-    if (!projectId || isPreviewMode) return;
+    if (!projectId || isPreviewMode || isGeneratingPreview) return;
     setPreviewStatus('loading');
+    setIsGeneratingPreview(true);
     try {
       const webBuilderSiteId = initialPage?.id || (window as any).WEB_BUILDER_SITE_ID;
       
       const result = await generatePreviewServerSide({
         project_id: projectId,
         site_id: currentSiteId,
-        web_builder_site_id: webBuilderSiteId,
+        web_builder_site_id: webBuilderSiteId!,
         mode: 'thumbnail'
       });
 
@@ -1811,6 +1843,7 @@ const formatTimestampName = () => {
           previewThumbnailUrl: result.preview_thumbnail_url || result.preview_image_url,
           previewImagePath: result.preview_image_path,
           previewImageHash: result.preview_image_hash,
+          previewImageUpdatedAt: result.preview_image_updated_at
         };
         
         await updateSitePreview(currentSiteId, previewData);
@@ -1822,13 +1855,14 @@ const formatTimestampName = () => {
         });
 
         setPreviewStatus('success');
-        setTimeout(() => setPreviewStatus('idle'), 3000);
       } else {
         throw new Error(result.error || 'No se pudo generar la vista previa server-side.');
       }
     } catch (error: any) {
       console.error('Manual preview update failed:', error);
       setPreviewStatus('error');
+    } finally {
+      setIsGeneratingPreview(false);
       setTimeout(() => setPreviewStatus('idle'), 3000);
     }
   };

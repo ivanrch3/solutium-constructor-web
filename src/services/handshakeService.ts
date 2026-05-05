@@ -82,6 +82,13 @@ export const startHandshake = (
 
   const urlParams = new URLSearchParams(window.location.search);
   
+  console.log('[CONSTRUCTOR_BOOT_START] ⚡️ startHandshake iniciado', {
+    hasOpener: !!window.opener,
+    hasParent: window.parent !== window,
+    urlParams: Object.fromEntries(urlParams.entries()),
+    isStable: isStable
+  });
+
   // PRIORIDAD 1: URL (Fat URL) - Sobrevive a todo
   const configFromUrl = {
     supabase_url: urlParams.get('supabase_url'),
@@ -94,7 +101,7 @@ export const startHandshake = (
   };
 
   if (configFromUrl.supabase_url && configFromUrl.session_token) {
-    logDebug("🚀 [SIP v5.2] Configuración recuperada desde URL.");
+    console.log("🚀 [SIP v5.2] Configuración recuperada desde URL.", configFromUrl);
     processConfig(configFromUrl);
     setupMessageListener(); // Solo para escuchar futuras órdenes
     return;

@@ -58,6 +58,11 @@ const AppContent: React.FC = () => {
 
   // Sync state to local storage
   useEffect(() => {
+    console.log('[CONSTRUCTOR_BOOT_START] 🧩 AppContent montado', {
+      timestamp: new Date().toISOString(),
+      currentView,
+      projectId
+    });
     if (projectId || currentView !== 'dashboard') {
       saveSession();
     }

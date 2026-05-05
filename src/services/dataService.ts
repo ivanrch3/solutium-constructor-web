@@ -1020,25 +1020,24 @@ export const generatePreviewServerSide = async (params: {
       web_builder_site_id: finalWebBuilderSiteId
     };
 
+    // [SERVER_PREVIEW_REQUEST_DEBUG] - Audit requested by user
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
     };
 
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-
-    // [SERVER_PREVIEW_REQUEST_DEBUG] as requested by user
     logDebug('[SERVER_PREVIEW_REQUEST_DEBUG]', {
       endpoint,
+      method: 'POST',
       project_id: finalProjectId,
       site_id: finalSiteId,
       web_builder_site_id: finalWebBuilderSiteId,
       hasToken: Boolean(token),
-      tokenSource: source,
       tokenPrefix: token ? token.slice(0, 12) : null,
-      authHeaderPresent: Boolean(headers['Authorization']),
-      bodyKeys: Object.keys(payload)
+      headersKeys: Object.keys(headers),
+      authorizationHeaderPresent: Boolean(headers.Authorization || headers.authorization),
+      contentType: headers['Content-Type'] || headers['content-type'],
+      payloadKeys: Object.keys(payload)
     });
 
     if (!token) {
@@ -1046,6 +1045,7 @@ export const generatePreviewServerSide = async (params: {
       throw new Error('No auth token available for server-side preview generation');
     }
 
+    // Perform the cross-origin request
     const response = await fetch(endpoint, {
       method: 'POST',
       headers,

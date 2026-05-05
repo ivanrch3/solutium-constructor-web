@@ -255,7 +255,19 @@ export const bridgeModuleContent = ({
 
     // --- Specialized About Module Logic ---
     if (baseType === 'about' && content) {
-      // Stats Normalization
+      // 1. Layout value mapping
+      const layoutKey = `${moduleId}_global_layout`;
+      const rawLayout = settings.layout || content.layout || settings.image_position || content.image_position || content.imagePosition;
+      
+      if (rawLayout && result[layoutKey] === undefined) {
+        if (rawLayout === 'left' || rawLayout === 'split_left') result[layoutKey] = 'split_left';
+        else if (rawLayout === 'right' || rawLayout === 'split_right') result[layoutKey] = 'split_right';
+        else if (rawLayout === 'centered' || rawLayout === 'center') result[layoutKey] = 'centered';
+        else if (rawLayout === 'overlapping') result[layoutKey] = 'overlapping';
+        mappedKeys.push(layoutKey);
+      }
+
+      // 2. Stats Normalization
       const statsKey = `${moduleId}_el_about_stats_stats_list`;
       const statsSource = content.stats || content.metrics || content.stats_list || content.numbers || content.indicators || content.indicadores;
       

@@ -359,7 +359,7 @@ export const AboutModule: React.FC<{
             </div>
           </div>
         ) : (
-          <div className={`grid grid-cols-1 @lg:grid-cols-2 gap-16 @md:gap-24 items-center ${layout === 'split_left' ? '@lg:direction-rtl' : ''}`}>
+          <div className={`grid grid-cols-1 @lg:grid-cols-2 gap-16 @md:gap-24 items-center`}>
             <div className={layout === 'split_left' ? '@lg:order-2' : '@lg:order-1'}>
               {renderNarrative()}
             </div>

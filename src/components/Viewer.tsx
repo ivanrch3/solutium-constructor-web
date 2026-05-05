@@ -79,7 +79,7 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
 
   return (
     <div 
-      className="min-h-screen bg-surface"
+      className="min-h-screen bg-surface @container"
       style={{ 
         '--primary-color': theme.primaryColor || '#3B82F6',
         fontFamily: theme.fontFamily || 'sans-serif'

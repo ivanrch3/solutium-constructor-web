@@ -184,6 +184,17 @@ export const PropertyEditor: React.FC = () => {
                       {fields.map(({ label, setting, contextId }) => {
                         const value = selectedSection.settings[`${contextId}_${setting.id}`] ?? setting.defaultValue;
                         
+                        if (setting.id === 'social_links' && selectedSection.type === 'footer') {
+                          console.log('[FOOTER_PROPERTY_EDITOR_SOCIAL_STATE_DEBUG]', {
+                            moduleId: selectedSection.id,
+                            fieldKey: `${contextId}_${setting.id}`,
+                            rawEditorValue: selectedSection.settings[`${contextId}_${setting.id}`],
+                            plainEditorValue: value,
+                            itemsCount: Array.isArray(value) ? value.length : 0,
+                            items: value
+                          });
+                        }
+
                         return (
                           <div key={`${contextId}_${setting.id}`} className="space-y-2">
                             <div className="flex items-center justify-between group/label">

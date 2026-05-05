@@ -28,7 +28,8 @@ export const FOOTER_DEFAULTS = {
 export const normalizeSocialUrl = (platform: string, value: string): string => {
   if (!value) return '';
   const trimmed = value.trim();
-  if (trimmed === '' || trimmed === '#') return '';
+  if (trimmed === '' || trimmed === '#' || trimmed === 'usuario' || trimmed === '@usuario') return '';
+  
   if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
   
   const p = platform.toLowerCase() as SocialPlatform;
@@ -37,6 +38,11 @@ export const normalizeSocialUrl = (platform: string, value: string): string => {
 
   let username = trimmed;
   if (username.startsWith('@')) username = username.substring(1);
+  
+  // Special case for TikTok which often uses @ in URL but baseUrl might already have it or not
+  if (p === 'tiktok' && config.baseUrl.endsWith('@') && username.startsWith('@')) {
+    username = username.substring(1);
+  }
   
   return `${config.baseUrl}${username}`;
 };
@@ -55,19 +61,28 @@ export interface SocialLink {
 
 export const resolveFooterSocialLinks = (
   manualLinks: SocialLink[] | undefined,
-  projectSocials: any
+  projectSocials: any,
+  options: { debug?: boolean, moduleId?: string } = {}
 ): SocialLink[] => {
+  const { debug = false, moduleId = '' } = options;
+  
   // 1. Identify manual real links (those that have a real URL)
   // [SIP v11.3] A link counts as manual real ONLY if it has a non-empty, non-placeholder URL
-  const realManualLinks = (manualLinks || []).filter(link => 
-    link.url && 
-    link.url.trim() !== '' && 
-    link.url.trim() !== '#' && 
-    link.url.trim() !== 'usuario' && 
-    link.url.trim() !== '@usuario'
-  );
+  const realManualLinks = (manualLinks || []).filter(link => {
+    if (!link.url) return false;
+    const u = link.url.trim();
+    return u !== '' && u !== '#' && u !== 'usuario' && u !== '@usuario';
+  });
 
   if (realManualLinks.length > 0) {
+    if (debug) {
+      console.log('[FOOTER_SOCIAL_RESOLUTION_DEBUG]', {
+        moduleId,
+        manualRealSocials: realManualLinks,
+        source: "manual_real",
+        placeholderMode: false
+      });
+    }
     return realManualLinks;
   }
 
@@ -86,11 +101,11 @@ export const resolveFooterSocialLinks = (
       for (const cand of candidates) {
         if (projectSocials[cand]) {
           value = String(projectSocials[cand]).trim();
-          if (value && value !== '' && value !== '#') break;
+          if (value && value !== '' && value !== '#' && value !== 'usuario') break;
         }
       }
       
-      if (value && value !== '' && value !== '#') {
+      if (value && value !== '' && value !== '#' && value !== 'usuario') {
         projectLinks.push({
           platform: p,
           icon: getIconForPlatform(p),
@@ -101,35 +116,35 @@ export const resolveFooterSocialLinks = (
     });
 
     if (projectLinks.length > 0) {
-      return projectLinks;
-    }
-    
-    // Additional generic check for any other social keys in the object if no platforms matched above
-    // but only if they look like platforms
-    Object.entries(projectSocials).forEach(([key, value]) => {
-      const val = String(value || '').trim();
-      if (!val || val === '' || val === '#') return;
-      
-      const cleanKey = key.toLowerCase().replace('_url', '').replace('url', '').replace('_link', '').replace('link', '');
-      if (SOCIAL_PLATFORMS[cleanKey as SocialPlatform] && !projectLinks.find(pl => pl.platform === cleanKey)) {
-        projectLinks.push({
-          platform: cleanKey,
-          icon: getIconForPlatform(cleanKey),
-          url: normalizeSocialUrl(cleanKey, val),
-          label: SOCIAL_PLATFORMS[cleanKey as SocialPlatform].label
+      if (debug) {
+        console.log('[FOOTER_SOCIAL_RESOLUTION_DEBUG]', {
+          moduleId,
+          projectSocialsRaw: projectSocials,
+          finalSocialLinks: projectLinks,
+          configuredSocialsCount: projectLinks.length,
+          placeholderMode: false,
+          source: "project_profile"
         });
       }
-    });
-
-    if (projectLinks.length > 0) {
       return projectLinks;
     }
   }
 
   // 3. Fallback to placeholders ONLY if no real socials found in manual OR project profile
-  return [
+  const placeholders = [
     { platform: 'facebook', icon: 'Facebook', url: '', label: 'Facebook' },
     { platform: 'instagram', icon: 'Instagram', url: '', label: 'Instagram' },
     { platform: 'linkedin', icon: 'Linkedin', url: '', label: 'LinkedIn' }
   ];
+
+  if (debug) {
+    console.log('[FOOTER_SOCIAL_RESOLUTION_DEBUG]', {
+      moduleId,
+      finalSocialLinks: placeholders,
+      placeholderMode: true,
+      source: "defaults"
+    });
+  }
+
+  return placeholders;
 };

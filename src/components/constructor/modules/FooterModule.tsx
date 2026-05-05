@@ -4,6 +4,8 @@ import * as LucideIcons from 'lucide-react';
 import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
 import { TextRenderer } from '../TextRenderer';
 import { InlineEditableText } from '../InlineEditableText';
+import { useEditorStore } from '../../../store/editorStore';
+import { resolveFooterSocialLinks } from '../../../utils/socialUtils';
 
 export const FooterModule: React.FC<{ 
   moduleId: string, 
@@ -43,11 +45,10 @@ export const FooterModule: React.FC<{
   const linkWeight = getVal(`${moduleId}_el_footer_nav`, 'link_weight', 'normal');
 
   // Element: Social
-  const socialLinks = getVal(`${moduleId}_el_footer_social`, 'social_links', [
-    {icon: 'Twitter', url: '#'},
-    {icon: 'Instagram', url: '#'},
-    {icon: 'Linkedin', url: '#'}
-  ]);
+  const rawSocialLinks = getVal(`${moduleId}_el_footer_social`, 'social_links', []);
+  const project = (useEditorStore.getState() as any).project;
+  const socialLinks = resolveFooterSocialLinks(rawSocialLinks, project?.socials, { debug: !isPreviewMode && (window as any).SOLUTIUM_DEBUG_RENDER, moduleId });
+  
   const iconColor = getVal(`${moduleId}_el_footer_social`, 'icon_color', '#64748B');
   const iconHover = getVal(`${moduleId}_el_footer_social`, 'icon_hover', 'var(--primary-color)');
 
@@ -192,7 +193,7 @@ export const FooterModule: React.FC<{
             
             {/* Social Links */}
             <div className="flex items-center gap-4 pt-2">
-              {socialLinks.map((social: any, idx: number) => (
+              {socialLinks.filter((s: any) => s.url && s.url !== '' && s.url !== '#').map((social: any, idx: number) => (
                 <motion.a
                   key={idx}
                   href={social.url}

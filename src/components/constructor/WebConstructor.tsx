@@ -259,17 +259,13 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       hasAutoPreviewOnPublish: true
     });
 
-    // [PROJECT_PROFILE_RUNTIME_DEBUG]
+    // [PROJECT_SOCIALS_RUNTIME_DEBUG]
     if (project) {
-      console.log('[PROJECT_PROFILE_RUNTIME_DEBUG]', {
+      console.log('[PROJECT_SOCIALS_RUNTIME_DEBUG]', {
         projectId: project.id,
-        projectName: project.name,
-        email: project.email,
-        whatsapp: project.whatsapp,
-        address: project.address,
-        logoUrl: project.logoUrl,
-        socials: project.socials,
-        rawKeys: Object.keys(project)
+        projectSocialsRaw: project.socials,
+        projectSocialsKeys: project.socials ? Object.keys(project.socials) : [],
+        configuredSocialsCount: project.socials ? Object.values(project.socials).filter(v => !!v && v !== '' && v !== '#').length : 0
       });
     }
   }, [projectId, initialPage, currentSiteId, project]);
@@ -647,6 +643,48 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       });
     }
   }, [siteContent.sections]);
+
+  // [SIP v12.0] Auto-sanitization of Footer Social Links
+  // If the footer has empty placeholders and the project has real socials, update the editable state
+  useEffect(() => {
+    if (!project || !project.socials) return;
+    
+    const footerModules = editorState.addedModules.filter(m => m.type === 'footer' || m.id.startsWith('mod_footer'));
+    if (footerModules.length === 0) return;
+
+    let totalChanged = false;
+    const newSettings = { ...editorState.settingsValues };
+
+    footerModules.forEach(module => {
+      const socialKey = `${module.id}_el_footer_social_social_links`;
+      const currentSocials = getPlainValue(editorState.settingsValues[socialKey]);
+      
+      // We only auto-update if the current state is EXACTLY the default placeholder state
+      // or if it's empty/missing
+      const isPlaceholderState = !currentSocials || 
+        !Array.isArray(currentSocials) || 
+        currentSocials.length === 0 ||
+        (currentSocials.length === 3 && 
+         currentSocials.every(s => !s.url || s.url === '' || s.url === '#'));
+
+      if (isPlaceholderState) {
+        const resolved = resolveFooterSocialLinks(undefined, project.socials, { debug: true, moduleId: module.id });
+        
+        // Only update if we resolved something real (not more placeholders)
+        const hasRealSocials = resolved.some(s => s.url && s.url !== '');
+        
+        if (hasRealSocials) {
+          console.log(`[SIP v12.0] Sincronizando redes de perfil para módulo ${module.id}`);
+          newSettings[socialKey] = resolved;
+          totalChanged = true;
+        }
+      }
+    });
+
+    if (totalChanged) {
+      updateEditorState(prev => ({ ...prev, settingsValues: newSettings }));
+    }
+  }, [project, editorState.addedModules.length]);
 
   // Synchronize store selection back to local editorState
   const storeSelectedSectionId = useEditorStore(state => state.selectedSectionId);

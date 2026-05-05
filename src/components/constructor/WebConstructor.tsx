@@ -2091,13 +2091,31 @@ const formatTimestampName = () => {
 
     addSection(newSection);
     setShowBentoPrompt(false);
-    selectSection(sectionId);
+    
+    // Auto-select and scroll
+    setTimeout(() => {
+      selectSection(sectionId);
+      const el = document.getElementById(sectionId);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      
+      console.log('[BENTO_INSERT_SELECTION_DEBUG]', {
+        sectionId,
+        selected: true,
+        scrolledIntoView: !!el
+      });
+    }, 300);
 
     console.log('[BENTO_INSERT_DEBUG]', {
       moduleType: "bento",
       inserted: true,
       sectionId,
-      itemsCount: schema.items.length
+      moduleId,
+      type: 'bento',
+      itemsCount: schema.items.length,
+      hasHeaderTitle: !!schema.header.title,
+      selectedAfterInsert: true
     });
   };
 

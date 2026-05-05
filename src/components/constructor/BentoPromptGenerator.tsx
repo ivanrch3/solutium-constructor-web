@@ -108,6 +108,14 @@ export const BentoPromptGenerator: React.FC<BentoPromptGeneratorProps> = ({ onIn
       const repaired = repairBentoSchema(rawSchema);
       const validated = validateBentoSchema(repaired);
 
+      console.log('[BENTO_PROMPT_SCHEMA_DEBUG]', {
+        hasGeneratedSchema: true,
+        isValid: true,
+        errors: [],
+        itemsCount: validated.items.length,
+        title: validated.header.title
+      });
+
       addLog('BENTO_PROMPT_SCHEMA_DEBUG', {
         isValid: true,
         repaired: true,

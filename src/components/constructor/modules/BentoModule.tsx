@@ -556,9 +556,8 @@ export const BentoModule: React.FC<{
 
         {/* Bento Grid */}
         <div 
-          className="w-full" 
+          className={`w-full transition-all duration-500 ${!isPreviewMode ? 'min-h-[400px] border-2 border-dashed border-gray-200 rounded-[40px] relative transition-colors hover:border-primary/20' : ''} ${!isPreviewMode && rawItems.length === 0 ? 'bg-gray-50/50' : ''}`} 
           style={{ 
-            minHeight: rawItems.length > 0 ? '400px' : '300px',
             opacity: 1,
             visibility: 'visible'
           }}
@@ -611,6 +610,18 @@ export const BentoModule: React.FC<{
               hover_effect = 'lift',
               z_index = 1
             } = item;
+            
+            // Render Debug
+            if (!isPreviewMode && i === 0) {
+               console.log('[BENTO_RENDER_DEBUG]', {
+                  moduleId,
+                  itemsCount: rawItems.length,
+                  columns,
+                  gap,
+                  hasHeader: showHeader,
+                  headerTitle
+               });
+            }
 
             const isSafeGradient = (val: any) => typeof val === 'string' && !val.includes('NaN');
             const finalBg = card_style === 'solid' ? (darkMode ? '#1E293B' : card_bg) : 
@@ -719,11 +730,24 @@ export const BentoModule: React.FC<{
         {/* Hint when empty - subtle overlay over the grid guide */}
         {!isPreviewMode && rawItems.length === 0 && (
           <div className="absolute inset-0 flex flex-col items-center justify-center p-12 pointer-events-none z-20">
-            <div className="bg-surface/80 backdrop-blur-md p-8 rounded-3xl border border-border shadow-xl text-center max-w-sm animate-in fade-in zoom-in duration-500">
-              <Sparkles className="w-12 h-12 text-primary mx-auto mb-4 animate-pulse" />
-              <p className="text-sm text-text font-bold">Lienzo Bento Listo</p>
-              <p className="text-[11px] text-text/60 mt-2 leading-relaxed">Arrastra elementos desde la <b>Caja de Herramientas</b> en el panel izquierdo para empezar a construir tu composición.</p>
-            </div>
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="bg-white p-10 rounded-[3rem] border border-gray-100 shadow-2xl text-center max-w-sm pointer-events-auto"
+            >
+              <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                <Sparkles size={32} />
+              </div>
+              <h3 className="text-xl font-black text-gray-900 mb-2">Bento Grid Vacío</h3>
+              <p className="text-sm text-gray-400 mb-6 leading-relaxed">
+                Esta sección permite crear composiciones modulares flexibles. Arrastra bloques desde el panel o usa el <b>Generador de IA</b>.
+              </p>
+              <div className="flex flex-col gap-2">
+                 <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest bg-gray-50 py-2 rounded-lg">
+                   Arrastra elementos aquí
+                 </div>
+              </div>
+            </motion.div>
           </div>
         )}
       </div>

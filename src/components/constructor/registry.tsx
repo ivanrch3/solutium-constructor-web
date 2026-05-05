@@ -2844,7 +2844,7 @@ export const BENTO_MODULE: WebModule = {
   id: 'mod_bento_1',
   type: 'content',
   iconKey: 'bento',
-  name: 'Composición Libre (Bento)',
+  name: 'Bento / Composición Libre',
   globalGroups: ['estructura', 'estilo', 'interaccion', 'multimedia'],
   globalSettings: {
     estructura: [
@@ -3070,5 +3070,5 @@ export const MODULE_INFO: Record<string, { label: string; icon: React.ElementTyp
   faq: { label: 'FAQ', icon: MessageCircleQuestion },
   comparative: { label: 'Comparativo', icon: Columns2 },
   clients: { label: 'Clientes', icon: Handshake },
-  bento: { label: 'Composición Libre', icon: Layout }
+  bento: { label: 'Bento / Composición Libre', icon: Layout }
 };

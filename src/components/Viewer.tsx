@@ -187,8 +187,25 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
             return <SpacerModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} />;
           case 'menu':
           case 'navegacion':
+            // SIP v5.5 (Protocolo 12.0): Specialized routing for dual-type modules
+            if (moduleId.startsWith('mod_footer_1')) {
+              return <FooterModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} />;
+            }
             return <MenuModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} />;
           case 'footer':
+            const isDebug = window.location.search.includes('debug_render=true');
+            if (isDebug) {
+              console.log('[FOOTER_RENDER_DEBUG]', {
+                moduleId,
+                moduleType: type,
+                receivedContentKeys: content ? Object.keys(content) : [],
+                columnsCount: finalSettingsValues[`${moduleId}_el_footer_nav_columns`]?.length || 0,
+                socialLinksCount: finalSettingsValues[`${moduleId}_el_footer_social_social_links`]?.length || 0,
+                brandBio: finalSettingsValues[`${moduleId}_el_footer_brand_bio`],
+                logoImg: finalSettingsValues[`${moduleId}_el_footer_brand_logo_img`],
+                willRender: true
+              });
+            }
             return <FooterModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} />;
           default:
             return null;

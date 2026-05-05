@@ -454,7 +454,16 @@ export const Canvas: React.FC<CanvasProps> = ({
                         isPreviewMode={isPreviewMode}
                       />
                     )}
-                    {(section.type === 'footer' || section.type === 'navegacion') && (section.templateId === 'mod_footer_1' || section.id.startsWith('mod_footer_1')) && (
+                    {(section.type === 'footer') && (
+                      <FooterModule 
+                        moduleId={section.id}
+                        settingsValues={finalSettings}
+                        logoUrl={logoUrl}
+                        logoWhiteUrl={logoWhiteUrl}
+                        isPreviewMode={isPreviewMode}
+                      />
+                    )}
+                    {(section.type === 'navegacion') && (section.templateId === 'mod_footer_1' || section.id.startsWith('mod_footer_1')) && (
                       <FooterModule 
                         moduleId={section.id}
                         settingsValues={finalSettings}

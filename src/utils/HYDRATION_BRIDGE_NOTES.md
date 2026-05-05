@@ -12,6 +12,7 @@ Estos módulos tienen mapeos específicos para asegurar que llaves complejas (ej
 - **Menu / Header / Navegación**: Hidrata links, logo y layout.
 - **About**: Normalizacion de stats (numero/texto/icon), composición Misión/Visión, y mapeo de layout.
 - **Process**: Normalización de arrays de pasos (`pasos`, `steps`, `workflow`). Mapeo interno de items (title, desc, icon, badge) y layouts (`horizontal`, `vertical`, `alternating`).
+- **Footer**: Hidratación completa de marca, columnas de navegación, redes sociales normalizadas, datos de contacto, newsletter y enlaces legales.
 
 ## Fallback Genérico (Novedad v10.6)
 Para todos los demás módulos, se aplica una estrategia de "Auto-Prefijado" no destructiva:

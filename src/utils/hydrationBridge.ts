@@ -193,6 +193,93 @@ const MODULE_ADAPTERS: Record<string, ModuleBridgeAdapter> = {
       'layout': 'global_layout',
       'columns': 'global_columns'
     }
+  },
+  footer: {
+    contentToSettings: {
+      'bio': 'el_footer_brand_bio',
+      'description': 'el_footer_brand_bio',
+      'descripcion': 'el_footer_brand_bio',
+      'brand.bio': 'el_footer_brand_bio',
+      'brand.description': 'el_footer_brand_bio',
+      'brand.descripcion': 'el_footer_brand_bio',
+      'marca.descripcion': 'el_footer_brand_bio',
+      
+      'logo': 'el_footer_brand_logo_img',
+      'logo_img': 'el_footer_brand_logo_img',
+      'logo_url': 'el_footer_brand_logo_img',
+      'brand.logo': 'el_footer_brand_logo_img',
+      'brand.logo_url': 'el_footer_brand_logo_img',
+      'brand.image': 'el_footer_brand_logo_img',
+      'marca.logo': 'el_footer_brand_logo_img',
+      
+      'logo_width': 'el_footer_brand_logo_width',
+      'brand.logo_width': 'el_footer_brand_logo_width',
+      'marca.logo_width': 'el_footer_brand_logo_width',
+      
+      'show_logo': 'el_footer_brand_show_logo',
+      'brand.show_logo': 'el_footer_brand_show_logo',
+      'marca.show_logo': 'el_footer_brand_show_logo',
+
+      'address': 'el_footer_contact_address',
+      'direccion': 'el_footer_contact_address',
+      'contact.address': 'el_footer_contact_address',
+      'contact.direccion': 'el_footer_contact_address',
+      'contacto.address': 'el_footer_contact_address',
+      'contacto.direccion': 'el_footer_contact_address',
+
+      'phone': 'el_footer_contact_phone',
+      'telefono': 'el_footer_contact_phone',
+      'tel': 'el_footer_contact_phone',
+      'contact.phone': 'el_footer_contact_phone',
+      'contact.telefono': 'el_footer_contact_phone',
+      'contacto.phone': 'el_footer_contact_phone',
+      'contacto.telefono': 'el_footer_contact_phone',
+
+      'email': 'el_footer_contact_email',
+      'correo': 'el_footer_contact_email',
+      'contact.email': 'el_footer_contact_email',
+      'contact.correo': 'el_footer_contact_email',
+      'contacto.email': 'el_footer_contact_email',
+      'contacto.correo': 'el_footer_contact_email',
+
+      'show_contact': 'el_footer_contact_show_contact',
+      'contact.show_contact': 'el_footer_contact_show_contact',
+      'contacto.show_contact': 'el_footer_contact_show_contact',
+
+      'news_title': 'el_footer_newsletter_news_title',
+      'newsletter_title': 'el_footer_newsletter_news_title',
+      'newsletter.title': 'el_footer_newsletter_news_title',
+      'newsletter.titulo': 'el_footer_newsletter_news_title',
+
+      'news_desc': 'el_footer_newsletter_news_desc',
+      'newsletter_description': 'el_footer_newsletter_news_desc',
+      'newsletter.description': 'el_footer_newsletter_news_desc',
+      'newsletter.descripcion': 'el_footer_newsletter_news_desc',
+
+      'placeholder': 'el_footer_newsletter_placeholder',
+      'newsletter.placeholder': 'el_footer_newsletter_placeholder',
+
+      'btn_text': 'el_footer_newsletter_btn_text',
+      'button_text': 'el_footer_newsletter_btn_text',
+      'newsletter.btn_text': 'el_footer_newsletter_btn_text',
+      'newsletter.button_text': 'el_footer_newsletter_btn_text',
+      'newsletter.boton': 'el_footer_newsletter_btn_text',
+      'newsletter.boton_texto': 'el_footer_newsletter_btn_text',
+
+      'show_newsletter': 'el_footer_newsletter_show_newsletter',
+      'newsletter.show': 'el_footer_newsletter_show_newsletter',
+      'newsletter.show_newsletter': 'el_footer_newsletter_show_newsletter',
+
+      'copyright': 'el_footer_bottom_copyright',
+      'copy': 'el_footer_bottom_copyright',
+      'legal.copyright': 'el_footer_bottom_copyright',
+      'bottom.copyright': 'el_footer_bottom_copyright'
+    },
+    settingsToDeep: {
+      'variant': 'global_variant',
+      'layout': 'global_layout',
+      'background': 'global_background'
+    }
   }
 };
 
@@ -390,6 +477,104 @@ export const bridgeModuleContent = ({
         }
       }
     }
+
+    // --- Specialized Footer Module Logic ---
+    if (baseType === 'footer' && content) {
+      // 1. Navigation Columns Normalization
+      const navKey = `${moduleId}_el_footer_nav_columns`;
+      const navSource = content.columns || content.columnas || content.nav_columns || content.navigation || content.navegacion || content.enlaces || content.links;
+      
+      if (Array.isArray(navSource) && navSource.length > 0 && result[navKey] === undefined) {
+        // Check if it's a flat list of links or proper columns
+        const isFlatList = navSource.every(item => item.url || item.href || item.link);
+        
+        if (isFlatList) {
+          result[navKey] = [{
+            title: 'Enlaces',
+            links: navSource.map(link => ({
+              label: String(link.label || link.text || link.texto || link.title || link.titulo || link.name || link.nombre || ''),
+              url: String(link.url || link.href || link.link || link.to || link.path || '#')
+            }))
+          }];
+        } else {
+          result[navKey] = navSource.map(col => ({
+            title: String(col.title || col.titulo || col.label || col.nombre || col.name || ''),
+            links: Array.isArray(col.links || col.enlaces || col.items || col.children || col.opciones) 
+              ? (col.links || col.enlaces || col.items || col.children || col.opciones).map((link: any) => ({
+                  label: String(link.label || link.text || link.texto || link.title || link.titulo || link.name || link.nombre || ''),
+                  url: String(link.url || link.href || link.link || link.to || link.path || '#')
+                }))
+              : []
+          }));
+        }
+        mappedKeys.push(navKey);
+      }
+
+      // 2. Social Links Normalization
+      const socialKey = `${moduleId}_el_footer_social_social_links`;
+      const socialSource = content.social_links || content.redes_sociales || content.social || content.redes || getByPath(content, 'brand.social_links') || getByPath(content, 'marca.redes_sociales');
+      
+      if (Array.isArray(socialSource) && socialSource.length > 0 && result[socialKey] === undefined) {
+        result[socialKey] = socialSource.map(item => {
+          const rawIcon = String(item.icon || item.icono || item.platform || item.plataforma || item.name || item.nombre || 'Globe').toLowerCase();
+          
+          let normalizedIcon = 'Globe';
+          if (rawIcon.includes('facebook')) normalizedIcon = 'Facebook';
+          else if (rawIcon.includes('instagram')) normalizedIcon = 'Instagram';
+          else if (rawIcon.includes('linkedin')) normalizedIcon = 'Linkedin';
+          else if (rawIcon.includes('twitter') || rawIcon.includes(' x ')) normalizedIcon = 'Twitter';
+          else if (rawIcon === 'x' ) normalizedIcon = 'Twitter';
+          else if (rawIcon.includes('youtube')) normalizedIcon = 'Youtube';
+          else if (rawIcon.includes('tiktok')) normalizedIcon = 'Music2';
+          else if (rawIcon.includes('whatsapp')) normalizedIcon = 'MessageCircle';
+          else normalizedIcon = item.icon || item.icono || 'Globe';
+
+          return {
+            icon: normalizedIcon,
+            url: String(item.url || item.href || item.link || '#')
+          };
+        });
+        mappedKeys.push(socialKey);
+      }
+
+      // 3. Legal Links Normalization
+      const legalKey = `${moduleId}_el_footer_bottom_legal_links`;
+      const legalSource = content.legal_links || content.enlaces_legales || getByPath(content, 'legal.links') || getByPath(content, 'legal.enlaces') || getByPath(content, 'bottom.legal_links');
+      
+      if (Array.isArray(legalSource) && legalSource.length > 0 && result[legalKey] === undefined) {
+        result[legalKey] = legalSource.map(item => ({
+          label: String(item.label || item.text || item.texto || item.title || item.titulo || item.name || item.nombre || ''),
+          url: String(item.url || item.href || item.link || item.path || '#')
+        }));
+        mappedKeys.push(legalKey);
+      }
+
+      // 4. Auto-show logic
+      const showLogoKey = `${moduleId}_el_footer_brand_show_logo`;
+      if (result[showLogoKey] === undefined && result[`${moduleId}_el_footer_brand_logo_img`]) {
+        result[showLogoKey] = true;
+        mappedKeys.push(showLogoKey);
+      }
+
+      const showContactKey = `${moduleId}_el_footer_contact_show_contact`;
+      if (result[showContactKey] === undefined && (
+        result[`${moduleId}_el_footer_contact_address`] || 
+        result[`${moduleId}_el_footer_contact_phone`] || 
+        result[`${moduleId}_el_footer_contact_email`]
+      )) {
+        result[showContactKey] = true;
+        mappedKeys.push(showContactKey);
+      }
+
+      const showNewsKey = `${moduleId}_el_footer_newsletter_show_newsletter`;
+      if (result[showNewsKey] === undefined && (
+        result[`${moduleId}_el_footer_newsletter_news_title`] || 
+        result[`${moduleId}_el_footer_newsletter_news_desc`]
+      )) {
+        result[showNewsKey] = true;
+        mappedKeys.push(showNewsKey);
+      }
+    }
   }
 
   // 2. Aplicar Fallback Genérico (asegura que keys como 'title' lleguen como 'mod_123_title')
@@ -408,6 +593,12 @@ export const bridgeModuleContent = ({
       adapter: baseType,
       mappedKeys,
       aliasesUsed,
+      columnsCount: baseType === 'footer' ? (result[`${moduleId}_el_footer_nav_columns`]?.length || 0) : 0,
+      socialLinksCount: baseType === 'footer' ? (result[`${moduleId}_el_footer_social_social_links`]?.length || 0) : 0,
+      legalLinksCount: baseType === 'footer' ? (result[`${moduleId}_el_footer_bottom_legal_links`]?.length || 0) : 0,
+      contactDetected: baseType === 'footer' ? Boolean(result[`${moduleId}_el_footer_contact_show_contact`]) : false,
+      newsletterDetected: baseType === 'footer' ? Boolean(result[`${moduleId}_el_footer_newsletter_show_newsletter`]) : false,
+      logoDetected: baseType === 'footer' ? Boolean(result[`${moduleId}_el_footer_brand_logo_img`]) : false,
       stepsCount: baseType === 'process' ? (result[`${moduleId}_el_process_items_steps`]?.length || 0) : 0,
       layoutDetected: baseType === 'process' ? result[`${moduleId}_global_layout`] : undefined,
       statsCount: baseType === 'about' ? (result[`${moduleId}_el_about_stats_stats_list`]?.length || 0) : 0,

@@ -1,6 +1,6 @@
 export type BentoItemType = "text" | "image" | "icon_text" | "stat" | "cta" | "video";
 export type BentoCardStyle = "solid" | "gradient" | "glass" | "glow" | "transparent";
-export type BentoTone = "minimal" | "bold" | "playful" | "technical" | "elegant";
+export type BentoTone = "professional" | "friendly" | "premium" | "tech" | "minimal";
 
 export interface BentoItem {
   id?: string;

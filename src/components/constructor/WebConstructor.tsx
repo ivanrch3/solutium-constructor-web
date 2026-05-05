@@ -54,6 +54,8 @@ import {
   PublishModal,
   AIGenerationModal
 } from './ConstructorModals';
+import { BentoPromptGenerator } from './BentoPromptGenerator';
+import { BentoSchema } from '../../types/bentoSchema';
 import { 
   getThemeVal,
   getFontFamily,
@@ -285,6 +287,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   const [viewport, setViewport] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
+  const [showBentoPrompt, setShowBentoPrompt] = useState(false);
 
   const [editorState, setEditorState] = useState<EditorState>(() => {
     const defaultState: EditorState = {
@@ -2053,6 +2056,51 @@ const formatTimestampName = () => {
     }
   };
 
+  const handleBentoPromptInsert = (schema: BentoSchema) => {
+    const sectionId = `section_${crypto.randomUUID()}`;
+    const moduleId = `mod_${sectionId.split('_')[1]}`;
+    
+    const settings: Record<string, any> = {
+      [`${moduleId}_el_bento_header_eyebrow`]: schema.header.eyebrow,
+      [`${moduleId}_el_bento_header_title`]: schema.header.title,
+      [`${moduleId}_el_bento_header_subtitle`]: schema.header.subtitle,
+      [`${moduleId}_global_columns`]: schema.layout.columns,
+      [`${moduleId}_global_gap`]: schema.layout.gap,
+      [`${moduleId}_el_bento_items_items`]: schema.items.map(item => ({
+        type: item.type,
+        title: item.title,
+        description: item.description,
+        icon: item.icon || 'Sparkles',
+        image: item.image || '',
+        col_span: item.col_span,
+        row_span: item.row_span,
+        card_style: item.card_style || 'solid',
+        button_text: item.button_text || 'Explorar',
+        btn_url: item.btn_url || '#',
+        eyebrow: item.badge || ''
+      }))
+    };
+
+    const newSection: any = {
+      id: sectionId,
+      type: 'bento',
+      name: 'Composición Libre (IA)',
+      elements: [], // Se hidratará con los settings
+      settings
+    };
+
+    addSection(newSection);
+    setShowBentoPrompt(false);
+    selectSection(sectionId);
+
+    console.log('[BENTO_INSERT_DEBUG]', {
+      moduleType: "bento",
+      inserted: true,
+      sectionId,
+      itemsCount: schema.items.length
+    });
+  };
+
   return (
     <div className={`h-screen w-screen flex overflow-hidden bg-surface font-sans antialiased ${(isPreviewMode || isExternalRender) ? 'p-0' : ''}`}>
       {/* Desktop Sidebar */}
@@ -2065,6 +2113,7 @@ const formatTimestampName = () => {
           logoWhiteUrl={logoWhiteUrl}
           project={project}
           onAddModule={addModule}
+          onOpenBentoGenerator={() => setShowBentoPrompt(true)}
           onLogoClick={handleLogoClick}
         />
       )}
@@ -2569,6 +2618,12 @@ const formatTimestampName = () => {
               </div>
             </motion.div>
           </>
+        )}
+        {showBentoPrompt && (
+          <BentoPromptGenerator 
+            onInsert={handleBentoPromptInsert}
+            onClose={() => setShowBentoPrompt(false)}
+          />
         )}
       </AnimatePresence>
     </div>

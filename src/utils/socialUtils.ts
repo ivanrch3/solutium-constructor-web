@@ -12,16 +12,30 @@ export const SOCIAL_PLATFORMS: Record<SocialPlatform, { icon: string, label: str
   website: { icon: 'Globe', label: 'Sitio web', color: '#64748B', baseUrl: '' }
 };
 
+export const FOOTER_DEFAULTS = {
+  bio: 'Creamos soluciones digitales innovadoras para impulsar el crecimiento de tu negocio en la era moderna.',
+  address: 'Calle Innovación 123, Ciudad Digital',
+  phone: '+1 (555) 000-0000',
+  email: 'hola@mimarca.com',
+  copyright: '© 2026 Mi Marca. Todos los derechos reservados.',
+  logos: [
+    'https://solutium.app/logo.png',
+    'https://solutium.app/logo-white.png',
+    'logo-solutium'
+  ]
+};
+
 export const normalizeSocialUrl = (platform: string, value: string): string => {
   if (!value) return '';
-  if (value.startsWith('http://') || value.startsWith('https://')) return value;
+  const trimmed = value.trim();
+  if (trimmed === '' || trimmed === '#') return '';
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
   
   const p = platform.toLowerCase() as SocialPlatform;
   const config = SOCIAL_PLATFORMS[p];
-  if (!config) return value;
+  if (!config) return trimmed;
 
-  let username = value.trim();
-  // Remove leading @ if it exists (but keep it for the final URL construction if needed by baseUrl)
+  let username = trimmed;
   if (username.startsWith('@')) username = username.substring(1);
   
   return `${config.baseUrl}${username}`;
@@ -30,4 +44,48 @@ export const normalizeSocialUrl = (platform: string, value: string): string => {
 export const getIconForPlatform = (platform: string): string => {
   const p = platform.toLowerCase() as SocialPlatform;
   return SOCIAL_PLATFORMS[p]?.icon || 'Link';
+};
+
+export interface SocialLink {
+  platform?: string;
+  icon: string;
+  url: string;
+  label?: string;
+}
+
+export const resolveFooterSocialLinks = (
+  manualLinks: SocialLink[] | undefined,
+  projectSocials: any
+): SocialLink[] => {
+  // 1. Identify manual real links (those that have a real URL)
+  const realManualLinks = (manualLinks || []).filter(link => 
+    link.url && link.url !== '#' && link.url !== ''
+  );
+
+  if (realManualLinks.length > 0) {
+    return realManualLinks;
+  }
+
+  // 2. Fallback to Project Profile socials
+  if (projectSocials && typeof projectSocials === 'object' && !Array.isArray(projectSocials)) {
+    const projectLinks = Object.entries(projectSocials)
+      .filter(([_, value]) => !!value && String(value).trim() !== '' && String(value).trim() !== '#')
+      .map(([platform, value]) => ({
+        platform,
+        icon: getIconForPlatform(platform),
+        url: normalizeSocialUrl(platform, String(value)),
+        label: SOCIAL_PLATFORMS[platform as SocialPlatform]?.label || platform
+      }));
+
+    if (projectLinks.length > 0) {
+      return projectLinks;
+    }
+  }
+
+  // 3. Fallback to placeholders ONLY if no real socials found
+  return [
+    { platform: 'facebook', icon: 'Facebook', url: '', label: 'Facebook' },
+    { platform: 'instagram', icon: 'Instagram', url: '', label: 'Instagram' },
+    { platform: 'linkedin', icon: 'Linkedin', url: '', label: 'LinkedIn' }
+  ];
 };

@@ -1,5 +1,5 @@
 import { logDebug, isRenderDebugEnabled } from './debug';
-import { normalizeSocialUrl, getIconForPlatform } from './socialUtils';
+import { normalizeSocialUrl, getIconForPlatform, FOOTER_DEFAULTS } from './socialUtils';
 
 /**
  * [SIP v10.6] Hydration Bridge Registry
@@ -482,25 +482,21 @@ export const bridgeModuleContent = ({
     // --- Specialized Footer Module Logic ---
     if (baseType === 'footer' && content) {
       const isDebug = isRenderDebugEnabled();
-      
-      // Detected defaults for overridable logic
-      const defaults = {
-        bio: 'Creamos soluciones digitales innovadoras para impulsar el crecimiento de tu negocio en la era moderna.',
-        address: 'Calle Innovación 123, Ciudad Digital',
-        phone: '+1 (555) 000-0000',
-        email: 'hola@mimarca.com',
-        copyright: '© 2026 Mi Marca. Todos los derechos reservados.'
+      const defaults = FOOTER_DEFAULTS;
+
+      const isDefault = (val: any, d: string | string[]) => {
+        if (Array.isArray(d)) return !val || d.includes(val);
+        return !val || val === d;
       };
 
-      const isDefault = (val: any, d: string) => !val || val === d;
-
       if (isDebug) {
+        const currentEmail = result[`${moduleId}_el_footer_contact_email`];
         console.log('[FOOTER_PROJECT_PROFILE_DEBUG]', {
-          runtime: typeof window !== 'undefined' && (window as any).WEB_BUILDER_SITE_ID ? 'constructor' : 'published_viewer',
+          runtime: typeof window !== 'undefined' && (window as any).WEB_BUILDER_ID ? 'constructor' : 'published_viewer',
           moduleId,
-          footerCurrentEmail: result[`${moduleId}_el_footer_contact_email`],
+          footerCurrentEmail: currentEmail,
           contentEmail: content.email || getByPath(content, 'contacto.email'),
-          sourceUsed: isDefault(result[`${moduleId}_el_footer_contact_email`], defaults.email) ? 'content_sync' : 'manual_settings'
+          sourceUsed: isDefault(currentEmail, defaults.email) ? 'content_sync' : 'manual_settings'
         });
       }
 
@@ -538,16 +534,22 @@ export const bridgeModuleContent = ({
       const socialKey = `${moduleId}_el_footer_social_social_links`;
       const socialSource = content.redes_sociales || content.social_links || content.socials || content.redes;
       
-      if (Array.isArray(socialSource) && socialSource.length > 0 && 
-         (!result[socialKey] || (Array.isArray(result[socialKey]) && result[socialKey].length === 0))) {
-        result[socialKey] = socialSource.map(s => ({
-          platform: s.platform || s.plataforma || '',
-          icon: s.icon || getIconForPlatform(s.platform || s.plataforma || ''),
-          url: s.url || normalizeSocialUrl(s.platform || s.plataforma || '', s.username || s.usuario || '#')
-        }));
-        mappedKeys.push(socialKey);
+      // Use resolution logic if result is currently default or undefined
+      if (Array.isArray(socialSource) && socialSource.length > 0) {
+        const currentLinks = result[socialKey];
+        const isManuallyEmpty = !currentLinks || (Array.isArray(currentLinks) && currentLinks.length === 0);
+        const hasManualReal = Array.isArray(currentLinks) && currentLinks.length > 0 && currentLinks.some((s: any) => s.url && s.url !== '#' && s.url !== '');
+        
+        if (isManuallyEmpty || !hasManualReal) {
+          result[socialKey] = socialSource.map(s => ({
+            platform: s.platform || s.plataforma || '',
+            icon: s.icon || getIconForPlatform(s.platform || s.plataforma || ''),
+            url: s.url || normalizeSocialUrl(s.platform || s.plataforma || '', s.username || s.usuario || '#')
+          }));
+          mappedKeys.push(socialKey);
+        }
       } else if (!result[socialKey] || (Array.isArray(result[socialKey]) && result[socialKey].length === 0)) {
-        // Default placeholders if nothing exists
+        // Fallback placeholders
         result[socialKey] = [
           { platform: 'facebook', icon: 'Facebook', url: '' },
           { platform: 'instagram', icon: 'Instagram', url: '' },
@@ -559,7 +561,7 @@ export const bridgeModuleContent = ({
       // 3. Brand Logo
       const logoKey = `${moduleId}_el_footer_brand_logo_img`;
       const logoSource = content.logo_url || getByPath(content, 'brand.logo') || getByPath(content, 'brand.logo_url');
-      if (logoSource && !result[logoKey]) {
+      if (logoSource && (result[logoKey] === undefined || isDefault(result[logoKey], defaults.logos))) {
         result[logoKey] = logoSource;
         result[`${moduleId}_el_footer_brand_show_logo`] = true;
         mappedKeys.push(logoKey);
@@ -572,7 +574,7 @@ export const bridgeModuleContent = ({
         const hasValue = value !== undefined && value !== null;
         
         // Find which default to check against
-        let defaultValue: string | undefined = undefined;
+        let defaultValue: string | string[] | undefined = undefined;
         if (relativeKey === 'el_footer_brand_bio') defaultValue = defaults.bio;
         else if (relativeKey === 'el_footer_contact_email') defaultValue = defaults.email;
         else if (relativeKey === 'el_footer_contact_phone') defaultValue = defaults.phone;

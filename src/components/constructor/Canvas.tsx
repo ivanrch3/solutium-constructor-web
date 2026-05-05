@@ -35,7 +35,7 @@ import { SpacerModule } from './modules/SpacerModule';
 import { BentoModule } from './modules/BentoModule';
 import { ComparisonModule } from './modules/ComparisonModule';
 
-import { normalizeSocialUrl, getIconForPlatform } from '../../utils/socialUtils';
+import { normalizeSocialUrl, getIconForPlatform, resolveFooterSocialLinks, FOOTER_DEFAULTS } from '../../utils/socialUtils';
 
 interface CanvasProps {
   editorState: EditorState;
@@ -274,15 +274,12 @@ export const Canvas: React.FC<CanvasProps> = ({
 
                 // SIP v11.4: Dynamic enrichment for live preview (Constructor)
                 if (section.type === 'footer') {
-                  const defaults = {
-                    bio: 'Creamos soluciones digitales innovadoras para impulsar el crecimiento de tu negocio en la era moderna.',
-                    address: 'Calle Innovación 123, Ciudad Digital',
-                    phone: '+1 (555) 000-0000',
-                    email: 'hola@mimarca.com',
-                    copyright: '© 2026 Mi Marca. Todos los derechos reservados.'
-                  };
+                  const defaults = FOOTER_DEFAULTS;
 
-                  const isDefault = (val: any, d: string) => !val || val === d;
+                  const isDefault = (val: any, d: string | string[]) => {
+                    if (Array.isArray(d)) return !val || d.includes(val);
+                    return !val || val === d;
+                  };
 
                   // Enrich if missing or default in settingsValues + section.settings
                   const currentEmail = editorState.settingsValues[`${section.id}_el_footer_contact_email`] || section.settings[`${section.id}_el_footer_contact_email`];
@@ -315,40 +312,12 @@ export const Canvas: React.FC<CanvasProps> = ({
                   
                   // Social links
                   const currentSocials = editorState.settingsValues[`${section.id}_el_footer_social_social_links`] || section.settings[`${section.id}_el_footer_social_social_links`];
-                  const hasManualSocials = Array.isArray(currentSocials) && currentSocials.length > 0 && 
-                                          currentSocials.some(s => s.url && s.url !== '#' && s.url !== '');
-
-                  if (!hasManualSocials) {
-                    if (project?.socials && typeof project.socials === 'object' && !Array.isArray(project.socials)) {
-                      const socialEntries = Object.entries(project.socials as Record<string, any>)
-                        .filter(([_, value]) => !!value && String(value).trim() !== '')
-                        .map(([platform, value]) => ({
-                          platform,
-                          url: normalizeSocialUrl(platform, String(value)),
-                          icon: getIconForPlatform(platform)
-                        }));
-
-                      if (socialEntries.length > 0) {
-                        moduleOverrides[`${section.id}_el_footer_social_social_links`] = socialEntries;
-                      } else {
-                        moduleOverrides[`${section.id}_el_footer_social_social_links`] = [
-                          { platform: 'facebook', icon: 'Facebook', url: '' },
-                          { platform: 'instagram', icon: 'Instagram', url: '' },
-                          { platform: 'linkedin', icon: 'Linkedin', url: '' }
-                        ];
-                      }
-                    } else {
-                      moduleOverrides[`${section.id}_el_footer_social_social_links`] = [
-                        { platform: 'facebook', icon: 'Facebook', url: '' },
-                        { platform: 'instagram', icon: 'Instagram', url: '' },
-                        { platform: 'linkedin', icon: 'Linkedin', url: '' }
-                      ];
-                    }
-                  }
+                  const resolvedSocialLinks = resolveFooterSocialLinks(currentSocials, project?.socials);
+                  moduleOverrides[`${section.id}_el_footer_social_social_links`] = resolvedSocialLinks;
 
                   // Brand Logo
                   const currentLogo = editorState.settingsValues[`${section.id}_el_footer_brand_logo_img`] || section.settings[`${section.id}_el_footer_brand_logo_img`];
-                  if (!currentLogo && project?.logoUrl) {
+                  if (isDefault(currentLogo, defaults.logos) && project?.logoUrl) {
                     moduleOverrides[`${section.id}_el_footer_brand_logo_img`] = project.logoUrl;
                     moduleOverrides[`${section.id}_el_footer_brand_show_logo`] = true;
                   }

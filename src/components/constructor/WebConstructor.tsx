@@ -46,7 +46,7 @@ import { StructurePanel } from './StructurePanel';
 import { TopBar } from './TopBar';
 import { Canvas } from './Canvas';
 import { GlobalSettingsPanel } from './GlobalSettingsPanel';
-import { normalizeSocialUrl, getIconForPlatform } from '../../utils/socialUtils';
+import { normalizeSocialUrl, getIconForPlatform, resolveFooterSocialLinks, FOOTER_DEFAULTS } from '../../utils/socialUtils';
 import { 
   MobileBottomNav, 
   UnsavedChangesModal, 
@@ -1344,30 +1344,14 @@ const formatTimestampName = () => {
 
         // SIP v11.3: Specialized project profile enrichment for Footer
         if (module.type === 'footer' || module.id.startsWith('mod_footer')) {
-          const defaults = {
-            bio: 'Creamos soluciones digitales innovadoras para impulsar el crecimiento de tu negocio en la era moderna.',
-            address: 'Calle Innovación 123, Ciudad Digital',
-            phone: '+1 (555) 000-0000',
-            email: 'hola@mimarca.com',
-            copyright: '© 2026 Mi Marca. Todos los derechos reservados.'
+          const defaults = FOOTER_DEFAULTS;
+
+          const isDefault = (val: any, d: string | string[]) => {
+            if (Array.isArray(d)) return !val || d.includes(val);
+            return !val || val === d;
           };
-
-          const isDefault = (val: any, d: string) => !val || val === d;
           
-          // Debug project profile
-          if (window.location.search.includes('debug_render=true')) {
-            console.log('[FOOTER_PROJECT_PROFILE_DEBUG]', {
-              moduleId: module.id,
-              hasProjectProfile: !!project,
-              projectName: project?.name,
-              projectEmail: project?.email,
-              projectPhone: project?.whatsapp,
-              footerCurrentEmail: currentState.settingsValues[`${module.id}_el_footer_contact_email`],
-              sourceUsed: isDefault(currentState.settingsValues[`${module.id}_el_footer_contact_email`], defaults.email) ? 'project_profile' : 'manual'
-            });
-          }
-
-          // Enrichment logic - Update BOTH content and settings to ensure persistence and bridge compatibility
+          // Enrichment logic - Contact/Bio
           if (isDefault(currentState.settingsValues[`${module.id}_el_footer_brand_bio`], defaults.bio)) {
             const bioVal = project?.industry || `Servicios profesionales de ${project?.name || 'nuestro negocio'}`;
             content.bio = bioVal;
@@ -1400,54 +1384,16 @@ const formatTimestampName = () => {
           
           // Social links enrichment logic
           const currentSocials = currentState.settingsValues[`${module.id}_el_footer_social_social_links`];
-          const hasManualSocials = Array.isArray(currentSocials) && currentSocials.length > 0 && 
-                                  currentSocials.some(s => s.url && s.url !== '#' && s.url !== '');
-
-          let finalSocialLinks = currentSocials;
-
-          if (!hasManualSocials) {
-            if (project?.socials && typeof project.socials === 'object' && !Array.isArray(project.socials)) {
-              const socialEntries = Object.entries(project.socials as Record<string, any>)
-                .filter(([_, value]) => !!value && String(value).trim() !== '')
-                .map(([platform, value]) => ({
-                  platform,
-                  url: normalizeSocialUrl(platform, String(value)),
-                  icon: getIconForPlatform(platform)
-                }));
-
-              if (socialEntries.length > 0) {
-                finalSocialLinks = socialEntries;
-                settings[`${module.id}_el_footer_social_social_links`] = socialEntries;
-                content.redes_sociales = socialEntries;
-              } else {
-                // Default placeholders if project has no socials
-                const placeholders = [
-                  { platform: 'facebook', icon: 'Facebook', url: '' },
-                  { platform: 'instagram', icon: 'Instagram', url: '' },
-                  { platform: 'linkedin', icon: 'Linkedin', url: '' }
-                ];
-                finalSocialLinks = placeholders;
-                settings[`${module.id}_el_footer_social_social_links`] = placeholders;
-                content.redes_sociales = placeholders;
-              }
-            } else {
-              // Default placeholders if no project data
-              const placeholders = [
-                { platform: 'facebook', icon: 'Facebook', url: '' },
-                { platform: 'instagram', icon: 'Instagram', url: '' },
-                { platform: 'linkedin', icon: 'Linkedin', url: '' }
-              ];
-              finalSocialLinks = placeholders;
-              settings[`${module.id}_el_footer_social_social_links`] = placeholders;
-              content.redes_sociales = placeholders;
-            }
-          }
+          const resolvedSocials = resolveFooterSocialLinks(currentSocials, project?.socials);
+          
+          settings[`${module.id}_el_footer_social_social_links`] = resolvedSocials;
+          content.redes_sociales = resolvedSocials;
 
           // BRAND LOGO Enrichment - Prioritize manual, then project, then default
           const currentLogo = currentState.settingsValues[`${module.id}_el_footer_brand_logo_img`];
-          const isLogoDefault = !currentLogo; // if empty, it's default or not set
+          const isLogoDefaultValue = isDefault(currentLogo, defaults.logos);
           
-          if (isLogoDefault && project?.logoUrl) {
+          if (isLogoDefaultValue && project?.logoUrl) {
             content.logo_url = project.logoUrl;
             content.brand = { ...(content.brand || {}), logo: project.logoUrl, logo_url: project.logoUrl };
             settings[`${module.id}_el_footer_brand_logo_img`] = project.logoUrl;
@@ -1459,9 +1405,8 @@ const formatTimestampName = () => {
             console.log('[FOOTER_SOCIAL_RESOLUTION_DEBUG]', {
               moduleId: module.id,
               projectSocialsRaw: project?.socials,
-              finalSocialLinks,
-              hasManualSocials,
-              source: hasManualSocials ? 'manual' : (project?.socials ? 'project_profile' : 'placeholder')
+              finalSocialLinks: resolvedSocials,
+              source: (currentSocials && currentSocials.length > 0 && currentSocials.some((s: any) => s.url && s.url !== '#')) ? 'manual' : (project?.socials ? 'project_profile' : 'placeholder')
             });
 
             console.log('[FOOTER_LOGO_RESOLUTION_DEBUG]', {
@@ -1469,7 +1414,7 @@ const formatTimestampName = () => {
               manualLogo: currentLogo,
               projectLogo: project?.logoUrl,
               finalLogo: settings[`${module.id}_el_footer_brand_logo_img`] || currentLogo,
-              source: currentLogo ? 'manual' : (project?.logoUrl ? 'project_profile' : 'default')
+              source: (!isLogoDefaultValue) ? 'manual' : (project?.logoUrl ? 'project_profile' : 'default')
             });
           }
         }

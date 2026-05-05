@@ -165,6 +165,34 @@ const MODULE_ADAPTERS: Record<string, ModuleBridgeAdapter> = {
       'image_position': 'global_layout', // En about el layout controla la posición
       'background_style': 'global_bg_color'
     }
+  },
+  process: {
+    contentToSettings: {
+      'eyebrow': 'el_process_header_eyebrow',
+      'kicker': 'el_process_header_eyebrow',
+      'label': 'el_process_header_eyebrow',
+      'tagline': 'el_process_header_eyebrow',
+      'etiqueta': 'el_process_header_eyebrow',
+      
+      'title': 'el_process_header_title',
+      'titulo': 'el_process_header_title',
+      'heading': 'el_process_header_title',
+      'headline': 'el_process_header_title',
+      'nombre': 'el_process_header_title',
+
+      'subtitle': 'el_process_header_subtitle',
+      'subtitulo': 'el_process_header_subtitle',
+      'description': 'el_process_header_subtitle',
+      'descripcion': 'el_process_header_subtitle',
+      'summary': 'el_process_header_subtitle',
+      'resumen': 'el_process_header_subtitle',
+      'intro': 'el_process_header_subtitle',
+      'texto': 'el_process_header_subtitle'
+    },
+    settingsToDeep: {
+      'layout': 'global_layout',
+      'columns': 'global_columns'
+    }
   }
 };
 
@@ -306,6 +334,62 @@ export const bridgeModuleContent = ({
         }
       }
     }
+
+    // --- Specialized Process Module Logic ---
+    if (baseType === 'process' && content) {
+      // 1. Steps Normalization
+      const stepsKey = `${moduleId}_el_process_items_steps`;
+      const stepsSource = content.steps || content.pasos || content.items || content.proceso || content.workflow || 
+                         content.etapas || content.fases || content.process_steps || content.processSteps;
+      
+      if (Array.isArray(stepsSource) && stepsSource.length > 0 && result[stepsKey] === undefined) {
+        result[stepsKey] = stepsSource.map((item, index) => {
+          if (typeof item === 'string') {
+            return {
+              title: item,
+              desc: '',
+              icon: 'CheckCircle2',
+              badge: `Paso ${index + 1}`
+            };
+          }
+          
+          const stepTitle = item.title || item.titulo || item.heading || item.nombre || item.name || '';
+          const stepDesc = item.desc || item.description || item.descripcion || item.text || item.texto || item.summary || item.resumen || '';
+          const stepIcon = item.icon || item.icono || item.lucideIcon || 'CheckCircle2';
+          const stepBadge = item.badge || item.etiqueta || item.label || item.paso || item.step || item.numero || item.number || `Paso ${index + 1}`;
+          const stepImage = item.image || item.image_url || item.img || item.media?.url || item.image?.url;
+
+          return {
+            title: String(stepTitle),
+            desc: String(stepDesc),
+            icon: String(stepIcon),
+            badge: String(stepBadge),
+            ...(stepImage ? { image: String(stepImage) } : {})
+          };
+        });
+        mappedKeys.push(stepsKey);
+      }
+
+      // 2. Layout & Columns Mapping
+      const layoutKey = `${moduleId}_global_layout`;
+      const rawLayout = settings.layout || content.layout || content.variant || content.visual_layout;
+      if (rawLayout && result[layoutKey] === undefined) {
+        if (['horizontal', 'vertical', 'alternating'].includes(rawLayout)) {
+          result[layoutKey] = rawLayout;
+          mappedKeys.push(layoutKey);
+        }
+      }
+
+      const columnsKey = `${moduleId}_global_columns`;
+      const rawColumns = settings.columns || content.columns || content.columnas;
+      if (rawColumns !== undefined && result[columnsKey] === undefined) {
+        const colsNum = parseInt(String(rawColumns), 10);
+        if (!isNaN(colsNum)) {
+          result[columnsKey] = colsNum;
+          mappedKeys.push(columnsKey);
+        }
+      }
+    }
   }
 
   // 2. Aplicar Fallback Genérico (asegura que keys como 'title' lleguen como 'mod_123_title')
@@ -324,6 +408,8 @@ export const bridgeModuleContent = ({
       adapter: baseType,
       mappedKeys,
       aliasesUsed,
+      stepsCount: baseType === 'process' ? (result[`${moduleId}_el_process_items_steps`]?.length || 0) : 0,
+      layoutDetected: baseType === 'process' ? result[`${moduleId}_global_layout`] : undefined,
       statsCount: baseType === 'about' ? (result[`${moduleId}_el_about_stats_stats_list`]?.length || 0) : 0,
       ctaDetected: Boolean(result[`${moduleId}_el_about_narrative_button_text`]),
       imageDetected: Boolean(result[`${moduleId}_el_about_visual_image_url`]),

@@ -81,6 +81,13 @@ const MASTER_DICTIONARY = {
 };
 
 // --- HELPERS ---
+const getPlainValue = (val: any) => {
+  if (val && typeof val === 'object' && 'value' in val && !Array.isArray(val)) {
+    return val.value;
+  }
+  return val;
+};
+
 const checkDictionarySync = async (contract: RenderingContract): Promise<void> => {
   const unknowns: any[] = [];
   
@@ -242,7 +249,30 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     (window as any).currentProject = { id: projectId };
     (window as any).currentSite = { id: initialPage?.id, site_id: currentSiteId };
     (window as any).webBuilderSite = { id: initialPage?.id };
-  }, [projectId, initialPage, currentSiteId]);
+    
+    // [CONSTRUCTOR_RUNTIME_VERSION]
+    console.log('[CONSTRUCTOR_RUNTIME_VERSION]', {
+      version: "footer-social-resolution-v3",
+      buildTime: new Date().toISOString(),
+      hasFooterSocialResolver: true,
+      hasFooterLogoResolver: true,
+      hasAutoPreviewOnPublish: true
+    });
+
+    // [PROJECT_PROFILE_RUNTIME_DEBUG]
+    if (project) {
+      console.log('[PROJECT_PROFILE_RUNTIME_DEBUG]', {
+        projectId: project.id,
+        projectName: project.name,
+        email: project.email,
+        whatsapp: project.whatsapp,
+        address: project.address,
+        logoUrl: project.logoUrl,
+        socials: project.socials,
+        rawKeys: Object.keys(project)
+      });
+    }
+  }, [projectId, initialPage, currentSiteId, project]);
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [publishStatus, setPublishStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
@@ -1347,50 +1377,60 @@ const formatTimestampName = () => {
           const defaults = FOOTER_DEFAULTS;
 
           const isDefault = (val: any, d: string | string[]) => {
-            if (Array.isArray(d)) return !val || d.includes(val);
-            return !val || val === d;
+            const cleanVal = getPlainValue(val);
+            if (Array.isArray(d)) return !cleanVal || d.includes(cleanVal);
+            return !cleanVal || cleanVal === d;
           };
           
           // Enrichment logic - Contact/Bio
-          if (isDefault(currentState.settingsValues[`${module.id}_el_footer_brand_bio`], defaults.bio)) {
+          const currentBio = currentState.settingsValues[`${module.id}_el_footer_brand_bio`];
+          if (isDefault(currentBio, defaults.bio)) {
             const bioVal = project?.industry || `Servicios profesionales de ${project?.name || 'nuestro negocio'}`;
             content.bio = bioVal;
             content.brand = { ...(content.brand || {}), bio: bioVal, description: bioVal };
             settings[`${module.id}_el_footer_brand_bio`] = bioVal;
           }
-          if (isDefault(currentState.settingsValues[`${module.id}_el_footer_contact_email`], defaults.email) && project?.email) {
+          
+          const currentEmailVal = currentState.settingsValues[`${module.id}_el_footer_contact_email`];
+          if (isDefault(currentEmailVal, defaults.email) && project?.email) {
             content.contacto = { ...(content.contacto || {}), email: project.email };
             content.email = project.email;
             settings[`${module.id}_el_footer_contact_email`] = project.email;
             settings[`${module.id}_el_footer_contact_show_contact`] = true;
           }
-          if (isDefault(currentState.settingsValues[`${module.id}_el_footer_contact_phone`], defaults.phone) && project?.whatsapp) {
+          
+          const currentPhoneVal = currentState.settingsValues[`${module.id}_el_footer_contact_phone`];
+          if (isDefault(currentPhoneVal, defaults.phone) && project?.whatsapp) {
             content.contacto = { ...(content.contacto || {}), telefono: project.whatsapp };
             content.phone = project.whatsapp;
             settings[`${module.id}_el_footer_contact_phone`] = project.whatsapp;
             settings[`${module.id}_el_footer_contact_show_contact`] = true;
           }
-          if (isDefault(currentState.settingsValues[`${module.id}_el_footer_contact_address`], defaults.address) && project?.address) {
+          
+          const currentAddressVal = currentState.settingsValues[`${module.id}_el_footer_contact_address`];
+          if (isDefault(currentAddressVal, defaults.address) && project?.address) {
             content.contacto = { ...(content.contacto || {}), direccion: project.address };
             content.address = project.address;
             settings[`${module.id}_el_footer_contact_address`] = project.address;
             settings[`${module.id}_el_footer_contact_show_contact`] = true;
           }
-          if (isDefault(currentState.settingsValues[`${module.id}_el_footer_bottom_copyright`], defaults.copyright)) {
+          
+          const currentCopyVal = currentState.settingsValues[`${module.id}_el_footer_bottom_copyright`];
+          if (isDefault(currentCopyVal, defaults.copyright)) {
             const copyVal = `© ${new Date().getFullYear()} ${project?.name || 'Solutium'}. Todos los derechos reservados.`;
             content.copyright = copyVal;
             settings[`${module.id}_el_footer_bottom_copyright`] = copyVal;
           }
           
           // Social links enrichment logic
-          const currentSocials = currentState.settingsValues[`${module.id}_el_footer_social_social_links`];
+          const currentSocials = getPlainValue(currentState.settingsValues[`${module.id}_el_footer_social_social_links`]);
           const resolvedSocials = resolveFooterSocialLinks(currentSocials, project?.socials);
           
           settings[`${module.id}_el_footer_social_social_links`] = resolvedSocials;
           content.redes_sociales = resolvedSocials;
 
           // BRAND LOGO Enrichment - Prioritize manual, then project, then default
-          const currentLogo = currentState.settingsValues[`${module.id}_el_footer_brand_logo_img`];
+          const currentLogo = getPlainValue(currentState.settingsValues[`${module.id}_el_footer_brand_logo_img`]);
           const isLogoDefaultValue = isDefault(currentLogo, defaults.logos);
           
           if (isLogoDefaultValue && project?.logoUrl) {
@@ -1401,9 +1441,10 @@ const formatTimestampName = () => {
           }
 
           // Debug logs for social and logo resolution
-          if (window.location.search.includes('debug_render=true')) {
+          if (true || window.location.search.includes('debug_render=true')) {
             console.log('[FOOTER_SOCIAL_RESOLUTION_DEBUG]', {
               moduleId: module.id,
+              currentSocialsFromSettings: currentSocials,
               projectSocialsRaw: project?.socials,
               finalSocialLinks: resolvedSocials,
               source: (currentSocials && currentSocials.length > 0 && currentSocials.some((s: any) => s.url && s.url !== '#')) ? 'manual' : (project?.socials ? 'project_profile' : 'placeholder')
@@ -1805,7 +1846,9 @@ const formatTimestampName = () => {
             setIsGeneratingPreview(true);
             setPreviewStatus('loading');
             
-            logDebug('[AUTO_PREVIEW_ON_PUBLISH_START]', {
+            // [AUTO_PREVIEW_ON_PUBLISH_REQUEST_DEBUG]
+            console.log('[AUTO_PREVIEW_ON_PUBLISH_REQUEST_DEBUG]', {
+              trigger: "publish",
               project_id: projectId,
               site_id: siteId,
               web_builder_site_id: webBuilderSiteId
@@ -1845,10 +1888,24 @@ const formatTimestampName = () => {
               throw new Error(previewResult.error || 'Preview response was empty or unsuccessful');
             }
           } catch (pError: any) {
-            logDebug('[AUTO_PREVIEW_ON_PUBLISH_ERROR]', { message: pError.message });
-            console.error('[PREVIEW_CAPTURE_DEBUG] Error en preview server-side (Publish):', pError);
+            // [AUTO_PREVIEW_ON_PUBLISH_ERROR]
+            const wasCorsLikeFailure = pError?.message === 'Failed to fetch' || (pError instanceof TypeError && pError.message.includes('fetch'));
+            
+            console.error('[AUTO_PREVIEW_ON_PUBLISH_ERROR]', {
+              message: pError?.message,
+              status: pError?.status,
+              wasCorsLikeFailure,
+              trigger: "publish",
+              stack: pError?.stack?.substring(0, 300)
+            });
+            
+            logDebug('[AUTO_PREVIEW_ON_PUBLISH_ERROR]', { 
+              message: pError.message,
+              wasCors: wasCorsLikeFailure
+            });
+            
             setPreviewStatus('error');
-            setTimeout(() => setPreviewStatus('idle'), 3000);
+            setTimeout(() => setPreviewStatus('idle'), 5000);
           } finally {
             setIsGeneratingPreview(false);
           }

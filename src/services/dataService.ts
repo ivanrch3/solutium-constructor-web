@@ -998,9 +998,8 @@ export const generatePreviewServerSide = async (params: {
   error?: string;
 }> => {
   try {
-    const { token } = await getUploadAuthToken();
-    if (!token) throw new Error('No auth token available');
-
+    const { token, source } = await getUploadAuthToken();
+    
     // @ts-ignore
     const appMadreUrl = import.meta.env.VITE_APP_MADRE_API_URL;
     if (!appMadreUrl) throw new Error('VITE_APP_MADRE_API_URL not configured');
@@ -1008,22 +1007,56 @@ export const generatePreviewServerSide = async (params: {
     const cleanUrl = appMadreUrl.endsWith('/') ? appMadreUrl.slice(0, -1) : appMadreUrl;
     const endpoint = `${cleanUrl}/api/previews/generate`;
 
-    logDebug('[SERVER_PREVIEW_REQUEST_DEBUG]', { endpoint, payload: params });
+    // SIP v10.6: Resolving IDs from window/globals if missing as requested
+    const currentSite = (window as any).currentSite || {};
+    const finalProjectId = params.project_id || (window as any).PROJECT_ID || (window as any).currentProject?.id;
+    const finalSiteId = params.site_id || (window as any).SITE_ID || currentSite.site_id;
+    const finalWebBuilderSiteId = params.web_builder_site_id || (window as any).WEB_BUILDER_SITE_ID || currentSite.id;
+
+    const payload = {
+      ...params,
+      project_id: finalProjectId,
+      site_id: finalSiteId,
+      web_builder_site_id: finalWebBuilderSiteId
+    };
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    // [SERVER_PREVIEW_REQUEST_DEBUG] as requested by user
+    logDebug('[SERVER_PREVIEW_REQUEST_DEBUG]', {
+      endpoint,
+      project_id: finalProjectId,
+      site_id: finalSiteId,
+      web_builder_site_id: finalWebBuilderSiteId,
+      hasToken: Boolean(token),
+      tokenSource: source,
+      tokenPrefix: token ? token.slice(0, 12) : null,
+      authHeaderPresent: Boolean(headers['Authorization']),
+      bodyKeys: Object.keys(payload)
+    });
+
+    if (!token) {
+      console.warn('[SERVER_PREVIEW_REQUEST_DEBUG] Aborting: No auth token available for server-side preview generation');
+      throw new Error('No auth token available for server-side preview generation');
+    }
 
     const response = await fetch(endpoint, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify(params)
+      headers,
+      body: JSON.stringify(payload)
     });
 
-    const data = await response.json();
+    const data = await response.json().catch(() => ({}));
     logDebug('[SERVER_PREVIEW_RESPONSE_DEBUG]', { status: response.status, data });
 
     if (!response.ok) {
-      throw new Error(data.error || 'Failed to generate server-side preview');
+      throw new Error(data.error || `Failed to generate server-side preview (HTTP ${response.status})`);
     }
 
     return { 

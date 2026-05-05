@@ -105,6 +105,66 @@ const MODULE_ADAPTERS: Record<string, ModuleBridgeAdapter> = {
       'sticky': 'global_sticky',
       'position': 'global_position'
     }
+  },
+  about: {
+    contentToSettings: {
+      // Eyebrow
+      'eyebrow': 'el_about_narrative_eyebrow',
+      'label': 'el_about_narrative_eyebrow',
+      'kicker': 'el_about_narrative_eyebrow',
+      
+      // Title
+      'title': 'el_about_narrative_title',
+      'titulo': 'el_about_narrative_title',
+      'heading': 'el_about_narrative_title',
+      'headline': 'el_about_narrative_title',
+      
+      // Description
+      'description': 'el_about_narrative_description',
+      'descripcion': 'el_about_narrative_description',
+      'subtitle': 'el_about_narrative_description',
+      'subtitulo': 'el_about_narrative_description',
+      'summary': 'el_about_narrative_description',
+      'resumen': 'el_about_narrative_description',
+      'story': 'el_about_narrative_description',
+      'historia': 'el_about_narrative_description',
+      
+      // Quote
+      'quote': 'el_about_narrative_quote',
+      'cita': 'el_about_narrative_quote',
+      'tagline': 'el_about_narrative_quote',
+      'frase': 'el_about_narrative_quote',
+
+      // Image
+      'image_url': 'el_about_visual_image_url',
+      'image.url': 'el_about_visual_image_url',
+      'media.url': 'el_about_visual_image_url',
+      'image': 'el_about_visual_image_url',
+      'img': 'el_about_visual_image_url',
+      'featured_image': 'el_about_visual_image_url',
+      
+      'image_alt': 'el_about_visual_image_alt',
+      'image.alt': 'el_about_visual_image_alt',
+      'media.alt': 'el_about_visual_image_alt',
+      'alt': 'el_about_visual_image_alt',
+
+      // CTA
+      'button_text': 'el_about_narrative_button_text',
+      'cta_text': 'el_about_narrative_button_text',
+      'cta.label': 'el_about_narrative_button_text',
+      'cta.text': 'el_about_narrative_button_text',
+      'cta.title': 'el_about_narrative_button_text',
+      'button_url': 'el_about_narrative_button_url',
+      'cta_url': 'el_about_narrative_button_url',
+      'cta.url': 'el_about_narrative_button_url',
+      'cta.href': 'el_about_narrative_button_url',
+      'cta.link': 'el_about_narrative_button_url'
+    },
+    settingsToDeep: {
+      'layout': 'global_layout',
+      'image_position': 'global_layout', // En about el layout controla la posición
+      'background_style': 'global_bg_color'
+    }
   }
 };
 
@@ -157,6 +217,8 @@ export const bridgeModuleContent = ({
   const debug = isRenderDebugEnabled();
   const originalKeys = Object.keys(result);
   let strategy: 'explicit' | 'generic-fallback' | 'explicit+fallback' = 'generic-fallback';
+  let mappedKeys: string[] = [];
+  let aliasesUsed: string[] = [];
 
   // 1. Aplicar adaptador explícito si existe
   if (adapter) {
@@ -171,6 +233,8 @@ export const bridgeModuleContent = ({
 
         if (result[fullKey] === undefined && hasValue) {
           result[fullKey] = value;
+          mappedKeys.push(fullKey);
+          aliasesUsed.push(contentPath);
         }
       });
     }
@@ -184,8 +248,51 @@ export const bridgeModuleContent = ({
 
         if (result[fullKey] === undefined && hasValue) {
           result[fullKey] = value;
+          mappedKeys.push(fullKey);
         }
       });
+    }
+
+    // --- Specialized About Module Logic ---
+    if (baseType === 'about' && content) {
+      // Stats Normalization
+      const statsKey = `${moduleId}_el_about_stats_stats_list`;
+      const statsSource = content.stats || content.metrics || content.stats_list || content.numbers || content.indicators || content.indicadores;
+      
+      if (Array.isArray(statsSource) && statsSource.length > 0 && result[statsKey] === undefined) {
+        result[statsKey] = statsSource.map(item => {
+          if (typeof item === 'string') return { value: '', label: item, icon: 'Star' };
+          return {
+            value: String(item.value || item.numero || item.number || item.metric || item.cifra || ''),
+            label: String(item.label || item.title || item.titulo || item.text || item.descripcion || ''),
+            icon: String(item.icon || item.icono || 'Star')
+          };
+        });
+        mappedKeys.push(statsKey);
+      }
+
+      // Mission/Vision Composition (if description is missing)
+      const descKey = `${moduleId}_el_about_narrative_description`;
+      const coreDescKeys = ['description', 'descripcion', 'subtitle', 'subtitulo', 'summary', 'resumen', 'story', 'historia'];
+      const hasCoreDesc = coreDescKeys.some(k => content[k] !== undefined);
+      
+      if (!hasCoreDesc && result[descKey] === undefined) {
+        const mision = content.mision || content.mission;
+        const vision = content.vision;
+        if (mision && vision) {
+          result[descKey] = `Misión: ${mision}\n\nVisión: ${vision}`;
+          mappedKeys.push(descKey);
+          aliasesUsed.push('composition:mision+vision');
+        } else if (mision) {
+          result[descKey] = mision;
+          mappedKeys.push(descKey);
+          aliasesUsed.push('alias:mision');
+        } else if (vision) {
+          result[descKey] = vision;
+          mappedKeys.push(descKey);
+          aliasesUsed.push('alias:vision');
+        }
+      }
     }
   }
 
@@ -202,6 +309,12 @@ export const bridgeModuleContent = ({
       moduleType: type,
       baseType,
       strategy,
+      adapter: baseType,
+      mappedKeys,
+      aliasesUsed,
+      statsCount: baseType === 'about' ? (result[`${moduleId}_el_about_stats_stats_list`]?.length || 0) : 0,
+      ctaDetected: Boolean(result[`${moduleId}_el_about_narrative_button_text`]),
+      imageDetected: Boolean(result[`${moduleId}_el_about_visual_image_url`]),
       originalContentKeys: content ? Object.keys(content) : [],
       addedKeys,
       totalKeys: finalKeys.length

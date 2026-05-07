@@ -8,6 +8,8 @@ export interface ProjectFormData {
   description: string;
   goal: string;
   style: string;
+  tone: string;
+  targetAudience: string;
 }
 
 interface ProjectFormProps {
@@ -67,6 +69,17 @@ const STYLES = [
   'Atrevido'
 ];
 
+const TONES = [
+  'Profesional',
+  'Cercano y Amigable',
+  'Elegante y Sofisticado',
+  'Directo y Persuasivo',
+  'Cálido y Humano',
+  'Inspirador',
+  'Técnico y Precisó',
+  'Divertido y Juvenil'
+];
+
 export const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, onCancel, onSkip }) => {
   const [step, setStep] = useState(1);
   const [customIndustry, setCustomIndustry] = useState('');
@@ -75,7 +88,9 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, onCancel, on
     industry: '',
     description: '',
     goal: '',
-    style: ''
+    style: '',
+    tone: 'Profesional',
+    targetAudience: ''
   });
 
   const [wordCount, setWordCount] = useState(0);
@@ -87,8 +102,9 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, onCancel, on
 
   const isDescriptionValid = wordCount >= 10;
   const isIndustryValid = formData.industry === 'Otro' ? customIndustry.trim() !== '' : formData.industry !== '';
-  const isStep1Valid = formData.name.trim() !== '' && isIndustryValid && isDescriptionValid;
-  const isStep2Valid = formData.goal !== '' && formData.style !== '';
+  const isTargetAudienceValid = formData.targetAudience.trim().length > 3;
+  const isStep1Valid = formData.name.trim() !== '' && isIndustryValid && isDescriptionValid && isTargetAudienceValid;
+  const isStep2Valid = formData.goal !== '' && formData.style !== '' && formData.tone !== '';
 
   const handleNext = () => {
     if (step === 1) setStep(2);
@@ -171,6 +187,18 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, onCancel, on
                   )}
                 </div>
 
+                {/* Público objetivo */}
+                <div className="space-y-2">
+                  <label className="block text-base font-bold text-text">Público objetivo</label>
+                  <input
+                    type="text"
+                    placeholder="Ej: Emprendedores, padres de familia, gamers..."
+                    value={formData.targetAudience}
+                    onChange={(e) => setFormData({ ...formData, targetAudience: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl border border-border focus:border-primary focus:ring-0 outline-none transition-all text-sm text-text placeholder:text-text/30 bg-surface"
+                  />
+                </div>
+
                 {/* Descripción breve */}
                 <div className="space-y-2">
                   <label className="block text-base font-bold text-text">Descripción breve (mínimo 10 palabras)</label>
@@ -231,6 +259,26 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, onCancel, on
                         }`}
                       >
                         {style}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Tono de comunicación */}
+                <div className="space-y-4">
+                  <label className="block text-base font-bold text-text">Tono de comunicación</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {TONES.map((tone) => (
+                      <button
+                        key={tone}
+                        onClick={() => setFormData({ ...formData, tone })}
+                        className={`py-2.5 px-3 rounded-lg border text-[11px] font-bold transition-all text-center ${
+                          formData.tone === tone 
+                            ? 'border-primary bg-primary/10 text-primary' 
+                            : 'border-border text-text/40 hover:border-border/80'
+                        }`}
+                      >
+                        {tone}
                       </button>
                     ))}
                   </div>

@@ -56,17 +56,88 @@ const AppContent: React.FC = () => {
     }
   };
 
+  // [DEBUG_FLAGS_RESOLUTION_DEBUG] (FASE 2)
+  const queryParams = new URLSearchParams(window.location.search);
+  const debugParam = queryParams.get('debug');
+  const debugRenderParam = queryParams.get('debug_render');
+  const debugProductsParam = queryParams.get('debug_products');
+  
+  const debugEnabled = debugParam === 'true' || debugRenderParam === 'true' || debugParam === 'products';
+  const productsDebugEnabled = debugEnabled || debugParam === 'products' || debugProductsParam === 'true';
+
+  useEffect(() => {
+    if (debugEnabled) {
+      console.log('[DEBUG_FLAGS_RESOLUTION_DEBUG]', {
+        debugParam,
+        debugRenderParam,
+        debugProductsParam,
+        debugEnabled,
+        productsDebugEnabled,
+        search: window.location.search
+      });
+    }
+  }, [debugEnabled, productsDebugEnabled]);
+
   // Sync state to local storage
   useEffect(() => {
     console.log('[CONSTRUCTOR_BOOT_START] 🧩 AppContent montado', {
       timestamp: new Date().toISOString(),
       currentView,
-      projectId
+      projectId,
+      isHandshakeComplete
     });
+    
+    // [APP_CONTENT_RENDER_DECISION_DEBUG] (FASE 6)
+    if (debugEnabled) {
+      console.log('[APP_CONTENT_RENDER_DECISION_DEBUG]', {
+        currentView,
+        projectId,
+        siteId: (selectedPage as any)?.siteId || (selectedPage as any)?.id,
+        hasSelectedPage: !!selectedPage,
+        hasSections: !!(selectedPage as any)?.content?.sections,
+        sectionsCount: (selectedPage as any)?.content?.sections?.length || (selectedPage as any)?.content?.pages?.[0]?.sections?.length || 0,
+        isHandshakeComplete,
+        willRenderViewer: currentView === 'viewer',
+        willRenderEmptyScreen: currentView === 'viewer' && !selectedPage,
+        reasonIfEmpty: !selectedPage ? "selectedPage is null" : "None"
+      });
+    }
+
     if (projectId || currentView !== 'dashboard') {
       saveSession();
     }
-  }, [projectId, appId, currentView, selectedPage, activeTab]);
+  }, [projectId, appId, currentView, selectedPage, activeTab, isHandshakeComplete]);
+
+  // [VIEWER_HANDSHAKE_BYPASS_DEBUG] (FASE 9)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const siteIdParam = params.get('site_id') || params.get('satellite_id');
+    const isPublishedMode = params.get('mode') === 'render' || params.get('external_render') === 'true' || window.location.search.includes('debug=products');
+
+    if ((siteIdParam && isPublishedMode) || (window.location.search.includes('debug=products'))) {
+      if (!isHandshakeComplete) {
+        console.log('[VIEWER_HANDSHAKE_BYPASS_DEBUG]', {
+          currentView,
+          isPublishedViewer: true,
+          shouldWaitForHandshake: false,
+          reason: "published viewer detected from URL params (FORCED-V101)"
+        });
+        
+        // Auto-complete handshake after a short delay if it hasn't finished
+        const timer = setTimeout(() => {
+          if (!isHandshakeComplete) {
+            console.warn('[VIEWER_HANDSHAKE_BYPASS] Forzando isHandshakeComplete=true por timeout (V101).');
+            setIsHandshakeComplete(true);
+            // Only force view if not already in viewer
+            if (currentView !== 'viewer') {
+              setCurrentView('viewer');
+            }
+          }
+        }, 500); // Shorter timeout
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [isHandshakeComplete, currentView]);
 
   const refreshData = async (fProjectId?: string) => {
     const idToUse = fProjectId || projectId;
@@ -148,6 +219,9 @@ const AppContent: React.FC = () => {
 
       // Si hay datos de Supabase, inicializamos y cargamos perfil
       if (payload.supabase_url && payload.supabase_anon_key && payload.session_token) {
+        // [SIP v6.3] Runtime enrichment for the auth provider
+        (window as any).SOLUTIUM_SUPABASE_SESSION = { access_token: payload.session_token };
+
         const supabase = initSupabase(
           payload.supabase_url,
           payload.supabase_anon_key,

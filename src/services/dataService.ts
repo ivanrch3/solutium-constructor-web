@@ -288,7 +288,7 @@ export const getProducts = async (page: number, pageSize: number, projectId: str
   try {
     const supabase = getSupabase();
     if (!supabase) {
-      console.warn('Supabase client not initialized. Waiting for handshake.');
+      // En modo publicado (sin handshake), fallamos silenciosamente ya que usamos el Snapshot del contrato (Opción A)
       return [];
     }
     const start = page * pageSize;

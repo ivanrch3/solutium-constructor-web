@@ -44,6 +44,7 @@ export interface Section {
   settings: Record<string, any>;
   moduleId?: string;
   settingsValues?: Record<string, any>;
+  content?: any;
 }
 
 export interface Theme {

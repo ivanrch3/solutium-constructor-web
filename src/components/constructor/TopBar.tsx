@@ -112,10 +112,11 @@ export const TopBar: React.FC<TopBarProps> = ({
           <div className="flex items-center gap-1">
             <button 
               onClick={onReload}
-              className="p-2 text-text/60 hover:text-primary hover:bg-secondary rounded-lg transition-all"
-              title="Recargar página"
+              className="p-2 text-text/60 hover:text-primary hover:bg-secondary rounded-lg transition-all flex items-center gap-2"
+              title="Recargar Contexto (Resuelve problemas de sesión/token)"
             >
               <RotateCcw size={16} />
+              <span className="text-[10px] font-bold uppercase tracking-tight hidden lg:block">Recargar Contexto</span>
             </button>
             {onUpdatePreview && (
               <button 

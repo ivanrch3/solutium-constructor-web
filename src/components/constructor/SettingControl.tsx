@@ -16,7 +16,9 @@ import {
   Strikethrough,
   CheckCircle2,
   Plus,
-  Trash2
+  Trash2,
+  ShoppingBag,
+  Users
 } from 'lucide-react';
 import { SettingDefinition } from '../../types/constructor';
 import { Product, Customer } from '../../types/schema';
@@ -174,64 +176,120 @@ export const SettingControl: React.FC<SettingControlProps> = ({
     case 'product_selection':
     case 'customer_selection':
       const isProduct = setting.type === 'product_selection';
+      const isRealProject = projectId && projectId !== 'dev-project-id';
       const availableItems = isProduct 
         ? ((products && products.length > 0) ? products : (projectId === 'dev-project-id' ? MOCK_PRODUCTS : []))
         : ((customers && customers.length > 0) ? customers : (projectId === 'dev-project-id' ? MOCK_CUSTOMERS : []));
       
       return (
         <div className={`space-y-3 ${isDisabled ? 'opacity-50 pointer-events-none grayscale' : ''}`}>
-          <div className="flex items-center justify-between">
-            <label className="text-[10px] font-bold text-text/40 uppercase tracking-wider">{setting.label}</label>
-            {isDisabled && <span className="text-[8px] font-bold text-red-500/60 italic">{setting.disabledMessage}</span>}
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center justify-between">
+              <label className="text-[10px] font-black text-text/60 uppercase tracking-widest">{setting.label}</label>
+              {isDisabled && <span className="text-[8px] font-bold text-red-500/60 italic">{setting.disabledMessage}</span>}
+            </div>
+            {isProduct && isRealProject && (
+              <div className="flex items-center gap-1.5 px-2 py-1 bg-primary/5 border border-primary/10 rounded-lg">
+                <LucideIcons.Database size={10} className="text-primary" />
+                <span className="text-[9px] font-bold text-primary uppercase">Productos del catálogo del proyecto</span>
+              </div>
+            )}
           </div>
           <div className="grid grid-cols-1 gap-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-            {availableItems.map((item: any) => {
-              const isSelected = Array.isArray(currentValue) && currentValue.includes(item.id);
+            {availableItems.map((item: any, idx: number) => {
+              const itemId = String(item.id);
+              const isExplicitArray = Array.isArray(currentValue);
+              const normalizedValue = isExplicitArray ? currentValue.map(id => String(id)) : [];
+              
+              // [FASE 4] Auditar el control visual de selección
+              const isSelected = !isExplicitArray ? true : normalizedValue.includes(itemId);
+              
               const imageUrl = isProduct ? item.imageUrl : item.companyLogoUrl;
               
               return (
                 <div 
-                  key={item.id}
-                  onClick={() => {
-                    const newValue = isSelected 
-                      ? (currentValue as string[]).filter(id => id !== item.id)
-                      : [...(currentValue as string[] || []), item.id];
+                  key={item.id || `select-item-${idx}`}
+                onClick={() => {
+                    let newValue: string[];
+                    const previousSelectedIds = isExplicitArray ? currentValue.map((id: any) => String(id)) : availableItems.map((i: any) => String(i.id));
+                    
+                    if (!isExplicitArray) {
+                      // Transition to explicit mode
+                      newValue = availableItems
+                        .map((i: any) => String(i.id))
+                        .filter((id: string) => id !== itemId);
+                    } else {
+                      // Normal toggle
+                      newValue = isSelected 
+                        ? normalizedValue.filter(id => id !== itemId)
+                        : [...normalizedValue, itemId];
+                    }
+
+                    console.log('[PRODUCTS_SELECTION_CLICK_FORENSIC_DEBUG]', {
+                      moduleId: (setting as any).moduleId || 'unknown',
+                      productIdClicked: itemId,
+                      productName: item.name,
+                      checkedBefore: isSelected,
+                      checkedAfter: !isSelected,
+                      selectedIdsBefore: previousSelectedIds,
+                      selectedIdsAfter: newValue,
+                      updatedKey: (setting as any).id || setting.id,
+                      updatedValueCount: newValue.length,
+                      timestamp: Date.now()
+                    });
+                    
                     onChange(newValue);
                   }}
-                  className={`flex items-center gap-3 p-2 rounded-xl border transition-all cursor-pointer group ${
+                  className={`flex items-center gap-3 p-2.5 rounded-2xl border transition-all cursor-pointer group relative overflow-hidden ${
                     isSelected 
-                      ? 'bg-primary/10 border-primary/20 shadow-sm' 
-                      : 'bg-surface border-border hover:border-border/80'
+                      ? 'bg-primary/5 border-primary/30 shadow-md ring-1 ring-primary/10' 
+                      : 'bg-surface border-border/60 hover:bg-secondary/20 hover:border-border'
                   }`}
                 >
-                  <div className="w-12 h-12 rounded-lg overflow-hidden bg-secondary flex-shrink-0 border border-border/30">
+                  {isSelected && (
+                    <div className="absolute top-0 right-0 w-8 h-8 bg-primary text-white flex items-center justify-center rounded-bl-2xl shadow-lg">
+                      <Check size={14} strokeWidth={4} />
+                    </div>
+                  )}
+
+                  <div className="w-14 h-14 rounded-xl overflow-hidden bg-secondary flex-shrink-0 border border-border/30 shadow-inner group-hover:scale-105 transition-transform">
                     {imageUrl ? (
                       <img src={imageUrl} alt={item.name} className={`w-full h-full ${isProduct ? 'object-cover' : 'object-contain p-1'}`} referrerPolicy="no-referrer" />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-text/20">
-                        <ImageIcon size={16} />
+                      <div className="w-full h-full flex items-center justify-center text-text/10">
+                        {isProduct ? <ShoppingBag size={20} /> : <Users size={20} />}
                       </div>
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className={`text-[11px] font-bold truncate ${isSelected ? 'text-primary' : 'text-text'}`}>
-                       {item.name}
-                    </p>
-                    <p className="text-[10px] text-text/40 font-medium">
-                      {isProduct ? `$${item.price}` : (item.company || 'Cliente')}
-                    </p>
-                  </div>
-                  <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${
-                    isSelected ? 'bg-primary border-primary' : 'bg-surface border-border group-hover:border-border/80'
-                  }`}>
-                    {isSelected && <CheckCircle2 size={12} className="text-white" />}
+                    <div className="flex flex-col">
+                      <span className="text-[9px] font-black text-text/30 uppercase tracking-tighter mb-0.5">
+                        {isProduct ? (item.category || 'Sin Categoría') : 'Cliente'}
+                      </span>
+                      <p className={`text-[12px] font-black truncate leading-tight mb-1 ${isSelected ? 'text-primary' : 'text-text'}`}>
+                         {item.name}
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className={`text-[11px] font-bold ${isSelected ? 'text-primary' : 'text-text/60'}`}>
+                          {isProduct ? `${item.currency || '$'}${item.price}` : (item.company || 'Empresa')}
+                        </p>
+                        {isProduct && item.compareAtPrice && (
+                          <p className="text-[9px] text-text/30 line-through">${item.compareAtPrice}</p>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
               );
             })}
             {availableItems.length === 0 && (
-              <div className="p-6 text-center bg-secondary rounded-xl border border-dashed border-border">
-                <p className="text-[10px] text-text/40 font-medium">No hay {isProduct ? 'productos' : 'clientes'} disponibles.</p>
+              <div className="p-8 text-center bg-secondary/50 rounded-2xl border border-dashed border-border/50 flex flex-col items-center gap-3">
+                <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center text-text/10 shadow-sm">
+                  {isProduct ? <ShoppingBag size={24} /> : <Users size={24} />}
+                </div>
+                <p className="text-[10px] text-text/40 font-black uppercase tracking-widest leading-relaxed">
+                  No hay {isProduct ? 'productos' : 'clientes'}<br/>en el catálogo
+                </p>
               </div>
             )}
           </div>

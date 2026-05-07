@@ -14,7 +14,17 @@ window.close = function() {
   // originalClose.call(window); // Comentado para mantener la pestaña abierta
 };
 
-console.log('[CONSTRUCTOR_BOOT_START] 🟢 Absoluto inicio del bundle main.tsx', {
+console.warn("[LIVE_BUNDLE_VERSION_DEBUG]", {
+  app: "solutium-live-viewer",
+  version: "v6.3-products-snapshot-live-fix-BETA-V101",
+  file: "src/main.tsx",
+  buildTime: new Date().toISOString(),
+  href: window.location.href,
+  origin: window.location.origin,
+  search: window.location.search
+});
+
+console.log('[CONSTRUCTOR_BOOT_START] 🟢 Absoluto inicio del bundle main.tsx (Force-V101)', {
   href: window.location.href,
   opener: !!window.opener,
   parent: window.parent !== window,

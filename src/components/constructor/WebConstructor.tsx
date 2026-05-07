@@ -52,7 +52,9 @@ import {
   UnsavedChangesModal, 
   DeleteConfirmationModal, 
   PublishModal,
-  AIGenerationModal
+  AIGenerationModal,
+  MotherAIPageConfirmationModal,
+  AIUsageSuccessModal
 } from './ConstructorModals';
 import { BentoPromptGenerator } from './BentoPromptGenerator';
 import { BentoSchema } from '../../types/bentoSchema';
@@ -61,7 +63,7 @@ import {
   getFontFamily,
   getBorderRadius,
 } from './utils';
-import { generateSite } from '../../services/aiService';
+import { generateSite, generateLandingWithMotherAI, generateLandingDryRunLocal, MotherAIPageResponse } from '../../services/aiService';
 import { AIGenerationContext } from '../../types/ai';
 import { ProjectForm, ProjectFormData } from '../ProjectForm';
 import { useEditorStore } from '../../store/editorStore';
@@ -203,6 +205,14 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   } = useEditorStore();
 
   useEffect(() => {
+    console.log('[CONSTRUCTOR_RUNTIME_VERSION]', {
+      version: "bento-editor-ux-v1",
+      hasBentoEmptyState: true,
+      hasBentoEditorWrapper: true,
+      hasBentoCellEditor: true,
+      buildTime: new Date().toISOString()
+    });
+
     if (initialPage && 'content' in initialPage && (initialPage as any).content) {
       setSiteContent((initialPage as any).content);
     } else if (initialPage && 'contentDraft' in initialPage && initialPage.contentDraft) {
@@ -271,6 +281,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       });
     }
   }, [projectId, initialPage, currentSiteId, project]);
+
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [publishStatus, setPublishStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
@@ -479,6 +490,14 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     "Curando imágenes de stock y activos..."
   ];
 
+  // --- [PHASE 3D.5.2] Secure AI Generation States ---
+  const [isMotherAIConfirmationOpen, setIsMotherAIConfirmationOpen] = useState(false);
+  const [isDryRun, setIsDryRun] = useState(true); // Default to dry-run (preview)
+  const [motherAIBrief, setMotherAIBrief] = useState<ProjectFormData | null>(null);
+  const [activeIdempotencyKey, setActiveIdempotencyKey] = useState<string | null>(null);
+  const [aiUsageSuccess, setAiUsageSuccess] = useState<{costCredits: number, totalTokens: number, aiUsageLogId: string, isDryRun?: boolean} | null>(null);
+  const isRunningRef = useRef(false); // Ref for blocking double clics
+
   const [isPreviewMode] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     return params.get('mode') === 'preview';
@@ -552,6 +571,30 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     root.style.setProperty('--max-width', `${getThemeVal('container_width', 1400)}px`);
     
   }, [editorState.settingsValues, project]);
+
+  // [PRODUCTS_SELECTION_STATE_AUDIT]
+  useEffect(() => {
+    siteContent.sections.forEach(section => {
+      if (section.type === 'products' || section.type === 'product_grid') {
+        const moduleId = section.id;
+        const selectKey = `${moduleId}_el_products_config_select_products`;
+        const contentProducts = section.content?.products || (section.content as any)?.productos;
+        const snapshotKey = `${moduleId}_el_products_items_products`;
+        
+        console.log('[PRODUCTS_SELECTION_STATE_AFTER_UPDATE_DEBUG]', {
+          moduleId,
+          sectionId: section.id,
+          sectionType: section.type,
+          selectedIdsFromSettings: section.settings?.[selectKey],
+          selectedIdsFromEditorState: editorState.settingsValues[selectKey],
+          selectedIdsFromContent: (section.content as any)?.selectedProductIds,
+          productsInSectionContentCount: Array.isArray(contentProducts) ? contentProducts.length : 0,
+          productsSnapshotCount: Array.isArray(section.settings?.[snapshotKey]) ? section.settings[snapshotKey].length : 0,
+          timestamp: Date.now()
+        });
+      }
+    });
+  }, [siteContent, editorState.settingsValues]);
 
   React.useEffect(() => {
     const checkMobile = () => {
@@ -727,6 +770,191 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   }, [storeSelectedSectionId, storeSelectedElementId, activeTab]);
 
   const handleAISubmit = async (data: ProjectFormData) => {
+    // [PHASE 3D.5.2] INTERCEPTAMOS EL FLUJO PARA USAR EL ENDPOINT SEGURO
+    setMotherAIBrief(data);
+    setIsMotherAIConfirmationOpen(true);
+    
+    // Generar key persistente para este intento
+    const key = `web-landing-${projectId || 'anon'}-${Date.now()}`;
+    setActiveIdempotencyKey(key);
+  };
+
+  const executeSecureAIGeneration = async () => {
+    if (!motherAIBrief || !projectId) {
+      setAiError("Cerrado: Faltan datos del proyecto o del brief.");
+      return;
+    }
+
+    // Bloquear dobles clics
+    if (isRunningRef.current) {
+      console.log('[CONSTRUCTOR_GENERATE_LANDING_DUPLICATE_BLOCKED]', {
+        idempotencyKey: activeIdempotencyKey,
+        actionSlug: 'web_ai_generate_landing'
+      });
+      return;
+    }
+
+    console.log(isDryRun ? '[CONSTRUCTOR_LANDING_DRY_RUN_LOCAL]' : '[CONSTRUCTOR_LANDING_REAL_EXECUTION_START]', {
+      mode: isDryRun ? "dry-run" : "real",
+      willCallBackend: !isDryRun,
+      estimatedCostCredits: 15,
+      actionSlug: 'web_ai_generate_landing',
+      idempotencyKey: activeIdempotencyKey
+    });
+
+    isRunningRef.current = true;
+    setIsMotherAIConfirmationOpen(false);
+    setHasStartedAI(true);
+    setIsGeneratingAI(true);
+    setAiGenerationStep(0);
+    setAiError(null);
+
+    const stepInterval = setInterval(() => {
+      setAiGenerationStep(prev => (prev < 3 ? prev + 1 : prev));
+    }, isDryRun ? 1000 : 4000); // Dry run faster
+
+    try {
+      let response: MotherAIPageResponse;
+
+      if (isDryRun) {
+        console.log('[CONSTRUCTOR_LANDING_DRY_RUN_GUARD_BLOCKED_FETCH]', {
+          reason: "dry-run must be 100% local",
+          actionSlug: 'web_ai_generate_landing'
+        });
+        
+        // Simular un pequeño delay para feedback visual
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        
+        response = generateLandingDryRunLocal({
+          businessName: motherAIBrief.name,
+          industry: motherAIBrief.industry
+        });
+      } else {
+        response = await generateLandingWithMotherAI(
+          projectId,
+          {
+            businessName: motherAIBrief.name,
+            industry: motherAIBrief.industry || 'General',
+            description: motherAIBrief.description,
+            goal: motherAIBrief.goal || 'Branding',
+            tone: motherAIBrief.tone || 'Profesional',
+            style: motherAIBrief.style || 'Moderno',
+            targetAudience: motherAIBrief.targetAudience || 'Clientes potenciales'
+          },
+          activeIdempotencyKey!,
+          { isDryRun: false }
+        );
+      }
+
+      clearInterval(stepInterval);
+
+      if (!response.success) {
+        throw new Error(response.error || 'La generación con IA falló.');
+      }
+
+      if (isDryRun) {
+        setIsGeneratingAI(false);
+        // [FASE 4] Mostrar estado SIMULADO
+        setAiUsageSuccess({
+          costCredits: 15,
+          totalTokens: 0,
+          aiUsageLogId: "dry_run_simulated",
+          isDryRun: true
+        });
+        console.log('[CONSTRUCTOR_LANDING_DRY_RUN_RESULT_LOCAL]', response);
+        isRunningRef.current = false;
+        return;
+      }
+
+      const backendPage = response.data?.page;
+      if (!backendPage || !Array.isArray(backendPage.sections) || backendPage.sections.length === 0) {
+        throw new Error("El servidor no devolvió secciones válidas.");
+      }
+
+      // [PROTOCOL 13.1] HIDRATACIÓN DESDE BACKEND SEGURO
+      updateEditorState(prev => {
+        let newSettings = { ...prev.settingsValues };
+        const newAddedModules: WebModule[] = [];
+        
+        backendPage.sections.forEach((sec: any) => {
+          const baseModule = Object.values(registryModules).find((m: any) => 
+            (m as any).id === sec.type || (m as any).id === sec.moduleId
+          ) as WebModule;
+          
+          if (!baseModule) {
+            console.warn(`[AI_HYDRATION] Módulo no reconocido: ${sec.type}`);
+            return;
+          }
+
+          const moduleId = `mod_${crypto.randomUUID()}`;
+          const moduleElements = baseModule.elements.map(el => {
+            const elId = `${moduleId}_${el.id}`;
+            const backendElements = sec.elements || [];
+            const backendEl = backendElements.find((be: any) => 
+              be.id === el.id || be.id === el.id.replace('el_', '')
+            );
+
+            if (backendEl && backendEl.fields) {
+              backendEl.fields.forEach((f: any) => {
+                newSettings[`${elId}_${f.id}`] = f.value;
+              });
+            } else if (sec.content) {
+              Object.entries(sec.content).forEach(([k, v]) => {
+                if (k === 'title' && el.id.includes('typography')) newSettings[`${elId}_title`] = v;
+                if (k === 'subtitle' && el.id.includes('typography')) newSettings[`${elId}_subtitle`] = v;
+                if (k === 'image_url' && el.id.includes('media')) newSettings[`${elId}_image`] = v;
+              });
+            }
+
+            return { ...el, id: elId };
+          });
+
+          newAddedModules.push({
+            ...baseModule,
+            id: moduleId,
+            name: sec.name || baseModule.name,
+            elements: moduleElements
+          });
+        });
+
+        return {
+          ...prev,
+          addedModules: newAddedModules, 
+          settingsValues: newSettings,
+          totalModulesAdded: newAddedModules.length
+        };
+      });
+
+      // [FASE 6] Corregir mapeo de costo para soportar totalConsumed
+      const usageData = response.usage as any;
+      const cost = usageData?.costCredits || usageData?.total_consumed || usageData?.totalConsumed || 15;
+      
+      setAiUsageSuccess({
+        costCredits: cost,
+        totalTokens: response.usage?.totalTokens || 0,
+        aiUsageLogId: response.usage?.aiUsageLogId || 'unknown'
+      });
+
+      console.log('[CONSTRUCTOR_GENERATE_LANDING_REAL_SUCCESS]', {
+        idempotencyKey: activeIdempotencyKey,
+        costCredits: cost
+      });
+
+      setSiteName(motherAIBrief.name);
+      setHasUnsavedChanges(true);
+      setIsGeneratingAI(false);
+      setOnboardingFinished(true);
+
+    } catch (err: any) {
+      console.error('[AI_GENERATION_ERROR]', err);
+      setAiError(err.message || 'Error en la generación segura.');
+      setIsGeneratingAI(false);
+    } finally {
+      isRunningRef.current = false;
+    }
+  };
+
+  const handleAISubmitLegacy = async (data: ProjectFormData) => {
     setShowAIInitialForm(false);
     setHasStartedAI(true);
     setIsGeneratingAI(true);
@@ -882,6 +1110,22 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
             // Custom logic for specific settings
             if ((setting.id === 'logo_text' || setting.id === 'brand_name') && project?.name) {
               val = project.name.toUpperCase();
+            }
+
+            // SIP v12.1: Intelligent product defaults
+            if (module.type === 'products' || module.type === 'product_grid') {
+              if (setting.id === 'selection_mode') {
+                // If we have real DB products, default to 'auto' to show them instantly
+                if ((products?.length || 0) > 0) {
+                  val = 'auto';
+                }
+              }
+              if (setting.id === 'select_products') {
+                const availableProducts = (products?.length || 0) > 0 ? products : (projectId === 'dev-project-id' ? MOCK_PRODUCTS : []);
+                if ((availableProducts?.length || 0) > 0) {
+                  val = availableProducts.slice(0, 8).map(p => p.id);
+                }
+              }
             }
 
             if (setting.id === 'logo_img' && (project?.logoUrl || logoUrl)) {
@@ -1406,11 +1650,194 @@ const formatTimestampName = () => {
         if (!content.title) content.title = module.name;
 
         // Specific overrides for modules that have multiple items (like products/clients)
-        if (module.type === 'products') {
-          content.productIds = getVal(module.id, null, 'select_products', []);
+        if (module.type === 'products' || module.type === 'product_grid') {
+          // [SIP v5.5 FIX] Correctly resolve product selection settings from el_products_config
+          const selectionMode = getVal(module.id, 'el_products_config', 'selection_mode', 'auto');
+          const selectedIds = getVal(module.id, 'el_products_config', 'select_products', []);
+          
+          content.selectionMode = selectionMode;
+          content.productIds = selectedIds;
+
+          // [PROTOCOL 12.1] ATOMIC SNAPSHOT: Resolve real products for the published contract
+          let finalProducts: Product[] = [];
+          
+          if (Array.isArray(products) && products.length > 0) {
+            if (selectionMode === 'manual') {
+              if (Array.isArray(selectedIds) && selectedIds.length > 0) {
+                finalProducts = products.filter(p => selectedIds.includes(p.id));
+                console.log(`[PRODUCTS_CONTRACT_DEBUG] Resolved ${finalProducts.length} manually selected products.`);
+              } else {
+                // [SIP v5.6 FIX] If manual mode but empty selection, publish EMPTY list, do NOT fallback to latest products
+                finalProducts = [];
+                console.log(`[PRODUCTS_CONTRACT_DEBUG] Manual selection is empty. Publishing empty product list.`);
+              }
+            } else {
+              // Default to auto (latest 8 products) for 'auto' mode
+              finalProducts = [...products]
+                .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
+                .slice(0, 8);
+              console.log(`[PRODUCTS_CONTRACT_DEBUG] Resolved ${finalProducts.length} automated products (Mode: ${selectionMode}).`);
+            }
+          }
+
+          // Fallback to existing injected products if database catalog is empty but injected source exists
+          if (finalProducts.length === 0) {
+            const currentInjected = getVal(module.id, 'el_products_items', 'products', []) as Product[];
+            if (Array.isArray(currentInjected) && currentInjected.length > 0) {
+              finalProducts = currentInjected;
+            }
+          }
+
+          if (finalProducts.length > 0) {
+            // [PROTOCOL 12.3] DATA NORMALIZATION
+            const normalizedProducts = finalProducts.map((p, idx) => {
+              const rawPrice = (p as any).price;
+              const rawRefPrice = (p as any).priceReference;
+              const rawStock = (p as any).stock;
+
+              const priceNum = typeof rawPrice === 'string' ? parseFloat(rawPrice.replace(/[^\d.,-]/g, '').replace(',', '.')) : rawPrice;
+              const refPriceNum = typeof rawRefPrice === 'string' ? parseFloat(rawRefPrice.replace(/[^\d.,-]/g, '').replace(',', '.')) : rawRefPrice;
+              const stockNum = typeof rawStock === 'string' ? parseInt(rawStock, 10) : rawStock;
+
+              return {
+                ...p,
+                id: String(p.id || `prod_${idx}`),
+                name: String(p.name || `Producto ${idx + 1}`),
+                price: Number.isFinite(priceNum) ? Number(priceNum) : undefined,
+                priceReference: Number.isFinite(refPriceNum) ? Number(refPriceNum) : undefined,
+                stock: Number.isFinite(stockNum) ? Number(stockNum) : undefined,
+                ratingAverage: Number.isFinite(p.ratingAverage) ? Number(p.ratingAverage) : 5,
+                reviewCount: Number.isFinite(p.reviewCount) ? Number(p.reviewCount) : 0
+              };
+            });
+
+            content.products = normalizedProducts;
+            content.productos = normalizedProducts; // Legacy fallback
+            content.items = normalizedProducts; // Legacy fallback
+            
+            // Also store in deep settings for hydrationBridge consistency
+            const snapshotKey = `${module.id}_el_products_items_products`;
+            settings[snapshotKey] = normalizedProducts;
+            
+            console.log('[PRODUCTS_LEGACY_PUBLISH_SNAPSHOT_DEBUG]', {
+              sectionId: module.id,
+              moduleId: module.id,
+              finalProductsCount: normalizedProducts.length,
+              source: selectionMode,
+              hasContentProducts: !!content.products,
+              hasSettingsSnapshot: !!settings[snapshotKey]
+            });
+            
+            console.log('[PRODUCTS_PUBLISH_SNAPSHOT_FINAL_CONTRACT_DEBUG]', {
+              sectionId: module.id,
+              moduleId: module.id,
+              selectionMode,
+              selectedProductIds: selectedIds,
+              selectedProductsCount: selectedIds.length,
+              contentProductsCount: normalizedProducts.length,
+              finalContentKeys: Object.keys(content),
+              finalSettingsKeys: Object.keys(settings).filter(k => k.startsWith(module.id)),
+              productsPreview: normalizedProducts.slice(0, 2).map(p => p.name)
+            });
+            
+            console.log('[PRODUCTS_PUBLISH_SNAPSHOT_FINAL_CONTRACT_DEBUG_V2]', {
+              sectionId: module.id,
+              moduleId: module.id,
+              finalProductsCount: normalizedProducts.length,
+              snapshotKey,
+              hasSnapshotInSettings: !!settings[snapshotKey],
+              hasProductsInContent: !!content.products,
+              firstProduct: normalizedProducts[0]?.name,
+              targetTables: ["web_builder_sites.content_published", "published_sites.content"]
+            });
+          } else {
+            console.warn('[PRODUCTS_PUBLISH_SNAPSHOT_EMPTY_WARNING]', {
+              moduleId: module.id,
+              selectionMode,
+              selectedIdsCount: selectedIds?.length,
+              availableProductsCount: products?.length
+            });
+          }
+        }
+
+        // [SIP v12.13] ADVANCED SNAPSHOT FOR PRODUCTS_SHOWCASE
+        if (module.type === 'products_showcase') {
+          const selectKey = `${module.id}_el_products_showcase_config_select_products`;
+          const selectedIds = currentState.settingsValues[selectKey] || null;
+          
+          let snapshot: Product[] = [];
+          
+          // Debug logs for selection state
+          console.log('[PRODUCTS_SHOWCASE_V2_SELECTION_DEBUG]', {
+            moduleId: module.id,
+            selectKey,
+            selectedIdsRaw: selectedIds,
+            hasProducts: Array.isArray(products) && products.length > 0
+          });
+
+          if (Array.isArray(products) && products.length > 0) {
+            if (selectedIds === null || selectedIds === undefined) {
+              // Default selection if none is made
+              snapshot = products.slice(0, 8);
+            } else if (Array.isArray(selectedIds)) {
+              const stringIds = selectedIds.map(String);
+              snapshot = products.filter(p => stringIds.includes(String(p.id)));
+            }
+          }
+
+          if (snapshot.length > 0) {
+            // [PROTOCOL 12.3] DATA NORMALIZATION (Copied from products logic for consistency)
+            const normalizedSnapshot = snapshot.map((p, idx) => {
+              const rawPrice = (p as any).price;
+              const rawRefPrice = (p as any).priceReference;
+              const priceNum = typeof rawPrice === 'string' ? parseFloat(rawPrice.replace(/[^\d.,-]/g, '').replace(',', '.')) : rawPrice;
+              const refPriceNum = typeof rawRefPrice === 'string' ? parseFloat(rawRefPrice.replace(/[^\d.,-]/g, '').replace(',', '.')) : rawRefPrice;
+              
+              return {
+                ...p,
+                id: String(p.id || `prod_v2_${idx}`),
+                name: String(p.name || `Producto ${idx + 1}`),
+                price: Number.isFinite(priceNum) ? Number(priceNum) : undefined,
+                priceReference: Number.isFinite(refPriceNum) ? Number(refPriceNum) : undefined
+              };
+            });
+
+            // Inyectar snapshot en múltiples lugares para redundancia total
+            content.products = normalizedSnapshot;
+            content.items = normalizedSnapshot;
+            content.productos = normalizedSnapshot;
+            content.selectedProductIds = normalizedSnapshot.map(p => p.id);
+            
+            // También en settings para hidratación delegada
+            const itemsKey = `${module.id}_el_products_showcase_items_products`;
+            settings[itemsKey] = normalizedSnapshot;
+            settings.productsSnapshot = normalizedSnapshot;
+            
+            // Preserve selection key in settings
+            settings[selectKey] = normalizedSnapshot.map(p => p.id);
+
+            console.log('[PRODUCTS_SHOWCASE_V2_PUBLISH_SNAPSHOT_DEBUG]', {
+              moduleId: module.id,
+              selectedCount: Array.isArray(selectedIds) ? selectedIds.length : 'all',
+              snapshotCount: normalizedSnapshot.length,
+              targetKeys: ['content.products', `settings.${itemsKey}`]
+            });
+          }
         }
         if (module.type === 'clients') {
-          content.customerIds = getVal(module.id, null, 'select_customers', []);
+          const selectedIds = getVal(module.id, null, 'select_customers', []);
+          content.customerIds = selectedIds;
+          
+          let finalCustomers: Customer[] = [];
+          if (Array.isArray(customers) && customers.length > 0 && Array.isArray(selectedIds)) {
+            finalCustomers = customers.filter(c => selectedIds.includes(c.id));
+          }
+
+          if (finalCustomers.length > 0) {
+            content.customers = finalCustomers;
+            const snapshotKey = `${module.id}_el_clients_items_customers`;
+            settings[snapshotKey] = finalCustomers;
+          }
         }
 
         // SIP v11.3: Specialized project profile enrichment for Footer
@@ -1539,6 +1966,7 @@ const formatTimestampName = () => {
         return {
           id: module.id,
           tipo: tipo,
+          templateId: (module as any).templateId || module.id,
           type: module.type as any, // Keep for backward compatibility if needed
           content,
           settings,
@@ -1592,7 +2020,7 @@ const formatTimestampName = () => {
       }
     });
 
-    return {
+    const contractResult: RenderingContract = {
       layout: "full-width",
       inject_tailwind: true,
       css: cssBlock,
@@ -1602,6 +2030,25 @@ const formatTimestampName = () => {
       },
       sections
     };
+
+    console.log('[PRODUCTS_PUBLISH_CONTRACT_FINAL_AUDIT]', {
+      siteName: finalSiteName,
+      sectionsCount: sections.length,
+      productsSections: sections
+        .filter(s => {
+          const type = (s.type || s.tipo || '').toLowerCase();
+          return type.includes('product') || type.includes('catalogo') || type.includes('showcase');
+        })
+        .map(s => ({
+          id: s.id,
+          hasProductsInContent: !!s.content.products,
+          productsCount: s.content.products?.length || 0,
+          hasSnapshotV1: !!s.settings[`${s.id}_el_products_items_products`],
+          hasSnapshotV2: !!s.settings[`${s.id}_el_products_showcase_items_products`]
+        }))
+    });
+
+    return contractResult;
   };
 
   const handleSaveDraft = async (forcedStatus?: 'draft' | 'published' | 'modified') => {
@@ -1806,6 +2253,20 @@ const formatTimestampName = () => {
       if (!actualSite) throw new Error('Error al actualizar registro de sitio');
 
       // 2. Publish Site (Legacy published_sites sync)
+      const draftHasProductsShowcase = (activeState.addedModules || []).some((m: any) => m.type === 'products_showcase');
+      const contractHasProductsShowcase = (contract.sections || []).some((s: any) => s.type === 'products_showcase' || s.tipo === 'products_showcase');
+
+      console.log('[PRODUCTS_SHOWCASE_PUBLISH_PRESENCE_DEBUG]', {
+        draftHasProductsShowcase,
+        contractHasProductsShowcase,
+        sectionsCount: contract.sections?.length || 0,
+        moduleTypes: (contract.sections || []).map((s: any) => s.type || s.tipo),
+        moduleId: (contract.sections || []).find((s: any) => s.type === 'products_showcase' || s.tipo === 'products_showcase')?.id,
+        appId,
+        projectId,
+        siteId
+      });
+
       const publishData: Partial<PublishedSite> = {
         projectId,
         appId: appId || '11111111-1111-1111-1111-111111111111',
@@ -1816,9 +2277,22 @@ const formatTimestampName = () => {
         metadata: {
           publishedAt: new Date().toISOString(),
           origin: 'Constructor Web',
-          version: '6.1'
+          version: '6.2-Forensic'
         }
       };
+
+      console.log('[PUBLISH_CONTRACT_INTEGRITY_CHECK]', {
+        siteId,
+        sectionsCount: contract.sections.length,
+        productSnapshots: contract.sections
+          .filter((s: any) => s.tipo === 'products')
+          .map((s: any) => ({
+            id: s.id,
+            productsInContent: s.content?.products?.length || 0,
+            productsInSettings: s.settings?.[`${s.id}_el_products_items_products`]?.length || 0,
+            selectionMode: s.content?.selectionMode
+          }))
+      });
 
       const result = await publishWebBuilderSite(publishData);
       
@@ -1987,7 +2461,7 @@ const formatTimestampName = () => {
   };
 
   const handleReload = () => {
-    setReloadKey(prev => prev + 1);
+    window.location.reload();
   };
 
   const handlePreview = () => {
@@ -2056,41 +2530,164 @@ const formatTimestampName = () => {
     }
   };
 
-  const handleBentoPromptInsert = (schema: BentoSchema) => {
-    const sectionId = `section_${crypto.randomUUID()}`;
-    const moduleId = `mod_${sectionId.split('_')[1]}`;
+  const normalizeBentoSchema = (schema: BentoSchema, prompt: string) => {
+    // 1. Limpiar el título (quitar prefijos comunes de prompts)
+    let cleanTitle = schema.header.title || prompt;
+    const prefixes = [
+      /crea (una|un|la|el|información sobre|sección de|página de)\s+/i,
+      /genera (una|un|la|el|información sobre)\s+/i,
+      /haz (una|un|la|el|información sobre)\s+/i,
+      /muéstrame (por qué|cómo|qué)\s+/i,
+      /muestra (por qué|cómo|qué)\s+/i,
+      /información que muestre\s+/i
+    ];
     
-    const settings: Record<string, any> = {
-      [`${moduleId}_el_bento_header_eyebrow`]: schema.header.eyebrow,
-      [`${moduleId}_el_bento_header_title`]: schema.header.title,
-      [`${moduleId}_el_bento_header_subtitle`]: schema.header.subtitle,
-      [`${moduleId}_global_columns`]: schema.layout.columns,
-      [`${moduleId}_global_gap`]: schema.layout.gap,
-      [`${moduleId}_el_bento_items_items`]: schema.items.map(item => ({
-        type: item.type,
-        title: item.title,
-        description: item.description,
-        icon: item.icon || 'Sparkles',
-        image: item.image || '',
-        col_span: item.col_span,
-        row_span: item.row_span,
+    prefixes.forEach(p => {
+      cleanTitle = cleanTitle.replace(p, '');
+    });
+    
+    // Capitalización
+    cleanTitle = cleanTitle.trim();
+    if (cleanTitle) {
+      cleanTitle = cleanTitle.charAt(0).toUpperCase() + cleanTitle.slice(1);
+    } else {
+      cleanTitle = "Solución Personalizada";
+    }
+
+    // 2. Normalizar items y asegurar layout básico
+    const normalizedItems = schema.items.map((item, idx) => {
+      const colsPerRow = 3;
+      const colWidth = 4;
+      const rowHeight = 2;
+      
+      return {
+        ...item,
+        id: item.id || `item_${idx}_${Math.random().toString(36).substr(2, 9)}`,
+        x: typeof item.x === 'number' ? item.x : (idx % colsPerRow) * colWidth,
+        y: typeof item.y === 'number' ? item.y : Math.floor(idx / colsPerRow) * rowHeight,
+        type: item.type || 'icon_text',
         card_style: item.card_style || 'solid',
-        button_text: item.button_text || 'Explorar',
-        btn_url: item.btn_url || '#',
-        eyebrow: item.badge || ''
-      }))
+        col_span: item.col_span || 4,
+        row_span: item.row_span || 2
+      };
+    });
+
+    return {
+      ...schema,
+      header: {
+        ...schema.header,
+        title: cleanTitle
+      },
+      items: normalizedItems
+    };
+  };
+
+  const handleBentoPromptInsert = (rawSchema: BentoSchema) => {
+    // Intentar obtener el prompt actual del textarea si es posible
+    const promptValue = (document.querySelector('textarea[placeholder*="SaaS"]') as HTMLTextAreaElement)?.value || "";
+    const schema = normalizeBentoSchema(rawSchema, promptValue);
+    
+    const rawId = crypto.randomUUID();
+    const sectionId = `section_${rawId}`;
+    const moduleId = sectionId; 
+    
+    console.log('[BENTO_GENERATED_SCHEMA_DEBUG]', {
+      originalTitle: rawSchema.header.title,
+      cleanTitle: schema.header.title,
+      itemsCount: schema.items.length,
+      layout: schema.layout
+    });
+
+    // 1. elements with prefix
+    const newElements = BENTO_MODULE.elements.map(el => ({
+      ...el,
+      id: `${moduleId}_${el.id}`
+    }));
+
+    // 2. initialValues
+    const initialValues: Record<string, any> = {};
+
+    // Global settings
+    Object.values(BENTO_MODULE.globalSettings || {}).forEach(groupSettings => {
+      groupSettings.forEach(setting => {
+        let val = setting.defaultValue;
+        if (setting.id === 'columns') val = schema.layout.columns;
+        if (setting.id === 'gap') val = schema.layout.gap;
+        if (setting.id === 'bento_type') val = schema.layout.bento_type || 'mixed_content';
+        initialValues[`${moduleId}_global_${setting.id}`] = val;
+      });
+    });
+
+    // Element settings
+    newElements.forEach(element => {
+      const cleanElementId = element.id.replace(`${moduleId}_`, '');
+      Object.values(element.settings || {}).forEach(groupSettings => {
+        groupSettings.forEach(setting => {
+          let val = setting.defaultValue;
+          if (cleanElementId === 'el_bento_header') {
+            if (setting.id === 'eyebrow') val = schema.header.eyebrow;
+            if (setting.id === 'title') val = schema.header.title;
+            if (setting.id === 'subtitle') val = schema.header.subtitle;
+          }
+          initialValues[`${element.id}_${setting.id}`] = val;
+        });
+      });
+    });
+
+    // 3. Forzar inserción de items en la clave que BentoModule espera
+    const itemsKey = `${moduleId}_el_bento_items_items`;
+    initialValues[itemsKey] = schema.items.map(item => ({
+      ...item,
+      icon: item.icon || 'Sparkles',
+      image: item.image || '',
+      col_span: item.col_span || 4,
+      row_span: item.row_span || 2,
+      card_style: item.card_style || 'solid',
+      button_text: item.button_text || 'Explorar',
+      btn_url: item.btn_url || '#',
+      eyebrow: item.badge || ''
+    }));
+
+    const newModule = { 
+      ...BENTO_MODULE, 
+      id: moduleId,
+      templateId: 'mod_bento_1',
+      elements: newElements,
+      name: 'Bento / Composición IA',
+      // Redundancia solicitada por el usuario
+      content: {
+        title: schema.header.title,
+        subtitle: schema.header.subtitle,
+        items: initialValues[itemsKey]
+      }
     };
 
-    const newSection: any = {
-      id: sectionId,
-      type: 'bento',
-      name: 'Composición Libre (IA)',
-      elements: [], // Se hidratará con los settings
-      settings
-    };
+    console.log('[BENTO_FINAL_SECTION_PAYLOAD_DEBUG]', {
+      sectionId,
+      moduleId,
+      title: newModule.content.title,
+      itemsCount: newModule.content.items.length
+    });
 
-    addSection(newSection);
+    updateEditorState(prev => {
+      const addedModules = prev.addedModules || [];
+      const footerIndex = addedModules.findIndex(m => m.id.startsWith('mod_footer_1'));
+      const newModulesList = [...addedModules];
+      if (footerIndex !== -1) newModulesList.splice(footerIndex, 0, newModule);
+      else newModulesList.push(newModule);
+      return {
+        ...prev,
+        addedModules: newModulesList,
+        settingsValues: { ...prev.settingsValues, ...initialValues },
+        expandedModuleId: moduleId,
+        selectedElementId: `${moduleId}_global`
+      };
+    });
+
     setShowBentoPrompt(false);
+    
+    // 4. Sincronización manual con el store de renderizado (opcional pero seguro)
+    // createRenderingContract se disparará vía useEffect al cambiar editorState
     
     // Auto-select and scroll
     setTimeout(() => {
@@ -2100,23 +2697,11 @@ const formatTimestampName = () => {
         el.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
       
-      console.log('[BENTO_INSERT_SELECTION_DEBUG]', {
+      console.log('[BENTO_INSERT_RESULT_DEBUG]', {
         sectionId,
-        selected: true,
-        scrolledIntoView: !!el
+        itemsRendered: document.querySelectorAll(`[id^="${sectionId}"]`).length > 0
       });
-    }, 300);
-
-    console.log('[BENTO_INSERT_DEBUG]', {
-      moduleType: "bento",
-      inserted: true,
-      sectionId,
-      moduleId,
-      type: 'bento',
-      itemsCount: schema.items.length,
-      hasHeaderTitle: !!schema.header.title,
-      selectedAfterInsert: true
-    });
+    }, 400);
   };
 
   return (
@@ -2236,7 +2821,7 @@ const formatTimestampName = () => {
                                             <div className="w-full max-w-[200px] space-y-1">
                                               {cat.modules.map((m, idx) => (
                                                 <ModuleItem 
-                                                  key={idx}
+                                                  key={`cat-mod-${cat.id}-${idx}`}
                                                   icon={React.createElement(m.icon, { size: 18 })} 
                                                   label={m.label} 
                                                   onClick={() => addModule(m.mod)} 
@@ -2381,6 +2966,7 @@ const formatTimestampName = () => {
                         isPreviewMode={isPreviewMode || isExternalRender}
                         onSettingChange={handleSettingChange}
                         onReload={handleReload}
+                        onOpenBentoGenerator={() => setShowBentoPrompt(true)}
                       />
                     </div>
                   ) : null}
@@ -2447,6 +3033,7 @@ const formatTimestampName = () => {
                         onSettingChange={handleSettingChange}
                         onReload={handleReload}
                         reloadKey={reloadKey}
+                        onOpenBentoGenerator={() => setShowBentoPrompt(true)}
                       />
                     </div>
                   </div>
@@ -2546,6 +3133,30 @@ const formatTimestampName = () => {
             onPublish={handlePublish}
             onCancel={() => setShowPublishModal(false)}
             isSaving={isSaving}
+          />
+        )}
+
+        {/* [PHASE 3D.5.2] Secure AI Flow Modals */}
+        <MotherAIPageConfirmationModal 
+          isOpen={isMotherAIConfirmationOpen}
+          onClose={() => setIsMotherAIConfirmationOpen(false)}
+          onConfirm={executeSecureAIGeneration}
+          brief={{
+            businessName: motherAIBrief?.name || '',
+            industry: motherAIBrief?.industry || '',
+            goal: motherAIBrief?.goal || ''
+          }}
+          costCredits={15}
+          isGenerating={isGeneratingAI}
+          isDryRun={isDryRun}
+          onToggleDryRun={() => setIsDryRun(!isDryRun)}
+        />
+
+        {aiUsageSuccess && (
+          <AIUsageSuccessModal 
+            isOpen={!!aiUsageSuccess}
+            onClose={() => setAiUsageSuccess(null)}
+            usage={aiUsageSuccess}
           />
         )}
 

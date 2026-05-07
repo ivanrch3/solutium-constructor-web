@@ -195,3 +195,329 @@ async function processResponse(text: string, brief: AIGenerationContext): Promis
 }
 
 export const generateSite = generateSiteContent;
+
+import { getUploadAuthToken } from './authTokenProvider';
+
+export interface MotherAIPageResponse {
+  success: boolean;
+  data?: {
+    page: {
+      title: string;
+      slug: string;
+      metadata: any;
+      sections: any[];
+    };
+  };
+  usage?: {
+    aiUsageLogId: string;
+    costCredits: number;
+    totalConsumed?: number; // Soporte para App Madre 
+    inputTokens: number;
+    outputTokens: number;
+    totalTokens: number;
+  };
+  error?: string;
+  detail?: string;
+}
+
+/**
+ * [OBLIGATORIO] DRY-RUN LOCAL: No consume créditos, no hace fetch, no llama al backend.
+ */
+export const generateLandingDryRunLocal = (brief: any): MotherAIPageResponse => {
+  console.log('[CONSTRUCTOR_LANDING_DRY_RUN_LOCAL]', {
+    mode: "dry-run",
+    willCallBackend: false,
+    estimatedCostCredits: 15,
+    actionSlug: "web_ai_generate_landing"
+  });
+
+  return {
+    success: true,
+    data: {
+      page: {
+        title: brief.businessName || brief.name || "Preview Landing",
+        slug: "preview-landing",
+        metadata: { dry_run: true, simulatedAt: new Date().toISOString() },
+        sections: [
+          { type: "hero", name: "Sección Hero (Simulada)" },
+          { type: "about", name: "Sobre Nosotros (Simulada)" },
+          { type: "services", name: "Servicios (Simulada)" },
+          { type: "cta", name: "Llamada a la Acción (Simulada)" }
+        ]
+      }
+    },
+    usage: undefined, // Totalmente local
+    detail: "Dry-run local: 100% aislado del backend."
+  } as any;
+};
+
+/**
+ * [PHASE 3D.5.2] MIGRACIÓN A ENDPOINT SEGURO DE APP MADRE
+ * Esta función ya no llama a Gemini client-side.
+ */
+export const generateLandingWithMotherAI = async (
+  projectId: string,
+  brief: {
+    businessName: string;
+    industry: string;
+    description: string;
+    goal: string;
+    tone: string;
+    style: string;
+    targetAudience: string;
+  },
+  idempotencyKey: string,
+  options: { isDryRun?: boolean } = {}
+): Promise<MotherAIPageResponse> => {
+  // [GUARDIA DE SEGURIDAD] Si por error llega aquí un dryRun, bloqueamos el fetch
+  if (options.isDryRun) {
+    console.warn('[CONSTRUCTOR_LANDING_DRY_RUN_GUARD_BLOCKED_FETCH]', {
+      reason: "dry-run cannot call backend",
+      actionSlug: 'web_ai_generate_landing'
+    });
+    return generateLandingDryRunLocal(brief);
+  }
+
+  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+  const url = `${apiBaseUrl}/web-builder/ai/generate-page`;
+  
+  const payload = {
+    projectId,
+    appSlug: "constructor_web",
+    actionSlug: "web_ai_generate_landing",
+    idempotencyKey,
+    brief,
+    page: {
+      type: "landing",
+      language: "es",
+      sections: ["hero", "about", "services", "benefits", "cta"]
+    },
+    dryRun: false // Aquí siempre es false porque el dryrun se maneja localmente
+  };
+
+  const authData = await getUploadAuthToken();
+  const token = authData.token || '';
+
+  console.log('[CONSTRUCTOR_LANDING_REAL_EXECUTION_START]', {
+    mode: "real",
+    willCallBackend: true,
+    estimatedCostCredits: 15,
+    actionSlug: "web_ai_generate_landing",
+    idempotencyKey
+  });
+
+  if (!token || token.split('.').length !== 3) {
+    return {
+      success: false,
+      error: 'No hay access_token válido de Supabase. Abre el Constructor desde la App Madre o recarga contexto.'
+    };
+  }
+
+  console.log('[CONSTRUCTOR_GENERATE_LANDING_PAYLOAD_DEBUG]', {
+    projectId: payload.projectId,
+    appSlug: payload.appSlug,
+    actionSlug: payload.actionSlug,
+    idempotencyKey: payload.idempotencyKey,
+    businessName: payload.brief.businessName,
+    sectionsCount: payload.page.sections.length,
+    mode: options.isDryRun ? 'dry-run' : 'real'
+  });
+
+  console.log('[CONSTRUCTOR_GENERATE_LANDING_ENDPOINT_DEBUG]', {
+    endpoint: url,
+    hasAccessToken: !!token,
+    selectedAuthSource: authData.source,
+    actionSlug: payload.actionSlug
+  });
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(payload)
+    });
+    
+    if (!response.ok) {
+      if (response.status === 401) {
+        return {
+          success: false,
+          error: 'Token inválido o expirado (401). Reabre el Constructor desde App Madre o recarga contexto.'
+        };
+      }
+
+      const text = await response.text();
+      let errorBody;
+      try {
+        errorBody = JSON.parse(text);
+      } catch (e) {
+        errorBody = { error: text };
+      }
+
+      console.error('[CONSTRUCTOR_GENERATE_LANDING_RESPONSE_DEBUG] Error:', {
+        status: response.status,
+        body: errorBody
+      });
+      
+      return { 
+        success: false, 
+        error: errorBody.error || errorBody.message || 'Error desconocido del servidor',
+        detail: errorBody.detail
+      };
+    }
+
+    const body = await response.json();
+    
+    console.log('[CONSTRUCTOR_GENERATE_LANDING_RESPONSE_DEBUG] Success:', {
+      success: body.success,
+      aiUsageLogId: body.usage?.aiUsageLogId,
+      costCredits: body.usage?.costCredits,
+      sectionsCount: body.data?.page?.sections?.length || 0,
+      totalTokens: body.usage?.totalTokens
+    });
+
+    return body;
+  } catch (error: any) {
+    console.error('[CONSTRUCTOR_GENERATE_LANDING_FAILED]', error);
+    return { 
+      success: false, 
+      error: error.message 
+    };
+  }
+};
+
+/**
+ * Función para probar la generación real de IA desde el backend de App Madre
+ * Se usa exclusivamente para validación de créditos local
+ */
+export const generateSectionWithRealAI = async (idempotencyKey: string, manualToken?: string) => {
+  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+  const url = `${apiBaseUrl}/web-builder/ai/generate-section`;
+  
+  const payload = {
+    projectId: "5210c610-776e-4736-b3f6-5c176e9a771b",
+    appSlug: "constructor_web",
+    actionSlug: "web_ai_generate_section",
+    idempotencyKey: idempotencyKey,
+    prompt: "Genera una sección breve para explicar por qué Solutium ayuda a profesionales y pequeños negocios a automatizar procesos.",
+    sectionType: "benefits",
+    tone: "professional"
+  };
+
+  const authData = await getUploadAuthToken();
+  const token = manualToken || authData.token || '';
+
+  console.log('[REAL_AI_REQUEST_DEBUG]', {
+    fullUrl: url,
+    projectId: payload.projectId,
+    appSlug: payload.appSlug,
+    actionSlug: payload.actionSlug,
+    idempotencyKey: payload.idempotencyKey,
+    hasAuthToken: !!token,
+    tokenSource: manualToken ? 'manual' : authData.source,
+    tokenPreview: token ? `${token.substring(0, 7)}...${token.slice(-4)}` : 'none'
+  });
+  
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+      },
+      body: JSON.stringify(payload)
+    });
+    
+    // Si es 401/403, intentamos capturar el texto si no es JSON
+    if (!response.ok) {
+      const text = await response.text();
+      let errorBody;
+      try {
+        errorBody = JSON.parse(text);
+      } catch (e) {
+        errorBody = { error: text };
+      }
+
+      console.log('[REAL_AI_RESPONSE_DEBUG] Error:', {
+        status: response.status,
+        body: errorBody
+      });
+      
+      return { 
+        status: response.status, 
+        ok: false, 
+        data: errorBody 
+      };
+    }
+
+    const body = await response.json();
+    
+    console.log('[REAL_AI_RESPONSE_DEBUG] Success:', {
+      status: response.status,
+      ok: response.ok,
+      responseBody: body
+    });
+
+    return { 
+      status: response.status, 
+      ok: response.ok, 
+      data: body 
+    };
+  } catch (error: any) {
+    console.error('[REAL_AI_REQUEST_FAILED]', error);
+    return { 
+      status: 500, 
+      ok: false, 
+      data: { error: error.message } 
+    };
+  }
+};
+
+/**
+ * Piloto DevEnv-2: Llama al endpoint de IA en el backend de la App Madre
+ */
+export const generateSectionPilot = async (prompt: string, projectId: string) => {
+  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+  const endpoint = '/web-builder/ai/generate-section';
+  const url = `${apiBaseUrl}${endpoint}`;
+  const actionSlug = 'web_ai_generate_section';
+  const idempotencyKey = crypto.randomUUID();
+
+  console.log('[DRY_RUN_AI_PILOT]', {
+    apiBase: apiBaseUrl,
+    endpoint: endpoint,
+    fullUrl: url,
+    appSlug: 'constructor_web',
+    actionSlug: actionSlug,
+    idempotencyKey: idempotencyKey
+  });
+  
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        projectId,
+        userId: 'ivanrch3@gmail.com', // Using user's email for trace
+        appSlug: 'constructor_web',
+        actionSlug: actionSlug,
+        prompt,
+        idempotencyKey: idempotencyKey
+      })
+    });
+    
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.error || 'AI Generation Bridge failed');
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('[AI_BRIDGE_ERROR]', error);
+    throw error;
+  }
+};

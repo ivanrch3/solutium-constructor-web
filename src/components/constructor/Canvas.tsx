@@ -20,6 +20,7 @@ import { ProcessModule } from './modules/ProcessModule';
 import { GalleryModule } from './modules/GalleryModule';
 import { VideoModule } from './modules/VideoModule';
 import { TestimonialsModule } from './modules/TestimonialsModule';
+import { ProductsShowcaseModule } from './modules/ProductsShowcaseModule';
 import { StatsModule } from './modules/StatsModule';
 import { TeamModule } from './modules/TeamModule';
 import { PricingModule } from './modules/PricingModule';
@@ -54,6 +55,7 @@ interface CanvasProps {
   onSettingChange: (elementOrModuleId: string, settingId: string, value: any) => void;
   onReload: () => void;
   reloadKey?: number;
+  onOpenBentoGenerator?: () => void;
 }
 
 export const Canvas: React.FC<CanvasProps> = ({ 
@@ -72,7 +74,8 @@ export const Canvas: React.FC<CanvasProps> = ({
   project,
   onSettingChange,
   onReload,
-  reloadKey = 0
+  reloadKey = 0,
+  onOpenBentoGenerator
 }) => {
   const { selectSection, selectedSectionId, siteContent } = useEditorStore();
 
@@ -343,6 +346,16 @@ export const Canvas: React.FC<CanvasProps> = ({
                   ...moduleOverrides 
                 };
 
+                if (!isPreviewMode) {
+                   console.log('[CANVAS_SECTION_RENDER_DEBUG]', {
+                      moduleId: section.id,
+                      type: section.type,
+                      templateId: section.templateId,
+                      isVisible: !(section as any).hidden,
+                      hasElements: section.elements?.length
+                   });
+                }
+
                 logDebug('[CANVAS_MENU_DETECTION_DEBUG]', {
                   moduleId: section.id,
                   moduleType: section.type,
@@ -444,6 +457,15 @@ export const Canvas: React.FC<CanvasProps> = ({
                         isPreviewMode={isPreviewMode}
                       />
                     )}
+                    {section.type === 'products_showcase' && (
+                      <ProductsShowcaseModule 
+                        moduleId={section.id}
+                        content={section.content}
+                        settingsValues={finalSettings}
+                        products={products}
+                        isActuallyEditor={!isPreviewMode}
+                      />
+                    )}
                     {section.type === 'stats' && (
                       <StatsModule 
                         moduleId={section.id}
@@ -543,13 +565,22 @@ export const Canvas: React.FC<CanvasProps> = ({
                         isPreviewMode={isPreviewMode}
                       />
                     )}
-                    {(section.templateId === 'mod_bento_1' || section.id.startsWith('mod_bento_1')) && (
+                    {(section.type === 'bento' || section.templateId === 'mod_bento_1' || section.id.startsWith('mod_bento_1') || (section.type === 'content' && section.templateId === 'mod_bento_1')) && (
                       <BentoModule 
                         moduleId={section.id}
                         settingsValues={finalSettings}
+                        content={section.content}
                         onSettingChange={onSettingChange}
                         isPreviewMode={isPreviewMode}
+                        onOpenBentoGenerator={onOpenBentoGenerator}
                       />
+                    )}
+                    {/* Fallback debug for unrendered modules */}
+                    {!['products', 'products_showcase', 'hero', 'features', 'about', 'process', 'gallery', 'video', 'testimonials', 'stats', 'team', 'pricing', 'faq', 'contact', 'clients', 'cta', 'newsletter', 'conversion', 'navegacion', 'menu', 'footer', 'spacer', 'bento', 'comparative'].includes(section.type) && (
+                      <div className="p-8 border-2 border-dashed border-rose-200 rounded-2xl bg-rose-50 text-rose-500 text-center">
+                        <p className="font-bold">Módulo no reconocido: {section.type}</p>
+                        <p className="text-xs opacity-60">ID: {section.id} | Template: {section.templateId}</p>
+                      </div>
                     )}
                     {section.type === 'comparative' && (
                       <ComparisonModule 

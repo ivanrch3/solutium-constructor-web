@@ -1,4 +1,5 @@
 import React from 'react';
+import * as LucideIcons from 'lucide-react';
 import { useEditorStore } from '../../store/editorStore';
 import { PropertyPillar } from '../../types';
 import { motion, AnimatePresence } from 'motion/react';
@@ -49,7 +50,9 @@ export const PropertyEditor: React.FC = () => {
   const { 
     siteContent, 
     selectedSectionId, 
-    updateSectionSettings 
+    updateSectionSettings,
+    selectedBentoCellIndex,
+    setSelectedBentoCellIndex
   } = useEditorStore();
   
   const [expandedPillars, setExpandedPillars] = React.useState<Record<string, boolean>>({
@@ -88,8 +91,11 @@ export const PropertyEditor: React.FC = () => {
   // Agrupar todos los settings por Pilar
   const settingsByPillar: Record<string, { label: string, setting: any, contextId: string }[]> = {};
 
-  // 1. Settings Globales del Módulo
-  if (moduleDef.globalSettings) {
+  const isBento = selectedSection.id.startsWith('mod_bento');
+  const isCellSelected = isBento && selectedBentoCellIndex !== null;
+
+  // 1. Settings Globales del Módulo (Hiding if a cell is selected in Bento)
+  if (moduleDef.globalSettings && (!isBento || !isCellSelected)) {
     Object.entries(moduleDef.globalSettings).forEach(([pillar, settings]) => {
       if (!settingsByPillar[pillar]) settingsByPillar[pillar] = [];
       (settings as any[]).forEach(s => {
@@ -104,6 +110,26 @@ export const PropertyEditor: React.FC = () => {
 
   // 2. Settings de los Elementos del Módulo
   moduleDef.elements.forEach((element: any) => {
+    // Si es Bento y hay una celda seleccionada, solo mostramos los settings de 'el_bento_items' para esa celda
+    if (isBento && isCellSelected) {
+      if (element.id === 'el_bento_items' && element.settings) {
+        Object.entries(element.settings).forEach(([pillar, settings]) => {
+          let targetPillar = pillar;
+          if (pillar === 'title' || pillar === 'subtitle' || pillar === 'eyebrow') targetPillar = 'contenido';
+          if (!settingsByPillar[targetPillar]) settingsByPillar[targetPillar] = [];
+          
+          (settings as any[]).forEach(s => {
+            settingsByPillar[targetPillar].push({
+              label: s.label,
+              setting: s,
+              contextId: `${selectedSection.id}_${element.id}_${selectedBentoCellIndex}`
+            });
+          });
+        });
+      }
+      return; // Skip other elements if cell is selected
+    }
+
     if (element.settings) {
       Object.entries(element.settings).forEach(([pillar, settings]) => {
         // Mapeo de nombres de pilares extendidos (ej: title, subtitle) a los 6 pilares base
@@ -127,22 +153,51 @@ export const PropertyEditor: React.FC = () => {
   };
 
   const handleFieldChange = (contextId: string, settingId: string, value: any) => {
+    console.log('[PROPERTY_EDITOR_CHANGE_DEBUG]', { contextId, settingId, value });
+    // Si estamos editando una celda de un repeater (ej: Bento), necesitamos actualizar el array de items
+    if (contextId.includes('_el_bento_items_')) {
+      const [sectionId, elementId, indexStr] = contextId.split('_el_bento_items_');
+      const realSectionId = sectionId.startsWith('mod_bento') ? sectionId : selectedSection.id;
+      const index = parseInt(indexStr);
+      
+      const repeaterKey = `${realSectionId}_el_bento_items_items`;
+      const currentItems = selectedSection.settings[repeaterKey] || [];
+      const newItems = [...currentItems];
+      if (newItems[index]) {
+        newItems[index] = { ...newItems[index], [settingId]: value };
+        updateSectionSettings(selectedSection.id, { [repeaterKey]: newItems });
+      }
+      return;
+    }
+
     // El store maneja settings planos. La clave completa es={`${contextId}_${settingId}`}
     updateSectionSettings(selectedSection.id, { [`${contextId}_${settingId}`]: value });
   };
 
   return (
     <div className="flex flex-col h-full bg-white border-l border-gray-100 overflow-hidden shadow-sm">
-      <div className="p-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
-        <h3 className="font-bold text-gray-900 text-sm flex items-center gap-2">
-          <div className="w-6 h-6 bg-blue-600 rounded-md flex items-center justify-center text-white">
-            <CustomSettingsIcon size={14} />
+      <div className="p-4 border-b border-gray-100 bg-gray-50/50 flex flex-col gap-2">
+        <div className="flex items-center justify-between">
+          <h3 className="font-bold text-gray-900 text-sm flex items-center gap-2">
+            <div className="w-6 h-6 bg-blue-600 rounded-md flex items-center justify-center text-white">
+              <CustomSettingsIcon size={14} />
+            </div>
+            {isCellSelected ? 'Editar Celda' : selectedSection.name}
+          </h3>
+          <div className="px-2 py-0.5 bg-gray-100 rounded text-[10px] font-mono text-gray-500 uppercase">
+            {isCellSelected ? `Item #${selectedBentoCellIndex + 1}` : moduleDef.type}
           </div>
-          {selectedSection.name}
-        </h3>
-        <div className="px-2 py-0.5 bg-gray-100 rounded text-[10px] font-mono text-gray-500 uppercase">
-          {moduleDef.type}
         </div>
+        
+        {isCellSelected && (
+          <button 
+            onClick={() => setSelectedBentoCellIndex(null)}
+            className="flex items-center gap-1.5 text-[10px] font-bold text-blue-600 hover:text-blue-700 transition-colors bg-blue-50 px-2 py-1 rounded w-fit"
+          >
+            <LucideIcons.ArrowLeft size={10} />
+            Volver a Configuración Global
+          </button>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto custom-scrollbar">

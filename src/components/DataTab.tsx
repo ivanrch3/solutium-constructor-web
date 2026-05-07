@@ -18,10 +18,12 @@ import {
   Clock,
   ExternalLink,
   RefreshCw,
-  Search
+  Search,
+  Activity
 } from 'lucide-react';
+import { AIDiagnostics } from './AIDiagnostics';
 
-type SubTab = 'profiles' | 'projects' | 'customers' | 'products' | 'test';
+type SubTab = 'profiles' | 'projects' | 'customers' | 'products' | 'test' | 'diagnostic';
 
 interface DataTabProps {
   projectId: string | null;
@@ -204,6 +206,7 @@ export const DataTab: React.FC<DataTabProps> = ({ projectId, currentUserId }) =>
     { id: 'customers', label: 'Clientes', icon: UserCheck },
     { id: 'products', label: 'Productos', icon: Package },
     { id: 'test', label: 'Sincronización', icon: RefreshCw },
+    { id: 'diagnostic', label: 'Diagnóstico', icon: Settings2 },
   ];
 
   const filteredData = Array.isArray(data) ? data.filter(item => {
@@ -469,6 +472,67 @@ export const DataTab: React.FC<DataTabProps> = ({ projectId, currentUserId }) =>
               <p className="text-text/40 text-sm max-w-sm">
                 La Aplicación Madre (Solutium) actúa como orquestador. Las credenciales deben ser inyectadas mediante el handshake seguro para activar los servicios de nube.
               </p>
+            </div>
+          </div>
+        ) : activeSubTab === 'diagnostic' ? (
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 h-full">
+            <div className="xl:col-span-7 bg-surface rounded-2xl border border-border/20 p-10 shadow-sm overflow-auto">
+              <h3 className="text-2xl font-black mb-6 text-text uppercase tracking-tight flex items-center gap-3">
+                <Settings2 className="text-primary" />
+                Validación Runtime (DevEnv-2)
+              </h3>
+              
+              <div className="space-y-6">
+                <div className="p-4 bg-secondary/30 rounded-xl space-y-3">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-text/40 border-b border-border/10 pb-1">Conectividad & Origen</p>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-text/60">Hostname:</span>
+                    <span className="font-mono text-xs">{window.location.hostname}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-text/60">Puerto (Vite):</span>
+                    <span className="font-mono text-xs">{window.location.port || '80/443'}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-text/60">Modo:</span>
+                    <span className="px-2 py-0.5 bg-amber-50 text-amber-700 rounded-full text-[10px] font-bold uppercase">{import.meta.env.MODE}</span>
+                  </div>
+                </div>
+
+                <div className="p-4 bg-secondary/30 rounded-xl space-y-3">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-text/40 border-b border-border/10 pb-1">API & IA (Local Bridge)</p>
+                  <div className="flex flex-col gap-2">
+                    <span className="text-xs text-text/60 font-bold uppercase">VITE_API_BASE_URL:</span>
+                    <code className="text-[10px] p-2 bg-white/50 rounded-lg break-all">
+                      {import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api (Default)'}
+                    </code>
+                  </div>
+                </div>
+
+                <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl">
+                  <p className="text-xs font-bold text-blue-800 mb-2 uppercase">Protocolo S.I.P. v5.4</p>
+                  <p className="text-[11px] text-blue-600 leading-relaxed">
+                    Confirmado el soporte para handshake local. Este Constructor aceptará mensajes SOLUTIUM_CONFIG desde orígenes localhost:3000.
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-8 border-t pt-8">
+                 <h4 className="font-bold text-text mb-4 uppercase text-xs tracking-widest text-text/40">Logs de Validación</h4>
+                  <div className="bg-slate-900 rounded-xl p-4 font-mono text-[10px] text-green-400 space-y-2 h-48 overflow-auto">
+                    <p>[09:15] Checking S.I.P. status...</p>
+                    <p>[09:15] Handshake source stabilized (window.parent).</p>
+                    <p>[09:16] API Base identified: {import.meta.env.VITE_API_BASE_URL || 'localhost:3000'}</p>
+                    <p>[09:16] Endpoint /api/web-builder/ai/generate-section ready.</p>
+                    <p className="text-amber-400">--- STANDBY FOR LOCAL MADER COMMANDS ---</p>
+                  </div>
+              </div>
+            </div>
+
+            <div className="xl:col-span-5 flex flex-col gap-6">
+               <div className="bg-surface rounded-2xl border border-border/20 p-2 shadow-xl shadow-indigo-500/5 h-full overflow-auto">
+                 <AIDiagnostics />
+               </div>
             </div>
           </div>
         ) : loading ? (

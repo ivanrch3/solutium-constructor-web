@@ -81,7 +81,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   const isDebug = new URLSearchParams(window.location.search).get('debug_render') === 'true';
                   
                   return (
-                    <button
+                    <div
                       key={page.id}
                       onClick={() => {
                         logDebug('[OPEN_SAVED_SITE_CLICK_DEBUG]', {
@@ -92,7 +92,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         });
                         onSelectPage(page);
                       }}
-                      className="flex items-center justify-between p-3 rounded-xl border border-border hover:border-primary/30 hover:bg-primary/5 transition-all group text-left"
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          onSelectPage(page);
+                        }
+                      }}
+                      className="flex items-center justify-between p-3 rounded-xl border border-border hover:border-primary/30 hover:bg-primary/5 transition-all group text-left cursor-pointer"
                     >
                       <div className="flex items-center gap-3 shrink-0 min-w-0">
                         <div className={`w-14 h-10 rounded-lg flex items-center justify-center transition-colors overflow-hidden border border-border/40 shrink-0 ${
@@ -202,7 +209,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                           <ExternalLink className="w-4 h-4" />
                         </button>
                       </div>
-                    </button>
+                    </div>
                   );
                 })}
               </div>

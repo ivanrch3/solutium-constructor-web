@@ -310,6 +310,83 @@ const MODULE_ADAPTERS: Record<string, ModuleBridgeAdapter> = {
       'bg_color': 'global_bg_color',
       'dark_mode': 'global_dark_mode'
     }
+  },
+  products: {
+    contentToSettings: {
+      'title': 'el_products_header_title',
+      'titulo': 'el_products_header_title',
+      'heading': 'el_products_header_title',
+      'eyebrow': 'el_products_header_eyebrow',
+      'subtitle': 'el_products_header_subtitle',
+      'subtitulo': 'el_products_header_subtitle',
+      'description': 'el_products_header_subtitle',
+      'descripcion': 'el_products_header_subtitle',
+      'align': 'el_products_header_align',
+      'selection_mode': 'el_products_config_selection_mode',
+      'select_products': 'el_products_config_select_products',
+      'currency': 'el_price_currency',
+      'cta_text': 'el_cta_cta_text',
+      'button_text': 'el_cta_cta_text'
+    },
+    settingsToDeep: {
+      'layout': 'global_layout',
+      'columns': 'global_columns',
+      'gap': 'global_gap',
+      'dark_mode': 'global_dark_mode'
+    }
+  },
+  products_showcase: {
+    contentToSettings: {
+      // Header Titles
+      'header_title': 'global_header_title',
+      'title': 'global_header_title',
+      'titulo': 'global_header_title',
+      'heading': 'global_header_title',
+      'headline': 'global_header_title',
+      'titulo_seccion': 'global_header_title',
+      'nombre': 'global_header_title',
+
+      // Header Subtitles
+      'header_subtitle': 'global_header_subtitle',
+      'subtitle': 'global_header_subtitle',
+      'subtitulo': 'global_header_subtitle',
+      'description': 'global_header_subtitle',
+      'descripcion': 'global_header_subtitle',
+      'summary': 'global_header_subtitle',
+      'resumen': 'global_header_subtitle',
+      'intro': 'global_header_subtitle',
+      'texto': 'global_header_subtitle',
+
+      // CTA Labels
+      'cta_label': 'global_cta_label',
+      'cta_text': 'global_cta_label',
+      'button_text': 'global_cta_label',
+      'boton_texto': 'global_cta_label',
+      
+      // Selection
+      'select_products': 'el_products_showcase_config_select_products',
+      'selected_products': 'el_products_showcase_config_select_products',
+      'selectedProducts': 'el_products_showcase_config_select_products',
+      'product_ids': 'el_products_showcase_config_select_products',
+      'ids': 'el_products_showcase_config_select_products'
+    },
+    settingsToDeep: {
+      'layout': 'global_layout',
+      'variant': 'global_layout',
+      'display': 'global_layout',
+      
+      'columns': 'global_columns',
+      'columnas': 'global_columns',
+      
+      'show_tabs': 'global_show_tabs',
+      'showTabs': 'global_show_tabs',
+      'mostrar_tabs': 'global_show_tabs',
+      
+      'card_style': 'global_card_style',
+      'cardStyle': 'global_card_style',
+      'estilo_tarjeta': 'global_card_style',
+      'variant_card': 'global_card_style'
+    }
   }
 };
 
@@ -374,6 +451,17 @@ export const bridgeModuleContent = ({
       Object.entries(adapter.contentToSettings || {}).forEach(([contentPath, relativeKey]) => {
         const fullKey = `${moduleId}_${relativeKey}`;
         const value = getByPath(content, contentPath);
+
+        // CTA deep key mapping support (handling objects like {label: "", url: ""})
+        if (contentPath.includes('cta') || contentPath.includes('boton')) {
+           const labelValue = getByPath(content, `${contentPath}.label`) || getByPath(content, `${contentPath}.text`) || getByPath(content, `${contentPath}.texto`);
+           if (labelValue && result[fullKey] === undefined) {
+             result[fullKey] = labelValue;
+             mappedKeys.push(fullKey);
+             aliasesUsed.push(`${contentPath}.label`);
+           }
+        }
+
         const hasValue = value !== undefined && value !== null;
 
         if (result[fullKey] === undefined && hasValue) {
@@ -382,6 +470,83 @@ export const bridgeModuleContent = ({
           aliasesUsed.push(contentPath);
         }
       });
+    }
+
+    // --- Specialized Products Showcase Logic ---
+    if (baseType === 'products_showcase' && content) {
+       const productSource = content.products || content.productos || content.items || content.catalog || 
+                            content.catalogo || content.services || content.servicios || content.offers || 
+                            content.ofertas || content.paquetes || content.apps || content.soluciones || 
+                            content.featured_products || content.productos_destacados || 
+                            content.showcase_products || content.productos_showcase;
+
+       if (Array.isArray(productSource) && productSource.length > 0) {
+          const itemsKey = `${moduleId}_el_products_showcase_items_products`;
+          const selectKey = `${moduleId}_el_products_showcase_config_select_products`;
+
+          // Normalización compatible con Product interface
+          const normalized = productSource.map((item, index) => {
+            if (!item) return null;
+            
+            const pId = String(item.id || item.product_id || item.productId || item.sku || item.codigo || `injected_showcase_prod_${index + 1}`);
+            const pName = String(item.name || item.nombre || item.title || item.titulo || item.heading || `Producto ${index + 1}`);
+            const pDesc = String(item.description || item.descripcion || item.desc || item.text || item.texto || item.summary || item.resumen || '');
+            
+            // Price conversion logic
+            let pPrice = item.price || item.precio || item.amount || item.monto || item.cost || item.costo;
+            if (typeof pPrice === 'string') {
+              pPrice = parseFloat(pPrice.replace(/[^\d.,-]/g, '').replace(',', '.'));
+            }
+            
+            let pRefPrice = item.priceReference || item.old_price || item.precio_anterior || item.compare_at_price || item.before_price;
+            if (typeof pRefPrice === 'string') {
+               pRefPrice = parseFloat(pRefPrice.replace(/[^\d.,-]/g, '').replace(',', '.'));
+            }
+
+            const pImageUrl = item.imageUrl || item.image_url || item.image || item.imagen || item.foto || item.img || 
+                             getByPath(item, 'media.url') || getByPath(item, 'image.url') || '';
+            
+            const pImage2Url = item.image2Url || item.image2_url || item.hover_image || item.imagen_hover || item.second_image || '';
+            const pCategory = String(item.category || item.categoria || item.type || item.tipo || '');
+            const pBadge = String(item.badgeText || item.badge || item.etiqueta || item.label || item.tag || '');
+            
+            let pStock = item.stock || item.inventario || item.available || item.disponible;
+            if (typeof pStock === 'string') pStock = parseInt(pStock, 10);
+            else if (typeof pStock === 'boolean') pStock = pStock ? 10 : 0;
+
+            let pRating = item.ratingAverage || item.rating || item.calificacion;
+            if (typeof pRating === 'string') pRating = parseFloat(pRating);
+
+            let pReviews = item.reviewCount || item.reviews || item.resenas;
+            if (typeof pReviews === 'string') pReviews = parseInt(pReviews, 10);
+
+            return {
+              id: pId,
+              name: pName,
+              description: pDesc,
+              price: Number.isFinite(pPrice) ? Number(pPrice) : undefined,
+              priceReference: Number.isFinite(pRefPrice) ? Number(pRefPrice) : undefined,
+              imageUrl: pImageUrl,
+              image2Url: pImage2Url,
+              category: pCategory,
+              badgeText: pBadge,
+              stock: typeof pStock === 'number' ? pStock : undefined,
+              ratingAverage: typeof pRating === 'number' ? pRating : undefined,
+              reviewCount: typeof pReviews === 'number' ? pReviews : undefined
+            };
+          }).filter(Boolean);
+
+          if (normalized.length > 0) {
+            if (result[itemsKey] === undefined) {
+              result[itemsKey] = normalized;
+              mappedKeys.push(itemsKey);
+            }
+            if (result[selectKey] === undefined) {
+              result[selectKey] = normalized.map(p => p!.id);
+              mappedKeys.push(selectKey);
+            }
+          }
+       }
     }
 
     // Settings Bridge
@@ -769,6 +934,79 @@ export const bridgeModuleContent = ({
         }
       }
     }
+
+    // --- Specialized Products Module Logic ---
+    if (baseType === 'products' && content) {
+      const itemsKey = `${moduleId}_el_products_items_products`;
+      const itemsSource = content.products || content.productos || content.items || 
+                         content.catalog || content.catalogo || content.servicios || 
+                         content.services || content.offers || content.paquetes || 
+                         content.inventario;
+
+      if (Array.isArray(itemsSource) && result[itemsKey] === undefined) {
+        // [SIP v12.6] Even if empty, we MUST set it as [] to satisfy hydration checks
+        // as long as the source effectively arrived as an array
+        result[itemsKey] = itemsSource.map((item, index) => {
+          const generatedId = item.id || item.product_id || item.productId || item.sku || item.codigo || `injected_product_${moduleId}_${index + 1}`;
+          
+          // Normalización de Precio
+          let normalizedPrice = undefined;
+          const rawPrice = item.price ?? item.precio ?? item.amount ?? item.monto ?? item.cost ?? item.costo;
+          if (typeof rawPrice === 'number') {
+            normalizedPrice = rawPrice;
+          } else if (typeof rawPrice === 'string') {
+            const cleanStr = rawPrice.replace(/[^\d.,-]/g, '').replace(',', '.');
+            const parsed = parseFloat(cleanStr);
+            if (!isNaN(parsed)) normalizedPrice = parsed;
+          }
+
+          // Normalización de Stock
+          let normalizedStock = undefined;
+          const rawStock = item.stock ?? item.inventario ?? item.available ?? item.disponible;
+          if (typeof rawStock === 'number') normalizedStock = rawStock;
+          else if (typeof rawStock === 'string') {
+            const parsed = parseInt(rawStock, 10);
+            if (!isNaN(parsed)) normalizedStock = parsed;
+          } else if (typeof rawStock === 'boolean') {
+            normalizedStock = rawStock ? 1 : 0;
+          }
+
+          return {
+            id: String(generatedId),
+            name: String(item.name || item.nombre || item.title || item.titulo || item.heading || 'Producto sin nombre'),
+            description: String(item.description || item.descripcion || item.desc || item.text || item.texto || item.summary || item.resumen || ''),
+            price: normalizedPrice,
+            priceReference: typeof (item.priceReference ?? item.old_price ?? item.precio_anterior ?? item.compare_at_price ?? item.before_price) === 'number' 
+              ? (item.priceReference ?? item.old_price ?? item.precio_anterior ?? item.compare_at_price ?? item.before_price)
+              : undefined,
+            category: String(item.category || item.categoria || item.type || item.tipo || ''),
+            imageUrl: String(item.imageUrl || item.image_url || item.image || item.imagen || item.foto || item.img || item.media?.url || item.image?.url || ''),
+            image2Url: String(item.image2Url || item.image2_url || item.hover_image || item.imagen_hover || item.second_image || ''),
+            badgeText: String(item.badgeText || item.badge || item.etiqueta || item.label || item.tag || ''),
+            stock: normalizedStock,
+            ratingAverage: parseFloat(String(item.ratingAverage || item.rating || item.calificacion || 5)),
+            reviewCount: parseInt(String(item.reviewCount || item.reviews || item.resenas || 0), 10)
+          };
+        });
+        
+        mappedKeys.push(itemsKey);
+        
+        // Auto-set selection_mode if items are injected
+        const selectionModeKey = `${moduleId}_el_products_config_selection_mode`;
+        const selectProductsKey = `${moduleId}_el_products_config_select_products`;
+        
+        if (result[selectionModeKey] === undefined) {
+          result[selectionModeKey] = 'manual';
+          mappedKeys.push(selectionModeKey);
+        }
+
+        // Si es manual, debemos asegurarnos de que los IDs inyectados estén seleccionados
+        if (result[selectionModeKey] === 'manual' && (!result[selectProductsKey] || result[selectProductsKey].length === 0)) {
+          result[selectProductsKey] = result[itemsKey].map((p: any) => p.id);
+          mappedKeys.push(selectProductsKey);
+        }
+      }
+    }
   }
 
   // 2. Aplicar Fallback Genérico (asegura que keys como 'title' lleguen como 'mod_123_title')
@@ -800,9 +1038,27 @@ export const bridgeModuleContent = ({
       imageDetected: Boolean(result[`${moduleId}_el_about_visual_image_url`]),
       bentoItemsCount: baseType === 'bento' ? (result[`${moduleId}_el_bento_items_items`]?.length || 0) : 0,
       bentoAutoLayout: baseType === 'bento' && aliasesUsed.includes('auto-layout-applied'),
+      injectedProductsCount: baseType === 'products' ? (result[`${moduleId}_el_products_items_products`]?.length || 0) : 0,
+      selectionMode: baseType === 'products' ? result[`${moduleId}_el_products_config_selection_mode`] : undefined,
+      layout: baseType === 'products' ? result[`${moduleId}_global_layout`] : undefined,
+      columns: baseType === 'products' ? result[`${moduleId}_global_columns`] : undefined,
       originalContentKeys: content ? Object.keys(content) : [],
       addedKeys,
       totalKeys: finalKeys.length
+    });
+  }
+
+  if (debug) {
+    logDebug('HYDRATION_BRIDGE_DEBUG', {
+      moduleId,
+      moduleType: baseType,
+      strategy,
+      adapter: adapter ? baseType : 'none',
+      mappedKeysCount: mappedKeys.length,
+      mappedKeys,
+      aliasesUsed,
+      layout: result[`${moduleId}_global_layout`],
+      columns: result[`${moduleId}_global_columns`]
     });
   }
 

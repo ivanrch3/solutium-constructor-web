@@ -14,6 +14,8 @@ Estos módulos tienen mapeos específicos para asegurar que llaves complejas (ej
 - **Process**: Normalización de arrays de pasos (`pasos`, `steps`, `workflow`). Mapeo interno de items (title, desc, icon, badge) y layouts (`horizontal`, `vertical`, `alternating`).
 - **Footer**: Hidratación completa de marca, columnas de navegación, redes sociales normalizadas, datos de contacto, newsletter y enlaces legales.
 - **Bento**: Adaptador avanzado con auto-layout para evitar solapamientos. Normaliza celdas de diversos tipos (stat, image, cta, text) y mapea global settings (grid columns, gap). Soporta múltiples alias para celdas (`items`, `cards`, `blocks`).
+- **Products (Legacy)**: Soporta productos inyectados (`productos`, `items`, `catalogo`). Normalización inteligente de precios (string a number), stock, badges e imágenes. Mapeo de header (title, subtitle, align), layout (columns, gap) y cta text. Auto-set de `selection_mode: manual` si hay datos inyectados.
+- **Products Showcase (Catálogo V2)**: Adaptador certificado con soporte para +40 aliases de contenido. Normalización profunda de productos compatible con la interfaz `Product`. Soporta snapshots redundantes en `content` y `settings`. Priorización: Snapshot > Mapeo Explícito > Selección Manual > Catálogo Proyecto.
 
 ## Fallback Genérico (Novedad v10.6)
 Para todos los demás módulos, se aplica una estrategia de "Auto-Prefijado" no destructiva:

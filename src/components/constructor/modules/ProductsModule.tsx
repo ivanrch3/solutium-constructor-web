@@ -15,17 +15,44 @@ export const ProductsModule: React.FC<{
   products?: Product[],
   isDevMode?: boolean,
   isPreviewMode?: boolean
-}> = ({ moduleId, settingsValues, products, isDevMode, isPreviewMode = false }) => {
+}> = ({ moduleId, settingsValues, products, isDevMode = false, isPreviewMode = false }) => {
   const { selectSection, selectElement } = useEditorStore();
   const [activeTab, setActiveTab] = useState('Todos');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [carouselIndex, setCarouselIndex] = useState(0);
   const [addingToCart, setAddingToCart] = useState<string | null>(null);
 
+  const isInConstructorEnvironment = (
+    window.location.search.includes('mode=constructor') || 
+    window.location.search.includes('renderMode=editor') ||
+    (!!window.name && (window.name.includes('supabase_url') || window.name.includes('projectId'))) ||
+    window.location.hostname.includes('localhost') ||
+    window.location.hostname.includes('ais-dev-') 
+  );
+
+  const isActuallyEditor = isInConstructorEnvironment;
+  const isPublishedViewer = !isInConstructorEnvironment;
+
+  // [DEBUG] Diagnóstico de Modo
+  console.log('[PRODUCTS_MODE_DETECTION_DEBUG]', {
+    moduleId,
+    isPreviewMode,
+    isActuallyEditor,
+    isPublishedViewer,
+    windowName: window.name,
+    search: window.location.search,
+    hostname: window.location.hostname,
+    timestamp: Date.now()
+  });
+
   const getVal = (elementId: string | null, settingId: string, defaultValue: any) => {
     const key = elementId ? `${elementId}_${settingId}` : `${moduleId}_global_${settingId}`;
     return settingsValues[key] !== undefined ? settingsValues[key] : defaultValue;
   };
+
+  if ((!products || products.length === 0) && !isActuallyEditor) {
+    return null;
+  }
 
   const parseF = (val: any, fallback: number) => {
     const f = parseFloat(val);
@@ -106,25 +133,133 @@ export const ProductsModule: React.FC<{
   const ctaRadius = parseF(getVal(`${moduleId}_el_cta`, 'cta_radius', 12), 12);
   const ctaHoverBg = getVal(`${moduleId}_el_cta`, 'cta_hover_bg', '#2563EB');
 
-  const baseProducts = products && products.length > 0 ? products : (isDevMode ? MOCK_PRODUCTS : []);
-  
-  const allDisplayProducts = useMemo(() => {
-    if (selectionMode === 'auto') {
-      return [...baseProducts].sort((a, b) => {
-        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-        return dateB - dateA;
-      }).slice(0, 8);
+  console.log('[PRODUCTS_MODULE_RENDER_INPUT_DEBUG]', {
+    runtime: isPublishedViewer ? "published_viewer" : "constructor_canvas",
+    moduleId,
+    selectionMode,
+    selectedIdsReceived: selectedProductIds,
+    selectedIdsCount: Array.isArray(selectedProductIds) ? selectedProductIds.length : 0,
+    productsPropCount: products?.length || 0,
+    catalogProductsCount: (products && products.length > 0) ? products.length : (isDevMode ? MOCK_PRODUCTS.length : 0),
+    snapshotProductsCount: Array.isArray(settingsValues[`${moduleId}_el_products_items_products`]) ? settingsValues[`${moduleId}_el_products_items_products`].length : 0,
+    isPreviewMode,
+    isActuallyEditor,
+    timestamp: Date.now()
+  });
+
+  // [FASE 1] Función Única de Resolución Forense para Editor
+  const resolveProductsForEditor = (params: {
+    moduleId: string,
+    selectionMode: string,
+    selectedProductIds: any,
+    catalogProducts: Product[],
+    snapshotProducts: Product[],
+    injectedProducts: Product[],
+    isEditor: boolean
+  }) => {
+    const { moduleId, selectionMode, selectedProductIds, catalogProducts, snapshotProducts, isEditor } = params;
+    
+    let results: Product[] = [];
+    let sourceUsed = 'empty';
+    let reason = 'initialization';
+    const ignoredSources: string[] = [];
+
+    if (isEditor) {
+      if (selectionMode === 'manual') {
+        const selectedIdsArray = Array.isArray(selectedProductIds) ? selectedProductIds : [];
+        const isExplicitlyEmpty = selectedIdsArray.length === 0 && selectedProductIds !== undefined && selectedProductIds !== null;
+
+        if (isExplicitlyEmpty) {
+          results = [];
+          sourceUsed = 'manual_selection_empty_explicit';
+          reason = 'User explicitly deselected everything';
+          ignoredSources.push('snapshot', 'catalog_full');
+        } else if (selectedIdsArray.length > 0) {
+          const searchIds = selectedIdsArray.map(id => String(id));
+          results = catalogProducts.filter(p => searchIds.includes(String(p.id)));
+          sourceUsed = 'manual_selection_filtered';
+          reason = `Filtered ${results.length} products from catalog of ${catalogProducts.length}`;
+          ignoredSources.push('snapshot');
+        } else {
+          // Case where selectedProductIds is null/undefined (initial state)
+          results = catalogProducts;
+          sourceUsed = 'manual_selection_all_default';
+          reason = 'No selection defined yet, showing all';
+        }
+      } else {
+        // Auto mode in editor
+        results = catalogProducts;
+        sourceUsed = 'catalog_auto_editor';
+      }
     }
-    return baseProducts.filter(p => 
-      Array.isArray(selectedProductIds) && selectedProductIds.includes(p.id)
-    );
-  }, [baseProducts, selectedProductIds, selectionMode]);
+
+    console.log('[PRODUCTS_EDITOR_RESOLUTION_FORENSIC_DEBUG]', {
+      moduleId,
+      runtime: isEditor ? "constructor_canvas" : "viewer",
+      selectionMode,
+      selectedProductIds,
+      selectedProductIdsCount: Array.isArray(selectedProductIds) ? selectedProductIds.length : 0,
+      catalogProductsCount: catalogProducts.length,
+      catalogProductIds: catalogProducts.map(p => p.id),
+      snapshotProductsCount: snapshotProducts.length,
+      finalRenderedProductsCount: results.length,
+      finalRenderedProductIds: results.map(p => p.id),
+      finalRenderedProductNames: results.map(p => p.name),
+      sourceUsed,
+      ignoredSources,
+      reason
+    });
+
+    return results;
+  };
+
+  // 1. RESOLUCIÓN DE FUENTE DE PRODUCTOS (Prioridad: Snapshot > Manual > Catálogo > Ejemplo)
+  const allDisplayProducts = useMemo(() => {
+    const snapshotKey = `${moduleId}_el_products_items_products`;
+    const snapshotFromSettings = settingsValues[snapshotKey];
+    const snapshotProducts = Array.isArray(snapshotFromSettings) ? snapshotFromSettings : [];
+    
+    const catalog = (products && products.length > 0) ? products : (isDevMode ? MOCK_PRODUCTS : []);
+    
+    // Si estamos en el visor publicado, usamos la lógica de snapshot
+    if (isPublishedViewer) {
+      if (snapshotProducts.length > 0) return snapshotProducts;
+      if (Array.isArray(products) && products.length > 0) return products;
+      return [];
+    }
+
+    // SI ESTAMOS EN EDITOR, USAR RESOLUTOR FORENSE
+    return resolveProductsForEditor({
+      moduleId,
+      selectionMode,
+      selectedProductIds,
+      catalogProducts: catalog,
+      snapshotProducts,
+      injectedProducts: products || [],
+      isEditor: isActuallyEditor
+    });
+  }, [products, selectedProductIds, selectionMode, isDevMode, isPreviewMode, isActuallyEditor, isPublishedViewer, moduleId, settingsValues]);
 
   const categories = useMemo(() => {
     const cats = new Set(allDisplayProducts.map(p => p.category).filter(Boolean));
-    return ['Todos', ...Array.from(cats)];
+    const sortedCats = Array.from(cats).sort();
+    return ['Todos', ...sortedCats];
   }, [allDisplayProducts]);
+
+  // [SIP v12.9] Reset active tab to 'Todos' when selection changes significantly 
+  // OR when the activeTab is no longer present in the updated categories
+  React.useEffect(() => {
+    if (!categories.includes(activeTab)) {
+      setActiveTab('Todos');
+    }
+  }, [categories, activeTab]);
+
+  // Si cambia la selección manual, forzar 'Todos' para mostrar el resultado completo del cambio
+  React.useEffect(() => {
+    if (selectionMode === 'manual') {
+      setActiveTab('Todos');
+    }
+  }, [selectedProductIds, selectionMode]);
 
   const filteredProducts = useMemo(() => {
     if (activeTab === 'Todos') return allDisplayProducts;
@@ -487,13 +622,21 @@ export const ProductsModule: React.FC<{
             )}
           </div>
         ) : (
-          <div className={`py-20 text-center border-2 border-dashed rounded-3xl ${darkMode ? 'border-slate-700 bg-slate-800/50' : 'border-slate-100 bg-slate-50/50'}`}>
-            <ShoppingCart className="text-slate-300 w-12 h-12 mx-auto mb-4" />
-            <h3 className={`text-lg font-bold mb-2 ${darkMode ? 'text-white' : 'text-slate-800'}`}>No hay productos seleccionados</h3>
-            <p className={`text-sm ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-              Selecciona productos en el panel de configuración para mostrarlos aquí.
-            </p>
-          </div>
+          isActuallyEditor ? (
+            <div className={`py-20 text-center border-2 border-dashed rounded-3xl ${darkMode ? 'border-slate-700 bg-slate-800/50' : 'border-slate-100 bg-slate-50/50'}`}>
+              <ShoppingCart className="text-slate-300 w-12 h-12 mx-auto mb-4" />
+              <h3 className={`text-lg font-bold mb-2 ${darkMode ? 'text-white' : 'text-slate-800'}`}>No hay productos seleccionados</h3>
+              <p className={`text-sm ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                Selecciona productos en el panel de configuración para mostrarlos aquí.
+              </p>
+            </div>
+          ) : (
+            <div className={`py-20 text-center rounded-3xl ${darkMode ? 'bg-slate-800/50' : 'bg-slate-50/50'}`}>
+               <p className={`text-sm ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                No hay productos disponibles por el momento.
+              </p>
+            </div>
+          )
         )}
       </div>
 

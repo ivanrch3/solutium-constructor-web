@@ -13,11 +13,13 @@ interface EditorStoreState {
   generationSteps: string[];
   inlineEditingId: string | null;
   showMenuRecommendation: boolean;
+  selectedBentoCellIndex: number | null;
   
   // Acciones
   setProject: (project: any) => void;
   setInlineEditingId: (id: string | null) => void;
   setShowMenuRecommendation: (show: boolean) => void;
+  setSelectedBentoCellIndex: (index: number | null) => void;
   startAIGeneration: (brief: any) => Promise<void>;
   setGenerationStep: (step: number) => void;
   updateSectionSettings: (sectionId: string, settingsUpdate: Record<string, any>) => void;
@@ -66,12 +68,14 @@ export const useEditorStore = create<EditorStoreState>((set, get) => ({
   ],
   inlineEditingId: null,
   showMenuRecommendation: false,
+  selectedBentoCellIndex: null,
   
   setProject: (project) => set({ project }),
 
   setInlineEditingId: (id) => set({ inlineEditingId: id }),
 
   setShowMenuRecommendation: (show) => set({ showMenuRecommendation: show }),
+  setSelectedBentoCellIndex: (index) => set({ selectedBentoCellIndex: index }),
 
   startAIGeneration: async (brief) => {
     const { generateSiteContent } = await import('../services/aiService');
@@ -123,7 +127,7 @@ export const useEditorStore = create<EditorStoreState>((set, get) => ({
     });
   },
 
-  selectSection: (id) => set({ selectedSectionId: id, selectedElementId: null }),
+  selectSection: (id) => set({ selectedSectionId: id, selectedElementId: null, selectedBentoCellIndex: null }),
   
   selectElement: (id) => set({ selectedElementId: id }),
 

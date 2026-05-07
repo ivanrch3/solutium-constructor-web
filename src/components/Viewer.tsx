@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { PublishedSite } from '../types/schema';
 import { HeroModule } from './constructor/modules/HeroModule';
 import { FeaturesModule } from './constructor/modules/FeaturesModule';
 import { AboutModule } from './constructor/modules/AboutModule';
+import { ProductsShowcaseModule } from './constructor/modules/ProductsShowcaseModule';
 import { ProcessModule } from './constructor/modules/ProcessModule';
 import { GalleryModule } from './constructor/modules/GalleryModule';
 import { TestimonialsModule } from './constructor/modules/TestimonialsModule';
@@ -20,9 +21,13 @@ import { NewsletterModule } from './constructor/modules/NewsletterModule';
 import { VideoModule } from './constructor/modules/VideoModule';
 import { SpacerModule } from './constructor/modules/SpacerModule';
 import { MenuModule } from './constructor/modules/MenuModule';
+import { BentoModule } from './constructor/modules/BentoModule';
+import { ComparisonModule } from './constructor/modules/ComparisonModule';
 import { AlertCircle } from 'lucide-react';
 import { logDebug } from '../utils/debug';
 import { bridgeModuleContent } from '../utils/hydrationBridge';
+import { getProducts } from '../services/dataService';
+import { Product } from '../types/schema';
 
 interface ViewerProps {
   site: PublishedSite;
@@ -30,6 +35,56 @@ interface ViewerProps {
 }
 
 export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
+  const [catalogProducts, setCatalogProducts] = useState<Product[]>([]);
+  const queryParams = new URLSearchParams(window.location.search);
+  
+  // [SIP v12.5] Robust Editor Detection
+  const isConstructorMode = (
+    (queryParams.get('mode') === 'constructor' || queryParams.get('renderMode') === 'editor') ||
+    (!!window.name && window.name.includes('supabase_url') && window.name.includes('session_token')) ||
+    (window.location.hostname.includes('localhost') && !queryParams.get('siteId'))
+  );
+  
+  const isPublishedViewer = !isConstructorMode && !!site.siteId;
+
+  useEffect(() => {
+    // [PUBLISHED_SITE_CONTRACT_LOAD_DEBUG] (FASE 3)
+    if (window.location.search.includes('debug=products') || window.location.search.includes('debug_render=true')) {
+      console.log('[PUBLISHED_SITE_CONTRACT_LOAD_DEBUG]', {
+        siteId: site.siteId || (site as any).id,
+        projectId: site.projectId,
+        hasContent: !!site.content,
+        contentType: typeof site.content,
+        contentKeys: site.content ? Object.keys(site.content) : [],
+        sectionsCount: (site.content as any)?.sections?.length || (site.content as any)?.pages?.[0]?.sections?.length || 0,
+        rawContentPreview: site.content ? JSON.stringify(site.content).substring(0, 200) : 'none'
+      });
+    }
+
+    // [PRODUCTS_LIVE_RUNTIME_DEBUG] (Fase 1)
+    console.log('[PRODUCTS_LIVE_RUNTIME_DEBUG]', {
+      siteId: site.siteId,
+      projectId: site.projectId,
+      isConstructorMode,
+      windowNamePreview: window.name ? window.name.substring(0, 50) : 'empty',
+      hasContractContent: !!site.content,
+      sectionsCount: (site.content as any)?.sections?.length || 0,
+      timestamp: new Date().toISOString()
+    });
+
+    if (site.projectId && isConstructorMode) {
+      logDebug('[VIEWER_DB_FETCH] Buscando productos del catálogo del proyecto:', site.projectId);
+      getProducts(0, 100, site.projectId).then(products => {
+        if (products && products.length > 0) {
+          logDebug(`[VIEWER_DB_FETCH] ${products.length} productos cargados desde la DB.`);
+          setCatalogProducts(products);
+        }
+      }).catch(err => {
+        console.warn('[VIEWER_DB_FETCH] Error cargando catálogo:', err);
+      });
+    }
+  }, [site.projectId, isConstructorMode]);
+
   // SIP v5.0: Respect the Master Switch
   if (site.isActive === false) {
     return (
@@ -58,24 +113,66 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
   const { content } = site;
   
   // SIP v5.5 (Protocolo 10.2) - Integrity Check
-  if (!content || !content.theme || !Array.isArray(content.sections)) {
-    console.error('❌ [VIEWER] Error de Integridad: Campos obligatorios faltantes (content.theme, content.sections).');
+  const extractSections = (c: any) => {
+    if (Array.isArray(c?.sections)) return c.sections;
+    if (Array.isArray((c as any)?.pages?.[0]?.sections)) return (c as any).pages[0].sections;
+    if (Array.isArray((c as any)?.content?.sections)) return (c as any).content.sections;
+    if (Array.isArray(c)) return c;
+    return [];
+  };
+
+  const sections = extractSections(content);
+  const theme = content?.theme || (content as any)?.pages?.[0]?.theme || { primaryColor: '#3B82F6', fontFamily: 'sans-serif' };
+
+  useEffect(() => {
+    if (window.location.search.includes('debug=products') || window.location.search.includes('debug_render=true')) {
+      console.log('[PUBLISHED_SECTIONS_EXTRACTION_DEBUG]', {
+        hasRootSections: Array.isArray(content?.sections),
+        hasPagesSections: Array.isArray((content as any)?.pages?.[0]?.sections),
+        hasNestedContentSections: Array.isArray((content as any)?.content?.sections),
+        isContentArray: Array.isArray(content),
+        extractedSectionsCount: sections.length
+      });
+    }
+  }, [content, sections.length]);
+
+  if (!content || (sections.length === 0 && !isConstructorMode)) {
+    const isDebug = window.location.search.includes('debug=products') || window.location.search.includes('debug_render=true');
+    console.error('❌ [VIEWER] Error de Integridad o Secciones Vacías.', {
+      hasContent: !!content,
+      sectionsCount: sections.length,
+      isDebug
+    });
+    
     return (
       <div className="min-h-screen bg-secondary flex flex-col items-center justify-center p-6 text-center">
         <div className="bg-surface p-12 rounded-3xl shadow-xl border border-border max-w-md w-full flex flex-col items-center border-rose-200">
           <div className="w-20 h-20 bg-rose-100 rounded-full flex items-center justify-center mb-6">
             <AlertCircle className="w-10 h-10 text-rose-600" />
           </div>
-          <h1 className="text-2xl font-bold text-text mb-4">Error de Hidratación</h1>
+          <h1 className="text-2xl font-bold text-text mb-4">
+            {sections.length === 0 ? 'No se encontraron secciones' : 'Error de Hidratación'}
+          </h1>
           <p className="text-text/60 mb-8 leading-relaxed text-sm">
-            La integridad del sitio no pudo ser validada. Asegúrate de que el payload contenga <code className="bg-secondary px-1 py-0.5 rounded">theme</code> y <code className="bg-secondary px-1 py-0.5 rounded">sections</code> válidos (Protocolo 10.2).
+            {sections.length === 0 
+              ? 'Este sitio parece estar vacío. Asegúrate de haber guardado y publicado tus cambios.'
+              : 'La integridad del sitio no pudo ser validada. (Protocolo 10.2).'}
           </p>
+          {isDebug && (
+            <div className="mt-4 p-4 bg-slate-50 rounded-lg text-left text-[10px] font-mono overflow-auto max-h-40 w-full">
+              <div className="font-bold text-slate-500 mb-1 underline">DEBUG INFO:</div>
+              <div>siteId: {site.siteId || 'none'}</div>
+              <div>projectId: {site.projectId || 'none'}</div>
+              <div>contentKeys: {Object.keys(content || {}).join(', ')}</div>
+              <div>extractedCount: {sections.length}</div>
+            </div>
+          )}
         </div>
       </div>
     );
   }
 
-  const { theme, sections } = content;
+  // const { theme, sections } = content; // Eliminado por extracción robusta arriba
 
   return (
     <div 
@@ -85,7 +182,7 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
         fontFamily: theme.fontFamily || 'sans-serif'
       } as React.CSSProperties}
     >
-      {sections.map((section) => {
+      {sections.map((section, index) => {
         const moduleId = section.id;
         // SOP: Fallback entre 'type' y 'tipo' para máxima compatibilidad
         const type = section.type || section.tipo; 
@@ -95,6 +192,32 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
         if (!moduleId) {
           console.warn('⚠️ [VIEWER] Saltando sección sin ID.');
           return null;
+        }
+
+        // [VIEWER_SECTION_ROUTING_DEBUG] (AUDIT POINT 2)
+        const normalizedType = type?.toLowerCase()
+          ?.normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Eliminar acentos
+          ?.replace(/\s+/g, '_') // Espacios por guiones bajos
+          ?.replace(/-/g, '_'); // Guiones por guiones bajos
+          
+        const componentResolved = [
+          'products_showcase', 'product_showcase', 'products-showcase', 
+          'showcase_products', 'catalog_v2', 'catalogo_v2', 'catalogo'
+        ].includes(normalizedType);
+
+        if (window.location.search.includes('debug_render=true') || window.location.search.includes('debug=products')) {
+          console.log('[VIEWER_SECTION_ROUTING_DEBUG]', {
+            index,
+            sectionId: moduleId,
+            type: section.type,
+            moduleType: (section as any).moduleType,
+            normalizedType,
+            componentResolved,
+            visible: (section as any).visible !== false,
+            contentKeys: section.content ? Object.keys(section.content) : [],
+            settingsKeys: section.settings ? Object.keys(section.settings) : [],
+            title: section.content?.title || section.content?.titulo || section.settings?.[`${moduleId}_global_header_title`]
+          });
         }
 
         // DIAGNÓSTICO PROFUNDO
@@ -148,7 +271,7 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
           });
         }
 
-        switch (type) {
+        switch (normalizedType) {
           case 'header':
             return <HeaderModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} />;
           case 'hero':
@@ -157,6 +280,22 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
             return <FeaturesModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} />;
           case 'about':
             return <AboutModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} />;
+          case 'products_showcase':
+          case 'product_showcase':
+          case 'showcase_products':
+          case 'catalog_v2':
+          case 'catalogo_v2':
+          case 'catalogo':
+            return (
+              <ProductsShowcaseModule 
+                key={moduleId} 
+                moduleId={moduleId} 
+                content={section.content}
+                settingsValues={finalSettingsValues} 
+                products={catalogProducts} 
+                isPublishedViewer={isPublishedViewer} 
+              />
+            );
           case 'process':
             return <ProcessModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} />;
           case 'gallery':
@@ -174,7 +313,135 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
           case 'contact':
             return <ContactModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} />;
           case 'products':
-            return <ProductsModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} products={[]} />;
+          case 'product_grid':
+          case 'product':
+             // [PRODUCTS_LEGACY_VIEWER_RESOLUTION_DEBUG]
+             console.log('[PRODUCTS_LEGACY_VIEWER_RESOLUTION_DEBUG]', {
+               runtime: isPublishedViewer ? "published_viewer" : "constructor",
+               moduleId,
+               hasContentProducts: !!(section.content?.products || section.content?.productos),
+               contentCount: (section.content?.products?.length || section.content?.productos?.length || 0),
+               hasSettingsSnapshot: !!finalSettingsValues[`${moduleId}_el_products_items_products`]
+             });
+
+             // [FASE 1] Datos brutos de la sección
+             const selectProductsRaw = section.settings?.[`${moduleId}_el_products_config_select_products`] || section.settings?.select_products;
+            
+            // [VIEWER_PUBLISHED_CONTRACT_PRODUCTS_FORENSIC]
+            if (isPublishedViewer || window.location.search.includes('debug=products')) {
+              console.log('[VIEWER_PUBLISHED_CONTRACT_PRODUCTS_FORENSIC]', {
+                currentView: isConstructorMode ? 'constructor' : 'viewer',
+                isPublishedViewer,
+                siteId: site.siteId,
+                projectId: site.projectId,
+                sectionsCount: site.content?.sections?.length || 0,
+                productSections: site.content?.sections?.filter((s: any) => s.type === 'products' || s.type === 'product_grid').map((s: any) => ({
+                  sectionId: s.id,
+                  type: s.type,
+                  contentKeys: s.content ? Object.keys(s.content) : [],
+                  settingsKeys: s.settings ? Object.keys(s.settings) : [],
+                  hasContentProducts: !!(s.content?.products || s.content?.productos || s.content?.items),
+                  contentProductsCount: (s.content?.products?.length || s.content?.productos?.length || s.content?.items?.length || 0),
+                  hasSelectedProductIds: !!s.content?.productIds,
+                  selectedProductIdsCount: s.content?.productIds?.length || 0,
+                  rawContentProductsPreview: s.content?.products?.[0]?.name || s.content?.productos?.[0]?.name
+                }))
+              });
+              
+              console.log('[VIEWER_PRODUCTS_PATCH_VERSION]', {
+                version: "products-snapshot-v2",
+                timestamp: new Date().toISOString(),
+                currentView: isConstructorMode ? 'constructor' : 'viewer',
+                isPublishedViewer
+              });
+            }
+
+            console.log('[PRODUCTS_VIEWER_SECTION_RAW_DEBUG]', {
+              runtime: isConstructorMode ? "constructor_preview" : "published_viewer",
+              sectionId: section.id,
+              moduleId,
+              sectionType: type,
+              contentProductsCount: section.content?.products?.length || 0,
+              contentProductosCount: section.content?.productos?.length || 0,
+              contentItemsCount: section.content?.items?.length || 0,
+              settingsKeys: section.settings ? Object.keys(section.settings).length : 0,
+              settingsValuesKeys: Object.keys(finalSettingsValues).length,
+              selectionMode: section.settings?.[`${moduleId}_el_products_config_selection_mode`] || section.settings?.selection_mode,
+              selectProductsRaw: Array.isArray(selectProductsRaw) ? selectProductsRaw.length : 0,
+              productsPropCount: catalogProducts?.length || 0,
+              firstContentProduct: section.content?.products?.[0] || section.content?.productos?.[0]
+            });
+
+            // [FASE 2] RESOLUCIÓN PRIORITARIA EN VIVO
+            // Fallback order: content.products -> content.productos -> content.items -> settings snapshot -> settings manual
+            const snapshotProducts =
+              section.content?.products ||
+              section.content?.productos ||
+              section.content?.items ||
+              finalSettingsValues[`${moduleId}_el_products_items_products`] ||
+              section.settings?.[`${moduleId}_el_products_items_products`] ||
+              [];
+
+            let finalProducts: Product[] = [];
+            let resolutionSource = "none";
+            let skippedSupabaseFetch = false;
+
+            if (isPublishedViewer && Array.isArray(snapshotProducts) && snapshotProducts.length > 0) {
+              finalProducts = snapshotProducts;
+              resolutionSource = "published_snapshot_content";
+              skippedSupabaseFetch = true;
+            } else {
+              // Comportamiento híbrido para constructor o si no hay snapshot en el content
+              const productMap = new Map<string, Product>();
+              
+              // 1. Snapshot si existe (prioridad media)
+              if (Array.isArray(snapshotProducts) && snapshotProducts.length > 0) {
+                snapshotProducts.forEach((p: any) => { if (p?.id) productMap.set(p.id, p); });
+                resolutionSource = "snapshot_available";
+              }
+              
+              // 2. Catálogo Supabase (Solo si estamos en el constructor o si falló el snapshot)
+              // En el viewer publicado NO deberíamos llegar aquí si el snapshot existe
+              if ((isConstructorMode || productMap.size === 0) && catalogProducts.length > 0) {
+                catalogProducts.forEach((p) => { if (p.id) productMap.set(p.id, p); });
+                if (productMap.size > 0 && resolutionSource === "none") resolutionSource = "catalog_fetch";
+              }
+              
+              finalProducts = Array.from(productMap.values());
+              if (resolutionSource === "none") resolutionSource = isConstructorMode ? "constructor_empty" : "viewer_fallback_empty";
+            }
+
+            console.log('[PRODUCTS_VIEWER_RESOLUTION_DEBUG]', {
+              runtime: isConstructorMode ? "constructor_preview" : "published_viewer",
+              moduleId,
+              snapshotProductsCount: Array.isArray(snapshotProducts) ? snapshotProducts.length : 0,
+              finalProductsCount: finalProducts.length,
+              source: resolutionSource,
+              skippedSupabaseFetch,
+              ignoredManualSelectionFilter: isPublishedViewer && finalProducts.length > 0
+            });
+
+            return (
+              <ProductsModule 
+                key={moduleId} 
+                moduleId={moduleId} 
+                settingsValues={finalSettingsValues} 
+                products={finalProducts} 
+                isPreviewMode={isConstructorMode} 
+              />
+            );
+          case 'bento':
+            return (
+              <BentoModule 
+                key={moduleId}
+                moduleId={moduleId} 
+                settingsValues={finalSettingsValues} 
+                content={content}
+                isPreviewMode={true}
+              />
+            );
+          case 'comparative':
+            return <ComparisonModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} preview={true} />;
           case 'clients':
             return <ClientsModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} customers={[]} />;
           case 'cta':

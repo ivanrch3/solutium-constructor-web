@@ -602,11 +602,7 @@ export const PRODUCTS_MODULE: WebModule = {
       groups: ['contenido'],
       settings: {
         contenido: [
-          { id: 'selection_mode', label: 'Modo de Selección', type: 'select', defaultValue: 'manual', options: [
-            { label: 'Manual (Selección)', value: 'manual' },
-            { label: 'Automático (Recientes)', value: 'auto' }
-          ]},
-          { id: 'select_products', label: 'Selección de Productos', type: 'product_selection', defaultValue: [] },
+          { id: 'select_products', label: 'Selección de Productos', type: 'product_selection', defaultValue: null },
           { id: 'show_tabs', label: 'Mostrar Pestañas de Categoría', type: 'boolean', defaultValue: true }
         ],
         estilo: [], estructura: [], tipografia: [], multimedia: [], interaccion: []
@@ -719,6 +715,59 @@ export const PRODUCTS_MODULE: WebModule = {
       ],
       estructura: [], tipografia: [], multimedia: []
     }}
+  ]
+};
+
+export const PRODUCTS_SHOWCASE_MODULE: WebModule = {
+  id: 'mod_products_showcase_1',
+  type: 'products_showcase',
+  iconKey: 'products_showcase',
+  name: 'Catálogo de Productos V2',
+  globalGroups: ['contenido', 'estructura', 'estilo'],
+  globalSettings: {
+    contenido: [
+      { id: 'header_title', label: 'Título de Sección', type: 'text', defaultValue: 'Nuestros Productos' },
+      { id: 'header_subtitle', label: 'Subtítulo de Sección', type: 'text', defaultValue: 'Descubre nuestra selección exclusiva.' },
+      { id: 'cta_label', label: 'Texto Botón', type: 'text', defaultValue: 'Ver Detalle' }
+    ],
+    estructura: [
+      { id: 'layout', label: 'Diseño', type: 'select', defaultValue: 'grid', options: [
+        { label: 'Cuadrícula', value: 'grid' },
+        { label: 'Carrusel', value: 'carousel' }
+      ]},
+      { id: 'columns', label: 'Columnas (Desktop)', type: 'select', defaultValue: '3', options: [
+        { label: '2 Columnas', value: '2' },
+        { label: '3 Columnas', value: '3' },
+        { label: '4 Columnas', value: '4' }
+      ]},
+      { id: 'show_tabs', label: 'Mostrar Filtros Categoría', type: 'boolean', defaultValue: true }
+    ],
+    estilo: [
+      { id: 'card_style', label: 'Estilo de Tarjeta', type: 'select', defaultValue: 'elevated', options: [
+        { label: 'Elevado (Shadow)', value: 'elevated' },
+        { label: 'Bordeado', value: 'bordered' },
+        { label: 'Minimal / Glass', value: 'glass' },
+        { label: 'Simple', value: 'simple' }
+      ]},
+      { id: 'show_price', label: 'Mostrar Precio', type: 'boolean', defaultValue: true },
+      { id: 'show_description', label: 'Mostrar Descripción', type: 'boolean', defaultValue: true },
+      { id: 'show_category', label: 'Mostrar Categoría', type: 'boolean', defaultValue: true }
+    ],
+    tipografia: [], multimedia: [], interaccion: []
+  },
+  elements: [
+    {
+      id: 'el_products_showcase_config',
+      name: 'Configuración',
+      type: 'style',
+      groups: ['contenido'],
+      settings: {
+        contenido: [
+          { id: 'select_products', label: 'Seleccionar Productos', type: 'product_selection', defaultValue: null }
+        ],
+        estilo: [], estructura: [], tipografia: [], multimedia: [], interaccion: []
+      }
+    }
   ]
 };
 
@@ -2842,13 +2891,23 @@ export const CLIENTS_MODULE: WebModule = {
 
 export const BENTO_MODULE: WebModule = {
   id: 'mod_bento_1',
-  type: 'content',
+  type: 'bento',
   iconKey: 'bento',
   name: 'Bento / Composición Libre',
   globalGroups: ['estructura', 'estilo', 'interaccion', 'multimedia'],
   globalSettings: {
     estructura: [
-      { id: 'columns', label: 'Columnas Desktop', type: 'range', defaultValue: 4, min: 1, max: 12 },
+      { id: 'bento_type', label: 'Especialización (Tipo)', type: 'select', defaultValue: 'mixed_content', options: [
+        { label: 'Contenido Mixto', value: 'mixed_content' },
+        { label: 'Beneficios (Grid)', value: 'benefits_grid' },
+        { label: 'Características Técnicas', value: 'technical_features' },
+        { label: 'Ecosistema de Apps', value: 'apps_ecosystem' },
+        { label: 'Métricas e Impacto', value: 'metrics_impact' },
+        { label: 'Resumen de Proceso', value: 'process_summary' },
+        { label: 'Casos de Uso', value: 'use_cases' },
+        { label: 'Call to Action', value: 'cta_grid' }
+      ] },
+      { id: 'columns', label: 'Columnas Desktop', type: 'range', defaultValue: 12, min: 1, max: 12 },
       { id: 'gap', label: 'Espaciado (Gap)', type: 'range', defaultValue: 20, min: 0, max: 100, unit: 'px' },
       { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 100, min: 0, max: 200, unit: 'px' },
       { id: 'max_width', label: 'Ancho Máximo', type: 'range', defaultValue: 1200, min: 800, max: 1600, unit: 'px' }
@@ -2867,7 +2926,7 @@ export const BENTO_MODULE: WebModule = {
     contenido: [], tipografia: []
   },
   elements: [
-    { id: 'el_bento_header', name: 'Textos', type: 'single', groups: ['title', 'subtitle', 'estructura'], settings: {
+    { id: 'el_bento_header', name: 'Textos de Cabecera', type: 'single', groups: ['title', 'subtitle', 'estructura'], settings: {
       title: [
         { id: 'title', label: 'Título Principal', type: 'text', defaultValue: 'Diseño **Flexible** y Dinámico' },
         { id: 'title_size', label: 'Tamaño', type: 'typography_size', defaultValue: 't2', allowedLevels: ['t1', 't2', 't3'] },
@@ -2894,83 +2953,112 @@ export const BENTO_MODULE: WebModule = {
       ],
       tipografia: [], estilo: [], multimedia: [], interaccion: []
     }},
-    { id: 'el_bento_items', name: 'Bloques de Contenido (Celdas)', type: 'repeater', groups: ['contenido', 'estructura', 'estilo', 'tipografia', 'multimedia', 'interaccion'], settings: {
+    { id: 'el_bento_items', name: 'Bloques de Contenido (Celdas)', type: 'repeater', groups: ['contenido', 'estructura', 'estilo', 'tipografia', 'multimedia'], settings: {
       contenido: [
-        { id: 'type', label: 'Tipo de Celda', type: 'select', defaultValue: 'text', options: [
-          { label: 'Texto Editorial', value: 'text' },
-          { label: 'Imagen de Impacto', value: 'image' },
-          { label: 'Icono + Feature', value: 'icon_text' },
-          { label: 'Estadística / Número', value: 'stat' },
-          { label: 'Botón / CTA', value: 'cta' },
-          { label: 'Video de Fondo', value: 'video' }
-        ]},
-        { id: 'title', label: 'Título / Valor', type: 'text', defaultValue: 'Título del Bloque', showIf: { settingId: 'type', value: ['image'], operator: 'neq' as const } },
-        { id: 'description', label: 'Descripción', type: 'text', defaultValue: 'Descripción corta del bloque.', showIf: { settingId: 'type', value: ['text', 'icon_text', 'stat'], operator: 'includes' as const } },
-        { id: 'icon', label: 'Icono', type: 'icon', defaultValue: 'Sparkles', showIf: { settingId: 'type', value: ['icon_text', 'stat'], operator: 'includes' as const } },
-        { id: 'button_text', label: 'Texto Botón / Link', type: 'text', defaultValue: 'Explorar', showIf: { settingId: 'type', value: 'cta' } },
-        ...BUTTON_LINK_SETTINGS('btn').map(s => ({ ...s, showIf: { settingId: 'type', value: ['cta', 'image', 'text'], operator: 'includes' as const } })),
-        { id: 'eyebrow', label: 'Cejilla (Eyebrow)', type: 'text', defaultValue: '', description: 'Pequeño texto arriba del título' }
-      ],
-      estructura: [
-        { id: 'col_span', label: 'Ancho (Columnas 1-12)', type: 'range', defaultValue: 4, min: 1, max: 12 },
-        { id: 'row_span', label: 'Alto (Celdas)', type: 'range', defaultValue: 2, min: 1, max: 8 },
-        { id: 'padding', label: 'Padding Interno', type: 'range', defaultValue: 32, min: 0, max: 80, unit: 'px' },
-        { id: 'content_align', label: 'Alineación Celda', type: 'select', defaultValue: 'center', options: [
-          { label: 'Inicio (Arriba-Izquierda)', value: 'top-left' },
-          { label: 'Centro', value: 'center' },
-          { label: 'Final (Abajo-Derecha)', value: 'bottom-right' }
-        ]},
-        { id: 'z_index', label: 'Prioridad de Capa (z-index)', type: 'range', defaultValue: 1, min: 1, max: 10 }
-      ],
-      estilo: [
-        { id: 'card_style', label: 'Estilo Visual', type: 'select', defaultValue: 'solid', options: [
-          { label: 'Sólido', value: 'solid' },
-          { label: 'Degradado', value: 'gradient' },
-          { label: 'Cristal (Blur)', value: 'glass' },
-          { label: 'Brillo (Glow)', value: 'glow' },
-          { label: 'Transparente', value: 'transparent' }
-        ]},
-        { id: 'card_bg', label: 'Color Fondo', type: 'color', defaultValue: '#FFFFFF', showIf: { settingId: 'card_style', value: 'solid' } },
-        { id: 'card_gradient', label: 'Degradado Fondo', type: 'gradient', defaultValue: 'linear-gradient(135deg, #F8FAFC 0%, #E2E8F0 100%)', showIf: { settingId: 'card_style', value: 'gradient' } },
-        { id: 'card_border', label: 'Color Borde', type: 'color', defaultValue: 'rgba(0,0,0,0.05)' },
-        { id: 'card_radius', label: 'Redondeo (Radio)', type: 'range', defaultValue: 28, min: 0, max: 64, unit: 'px' },
-        { id: 'card_shadow', label: 'Sombra', type: 'select', defaultValue: 'sm', options: [
-          { label: 'Ninguna', value: 'none' },
-          { label: 'Suave', value: 'sm' },
-          { label: 'Fuerte', value: 'lg' },
-          { label: 'Flotante', value: 'xl' }
-        ]},
-        { id: 'hover_effect', label: 'Efecto al Hover', type: 'select', defaultValue: 'lift', options: [
-          { label: 'Ninguno', value: 'none' },
-          { label: 'Levantar', value: 'lift' },
-          { label: 'Zoom', value: 'zoom' },
-          { label: 'Pulso', value: 'pulse' }
+        { id: 'items', label: 'Lista de Celdas', type: 'repeater', defaultValue: [], fields: [
+          { id: 'type', label: 'Tipo de Celda', type: 'select', defaultValue: 'icon_text', options: [
+            { label: 'Portada (Hero)', value: 'hero' },
+            { label: 'Icono + Texto', value: 'icon_text' },
+            { label: 'Característica (Feature)', value: 'feature' },
+            { label: 'Métrica / Dato', value: 'metric' },
+            { label: 'Compacto', value: 'compact' },
+            { label: 'Acción (CTA)', value: 'cta' },
+            { label: 'Visual (Imagen)', value: 'visual' },
+            { label: 'Video', value: 'video' },
+            { label: 'Paso (Step)', value: 'step' },
+            { label: 'Tarjeta de App', value: 'app_card' },
+            { label: 'Testimonio', value: 'testimonial' },
+            { label: 'Señal de Confianza', value: 'trust_signal' }
+          ]},
+          // Campos comunes
+          { id: 'title', label: 'Título / Valor', type: 'text', defaultValue: 'Nueva Celda' },
+          { id: 'description', label: 'Descripción / Texto', type: 'text', defaultValue: 'Describe el contenido de este bloque.', showIf: { settingId: 'type', value: ['visual'], operator: 'neq' } },
+          
+          // Metric específicos (Dato principal)
+          { id: 'metric_value', label: 'Valor Numérico', type: 'text', defaultValue: '', showIf: { settingId: 'type', value: 'metric' } },
+          { id: 'metric_prefix', label: 'Prefijo (ej: $)', type: 'text', defaultValue: '', showIf: { settingId: 'type', value: 'metric' } },
+          { id: 'metric_suffix', label: 'Sufijo (ej: % o +)', type: 'text', defaultValue: '', showIf: { settingId: 'type', value: 'metric' } },
+          { id: 'metric_label', label: 'Etiqueta del Dato', type: 'text', defaultValue: 'Impacto Real', showIf: { settingId: 'type', value: 'metric' } },
+          { id: 'accent_color', label: 'Color de Acento', type: 'color', defaultValue: '#3B82F6', showIf: { settingId: 'type', value: ['metric', 'step', 'cta'], operator: 'includes' } },
+
+          // Step específicos
+          { id: 'step_number', label: 'Número de Paso', type: 'number', defaultValue: 1, showIf: { settingId: 'type', value: 'step' } },
+
+          // Trust Signal / App Card específicos
+          { id: 'rating', label: 'Calificación (1-5)', type: 'range', defaultValue: 5, min: 1, max: 5, showIf: { settingId: 'type', value: ['testimonial', 'trust_signal'], operator: 'includes' } },
+          { id: 'app_category', label: 'Categoría App', type: 'text', defaultValue: 'Integración', showIf: { settingId: 'type', value: 'app_card' } },
+
+          // Hero / Feature específicos
+          { id: 'eyebrow', label: 'Cejilla (Eyebrow)', type: 'text', defaultValue: '', showIf: { settingId: 'type', value: ['hero', 'feature', 'icon_text', 'compact'], operator: 'includes' } },
+          { id: 'content_position', label: 'Posición Contenido', type: 'select', defaultValue: 'center', options: [
+            { label: 'Centro', value: 'center' },
+            { label: 'Izquierda', value: 'left' },
+            { label: 'Derecha', value: 'right' }
+          ], showIf: { settingId: 'type', value: 'hero' } },
+
+          // CTA específicos (Headline vs Title)
+          { id: 'headline', label: 'Titular de Acción', type: 'text', defaultValue: '¡Empieza Hoy!', showIf: { settingId: 'type', value: 'cta' } },
+          { id: 'subheadline', label: 'Texto Secundario', type: 'text', defaultValue: 'Únete a la mejor comunidad.', showIf: { settingId: 'type', value: 'cta' } },
+          { id: 'primary_btn_label', label: 'Botón Principal', type: 'text', defaultValue: 'Suscribirse', showIf: { settingId: 'type', value: 'cta' } },
+          { id: 'primary_btn_url', label: 'URL Principal', type: 'text', defaultValue: '#', showIf: { settingId: 'type', value: 'cta' } },
+          { id: 'secondary_btn_label', label: 'Botón Secundario', type: 'text', defaultValue: 'Demo', showIf: { settingId: 'type', value: 'cta' } },
+          { id: 'trust_note', label: 'Nota de Confianza', type: 'text', defaultValue: '*No requiere tarjeta', showIf: { settingId: 'type', value: 'cta' } },
+
+          // Icon/Text / Compact / Feature específicos
+          { id: 'icon', label: 'Icono', type: 'icon', defaultValue: 'Sparkles', showIf: { settingId: 'type', value: ['hero', 'icon_text', 'compact', 'metric', 'feature', 'app_card', 'step'], operator: 'includes' } },
+          { id: 'show_description', label: 'Mostrar Descripción', type: 'boolean', defaultValue: true, showIf: { settingId: 'type', value: ['compact', 'icon_text'], operator: 'includes' } },
+          
+          // Botones simples (Hero / Feature / Visual / App)
+          { id: 'button_text', label: 'Texto del Botón', type: 'text', defaultValue: 'Explorar', showIf: { settingId: 'type', value: ['hero', 'visual', 'feature', 'app_card'], operator: 'includes' } },
+          { id: 'btn_url', label: 'URL / Enlace', type: 'text', defaultValue: '#', showIf: { settingId: 'type', value: ['hero', 'visual', 'icon_text', 'feature', 'app_card'], operator: 'includes' } },
+
+
+          // Estructura (Per item, breakpoint specific labels)
+          { id: 'desktop_span', label: 'Ancho Desktop (Columnas)', type: 'range', defaultValue: 4, min: 1, max: 12 },
+          { id: 'desktop_rows', label: 'Alto Desktop (Filas)', type: 'range', defaultValue: 2, min: 1, max: 8 },
+          { id: 'tablet_span', label: 'Ancho Tablet (Columnas)', type: 'range', defaultValue: 3, min: 1, max: 6 },
+          { id: 'mobile_span', label: 'Ancho Móvil (Columnas)', type: 'range', defaultValue: 4, min: 1, max: 4 },
+          
+          { id: 'padding', label: 'Padding Interno', type: 'range', defaultValue: 32, min: 0, max: 80, unit: 'px' },
+          { id: 'align_items', label: 'Alineación Vertical', type: 'select', defaultValue: 'start', options: [
+            { label: 'Arriba', value: 'start' },
+            { label: 'Centro', value: 'center' },
+            { label: 'Abajo', value: 'end' }
+          ]},
+
+          // Estilo
+          { id: 'card_style', label: 'Estilo de Tarjeta', type: 'select', defaultValue: 'solid', options: [
+            { label: 'Sólido', value: 'solid' },
+            { label: 'Cristal (Blur)', value: 'glass' },
+            { label: 'Degradado', value: 'gradient' },
+            { label: 'Brillo (Glow)', value: 'glow' },
+            { label: 'Transparente', value: 'transparent' }
+          ]},
+          { id: 'card_bg', label: 'Color de Fondo', type: 'color', defaultValue: '#FFFFFF', showIf: { settingId: 'card_style', value: 'solid' } },
+          { id: 'card_gradient', label: 'Degradado Personalizado', type: 'gradient', defaultValue: 'linear-gradient(135deg, #F8FAFC 0%, #E2E8F0 100%)', showIf: { settingId: 'card_style', value: 'gradient' } },
+          { id: 'card_image', label: 'Imagen de Fondo', type: 'image', defaultValue: '' },
+          { id: 'card_overlay', label: 'Opacidad Overlay Image', type: 'range', defaultValue: 0, min: 0, max: 100 },
+          { id: 'card_radius', label: 'Redondeo', type: 'range', defaultValue: 28, min: 0, max: 64, unit: 'px' },
+          { id: 'card_shadow', label: 'Sombra', type: 'select', defaultValue: 'sm', options: [
+            { label: 'Ninguna', value: 'none' },
+            { label: 'Suave', value: 'sm' },
+            { label: 'Fuerte', value: 'lg' }
+          ]},
+          { id: 'text_contrast', label: 'Contraste de Texto', type: 'select', defaultValue: 'auto', options: [
+            { label: 'Auto', value: 'auto' },
+            { label: 'Forzar Blanco', value: 'white' },
+            { label: 'Forzar Negro', value: 'black' }
+          ]},
+
+          // Multimedia
+          { id: 'image', label: 'Imagen Principal', type: 'image', defaultValue: '', showIf: { settingId: 'type', value: ['visual', 'video'], operator: 'includes' } },
+          { id: 'image_fit', label: 'Ajuste de Imagen', type: 'select', defaultValue: 'cover', options: [
+            { label: 'Recortar (Cover)', value: 'cover' },
+            { label: 'Contener (Contain)', value: 'contain' }
+          ]}
         ]}
       ],
-      tipografia: [
-        { id: 'title_size', label: 'Tamaño Título', type: 'typography_size', defaultValue: 't3', allowedLevels: ['t1', 't2', 't3', 'p'] },
-        { id: 'title_weight', label: 'Peso Título', type: 'font_weight', defaultValue: 'extrabold' },
-        { id: 'title_color', label: 'Color Título', type: 'color', defaultValue: '#0F172A' },
-        { id: 'desc_size', label: 'Tamaño Descripción', type: 'typography_size', defaultValue: 'p', allowedLevels: ['p', 's'] },
-        { id: 'desc_color', label: 'Color Descripción', type: 'color', defaultValue: '#64748B' }
-      ],
-      multimedia: [
-        { id: 'image', label: 'Imagen de Fondo', type: 'image', defaultValue: 'https://picsum.photos/seed/bento/800/600', showIf: { settingId: 'type', value: ['image', 'video', 'text'], operator: 'includes' } },
-        { id: 'image_fit', label: 'Ajuste Multimedia', type: 'select', defaultValue: 'cover', options: [
-          { label: 'Cubrir (Cover)', value: 'cover' },
-          { label: 'Contener (Contain)', value: 'contain' }
-        ]},
-        { id: 'overlay_opacity', label: 'Opacidad Overlay', type: 'range', defaultValue: 0, min: 0, max: 100, unit: '%' }
-      ],
-      interaccion: [
-        { id: 'hover_effect', label: 'Efecto al Hover', type: 'select', defaultValue: 'lift', options: [
-          { label: 'Ninguno', value: 'none' },
-          { label: 'Levantar (Lift)', value: 'lift' },
-          { label: 'Expandir (Zoom)', value: 'zoom' },
-          { label: 'Brillo (Pulse)', value: 'pulse' }
-        ]},
-        { id: 'parallax_effect', label: 'Efecto Paralaje', type: 'boolean', defaultValue: false }
-      ]
+      estructura: [], estilo: [], tipografia: [], multimedia: [], interaccion: []
     }}
   ]
 };
@@ -3054,6 +3142,7 @@ export const MODULE_INFO: Record<string, { label: string; icon: React.ElementTyp
   footer: { label: 'Pie de página', icon: PanelBottom },
   spacer: { label: 'Espaciadores', icon: SeparatorHorizontal },
   products: { label: 'Productos', icon: ShoppingBag },
+  products_showcase: { label: 'EXPERIMENTAL: Catálogo V2', icon: ShoppingBag },
   hero: { label: 'Portada', icon: Sparkles },
   features: { label: 'Características', icon: ListChecks },
   about: { label: 'Sobre Nosotros', icon: Info },

@@ -300,3 +300,209 @@ export const AIGenerationModal: React.FC<{
     </motion.div>
   </div>
 );
+
+// [PHASE 3D.5.2] MotherAIPageConfirmationModal Component
+export const MotherAIPageConfirmationModal: React.FC<{
+  isOpen: boolean,
+  onClose: () => void,
+  onConfirm: () => void,
+  brief: {
+    businessName: string,
+    industry: string,
+    goal: string
+  },
+  costCredits: number,
+  isGenerating: boolean,
+  isDryRun: boolean,
+  onToggleDryRun: () => void
+}> = ({ isOpen, onClose, onConfirm, brief, costCredits, isGenerating, isDryRun, onToggleDryRun }) => (
+  <AnimatePresence>
+    {isOpen && (
+      <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={onClose}
+          className="absolute inset-0 bg-black/60 backdrop-blur-md"
+        />
+        <motion.div 
+          initial={{ scale: 0.9, opacity: 0, y: 20 }}
+          animate={{ scale: 1, opacity: 1, y: 0 }}
+          exit={{ scale: 0.9, opacity: 0, y: 20 }}
+          className="relative w-full max-w-xl bg-surface rounded-[2.5rem] p-10 shadow-3xl overflow-hidden border border-border/50"
+        >
+          <div className="flex flex-col items-center text-center">
+            <div className={`w-20 h-20 rounded-3xl flex items-center justify-center mb-6 shadow-2xl ${isDryRun ? 'bg-secondary text-text/40' : 'bg-primary text-white'}`}>
+              <Sparkles className="w-10 h-10" />
+            </div>
+            
+            <h2 className="text-3xl font-black text-text mb-2 tracking-tight">
+              Generar sitio con <span className="text-primary italic">Solutium AI</span>
+            </h2>
+            
+            <p className="text-text/60 mb-8 max-w-md">
+              {isDryRun 
+                ? "Modo Vista Previa: Verás qué se enviaría a la IA sin consumir créditos reales."
+                : `Esta acción generará una landing completa y consumirá ${costCredits} créditos del proyecto.`}
+            </p>
+
+            <div className="w-full bg-secondary/50 rounded-3xl p-6 mb-8 text-left space-y-4 border border-border/30">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-text/30">Negocio</label>
+                  <p className="text-sm font-bold truncate">{brief.businessName}</p>
+                </div>
+                <div>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-text/30">Industria</label>
+                  <p className="text-sm font-bold truncate">{brief.industry}</p>
+                </div>
+                <div className="col-span-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-text/30">Objetivo</label>
+                  <p className="text-sm font-bold">{brief.goal}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-4 w-full">
+              <div className="flex items-center justify-between p-4 bg-white rounded-2xl border border-border/60">
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isDryRun ? 'bg-secondary text-text/40' : 'bg-primary/10 text-primary'}`}>
+                    <Check size={20} />
+                  </div>
+                  <div className="text-left">
+                    <p className="text-xs font-black uppercase tracking-tighter">Costo Estimado</p>
+                    <p className="text-lg font-black text-primary leading-none">{isDryRun ? 0 : costCredits} Créditos</p>
+                  </div>
+                </div>
+                
+                <button 
+                  onClick={onToggleDryRun}
+                  className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${isDryRun ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-secondary text-text/40 hover:bg-secondary/80'}`}
+                >
+                  {isDryRun ? "Simulación: ON" : "Activar Dry-run"}
+                </button>
+              </div>
+
+              <div className="flex gap-3">
+                <button 
+                  onClick={onClose}
+                  disabled={isGenerating}
+                  className="flex-1 py-4 bg-secondary text-text/60 font-black uppercase tracking-widest rounded-2xl hover:bg-border/40 transition-all border border-border/10"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  onClick={onConfirm}
+                  disabled={isGenerating}
+                  className={`flex-1 py-4 text-white font-black uppercase tracking-widest rounded-2xl shadow-xl transition-all flex items-center justify-center gap-2 ${
+                    isDryRun 
+                      ? 'bg-solutium-dark shadow-black/10' 
+                      : 'bg-primary shadow-primary/30 hover:opacity-90'
+                  }`}
+                >
+                  {isGenerating ? (
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <Sparkles size={18} />
+                      {isDryRun ? "Ver Payload" : "Confirmar y Generar"}
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+            
+            {!isDryRun && (
+              <p className="mt-4 text-[9px] font-black uppercase tracking-widest text-text/20">
+                * El cobro se realiza al recibir la respuesta exitosa de la IA.
+              </p>
+            )}
+          </div>
+        </motion.div>
+      </div>
+    )}
+  </AnimatePresence>
+);
+
+export const AIUsageSuccessModal: React.FC<{
+  isOpen: boolean,
+  onClose: () => void,
+  usage: {
+    costCredits: number,
+    totalTokens: number,
+    aiUsageLogId: string,
+    isDryRun?: boolean
+  }
+}> = ({ isOpen, onClose, usage }) => (
+  <AnimatePresence>
+    {isOpen && (
+      <div className="fixed inset-0 z-[130] flex items-center justify-center p-4">
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={onClose}
+          className="absolute inset-0 bg-primary/20 backdrop-blur-xl"
+        />
+        <motion.div 
+          initial={{ scale: 0.9, opacity: 0, y: 100 }}
+          animate={{ scale: 1, opacity: 1, y: 0 }}
+          exit={{ scale: 0.9, opacity: 0, y: 20 }}
+          className="relative w-full max-w-sm bg-surface rounded-[2.5rem] p-10 shadow-3xl text-center"
+        >
+          <div className={`w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-xl ${usage.isDryRun ? 'bg-secondary' : 'bg-success shadow-success/20'}`}>
+            {usage.isDryRun ? (
+              <Eye className="text-text/40 w-10 h-10" strokeWidth={3} />
+            ) : (
+              <Check className="text-white w-10 h-10" strokeWidth={3} />
+            )}
+          </div>
+          
+          <h2 className="text-2xl font-black text-text mb-2 tracking-tight">
+            {usage.isDryRun ? 'Simulación Exitosa' : '¡Página Generada!'}
+          </h2>
+          <p className="text-text/60 mb-8 text-sm">
+            {usage.isDryRun 
+              ? 'Has completado el dry-run local. No se han consumido créditos reales.' 
+              : 'Tu sitio ha sido construido exitosamente por el motor de IA.'}
+          </p>
+          
+          <div className="bg-secondary/50 rounded-2xl p-4 mb-8 grid grid-cols-2 gap-4 border border-border/40">
+            <div className="text-left">
+              <span className="text-[9px] font-black uppercase text-text/30">Costo {usage.isDryRun ? 'Est.' : ''}</span>
+              <p className={`text-lg font-black ${usage.isDryRun ? 'text-text/40' : 'text-primary'}`}>
+                {usage.costCredits} Crd.
+              </p>
+            </div>
+            <div className="text-left border-l border-border/40 pl-4">
+              <span className="text-[9px] font-black uppercase text-text/30">Tokens</span>
+              <p className="text-lg font-black text-text/80">{usage.totalTokens}</p>
+            </div>
+          </div>
+
+          {usage.isDryRun && (
+            <div className="mb-6 py-2 px-4 bg-primary/10 rounded-xl">
+               <p className="text-[10px] font-black uppercase text-primary tracking-widest">Estado: Simulador Local</p>
+            </div>
+          )}
+          
+          <button 
+            onClick={onClose}
+            className={`w-full py-4 font-black uppercase tracking-widest rounded-2xl shadow-lg transition-all ${
+              usage.isDryRun 
+                ? 'bg-secondary text-text/60 hover:bg-border/40' 
+                : 'bg-primary text-white shadow-primary/20 hover:opacity-90'
+            }`}
+          >
+            {usage.isDryRun ? 'Cerrar Simulación' : 'Ver mi sitio'}
+          </button>
+          
+          <p className="mt-4 text-[9px] font-medium text-text/20">
+            {usage.isDryRun ? 'Modo: DRY-RUN / PREVIEW' : `Ref: ${usage.aiUsageLogId}`}
+          </p>
+        </motion.div>
+      </div>
+    )}
+  </AnimatePresence>
+);

@@ -2,61 +2,75 @@ import { getSupabase } from './supabaseClient';
 import { logDebug } from '../utils/debug';
 
 /**
- * Provee el token de autenticación para subidas de archivos (assets).
- * Soporta modo directo (Supabase) y modo satélite (App Madre).
+ * [AUTH_TOKEN_PROVIDER_DEBUG] Centralized Token Provider
+ * This service ensures we use valid Supabase Access Tokens (JWT)
+ * to avoid 401 Unauthorized errors from App Madre.
  */
-export async function getUploadAuthToken(): Promise<{ token: string | null; source: string }> {
-  // 1. Intentar obtener el token de sessionStorage (Capturado previamente)
-  const sessionToken = sessionStorage.getItem('solutium_upload_token');
-  if (sessionToken) {
-    return { token: sessionToken, source: 'session_storage' };
-  }
 
-  // 2. Intentar obtener el token de la sesión de Supabase (Modo Directo)
+export const isJWT = (token: string | null): boolean => {
+  if (!token || typeof token !== 'string') return false;
+  const parts = token.split('.');
+  return parts.length === 3;
+};
+
+interface TokenResult {
+  token: string | null;
+  source: string;
+}
+
+/**
+ * Prioritizes tokens from different sources.
+ * Returns a result object indicating the token and its source.
+ */
+export async function getUploadAuthToken(): Promise<TokenResult> {
+  // 1. Supabase Runtime Session (Highest Priority A)
   try {
     const supabase = getSupabase();
     if (supabase) {
       const { data: { session } } = await supabase.auth.getSession();
-      if (session?.access_token) {
+      if (session?.access_token && isJWT(session.access_token)) {
         return { token: session.access_token, source: 'supabase_session' };
       }
     }
   } catch (err) {
-    logDebug('[AuthTokenProvider] Error obteniendo sesión de Supabase:', err);
+    // Log suppressed but tracked
   }
 
-  // 3. Intentar obtener el token del cache del handshake (Modo Satélite/App Madre)
+  // 2. URL Parameters (Explicit overrides)
+  const hashParams = new URLSearchParams(window.location.hash.substring(1));
+  const queryParams = new URLSearchParams(window.location.search);
+  
+  const urlToken = hashParams.get('access_token') || hashParams.get('token') || 
+                   queryParams.get('access_token') || queryParams.get('token') || queryParams.get('session_token');
+                   
+  if (isJWT(urlToken)) {
+    return { token: urlToken, source: 'url_params' };
+  }
+
+  // 3. Session Storage (Handshake persistency)
+  const ssToken = sessionStorage.getItem('solutium_supabase_access_token') || 
+                  sessionStorage.getItem('solutium_upload_token');
+  if (isJWT(ssToken)) {
+    return { token: ssToken, source: 'session_storage' };
+  }
+
+  // 4. Handshake Cache (LocalStorage - Priority B)
   try {
     const savedHandshake = localStorage.getItem('solutium_handshake_cache');
     if (savedHandshake) {
       const payload = JSON.parse(savedHandshake);
-      if (payload.session_token) {
-        return { token: payload.session_token, source: 'handshake_cache' };
+      
+      // Explicitly prioritize accessToken/supabaseAccessToken fields from handshake
+      const hToken = payload.supabaseAccessToken || payload.accessToken || payload.session_token;
+      if (isJWT(hToken)) {
+        return { token: hToken, source: 'handshake_cache' };
       }
     }
-  } catch (err) {
-    logDebug('[AuthTokenProvider] Error leyendo handshake cache:', err);
-  }
+  } catch (err) {}
 
-  // 4. Intentar obtener del hash de la URL (#token=...)
-  const hashStr = window.location.hash;
-  if (hashStr && hashStr.startsWith('#token=')) {
-    const token = hashStr.replace('#token=', '');
-    if (token) {
-      return { token, source: 'url_hash' };
-    }
-  }
-
-  // 5. Intentar obtener de parámetros de búsqueda (?token= o ?session_token=)
-  const urlParams = new URLSearchParams(window.location.search);
-  const tokenParam = urlParams.get('token') || urlParams.get('session_token');
-  if (tokenParam) {
-    return { token: tokenParam, source: 'url_param' };
-  }
-
-  // 6. Fallback Global (window.SOLUTIUM_AUTH_TOKEN)
+  // 5. Window Global (Last resort)
   const globalToken = (window as any).SOLUTIUM_AUTH_TOKEN;
-  if (globalToken) {
+  if (isJWT(globalToken)) {
     return { token: globalToken, source: 'window_global' };
   }
 
@@ -64,26 +78,18 @@ export async function getUploadAuthToken(): Promise<{ token: string | null; sour
 }
 
 /**
- * Captura el token de la URL (hash o query) y lo guarda en sessionStorage
- * para accesos posteriores sin depender de la persistencia de la URL.
+ * Capture token from current context and sync it
  */
 export function captureAuthToken(): string | null {
-  const hashStr = window.location.hash;
-  let token: string | null = null;
-  let source = '';
+  const hashParams = new URLSearchParams(window.location.hash.substring(1));
+  const queryParams = new URLSearchParams(window.location.search);
+  
+  const token = hashParams.get('access_token') || hashParams.get('token') || 
+                queryParams.get('access_token') || queryParams.get('token') || queryParams.get('session_token');
 
-  if (hashStr && hashStr.startsWith('#token=')) {
-    token = hashStr.replace('#token=', '');
-    source = 'url_hash';
-  } else {
-    const urlParams = new URLSearchParams(window.location.search);
-    token = urlParams.get('token') || urlParams.get('session_token');
-    source = 'url_param';
-  }
-
-  if (token) {
-    logDebug(`[AuthTokenProvider] Token capturado desde ${source}:`, token.substring(0, 4) + '...');
-    sessionStorage.setItem('solutium_upload_token', token);
+  if (token && isJWT(token)) {
+    logDebug(`[AUTH_TOKEN_PROVIDER_DEBUG] Token captured and stored:`, token.substring(0, 10) + '...');
+    sessionStorage.setItem('solutium_supabase_access_token', token);
     return token;
   }
 

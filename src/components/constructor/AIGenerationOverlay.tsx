@@ -51,7 +51,7 @@ export const AIGenerationOverlay: React.FC = () => {
 
             return (
               <motion.div
-                key={step}
+                key={`step-${index}`}
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ 
                   opacity: (isActive || isCompleted) ? 1 : 0.3,

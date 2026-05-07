@@ -1,4 +1,4 @@
-export type BentoItemType = "text" | "image" | "icon_text" | "stat" | "cta" | "video";
+export type BentoItemType = "text" | "image" | "icon_text" | "stat" | "metric" | "cta" | "video" | "hero" | "compact" | "visual" | "feature" | "step" | "app_card" | "testimonial" | "trust_signal";
 export type BentoCardStyle = "solid" | "gradient" | "glass" | "glow" | "transparent";
 export type BentoTone = "professional" | "friendly" | "premium" | "tech" | "minimal";
 
@@ -14,10 +14,30 @@ export interface BentoItem {
   x?: number;
   y?: number;
   card_style?: BentoCardStyle;
+  card_bg?: string;
+  card_gradient?: string;
+  card_image?: string;
+  card_overlay?: number;
+  card_radius?: number;
+  card_shadow?: string;
   button_text?: string;
   btn_url?: string;
   badge?: string;
   highlight?: boolean;
+  priority?: 'hero' | 'feature' | 'compact' | 'stat' | 'cta' | 'standard';
+  title_size?: string;
+  desc_size?: string;
+  metric_suffix?: string;
+  accent_color?: string;
+  show_description?: boolean;
+  content_position?: 'left' | 'center' | 'right';
+  align_items?: 'start' | 'center' | 'end';
+  text_contrast?: 'auto' | 'white' | 'black';
+  layouts?: {
+    desktop?: { x: number; y: number; w: number; h: number };
+    tablet?: { x: number; y: number; w: number; h: number };
+    mobile?: { x: number; y: number; w: number; h: number };
+  };
 }
 
 export interface BentoIntent {
@@ -36,5 +56,6 @@ export interface BentoSchema {
   layout: {
     columns: number;
     gap: number;
+    bento_type?: string;
   };
 }

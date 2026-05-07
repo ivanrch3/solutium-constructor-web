@@ -35,6 +35,14 @@ export const startHandshake = (
       siteName: payload.siteName
     };
 
+    // SIP v6.3: Proactive storage sync for the auth provider
+    if (payload.session_token) {
+      sessionStorage.setItem('solutium_supabase_access_token', payload.session_token);
+    }
+    if (payload.supabaseAccessToken) {
+      sessionStorage.setItem('solutium_supabase_access_token', payload.supabaseAccessToken);
+    }
+
     // Copiar el resto de propiedades
     Object.keys(payload).forEach(key => {
       if (!(key in config)) {

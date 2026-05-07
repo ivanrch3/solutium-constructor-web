@@ -53,6 +53,7 @@ export interface WebModule {
   elements: ModuleElement[];
   globalGroups: SettingGroupType[];
   globalSettings?: Partial<Record<SettingGroupType, SettingDefinition[]>>;
+  content?: any;
 }
 
 export interface EditorState {

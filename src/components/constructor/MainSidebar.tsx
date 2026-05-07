@@ -42,6 +42,7 @@ import {
   CLIENTS_MODULE, 
   FAQ_MODULE, 
   PRODUCTS_MODULE, 
+  PRODUCTS_SHOWCASE_MODULE,
   SPACER_MODULE,
   BENTO_MODULE,
   COMPARISON_MODULE
@@ -243,6 +244,11 @@ export const MainSidebar: React.FC<MainSidebarProps> = ({
                       onClick={() => onAddModule(ABOUT_MODULE)}
                     />
                     <ModuleItem 
+                      icon={React.createElement(MODULE_INFO.products_showcase.icon, { size: 18 })} 
+                      label="Catálogo V2 (EXP)" 
+                      onClick={() => onAddModule(PRODUCTS_SHOWCASE_MODULE)}
+                    />
+                    <ModuleItem 
                       icon={React.createElement(MODULE_INFO.process.icon, { size: 18 })} 
                       label="Proceso" 
                       onClick={() => onAddModule(PROCESS_MODULE)}
@@ -422,21 +428,6 @@ export const MainSidebar: React.FC<MainSidebarProps> = ({
                       label="Espaciadores" 
                       onClick={() => onAddModule(SPACER_MODULE)}
                     />
-                    <ModuleItem 
-                      icon={React.createElement(MODULE_INFO.bento.icon, { size: 18 })} 
-                      label="Composición Libre" 
-                      onClick={() => onAddModule(BENTO_MODULE)}
-                    />
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onOpenBentoGenerator?.();
-                      }}
-                      className="w-full flex items-center gap-2 px-4 py-2 mt-1 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 transition-all border border-blue-100 group"
-                    >
-                      <Sparkles size={14} className="group-hover:rotate-12 transition-transform" />
-                      <span className="text-[10px] font-black uppercase tracking-widest">Generar con IA</span>
-                    </button>
                   </div>
                 )}
               </div>

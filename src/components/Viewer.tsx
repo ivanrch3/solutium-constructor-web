@@ -48,6 +48,28 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
   const isPublishedViewer = !isConstructorMode && !!site.siteId;
 
   useEffect(() => {
+    // [SATELLITE_PRODUCTS_PAYLOAD_RECEIVE_DEBUG] (FASE 3)
+    const isDebug = window.location.search.includes('debug=products');
+    if (isDebug || window.location.search.includes('debug_render=true')) {
+      const sections = extractSections(site.content);
+      const prodSec = sections.find((s: any) => (s.type || s.tipo) === 'products');
+
+      console.log('[SATELLITE_PRODUCTS_PAYLOAD_RECEIVE_DEBUG]', {
+        messageType: 'HANDSHAKE_HYDRATION',
+        origin: window.location.origin,
+        sectionsCount: sections.length,
+        productsSectionFound: !!prodSec,
+        sectionId: prodSec?.id,
+        moduleId: prodSec?.id,
+        type: prodSec?.type || prodSec?.tipo,
+        contentProductsCount: prodSec?.content?.products?.length || prodSec?.content?.productos?.length || 0,
+        settingsSnapshotCount: prodSec?.settings?.[`${prodSec?.id}_el_products_items_products`]?.length || 0,
+        selectedIdsCount: prodSec?.settings?.[`${prodSec?.id}_el_products_config_select_products`]?.length || 0,
+        firstProductName: prodSec?.content?.products?.[0]?.name || prodSec?.content?.productos?.[0]?.name,
+        timestamp: new Date().toISOString()
+      });
+    }
+
     // [PUBLISHED_SITE_CONTRACT_LOAD_DEBUG] (FASE 3)
     if (window.location.search.includes('debug=products') || window.location.search.includes('debug_render=true')) {
       console.log('[PUBLISHED_SITE_CONTRACT_LOAD_DEBUG]', {
@@ -411,15 +433,29 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
               if (resolutionSource === "none") resolutionSource = isConstructorMode ? "constructor_empty" : "viewer_fallback_empty";
             }
 
-            console.log('[PRODUCTS_VIEWER_RESOLUTION_DEBUG]', {
-              runtime: isConstructorMode ? "constructor_preview" : "published_viewer",
+            console.log('[PRODUCTS_LEGACY_VIEWER_RESOLUTION_DEBUG]', {
+              runtime: isPublishedViewer ? "published_viewer" : "constructor_preview",
               moduleId,
-              snapshotProductsCount: Array.isArray(snapshotProducts) ? snapshotProducts.length : 0,
+              sectionType: type,
+              contentProductsCount: (section.content?.products?.length || section.content?.productos?.length || section.content?.items?.length || 0),
+              settingsSnapshotCount: Array.isArray(finalSettingsValues[`${moduleId}_el_products_items_products`]) ? finalSettingsValues[`${moduleId}_el_products_items_products`].length : 0,
               finalProductsCount: finalProducts.length,
+              finalProductIds: finalProducts.map(p => p.id),
               source: resolutionSource,
               skippedSupabaseFetch,
-              ignoredManualSelectionFilter: isPublishedViewer && finalProducts.length > 0
+              ignoredManualSelectionFilter: isPublishedViewer && finalProducts.length > 0,
+              forceSnapshotRender: isPublishedViewer && finalProducts.length > 0
             });
+
+            if (isPublishedViewer || window.location.search.includes('debug=products')) {
+              console.log('[PRODUCTS_LEGACY_LIVE_COMPONENT_MOUNT_DEBUG]', {
+                runtime: isPublishedViewer ? "published_viewer" : "constructor",
+                moduleId,
+                componentMounted: true,
+                finalProductsCount: finalProducts.length,
+                timestamp: Date.now()
+              });
+            }
 
             return (
               <ProductsModule 
@@ -427,7 +463,10 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
                 moduleId={moduleId} 
                 settingsValues={finalSettingsValues} 
                 products={finalProducts} 
+                selectedProductIds={isPublishedViewer && finalProducts.length > 0 ? finalProducts.map(p => p.id) : undefined}
                 isPreviewMode={isConstructorMode} 
+                forceSnapshotRender={isPublishedViewer && finalProducts.length > 0}
+                skipEmptyManualFilter={isPublishedViewer && finalProducts.length > 0}
               />
             );
           case 'bento':

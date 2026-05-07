@@ -186,6 +186,31 @@ const AppContent: React.FC = () => {
     try {
       logDebug('[HANDSHAKE] Procesando payload:', payload);
       
+      // [APP_MADRE_PRODUCTS_PAYLOAD_FINAL_DEBUG] (FASE 1)
+      const sections = payload.sections || payload.content?.sections || payload.site_content?.sections || [];
+      const productsSection = sections.find((s: any) => s.type === 'products' || s.tipo === 'products');
+      
+      if (productsDebugEnabled) {
+        console.log('[APP_MADRE_PRODUCTS_PAYLOAD_FINAL_DEBUG]', {
+          siteId: payload.site_id,
+          projectId: payload.projectId || payload.satellite_id,
+          sectionsCount: sections.length,
+          productsSectionFound: !!productsSection,
+          sectionId: productsSection?.id,
+          moduleId: productsSection?.id,
+          sectionType: productsSection?.type || productsSection?.tipo,
+          contentProductsCount: productsSection?.content?.products?.length || 0,
+          contentProductosCount: productsSection?.content?.productos?.length || 0,
+          contentItemsCount: productsSection?.content?.items?.length || 0,
+          settingsSnapshotCount: productsSection?.settings?.[`${productsSection?.id}_el_products_items_products`]?.length || 0,
+          deepKeySnapshotCount: (payload.settingsValues || {})[`${productsSection?.id}_el_products_items_products`]?.length || 0,
+          selectedIdsCount: productsSection?.settings?.[`${productsSection?.id}_el_products_config_select_products`]?.length || 0,
+          firstProductName: productsSection?.content?.products?.[0]?.name || productsSection?.content?.productos?.[0]?.name,
+          payloadTarget: "satellite/viewer",
+          timestamp: new Date().toISOString()
+        });
+      }
+
       // LOG DE DIAGNÓSTICO SOLICITADO
       logDebug('[CONSTRUCTOR_MESSAGE_RECEIVED_DEBUG]', {
         eventType: payload.type, // Note: payload here is the config object from handshakeService

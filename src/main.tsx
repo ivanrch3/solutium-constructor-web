@@ -14,9 +14,17 @@ window.close = function() {
   // originalClose.call(window); // Comentado para mantener la pestaña abierta
 };
 
+console.warn("[LIVE_VIEWER_REAL_ENTRYPOINT_DEBUG]", {
+  app: "solutium-live-viewer",
+  version: "products-legacy-snapshot-reader-v5-STABLE",
+  href: window.location.href,
+  origin: window.location.origin,
+  timestamp: new Date().toISOString()
+});
+
 console.warn("[LIVE_BUNDLE_VERSION_DEBUG]", {
   app: "solutium-live-viewer",
-  version: "v6.3-products-snapshot-live-fix-BETA-V101",
+  version: "v6.5-products-snapshot-live-fix-FINAL-RES-V101",
   file: "src/main.tsx",
   buildTime: new Date().toISOString(),
   href: window.location.href,

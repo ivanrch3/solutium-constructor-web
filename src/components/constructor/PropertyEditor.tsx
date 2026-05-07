@@ -152,8 +152,8 @@ export const PropertyEditor: React.FC = () => {
     setExpandedPillars(prev => ({ ...prev, [pillar]: !prev[pillar] }));
   };
 
-  const handleFieldChange = (contextId: string, settingId: string, value: any) => {
-    console.log('[PROPERTY_EDITOR_CHANGE_DEBUG]', { contextId, settingId, value });
+  const handleFieldChange = (contextId: string, settingId: string, value: any, extraUpdates?: Record<string, any>) => {
+    console.log('[PROPERTY_EDITOR_CHANGE_DEBUG]', { contextId, settingId, value, extraUpdates });
     // Si estamos editando una celda de un repeater (ej: Bento), necesitamos actualizar el array de items
     if (contextId.includes('_el_bento_items_')) {
       const [sectionId, elementId, indexStr] = contextId.split('_el_bento_items_');
@@ -171,7 +171,14 @@ export const PropertyEditor: React.FC = () => {
     }
 
     // El store maneja settings planos. La clave completa es={`${contextId}_${settingId}`}
-    updateSectionSettings(selectedSection.id, { [`${contextId}_${settingId}`]: value });
+    let updates: Record<string, any> = { [`${contextId}_${settingId}`]: value };
+    
+    // Support for multiple updates at once (e.g. selection + touched flag)
+    if (extraUpdates) {
+      updates = { ...updates, ...extraUpdates };
+    }
+    
+    updateSectionSettings(selectedSection.id, updates);
   };
 
   return (

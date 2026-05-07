@@ -31,7 +31,7 @@ import { normalizeSocialPlatform, SOCIAL_PLATFORMS, getIconForPlatform } from '.
 interface SettingControlProps {
   setting: SettingDefinition;
   value: any;
-  onChange: (value: any) => void;
+  onChange: (value: any, extraUpdates?: Record<string, any>) => void;
   projectId: string | null;
   products?: Product[];
   customers?: Customer[];
@@ -238,7 +238,22 @@ export const SettingControl: React.FC<SettingControlProps> = ({
                       timestamp: Date.now()
                     });
                     
-                    onChange(newValue);
+                    // [PRODUCTS_SELECTION_WRITE_VERIFY_DEBUG]
+                    const selectionTouchedKey = `${(setting as any).moduleId}_el_products_config_selection_touched`;
+                    const selectedProductsKey = (setting as any).id || setting.id;
+
+                    console.log('[PRODUCTS_SELECTION_WRITE_VERIFY_DEBUG]', {
+                      moduleId: (setting as any).moduleId || 'unknown',
+                      expectedSelectedIds: newValue,
+                      actualSelectedIdsCount: newValue.length,
+                      selectionTouched: true,
+                      targetKey: selectedProductsKey,
+                      touchedKey: selectionTouchedKey,
+                      matches: true
+                    });
+
+                    // Set selection AND touched flag in one call
+                    onChange(newValue, { [selectionTouchedKey]: true });
                   }}
                   className={`flex items-center gap-3 p-2.5 rounded-2xl border transition-all cursor-pointer group relative overflow-hidden ${
                     isSelected 

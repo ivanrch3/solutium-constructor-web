@@ -13,14 +13,28 @@ export const ProductsModule: React.FC<{
   moduleId: string, 
   settingsValues: Record<string, any>,
   products?: Product[],
+  selectedProductIds?: any[],
   isDevMode?: boolean,
-  isPreviewMode?: boolean
-}> = ({ moduleId, settingsValues, products, isDevMode = false, isPreviewMode = false }) => {
+  isPreviewMode?: boolean,
+  forceSnapshotRender?: boolean,
+  skipEmptyManualFilter?: boolean
+}> = ({ 
+  moduleId, 
+  settingsValues, 
+  products, 
+  selectedProductIds: propSelectedProductIds, 
+  isDevMode = false, 
+  isPreviewMode = false,
+  forceSnapshotRender = false,
+  skipEmptyManualFilter = false
+}) => {
   const { selectSection, selectElement } = useEditorStore();
   const [activeTab, setActiveTab] = useState('Todos');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [carouselIndex, setCarouselIndex] = useState(0);
   const [addingToCart, setAddingToCart] = useState<string | null>(null);
+
+  const gridRef = React.useRef<HTMLDivElement>(null);
 
   const isInConstructorEnvironment = (
     window.location.search.includes('mode=constructor') || 
@@ -30,29 +44,148 @@ export const ProductsModule: React.FC<{
     window.location.hostname.includes('ais-dev-') 
   );
 
-  const isActuallyEditor = isInConstructorEnvironment;
-  const isPublishedViewer = !isInConstructorEnvironment;
+  const isActuallyEditor = (isPreviewMode === true) || (
+    (window.location.search.includes('mode=constructor') || window.location.search.includes('renderMode=editor')) &&
+    (window.location.hostname.includes('localhost') || window.location.hostname.includes('ais-dev-'))
+  );
+  const isPublishedViewer = !isActuallyEditor;
 
-  // [DEBUG] Diagnóstico de Modo
-  console.log('[PRODUCTS_MODE_DETECTION_DEBUG]', {
-    moduleId,
-    isPreviewMode,
-    isActuallyEditor,
-    isPublishedViewer,
-    windowName: window.name,
-    search: window.location.search,
-    hostname: window.location.hostname,
-    timestamp: Date.now()
-  });
+  // [FASE 1] Función Única de Resolución Forense para Editor
+  const resolveProductsForEditor = (params: {
+    moduleId: string,
+    selectionMode: string,
+    selectedProductIds: any,
+    selectionTouched: boolean,
+    catalogProducts: Product[],
+    snapshotProducts: Product[],
+    injectedProducts: Product[],
+    isEditor: boolean,
+    forceSnapshotRender?: boolean
+  }) => {
+    const { moduleId, selectionMode, selectedProductIds, selectionTouched, catalogProducts, snapshotProducts, injectedProducts, isEditor, forceSnapshotRender = false } = params;
+    
+    let results: Product[] = [];
+    let sourceUsed = 'empty';
+    let reason = 'initialization';
+    const ignoredSources: string[] = [];
+
+    // [FASE 2] RESOLUCIÓN EN VIVO / PÁGINA PUBLICADA
+    if (!isEditor || forceSnapshotRender) {
+      if (snapshotProducts.length > 0) {
+        results = snapshotProducts;
+        sourceUsed = 'published_snapshot_settings';
+        reason = 'Priority snapshot found in settings';
+      } else if (injectedProducts.length > 0) {
+        results = injectedProducts;
+        sourceUsed = 'published_prop_products';
+        reason = 'Snapshot found in products prop';
+      } else if (forceSnapshotRender) {
+        results = [];
+        sourceUsed = 'force_snapshot_empty';
+        reason = 'Force snapshot requested but no data found';
+      } else {
+        results = [];
+        sourceUsed = 'published_no_data';
+        reason = 'No snapshot found in live view';
+      }
+
+      console.log('[PRODUCTS_LEGACY_VIEWER_RESOLUTION_FORENSIC_DEBUG]', {
+        moduleId,
+        runtime: "published_viewer",
+        snapshotProductsCount: snapshotProducts.length,
+        injectedProductsCount: injectedProducts.length,
+        finalProductsCount: results.length,
+        finalProductIds: results.map(p => p.id),
+        sourceUsed,
+        reason
+      });
+
+      return results;
+    }
+
+    if (isEditor) {
+      if (selectionMode === 'manual') {
+        const selectedIdsArray = Array.isArray(selectedProductIds) ? selectedProductIds : [];
+        const isExplicitlyEmpty = (selectedIdsArray.length === 0 && (selectedProductIds !== undefined && selectedProductIds !== null)) || (selectionTouched && selectedIdsArray.length === 0);
+
+        if (isExplicitlyEmpty) {
+          results = [];
+          sourceUsed = 'manual_selection_empty_explicit';
+          reason = 'User explicitly deselected everything';
+          ignoredSources.push('snapshot', 'catalog_full', 'content.products');
+        } else if (selectedIdsArray.length > 0) {
+          const searchIds = selectedIdsArray.map(id => String(id));
+          results = catalogProducts.filter(p => searchIds.includes(String(p.id)));
+          sourceUsed = 'manual_selection_filtered';
+          reason = `Filtered ${results.length} products from catalog of ${catalogProducts.length}`;
+          ignoredSources.push('snapshot');
+        } else {
+          // Case where selectedProductIds is null/undefined AND not touched (initial state)
+          results = catalogProducts;
+          sourceUsed = 'manual_selection_all_default';
+          reason = 'No selection defined yet, showing all';
+        }
+      } else {
+        // Auto mode in editor
+        results = catalogProducts;
+        sourceUsed = 'catalog_auto_editor';
+      }
+    }
+
+    console.log('[PRODUCTS_EDITOR_EMPTY_SELECTION_RULE_DEBUG]', {
+      moduleId,
+      isEditorRuntime: isEditor,
+      selectionMode,
+      selectionTouched,
+      selectedProductIds,
+      selectedProductIdsCount: Array.isArray(selectedProductIds) ? selectedProductIds.length : (selectedProductIds ? 1 : 0),
+      catalogProductsCount: catalogProducts.length,
+      finalProductsCount: results.length,
+      sourceUsed,
+      fallbackBlocked: true,
+      timestamp: Date.now()
+    });
+
+    console.log('[PRODUCTS_EDITOR_RESOLUTION_FORENSIC_DEBUG]', {
+      moduleId,
+      runtime: isEditor ? "constructor_canvas" : "viewer",
+      selectionMode,
+      selectedProductIds,
+      selectionTouched,
+      selectedProductIdsCount: Array.isArray(selectedProductIds) ? selectedProductIds.length : 0,
+      catalogProductsCount: catalogProducts.length,
+      catalogProductIds: catalogProducts.map(p => p.id),
+      snapshotProductsCount: snapshotProducts.length,
+      finalRenderedProductsCount: results.length,
+      finalRenderedProductIds: results.map(p => p.id),
+      finalRenderedProductNames: results.map(p => p.name),
+      sourceUsed,
+      ignoredSources,
+      reason
+    });
+
+    return results;
+  };
+
+  // [PRODUCTS_MODE_DETECTION_DEBUG] Diagnóstico de Modo
+  if (isActuallyEditor || isPublishedViewer) {
+    console.log('[PRODUCTS_MODE_DETECTION_DEBUG]', {
+      moduleId,
+      isPreviewMode,
+      isActuallyEditor,
+      isPublishedViewer,
+      windowName: window.name,
+      search: window.location.search,
+      hostname: window.location.hostname,
+      timestamp: Date.now()
+    });
+  }
 
   const getVal = (elementId: string | null, settingId: string, defaultValue: any) => {
     const key = elementId ? `${elementId}_${settingId}` : `${moduleId}_global_${settingId}`;
     return settingsValues[key] !== undefined ? settingsValues[key] : defaultValue;
   };
 
-  if ((!products || products.length === 0) && !isActuallyEditor) {
-    return null;
-  }
 
   const parseF = (val: any, fallback: number) => {
     const f = parseFloat(val);
@@ -79,11 +212,13 @@ export const ProductsModule: React.FC<{
   const subtitleHighlightBold = getVal(`${moduleId}_el_products_header`, 'subtitle_highlight_bold', true);
 
   // Element: Configuración de Selección
-  const selectionMode = getVal(`${moduleId}_el_products_config`, 'selection_mode', 'manual');
-  const selectedProductIds = getVal(`${moduleId}_el_products_config`, 'select_products', []);
+  const selectedProductIdsFromSettings = getVal(`${moduleId}_el_products_config`, 'select_products', []);
+  const selectedProductIds = propSelectedProductIds !== undefined ? propSelectedProductIds : selectedProductIdsFromSettings;
+  const selectionTouched = getVal(`${moduleId}_el_products_config`, 'selection_touched', false);
   const showTabs = getVal(`${moduleId}_el_products_config`, 'show_tabs', true);
 
-  // Global Settings
+  // Element: Configuración de Selección
+  const selectionMode = getVal(`${moduleId}_el_products_config`, 'selection_mode', 'manual');
   const layout = getVal(null, 'layout', 'grid');
   const columns = Math.max(1, parseInt(getVal(null, 'columns', 4)) || 4);
   const gap = parseF(getVal(null, 'gap', 24), 24);
@@ -92,6 +227,72 @@ export const ProductsModule: React.FC<{
   const sectionGradient = getVal(null, 'section_gradient', false);
   const bgGradient = getVal(null, 'bg_gradient', 'linear-gradient(to bottom, #FFFFFF, #F8FAFC)');
   const entranceAnim = getVal(null, 'entrance_anim', 'none');
+
+  // [SIP v12.9] Hooks must be at the top level
+  const allDisplayProducts = useMemo(() => {
+    const snapshotKey = `${moduleId}_el_products_items_products`;
+    const snapshotFromSettings = settingsValues[snapshotKey];
+    const snapshotProducts = Array.isArray(snapshotFromSettings) ? snapshotFromSettings : [];
+    
+    const catalog = (products && products.length > 0) ? products : (isDevMode ? MOCK_PRODUCTS : []);
+    
+    // USAR RESOLUTOR FORENSE UNIFICADO
+    return resolveProductsForEditor({
+      moduleId,
+      selectionMode,
+      selectedProductIds,
+      selectionTouched,
+      catalogProducts: catalog,
+      snapshotProducts,
+      injectedProducts: products || [],
+      isEditor: isActuallyEditor,
+      forceSnapshotRender
+    });
+  }, [products, selectedProductIds, selectionTouched, selectionMode, isDevMode, isPreviewMode, isActuallyEditor, isPublishedViewer, moduleId, settingsValues]);
+
+  const categories = useMemo(() => {
+    const cats = new Set(allDisplayProducts.map(p => p.category).filter(Boolean));
+    const sortedCats = Array.from(cats).sort();
+    return ['Todos', ...sortedCats];
+  }, [allDisplayProducts]);
+
+  const filteredProducts = useMemo(() => {
+    if (activeTab === 'Todos') return allDisplayProducts;
+    return allDisplayProducts.filter(p => p.category === activeTab);
+  }, [allDisplayProducts, activeTab]);
+
+  React.useEffect(() => {
+    if (!categories.includes(activeTab)) {
+      setActiveTab('Todos');
+    }
+  }, [categories, activeTab]);
+
+  React.useEffect(() => {
+    if (selectionMode === 'manual') {
+      setActiveTab('Todos');
+    }
+  }, [selectedProductIds, selectionMode]);
+
+  React.useEffect(() => {
+    if ((isPublishedViewer || window.location.search.includes('debug=products')) && gridRef.current) {
+      const el = gridRef.current;
+      const computedStyle = window.getComputedStyle(el);
+      console.log('[PRODUCTS_GRID_LAYOUT_DEBUG]', {
+        moduleId,
+        cardsCount: filteredProducts.length,
+        gridOffsetWidth: el.offsetWidth,
+        gridOffsetHeight: el.offsetHeight,
+        display: computedStyle.display,
+        visibility: computedStyle.visibility,
+        opacity: computedStyle.opacity,
+        className: el.className,
+        parentOffsetWidth: el.parentElement?.offsetWidth,
+        parentOffsetHeight: el.parentElement?.offsetHeight,
+        timestamp: Date.now()
+      });
+    }
+  }, [filteredProducts, isPublishedViewer, isActuallyEditor]); // Added deps to be safe
+
 
   // Animation Overrides
   const globalAnimOverride = getGlobalAnimation(entranceAnim, 'product');
@@ -147,124 +348,46 @@ export const ProductsModule: React.FC<{
     timestamp: Date.now()
   });
 
-  // [FASE 1] Función Única de Resolución Forense para Editor
-  const resolveProductsForEditor = (params: {
-    moduleId: string,
-    selectionMode: string,
-    selectedProductIds: any,
-    catalogProducts: Product[],
-    snapshotProducts: Product[],
-    injectedProducts: Product[],
-    isEditor: boolean
-  }) => {
-    const { moduleId, selectionMode, selectedProductIds, catalogProducts, snapshotProducts, isEditor } = params;
-    
-    let results: Product[] = [];
-    let sourceUsed = 'empty';
-    let reason = 'initialization';
-    const ignoredSources: string[] = [];
 
-    if (isEditor) {
-      if (selectionMode === 'manual') {
-        const selectedIdsArray = Array.isArray(selectedProductIds) ? selectedProductIds : [];
-        const isExplicitlyEmpty = selectedIdsArray.length === 0 && selectedProductIds !== undefined && selectedProductIds !== null;
 
-        if (isExplicitlyEmpty) {
-          results = [];
-          sourceUsed = 'manual_selection_empty_explicit';
-          reason = 'User explicitly deselected everything';
-          ignoredSources.push('snapshot', 'catalog_full');
-        } else if (selectedIdsArray.length > 0) {
-          const searchIds = selectedIdsArray.map(id => String(id));
-          results = catalogProducts.filter(p => searchIds.includes(String(p.id)));
-          sourceUsed = 'manual_selection_filtered';
-          reason = `Filtered ${results.length} products from catalog of ${catalogProducts.length}`;
-          ignoredSources.push('snapshot');
-        } else {
-          // Case where selectedProductIds is null/undefined (initial state)
-          results = catalogProducts;
-          sourceUsed = 'manual_selection_all_default';
-          reason = 'No selection defined yet, showing all';
-        }
-      } else {
-        // Auto mode in editor
-        results = catalogProducts;
-        sourceUsed = 'catalog_auto_editor';
-      }
-    }
-
-    console.log('[PRODUCTS_EDITOR_RESOLUTION_FORENSIC_DEBUG]', {
+  // [PRODUCTS_LEGACY_VIEWER_FINAL_RENDER_DEBUG] (FASE 6)
+  if (isPublishedViewer || window.location.search.includes('debug=products')) {
+    console.log('[PRODUCTS_LEGACY_VIEWER_FINAL_RENDER_DEBUG]', {
+      runtime: isPublishedViewer ? "published_viewer" : "constructor_editor",
       moduleId,
-      runtime: isEditor ? "constructor_canvas" : "viewer",
-      selectionMode,
-      selectedProductIds,
-      selectedProductIdsCount: Array.isArray(selectedProductIds) ? selectedProductIds.length : 0,
-      catalogProductsCount: catalogProducts.length,
-      catalogProductIds: catalogProducts.map(p => p.id),
-      snapshotProductsCount: snapshotProducts.length,
-      finalRenderedProductsCount: results.length,
-      finalRenderedProductIds: results.map(p => p.id),
-      finalRenderedProductNames: results.map(p => p.name),
-      sourceUsed,
-      ignoredSources,
-      reason
+      isActuallyEditor,
+      isPreviewMode,
+      productsPropCount: products?.length || 0,
+      propSelectedIdsCount: propSelectedProductIds?.length || 0,
+      finalRenderedProductsCount: filteredProducts.length,
+      sourceUsed: 'allDisplayProducts_resolver',
+      willShowEditorEmptyState: isActuallyEditor && filteredProducts.length === 0,
+      timestamp: Date.now()
     });
 
-    return results;
-  };
-
-  // 1. RESOLUCIÓN DE FUENTE DE PRODUCTOS (Prioridad: Snapshot > Manual > Catálogo > Ejemplo)
-  const allDisplayProducts = useMemo(() => {
-    const snapshotKey = `${moduleId}_el_products_items_products`;
-    const snapshotFromSettings = settingsValues[snapshotKey];
-    const snapshotProducts = Array.isArray(snapshotFromSettings) ? snapshotFromSettings : [];
-    
-    const catalog = (products && products.length > 0) ? products : (isDevMode ? MOCK_PRODUCTS : []);
-    
-    // Si estamos en el visor publicado, usamos la lógica de snapshot
-    if (isPublishedViewer) {
-      if (snapshotProducts.length > 0) return snapshotProducts;
-      if (Array.isArray(products) && products.length > 0) return products;
-      return [];
-    }
-
-    // SI ESTAMOS EN EDITOR, USAR RESOLUTOR FORENSE
-    return resolveProductsForEditor({
+    // [PRODUCTS_CARD_RENDER_DATA_DEBUG] (FASE 1)
+    console.log('[PRODUCTS_CARD_RENDER_DATA_DEBUG]', {
       moduleId,
-      selectionMode,
-      selectedProductIds,
-      catalogProducts: catalog,
-      snapshotProducts,
-      injectedProducts: products || [],
-      isEditor: isActuallyEditor
+      finalRenderedProductsCount: filteredProducts.length,
+      products: filteredProducts.map(p => ({
+        id: p.id,
+        name: p.name,
+        price: p.price,
+        imageUrl: p.imageUrl,
+        category: p.category
+      }))
     });
-  }, [products, selectedProductIds, selectionMode, isDevMode, isPreviewMode, isActuallyEditor, isPublishedViewer, moduleId, settingsValues]);
 
-  const categories = useMemo(() => {
-    const cats = new Set(allDisplayProducts.map(p => p.category).filter(Boolean));
-    const sortedCats = Array.from(cats).sort();
-    return ['Todos', ...sortedCats];
-  }, [allDisplayProducts]);
+    // [PRODUCTS_JSX_SOURCE_DEBUG] (FASE 3)
+    console.log('[PRODUCTS_JSX_SOURCE_DEBUG]', {
+      moduleId,
+      finalRenderedProductsCount: filteredProducts.length,
+      jsxProductsVariableName: 'filteredProducts',
+      jsxProductsCount: filteredProducts.length,
+      jsxProductIds: filteredProducts.map(p => p.id)
+    });
+  }
 
-  // [SIP v12.9] Reset active tab to 'Todos' when selection changes significantly 
-  // OR when the activeTab is no longer present in the updated categories
-  React.useEffect(() => {
-    if (!categories.includes(activeTab)) {
-      setActiveTab('Todos');
-    }
-  }, [categories, activeTab]);
-
-  // Si cambia la selección manual, forzar 'Todos' para mostrar el resultado completo del cambio
-  React.useEffect(() => {
-    if (selectionMode === 'manual') {
-      setActiveTab('Todos');
-    }
-  }, [selectedProductIds, selectionMode]);
-
-  const filteredProducts = useMemo(() => {
-    if (activeTab === 'Todos') return allDisplayProducts;
-    return allDisplayProducts.filter(p => p.category === activeTab);
-  }, [allDisplayProducts, activeTab]);
 
   const totalPages = columns > 0 ? Math.ceil(filteredProducts.length / columns) : 1;
 
@@ -308,6 +431,10 @@ export const ProductsModule: React.FC<{
       textAlign: (alignToken && alignToken !== 'inherit') ? alignToken : undefined
     } as React.CSSProperties;
   };
+
+  if ((!products || products.length === 0) && !isActuallyEditor) {
+    return null;
+  }
 
   return (
     <section 
@@ -401,6 +528,7 @@ export const ProductsModule: React.FC<{
           <div className="relative">
             <div className="overflow-hidden">
               <motion.div 
+                ref={gridRef}
                 animate={{ x: layout === 'carousel' ? `-${(parseFloat(carouselIndex as any) || 0) * 100}%` : 0 }}
                 transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                 className={`grid ${
@@ -422,14 +550,26 @@ export const ProductsModule: React.FC<{
                     const savings = hasSale ? Math.round(((product.priceReference! - product.price!) / product.priceReference!) * 100) : 0;
                     const isAdding = addingToCart === product.id;
 
+                    if (isPublishedViewer || window.location.search.includes('debug=products')) {
+                      console.log('[PRODUCTS_CARD_RENDER_ITEM_DEBUG]', {
+                        index: idx,
+                        id: product.id,
+                        name: product.name,
+                        price: product.price,
+                        imageUrl: product.imageUrl,
+                        willRenderCard: true,
+                        timestamp: Date.now()
+                      });
+                    }
+
                     return (
                       <motion.div 
                         key={product.id + idx}
                         layout
-                        initial={(globalAnimOverride ? globalAnimOverride.hidden : (entranceAnim ? { opacity: 0, y: 20 } : false)) as any}
-                        animate={(globalAnimOverride ? globalAnimOverride.visible : (entranceAnim ? { opacity: 1, y: 0 } : false)) as any}
+                        initial={(globalAnimOverride ? globalAnimOverride.hidden : (entranceAnim !== 'none' ? { opacity: 0, y: 20 } : false)) as any}
+                        animate={(globalAnimOverride ? globalAnimOverride.visible : (entranceAnim !== 'none' ? { opacity: 1, y: 0 } : false)) as any}
                         exit={{ opacity: 0, scale: 0.9 }}
-                        className={`group flex flex-col transition-all duration-500 ${
+                        className={`group flex flex-col transition-all duration-500 min-h-[400px] ${
                           layout === 'list' ? 'flex-row gap-8 items-center' : 
                           layout === 'carousel' ? `w-full shrink-0` : ''
                         } ${cardHoverLift ? 'hover:-translate-y-2' : ''}`}

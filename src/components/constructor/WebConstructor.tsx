@@ -1722,8 +1722,16 @@ const formatTimestampName = () => {
             console.log('[PRODUCTS_LEGACY_PUBLISH_SNAPSHOT_DEBUG]', {
               sectionId: module.id,
               moduleId: module.id,
+              sectionType: module.type,
+              selectionMode,
+              selectedProductIds: selectedIds,
+              selectedProductIdsCount: Array.isArray(selectedIds) ? selectedIds.length : 0,
+              catalogProductsCount: products.length,
               finalProductsCount: normalizedProducts.length,
+              finalProductIds: normalizedProducts.map(p => p.id),
+              finalProductNames: normalizedProducts.map(p => p.name),
               source: selectionMode,
+              snapshotKey,
               hasContentProducts: !!content.products,
               hasSettingsSnapshot: !!settings[snapshotKey]
             });
@@ -2285,7 +2293,7 @@ const formatTimestampName = () => {
         siteId,
         sectionsCount: contract.sections.length,
         productSnapshots: contract.sections
-          .filter((s: any) => s.tipo === 'products')
+          .filter((s: any) => s.tipo === 'products' || s.tipo === 'product_grid')
           .map((s: any) => ({
             id: s.id,
             productsInContent: s.content?.products?.length || 0,
@@ -2293,6 +2301,25 @@ const formatTimestampName = () => {
             selectionMode: s.content?.selectionMode
           }))
       });
+
+      // [PRODUCTS_LEGACY_FINAL_PUBLISHED_CONTRACT_DEBUG]
+      contract.sections
+        .filter((s: any) => s.tipo === 'products' || s.tipo === 'product_grid')
+        .forEach((s: any) => {
+          console.log('[PRODUCTS_LEGACY_FINAL_PUBLISHED_CONTRACT_DEBUG]', {
+            sectionId: s.id,
+            moduleId: s.id,
+            contentProductsCount: s.content?.products?.length || 0,
+            contentProductosCount: s.content?.productos?.length || 0,
+            settingsProductsSnapshotCount: s.settings?.[`${s.id}_el_products_items_products`]?.length || 0,
+            selectedIdsCount: s.content?.productIds?.length || 0,
+            firstProduct: s.content?.products?.[0],
+            targetTables: [
+              "web_builder_sites.content_published",
+              "published_sites.content"
+            ]
+          });
+        });
 
       const result = await publishWebBuilderSite(publishData);
       

@@ -22,6 +22,9 @@ Estos módulos tienen mapeos específicos para asegurar que llaves complejas (ej
 - **Clients**: Mapeo de header (title, subtitle, eyebrow) y layout (columns, gap). Soporta aliases para el array de logos (`clients`, `logos`, `partners`).
 - **Team**: Normalización de miembros del equipo (nombre, cargo, bio, avatar, redes sociales). Soporta layouts de rejilla, lista y carrusel.
 - **CTA**: Mapeo avanzado de botones primarios y secundarios (label/url). Soporta objetos `cta`, `primary` y `secondary`. Normaliza layouts (centered, split, bento).
+- **Newsletter**: Mapeo de header, formulario (placeholder, button text) y mensajes de éxito. Soporta layouts horizontal, lead magnet y barra flotante.
+- **Contact**: Normalización profunda de información de contacto, redes sociales y campos de formulario dinámicos. Soporta layouts con mapa y bento.
+- **Spacer**: Mapeo de alturas responsivas (desktop/mobile), fondos y divisores. Soporta normalización de espaciado desde valores numéricos o strings.
 
 ## Fallback Genérico (Novedad v10.6)
 Para todos los demás módulos, se aplica una estrategia de "Auto-Prefijado" no destructiva:

@@ -505,6 +505,74 @@ const MODULE_ADAPTERS: Record<string, ModuleBridgeAdapter> = {
       'max_width': 'global_max_width',
       'padding_y': 'global_padding_y'
     }
+  },
+  newsletter: {
+    contentToSettings: {
+      'title': 'el_news_header_title',
+      'titulo': 'el_news_header_title',
+      'heading': 'el_news_header_title',
+      'headline': 'el_news_header_title',
+      'subtitle': 'el_news_header_subtitle',
+      'subtitulo': 'el_news_header_subtitle',
+      'description': 'el_news_header_subtitle',
+      'descripcion': 'el_news_header_subtitle',
+      'placeholder': 'el_news_form_placeholder',
+      'email_placeholder': 'el_news_form_placeholder',
+      'button_text': 'el_news_form_button_text',
+      'boton_texto': 'el_news_form_button_text',
+      'submit_text': 'el_news_form_button_text',
+      'cta_text': 'el_news_form_button_text',
+      'success_message': 'el_news_form_success_message',
+      'gdpr_text': 'el_news_form_gdpr_text'
+    },
+    settingsToDeep: {
+      'layout': 'global_layout',
+      'dark_mode': 'global_dark_mode'
+    }
+  },
+  contact: {
+    contentToSettings: {
+      'title': 'el_contact_header_title',
+      'titulo': 'el_contact_header_title',
+      'heading': 'el_contact_header_title',
+      'headline': 'el_contact_header_title',
+      'subtitle': 'el_contact_header_subtitle',
+      'subtitulo': 'el_contact_header_subtitle',
+      'description': 'el_contact_header_subtitle',
+      'descripcion': 'el_contact_header_subtitle',
+      'email': 'el_contact_info_email',
+      'correo': 'el_contact_info_email',
+      'phone': 'el_contact_info_phone',
+      'telefono': 'el_contact_info_phone',
+      'whatsapp': 'el_contact_info_phone',
+      'address': 'el_contact_info_address',
+      'direccion': 'el_contact_info_address',
+      'ubicacion': 'el_contact_info_address',
+      'horario': 'el_contact_info_availability_text',
+      'hours': 'el_contact_info_availability_text'
+    },
+    settingsToDeep: {
+      'layout': 'global_layout',
+      'dark_mode': 'global_dark_mode'
+    }
+  },
+  spacer: {
+    contentToSettings: {
+      'height': 'global_height_desktop',
+      'altura': 'global_height_desktop',
+      'size': 'global_height_desktop',
+      'height_mobile': 'global_height_mobile',
+      'width': 'global_width',
+      'color': 'global_color',
+      'background': 'global_bg_color',
+      'bg_color': 'global_bg_color',
+      'text': 'global_text',
+      'icon': 'global_icon'
+    },
+    settingsToDeep: {
+      'align': 'global_align',
+      'type': 'global_type'
+    }
   }
 };
 
@@ -828,6 +896,43 @@ export const bridgeModuleContent = ({
          }
          mappedKeys.push(layoutKey);
        }
+    }
+
+    // --- Specialized Contact Module Logic ---
+    if (baseType === 'contact' && content) {
+      // Social Links
+      const socialsKey = `${moduleId}_el_contact_info_social_links`;
+      const socialsSource = content.socials || content.redes || content.redes_sociales || content.links;
+
+      if (Array.isArray(socialsSource) && socialsSource.length > 0 && result[socialsKey] === undefined) {
+        result[socialsKey] = socialsSource.map((s) => ({
+          platform: String(s.platform || s.red || s.name || 'Mail'),
+          url: String(s.url || s.link || s.href || '#')
+        }));
+        mappedKeys.push(socialsKey);
+      }
+
+      // Custom Fields
+      const fieldsKey = `${moduleId}_el_contact_form_custom_fields`;
+      const fieldsSource = content.fields || content.campos || content.form_fields || content.campos_formulario;
+
+      if (Array.isArray(fieldsSource) && fieldsSource.length > 0 && result[fieldsKey] === undefined) {
+        result[fieldsKey] = fieldsSource.map((f) => ({
+          label: String(f.label || f.etiqueta || f.titulo || f.name || ''),
+          type: String(f.type || f.tipo || 'text'),
+          placeholder: String(f.placeholder || f.ayuda || ''),
+          required: Boolean(f.required !== undefined ? f.required : f.requerido)
+        }));
+        mappedKeys.push(fieldsKey);
+      }
+
+      // Submit Button Text
+      const submitKey = `${moduleId}_el_contact_form_button_text`;
+      const submitSource = content.submit_text || content.submit_label || content.button_text || content.boton_texto;
+      if (submitSource && result[submitKey] === undefined) {
+        result[submitKey] = String(submitSource);
+        mappedKeys.push(submitKey);
+      }
     }
 
     // Settings Bridge

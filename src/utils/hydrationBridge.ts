@@ -817,6 +817,36 @@ export const bridgeModuleContent = ({
       }
     }
 
+    // --- Specialized Clients Module Logic ---
+    if (baseType === 'clients' && content) {
+      const itemsKey = `${moduleId}_el_clients_items_customers`;
+      const selectionTouchedKey = `${moduleId}_el_client_logos_data_selection_touched`;
+      const itemsSource = content.clients || content.clientes || content.logos || content.brands || 
+                         content.marcas || content.partners || content.aliados || content.empresas || content.items;
+
+      if (Array.isArray(itemsSource) && itemsSource.length > 0 && result[itemsKey] === undefined) {
+        result[itemsKey] = itemsSource.map((item, index) => {
+          const name = item.name || item.nombre || item.company || item.empresa || item.marca || '';
+          const logo = item.logo || item.image || item.imagen || item.imageUrl || item.image_url || item.logo_url || '';
+          const url = item.url || item.href || item.link || item.website || item.sitio_web || '';
+          const desc = item.description || item.descripcion || item.texto || item.resumen || '';
+
+          return {
+            id: item.id || `client_${index + 1}`,
+            name: String(name),
+            companyLogoUrl: String(logo),
+            websiteUrl: String(url),
+            description: String(desc)
+          };
+        });
+        mappedKeys.push(itemsKey);
+        
+        // Auto-set touched flag so the component knows we have data
+        result[selectionTouchedKey] = true;
+        mappedKeys.push(selectionTouchedKey);
+      }
+    }
+
     // --- Specialized Team Module Logic ---
     if (baseType === 'team' && content) {
       const itemsKey = `${moduleId}_el_team_items_members`;

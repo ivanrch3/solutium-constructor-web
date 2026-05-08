@@ -91,15 +91,31 @@ export const ClientsModule: React.FC<{
   };
 
   const selectedCustomerIds = getVal(`${moduleId}_el_client_logos_data`, 'select_customers', []);
+  const selectionTouched = getVal(`${moduleId}_el_client_logos_data`, 'selection_touched', false);
+  const snapshotCustomers = getVal(`${moduleId}_el_clients_items_customers`, 'customers', null) || settingsValues[`${moduleId}_el_clients_items_customers`];
   const baseCustomers = customers && customers.length > 0 ? customers : (isDevMode ? MOCK_CUSTOMERS : []);
-  
+
   const displayCustomers = useMemo(() => {
-    return baseCustomers.filter(c => 
-      Array.isArray(selectedCustomerIds) && 
-      selectedCustomerIds.includes(c.id) &&
-      c.companyLogoUrl
-    );
-  }, [baseCustomers, selectedCustomerIds]);
+    // 1. PRIORIDAD: Snapshot estático (para sitio publicado)
+    if (Array.isArray(snapshotCustomers) && snapshotCustomers.length > 0) {
+      return snapshotCustomers.filter(c => c.companyLogoUrl);
+    }
+
+    // 2. SEGUNDA PRIORIDAD: Selección manual en el editor
+    
+    // Si el usuario ha interactuado con la selección
+    if (selectionTouched) {
+      return baseCustomers.filter(c => 
+        Array.isArray(selectedCustomerIds) && 
+        selectedCustomerIds.includes(c.id) &&
+        c.companyLogoUrl
+      );
+    }
+
+    // 3. TERCERA PRIORIDAD: Fallback inteligente (mostrar solo los que tienen logo si hay muchos, o todos si hay pocos)
+    const withLogo = baseCustomers.filter(c => c.companyLogoUrl);
+    return withLogo.length > 0 ? withLogo.slice(0, 10) : baseCustomers.slice(0, 5);
+  }, [baseCustomers, selectedCustomerIds, selectionTouched, snapshotCustomers]);
 
   // Global Settings
   const layout = getVal(null, 'layout', 'grid');

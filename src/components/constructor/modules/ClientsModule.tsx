@@ -95,7 +95,9 @@ export const ClientsModule: React.FC<{
   
   const displayCustomers = useMemo(() => {
     return baseCustomers.filter(c => 
-      Array.isArray(selectedCustomerIds) && selectedCustomerIds.includes(c.id)
+      Array.isArray(selectedCustomerIds) && 
+      selectedCustomerIds.includes(c.id) &&
+      c.companyLogoUrl
     );
   }, [baseCustomers, selectedCustomerIds]);
 

@@ -177,9 +177,14 @@ export const SettingControl: React.FC<SettingControlProps> = ({
     case 'customer_selection':
       const isProduct = setting.type === 'product_selection';
       const isRealProject = projectId && projectId !== 'dev-project-id';
-      const availableItems = isProduct 
+      let availableItems = isProduct 
         ? ((products && products.length > 0) ? products : (projectId === 'dev-project-id' ? MOCK_PRODUCTS : []))
         : ((customers && customers.length > 0) ? customers : (projectId === 'dev-project-id' ? MOCK_CUSTOMERS : []));
+      
+      // SIP v13.4: Filter customers with logo if requested
+      if (!isProduct) {
+        availableItems = availableItems.filter((c: any) => c.companyLogoUrl);
+      }
       
       return (
         <div className={`space-y-3 ${isDisabled ? 'opacity-50 pointer-events-none grayscale' : ''}`}>
@@ -192,6 +197,12 @@ export const SettingControl: React.FC<SettingControlProps> = ({
               <div className="flex items-center gap-1.5 px-2 py-1 bg-primary/5 border border-primary/10 rounded-lg">
                 <LucideIcons.Database size={10} className="text-primary" />
                 <span className="text-[9px] font-bold text-primary uppercase">Productos del catálogo del proyecto</span>
+              </div>
+            )}
+            {!isProduct && (
+              <div className="flex items-center gap-1.5 px-2 py-1 bg-primary/5 border border-primary/10 rounded-lg">
+                <LucideIcons.Info size={10} className="text-primary" />
+                <span className="text-[9px] font-bold text-primary uppercase leading-tight">Solo se muestran clientes con logo de empresa</span>
               </div>
             )}
           </div>
@@ -239,7 +250,9 @@ export const SettingControl: React.FC<SettingControlProps> = ({
                     });
                     
                     // [PRODUCTS_SELECTION_WRITE_VERIFY_DEBUG]
-                    const selectionTouchedKey = `${(setting as any).moduleId}_el_products_config_selection_touched`;
+                    const selectionTouchedKey = isProduct 
+                      ? `${(setting as any).moduleId}_el_products_config_selection_touched`
+                      : `${(setting as any).moduleId}_el_client_logos_data_selection_touched`;
                     const selectedProductsKey = (setting as any).id || setting.id;
 
                     console.log('[PRODUCTS_SELECTION_WRITE_VERIFY_DEBUG]', {
@@ -303,7 +316,7 @@ export const SettingControl: React.FC<SettingControlProps> = ({
                   {isProduct ? <ShoppingBag size={24} /> : <Users size={24} />}
                 </div>
                 <p className="text-[10px] text-text/40 font-black uppercase tracking-widest leading-relaxed">
-                  No hay {isProduct ? 'productos' : 'clientes'}<br/>en el catálogo
+                  No hay {isProduct ? 'productos' : 'clientes con logo'}<br/>en el catálogo
                 </p>
               </div>
             )}

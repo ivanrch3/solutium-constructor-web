@@ -268,7 +268,7 @@ export const PropertyEditor: React.FC = () => {
                             <SettingControl 
                               setting={{ ...setting, label }} // Forward label to SettingControl
                               value={value}
-                              onChange={(val) => handleFieldChange(contextId, setting.id, val)}
+                              onChange={(val, extras) => handleFieldChange(contextId, setting.id, val, extras)}
                               projectId={project?.id || null}
                               products={project?.products || []}
                               customers={project?.customers || []}

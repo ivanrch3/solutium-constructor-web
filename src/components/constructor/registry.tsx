@@ -2877,11 +2877,8 @@ export const CLIENTS_MODULE: WebModule = {
         { 
           id: 'select_customers', 
           label: 'Seleccionar Clientes', 
-          type: 'repeater', 
-          defaultValue: [],
-          fields: [
-            { id: 'id', label: 'ID del Cliente', type: 'text', defaultValue: '' }
-          ]
+          type: 'customer_selection', 
+          defaultValue: []
         }
       ],
       estilo: [], estructura: [], tipografia: [], multimedia: [], interaccion: []

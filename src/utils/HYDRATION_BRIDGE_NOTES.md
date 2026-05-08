@@ -25,6 +25,8 @@ Estos módulos tienen mapeos específicos para asegurar que llaves complejas (ej
 - **Newsletter**: Mapeo de header, formulario (placeholder, button text) y mensajes de éxito. Soporta layouts horizontal, lead magnet y barra flotante.
 - **Contact**: Normalización profunda de información de contacto, redes sociales y campos de formulario dinámicos. Soporta layouts con mapa y bento.
 - **Spacer**: Mapeo de alturas responsivas (desktop/mobile), fondos y divisores. Soporta normalización de espaciado desde valores numéricos o strings.
+- **Gallery**: Normalización de imágenes, títulos, descripciones y categorías. Soporta descarte automático de ítems sin URL. Mapeo de columnas, gap y lightbox.
+- **Video**: Mapeo de URLs de video (YT, Vimeo, MP4), thumbnails y controles. Normalización de aspect ratio y autoplay.
 
 ## Fallback Genérico (Novedad v10.6)
 Para todos los demás módulos, se aplica una estrategia de "Auto-Prefijado" no destructiva:

@@ -562,6 +562,7 @@ const MODULE_ADAPTERS: Record<string, ModuleBridgeAdapter> = {
       'altura': 'global_height_desktop',
       'size': 'global_height_desktop',
       'height_mobile': 'global_height_mobile',
+      'padding_y': 'global_padding_y',
       'width': 'global_width',
       'color': 'global_color',
       'background': 'global_bg_color',
@@ -572,6 +573,49 @@ const MODULE_ADAPTERS: Record<string, ModuleBridgeAdapter> = {
     settingsToDeep: {
       'align': 'global_align',
       'type': 'global_type'
+    }
+  },
+  gallery: {
+    contentToSettings: {
+      'title': 'el_gallery_header_title',
+      'titulo': 'el_gallery_header_title',
+      'heading': 'el_gallery_header_title',
+      'headline': 'el_gallery_header_title',
+      'subtitle': 'el_gallery_header_subtitle',
+      'subtitulo': 'el_gallery_header_subtitle',
+      'description': 'el_gallery_header_subtitle',
+      'descripcion': 'el_gallery_header_subtitle',
+      'eyebrow': 'el_gallery_header_eyebrow'
+    },
+    settingsToDeep: {
+      'layout': 'global_layout',
+      'columns': 'global_columns',
+      'gap': 'global_gap'
+    }
+  },
+  video: {
+    contentToSettings: {
+      'title': 'el_video_text_title',
+      'titulo': 'el_video_text_title',
+      'heading': 'el_video_text_title',
+      'headline': 'el_video_text_title',
+      'subtitle': 'el_video_text_subtitle',
+      'subtitulo': 'el_video_text_subtitle',
+      'description': 'el_video_text_subtitle',
+      'descripcion': 'el_video_text_subtitle',
+      'text': 'el_video_text_subtitle',
+      'texto': 'el_video_text_subtitle',
+      'eyebrow': 'el_video_text_eyebrow',
+      'video_url': 'el_video_player_video_url',
+      'poster_url': 'el_video_player_poster_url',
+      'thumbnail': 'el_video_player_poster_url',
+      'image': 'el_video_player_poster_url',
+      'autoplay': 'el_video_player_autoplay',
+      'controls': 'el_video_player_controls'
+    },
+    settingsToDeep: {
+      'layout': 'global_layout',
+      'aspect_ratio': 'global_aspect_ratio'
     }
   }
 };
@@ -962,6 +1006,66 @@ export const bridgeModuleContent = ({
       if (submitSource && result[submitKey] === undefined) {
         result[submitKey] = String(submitSource);
         mappedKeys.push(submitKey);
+      }
+    }
+
+    // --- Specialized Gallery Module Logic ---
+    if (baseType === 'gallery' && content) {
+      const itemsKey = `${moduleId}_el_gallery_items_items`;
+      const itemsSource = content.images || content.imagenes || content.imágenes || content.gallery || 
+                         content.galeria || content.galería || content.photos || content.fotos || content.media || content.assets || content.items;
+
+      if (Array.isArray(itemsSource) && itemsSource.length > 0 && result[itemsKey] === undefined) {
+        result[itemsKey] = itemsSource.map((item) => {
+          const url = item.src || item.url || item.image || item.imagen || item.imageUrl || item.image_url || 
+                     item.foto || item.photo || (item.media && item.media.url) || (item.asset && item.asset.url) || '';
+          
+          if (!url) return null;
+
+          const title = item.title || item.titulo || item.name || item.nombre || '';
+          const caption = item.caption || item.pie || item.pie_de_foto || item.description || item.descripcion || item.texto || '';
+          const category = item.category || item.categoria || item.grupo || item.tag || 'Todos';
+          const alt = item.alt || item.alt_text || item.texto_alt || title || caption || '';
+
+          return {
+            url: String(url),
+            title: String(title),
+            desc: String(caption),
+            category: String(category),
+            alt: String(alt)
+          };
+        }).filter(Boolean); // Filter out items with no URL
+        mappedKeys.push(itemsKey);
+      }
+    }
+
+    // --- Specialized Video Module Logic ---
+    if (baseType === 'video' && content) {
+      // Autoplay / Controls normalization to boolean
+      const autoplayKey = `${moduleId}_el_video_player_autoplay`;
+      const controlsKey = `${moduleId}_el_video_player_controls`;
+      
+      const rawAutoplay = content.autoplay || content.auto_play || content.reproduccion_automatica;
+      const rawControls = content.controls || content.show_controls || content.controles;
+
+      if (rawAutoplay !== undefined && result[autoplayKey] === undefined) {
+        result[autoplayKey] = Boolean(rawAutoplay);
+        mappedKeys.push(autoplayKey);
+      }
+      if (rawControls !== undefined && result[controlsKey] === undefined) {
+        result[controlsKey] = Boolean(rawControls);
+        mappedKeys.push(controlsKey);
+      }
+
+      // Aspect Ratio normalization
+      const ratioKey = `${moduleId}_global_aspect_ratio`;
+      const rawRatio = content.aspect_ratio || content.ratio || content.formato;
+      if (rawRatio && result[ratioKey] === undefined) {
+        const rString = String(rawRatio).toLowerCase();
+        if (rString.includes('16/9') || rString.includes('16:9')) result[ratioKey] = '16/9';
+        else if (rString.includes('9/16') || rString.includes('9:16')) result[ratioKey] = '9/16';
+        else if (rString.includes('4/3') || rString.includes('4:3')) result[ratioKey] = '4/3';
+        mappedKeys.push(ratioKey);
       }
     }
 

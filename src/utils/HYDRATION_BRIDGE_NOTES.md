@@ -16,6 +16,12 @@ Estos módulos tienen mapeos específicos para asegurar que llaves complejas (ej
 - **Bento**: Adaptador avanzado con auto-layout para evitar solapamientos. Normaliza celdas de diversos tipos (stat, image, cta, text) y mapea global settings (grid columns, gap). Soporta múltiples alias para celdas (`items`, `cards`, `blocks`).
 - **Products (Legacy)**: Soporta productos inyectados (`productos`, `items`, `catalogo`). Normalización inteligente de precios (string a number), stock, badges e imágenes. Mapeo de header (title, subtitle, align), layout (columns, gap) y cta text. Auto-set de `selection_mode: manual` si hay datos inyectados.
 - **Products Showcase (Catálogo V2)**: Adaptador certificado con soporte para +40 aliases de contenido. Normalización profunda de productos compatible con la interfaz `Product`. Soporta snapshots redundantes en `content` y `settings`. Priorización: Snapshot > Mapeo Explícito > Selección Manual > Catálogo Proyecto.
+- **FAQ**: Normalización de preguntas y respuestas. Soporta aliases para header (`title`, `subtitle`, `eyebrow`) y para el array de items (`faq`, `preguntas`, `questions`).
+- **Testimonials**: Normalización de testimonios con soporte para autor, cargo, estrellas, avatar y logo de empresa. Soporta layouts de carrusel y rejilla.
+- **Stats**: Normalización de indicadores numéricos con soporte para prefijos, sufijos, etiquetas y descripciones. Mapeo de columnas y layouts.
+- **Clients**: Mapeo de header (title, subtitle, eyebrow) y layout (columns, gap). Soporta aliases para el array de logos (`clients`, `logos`, `partners`).
+- **Team**: Normalización de miembros del equipo (nombre, cargo, bio, avatar, redes sociales). Soporta layouts de rejilla, lista y carrusel.
+- **CTA**: Mapeo avanzado de botones primarios y secundarios (label/url). Soporta objetos `cta`, `primary` y `secondary`. Normaliza layouts (centered, split, bento).
 
 ## Fallback Genérico (Novedad v10.6)
 Para todos los demás módulos, se aplica una estrategia de "Auto-Prefijado" no destructiva:

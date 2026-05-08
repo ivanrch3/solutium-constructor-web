@@ -387,6 +387,124 @@ const MODULE_ADAPTERS: Record<string, ModuleBridgeAdapter> = {
       'estilo_tarjeta': 'global_card_style',
       'variant_card': 'global_card_style'
     }
+  },
+  faq: {
+    contentToSettings: {
+      'title': 'el_faq_header_title',
+      'titulo': 'el_faq_header_title',
+      'heading': 'el_faq_header_title',
+      'headline': 'el_faq_header_title',
+      'subtitle': 'el_faq_header_subtitle',
+      'subtitulo': 'el_faq_header_subtitle',
+      'description': 'el_faq_header_subtitle',
+      'descripcion': 'el_faq_header_subtitle',
+      'eyebrow': 'el_faq_header_eyebrow'
+    },
+    settingsToDeep: {
+      'layout': 'global_layout'
+    }
+  },
+  testimonials: {
+    contentToSettings: {
+      'title': 'el_testimonials_header_title',
+      'titulo': 'el_testimonials_header_title',
+      'heading': 'el_testimonials_header_title',
+      'headline': 'el_testimonials_header_title',
+      'subtitle': 'el_testimonials_header_subtitle',
+      'subtitulo': 'el_testimonials_header_subtitle',
+      'description': 'el_testimonials_header_subtitle',
+      'descripcion': 'el_testimonials_header_subtitle',
+      'eyebrow': 'el_testimonials_header_eyebrow'
+    },
+    settingsToDeep: {
+      'layout': 'global_layout',
+      'columns': 'global_columns'
+    }
+  },
+  stats: {
+    contentToSettings: {
+      'title': 'el_stats_header_title',
+      'titulo': 'el_stats_header_title',
+      'heading': 'el_stats_header_title',
+      'headline': 'el_stats_header_title',
+      'subtitle': 'el_stats_header_subtitle',
+      'subtitulo': 'el_stats_header_subtitle',
+      'description': 'el_stats_header_subtitle',
+      'descripcion': 'el_stats_header_subtitle',
+      'eyebrow': 'el_stats_header_eyebrow'
+    },
+    settingsToDeep: {
+      'layout': 'global_layout',
+      'columns': 'global_columns'
+    }
+  },
+  clients: {
+    contentToSettings: {
+      'title': 'el_clients_header_title',
+      'titulo': 'el_clients_header_title',
+      'heading': 'el_clients_header_title',
+      'headline': 'el_clients_header_title',
+      'subtitle': 'el_clients_header_subtitle',
+      'subtitulo': 'el_clients_header_subtitle',
+      'description': 'el_clients_header_subtitle',
+      'descripcion': 'el_clients_header_subtitle',
+      'eyebrow': 'el_clients_header_eyebrow',
+      'select_customers': 'el_client_logos_data_select_customers'
+    },
+    settingsToDeep: {
+      'layout': 'global_layout',
+      'columns': 'global_columns',
+      'gap': 'global_gap'
+    }
+  },
+  team: {
+    contentToSettings: {
+      'title': 'el_team_header_title',
+      'titulo': 'el_team_header_title',
+      'heading': 'el_team_header_title',
+      'headline': 'el_team_header_title',
+      'subtitle': 'el_team_header_subtitle',
+      'subtitulo': 'el_team_header_subtitle',
+      'description': 'el_team_header_subtitle',
+      'descripcion': 'el_team_header_subtitle',
+      'eyebrow': 'el_team_header_eyebrow'
+    },
+    settingsToDeep: {
+      'layout': 'global_layout',
+      'columns': 'global_columns',
+      'gap': 'global_gap',
+      'members': 'el_team_items_members'
+    }
+  },
+  cta: {
+    contentToSettings: {
+      'title': 'el_cta_content_title',
+      'titulo': 'el_cta_content_title',
+      'heading': 'el_cta_content_title',
+      'headline': 'el_cta_content_title',
+      'subtitle': 'el_cta_content_subtitle',
+      'subtitulo': 'el_cta_content_subtitle',
+      'description': 'el_cta_content_subtitle',
+      'descripcion': 'el_cta_content_subtitle',
+      'text': 'el_cta_content_subtitle',
+      'texto': 'el_cta_content_subtitle',
+      'primary_text': 'el_cta_actions_primary_text',
+      'btn_text': 'el_cta_actions_primary_text',
+      'cta_text': 'el_cta_actions_primary_text',
+      'boton_texto': 'el_cta_actions_primary_text',
+      'primary_url': 'el_cta_actions_primary_url',
+      'btn_url': 'el_cta_actions_primary_url',
+      'cta_url': 'el_cta_actions_primary_url',
+      'secondary_text': 'el_cta_actions_secondary_text',
+      'secondary_url': 'el_cta_actions_secondary_url',
+      'placeholder': 'el_cta_actions_placeholder',
+      'trust_text': 'el_cta_trust_trust_text'
+    },
+    settingsToDeep: {
+      'layout': 'global_layout',
+      'max_width': 'global_max_width',
+      'padding_y': 'global_padding_y'
+    }
   }
 };
 
@@ -546,6 +664,169 @@ export const bridgeModuleContent = ({
               mappedKeys.push(selectKey);
             }
           }
+       }
+    }
+
+    // --- Specialized FAQ Module Logic ---
+    if (baseType === 'faq' && content) {
+      const itemsKey = `${moduleId}_el_faq_item_faqs`;
+      const itemsSource = content.faq || content.faqs || content.preguntas || content.preguntas_frecuentes || 
+                         content.questions || content.items;
+
+      if (Array.isArray(itemsSource) && itemsSource.length > 0 && result[itemsKey] === undefined) {
+        result[itemsKey] = itemsSource.map((item) => {
+          const q = item.question || item.pregunta || item.title || item.titulo || '';
+          const a = item.answer || item.respuesta || item.description || item.descripcion || item.text || item.texto || '';
+          const cat = item.category || item.categoria || 'general';
+          const icon = item.icon || item.icono || '';
+
+          return {
+            question: String(q),
+            answer: String(a),
+            category: String(cat),
+            icon: String(icon)
+          };
+        });
+        mappedKeys.push(itemsKey);
+      }
+    }
+
+    // --- Specialized Testimonials Module Logic ---
+    if (baseType === 'testimonials' && content) {
+      const itemsKey = `${moduleId}_el_testimonial_items_items`;
+      const itemsSource = content.testimonials || content.testimonios || content.reviews || content.reseñas || 
+                         content.opiniones || content.clientes || content.items;
+
+      if (Array.isArray(itemsSource) && itemsSource.length > 0 && result[itemsKey] === undefined) {
+        result[itemsKey] = itemsSource.map((item, index) => {
+          const text = item.text || item.texto || item.quote || item.cita || item.testimonial || 
+                      item.testimonio || item.opinion || item.review || '';
+          const author = item.author || item.autor || item.name || item.nombre || item.cliente || '';
+          const role = item.role || item.cargo || item.puesto || item.position || '';
+          const avatar = item.avatar || item.image || item.imagen || item.photo || item.foto || item.imageUrl || item.image_url || '';
+          const logo = item.logo || item.company_logo || item.marca_logo || '';
+          const stars = parseInt(String(item.stars || item.rating || item.calificacion || item.estrellas || 5), 10);
+
+          return {
+            id: item.id || index + 1,
+            text: String(text),
+            author: String(author),
+            role: String(role),
+            avatar: String(avatar),
+            logo: String(logo),
+            stars: isNaN(stars) ? 5 : stars
+          };
+        });
+        mappedKeys.push(itemsKey);
+      }
+    }
+
+    // --- Specialized Stats Module Logic ---
+    if (baseType === 'stats' && content) {
+      const itemsKey = `${moduleId}_el_stats_items_items`;
+      const itemsSource = content.stats || content.estadisticas || content.indicadores || content.metricas || 
+                         content.numbers || content.items;
+
+      if (Array.isArray(itemsSource) && itemsSource.length > 0 && result[itemsKey] === undefined) {
+        result[itemsKey] = itemsSource.map((item) => {
+          const value = item.value || item.valor || item.number || item.numero || item.metric || item.cifra || '';
+          const label = item.label || item.etiqueta || item.title || item.titulo || item.nombre || '';
+          const desc = item.description || item.descripcion || item.texto || item.resumen || '';
+          const icon = item.icon || item.icono || 'Star';
+          const prefix = item.prefix || '';
+          const suffix = item.suffix || '';
+
+          return {
+            value: String(value),
+            label: String(label),
+            description: String(desc),
+            icon: String(icon),
+            prefix: String(prefix),
+            suffix: String(suffix)
+          };
+        });
+        mappedKeys.push(itemsKey);
+      }
+    }
+
+    // --- Specialized Team Module Logic ---
+    if (baseType === 'team' && content) {
+      const itemsKey = `${moduleId}_el_team_items_members`;
+      const itemsSource = content.team || content.equipo || content.miembros || content.members || 
+                         content.personas || content.colaboradores || content.staff || content.items;
+
+      if (Array.isArray(itemsSource) && itemsSource.length > 0 && result[itemsKey] === undefined) {
+        result[itemsKey] = itemsSource.map((item, index) => {
+          const name = item.name || item.nombre || item.full_name || item.nombre_completo || '';
+          const role = item.role || item.cargo || item.puesto || item.position || item.titulo || '';
+          const bio = item.bio || item.biography || item.biografia || item.descripcion || item.description || item.resumen || '';
+          const avatar = item.avatar || item.image || item.imagen || item.photo || item.foto || item.imageUrl || item.image_url || '';
+          const email = item.email || item.correo || item.correo_electronico || '';
+          
+          return {
+            id: item.id || index + 1,
+            name: String(name),
+            role: String(role),
+            bio: String(bio),
+            image: String(avatar),
+            email: String(email),
+            category: String(item.category || item.categoria || 'Todos'),
+            linkedin: String(item.linkedin || ''),
+            twitter: String(item.twitter || ''),
+            web: String(item.web || item.website || item.url || '')
+          };
+        });
+        mappedKeys.push(itemsKey);
+      }
+    }
+
+    // --- Specialized CTA Module Logic ---
+    if (baseType === 'cta' && content) {
+       // Button Objects
+       const primaryKeyText = `${moduleId}_el_cta_actions_primary_text`;
+       const primaryKeyUrl = `${moduleId}_el_cta_actions_primary_url`;
+       const secondaryKeyText = `${moduleId}_el_cta_actions_secondary_text`;
+       const secondaryKeyUrl = `${moduleId}_el_cta_actions_secondary_url`;
+
+       const pCta = content.cta || content.primary || content.boton || content.primary_cta;
+       const sCta = content.secondary || content.secondary_cta || content.boton_secundario;
+
+       if (pCta && typeof pCta === 'object') {
+         const label = pCta.label || pCta.text || pCta.texto || pCta.title;
+         const url = pCta.url || pCta.href || pCta.link;
+         if (label && result[primaryKeyText] === undefined) {
+           result[primaryKeyText] = String(label);
+           mappedKeys.push(primaryKeyText);
+         }
+         if (url && result[primaryKeyUrl] === undefined) {
+           result[primaryKeyUrl] = String(url);
+           mappedKeys.push(primaryKeyUrl);
+         }
+       }
+
+       if (sCta && typeof sCta === 'object') {
+         const label = sCta.label || sCta.text || sCta.texto || sCta.title;
+         const url = sCta.url || sCta.href || sCta.link;
+         if (label && result[secondaryKeyText] === undefined) {
+           result[secondaryKeyText] = String(label);
+           mappedKeys.push(secondaryKeyText);
+         }
+         if (url && result[secondaryKeyUrl] === undefined) {
+           result[secondaryKeyUrl] = String(url);
+           mappedKeys.push(secondaryKeyUrl);
+         }
+       }
+
+       // Layout mapping
+       const layoutKey = `${moduleId}_global_layout`;
+       const rawLayout = content.layout || content.align || content.alignment || content.alineacion;
+       if (rawLayout && result[layoutKey] === undefined) {
+         if (['centered', 'split', 'bento'].includes(rawLayout)) {
+           result[layoutKey] = rawLayout;
+         } else if (rawLayout === 'center') {
+           result[layoutKey] = 'centered';
+         }
+         mappedKeys.push(layoutKey);
        }
     }
 

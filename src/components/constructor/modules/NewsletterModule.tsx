@@ -115,12 +115,20 @@ export const NewsletterModule: React.FC<{
     } as React.CSSProperties;
   };
 
+  const isValidRedirectUrl = (url?: string) => {
+    const safeUrl = String(url || '').trim();
+    return safeUrl !== '' && safeUrl !== '#';
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (showGdpr && !gdprAccepted) return;
     
     if (email) {
       setIsSubscribed(true);
+      if (isValidRedirectUrl(btnUrl)) {
+        window.open(btnUrl, btnTarget === '_blank' ? '_blank' : '_self');
+      }
       setTimeout(() => {
         setIsSubscribed(false);
         setEmail('');
@@ -231,9 +239,6 @@ export const NewsletterModule: React.FC<{
           />
           <button 
             type="submit"
-            onClick={() => {
-              if (btnUrl && btnUrl !== '#') window.open(btnUrl, btnTarget === '_blank' ? '_blank' : '_self');
-            }}
             className="px-6 py-2.5 bg-primary text-white font-bold text-sm rounded-xl hover:opacity-90 transition-all whitespace-nowrap"
             style={{ backgroundColor: btnBg, color: btnColor }}
           >
@@ -414,9 +419,6 @@ export const NewsletterModule: React.FC<{
                         whileHover={hoverEffect === 'scale' ? { scale: 1.02 } : { boxShadow: btnBg.startsWith('#') ? `0 0 25px ${btnBg}60` : `0 0 25px rgba(0,0,0,0.1)` }}
                         whileTap={{ scale: 0.98 }}
                         type="submit"
-                        onClick={() => {
-                          if (btnUrl && btnUrl !== '#') window.open(btnUrl, btnTarget === '_blank' ? '_blank' : '_self');
-                        }}
                         className="px-8 py-4 font-black text-sm shadow-xl flex items-center justify-center gap-2 transition-all"
                         style={{ backgroundColor: btnBg, color: btnColor, borderRadius: `${inputRadius - 8}px` }}
                       >

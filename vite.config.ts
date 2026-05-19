@@ -23,6 +23,8 @@ export default defineConfig(({mode}) => {
       hmr: env.DISABLE_HMR === 'true' ? false : {
         host: 'localhost',
         protocol: 'ws',
+        port: Number(env.VITE_HMR_PORT || 24679),
+        clientPort: Number(env.VITE_HMR_PORT || 24679),
       },
     },
   };

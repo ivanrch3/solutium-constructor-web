@@ -34,12 +34,12 @@ import {
   PRODUCTS_MODULE, HERO_MODULE, FEATURES_MODULE, ABOUT_MODULE, 
   PROCESS_MODULE, GALLERY_MODULE, VIDEO_MODULE, TESTIMONIALS_MODULE, 
   STATS_MODULE, NEWSLETTER_MODULE, CONTACT_MODULE, TEAM_MODULE, 
-  CTA_MODULE, PRICING_MODULE, FAQ_MODULE, CLIENTS_MODULE,
+  CTA_MODULE, PRICING_MODULE, FAQ_MODULE, TRUSTED_LOGOS_MODULE,
   BENTO_MODULE, COMPARISON_MODULE
 } from './registry';
-import { saveWebBuilderSiteDraft, publishWebBuilderSite, getProducts, getCustomers, upsertPage, upsertPageSections, logEvolutionRequest, getPageBySiteId, updateSitePreview, generatePreviewServerSide } from '../../services/dataService';
+import { saveWebBuilderSiteDraft, publishWebBuilderSite, getProducts, getCustomers, getTrustedCompanyLogos, normalizeTrustedCompanyLogos, upsertPage, upsertPageSections, logEvolutionRequest, getPageBySiteId, updateSitePreview, generatePreviewServerSide } from '../../services/dataService';
 import { sendToMother } from '../../services/handshakeService';
-import { Product, Customer, PageSection } from '../../types/schema';
+import { Product, Customer, PageSection, TrustedCompanyLogo } from '../../types/schema';
 import { MOCK_PRODUCTS, MOCK_CUSTOMERS } from '../../constants/mockData';
 import { MainSidebar, ModuleItem } from './MainSidebar';
 import { StructurePanel } from './StructurePanel';
@@ -74,7 +74,7 @@ import { logDebug } from '../../utils/debug';
 const MASTER_DICTIONARY = {
   modules: [
     'hero', 'features', 'about', 'process', 'gallery', 'video', 'testimonials', 
-    'stats', 'newsletter', 'contact', 'team', 'cta', 'pricing', 'faq', 'clients', 
+    'stats', 'newsletter', 'contact', 'team', 'cta', 'pricing', 'faq', 'clients', 'trusted_logos',
     'bento', 'comparative', 'header', 'menu', 'footer', 'spacer', 'products'
   ],
   styles: [
@@ -234,6 +234,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   const [isMobile, setIsMobile] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [trustedCompanyLogos, setTrustedCompanyLogos] = useState<TrustedCompanyLogo[]>([]);
   const [moduleToDelete, setModuleToDelete] = useState<WebModule | null>(null);
   const [showPublishModal, setShowPublishModal] = useState(false);
   const [siteName, setSiteName] = useState(() => {
@@ -612,6 +613,9 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       });
       getCustomers(0, 50, projectId).then(data => {
         setCustomers(data || []);
+      });
+      getTrustedCompanyLogos(projectId).then(data => {
+        setTrustedCompanyLogos(data || []);
       });
     }
   }, [projectId]);
@@ -1095,6 +1099,14 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
               val = availableCustomers.slice(0, 6).map(c => c.id);
             }
           }
+          if (setting.type === 'trusted_logo_selection') {
+            const availableCompanies = (trustedCompanyLogos?.length || 0) > 0
+              ? trustedCompanyLogos
+              : (projectId === 'dev-project-id' ? normalizeTrustedCompanyLogos(MOCK_CUSTOMERS) : []);
+            if (availableCompanies.length > 0) {
+              val = availableCompanies.slice(0, 8).map(company => company.company_id);
+            }
+          }
           initialValues[`${moduleId}_global_${setting.id}`] = val;
         });
       });
@@ -1125,6 +1137,15 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
                 if ((availableProducts?.length || 0) > 0) {
                   val = availableProducts.slice(0, 8).map(p => p.id);
                 }
+              }
+            }
+
+            if (module.type === 'trusted_logos' && setting.id === 'select_companies') {
+              const availableCompanies = (trustedCompanyLogos?.length || 0) > 0
+                ? trustedCompanyLogos
+                : (projectId === 'dev-project-id' ? normalizeTrustedCompanyLogos(MOCK_CUSTOMERS) : []);
+              if (availableCompanies.length > 0) {
+                val = availableCompanies.slice(0, 8).map(company => company.company_id);
               }
             }
 
@@ -1845,6 +1866,24 @@ const formatTimestampName = () => {
             content.customers = finalCustomers;
             const snapshotKey = `${module.id}_el_clients_items_customers`;
             settings[snapshotKey] = finalCustomers;
+          }
+        }
+        if (module.type === 'trusted_logos') {
+          const selectKey = `${module.id}_el_trusted_logos_data_select_companies`;
+          const snapshotKey = `${module.id}_el_trusted_logos_items_companies`;
+          const selectedIdsRaw = currentState.settingsValues[selectKey];
+          const selectedIds = Array.isArray(selectedIdsRaw) ? selectedIdsRaw.filter(Boolean) : [];
+          const availableCompanies = Array.isArray(trustedCompanyLogos) ? trustedCompanyLogos : [];
+
+          const selectedCompanies = selectedIds.length > 0
+            ? availableCompanies.filter(company => selectedIds.includes(company.company_id))
+            : availableCompanies.slice(0, 8);
+
+          if (selectedCompanies.length > 0) {
+            content.companies = selectedCompanies;
+            content.logos = selectedCompanies;
+            settings[selectKey] = selectedCompanies.map(company => company.company_id);
+            settings[snapshotKey] = selectedCompanies;
           }
         }
 
@@ -2813,7 +2852,7 @@ const formatTimestampName = () => {
                                   ]},
                                   { id: 'social', label: 'Social', modules: [
                                     { icon: MODULE_INFO.testimonials.icon, label: "Testimonios", mod: TESTIMONIALS_MODULE },
-                                    { icon: MODULE_INFO.clients.icon, label: "Clientes", mod: CLIENTS_MODULE },
+                                    { icon: MODULE_INFO.trusted_logos.icon, label: "Logos de Empresas", mod: TRUSTED_LOGOS_MODULE },
                                     { icon: MODULE_INFO.faq.icon, label: "FAQ", mod: FAQ_MODULE }
                                   ]},
                                   { id: 'ecommerce', label: 'Catálogo', modules: [
@@ -2916,7 +2955,7 @@ const formatTimestampName = () => {
                                     <h4 className="text-[9px] font-black text-primary uppercase tracking-widest px-2">Social</h4>
                                     <div className="space-y-1">
                                       <ModuleItem icon={React.createElement(MODULE_INFO.testimonials.icon, { size: 18 })} label="Testimonios" onClick={() => addModule(TESTIMONIALS_MODULE)} />
-                                      <ModuleItem icon={React.createElement(MODULE_INFO.clients.icon, { size: 18 })} label="Clientes" onClick={() => addModule(CLIENTS_MODULE)} />
+                                      <ModuleItem icon={React.createElement(MODULE_INFO.trusted_logos.icon, { size: 18 })} label="Logos de Empresas" onClick={() => addModule(TRUSTED_LOGOS_MODULE)} />
                                       <ModuleItem icon={React.createElement(MODULE_INFO.faq.icon, { size: 18 })} label="FAQ" onClick={() => addModule(FAQ_MODULE)} />
                                     </div>
                                   </div>
@@ -2969,6 +3008,7 @@ const formatTimestampName = () => {
                         projectId={projectId}
                         products={products}
                         customers={customers}
+                        trustedCompanyLogos={trustedCompanyLogos}
                         isMobile={true}
                         activeTab={activeTab}
                       />
@@ -2982,6 +3022,7 @@ const formatTimestampName = () => {
                         onAddModule={addModule} 
                         products={products}
                         customers={customers}
+                        trustedCompanyLogos={trustedCompanyLogos}
                         isDevMode={projectId === 'dev-project-id'}
                         logoUrl={logoUrl}
                         logoWhiteUrl={logoWhiteUrl}
@@ -3016,6 +3057,7 @@ const formatTimestampName = () => {
                     projectId={projectId}
                     products={products}
                     customers={customers}
+                    trustedCompanyLogos={trustedCompanyLogos}
                     activeTab={activeTab}
                   />
                 )}
@@ -3048,6 +3090,7 @@ const formatTimestampName = () => {
                         onAddModule={addModule} 
                         products={products}
                         customers={customers}
+                        trustedCompanyLogos={trustedCompanyLogos}
                         isDevMode={projectId === 'dev-project-id'}
                         logoUrl={logoUrl}
                         logoWhiteUrl={logoWhiteUrl}

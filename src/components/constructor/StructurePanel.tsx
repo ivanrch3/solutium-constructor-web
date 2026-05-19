@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { EditorState, WebModule, ModuleElement, SettingGroupType } from '../../types/constructor';
-import { Product, Customer } from '../../types/schema';
+import { Product, Customer, TrustedCompanyLogo } from '../../types/schema';
 import { useEditorStore } from '../../store/editorStore';
 import { MODULE_INFO, GROUP_LABELS, BENTO_MODULE } from './registry';
 import { SettingControl } from './SettingControl';
@@ -38,6 +38,7 @@ interface StructurePanelProps {
   projectId: string | null;
   products?: Product[];
   customers?: Customer[];
+  trustedCompanyLogos?: TrustedCompanyLogo[];
   isMobile?: boolean;
   activeTab?: string;
 }
@@ -53,6 +54,7 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
   projectId,
   products,
   customers,
+  trustedCompanyLogos,
   isMobile,
   activeTab = 'constructor'
 }) => {
@@ -615,6 +617,7 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                                                               projectId={projectId}
                                                               products={products}
                                                               customers={customers}
+                                                              trustedCompanyLogos={trustedCompanyLogos}
                                                               projectColors={projectColors}
                                                             />
                                                          ))}
@@ -794,6 +797,7 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                                                       projectId={projectId}
                                                       products={products}
                                                       customers={customers}
+                                                      trustedCompanyLogos={trustedCompanyLogos}
                                                       projectColors={projectColors}
                                                     />
                                                   );

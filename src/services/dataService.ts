@@ -1,5 +1,5 @@
 import { getSupabase } from './supabaseClient';
-import { Profile, Project, Customer, Product, Asset, WebBuilderSite, PublishedSite, RenderingContract, Page, PageSection, EngineEvolutionBuffer } from '../types/schema';
+import { Profile, Project, Customer, Product, Asset, WebBuilderSite, PublishedSite, RenderingContract, Page, PageSection, EngineEvolutionBuffer, TrustedCompanyLogo } from '../types/schema';
 import { profileSchema, projectSchema, customerSchema, productSchema, webBuilderSiteSchema, publishedSiteSchema, assetSchema } from '../types/zodSchemas';
 import { z } from 'zod';
 import { getUploadAuthToken } from './authTokenProvider';
@@ -282,6 +282,60 @@ export const getCustomers = async (page: number, pageSize: number, projectId: st
     console.error('Error in getCustomers:', err);
     return [];
   }
+};
+
+const normalizeCompanyName = (value: any): string => {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ');
+};
+
+export const normalizeTrustedCompanyLogos = (customers: Customer[]): TrustedCompanyLogo[] => {
+  const deduped = new Map<string, { customer: Customer; updatedAt: number }>();
+
+  customers.forEach((customer) => {
+    const companyName = String(customer.company || '').trim();
+    const logoUrl = String(customer.companyLogoUrl || '').trim();
+
+    if (!companyName || !logoUrl) return;
+
+    const normalizedName = normalizeCompanyName(companyName);
+    const dedupeKey =
+      (customer.businessId && String(customer.businessId).trim()) ||
+      normalizedName ||
+      String(customer.id);
+
+    const updatedAt = customer.updatedAt ? new Date(customer.updatedAt).getTime() : 0;
+    const existing = deduped.get(dedupeKey);
+
+    if (!existing || updatedAt >= existing.updatedAt) {
+      deduped.set(dedupeKey, { customer, updatedAt });
+    }
+  });
+
+  return Array.from(deduped.values())
+    .sort((a, b) => b.updatedAt - a.updatedAt)
+    .map(({ customer }) => {
+      const companyName = String(customer.company || customer.name || 'Empresa').trim();
+      const anyCustomer = customer as any;
+      const websiteUrl = anyCustomer.websiteUrl || anyCustomer.website || anyCustomer.web;
+
+      return {
+        company_id: String(customer.businessId || normalizeCompanyName(companyName) || customer.id),
+        name: companyName,
+        logo_url: String(customer.companyLogoUrl || '').trim(),
+        ...(websiteUrl ? { website_url: String(websiteUrl).trim() } : {}),
+        alt: `${companyName} logo`
+      };
+    });
+};
+
+export const getTrustedCompanyLogos = async (projectId: string): Promise<TrustedCompanyLogo[]> => {
+  const customers = await getCustomers(0, 500, projectId);
+  return normalizeTrustedCompanyLogos(customers);
 };
 
 export const getProducts = async (page: number, pageSize: number, projectId: string): Promise<Product[]> => {

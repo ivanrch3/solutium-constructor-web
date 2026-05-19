@@ -39,10 +39,9 @@ import {
   GALLERY_MODULE, 
   VIDEO_MODULE, 
   TESTIMONIALS_MODULE, 
-  CLIENTS_MODULE, 
+  TRUSTED_LOGOS_MODULE,
   FAQ_MODULE, 
-  PRODUCTS_MODULE, 
-  PRODUCTS_SHOWCASE_MODULE,
+  PRODUCTS_MODULE,
   SPACER_MODULE,
   BENTO_MODULE,
   COMPARISON_MODULE
@@ -244,11 +243,6 @@ export const MainSidebar: React.FC<MainSidebarProps> = ({
                       onClick={() => onAddModule(ABOUT_MODULE)}
                     />
                     <ModuleItem 
-                      icon={React.createElement(MODULE_INFO.products_showcase.icon, { size: 18 })} 
-                      label="Catálogo V2 (EXP)" 
-                      onClick={() => onAddModule(PRODUCTS_SHOWCASE_MODULE)}
-                    />
-                    <ModuleItem 
                       icon={React.createElement(MODULE_INFO.process.icon, { size: 18 })} 
                       label="Proceso" 
                       onClick={() => onAddModule(PROCESS_MODULE)}
@@ -375,9 +369,9 @@ export const MainSidebar: React.FC<MainSidebarProps> = ({
                       onClick={() => onAddModule(TESTIMONIALS_MODULE)}
                     />
                     <ModuleItem 
-                      icon={React.createElement(MODULE_INFO.clients.icon, { size: 18 })} 
-                      label="Clientes" 
-                      onClick={() => onAddModule(CLIENTS_MODULE)}
+                      icon={React.createElement(MODULE_INFO.trusted_logos.icon, { size: 18 })} 
+                      label="Logos de Empresas" 
+                      onClick={() => onAddModule(TRUSTED_LOGOS_MODULE)}
                     />
                     <ModuleItem 
                       icon={React.createElement(MODULE_INFO.faq.icon, { size: 18 })} 
@@ -472,3 +466,6 @@ export const MainSidebar: React.FC<MainSidebarProps> = ({
     </div>
   );
 };
+
+
+

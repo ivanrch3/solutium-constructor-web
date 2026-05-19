@@ -2375,6 +2375,7 @@ export const CTA_MODULE: WebModule = {
       ]},
       { id: 'bg_color', label: 'Color de Fondo', type: 'color', defaultValue: '#FFFFFF' },
       { id: 'bg_gradient', label: 'Gradiente Personalizado', type: 'gradient', defaultValue: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)' },
+      { id: 'bg_image', label: 'Imagen de fondo', type: 'image', defaultValue: '' },
       { id: 'bg_video', label: 'URL Video MP4', type: 'text', defaultValue: '' },
       { id: 'overlay_opacity', label: 'Opacidad Capa (Overlay)', type: 'range', defaultValue: 50, min: 0, max: 100 }
     ],

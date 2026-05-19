@@ -49,6 +49,7 @@ export const CTAModule: React.FC<{
   const darkMode = getVal(null, 'dark_mode', false);
   const bgColor = getVal(null, 'bg_color', darkMode ? '#0F172A' : '#FFFFFF');
   const bgGradient = getVal(null, 'bg_gradient', 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)');
+  const bgImage = getVal(null, 'bg_image', '');
   const bgVideo = getVal(null, 'bg_video', '');
   const overlayOpacity = parseNumSafe(getVal(null, 'overlay_opacity', 50), 50) / 100;
   const entranceAnim = getVal(null, 'entrance_anim', 'none');
@@ -105,8 +106,14 @@ export const CTAModule: React.FC<{
   const secondaryUrl = getVal(`${moduleId}_el_cta_actions`, 'secondary_url', '');
   const secondaryTarget = getVal(`${moduleId}_el_cta_actions`, 'secondary_target', '_self');
   
-  const hasPrimary = primaryUrl && primaryUrl !== '#' && primaryUrl !== '';
-  const hasSecondary = secondaryUrl && secondaryUrl !== '#' && secondaryUrl !== '';
+  const isValidCta = (text?: string, url?: string) => {
+    const safeText = String(text || '').trim();
+    const safeUrl = String(url || '').trim();
+    return safeText !== '' && safeUrl !== '' && safeUrl !== '#';
+  };
+
+  const hasPrimary = isValidCta(primaryText, primaryUrl);
+  const hasSecondary = isValidCta(secondaryText, secondaryUrl);
   
   const placeholder = getVal(`${moduleId}_el_cta_actions`, 'placeholder', 'tu@email.com');
   const showSecondary = getVal(`${moduleId}_el_cta_actions`, 'show_secondary', true);
@@ -159,9 +166,13 @@ export const CTAModule: React.FC<{
     bgStyle.backgroundImage = isSafe ? bgGradient : 'none';
   }
   if (bgType === 'image') {
-    bgStyle.backgroundImage = `url('https://picsum.photos/seed/cta/1920/1080')`;
-    bgStyle.backgroundSize = 'cover';
-    bgStyle.backgroundPosition = 'center';
+    if (bgImage) {
+      bgStyle.backgroundImage = `url('${bgImage}')`;
+      bgStyle.backgroundSize = 'cover';
+      bgStyle.backgroundPosition = 'center';
+    } else {
+      bgStyle.backgroundColor = bgColor;
+    }
   }
 
   const animProps = globalAnimOverride ? {

@@ -200,8 +200,14 @@ export const HeroModule: React.FC<{
   const secondaryUrl = getVal(`${moduleId}_el_hero_ctas`, 'secondary_url', '#');
   const secondaryTarget = getVal(`${moduleId}_el_hero_ctas`, 'secondary_target', '_self');
 
-  const hasPrimary = true;
-  const hasSecondary = true;
+  const isValidCta = (text?: string, url?: string) => {
+    const safeText = String(text || '').trim();
+    const safeUrl = String(url || '').trim();
+    return safeText !== '' && safeUrl !== '' && safeUrl !== '#';
+  };
+
+  const hasPrimary = isValidCta(primaryText, primaryUrl);
+  const hasSecondary = isValidCta(secondaryText, secondaryUrl);
 
   const primaryBg = getVal(`${moduleId}_el_hero_ctas`, 'primary_bg', 'var(--primary-color)');
   const primaryColor = getVal(`${moduleId}_el_hero_ctas`, 'primary_color', '#FFFFFF');

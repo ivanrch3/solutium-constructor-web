@@ -2886,6 +2886,75 @@ export const CLIENTS_MODULE: WebModule = {
   ]
 };
 
+export const TRUSTED_LOGOS_MODULE: WebModule = {
+  id: 'mod_trusted_logos_1',
+  type: 'trusted_logos',
+  iconKey: 'trusted_logos',
+  name: 'Logos de Empresas',
+  globalGroups: ['estructura', 'estilo'],
+  globalSettings: {
+    contenido: [],
+    estructura: [
+      { id: 'columns', label: 'Columnas', type: 'range', defaultValue: 4, min: 2, max: 6 },
+      { id: 'gap', label: 'Espaciado entre logos', type: 'range', defaultValue: 32, min: 12, max: 80, unit: 'px' },
+      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 80, min: 20, max: 200, unit: 'px' }
+    ],
+    estilo: [
+      { id: 'dark_mode', label: 'Modo Oscuro', type: 'boolean', defaultValue: false },
+      { id: 'bg_color', label: 'Color de Fondo', type: 'color', defaultValue: '#FFFFFF' }
+    ],
+    tipografia: [], multimedia: [], interaccion: []
+  },
+  elements: [
+    { id: 'el_trusted_logos_header', name: 'Textos', type: 'text', groups: ['eyebrow', 'title', 'subtitle', 'estructura'], settings: {
+      eyebrow: [
+        { id: 'eyebrow', label: 'Texto Superior (Eyebrow)', type: 'text', defaultValue: 'CONFÍAN EN NOSOTROS' },
+        { id: 'eyebrow_color', label: 'Color Eyebrow', type: 'color', defaultValue: '#3B82F6' }
+      ],
+      title: [
+        { id: 'title', label: 'Título', type: 'text', defaultValue: 'Logos de **Empresas**' },
+        { id: 'title_size', label: 'Tamaño', type: 'typography_size', defaultValue: 't2', allowedLevels: ['t1', 't2', 't3'] },
+        { id: 'title_weight', label: 'Peso', type: 'font_weight', defaultValue: 'black' },
+        { id: 'title_color', label: 'Color Título', type: 'color', defaultValue: '#0F172A' },
+        ...HIGHLIGHT_SETTINGS('title')
+      ],
+      subtitle: [
+        { id: 'subtitle', label: 'Subtítulo', type: 'text', defaultValue: 'Selecciona empresas reales del CRM y publícalas con snapshot estable.' },
+        { id: 'subtitle_size', label: 'Tamaño', type: 'typography_size', defaultValue: 'p', allowedLevels: ['t3', 'p', 's'] },
+        { id: 'subtitle_weight', label: 'Peso', type: 'font_weight', defaultValue: 'normal' }
+      ],
+      estructura: [
+        { id: 'align', label: 'Alineación', type: 'select', defaultValue: 'center', options: [
+          { label: 'Izquierda', value: 'left' },
+          { label: 'Centro', value: 'center' },
+          { label: 'Derecha', value: 'right' }
+        ]}
+      ],
+      multimedia: [], interaccion: []
+    }},
+    { id: 'el_trusted_logo_style', name: 'Estilo de Logotipos', type: 'multimedia', groups: ['multimedia', 'estilo'], settings: {
+      multimedia: [
+        { id: 'logo_height', label: 'Altura de Logos', type: 'range', defaultValue: 48, min: 24, max: 120, unit: 'px' }
+      ],
+      estilo: [
+        { id: 'logo_opacity', label: 'Opacidad Base', type: 'range', defaultValue: 100, min: 20, max: 100 }
+      ],
+      contenido: [], estructura: [], tipografia: [], interaccion: []
+    }},
+    { id: 'el_trusted_logos_data', name: 'Selección de Empresas', type: 'repeater', groups: ['contenido'], settings: {
+      contenido: [
+        {
+          id: 'select_companies',
+          label: 'Seleccionar Empresas',
+          type: 'trusted_logo_selection',
+          defaultValue: null
+        }
+      ],
+      estilo: [], estructura: [], tipografia: [], multimedia: [], interaccion: []
+    }}
+  ]
+};
+
 export const BENTO_MODULE: WebModule = {
   id: 'mod_bento_1',
   type: 'bento',
@@ -3133,13 +3202,25 @@ export const GROUP_LABELS: Record<SettingGroupType, string> = {
   texto_rotativo: 'Texto Dinámico'
 };
 
-export const MODULE_INFO: Record<string, { label: string; icon: React.ElementType }> = {
+export const MODULE_INFO: Record<string, {
+  label: string;
+  icon: React.ElementType;
+  deprecated?: boolean;
+  hiddenFromLibrary?: boolean;
+  replacement?: string;
+}> = {
   header: { label: 'Barra superior', icon: PanelTop },
   menu: { label: 'Menú', icon: Menu },
   footer: { label: 'Pie de página', icon: PanelBottom },
   spacer: { label: 'Espaciadores', icon: SeparatorHorizontal },
   products: { label: 'Productos', icon: ShoppingBag },
-  products_showcase: { label: 'EXPERIMENTAL: Catálogo V2', icon: ShoppingBag },
+  products_showcase: {
+    label: 'EXPERIMENTAL: Catalogo V2',
+    icon: ShoppingBag,
+    deprecated: true,
+    hiddenFromLibrary: true,
+    replacement: 'products'
+  },
   hero: { label: 'Portada', icon: Sparkles },
   features: { label: 'Características', icon: ListChecks },
   about: { label: 'Sobre Nosotros', icon: Info },
@@ -3155,6 +3236,15 @@ export const MODULE_INFO: Record<string, { label: string; icon: React.ElementTyp
   pricing: { label: 'Precios', icon: Tags },
   faq: { label: 'FAQ', icon: MessageCircleQuestion },
   comparative: { label: 'Comparativo', icon: Columns2 },
-  clients: { label: 'Clientes', icon: Handshake },
+  clients: {
+    label: 'Clientes',
+    icon: Handshake,
+    deprecated: true,
+    hiddenFromLibrary: true,
+    replacement: 'trusted_logos'
+  },
+  trusted_logos: { label: 'Logos de Empresas', icon: Handshake },
   bento: { label: 'Bento / Composición Libre', icon: Layout }
 };
+
+

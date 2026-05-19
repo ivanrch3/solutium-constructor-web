@@ -8,7 +8,7 @@ import {
   Minimize 
 } from 'lucide-react';
 import { EditorState, WebModule } from '../../types/constructor';
-import { Product, Customer } from '../../types/schema';
+import { Product, Customer, TrustedCompanyLogo } from '../../types/schema';
 import { useEditorStore } from '../../store/editorStore';
 import { isDarkColor } from './utils';
 import { logDebug } from '../../utils/debug';
@@ -27,6 +27,7 @@ import { PricingModule } from './modules/PricingModule';
 import { FAQModule } from './modules/FAQModule';
 import { ContactModule } from './modules/ContactModule';
 import { ClientsModule } from './modules/ClientsModule';
+import { TrustedLogosModule } from './modules/TrustedLogosModule';
 import { CTAModule } from './modules/CTAModule';
 import { NewsletterModule } from './modules/NewsletterModule';
 import { HeaderModule } from './modules/HeaderModule';
@@ -43,6 +44,7 @@ interface CanvasProps {
   onAddModule: (module: WebModule) => void;
   products: Product[];
   customers: Customer[];
+  trustedCompanyLogos?: TrustedCompanyLogo[];
   isDevMode: boolean;
   logoUrl?: string | null;
   logoWhiteUrl?: string | null;
@@ -63,6 +65,7 @@ export const Canvas: React.FC<CanvasProps> = ({
   onAddModule, 
   products, 
   customers, 
+  trustedCompanyLogos = [],
   isDevMode, 
   logoUrl, 
   logoWhiteUrl, 
@@ -507,6 +510,14 @@ export const Canvas: React.FC<CanvasProps> = ({
                         settingsValues={finalSettings}
                         customers={customers}
                         isDevMode={isDevMode}
+                        isPreviewMode={isPreviewMode}
+                      />
+                    )}
+                    {section.type === 'trusted_logos' && (
+                      <TrustedLogosModule
+                        moduleId={section.id}
+                        settingsValues={finalSettings}
+                        companies={trustedCompanyLogos}
                         isPreviewMode={isPreviewMode}
                       />
                     )}

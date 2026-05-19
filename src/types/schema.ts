@@ -124,6 +124,14 @@ export interface Customer {
   lastActivity?: string;
 }
 
+export interface TrustedCompanyLogo {
+  company_id: string;
+  name: string;
+  logo_url: string;
+  website_url?: string;
+  alt?: string;
+}
+
 export interface Product {
   id: string;
   name: string;

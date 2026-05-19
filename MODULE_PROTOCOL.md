@@ -65,3 +65,130 @@ Para garantizar la compatibilidad entre el editor (Draft), el renderizado públi
     *   Evitar el uso de `window.innerWidth` para cálculos de layout en el renderizador.
 6.  **Validación de Campos:** No usar operadores `includes` ambiguos en la lógica de renderizado para detectar tipos de campo. Las validaciones deben ser explícitas por ID de ajuste o tipo definido.
 7.  **Preservación de Llaves:** Los bridges de compatibilidad en `hydrationBridge.ts` deben registrarse por tipo de módulo y mapear solo lo estrictamente necesario para no ensuciar el objeto de settings resultante.
+
+---
+
+## 4. ESTADO OFICIAL DE MODULOS
+
+### Modulos oficiales
+
+#### `products`
+*   Es el modulo oficial para productos/catalogo.
+*   Reemplaza funcionalmente a `products_showcase`.
+*   Debe mantenerse como la implementacion soportada para nuevas paginas.
+
+#### `trusted_logos`
+*   Es el modulo oficial para logos de empresas/clientes.
+*   Reemplaza funcionalmente a `clients`.
+*   Debe mantenerse como la implementacion soportada para nuevas paginas.
+
+### Modulos legacy ocultos
+
+#### `clients`
+*   Estado: `deprecated: true`
+*   Biblioteca: `hiddenFromLibrary: true`
+*   Reemplazo oficial: `trusted_logos`
+*   No debe aparecer como opcion agregable para nuevos usuarios.
+*   No debe eliminarse porque puede existir en paginas antiguas.
+
+#### `products_showcase`
+*   Estado: experimental/legacy oculto.
+*   Biblioteca: `hiddenFromLibrary: true`
+*   Reemplazo oficial: `products`
+*   No debe aparecer como opcion agregable para nuevos usuarios.
+*   No debe eliminarse porque puede existir en paginas antiguas.
+
+---
+
+## 5. CONTRATO OFICIAL DE `trusted_logos`
+
+### DTO
+
+```ts
+type TrustedCompanyLogo = {
+  company_id: string;
+  name: string;
+  logo_url: string;
+  website_url?: string;
+  alt?: string;
+};
+```
+
+### Fuente en editor
+*   Origen: `customers` filtrados por `project_id`.
+*   Campos base:
+    *   `company`
+    *   `company_logo_url`
+    *   `business_id`
+    *   `updated_at`
+
+### Reglas de normalizacion
+*   Excluir clientes sin `company`.
+*   Excluir clientes sin `companyLogoUrl`.
+*   Deduplicar por `businessId` si existe.
+*   Fallback por nombre normalizado.
+*   Fallback final por `id`.
+*   El viewer publicado no consulta CRM/Supabase en vivo.
+*   El viewer publicado renderiza exclusivamente desde snapshot.
+
+### Snapshot publicado
+*   `content.companies`
+*   `content.logos`
+*   `settings[${moduleId}_el_trusted_logos_items_companies]`
+*   `settings[${moduleId}_el_trusted_logos_data_select_companies]`
+
+### Orden de lectura en Viewer
+1.  `content.companies`
+2.  `content.logos`
+3.  `settings[${moduleId}_el_trusted_logos_items_companies]`
+4.  `[]`
+
+---
+
+## 6. CONTRATO OFICIAL DE `products`
+
+*   `products` es el modulo soportado para catalogo/productos.
+*   El contrato publicado debe priorizar snapshot persistido sobre catalogo vivo.
+*   Las llaves de snapshot robustas de referencia son:
+    *   `content.products`
+    *   `content.productos`
+    *   `content.items`
+    *   `settings[${moduleId}_el_products_items_products]`
+*   No refactorizar `ProductsModule` salvo bug concreto o decision arquitectonica explicita.
+
+---
+
+## 7. REGLAS DE COMPATIBILIDAD Y NO REGRESION
+
+*   No eliminar `ClientsModule.tsx`.
+*   No eliminar `ProductsShowcaseModule.tsx`.
+*   No eliminar cases legacy en `Canvas.tsx`.
+*   No eliminar cases legacy en `Viewer.tsx`.
+*   No eliminar soporte legacy en `hydrationBridge.ts`.
+*   No reutilizar keys de `clients` para `trusted_logos`.
+*   No reactivar `products_showcase` sin decision explicita.
+*   No refactorizar `ProductsModule` salvo bug concreto.
+*   Si un modulo legacy esta oculto para nuevos usuarios, eso no autoriza a remover su soporte de render o hidratacion.
+
+---
+
+## 8. NOTA OPERATIVA SOBRE `App.tsx` Y FUSION DRAFT/PUBLISHED
+
+*   Existe un fix operativo en `src/App.tsx` para la fusion de registros `draft` y `published` por `siteId`.
+*   Problema corregido: un draft podia pisar el `content` publicado al fusionar ambas fuentes en memoria.
+*   Impacto del bug: podia romper el render published general aunque el contrato publicado estuviera correcto.
+*   Regla de no regresion: al fusionar draft y published, preservar siempre el `content` valido del published cuando sea la fuente activa de render.
+*   Cualquier cambio futuro en `refreshData`, merge por `siteId` o resolucion de `status` debe validarse contra Draft, Published y Viewer local antes de considerarse seguro.
+
+---
+
+## 9. COMPATIBILIDAD HEADER / `conversion`
+
+*   El modulo visual "Barra Superior" usa `HeaderModule`.
+*   En datos legacy/publicados puede aparecer como `type: 'conversion'`.
+*   El `Viewer` debe soportar ambos tipos:
+    *   `header`
+    *   `conversion`
+*   `conversion` no debe eliminarse del `Viewer` sin una migracion explicita de datos publicados.
+*   No migrar datos antiguos solo para este caso sin una estrategia formal.
+*   Si en el futuro se normaliza el tipo oficial, preferir `header` como nombre semantico, manteniendo `conversion` como alias de compatibilidad.

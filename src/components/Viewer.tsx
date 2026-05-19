@@ -14,6 +14,7 @@ import { FAQModule } from './constructor/modules/FAQModule';
 import { ContactModule } from './constructor/modules/ContactModule';
 import { ProductsModule } from './constructor/modules/ProductsModule';
 import { ClientsModule } from './constructor/modules/ClientsModule';
+import { TrustedLogosModule } from './constructor/modules/TrustedLogosModule';
 import { CTAModule } from './constructor/modules/CTAModule';
 import { HeaderModule } from './constructor/modules/HeaderModule';
 import { FooterModule } from './constructor/modules/FooterModule';
@@ -27,7 +28,7 @@ import { AlertCircle } from 'lucide-react';
 import { logDebug } from '../utils/debug';
 import { bridgeModuleContent } from '../utils/hydrationBridge';
 import { getProducts } from '../services/dataService';
-import { Product } from '../types/schema';
+import { Product, TrustedCompanyLogo } from '../types/schema';
 
 interface ViewerProps {
   site: PublishedSite;
@@ -295,6 +296,7 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
 
         switch (normalizedType) {
           case 'header':
+          case 'conversion':
             return <HeaderModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} />;
           case 'hero':
             return <HeroModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} />;
@@ -483,6 +485,25 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
             return <ComparisonModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} preview={true} />;
           case 'clients':
             return <ClientsModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} customers={[]} />;
+          case 'trusted_logos':
+            const trustedLogosSnapshot =
+              (Array.isArray(section.content?.companies) ? section.content.companies : null) ||
+              (Array.isArray(section.content?.logos) ? section.content.logos : null) ||
+              (Array.isArray(finalSettingsValues[`${moduleId}_el_trusted_logos_items_companies`])
+                ? finalSettingsValues[`${moduleId}_el_trusted_logos_items_companies`]
+                : null) ||
+              [];
+
+            return (
+              <TrustedLogosModule
+                key={moduleId}
+                moduleId={moduleId}
+                settingsValues={finalSettingsValues}
+                companies={[]}
+                snapshotCompanies={trustedLogosSnapshot as TrustedCompanyLogo[]}
+                isPreviewMode={isConstructorMode}
+              />
+            );
           case 'cta':
             return <CTAModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} />;
           case 'newsletter':

@@ -3,7 +3,7 @@ export type SettingGroupType = 'contenido' | 'estructura' | 'estilo' | 'tipograf
 
 export type SettingType = 
   | 'text' | 'number' | 'color' | 'gradient' | 'select' | 'boolean' | 'range' | 'button' 
-  | 'image' | 'icon' | 'product_selection' | 'customer_selection' | 'repeater' | 'url'
+  | 'image' | 'icon' | 'product_selection' | 'customer_selection' | 'trusted_logo_selection' | 'repeater' | 'url'
   | 'typography_size' | 'font_weight' | 'text_align' | 'text_decoration' | 'toggle_group' | 'textarea';
 
 export interface SettingCondition {

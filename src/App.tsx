@@ -163,7 +163,7 @@ const AppContent: React.FC = () => {
         if (d.siteId) {
           const existing = sitesMap.get(d.siteId);
           const status = d.status || (existing ? 'modified' : 'draft');
-          const siteWithStatus = { ...d, status };
+          const siteWithStatus = { ...existing, ...d, status };
           sitesMap.set(d.siteId, siteWithStatus); 
         }
       });
@@ -512,7 +512,12 @@ const AppContent: React.FC = () => {
       
       const sitesMap = new Map<string, WebBuilderSite | PublishedSite>();
       published.forEach(p => { if (p.siteId) sitesMap.set(p.siteId, p); });
-      drafts.forEach(d => { if (d.siteId) sitesMap.set(d.siteId, d); });
+      drafts.forEach(d => {
+        if (d.siteId) {
+          const existing = sitesMap.get(d.siteId);
+          sitesMap.set(d.siteId, { ...existing, ...d });
+        }
+      });
 
       const allPages = Array.from(sitesMap.values()).sort((a, b) => {
         const dateA = new Date(a.updatedAt || 0).getTime();

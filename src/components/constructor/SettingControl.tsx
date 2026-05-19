@@ -21,7 +21,7 @@ import {
   Users
 } from 'lucide-react';
 import { SettingDefinition } from '../../types/constructor';
-import { Product, Customer } from '../../types/schema';
+import { Product, Customer, TrustedCompanyLogo } from '../../types/schema';
 import { syncAsset } from '../../services/assetService';
 import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../constants/typography';
 import { MOCK_PRODUCTS, MOCK_CUSTOMERS } from '../../constants/mockData';
@@ -35,6 +35,7 @@ interface SettingControlProps {
   projectId: string | null;
   products?: Product[];
   customers?: Customer[];
+  trustedCompanyLogos?: TrustedCompanyLogo[];
   projectColors?: string[]; // New prop for theme colors
 }
 
@@ -126,6 +127,7 @@ export const SettingControl: React.FC<SettingControlProps> = ({
   projectId, 
   products, 
   customers,
+  trustedCompanyLogos,
   projectColors
 }) => {
   const [isUploading, setIsUploading] = useState(false);
@@ -175,14 +177,18 @@ export const SettingControl: React.FC<SettingControlProps> = ({
   switch (setting.type) {
     case 'product_selection':
     case 'customer_selection':
+    case 'trusted_logo_selection':
       const isProduct = setting.type === 'product_selection';
+      const isTrustedLogo = setting.type === 'trusted_logo_selection';
       const isRealProject = projectId && projectId !== 'dev-project-id';
-      let availableItems = isProduct 
+      let availableItems: any[] = isTrustedLogo
+        ? (trustedCompanyLogos || [])
+        : isProduct 
         ? ((products && products.length > 0) ? products : (projectId === 'dev-project-id' ? MOCK_PRODUCTS : []))
         : ((customers && customers.length > 0) ? customers : (projectId === 'dev-project-id' ? MOCK_CUSTOMERS : []));
       
       // SIP v13.4: Filter customers with logo if requested
-      if (!isProduct) {
+      if (!isProduct && !isTrustedLogo) {
         availableItems = availableItems.filter((c: any) => c.companyLogoUrl);
       }
       
@@ -199,35 +205,41 @@ export const SettingControl: React.FC<SettingControlProps> = ({
                 <span className="text-[9px] font-bold text-primary uppercase">Productos del catálogo del proyecto</span>
               </div>
             )}
-            {!isProduct && (
+            {!isProduct && !isTrustedLogo && (
               <div className="flex items-center gap-1.5 px-2 py-1 bg-primary/5 border border-primary/10 rounded-lg">
                 <LucideIcons.Info size={10} className="text-primary" />
                 <span className="text-[9px] font-bold text-primary uppercase leading-tight">Solo se muestran clientes con logo de empresa</span>
               </div>
             )}
+            {isTrustedLogo && (
+              <div className="flex items-center gap-1.5 px-2 py-1 bg-primary/5 border border-primary/10 rounded-lg">
+                <LucideIcons.Building2 size={10} className="text-primary" />
+                <span className="text-[9px] font-bold text-primary uppercase leading-tight">Empresas normalizadas desde customers del proyecto</span>
+              </div>
+            )}
           </div>
           <div className="grid grid-cols-1 gap-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
             {availableItems.map((item: any, idx: number) => {
-              const itemId = String(item.id);
+              const itemId = String(isTrustedLogo ? item.company_id : item.id);
               const isExplicitArray = Array.isArray(currentValue);
               const normalizedValue = isExplicitArray ? currentValue.map(id => String(id)) : [];
               
               // [FASE 4] Auditar el control visual de selección
               const isSelected = !isExplicitArray ? true : normalizedValue.includes(itemId);
               
-              const imageUrl = isProduct ? item.imageUrl : item.companyLogoUrl;
+              const imageUrl = isTrustedLogo ? item.logo_url : isProduct ? item.imageUrl : item.companyLogoUrl;
               
               return (
                 <div 
-                  key={item.id || `select-item-${idx}`}
+                  key={itemId || `select-item-${idx}`}
                 onClick={() => {
                     let newValue: string[];
-                    const previousSelectedIds = isExplicitArray ? currentValue.map((id: any) => String(id)) : availableItems.map((i: any) => String(i.id));
+                    const previousSelectedIds = isExplicitArray ? currentValue.map((id: any) => String(id)) : availableItems.map((i: any) => String(isTrustedLogo ? i.company_id : i.id));
                     
                     if (!isExplicitArray) {
                       // Transition to explicit mode
                       newValue = availableItems
-                        .map((i: any) => String(i.id))
+                        .map((i: any) => String(isTrustedLogo ? i.company_id : i.id))
                         .filter((id: string) => id !== itemId);
                     } else {
                       // Normal toggle
@@ -266,7 +278,7 @@ export const SettingControl: React.FC<SettingControlProps> = ({
                     });
 
                     // Set selection AND touched flag in one call
-                    onChange(newValue, { [selectionTouchedKey]: true });
+                    onChange(newValue, isTrustedLogo ? undefined : { [selectionTouchedKey]: true });
                   }}
                   className={`flex items-center gap-3 p-2.5 rounded-2xl border transition-all cursor-pointer group relative overflow-hidden ${
                     isSelected 
@@ -292,14 +304,14 @@ export const SettingControl: React.FC<SettingControlProps> = ({
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-col">
                       <span className="text-[9px] font-black text-text/30 uppercase tracking-tighter mb-0.5">
-                        {isProduct ? (item.category || 'Sin Categoría') : 'Cliente'}
+                        {isTrustedLogo ? 'Empresa' : isProduct ? (item.category || 'Sin Categoría') : 'Cliente'}
                       </span>
                       <p className={`text-[12px] font-black truncate leading-tight mb-1 ${isSelected ? 'text-primary' : 'text-text'}`}>
-                         {item.name}
+                         {isTrustedLogo ? item.name : item.name}
                       </p>
                       <div className="flex items-center gap-2">
                         <p className={`text-[11px] font-bold ${isSelected ? 'text-primary' : 'text-text/60'}`}>
-                          {isProduct ? `${item.currency || '$'}${item.price}` : (item.company || 'Empresa')}
+                          {isTrustedLogo ? (item.website_url || item.alt || 'Logo empresarial') : isProduct ? `${item.currency || '$'}${item.price}` : (item.company || 'Empresa')}
                         </p>
                         {isProduct && item.compareAtPrice && (
                           <p className="text-[9px] text-text/30 line-through">${item.compareAtPrice}</p>
@@ -313,10 +325,10 @@ export const SettingControl: React.FC<SettingControlProps> = ({
             {availableItems.length === 0 && (
               <div className="p-8 text-center bg-secondary/50 rounded-2xl border border-dashed border-border/50 flex flex-col items-center gap-3">
                 <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center text-text/10 shadow-sm">
-                  {isProduct ? <ShoppingBag size={24} /> : <Users size={24} />}
+                  {isTrustedLogo ? <LucideIcons.Building2 size={24} /> : isProduct ? <ShoppingBag size={24} /> : <Users size={24} />}
                 </div>
                 <p className="text-[10px] text-text/40 font-black uppercase tracking-widest leading-relaxed">
-                  No hay {isProduct ? 'productos' : 'clientes con logo'}<br/>en el catálogo
+                  No hay {isTrustedLogo ? 'empresas con logo' : isProduct ? 'productos' : 'clientes con logo'}<br/>en el catálogo
                 </p>
               </div>
             )}
@@ -674,6 +686,7 @@ export const SettingControl: React.FC<SettingControlProps> = ({
                       projectId={projectId}
                       products={products}
                       customers={customers}
+                      trustedCompanyLogos={trustedCompanyLogos}
                       onChange={(val) => {
                         const newItems = [...items];
                         let updatedItem = { ...item, [field.id]: val };

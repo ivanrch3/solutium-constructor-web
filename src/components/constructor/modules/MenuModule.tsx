@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import * as LucideIcons from 'lucide-react';
 import { Menu as HamburgerIcon, X as CloseIcon, Info, Sparkles, Link } from 'lucide-react';
@@ -27,10 +27,12 @@ export const MenuModule: React.FC<{
   settingsValues: Record<string, any>,
   logoUrl?: string | null,
   logoWhiteUrl?: string | null,
-  isPreviewMode?: boolean
-}> = ({ moduleId, settingsValues, logoUrl, logoWhiteUrl, isPreviewMode = false }) => {
+  isPreviewMode?: boolean,
+  isEditorCanvas?: boolean
+}> = ({ moduleId, settingsValues, logoUrl, logoWhiteUrl, isPreviewMode = false, isEditorCanvas = false }) => {
   const { updateSectionSettings, setShowMenuRecommendation } = useEditorStore();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const navRef = useRef<HTMLElement | null>(null);
 
   const getVal = (elementId: string | null, settingId: string, defaultValue: any) => {
     const key = elementId ? `${elementId}_${settingId}` : `${moduleId}_global_${settingId}`;
@@ -39,7 +41,10 @@ export const MenuModule: React.FC<{
 
   // Global Settings
   const sticky = getVal(null, 'sticky', false);
-  const position = getVal(null, 'position', sticky ? 'sticky' : 'relative');
+  const rawPosition = getVal(null, 'position', sticky ? 'sticky' : 'relative');
+  const position = rawPosition === 'standard' || rawPosition === 'static' || rawPosition === 'normal'
+    ? 'relative'
+    : rawPosition;
   const layout = getVal(null, 'layout', 'horizontal');
   const desktopHamburger = getVal(null, 'desktop_hamburger', false);
 
@@ -125,11 +130,25 @@ export const MenuModule: React.FC<{
   // Global Settings
   const align = getVal(null, 'align', 'center');
   const gap = parseFloat(getVal(null, 'gap', 24)) || 24;
-  const paddingY = parseFloat(getVal(null, 'padding_y', 20)) || 20;
+  const rawPaddingY = parseFloat(getVal(null, 'padding_y', 14));
+  const paddingY = Number.isFinite(rawPaddingY) ? rawPaddingY : 14;
   const darkMode = toBoolean(getVal(null, 'dark_mode', false));
   const rawBgColor = getVal(null, 'bg_color', 'transparent');
   const glassEffect = getVal(null, 'glass_effect', false);
-  const isFloating = position === 'sticky' || position === 'fixed';
+  const isSticky = position === 'sticky';
+  const isFixed = position === 'fixed';
+  const isFloating = isSticky || isFixed;
+  const fallbackMenuHeight = Math.max(56, paddingY * 2 + 40);
+  const [menuHeight, setMenuHeight] = useState(fallbackMenuHeight);
+  const editorTopOffset = isEditorCanvas ? 60 : 0;
+  const usesEditorFixedSimulation = isEditorCanvas && isFixed;
+  const effectivePosition: React.CSSProperties['position'] = usesEditorFixedSimulation
+    ? 'relative'
+    : isFixed
+      ? 'fixed'
+      : isSticky
+        ? 'sticky'
+        : 'relative';
 
   const resolvedBgColor = resolveThemeColor(rawBgColor, 'transparent', '#0F172A', darkMode);
   const bgColor = (isFloating && resolvedBgColor === 'transparent') 
@@ -172,6 +191,28 @@ export const MenuModule: React.FC<{
   const hoverBg = resolveThemeColor(rawHoverBg, 'rgba(0,0,0,0.05)', 'rgba(255,255,255,0.1)', darkMode);
   const activeColor = getVal(`${moduleId}_el_menu_style`, 'active_color', 'var(--primary-color)');
   const hoverScale = getVal(`${moduleId}_el_menu_style`, 'hover_scale', true);
+  const activeLogo = logoImg || logoImgAlt || logoUrl || logoWhiteUrl || '';
+
+  useLayoutEffect(() => {
+    const nav = navRef.current;
+    if (!nav) return;
+
+    const updateMenuHeight = () => {
+      const measuredHeight = nav.getBoundingClientRect().height;
+      if (measuredHeight > 0) setMenuHeight(measuredHeight);
+    };
+
+    updateMenuHeight();
+
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', updateMenuHeight);
+      return () => window.removeEventListener('resize', updateMenuHeight);
+    }
+
+    const observer = new ResizeObserver(updateMenuHeight);
+    observer.observe(nav);
+    return () => observer.disconnect();
+  }, [paddingY, layout, desktopHamburger, links.length, logoWidth, activeLogo, logoText]);
 
   const getIcon = (iconName: string) => {
     const IconComponent = (LucideIcons as any)[iconName];
@@ -196,19 +237,21 @@ export const MenuModule: React.FC<{
     transition: { duration: 0.5, ease: 'easeOut' as any }
   } : {};
 
-  const activeLogo = logoImg || logoImgAlt || logoUrl || logoWhiteUrl || '';
-
   const navStyle: React.CSSProperties = {
     backgroundColor: getGlassColor(bgColor),
     backdropFilter: glassEffect || isFloating ? 'blur(12px)' : 'none',
     WebkitBackdropFilter: glassEffect || isFloating ? 'blur(12px)' : 'none',
-    borderRadius: isFloating ? '0px' : `${borderRadius}px`,
+    borderRadius: isFloating
+      ? (isEditorCanvas ? '24px 24px 0 0' : '0px')
+      : `${borderRadius}px`,
     paddingTop: `${paddingY}px`,
     paddingBottom: `${paddingY}px`,
-    position: position as any,
-    top: isFloating ? 0 : 'auto',
+    position: effectivePosition,
+    top: effectivePosition === 'sticky' || effectivePosition === 'fixed' ? editorTopOffset : 'auto',
+    left: isFixed && !usesEditorFixedSimulation ? 0 : undefined,
+    right: isFixed && !usesEditorFixedSimulation ? 0 : undefined,
     width: '100%',
-    zIndex: 1000,
+    zIndex: usesEditorFixedSimulation ? 1 : 1000,
     borderBottom: isFloating ? `1px solid ${borderColor}` : 'none'
   };
 
@@ -299,11 +342,11 @@ export const MenuModule: React.FC<{
   };
 
     return (
-      <div className={`w-full max-w-7xl mx-auto @container ${isPreviewMode ? '' : 'px-6'}`}>
-        <nav className={`w-full transition-all duration-300 ${isFloating ? 'fixed top-0 left-0 right-0 shadow-sm' : ''}`} style={navStyle}>
+      <div className="w-full @container">
+        <nav ref={navRef} className={`w-full transition-all duration-300 ${isFloating ? 'shadow-sm' : ''}`} style={navStyle}>
           <motion.div 
             {...animProps}
-            className={`${containerClasses[layout as keyof typeof containerClasses]} w-full mx-auto px-6 flex items-center gap-8 ${invertOrder && layout === 'horizontal' ? 'flex-row-reverse' : ''} ${layout === 'vertical' ? alignmentClasses[align as keyof typeof alignmentClasses] : ''}`}
+            className={`${containerClasses[layout as keyof typeof containerClasses]} w-full max-w-7xl mx-auto px-6 flex items-center gap-8 ${invertOrder && layout === 'horizontal' ? 'flex-row-reverse' : ''} ${layout === 'vertical' ? alignmentClasses[align as keyof typeof alignmentClasses] : ''}`}
             style={{ gap: `${gap}px` }}
           >
           {/* Logo */}
@@ -396,6 +439,13 @@ export const MenuModule: React.FC<{
           )}
         </AnimatePresence>
       </nav>
+      {isFixed && !usesEditorFixedSimulation && (
+        <div
+          aria-hidden="true"
+          className="w-full shrink-0"
+          style={{ height: `${(menuHeight || fallbackMenuHeight) + editorTopOffset}px` }}
+        />
+      )}
     </div>
   );
 };

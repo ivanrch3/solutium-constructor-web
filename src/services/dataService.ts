@@ -1047,13 +1047,29 @@ export const generatePreviewServerSide = async (params: {
   mode: 'thumbnail' | 'full';
 }): Promise<{ 
   success: boolean; 
+  skipped?: boolean;
+  reason?: 'missing_region' | 'missing_storage_config' | 'preview_unavailable';
   preview_image_url?: string; 
   preview_thumbnail_url?: string;
   preview_image_path?: string;
   preview_image_hash?: string;
   preview_image_updated_at?: string;
   error?: string;
+  errorCode?: 'preview_region_missing' | 'preview_missing_storage_config' | 'preview_request_failed';
 }> => {
+  const getPreviewDisableKey = (siteId: string) => `preview_generation_disabled_reason_${siteId}`;
+  const readPreviewDisableReason = (siteId: string) => {
+    if (typeof window === 'undefined') return null;
+    try {
+      return window.localStorage.getItem(getPreviewDisableKey(siteId))
+        || window.sessionStorage.getItem(getPreviewDisableKey(siteId));
+    } catch {
+      return null;
+    }
+  };
+
+  let resolvedSiteId = params.site_id;
+
   try {
     const { token, source } = await getUploadAuthToken();
     
@@ -1069,6 +1085,7 @@ export const generatePreviewServerSide = async (params: {
     const finalProjectId = params.project_id || (window as any).PROJECT_ID || (window as any).currentProject?.id;
     const finalSiteId = params.site_id || (window as any).SITE_ID || currentSite.site_id;
     const finalWebBuilderSiteId = params.web_builder_site_id || (window as any).WEB_BUILDER_SITE_ID || currentSite.id;
+    resolvedSiteId = finalSiteId;
 
     const payload = {
       ...params,
@@ -1076,6 +1093,25 @@ export const generatePreviewServerSide = async (params: {
       site_id: finalSiteId,
       web_builder_site_id: finalWebBuilderSiteId
     };
+
+    const previewDisableReason = finalSiteId ? readPreviewDisableReason(finalSiteId) : null;
+    if (previewDisableReason === 'preview_region_missing' || previewDisableReason === 'preview_missing_storage_config') {
+      logDebug('[SERVER_PREVIEW_CONFIG_WARNING]', {
+        skipped: true,
+        reason: previewDisableReason
+      });
+      return {
+        success: false,
+        skipped: true,
+        reason: previewDisableReason === 'preview_missing_storage_config' ? 'missing_storage_config' : 'missing_region',
+        error: previewDisableReason === 'preview_missing_storage_config'
+          ? 'Preview generation skipped because backend storage configuration is missing.'
+          : 'Preview generation skipped because backend storage region is missing.',
+        errorCode: previewDisableReason === 'preview_missing_storage_config'
+          ? 'preview_missing_storage_config'
+          : 'preview_region_missing'
+      };
+    }
 
     // [SERVER_PREVIEW_REQUEST_DEBUG] - Audit requested by user
     const headers: Record<string, string> = {
@@ -1113,6 +1149,44 @@ export const generatePreviewServerSide = async (params: {
     logDebug('[SERVER_PREVIEW_RESPONSE_DEBUG]', { status: response.status, data });
 
     if (!response.ok) {
+      const isControlledSkip =
+        (response.status === 409 || response.status === 422) &&
+        (data?.skipped === true || typeof data?.reason === 'string');
+
+      if (isControlledSkip) {
+        const normalizedReason =
+          data?.reason === 'missing_storage_config'
+            ? 'missing_storage_config'
+            : data?.reason === 'missing_region'
+              ? 'missing_region'
+              : 'preview_unavailable';
+
+        if (typeof window !== 'undefined' && resolvedSiteId && normalizedReason !== 'preview_unavailable') {
+          try {
+            const key = getPreviewDisableKey(resolvedSiteId);
+            const storedReason = normalizedReason === 'missing_storage_config'
+              ? 'preview_missing_storage_config'
+              : 'preview_region_missing';
+            window.localStorage.setItem(key, storedReason);
+            window.sessionStorage.setItem(key, storedReason);
+          } catch {
+            // ignore storage access issues
+          }
+        }
+
+        return {
+          success: false,
+          skipped: true,
+          reason: normalizedReason,
+          error: data?.error || data?.message || 'Preview generation skipped by backend configuration.',
+          errorCode: normalizedReason === 'missing_storage_config'
+            ? 'preview_missing_storage_config'
+            : normalizedReason === 'missing_region'
+              ? 'preview_region_missing'
+              : 'preview_request_failed'
+        };
+      }
+
       throw new Error(data.error || `Failed to generate server-side preview (HTTP ${response.status})`);
     }
 
@@ -1125,7 +1199,46 @@ export const generatePreviewServerSide = async (params: {
       preview_image_updated_at: data.preview_image_updated_at
     };
   } catch (error: any) {
-    console.error('Error generating server-side preview:', error);
-    return { success: false, error: error.message };
+    const message = String(error?.message || 'Unknown preview error');
+    const isRegionMissing = /region is missing/i.test(message);
+    const isMissingStorageConfig = /missing_storage_config|storage config/i.test(message);
+
+    if (isRegionMissing) {
+      console.warn('[SERVER_PREVIEW_CONFIG_WARNING] Preview generation skipped because backend storage region is missing.');
+      if (typeof window !== 'undefined' && resolvedSiteId) {
+        try {
+          const key = getPreviewDisableKey(resolvedSiteId);
+          window.localStorage.setItem(key, 'preview_region_missing');
+          window.sessionStorage.setItem(key, 'preview_region_missing');
+        } catch {
+          // ignore storage access issues
+        }
+      }
+    } else if (isMissingStorageConfig) {
+      console.warn('[SERVER_PREVIEW_CONFIG_WARNING] Preview generation skipped because backend storage configuration is missing.');
+      if (typeof window !== 'undefined' && resolvedSiteId) {
+        try {
+          const key = getPreviewDisableKey(resolvedSiteId);
+          window.localStorage.setItem(key, 'preview_missing_storage_config');
+          window.sessionStorage.setItem(key, 'preview_missing_storage_config');
+        } catch {
+          // ignore storage access issues
+        }
+      }
+    } else {
+      console.error('Error generating server-side preview:', error);
+    }
+
+    return {
+      success: false,
+      error: message,
+      skipped: isRegionMissing || isMissingStorageConfig,
+      reason: isRegionMissing ? 'missing_region' : isMissingStorageConfig ? 'missing_storage_config' : undefined,
+      errorCode: isRegionMissing
+        ? 'preview_region_missing'
+        : isMissingStorageConfig
+          ? 'preview_missing_storage_config'
+          : 'preview_request_failed'
+    };
   }
 };

@@ -75,14 +75,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
           <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
             {pages.length > 0 ? (
               <div className="grid grid-cols-1 gap-3">
-                {pages.map((page) => {
+                {pages.map((page, index) => {
                   const status = (page as any).status || (!('contentDraft' in page) ? 'published' : 'draft');
                   const isPublished = status === 'published' || status === 'modified';
                   const isDebug = new URLSearchParams(window.location.search).get('debug_render') === 'true';
+                  const pageKey = page.siteId || page.id || `page-${index}`;
                   
                   return (
                     <div
-                      key={page.id}
+                      key={pageKey}
                       onClick={() => {
                         logDebug('[OPEN_SAVED_SITE_CLICK_DEBUG]', {
                           siteId: page.siteId,

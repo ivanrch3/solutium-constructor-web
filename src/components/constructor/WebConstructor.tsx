@@ -66,7 +66,7 @@ import {
 import { generateSite, generateLandingWithMotherAI, generateLandingDryRunLocal, MotherAIPageResponse } from '../../services/aiService';
 import { AIGenerationContext } from '../../types/ai';
 import { ProjectForm, ProjectFormData } from '../ProjectForm';
-import { useEditorStore } from '../../store/editorStore';
+import { initialContent, useEditorStore } from '../../store/editorStore';
 import { PropertyEditor } from './PropertyEditor';
 import { logDebug } from '../../utils/debug';
 
@@ -200,6 +200,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     addSection,
     removeSection,
     setProject,
+    resetEditorStore,
     showMenuRecommendation,
     setShowMenuRecommendation
   } = useEditorStore();
@@ -219,6 +220,9 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       // SIP v7.4: Ensure that if we have a draft, we also have a valid siteContent 
       // for the Canvas to render during the first 1.5s (before standard sync kicks in)
       const draft = initialPage.contentDraft;
+    } else if (!initialPage) {
+      resetEditorStore();
+      setSiteContent(initialContent);
     }
   }, []);
 
@@ -2197,50 +2201,80 @@ const formatTimestampName = () => {
           timestamp: new Date().toISOString()
         });
 
-        restoreCanvasScroll(savedCanvasScrollTop);
-        setPreviewStatus('loading');
-
-        try {
-          const webBuilderSiteId = initialPage?.id || (window as any).WEB_BUILDER_SITE_ID;
-          const previewResult = await generatePreviewServerSide({
-            project_id: projectId!,
-            site_id: siteId,
-            web_builder_site_id: webBuilderSiteId,
-            mode: 'thumbnail'
-          });
-
-          if (previewResult.success && previewResult.preview_image_url) {
-            await updateSitePreview(siteId, {
-              previewImageUrl: previewResult.preview_image_url,
-              previewThumbnailUrl: previewResult.preview_thumbnail_url || previewResult.preview_image_url,
-              previewImagePath: previewResult.preview_image_path,
-              previewImageHash: previewResult.preview_image_hash,
-            });
-            
-            sendToMother('SOLUTIUM_PREVIEW_GENERATED', {
-              site_id: siteId,
-              preview_image_url: previewResult.preview_image_url
-            });
-
-            logDebug('[PREVIEW_CAPTURE_DEBUG] Server-side preview generated (Save):', { 
-              siteId, 
-              url: previewResult.preview_image_url 
-            });
-            setPreviewStatus('success');
-          } else {
-            setPreviewStatus('error');
-          }
-        } catch (pError) {
-          console.error('[PREVIEW_CAPTURE_DEBUG] Error en preview server-side (Save):', pError);
-          setPreviewStatus('error');
-        } finally {
-          restoreCanvasScroll(savedCanvasScrollTop);
-          setTimeout(() => setPreviewStatus('idle'), 3000);
-        }
-
         setHasUnsavedChanges(false);
         setCurrentStatus(newStatus);
+        stabilizeCanvasScroll(savedCanvasScrollTop);
+
+        const previewDisableReason = getPreviewDisableReason(siteId);
+        if (isPreviewConfigDisabled(previewDisableReason)) {
+          logDebug('[PREVIEW_CAPTURE_DEBUG] Preview generation skipped because backend preview configuration is disabled for this session.', {
+            siteId,
+            previewDisableReason
+          });
+          setPreviewStatus('idle');
+        } else {
+          setPreviewStatus('loading');
+
+          try {
+            const webBuilderSiteId = initialPage?.id || (window as any).WEB_BUILDER_SITE_ID;
+            const previewResult = await generatePreviewServerSide({
+              project_id: projectId!,
+              site_id: siteId,
+              web_builder_site_id: webBuilderSiteId,
+              mode: 'thumbnail'
+            });
+
+            if (previewResult.success && previewResult.preview_image_url) {
+              await updateSitePreview(siteId, {
+                previewImageUrl: previewResult.preview_image_url,
+                previewThumbnailUrl: previewResult.preview_thumbnail_url || previewResult.preview_image_url,
+                previewImagePath: previewResult.preview_image_path,
+                previewImageHash: previewResult.preview_image_hash,
+              });
+              
+              sendToMother('SOLUTIUM_PREVIEW_GENERATED', {
+                site_id: siteId,
+                preview_image_url: previewResult.preview_image_url
+              });
+
+              logDebug('[PREVIEW_CAPTURE_DEBUG] Server-side preview generated (Save):', { 
+                siteId, 
+                url: previewResult.preview_image_url 
+              });
+              setPreviewStatus('success');
+            } else {
+              if (previewResult.errorCode === 'preview_region_missing' || previewResult.errorCode === 'preview_missing_storage_config') {
+                const disableReason = previewResult.errorCode === 'preview_missing_storage_config'
+                  ? 'preview_missing_storage_config'
+                  : 'preview_region_missing';
+                setPreviewDisableReason(disableReason, siteId);
+                logDebug('[PREVIEW_CAPTURE_DEBUG] Draft saved. Preview omitted because backend storage is not configured.', {
+                  siteId,
+                  reason: previewResult.reason || disableReason
+                });
+                setPreviewStatus('idle');
+              } else if (previewResult.skipped) {
+                logDebug('[PREVIEW_CAPTURE_DEBUG] Draft saved. Preview skipped by client/backend guard.', {
+                  siteId,
+                  reason: previewResult.reason || null
+                });
+                setPreviewStatus('idle');
+              } else {
+                console.warn('[PREVIEW_CAPTURE_DEBUG] Draft saved, but preview generation failed.', previewResult.error);
+                setPreviewStatus('error');
+              }
+            }
+          } catch (pError) {
+            console.warn('[PREVIEW_CAPTURE_DEBUG] Preview failed after saving draft. Draft remains saved.', pError);
+            setPreviewStatus('error');
+          } finally {
+            stabilizeCanvasScroll(savedCanvasScrollTop);
+            setTimeout(() => setPreviewStatus('idle'), 3000);
+          }
+        }
+
         setSaveStatus('success');
+        stabilizeCanvasScroll(savedCanvasScrollTop);
         setTimeout(() => setSaveStatus('idle'), 3000);
       } else {
         throw new Error('Error al guardar el borrador');
@@ -2307,6 +2341,9 @@ const formatTimestampName = () => {
       if (initialPage && 'id' in initialPage) siteData.id = initialPage.id;
       const actualSite = await saveWebBuilderSiteDraft(siteData);
       if (!actualSite) throw new Error('Error al actualizar registro de sitio');
+      (window as any).WEB_BUILDER_SITE_ID = actualSite.id;
+      (window as any).currentSite = { id: actualSite.id, site_id: siteId };
+      (window as any).webBuilderSite = { id: actualSite.id };
 
       // 2. Publish Site (Legacy published_sites sync)
       const draftHasProductsShowcase = (activeState.addedModules || []).some((m: any) => m.type === 'products_showcase');
@@ -2426,7 +2463,7 @@ const formatTimestampName = () => {
           if (isGeneratingPreview) return;
           
           try {
-            const webBuilderSiteId = initialPage?.id || (window as any).WEB_BUILDER_SITE_ID;
+            const webBuilderSiteId = actualSite.id || initialPage?.id || (window as any).WEB_BUILDER_SITE_ID;
             
             if (!projectId || !siteId || !webBuilderSiteId) {
               console.warn('[AUTO_PREVIEW_ON_PUBLISH_SKIPPED] Missing IDs for preview generation', { project_id: projectId, site_id: siteId, web_builder_site_id: webBuilderSiteId });
@@ -2539,6 +2576,30 @@ const formatTimestampName = () => {
     window.location.reload();
   };
 
+  const getPreviewDisableKey = (siteId?: string) =>
+    `preview_generation_disabled_reason_${siteId || currentSiteId || 'unknown'}`;
+
+  const getPreviewDisableReason = (siteId?: string) => {
+    try {
+      return localStorage.getItem(getPreviewDisableKey(siteId))
+        || sessionStorage.getItem(getPreviewDisableKey(siteId));
+    } catch {
+      return null;
+    }
+  };
+
+  const setPreviewDisableReason = (reason: string, siteId?: string) => {
+    try {
+      localStorage.setItem(getPreviewDisableKey(siteId), reason);
+      sessionStorage.setItem(getPreviewDisableKey(siteId), reason);
+    } catch {
+      // ignore sessionStorage access issues
+    }
+  };
+
+  const isPreviewConfigDisabled = (reason?: string | null) =>
+    reason === 'preview_region_missing' || reason === 'preview_missing_storage_config';
+
   const getCanvasScrollContainer = () => {
     return document.getElementById('constructor-canvas-scroll-container');
   };
@@ -2552,6 +2613,12 @@ const formatTimestampName = () => {
         }
       });
     });
+  };
+
+  const stabilizeCanvasScroll = (scrollTop: number) => {
+    restoreCanvasScroll(scrollTop);
+    window.setTimeout(() => restoreCanvasScroll(scrollTop), 50);
+    window.setTimeout(() => restoreCanvasScroll(scrollTop), 150);
   };
 
   const waitForNextPaint = async () => {
@@ -2584,6 +2651,11 @@ const formatTimestampName = () => {
 
   const handleUpdatePreview = async () => {
     if (!projectId || isPreviewMode || isGeneratingPreview) return;
+    if (isPreviewConfigDisabled(getPreviewDisableReason())) {
+      logDebug('[PREVIEW_CAPTURE_DEBUG] Manual preview skipped because backend preview configuration is disabled.');
+      setPreviewStatus('idle');
+      return;
+    }
     setPreviewStatus('loading');
     setIsGeneratingPreview(true);
     try {
@@ -2615,7 +2687,24 @@ const formatTimestampName = () => {
 
         setPreviewStatus('success');
       } else {
-        throw new Error(result.error || 'No se pudo generar la vista previa server-side.');
+        if (result.errorCode === 'preview_region_missing' || result.errorCode === 'preview_missing_storage_config') {
+          setPreviewDisableReason(
+            result.errorCode === 'preview_missing_storage_config'
+              ? 'preview_missing_storage_config'
+              : 'preview_region_missing'
+          );
+          logDebug('[PREVIEW_CAPTURE_DEBUG] Manual preview omitted because backend storage is not configured.', {
+            reason: result.reason || result.errorCode
+          });
+          setPreviewStatus('idle');
+        } else if (result.skipped) {
+          logDebug('[PREVIEW_CAPTURE_DEBUG] Manual preview skipped by client/backend guard.', {
+            reason: result.reason || null
+          });
+          setPreviewStatus('idle');
+        } else {
+          throw new Error(result.error || 'No se pudo generar la vista previa server-side.');
+        }
       }
     } catch (error: any) {
       console.error('Manual preview update failed:', error);
@@ -3202,12 +3291,14 @@ const formatTimestampName = () => {
       <AnimatePresence>
         {showAIInitialForm && !onboardingFinished && (
           <ProjectForm 
+            key="project-form-modal"
             onSubmit={handleAISubmit}
             onCancel={handleCloseOnboarding}
           />
         )}
         {isGeneratingAI && (
           <AIGenerationModal 
+            key="ai-generation-modal"
             currentStep={aiGenerationStep}
             steps={aiSteps}
             onCancel={() => setIsGeneratingAI(false)}
@@ -3215,6 +3306,7 @@ const formatTimestampName = () => {
         )}
         {moduleToDelete && (
           <DeleteConfirmationModal 
+            key={`delete-module-${moduleToDelete.id}`}
             moduleName={moduleToDelete.name}
             onConfirm={confirmRemoveModule}
             onCancel={() => setModuleToDelete(null)}
@@ -3222,6 +3314,7 @@ const formatTimestampName = () => {
         )}
         {showPublishModal && (
           <PublishModal 
+            key="publish-modal"
             siteName={siteName}
             setSiteName={setSiteName}
             onPublish={handlePublish}
@@ -3232,6 +3325,7 @@ const formatTimestampName = () => {
 
         {/* [PHASE 3D.5.2] Secure AI Flow Modals */}
         <MotherAIPageConfirmationModal 
+          key="mother-ai-confirmation-modal"
           isOpen={isMotherAIConfirmationOpen}
           onClose={() => setIsMotherAIConfirmationOpen(false)}
           onConfirm={executeSecureAIGeneration}
@@ -3248,6 +3342,7 @@ const formatTimestampName = () => {
 
         {aiUsageSuccess && (
           <AIUsageSuccessModal 
+            key="ai-usage-success-modal"
             isOpen={!!aiUsageSuccess}
             onClose={() => setAiUsageSuccess(null)}
             usage={aiUsageSuccess}
@@ -3255,7 +3350,7 @@ const formatTimestampName = () => {
         )}
 
         {showMenuRecommendation && (
-          <>
+          <React.Fragment key="menu-recommendation-modal">
             {/* Extremely high z-index backdrop and modal for the recommendation */}
             <motion.div
               initial={{ opacity: 0 }}
@@ -3340,10 +3435,11 @@ const formatTimestampName = () => {
                 </div>
               </div>
             </motion.div>
-          </>
+          </React.Fragment>
         )}
         {showBentoPrompt && (
           <BentoPromptGenerator 
+            key="bento-prompt-modal"
             onInsert={handleBentoPromptInsert}
             onClose={() => setShowBentoPrompt(false)}
           />

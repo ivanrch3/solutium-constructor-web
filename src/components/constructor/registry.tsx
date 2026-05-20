@@ -222,7 +222,7 @@ export const MENU_MODULE: WebModule = {
         { label: 'Fin', value: 'end' }
       ]},
       { id: 'gap', label: 'Espaciado entre items', type: 'range', defaultValue: 24, min: 0, max: 64, unit: 'px' },
-      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 40, min: 0, max: 100, unit: 'px' },
+      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 14, min: 0, max: 100, unit: 'px' },
       { id: 'desktop_hamburger', label: 'Usar Menú Hamburguesa en Escritorio', type: 'boolean', defaultValue: false }
     ],
     estilo: [
@@ -1788,7 +1788,16 @@ export const STATS_MODULE: WebModule = {
       { id: 'bg_gradient', label: 'Gradiente Personalizado', type: 'gradient', defaultValue: 'linear-gradient(to bottom, #FFFFFF, #F8FAFC)' }
     ],
     interaccion: [
-      { id: 'entrance_anim', label: 'Animación de Entrada', type: 'boolean', defaultValue: true },
+      { id: 'entrance_anim', label: 'Animación de Entrada', type: 'select', defaultValue: 'slide-up', options: [
+        { label: 'Sin animación', value: 'none' },
+        { label: 'Desvanecer', value: 'fade-in' },
+        { label: 'Deslizar arriba', value: 'slide-up' },
+        { label: 'Deslizar abajo', value: 'slide-down' },
+        { label: 'Desvanecer desde izquierda', value: 'fade-left' },
+        { label: 'Desvanecer desde derecha', value: 'fade-right' },
+        { label: 'Zoom suave', value: 'zoom-in' },
+        { label: 'Blur In', value: 'blur-in' }
+      ] },
       { id: 'count_speed', label: 'Velocidad de Conteo (seg)', type: 'range', defaultValue: 2, min: 0.5, max: 5, step: 0.5 },
       { id: 'count_easing', label: 'Estilo de Animación', type: 'select', defaultValue: 'spring', options: [
         { label: 'Elástico (Spring)', value: 'spring' },

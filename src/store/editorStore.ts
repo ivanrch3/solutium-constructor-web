@@ -17,6 +17,7 @@ interface EditorStoreState {
   
   // Acciones
   setProject: (project: any) => void;
+  resetEditorStore: () => void;
   setInlineEditingId: (id: string | null) => void;
   setShowMenuRecommendation: (show: boolean) => void;
   setSelectedBentoCellIndex: (index: number | null) => void;
@@ -34,7 +35,7 @@ interface EditorStoreState {
   redo: () => void;
 }
 
-const initialContent: SiteContent = {
+export const initialContent: SiteContent = {
   theme: {
     primaryColor: '#3b82f6',
     secondaryColor: '#1e293b',
@@ -71,6 +72,20 @@ export const useEditorStore = create<EditorStoreState>((set, get) => ({
   selectedBentoCellIndex: null,
   
   setProject: (project) => set({ project }),
+
+  resetEditorStore: () => set((state) => ({
+    siteContent: initialContent,
+    selectedSectionId: null,
+    selectedElementId: null,
+    history: [initialContent],
+    historyIndex: 0,
+    inlineEditingId: null,
+    showMenuRecommendation: false,
+    selectedBentoCellIndex: null,
+    isGenerating: false,
+    generationStep: 0,
+    generationSteps: state.generationSteps
+  })),
 
   setInlineEditingId: (id) => set({ inlineEditingId: id }),
 

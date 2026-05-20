@@ -192,9 +192,14 @@ export const Canvas: React.FC<CanvasProps> = ({
                 const isLast = index === (siteContent.sections?.length || 0) - 1;
                 
                 // Determine if this module wrapper should be sticky/fixed
-                const modulePos = section.settings[`${section.id}_global_position`];
-                const menuSticky = section.settings[`${section.id}_global_sticky`];
-                const isSticky = modulePos === 'sticky' || menuSticky === true;
+                const modulePos =
+                  editorState.settingsValues?.[`${section.id}_global_position`] ??
+                  section.settings[`${section.id}_global_position`];
+                const menuSticky =
+                  editorState.settingsValues?.[`${section.id}_global_sticky`] ??
+                  section.settings[`${section.id}_global_sticky`];
+                const hasExplicitPosition = modulePos !== undefined && modulePos !== null && modulePos !== '';
+                const isSticky = modulePos === 'sticky' || (!hasExplicitPosition && menuSticky === true);
                 const isFixed = modulePos === 'fixed';
 
                 // Calculate cumulative top offset for stacking floating modules
@@ -202,8 +207,12 @@ export const Canvas: React.FC<CanvasProps> = ({
                 if (isSticky || isFixed) {
                   for (let i = 0; i < index; i++) {
                     const prev = siteContent.sections[i];
-                    const prevPos = prev.settings[`${prev.id}_global_position`];
-                    const prevSticky = prev.settings[`${prev.id}_global_sticky`];
+                    const prevPos =
+                      editorState.settingsValues?.[`${prev.id}_global_position`] ??
+                      prev.settings[`${prev.id}_global_position`];
+                    const prevSticky =
+                      editorState.settingsValues?.[`${prev.id}_global_sticky`] ??
+                      prev.settings[`${prev.id}_global_sticky`];
                     const isPrevFloating = prevPos === 'sticky' || prevPos === 'fixed' || prevSticky === true;
                     
                     if (isPrevFloating) {
@@ -270,7 +279,11 @@ export const Canvas: React.FC<CanvasProps> = ({
                   moduleOverrides[`${section.id}_global_bg_type`] = 'color';
                 }
 
-                if (theme.globalAnimationType && theme.globalAnimationType !== 'custom') {
+                const hasExplicitModuleAnimation =
+                  section.settings?.[`${section.id}_global_entrance_anim`] !== undefined ||
+                  editorState.settingsValues?.[`${section.id}_global_entrance_anim`] !== undefined;
+
+                if (!hasExplicitModuleAnimation && theme.globalAnimationType && theme.globalAnimationType !== 'custom') {
                   moduleOverrides[`${section.id}_global_entrance_anim`] = theme.globalAnimationType;
                 }
 
@@ -545,6 +558,7 @@ export const Canvas: React.FC<CanvasProps> = ({
                         logoUrl={logoUrl}
                         logoWhiteUrl={logoWhiteUrl}
                         isPreviewMode={isPreviewMode}
+                        isEditorCanvas={!isPreviewMode}
                       />
                     )}
                     {(section.type === 'footer') && (

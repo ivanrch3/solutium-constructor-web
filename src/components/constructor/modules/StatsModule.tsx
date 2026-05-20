@@ -3,6 +3,7 @@ import { motion, useInView, useSpring, useTransform, animate } from 'motion/reac
 import * as LucideIcons from 'lucide-react';
 import { Star } from 'lucide-react';
 import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
+import { ModuleAnimationWrapper, normalizeModuleAnimation } from '../ModuleAnimationWrapper';
 import { TextRenderer } from '../TextRenderer';
 import { ParallaxBackground, useParallaxScrollProgress } from '../ParallaxBackground';
 import { parseNumSafe, isDarkColor } from '../utils';
@@ -72,8 +73,6 @@ const StatItem = ({
   stat, 
   index, 
   layout, 
-  entranceAnim, 
-  itemVariants, 
   hoverEffect, 
   cardBg, 
   cardRadius, 
@@ -114,7 +113,6 @@ const StatItem = ({
 
   return (
     <motion.div
-      variants={entranceAnim ? itemVariants : {}}
       whileHover={hoverStyles}
       className={`flex ${isInline ? 'flex-row items-center text-left gap-6' : 'flex-col items-center text-center'} p-8 transition-all duration-300 ${bentoClass} ${shadowClass}`}
       style={{ 
@@ -172,8 +170,6 @@ const StatItem = ({
 import { InlineEditableText } from '../InlineEditableText';
 import { useEditorStore } from '../../../store/editorStore';
 
-import { GLOBAL_ANIMATIONS, getGlobalAnimation } from '../../../constants/animations';
-
 export const StatsModule: React.FC<{ 
   moduleId: string, 
   settingsValues: Record<string, any>,
@@ -222,15 +218,9 @@ export const StatsModule: React.FC<{
   const bgColor = resolveThemeColor(rawBgColor, '#FFFFFF', '#0F172A', darkMode);
   const sectionGradient = getVal(null, 'section_gradient', false);
   const bgGradient = getVal(null, 'bg_gradient', 'linear-gradient(to bottom, #FFFFFF, #F8FAFC)');
-  const entranceAnim = getVal(null, 'entrance_anim', 'slide-up');
+  const entranceAnim = normalizeModuleAnimation(getVal(null, 'entrance_anim', 'slide-up'), 'slide-up');
   const countSpeed = parseNumSafe(getVal(null, 'count_speed', 2), 2);
   const countEasing = getVal(null, 'count_easing', 'spring');
-
-  const globalAnimOverride = getGlobalAnimation(entranceAnim, 'stats');
-  const itemVariants = globalAnimOverride || {
-    hidden: { y: 20, opacity: 0 },
-    visible: { y: 0, opacity: 1, transition: { duration: 0.5, ease: "easeOut" } }
-  };
 
 
   // Multimedia (Parallax Background)
@@ -316,35 +306,28 @@ export const StatsModule: React.FC<{
     { value: 99, prefix: '', suffix: '%', label: 'Satisfacción', description: 'Nuestros clientes nos recomiendan.', icon: 'Heart' }
   ];
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: { staggerChildren: 0.1 }
-    }
-  };
-
   return (
-    <section 
-      id={moduleId}
-      ref={containerRef}
-      className="w-full relative overflow-hidden"
-      style={{ 
-        backgroundColor: bgColor,
-        backgroundImage: (sectionGradient && typeof bgGradient === 'string' && !bgGradient.includes('NaN')) ? bgGradient : 'none',
-        paddingTop: `${paddingY}px`,
-        paddingBottom: `${paddingY}px`
-      }}
-    >
-      <ParallaxBackground 
-        scrollYProgress={scrollYProgress}
-        enabled={bgParallaxEnabled}
-        imageUrl={bgParallaxImg}
-        opacity={bgParallaxOpacity}
-        overlayColor={bgParallaxOverlay}
-        speed={bgParallaxSpeed}
-      />
-      <div className="max-w-7xl mx-auto px-8 relative z-10">
+    <ModuleAnimationWrapper animation={entranceAnim} moduleType="stats">
+      <section 
+        id={moduleId}
+        ref={containerRef}
+        className="w-full relative overflow-hidden"
+        style={{ 
+          backgroundColor: bgColor,
+          backgroundImage: (sectionGradient && typeof bgGradient === 'string' && !bgGradient.includes('NaN')) ? bgGradient : 'none',
+          paddingTop: `${paddingY}px`,
+          paddingBottom: `${paddingY}px`
+        }}
+      >
+        <ParallaxBackground 
+          scrollYProgress={scrollYProgress}
+          enabled={bgParallaxEnabled}
+          imageUrl={bgParallaxImg}
+          opacity={bgParallaxOpacity}
+          overlayColor={bgParallaxOverlay}
+          speed={bgParallaxSpeed}
+        />
+        <div className="max-w-7xl mx-auto px-8 relative z-10">
         {/* Header */}
         {showHeader && (
           <div 
@@ -420,11 +403,7 @@ export const StatsModule: React.FC<{
         )}
 
         {/* Stats Grid */}
-        <motion.div 
-          variants={entranceAnim ? containerVariants : {}}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, amount: 0.1 }}
+        <div 
           className={`grid ${layout === 'bento' ? '@md:grid-flow-dense' : ''} ${
             layout === 'inline' ? 'grid-cols-1 @md:grid-cols-2' :
             columns === 5 ? 'grid-cols-2 @sm:grid-cols-3 @lg:grid-cols-5' :
@@ -442,8 +421,6 @@ export const StatsModule: React.FC<{
               stat={stat} 
               index={i} 
               layout={layout}
-              entranceAnim={entranceAnim}
-              itemVariants={itemVariants}
               hoverEffect={hoverEffect}
               cardBg={cardBg}
               cardRadius={cardRadius}
@@ -464,8 +441,9 @@ export const StatsModule: React.FC<{
               darkMode={darkMode}
             />
           ))}
-        </motion.div>
+        </div>
       </div>
     </section>
+    </ModuleAnimationWrapper>
   );
 };

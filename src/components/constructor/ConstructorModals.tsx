@@ -61,7 +61,7 @@ export const UnsavedChangesModal = ({
   onSaveAndExit: () => void, 
   onExitWithoutSaving: () => void 
 }) => (
-  <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[100] p-6">
+  <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[2000] p-6">
     <motion.div 
       initial={{ opacity: 0, scale: 0.95, y: 20 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -109,7 +109,7 @@ export const DeleteConfirmationModal: React.FC<{
   onConfirm: () => void, 
   onCancel: () => void 
 }> = ({ moduleName, onConfirm, onCancel }) => (
-  <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+  <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4">
     <motion.div 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -159,7 +159,7 @@ export const PublishModal: React.FC<{
   onCancel: () => void,
   isSaving: boolean
 }> = ({ siteName, setSiteName, onPublish, onCancel, isSaving }) => (
-  <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+  <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4">
     <motion.div 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -220,7 +220,7 @@ export const AIGenerationModal: React.FC<{
   steps: string[],
   onCancel: () => void
 }> = ({ currentStep, steps, onCancel }) => (
-  <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+  <div className="fixed inset-0 z-[2100] flex items-center justify-center p-4">
     <motion.div 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -318,7 +318,7 @@ export const MotherAIPageConfirmationModal: React.FC<{
 }> = ({ isOpen, onClose, onConfirm, brief, costCredits, isGenerating, isDryRun, onToggleDryRun }) => (
   <AnimatePresence>
     {isOpen && (
-      <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-[2200] flex items-center justify-center p-4">
         <motion.div 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -437,7 +437,7 @@ export const AIUsageSuccessModal: React.FC<{
 }> = ({ isOpen, onClose, usage }) => (
   <AnimatePresence>
     {isOpen && (
-      <div className="fixed inset-0 z-[130] flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-[2300] flex items-center justify-center p-4">
         <motion.div 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}

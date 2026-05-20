@@ -487,15 +487,22 @@ const AppContent: React.FC = () => {
   }, [applyTheme, projectId]);
 
   const handleNewPage = () => {
+    setSelectedPage(null);
+    setSelectedAsset(null);
+    setSelectedMethod(null);
+    setFormData(null);
     setCurrentView('selection-method');
   };
 
   const handleSelectMethod = (method: CreationMethod) => {
+    setSelectedPage(null);
+    setSelectedAsset(null);
     setSelectedMethod(method);
     setCurrentView('constructor');
   };
 
   const handleSelectAsset = (asset: Asset) => {
+    setSelectedPage(null);
     setSelectedAsset(asset);
     setCurrentView('constructor');
   };
@@ -544,63 +551,53 @@ const AppContent: React.FC = () => {
         <motion.div 
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.8, ease: "easeOut" }}
-          className="flex flex-col items-center space-y-10"
+          transition={{ duration: 0.6, ease: "easeOut" }}
+          className="flex flex-col items-center gap-6"
         >
           {/* Solutium Isotipo central */}
-          <div className="relative">
+          <div className="relative flex items-center justify-center">
             <motion.div
-              animate={{ 
-                scale: [1, 1.05, 1],
-                opacity: [0.8, 1, 0.8]
+              animate={{
+                opacity: [0.92, 1, 0.92]
               }}
-              transition={{ 
-                duration: 3, 
-                repeat: Infinity, 
-                ease: "easeInOut" 
+              transition={{
+                duration: 2.2,
+                repeat: Infinity,
+                ease: "easeInOut"
               }}
-              className="relative z-10"
+              className="relative z-10 flex items-center justify-center"
             >
-              <img 
-                src="https://nyc3.digitaloceanspaces.com/solutium-space/9e52afcf-2229-4b3a-9206-1a0c4bf404b9-solutium-isotipo.png" 
-                alt="Solutium" 
-                className="h-24 w-24 object-contain drop-shadow-2xl" 
-                referrerPolicy="no-referrer" 
-                onError={() => setLoadingLogoError(true)}
-              />
+              {loadingLogoError ? (
+                <div className="flex h-24 w-24 items-center justify-center rounded-[28px] bg-white shadow-[0_20px_45px_rgba(15,23,42,0.08)] ring-1 ring-slate-200/80">
+                  <div className="h-14 w-14 rounded-[18px] bg-gradient-to-br from-[#FF8A1E] to-[#F97316]" />
+                </div>
+              ) : (
+                <img
+                  src="https://nyc3.digitaloceanspaces.com/solutium-space/9e52afcf-2229-4b3a-9206-1a0c4bf404b9-solutium-isotipo.png"
+                  alt="Constructor Web"
+                  className="h-24 w-24 object-contain drop-shadow-[0_20px_45px_rgba(15,23,42,0.08)]"
+                  referrerPolicy="no-referrer"
+                  onError={() => setLoadingLogoError(true)}
+                />
+              )}
             </motion.div>
             
             {/* Círculo de Carga animado */}
-            <div className="absolute inset-0 flex items-center justify-center -m-4">
-              <svg className="w-32 h-32 transform -rotate-90">
-                <circle
-                  cx="64"
-                  cy="64"
-                  r="60"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  fill="transparent"
-                  className="text-slate-100"
-                />
-                <motion.circle
-                  cx="64"
-                  cy="64"
-                  r="60"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  fill="transparent"
-                  strokeDasharray="377"
-                  initial={{ strokeDashoffset: 377 }}
-                  animate={{ strokeDashoffset: 0 }}
-                  transition={{ 
-                    duration: 2, 
-                    repeat: Infinity, 
-                    ease: "easeInOut" 
-                  }}
-                  className="text-primary"
-                />
-              </svg>
-            </div>
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 1.15, repeat: Infinity, ease: "linear" }}
+              className="pointer-events-none absolute inset-0 z-20"
+            >
+              <div className="absolute right-0 top-1/2 -mt-1.5 h-3 w-3 rounded-full bg-[#F97316] shadow-[0_0_0_5px_rgba(249,115,22,0.14)]" />
+            </motion.div>
+          </div>
+          <div className="flex flex-col items-center gap-1">
+            <p className="text-xs font-semibold uppercase tracking-[0.34em] text-slate-400">
+              Constructor Web
+            </p>
+            <p className="text-sm text-slate-500">
+              Cargando entorno de edición...
+            </p>
           </div>
         </motion.div>
 
@@ -703,12 +700,17 @@ const AppContent: React.FC = () => {
             onBackToDashboard={() => {
               refreshData();
               setSelectedPage(null);
+              setSelectedAsset(null);
               setSelectedMethod(null);
+              setFormData(null);
               setCurrentView('dashboard');
             }} 
             onCancelOnboarding={() => {
               setCurrentView('selection-method');
+              setSelectedPage(null);
               setSelectedMethod(null);
+              setSelectedAsset(null);
+              setFormData(null);
             }}
             projectId={projectId} 
             appId={appId}

@@ -9,6 +9,21 @@ import { TextRenderer } from '../TextRenderer';
 import { InlineEditableText } from '../InlineEditableText';
 import { useEditorStore } from '../../../store/editorStore';
 
+const toBoolean = (value: unknown) => value === true || value === 'true' || value === 1 || value === '1';
+
+const resolveThemeColor = (
+  value: string | undefined,
+  lightDefault: string,
+  darkDefault: string,
+  darkMode: boolean
+) => {
+  const safeValue = String(value || '').trim();
+  const safeLight = String(lightDefault || '').trim().toLowerCase();
+  if (!darkMode) return safeValue || lightDefault;
+  if (!safeValue || safeValue.toLowerCase() === safeLight) return darkDefault;
+  return safeValue;
+};
+
 export const ProductsModule: React.FC<{ 
   moduleId: string, 
   settingsValues: Record<string, any>,
@@ -222,11 +237,14 @@ export const ProductsModule: React.FC<{
   const layout = getVal(null, 'layout', 'grid');
   const columns = Math.max(1, parseInt(getVal(null, 'columns', 4)) || 4);
   const gap = parseF(getVal(null, 'gap', 24), 24);
-  const darkMode = getVal(null, 'dark_mode', false);
-  const bgColor = getVal(null, 'bg_color', darkMode ? '#0F172A' : '#FFFFFF');
+  const darkMode = toBoolean(getVal(null, 'dark_mode', false));
+  const rawBgColor = getVal(null, 'bg_color', '#FFFFFF');
+  const bgColor = resolveThemeColor(rawBgColor, '#FFFFFF', '#0F172A', darkMode);
   const sectionGradient = getVal(null, 'section_gradient', false);
   const bgGradient = getVal(null, 'bg_gradient', 'linear-gradient(to bottom, #FFFFFF, #F8FAFC)');
   const entranceAnim = getVal(null, 'entrance_anim', 'none');
+  const headerTitleColor = resolveThemeColor(undefined, '#0F172A', '#FFFFFF', darkMode);
+  const headerSubtitleColor = resolveThemeColor(undefined, '#64748B', '#94A3B8', darkMode);
 
   // [SIP v12.9] Hooks must be at the top level
   const allDisplayProducts = useMemo(() => {
@@ -309,22 +327,26 @@ export const ProductsModule: React.FC<{
   const badgeColor = getVal(`${moduleId}_el_img`, 'badge_color', '#3B82F6');
   
   const cardStyle = getVal(`${moduleId}_el_product_card`, 'card_style', 'solid');
-  const cardBg = getVal(`${moduleId}_el_product_card`, 'card_bg', '#FFFFFF');
+  const rawCardBg = getVal(`${moduleId}_el_product_card`, 'card_bg', '#FFFFFF');
+  const cardBg = resolveThemeColor(rawCardBg, '#FFFFFF', '#1E293B', darkMode);
   const cardShadow = getVal(`${moduleId}_el_product_card`, 'card_shadow', 'sm');
   const cardHoverLift = getVal(`${moduleId}_el_product_card`, 'hover_lift', true);
+  const cardBorderColor = resolveThemeColor(undefined, '#E2E8F0', '#334155', darkMode);
 
   // Product Title Settings
   const productTitleSize = getVal(`${moduleId}_el_title`, 'font_size', 'p');
   const productTitleWeight = getVal(`${moduleId}_el_title`, 'font_weight', 'bold');
   const productTitleAlign = getVal(`${moduleId}_el_title`, 'text_align', 'left');
-  const titleColor = darkMode ? '#FFFFFF' : getVal(`${moduleId}_el_title`, 'title_color', '#0F172A');
+  const rawTitleColor = getVal(`${moduleId}_el_title`, 'title_color', '#0F172A');
+  const titleColor = resolveThemeColor(rawTitleColor, '#0F172A', '#FFFFFF', darkMode);
   
   const currency = getVal(`${moduleId}_el_price`, 'currency', '$');
   const priceSize = getVal(`${moduleId}_el_price`, 'price_size', 't3');
   const priceWeight = getVal(`${moduleId}_el_price`, 'price_weight', 'bold');
   const priceAlign = getVal(`${moduleId}_el_price`, 'price_align', 'left');
   const showSavings = getVal(`${moduleId}_el_price`, 'show_savings', true);
-  const priceColorSetting = getVal(`${moduleId}_el_price`, 'price_color', '#0F172A');
+  const rawPriceColorSetting = getVal(`${moduleId}_el_price`, 'price_color', '#0F172A');
+  const priceColorSetting = resolveThemeColor(rawPriceColorSetting, '#0F172A', '#FFFFFF', darkMode);
   const saleColorSetting = getVal(`${moduleId}_el_price`, 'sale_color', '#EF4444');
 
   const ctaText = getVal(`${moduleId}_el_cta`, 'cta_text', 'Añadir');
@@ -457,8 +479,8 @@ export const ProductsModule: React.FC<{
           className={`flex flex-col mb-12 w-full ${titleAlign === 'center' ? 'items-center text-center' : titleAlign === 'right' ? 'items-end text-right' : 'items-start text-left'}`}
         >
           <h2 
-            className={`mb-4 ${darkMode ? 'text-white' : 'text-slate-900'}`}
-            style={getTypographyStyle(titleSize, titleWeight)}
+            className="mb-4"
+            style={{ ...getTypographyStyle(titleSize, titleWeight), color: headerTitleColor }}
           >
             <InlineEditableText
               moduleId={moduleId}
@@ -479,8 +501,8 @@ export const ProductsModule: React.FC<{
           <div className="w-20 h-1.5 bg-primary rounded-full mb-6"></div>
           {sectionDesc && (
             <p 
-              className={`max-w-2xl ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}
-              style={getTypographyStyle(subtitleSize, subtitleWeight)}
+              className="max-w-2xl"
+              style={{ ...getTypographyStyle(subtitleSize, subtitleWeight), color: headerSubtitleColor }}
             >
               <InlineEditableText
                 moduleId={moduleId}
@@ -574,7 +596,7 @@ export const ProductsModule: React.FC<{
                           layout === 'carousel' ? `w-full shrink-0` : ''
                         } ${cardHoverLift ? 'hover:-translate-y-2' : ''}`}
                         style={{
-                          backgroundColor: cardStyle === 'glass' ? 'rgba(255,255,255,0.05)' : cardStyle === 'minimal' ? 'transparent' : darkMode ? '#1E293B' : cardBg,
+                          backgroundColor: cardStyle === 'glass' ? 'rgba(255,255,255,0.05)' : cardStyle === 'minimal' ? 'transparent' : cardBg,
                           backdropFilter: cardStyle === 'glass' ? 'blur(12px)' : 'none',
                           borderRadius: `${parseFloat(imgBorderRadius as any) || 0}px`,
                           padding: cardStyle === 'minimal' ? '0' : '16px',
@@ -582,7 +604,7 @@ export const ProductsModule: React.FC<{
                           boxShadow: cardStyle === 'minimal' ? 'none' : getShadow(cardShadow),
                           borderWidth: cardStyle === 'bordered' ? '1px' : '0px',
                           borderStyle: 'solid',
-                          borderColor: darkMode ? '#334155' : '#E2E8F0',
+                          borderColor: cardBorderColor,
                           width: layout === 'carousel' ? `${100 / columns}%` : 'auto'
                         }}
                       >
@@ -639,10 +661,10 @@ export const ProductsModule: React.FC<{
                             {product.category}
                           </span>
                           <h3 
-                            className={`line-clamp-2 mb-2 ${darkMode ? 'text-white' : ''}`}
+                            className="line-clamp-2 mb-2"
                             style={{ 
                               ...getTypographyStyle(productTitleSize as any, productTitleWeight, productTitleAlign),
-                              color: darkMode ? '#FFFFFF' : titleColor
+                              color: titleColor
                             }}
                           >
                             {product.name}
@@ -693,7 +715,7 @@ export const ProductsModule: React.FC<{
                               <span 
                                 style={{ 
                                   ...getTypographyStyle(priceSize as any, priceWeight, priceAlign),
-                                  color: hasSale ? saleColorSetting : darkMode ? '#FFFFFF' : priceColorSetting 
+                                  color: hasSale ? saleColorSetting : priceColorSetting 
                                 }}
                               >
                                 {currency}{(product.price || 0).toFixed(2)}

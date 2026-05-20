@@ -4,6 +4,21 @@ import { Menu, X, ArrowRight, Sparkles, Phone } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
 
+const toBoolean = (value: unknown) => value === true || value === 'true' || value === 1 || value === '1';
+
+const resolveThemeColor = (
+  value: string | undefined,
+  lightDefault: string,
+  darkDefault: string,
+  darkMode: boolean
+) => {
+  const safeValue = String(value || '').trim();
+  const safeLight = String(lightDefault || '').trim().toLowerCase();
+  if (!darkMode) return safeValue || lightDefault;
+  if (!safeValue || safeValue.toLowerCase() === safeLight) return darkDefault;
+  return safeValue;
+};
+
 export const HeaderModule: React.FC<{ 
   moduleId: string, 
   settingsValues: Record<string, any>,
@@ -30,11 +45,12 @@ export const HeaderModule: React.FC<{
   // Global Settings
   const position = getVal(null, 'position', 'sticky');
   const layoutType = getVal(null, 'layout_type', 'standard');
-  const darkMode = getVal(null, 'dark_mode', false);
+  const darkMode = toBoolean(getVal(null, 'dark_mode', false));
   const bgType = getVal(null, 'bg_type', 'glass');
-  const bgColor = getVal(null, 'bg_color', darkMode ? '#0F172A' : '#FFFFFF');
+  const rawBgColor = getVal(null, 'bg_color', '#FFFFFF');
+  const bgColor = resolveThemeColor(rawBgColor, '#FFFFFF', '#0F172A', darkMode);
   const accentColor = getVal(null, 'accent_color', 'var(--primary-color)');
-  const borderColor = darkMode ? 'rgba(255,255,255,0.1)' : getVal(null, 'border_color', 'rgba(0,0,0,0.05)');
+  const borderColor = resolveThemeColor(getVal(null, 'border_color', 'rgba(0,0,0,0.05)'), 'rgba(0,0,0,0.05)', 'rgba(255,255,255,0.1)', darkMode);
   const shadow = getVal(null, 'shadow', 'sm');
   const shrinkOnScroll = getVal(null, 'shrink_on_scroll', true);
   const entranceAnim = getVal(null, 'entrance_anim', true);
@@ -58,7 +74,8 @@ export const HeaderModule: React.FC<{
   const showReg = getVal(`${moduleId}_el_header_quick_reg`, 'show_reg', false);
   const regPlaceholder = getVal(`${moduleId}_el_header_quick_reg`, 'placeholder', 'Tu email para el cupón...');
   const regBtnText = getVal(`${moduleId}_el_header_quick_reg`, 'btn_text', 'Obtener 10%');
-  const regInputBg = getVal(`${moduleId}_el_header_quick_reg`, 'input_bg', '#F1F5F9');
+  const rawRegInputBg = getVal(`${moduleId}_el_header_quick_reg`, 'input_bg', '#F1F5F9');
+  const regInputBg = resolveThemeColor(rawRegInputBg, '#F1F5F9', 'rgba(255,255,255,0.05)', darkMode);
   const regBtnBg = getVal(`${moduleId}_el_header_quick_reg`, 'btn_bg', 'var(--primary-color)');
   const regBtnColor = getVal(`${moduleId}_el_header_quick_reg`, 'btn_color', '#FFFFFF');
   const regWidth = parseFloat(getVal(`${moduleId}_el_header_quick_reg`, 'width', 300)) || 300;
@@ -82,6 +99,10 @@ export const HeaderModule: React.FC<{
   const secondaryStyle = getVal(`${moduleId}_el_header_actions`, 'secondary_style', 'outline');
   const pulseEffect = getVal(`${moduleId}_el_header_actions`, 'pulse_effect', true);
   const hoverAnim = getVal(`${moduleId}_el_header_actions`, 'hover_anim', 'scale');
+  const secondaryBg = resolveThemeColor(undefined, '#F1F5F9', '#334155', darkMode);
+  const neutralTextColor = resolveThemeColor(undefined, '#0F172A', '#FFFFFF', darkMode);
+  const mobilePanelBorderColor = resolveThemeColor(undefined, 'rgba(241, 245, 249, 1)', 'rgba(255,255,255,0.1)', darkMode);
+  const mobileInputBorderColor = resolveThemeColor(undefined, 'rgba(226, 232, 240, 1)', 'rgba(255,255,255,0.1)', darkMode);
 
   const hasButtons = (showActions && (hasPrimary || hasSecondary));
   const showContent = showReg || hasButtons;
@@ -275,8 +296,8 @@ export const HeaderModule: React.FC<{
                     whileTap={{ scale: 0.95 }}
                     className={`flex items-center gap-2 font-black uppercase tracking-widest transition-all ${isCompact ? 'px-3 py-2 text-[9px]' : 'px-4 py-2.5 text-[10px]'}`}
                     style={{ 
-                      backgroundColor: secondaryStyle === 'solid' ? (darkMode ? '#334155' : '#F1F5F9') : 'transparent',
-                      color: isTransparentMode ? '#FFFFFF' : (darkMode ? '#FFFFFF' : '#0F172A'),
+                      backgroundColor: secondaryStyle === 'solid' ? secondaryBg : 'transparent',
+                      color: isTransparentMode ? '#FFFFFF' : neutralTextColor,
                       borderWidth: secondaryStyle === 'outline' ? '1px' : '0px',
                       borderStyle: secondaryStyle === 'outline' ? 'solid' : 'none',
                       borderColor: isTransparentMode ? 'rgba(255,255,255,0.3)' : borderColor,
@@ -294,7 +315,7 @@ export const HeaderModule: React.FC<{
             <button 
               className="@md:hidden p-2"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              style={{ color: isTransparentMode ? '#FFFFFF' : (darkMode ? '#FFFFFF' : '#0F172A') }}
+              style={{ color: isTransparentMode ? '#FFFFFF' : neutralTextColor }}
             >
               {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
@@ -313,7 +334,7 @@ export const HeaderModule: React.FC<{
                 backgroundColor: bgColor,
                 borderBottomWidth: '1px',
                 borderBottomStyle: 'solid',
-                borderBottomColor: darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(241, 245, 249, 1)'
+                borderBottomColor: mobilePanelBorderColor
               }}
             >
               <div className="flex flex-col p-8 gap-6">
@@ -328,11 +349,11 @@ export const HeaderModule: React.FC<{
                         placeholder={regPlaceholder}
                         className={`w-full px-4 py-3 rounded-xl text-sm transition-colors`}
                         style={{
-                          backgroundColor: darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(248, 250, 252, 1)',
+                          backgroundColor: regInputBg,
                           borderWidth: '1px',
                           borderStyle: 'solid',
-                          borderColor: darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(226, 232, 240, 1)',
-                          color: darkMode ? '#FFFFFF' : '#0F172A'
+                          borderColor: mobileInputBorderColor,
+                          color: neutralTextColor
                         }}
                         required
                       />
@@ -368,10 +389,10 @@ export const HeaderModule: React.FC<{
                       rel={secondaryTarget === '_blank' ? 'noopener noreferrer' : undefined}
                       className="w-full py-4 font-bold text-center rounded-xl flex items-center justify-center gap-2 uppercase tracking-widest text-xs"
                       style={{ 
-                        color: darkMode ? '#FFFFFF' : '#0F172A',
+                        color: neutralTextColor,
                         borderWidth: '1px',
                         borderStyle: 'solid',
-                        borderColor: darkMode ? 'rgba(255,255,255,0.2)' : 'rgba(226, 232, 240, 1)'
+                        borderColor: borderColor
                       }}
                     >
                       <Phone size={18} />

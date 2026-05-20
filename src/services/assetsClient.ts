@@ -1,6 +1,8 @@
 import { logDebug } from '../utils/debug';
 import { getUploadAuthToken } from './authTokenProvider';
 
+const IMAGE_UPLOAD_SOURCE_APP = 'solutium constructor web';
+
 export interface AssetUploadResponse {
   asset_id?: string;
   public_url: string;
@@ -68,7 +70,7 @@ export const uploadAsset = async (
     if (options.moduleId) formData.append('module_id', options.moduleId);
     
     formData.append('asset_type', options.assetType);
-    formData.append('source_app', options.sourceApp || 'constructor_web');
+    formData.append('source_app', options.sourceApp || IMAGE_UPLOAD_SOURCE_APP);
     
     if (options.fileName) formData.append('file_name', options.fileName);
     if (options.contentType) formData.append('content_type', options.contentType || (fileOrBlob as any).type);

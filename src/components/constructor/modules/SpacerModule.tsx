@@ -1,7 +1,22 @@
 import React, { useRef } from 'react';
-import { motion, useScroll } from 'motion/react';
+import { motion } from 'motion/react';
 import * as LucideIcons from 'lucide-react';
-import { ParallaxBackground } from '../ParallaxBackground';
+import { ParallaxBackground, useParallaxScrollProgress } from '../ParallaxBackground';
+
+const toBoolean = (value: unknown) => value === true || value === 'true' || value === 1 || value === '1';
+
+const resolveThemeColor = (
+  value: string | undefined,
+  lightDefault: string,
+  darkDefault: string,
+  darkMode: boolean
+) => {
+  const safeValue = String(value || '').trim();
+  const safeLight = String(lightDefault || '').trim().toLowerCase();
+  if (!darkMode) return safeValue || lightDefault;
+  if (!safeValue || safeValue.toLowerCase() === safeLight) return darkDefault;
+  return safeValue;
+};
 
 export const SpacerModule: React.FC<{ 
   moduleId: string, 
@@ -14,10 +29,7 @@ export const SpacerModule: React.FC<{
   };
 
   const containerRef = useRef(null);
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start end", "end start"]
-  });
+  const { scrollYProgress } = useParallaxScrollProgress(containerRef);
 
   const parseF = (val: any, fallback: number) => {
     const f = parseFloat(val);
@@ -31,17 +43,20 @@ export const SpacerModule: React.FC<{
   const align = getVal(null, 'align', 'center');
 
   // Global Settings - Estilo
-  const darkMode = getVal(null, 'dark_mode', false);
+  const darkMode = toBoolean(getVal(null, 'dark_mode', false));
   const type = getVal(null, 'type', 'none');
   const thickness = parseF(getVal(null, 'thickness', 1), 1);
-  const color = darkMode ? 'rgba(255,255,255,0.1)' : getVal(null, 'color', '#E2E8F0');
-  const bgColor = getVal(null, 'bg_color', darkMode ? '#0F172A' : 'transparent');
+  const rawColor = getVal(null, 'color', '#E2E8F0');
+  const color = resolveThemeColor(rawColor, '#E2E8F0', 'rgba(255,255,255,0.1)', darkMode);
+  const rawBgColor = getVal(null, 'bg_color', 'transparent');
+  const bgColor = resolveThemeColor(rawBgColor, 'transparent', '#0F172A', darkMode);
   const showContent = getVal(null, 'show_content', false);
   const contentType = getVal(null, 'content_type', 'icon');
   const iconName = getVal(null, 'icon', 'Star');
   const text = getVal(null, 'text', 'SECCIÓN');
   const contentSize = parseF(getVal(null, 'content_size', 16), 16);
-  const contentColor = darkMode ? '#94A3B8' : getVal(null, 'content_color', '#94A3B8');
+  const rawContentColor = getVal(null, 'content_color', '#94A3B8');
+  const contentColor = resolveThemeColor(rawContentColor, '#94A3B8', '#CBD5E1', darkMode);
 
   // Multimedia (Parallax Background)
   const bgParallaxEnabled = getVal(null, 'bg_parallax_enabled', false);

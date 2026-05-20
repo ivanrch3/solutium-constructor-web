@@ -5,6 +5,21 @@ import { InlineEditableText } from '../InlineEditableText';
 import { TextRenderer } from '../TextRenderer';
 import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
 
+const toBoolean = (value: unknown) => value === true || value === 'true' || value === 1 || value === '1';
+
+const resolveThemeColor = (
+  value: string | undefined,
+  lightDefault: string,
+  darkDefault: string,
+  darkMode: boolean
+) => {
+  const safeValue = String(value || '').trim();
+  const safeLight = String(lightDefault || '').trim().toLowerCase();
+  if (!darkMode) return safeValue || lightDefault;
+  if (!safeValue || safeValue.toLowerCase() === safeLight) return darkDefault;
+  return safeValue;
+};
+
 interface TrustedLogosModuleProps {
   moduleId: string;
   settingsValues: Record<string, any>;
@@ -56,8 +71,9 @@ export const TrustedLogosModule: React.FC<TrustedLogosModuleProps> = ({
   const paddingY = parseNum(getVal(null, 'padding_y', 80), 80);
   const logoHeight = parseNum(getVal(`${moduleId}_el_trusted_logo_style`, 'logo_height', 48), 48);
   const logoOpacity = parseNum(getVal(`${moduleId}_el_trusted_logo_style`, 'logo_opacity', 100), 100);
-  const darkMode = getVal(null, 'dark_mode', false);
-  const bgColor = getVal(null, 'bg_color', darkMode ? '#0F172A' : '#FFFFFF');
+  const darkMode = toBoolean(getVal(null, 'dark_mode', false));
+  const rawBgColor = getVal(null, 'bg_color', '#FFFFFF');
+  const bgColor = resolveThemeColor(rawBgColor, '#FFFFFF', '#0F172A', darkMode);
 
   const eyebrow = getVal(`${moduleId}_el_trusted_logos_header`, 'eyebrow', 'CONFÍAN EN NOSOTROS');
   const title = getVal(`${moduleId}_el_trusted_logos_header`, 'title', 'Marcas y empresas que ya trabajan con nosotros');
@@ -67,8 +83,9 @@ export const TrustedLogosModule: React.FC<TrustedLogosModuleProps> = ({
   const titleWeight = getVal(`${moduleId}_el_trusted_logos_header`, 'title_weight', 'black');
   const subtitleSize = getVal(`${moduleId}_el_trusted_logos_header`, 'subtitle_size', 'p');
   const subtitleWeight = getVal(`${moduleId}_el_trusted_logos_header`, 'subtitle_weight', 'normal');
-  const titleColor = darkMode ? '#FFFFFF' : getVal(`${moduleId}_el_trusted_logos_header`, 'title_color', '#0F172A');
-  const subtitleColor = darkMode ? '#94A3B8' : '#64748B';
+  const rawTitleColor = getVal(`${moduleId}_el_trusted_logos_header`, 'title_color', '#0F172A');
+  const titleColor = resolveThemeColor(rawTitleColor, '#0F172A', '#FFFFFF', darkMode);
+  const subtitleColor = resolveThemeColor(undefined, '#64748B', '#94A3B8', darkMode);
   const eyebrowColor = getVal(`${moduleId}_el_trusted_logos_header`, 'eyebrow_color', 'var(--primary-color)');
 
   const titleHighlightType = getVal(`${moduleId}_el_trusted_logos_header`, 'title_highlight_type', 'gradient');

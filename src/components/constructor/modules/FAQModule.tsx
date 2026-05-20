@@ -72,6 +72,30 @@ export const FAQModule: React.FC<{
     return settingsValues[key] !== undefined ? settingsValues[key] : defaultValue;
   };
 
+  const toBoolean = (value: unknown) => {
+    return value === true || value === 'true' || value === 1 || value === '1';
+  };
+
+  const resolveThemeColor = (
+    value: string | undefined,
+    lightDefault: string,
+    darkDefault: string,
+    darkMode: boolean
+  ) => {
+    const safeValue = String(value || '').trim();
+    const safeLight = String(lightDefault || '').trim().toLowerCase();
+
+    if (!darkMode) {
+      return safeValue || lightDefault;
+    }
+
+    if (!safeValue || safeValue.toLowerCase() === safeLight) {
+      return darkDefault;
+    }
+
+    return safeValue;
+  };
+
   const parseF = (val: any, fallback: number) => {
     const f = parseFloat(val);
     return isNaN(f) ? fallback : f;
@@ -82,8 +106,9 @@ export const FAQModule: React.FC<{
   const layout = getVal(null, 'layout', 'single');
   const maxWidth = parseF(getVal(null, 'max_width', 1000), 1000);
   const paddingY = parseF(getVal(null, 'padding_y', 100), 100);
-  const darkMode = getVal(null, 'dark_mode', false);
-  const bgColor = getVal(null, 'bg_color', darkMode ? '#0F172A' : '#FFFFFF');
+  const darkMode = toBoolean(getVal(null, 'dark_mode', false));
+  const rawBgColor = getVal(null, 'bg_color', '#FFFFFF');
+  const bgColor = resolveThemeColor(rawBgColor, '#FFFFFF', '#0F172A', darkMode);
   const sectionGradient = getVal(null, 'section_gradient', false);
   const bgGradient = getVal(null, 'bg_gradient', 'linear-gradient(to bottom, #FFFFFF, #F8FAFC)');
   const glassmorphism = getVal(null, 'glassmorphism', false);
@@ -122,29 +147,37 @@ export const FAQModule: React.FC<{
 
   const headerMarginB = parseF(getVal(`${moduleId}_el_faq_header`, 'margin_b', 60), 60);
   const eyebrowColor = getVal(`${moduleId}_el_faq_header`, 'eyebrow_color', 'var(--primary-color)');
-  const headerTitleColor = darkMode ? '#FFFFFF' : getVal(`${moduleId}_el_faq_header`, 'title_color', '#0F172A');
-  const headerSubtitleColor = darkMode ? '#94A3B8' : getVal(`${moduleId}_el_faq_header`, 'subtitle_color', '#64748B');
+  const rawHeaderTitleColor = getVal(`${moduleId}_el_faq_header`, 'title_color', '#0F172A');
+  const rawHeaderSubtitleColor = getVal(`${moduleId}_el_faq_header`, 'subtitle_color', '#64748B');
+  const headerTitleColor = resolveThemeColor(rawHeaderTitleColor, '#0F172A', '#FFFFFF', darkMode);
+  const headerSubtitleColor = resolveThemeColor(rawHeaderSubtitleColor, '#64748B', '#94A3B8', darkMode);
 
   // Element: Search
   const showSearch = getVal(`${moduleId}_el_faq_search`, 'show_search', true);
   const searchPlaceholder = getVal(`${moduleId}_el_faq_search`, 'placeholder', 'Buscar una pregunta...');
-  const searchBg = darkMode ? '#1E293B' : getVal(`${moduleId}_el_faq_search`, 'search_bg', '#F1F5F9');
+  const rawSearchBg = getVal(`${moduleId}_el_faq_search`, 'search_bg', '#F1F5F9');
+  const searchBg = resolveThemeColor(rawSearchBg, '#F1F5F9', '#1E293B', darkMode);
   const searchRadius = parseF(getVal(`${moduleId}_el_faq_search`, 'search_radius', 16), 16);
   const searchBorder = getVal(`${moduleId}_el_faq_search`, 'search_border', 'var(--primary-color)');
 
   // Element: Item
   const faqs = getVal(`${moduleId}_el_faq_item`, 'faqs', DEFAULT_FAQS);
-  const itemBg = darkMode ? '#1E293B' : getVal(`${moduleId}_el_faq_item`, 'item_bg', 'transparent');
-  const activeBg = darkMode ? '#334155' : getVal(`${moduleId}_el_faq_item`, 'active_bg', '#F8FAFC');
-  const borderColor = darkMode ? 'rgba(255,255,255,0.1)' : getVal(`${moduleId}_el_faq_item`, 'border_color', '#E2E8F0');
+  const rawItemBg = getVal(`${moduleId}_el_faq_item`, 'item_bg', 'transparent');
+  const itemBg = resolveThemeColor(rawItemBg, 'transparent', '#1E293B', darkMode);
+  const rawActiveBg = getVal(`${moduleId}_el_faq_item`, 'active_bg', '#F8FAFC');
+  const activeBg = resolveThemeColor(rawActiveBg, '#F8FAFC', '#334155', darkMode);
+  const rawBorderColor = getVal(`${moduleId}_el_faq_item`, 'border_color', '#E2E8F0');
+  const borderColor = resolveThemeColor(rawBorderColor, '#E2E8F0', 'rgba(255,255,255,0.1)', darkMode);
   const showBorder = getVal(`${moduleId}_el_faq_item`, 'show_border', true);
   const activeShadow = getVal(`${moduleId}_el_faq_item`, 'active_shadow', true);
   const qSize = getVal(`${moduleId}_el_faq_item`, 'q_size', 't3');
   const qWeight = getVal(`${moduleId}_el_faq_item`, 'q_weight', 'bold');
-  const qColor = darkMode ? '#FFFFFF' : getVal(`${moduleId}_el_faq_item`, 'q_color', '#0F172A');
+  const rawQColor = getVal(`${moduleId}_el_faq_item`, 'q_color', '#0F172A');
+  const qColor = resolveThemeColor(rawQColor, '#0F172A', '#FFFFFF', darkMode);
   const aSize = getVal(`${moduleId}_el_faq_item`, 'a_size', 'p');
   const aWeight = getVal(`${moduleId}_el_faq_item`, 'a_weight', 'normal');
-  const aColor = darkMode ? '#94A3B8' : getVal(`${moduleId}_el_faq_item`, 'a_color', '#64748B');
+  const rawAColor = getVal(`${moduleId}_el_faq_item`, 'a_color', '#64748B');
+  const aColor = resolveThemeColor(rawAColor, '#64748B', '#94A3B8', darkMode);
   const iconType = getVal(`${moduleId}_el_faq_item`, 'icon_type', 'plus');
   const showItemIcons = getVal(`${moduleId}_el_faq_item`, 'show_item_icons', false);
 
@@ -153,7 +186,8 @@ export const FAQModule: React.FC<{
   const ctaText = getVal(`${moduleId}_el_faq_cta`, 'cta_text', '¿Aún tienes dudas?');
   const btnText = getVal(`${moduleId}_el_faq_cta`, 'btn_text', 'Contactar Soporte');
   const btnBg = getVal(`${moduleId}_el_faq_cta`, 'btn_bg', 'var(--primary-color)');
-  const ctaBg = darkMode ? '#1E293B' : getVal(`${moduleId}_el_faq_cta`, 'cta_bg', '#F8FAFC');
+  const rawCtaBg = getVal(`${moduleId}_el_faq_cta`, 'cta_bg', '#F8FAFC');
+  const ctaBg = resolveThemeColor(rawCtaBg, '#F8FAFC', '#1E293B', darkMode);
   const btnType = getVal(`${moduleId}_el_faq_cta`, 'btn_link_type', 'external');
   const btnUrl = getVal(`${moduleId}_el_faq_cta`, 'btn_url', '#');
   const btnTarget = getVal(`${moduleId}_el_faq_cta`, 'btn_target', '_self');

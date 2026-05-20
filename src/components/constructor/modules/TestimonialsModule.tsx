@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { motion, AnimatePresence, useScroll } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Quote, Star, ChevronLeft, ChevronRight } from 'lucide-react';
 import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
 import { TextRenderer } from '../TextRenderer';
-import { ParallaxBackground } from '../ParallaxBackground';
+import { ParallaxBackground, useParallaxScrollProgress } from '../ParallaxBackground';
 
 const MOCK_TESTIMONIALS = [
   {
@@ -83,11 +83,11 @@ const TestimonialCard = ({
     }
   }, [avatarShape]);
 
-  const finalCardBg = darkMode ? '#1E293B' : cardBg;
-  const finalBorderColor = darkMode ? 'rgba(255,255,255,0.1)' : borderColor;
+  const finalCardBg = cardBg;
+  const finalBorderColor = borderColor;
   const finalQuoteColor = darkMode ? '#94A3B8' : '#475569';
-  const finalAuthorColor = darkMode ? '#FFFFFF' : authorColor;
-  const finalRoleColor = darkMode ? '#64748B' : roleColor;
+  const finalAuthorColor = authorColor;
+  const finalRoleColor = roleColor;
 
   return (
     <motion.div
@@ -200,14 +200,35 @@ export const TestimonialsModule: React.FC<{
   const [activeIndex, setActiveIndex] = useState(0);
 
   const containerRef = useRef(null);
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start end", "end start"]
-  });
+  const { scrollYProgress } = useParallaxScrollProgress(containerRef);
 
   const getVal = (elementId: string | null, settingId: string, defaultValue: any) => {
     const key = elementId ? `${elementId}_${settingId}` : `${moduleId}_global_${settingId}`;
     return settingsValues[key] !== undefined ? settingsValues[key] : defaultValue;
+  };
+
+  const toBoolean = (value: unknown) => {
+    return value === true || value === 'true' || value === 1 || value === '1';
+  };
+
+  const resolveThemeColor = (
+    value: string | undefined,
+    lightDefault: string,
+    darkDefault: string,
+    darkMode: boolean
+  ) => {
+    const safeValue = String(value || '').trim();
+    const safeLight = String(lightDefault || '').trim().toLowerCase();
+
+    if (!darkMode) {
+      return safeValue || lightDefault;
+    }
+
+    if (!safeValue || safeValue.toLowerCase() === safeLight) {
+      return darkDefault;
+    }
+
+    return safeValue;
   };
 
   const parseF = (val: any, fallback: number) => {
@@ -220,8 +241,9 @@ export const TestimonialsModule: React.FC<{
   const columns = Math.max(1, parseInt(getVal(null, 'columns', 3)) || 3);
   const gap = parseF(getVal(null, 'gap', 30), 30);
   const paddingY = parseF(getVal(null, 'padding_y', 100), 100);
-  const darkMode = getVal(null, 'dark_mode', false);
-  const bgColor = getVal(null, 'bg_color', darkMode ? '#0F172A' : '#F8FAFC');
+  const darkMode = toBoolean(getVal(null, 'dark_mode', false));
+  const rawBgColor = getVal(null, 'bg_color', '#F8FAFC');
+  const bgColor = resolveThemeColor(rawBgColor, '#F8FAFC', '#0F172A', darkMode);
   const sectionGradient = getVal(null, 'section_gradient', false);
   const bgGradient = getVal(null, 'bg_gradient', 'linear-gradient(to bottom, #F8FAFC, #FFFFFF)');
   const autoplay = getVal(null, 'autoplay', true);
@@ -247,7 +269,9 @@ export const TestimonialsModule: React.FC<{
   const headerAlign = getVal(`${moduleId}_el_testimonials_header`, 'align', 'center');
   const headerTitleSize = getVal(`${moduleId}_el_testimonials_header`, 'title_size', 't2');
   const headerTitleWeight = getVal(`${moduleId}_el_testimonials_header`, 'title_weight', 'bold');
-  const headerTitleColor = darkMode ? '#FFFFFF' : getVal(`${moduleId}_el_testimonials_header`, 'title_color', '#0F172A');
+  const rawHeaderTitleColor = getVal(`${moduleId}_el_testimonials_header`, 'title_color', '#0F172A');
+  const headerTitleColor = resolveThemeColor(rawHeaderTitleColor, '#0F172A', '#FFFFFF', darkMode);
+  const headerSubtitleColor = resolveThemeColor('#64748B', '#64748B', '#94A3B8', darkMode);
   const eyebrowColor = getVal(`${moduleId}_el_testimonials_header`, 'eyebrow_color', 'var(--primary-color)');
   const headerMarginB = parseF(getVal(`${moduleId}_el_testimonials_header`, 'margin_b', 60), 60);
 
@@ -263,18 +287,22 @@ export const TestimonialsModule: React.FC<{
   const subtitleHighlightBold = getVal(`${moduleId}_el_testimonials_header`, 'subtitle_highlight_bold', true);
 
   // Element: Card Style
-  const cardBg = getVal(`${moduleId}_el_testimonial_card`, 'card_bg', '#FFFFFF');
+  const rawCardBg = getVal(`${moduleId}_el_testimonial_card`, 'card_bg', '#FFFFFF');
+  const cardBg = resolveThemeColor(rawCardBg, '#FFFFFF', '#1E293B', darkMode);
   const cardRadius = parseF(getVal(`${moduleId}_el_testimonial_card`, 'card_radius', 24), 24);
   const showShadow = getVal(`${moduleId}_el_testimonial_card`, 'show_shadow', true);
-  const borderColor = getVal(`${moduleId}_el_testimonial_card`, 'border_color', 'transparent');
+  const rawBorderColor = getVal(`${moduleId}_el_testimonial_card`, 'border_color', 'transparent');
+  const borderColor = resolveThemeColor(rawBorderColor, 'transparent', 'rgba(255,255,255,0.1)', darkMode);
   const quoteStyle = getVal(`${moduleId}_el_testimonial_card`, 'quote_style', 'top-left');
   const cardPadding = parseF(getVal(`${moduleId}_el_testimonial_card`, 'card_padding', 32), 32);
   const hoverLift = getVal(`${moduleId}_el_testimonial_card`, 'hover_lift', true);
   const hoverGlow = getVal(`${moduleId}_el_testimonial_card`, 'hover_glow', false);
 
   // Element: Author Style
-  const authorColor = getVal(`${moduleId}_el_testimonial_author`, 'author_color', '#0F172A');
-  const roleColor = getVal(`${moduleId}_el_testimonial_author`, 'role_color', '#64748B');
+  const rawAuthorColor = getVal(`${moduleId}_el_testimonial_author`, 'author_color', '#0F172A');
+  const authorColor = resolveThemeColor(rawAuthorColor, '#0F172A', '#FFFFFF', darkMode);
+  const rawRoleColor = getVal(`${moduleId}_el_testimonial_author`, 'role_color', '#64748B');
+  const roleColor = resolveThemeColor(rawRoleColor, '#64748B', '#94A3B8', darkMode);
   const starColor = getVal(`${moduleId}_el_testimonial_author`, 'star_color', '#FBBF24');
   const showAvatar = getVal(`${moduleId}_el_testimonial_author`, 'show_avatar', true);
   const avatarShape = getVal(`${moduleId}_el_testimonial_author`, 'avatar_shape', 'circle');
@@ -414,7 +442,7 @@ export const TestimonialsModule: React.FC<{
               className="max-w-2xl text-lg"
               style={{ 
                 ...getTypographyStyle(headerSubtitleSize as any, headerSubtitleWeight, headerAlign),
-                color: darkMode ? '#94A3B8' : '#64748B' 
+                color: headerSubtitleColor 
               }}
             >
               <InlineEditableText

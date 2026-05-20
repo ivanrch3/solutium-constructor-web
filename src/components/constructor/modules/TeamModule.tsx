@@ -24,14 +24,39 @@ export const TeamModule: React.FC<{
     return settingsValues[key] !== undefined ? settingsValues[key] : defaultValue;
   };
 
+  const toBoolean = (value: unknown) => {
+    return value === true || value === 'true' || value === 1 || value === '1';
+  };
+
+  const resolveThemeColor = (
+    value: string | undefined,
+    lightDefault: string,
+    darkDefault: string,
+    darkMode: boolean
+  ) => {
+    const safeValue = String(value || '').trim();
+    const safeLight = String(lightDefault || '').trim().toLowerCase();
+
+    if (!darkMode) {
+      return safeValue || lightDefault;
+    }
+
+    if (!safeValue || safeValue.toLowerCase() === safeLight) {
+      return darkDefault;
+    }
+
+    return safeValue;
+  };
+
   // Global Settings
   const layout = getVal(null, 'layout', 'grid');
   const showFilters = getVal(null, 'show_filters', true);
   const columns = Math.max(1, parseNumSafe(getVal(null, 'columns', 3), 3));
   const gap = parseNumSafe(getVal(null, 'gap', 32), 32);
   const paddingY = parseNumSafe(getVal(null, 'padding_y', 100), 100);
-  const darkMode = getVal(null, 'dark_mode', false);
-  const bgColor = getVal(null, 'bg_color', darkMode ? '#0F172A' : '#FFFFFF');
+  const darkMode = toBoolean(getVal(null, 'dark_mode', false));
+  const rawBgColor = getVal(null, 'bg_color', '#FFFFFF');
+  const bgColor = resolveThemeColor(rawBgColor, '#FFFFFF', '#0F172A', darkMode);
   const sectionGradient = getVal(null, 'section_gradient', false);
   const bgGradient = getVal(null, 'bg_gradient', 'linear-gradient(to bottom, #FFFFFF, #F8FAFC)');
   const entranceAnim = getVal(null, 'entrance_anim', 'none');
@@ -50,7 +75,9 @@ export const TeamModule: React.FC<{
   const headerAlign = getVal(`${moduleId}_el_team_header`, 'align', 'center');
   const headerTitleSize = getVal(`${moduleId}_el_team_header`, 'title_size', 't2');
   const headerTitleWeight = getVal(`${moduleId}_el_team_header`, 'title_weight', 'black');
-  const headerTitleColor = darkMode ? '#FFFFFF' : getVal(`${moduleId}_el_team_header`, 'title_color', '#0F172A');
+  const rawHeaderTitleColor = getVal(`${moduleId}_el_team_header`, 'title_color', '#0F172A');
+  const headerTitleColor = resolveThemeColor(rawHeaderTitleColor, '#0F172A', '#FFFFFF', darkMode);
+  const headerSubtitleColor = resolveThemeColor('#64748B', '#64748B', '#94A3B8', darkMode);
   const eyebrowColor = getVal(`${moduleId}_el_team_header`, 'eyebrow_color', 'var(--primary-color)');
   const headerMarginB = parseNumSafe(getVal(`${moduleId}_el_team_header`, 'margin_b', 60), 60);
 
@@ -75,7 +102,8 @@ export const TeamModule: React.FC<{
 
   // Element: Card
   const cardStyle = getVal(`${moduleId}_el_team_card`, 'card_style', 'solid');
-  const cardBg = darkMode ? '#1E293B' : getVal(`${moduleId}_el_team_card`, 'card_bg', '#FFFFFF');
+  const rawCardBg = getVal(`${moduleId}_el_team_card`, 'card_bg', '#FFFFFF');
+  const cardBg = resolveThemeColor(rawCardBg, '#FFFFFF', '#1E293B', darkMode);
   const cardRadius = parseNumSafe(getVal(`${moduleId}_el_team_card`, 'card_radius', 24), 24);
   const showBorder = getVal(`${moduleId}_el_team_card`, 'show_border', false);
   const cardShadow = getVal(`${moduleId}_el_team_card`, 'card_shadow', 'sm');
@@ -91,13 +119,15 @@ export const TeamModule: React.FC<{
   // Element: Info
   const nameSize = getVal(`${moduleId}_el_team_info`, 'name_size', 't3');
   const nameWeight = getVal(`${moduleId}_el_team_info`, 'name_weight', 'black');
-  const nameColor = darkMode ? '#FFFFFF' : getVal(`${moduleId}_el_team_info`, 'name_color', '#0F172A');
+  const rawNameColor = getVal(`${moduleId}_el_team_info`, 'name_color', '#0F172A');
+  const nameColor = resolveThemeColor(rawNameColor, '#0F172A', '#FFFFFF', darkMode);
   const roleSize = getVal(`${moduleId}_el_team_info`, 'role_size', 's');
   const roleWeight = getVal(`${moduleId}_el_team_info`, 'role_weight', 'bold');
   const roleColor = getVal(`${moduleId}_el_team_info`, 'role_color', '#3B82F6');
   const bioSize = getVal(`${moduleId}_el_team_info`, 'bio_size', 'p');
   const bioWeight = getVal(`${moduleId}_el_team_info`, 'bio_weight', 'normal');
-  const bioColor = darkMode ? '#94A3B8' : getVal(`${moduleId}_el_team_info`, 'bio_color', '#64748B');
+  const rawBioColor = getVal(`${moduleId}_el_team_info`, 'bio_color', '#64748B');
+  const bioColor = resolveThemeColor(rawBioColor, '#64748B', '#94A3B8', darkMode);
 
   const getTypographyStyle = (sizeToken: string, weightToken: string, alignToken?: string) => {
     const size = TYPOGRAPHY_SCALE[sizeToken as keyof typeof TYPOGRAPHY_SCALE] || TYPOGRAPHY_SCALE.p;
@@ -239,7 +269,7 @@ export const TeamModule: React.FC<{
               className="text-lg max-w-2xl leading-relaxed"
               style={{ 
                 ...getTypographyStyle(headerSubtitleSize as any, headerSubtitleWeight, headerAlign),
-                color: darkMode ? '#94A3B8' : '#64748B' 
+                color: headerSubtitleColor 
               }}
             >
               <InlineEditableText

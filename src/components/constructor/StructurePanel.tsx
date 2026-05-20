@@ -215,7 +215,7 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
   };
 
   const toggleMenuLink = (moduleId: string, moduleLabel: string) => {
-    const menuModule = editorState.addedModules.find(m => m.type === 'navegacion');
+    const menuModule = editorState.addedModules.find(m => m.type === 'navegacion' || m.type === 'menu');
     if (!menuModule) return;
 
     const elementId = `${menuModule.id}_el_menu_items`;
@@ -236,7 +236,7 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
   };
 
   const isModuleLinked = (moduleId: string) => {
-    const menuModule = editorState.addedModules.find(m => m.type === 'navegacion');
+    const menuModule = editorState.addedModules.find(m => m.type === 'navegacion' || m.type === 'menu');
     if (!menuModule) return false;
     const currentLinks = editorState.settingsValues[`${menuModule.id}_el_menu_items_links`] || [];
     return currentLinks.some((l: any) => l.url === `#${moduleId}`);
@@ -379,7 +379,7 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                       {moduleInfo.label}
                     </span>
 
-                    {module.type !== 'navegacion' && editorState.addedModules.some(m => m.type === 'navegacion') && (
+                    {module.type !== 'navegacion' && module.type !== 'menu' && editorState.addedModules.some(m => m.type === 'navegacion' || m.type === 'menu') && (
                       <button 
                         onClick={(e) => {
                           e.stopPropagation();

@@ -229,6 +229,30 @@ export const ProcessModule: React.FC<{
     return settingsValues[key] !== undefined ? settingsValues[key] : defaultValue;
   };
 
+  const toBoolean = (value: unknown) => {
+    return value === true || value === 'true' || value === 1 || value === '1';
+  };
+
+  const resolveThemeColor = (
+    value: string | undefined,
+    lightDefault: string,
+    darkDefault: string,
+    darkMode: boolean
+  ) => {
+    const safeValue = String(value || '').trim();
+    const safeLight = String(lightDefault || '').trim().toLowerCase();
+
+    if (!darkMode) {
+      return safeValue || lightDefault;
+    }
+
+    if (!safeValue || safeValue.toLowerCase() === safeLight) {
+      return darkDefault;
+    }
+
+    return safeValue;
+  };
+
   const parseF = (val: any, fallback: number) => {
     const f = parseFloat(val);
     return isNaN(f) ? fallback : f;
@@ -239,12 +263,14 @@ export const ProcessModule: React.FC<{
   const columns = Math.max(1, parseInt(getVal(null, 'columns', 4)) || 4);
   const paddingY = parseF(getVal(null, 'padding_y', 120), 120);
   const gap = parseF(getVal(null, 'gap', 40), 40);
-  const darkMode = getVal(null, 'dark_mode', false);
-  const bgColor = getVal(null, 'bg_color', darkMode ? '#0F172A' : '#F8FAFC');
+  const darkMode = toBoolean(getVal(null, 'dark_mode', false));
+  const rawBgColor = getVal(null, 'bg_color', '#F8FAFC');
+  const bgColor = resolveThemeColor(rawBgColor, '#F8FAFC', '#0F172A', darkMode);
   const sectionGradient = getVal(null, 'section_gradient', false);
   const bgGradient = getVal(null, 'bg_gradient', 'linear-gradient(to bottom, #F8FAFC, #FFFFFF)');
   const connectorStyle = getVal(null, 'connector_style', 'dashed');
-  const connectorColor = darkMode ? 'rgba(255,255,255,0.1)' : getVal(null, 'connector_color', 'rgba(59, 130, 246, 0.2)');
+  const rawConnectorColor = getVal(null, 'connector_color', 'rgba(59, 130, 246, 0.2)');
+  const connectorColor = resolveThemeColor(rawConnectorColor, 'rgba(59, 130, 246, 0.2)', 'rgba(255,255,255,0.1)', darkMode);
   const entranceAnim = getVal(null, 'entrance_anim', 'fade_up');
 
   // Animation Overrides
@@ -265,13 +291,16 @@ export const ProcessModule: React.FC<{
   const headerMarginB = parseF(getVal(`${moduleId}_el_process_header`, 'margin_b', 80), 80);
 
   const headerTitleColor = darkMode ? '#FFFFFF' : undefined;
+  const headerSubtitleColor = resolveThemeColor('#64748B', '#64748B', '#94A3B8', darkMode);
 
   // Element: Lista de Pasos
   const steps = getVal(`${moduleId}_el_process_items`, 'steps', []);
 
   // Element: Step Style
-  const cardBg = darkMode ? '#1E293B' : getVal(`${moduleId}_el_process_step`, 'card_bg', '#FFFFFF');
-  const cardBorder = darkMode ? 'rgba(255,255,255,0.1)' : getVal(`${moduleId}_el_process_step`, 'card_border', 'rgba(0,0,0,0.05)');
+  const rawCardBg = getVal(`${moduleId}_el_process_step`, 'card_bg', '#FFFFFF');
+  const cardBg = resolveThemeColor(rawCardBg, '#FFFFFF', '#1E293B', darkMode);
+  const rawCardBorder = getVal(`${moduleId}_el_process_step`, 'card_border', 'rgba(0,0,0,0.05)');
+  const cardBorder = resolveThemeColor(rawCardBorder, 'rgba(0,0,0,0.05)', 'rgba(255,255,255,0.1)', darkMode);
   const cardRadius = parseF(getVal(`${moduleId}_el_process_step`, 'card_radius', 24), 24);
   const cardPadding = parseF(getVal(`${moduleId}_el_process_step`, 'card_padding', 32), 32);
   const stepTitleSize = getVal(`${moduleId}_el_process_step`, 'step_title_size', 't3');
@@ -381,7 +410,7 @@ export const ProcessModule: React.FC<{
           {headerSubtitle && (
             <p 
               className="max-w-2xl text-base @md:text-lg"
-              style={{ color: darkMode ? '#94A3B8' : '#64748B' }}
+              style={{ color: headerSubtitleColor }}
             >
               <InlineEditableText
                 moduleId={moduleId}

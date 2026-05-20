@@ -4,7 +4,6 @@ import {
   Monitor, 
   Tablet, 
   Smartphone, 
-  RotateCcw,
   Minimize 
 } from 'lucide-react';
 import { EditorState, WebModule } from '../../types/constructor';
@@ -36,6 +35,7 @@ import { FooterModule } from './modules/FooterModule';
 import { SpacerModule } from './modules/SpacerModule';
 import { BentoModule } from './modules/BentoModule';
 import { ComparisonModule } from './modules/ComparisonModule';
+import { ParallaxScrollContext } from './ParallaxBackground';
 
 import { normalizeSocialUrl, getIconForPlatform, resolveFooterSocialLinks, FOOTER_DEFAULTS } from '../../utils/socialUtils';
 
@@ -55,7 +55,6 @@ interface CanvasProps {
   isPreviewMode: boolean;
   project?: any;
   onSettingChange: (elementOrModuleId: string, settingId: string, value: any) => void;
-  onReload: () => void;
   reloadKey?: number;
   onOpenBentoGenerator?: () => void;
 }
@@ -76,7 +75,6 @@ export const Canvas: React.FC<CanvasProps> = ({
   isPreviewMode,
   project,
   onSettingChange,
-  onReload,
   reloadKey = 0,
   onOpenBentoGenerator
 }) => {
@@ -84,6 +82,7 @@ export const Canvas: React.FC<CanvasProps> = ({
 
   const lastModuleRef = React.useRef<HTMLDivElement>(null);
   const prevModulesLength = React.useRef(editorState.addedModules?.length || 0);
+  const canvasScrollContainerRef = React.useRef<HTMLDivElement>(null);
 
   const viewportWidths = {
     desktop: '100%',
@@ -118,7 +117,12 @@ export const Canvas: React.FC<CanvasProps> = ({
   }, [editorState.expandedModuleId]);
 
   return (
-    <div className={`flex-1 bg-secondary/50 overflow-y-auto custom-scrollbar transition-all duration-500 ${isFullscreen ? 'fixed inset-0 z-[100] bg-secondary' : ''} ${isPreviewMode ? 'bg-surface p-0' : ''}`}>
+    <ParallaxScrollContext.Provider value={isPreviewMode ? null : canvasScrollContainerRef}>
+      <div
+        ref={canvasScrollContainerRef}
+        id="constructor-canvas-scroll-container"
+        className={`flex-1 bg-secondary/50 overflow-y-auto custom-scrollbar transition-all duration-500 ${isFullscreen ? 'fixed inset-0 z-[100] bg-secondary' : ''} ${isPreviewMode ? 'bg-surface p-0' : ''}`}
+      >
       {isFullscreen && !isPreviewMode && (
         <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[110] flex items-center gap-2 bg-surface/80 backdrop-blur-md border border-border/50 p-1.5 rounded-2xl shadow-2xl">
           <div className="flex items-center gap-1 bg-secondary/50 p-1 rounded-xl">
@@ -144,14 +148,6 @@ export const Canvas: React.FC<CanvasProps> = ({
               <Smartphone size={16} />
             </button>
           </div>
-          <div className="w-px h-4 bg-border/50 mx-1" />
-          <button 
-            onClick={onReload}
-            className="p-2 text-text/40 hover:text-primary transition-all"
-            title="Recargar página"
-          >
-            <RotateCcw size={16} />
-          </button>
           <button 
             onClick={() => setIsFullscreen(false)}
             className="p-2 text-text/40 hover:text-rose-500 transition-all"
@@ -587,7 +583,7 @@ export const Canvas: React.FC<CanvasProps> = ({
                       />
                     )}
                     {/* Fallback debug for unrendered modules */}
-                    {!['products', 'products_showcase', 'hero', 'features', 'about', 'process', 'gallery', 'video', 'testimonials', 'stats', 'team', 'pricing', 'faq', 'contact', 'clients', 'cta', 'newsletter', 'conversion', 'navegacion', 'menu', 'footer', 'spacer', 'bento', 'comparative'].includes(section.type) && (
+                    {!['products', 'products_showcase', 'hero', 'features', 'about', 'process', 'gallery', 'video', 'testimonials', 'stats', 'team', 'pricing', 'faq', 'contact', 'clients', 'trusted_logos', 'cta', 'newsletter', 'conversion', 'navegacion', 'menu', 'footer', 'spacer', 'bento', 'comparative'].includes(section.type) && (
                       <div className="p-8 border-2 border-dashed border-rose-200 rounded-2xl bg-rose-50 text-rose-500 text-center">
                         <p className="font-bold">Módulo no reconocido: {section.type}</p>
                         <p className="text-xs opacity-60">ID: {section.id} | Template: {section.templateId}</p>
@@ -607,6 +603,7 @@ export const Canvas: React.FC<CanvasProps> = ({
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </ParallaxScrollContext.Provider>
   );
 };

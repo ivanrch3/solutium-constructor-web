@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { motion, AnimatePresence, useScroll } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import * as LucideIcons from 'lucide-react';
 import { ArrowRight, Sparkles, ExternalLink } from 'lucide-react';
 import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
 import { TextRenderer } from '../TextRenderer';
-import { ParallaxBackground } from '../ParallaxBackground';
+import { ParallaxBackground, useParallaxScrollProgress } from '../ParallaxBackground';
 import { parseNumSafe } from '../utils';
 import { Responsive, WidthProvider } from 'react-grid-layout/legacy';
 import { GLOBAL_ANIMATIONS, getGlobalAnimation } from '../../../constants/animations';
@@ -23,6 +23,30 @@ const getAdaptiveTypography = (priority: string, colSpan: number, rowSpan: numbe
   if (priority === 'feature' || (colSpan >= 4 && rowSpan >= 4)) return { title: 't2', desc: 'p' };
   if (colSpan >= 4) return { title: 't3', desc: 'p' };
   return { title: 'p', desc: 'small' }; // Compact
+};
+
+const toBoolean = (value: unknown) => {
+  return value === true || value === 'true' || value === 1 || value === '1';
+};
+
+const resolveThemeColor = (
+  value: string | undefined,
+  lightDefault: string,
+  darkDefault: string,
+  darkMode: boolean
+) => {
+  const safeValue = String(value || '').trim();
+  const safeLight = String(lightDefault || '').trim().toLowerCase();
+
+  if (!darkMode) {
+    return safeValue || lightDefault;
+  }
+
+  if (!safeValue || safeValue.toLowerCase() === safeLight) {
+    return darkDefault;
+  }
+
+  return safeValue;
 };
 
 const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave }: any) => {
@@ -58,8 +82,8 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave }: a
   
   // Contraste de texto forzado
   const forcedColor = text_contrast === 'white' ? '#FFFFFF' : text_contrast === 'black' ? '#0F172A' : null;
-  const finalTitleColor = forcedColor || title_color || (darkMode ? '#FFFFFF' : '#0F172A');
-  const finalDescColor = forcedColor || desc_color || (darkMode ? '#94A3B8' : '#64748B');
+  const finalTitleColor = forcedColor || resolveThemeColor(title_color, '#0F172A', '#FFFFFF', darkMode);
+  const finalDescColor = forcedColor || resolveThemeColor(desc_color, '#64748B', '#94A3B8', darkMode);
 
   const isHero = type === 'hero' || priority === 'hero';
 
@@ -643,10 +667,7 @@ export const BentoModule: React.FC<{
   const setSelectedIndex = setSelectedBentoCellIndex;
 
   const containerRef = useRef(null);
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start end", "end start"]
-  });
+  const { scrollYProgress } = useParallaxScrollProgress(containerRef);
 
   const getVal = (elementId: string | null, settingId: string, defaultValue: any) => {
     // Priority: settingsValues (live edits)
@@ -671,8 +692,9 @@ export const BentoModule: React.FC<{
   const gap = parseNumSafe(getVal(null, 'gap', 20), 20);
   const paddingY = parseNumSafe(getVal(null, 'padding_y', 100), 100);
   const maxWidth = parseNumSafe(getVal(null, 'max_width', 1400), 1400);
-  const darkMode = getVal(null, 'dark_mode', false);
-  const bgColor = getVal(null, 'bg_color', darkMode ? '#0F172A' : '#FFFFFF');
+  const darkMode = toBoolean(getVal(null, 'dark_mode', false));
+  const rawBgColor = getVal(null, 'bg_color', '#FFFFFF');
+  const bgColor = resolveThemeColor(rawBgColor, '#FFFFFF', '#0F172A', darkMode);
   const sectionGradient = getVal(null, 'section_gradient', false);
   const bgGradient = getVal(null, 'bg_gradient', 'linear-gradient(to bottom, #FFFFFF, #F8FAFC)');
   const entranceAnim = getVal(null, 'entrance_anim', 'fade_up');
@@ -867,6 +889,8 @@ export const BentoModule: React.FC<{
   const headerEyebrow = getVal(`${moduleId}_el_bento_header`, 'eyebrow', '');
   const headerTitle = getVal(`${moduleId}_el_bento_header`, 'title', '');
   const headerSubtitle = getVal(`${moduleId}_el_bento_header`, 'subtitle', '');
+  const headerTitleColor = resolveThemeColor(undefined, '#0F172A', '#FFFFFF', darkMode);
+  const headerSubtitleColor = resolveThemeColor(undefined, '#64748B', '#94A3B8', darkMode);
   const headerAlign = getVal(`${moduleId}_el_bento_header`, 'align', 'center');
   const headerMarginB = parseNumSafe(getVal(`${moduleId}_el_bento_header`, 'margin_b', 60), 60);
 
@@ -955,7 +979,7 @@ export const BentoModule: React.FC<{
                 style={{ 
                   fontSize: `${TYPOGRAPHY_SCALE.t2.fontSize}px`,
                   fontWeight: 900,
-                  color: darkMode ? '#FFFFFF' : '#0F172A'
+                  color: headerTitleColor
                 }}
               >
                 <InlineEditableText
@@ -979,7 +1003,7 @@ export const BentoModule: React.FC<{
                 className="max-w-2xl"
                 style={{ 
                   fontSize: `${TYPOGRAPHY_SCALE.p.fontSize}px`,
-                  color: darkMode ? '#94A3B8' : '#64748B',
+                  color: headerSubtitleColor,
                   lineHeight: 1.6
                 }}
               >
@@ -1077,9 +1101,11 @@ export const BentoModule: React.FC<{
               } = item;
 
               const IconComponent = (LucideIcons as any)[icon] || Sparkles;
+              const resolvedCardBg = resolveThemeColor(card_bg, '#FFFFFF', '#1E293B', darkMode);
+              const resolvedCardBorder = resolveThemeColor(card_border, 'rgba(0,0,0,0.05)', 'rgba(255,255,255,0.1)', darkMode);
 
               const isSafeGradient = (val: any) => typeof val === 'string' && !val.includes('NaN');
-              const finalBg = card_style === 'solid' ? (darkMode ? '#1E293B' : card_bg) : 
+              const finalBg = card_style === 'solid' ? resolvedCardBg : 
                               (card_style === 'gradient' && isSafeGradient(card_gradient)) ? card_gradient : 
                               card_style === 'glass' ? (darkMode ? 'rgba(30, 41, 59, 0.7)' : 'rgba(255, 255, 255, 0.7)') : 
                               'transparent';
@@ -1134,7 +1160,7 @@ export const BentoModule: React.FC<{
                       backgroundColor: specialBg ? undefined : (card_style !== 'gradient' ? finalBg : undefined),
                       backgroundImage: specialBg || (card_style === 'gradient' ? finalBg : undefined),
                       borderRadius: `${card_radius}px`,
-                      border: (card_style === 'transparent' || isHeroType) ? 'none' : `1px solid ${darkMode ? 'rgba(255,255,255,0.1)' : card_border}`,
+                      border: (card_style === 'transparent' || isHeroType) ? 'none' : `1px solid ${resolvedCardBorder}`,
                       padding: type === 'visual' ? 0 : `${padding}px`,
                       zIndex: isSelected ? 50 : z_index
                     }}

@@ -22,6 +22,11 @@ import { getAssets } from './services/dataService';
 type View = 'dashboard' | 'selection-method' | 'form' | 'generator' | 'constructor' | 'viewer';
 
 const AppContent: React.FC = () => {
+  const queryParams = new URLSearchParams(window.location.search);
+  const isPublicRenderMode =
+    queryParams.get('mode') === 'render' ||
+    queryParams.get('external_render') === 'true' ||
+    queryParams.get('published') === 'true';
   const [isHandshakeComplete, setIsHandshakeComplete] = useState(false);
   const [projectId, setProjectId] = useState<string | null>(null);
   const [appId, setAppId] = useState<string | null>(null);
@@ -57,7 +62,6 @@ const AppContent: React.FC = () => {
   };
 
   // [DEBUG_FLAGS_RESOLUTION_DEBUG] (FASE 2)
-  const queryParams = new URLSearchParams(window.location.search);
   const debugParam = queryParams.get('debug');
   const debugRenderParam = queryParams.get('debug_render');
   const debugProductsParam = queryParams.get('debug_products');
@@ -546,6 +550,16 @@ const AppContent: React.FC = () => {
   };
 
   if (!isHandshakeComplete) {
+    if (isPublicRenderMode) {
+      return (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-white">
+          <div className="flex items-center justify-center" aria-label="Cargando sitio">
+            <div className="h-10 w-10 rounded-full border-[3px] border-slate-200 border-t-slate-500 animate-spin" />
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center p-6 font-sans">
         <motion.div 

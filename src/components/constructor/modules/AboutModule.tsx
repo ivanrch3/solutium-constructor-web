@@ -1,9 +1,9 @@
 import React from 'react';
-import { motion, useScroll, useTransform } from 'motion/react';
+import { motion, useTransform } from 'motion/react';
 import * as LucideIcons from 'lucide-react';
 import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
 import { TextRenderer } from '../TextRenderer';
-import { ParallaxBackground } from '../ParallaxBackground';
+import { ParallaxBackground, useParallaxScrollProgress } from '../ParallaxBackground';
 import { InlineEditableText } from '../InlineEditableText';
 import { parseNumSafe } from '../utils';
 import { useEditorStore } from '../../../store/editorStore';
@@ -20,18 +20,40 @@ export const AboutModule: React.FC<{
     return settingsValues[key] !== undefined ? settingsValues[key] : defaultValue;
   };
 
+  const toBoolean = (value: unknown) => {
+    return value === true || value === 'true' || value === 1 || value === '1';
+  };
+
+  const resolveThemeColor = (
+    value: string | undefined,
+    lightDefault: string,
+    darkDefault: string,
+    darkMode: boolean
+  ) => {
+    const safeValue = String(value || '').trim();
+    const safeLight = String(lightDefault || '').trim().toLowerCase();
+
+    if (!darkMode) {
+      return safeValue || lightDefault;
+    }
+
+    if (!safeValue || safeValue.toLowerCase() === safeLight) {
+      return darkDefault;
+    }
+
+    return safeValue;
+  };
+
   const containerRef = React.useRef(null);
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start end", "end start"]
-  });
+  const { scrollYProgress } = useParallaxScrollProgress(containerRef);
 
   // Global Settings
   const layout = getVal(null, 'layout', 'split_right');
   const paddingY = parseNumSafe(getVal(null, 'padding_y', 120), 120);
   const contentWidth = parseNumSafe(getVal(null, 'content_width', 1200), 1200);
-  const darkMode = getVal(null, 'dark_mode', false);
-  const bgColor = getVal(null, 'bg_color', darkMode ? '#0F172A' : '#FFFFFF');
+  const darkMode = toBoolean(getVal(null, 'dark_mode', false));
+  const rawBgColor = getVal(null, 'bg_color', '#FFFFFF');
+  const bgColor = resolveThemeColor(rawBgColor, '#FFFFFF', '#0F172A', darkMode);
   const sectionGradient = getVal(null, 'section_gradient', false);
   const bgGradient = getVal(null, 'bg_gradient', 'linear-gradient(to bottom, #FFFFFF, #F8FAFC)');
   const entranceAnim = getVal(null, 'entrance_anim', 'none');
@@ -61,7 +83,10 @@ export const AboutModule: React.FC<{
   const hasLink = buttonUrl && buttonUrl !== '#' && buttonUrl !== '';
   const titleSize = getVal(`${moduleId}_el_about_narrative`, 'title_size', 't2');
   const titleWeight = getVal(`${moduleId}_el_about_narrative`, 'title_weight', 'bold');
-  const titleColor = darkMode ? '#FFFFFF' : getVal(`${moduleId}_el_about_narrative`, 'title_color', '#0F172A');
+  const rawTitleColor = getVal(`${moduleId}_el_about_narrative`, 'title_color', '#0F172A');
+  const titleColor = resolveThemeColor(rawTitleColor, '#0F172A', '#FFFFFF', darkMode);
+  const descColor = resolveThemeColor('#64748B', '#64748B', '#94A3B8', darkMode);
+  const quoteColor = resolveThemeColor('#475569', '#475569', '#CBD5E1', darkMode);
   const eyebrowColor = getVal(`${moduleId}_el_about_narrative`, 'eyebrow_color', 'var(--primary-color)');
   const descSize = getVal(`${moduleId}_el_about_narrative`, 'desc_size', 'p');
   const descWeight = getVal(`${moduleId}_el_about_narrative`, 'desc_weight', 'normal');
@@ -81,7 +106,8 @@ export const AboutModule: React.FC<{
   const showStats = getVal(`${moduleId}_el_about_stats`, 'show_stats', true);
   const statsList = getVal(`${moduleId}_el_about_stats`, 'stats_list', []);
   const statColor = getVal(`${moduleId}_el_about_stats`, 'stat_color', 'var(--primary-color)');
-  const statBg = getVal(`${moduleId}_el_about_stats`, 'stat_bg', 'transparent');
+  const rawStatBg = getVal(`${moduleId}_el_about_stats`, 'stat_bg', 'transparent');
+  const statBg = resolveThemeColor(rawStatBg, 'transparent', '#1E293B', darkMode);
   const statColumns = parseNumSafe(getVal(`${moduleId}_el_about_stats`, 'columns', 3), 3);
 
   const yParallax = useTransform(scrollYProgress, [0, 1], [0, -100]);
@@ -162,7 +188,7 @@ export const AboutModule: React.FC<{
         className="leading-relaxed mb-10 max-w-xl"
         style={{ 
           ...getTypographyStyle(descSize as any, descWeight, textAlign),
-          color: darkMode ? '#94A3B8' : '#64748B'
+          color: descColor
         }}
       >
         <InlineEditableText
@@ -177,7 +203,8 @@ export const AboutModule: React.FC<{
       {quote && (
         <motion.div 
           variants={entranceAnim ? itemVariants : {}}
-          className={`border-l-4 border-primary/30 pl-6 py-2 mb-10 italic text-lg @md:text-xl font-serif ${darkMode ? 'text-slate-300' : 'text-slate-600'}`}
+          className="border-l-4 border-primary/30 pl-6 py-2 mb-10 italic text-lg @md:text-xl font-serif"
+          style={{ color: quoteColor }}
         >
           <InlineEditableText
             moduleId={moduleId}

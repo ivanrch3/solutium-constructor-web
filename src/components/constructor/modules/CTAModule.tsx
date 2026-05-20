@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence, useScroll } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import * as LucideIcons from 'lucide-react';
 import { 
   ArrowRight, 
@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
 import { TextRenderer } from '../TextRenderer';
-import { ParallaxBackground } from '../ParallaxBackground';
+import { ParallaxBackground, useParallaxScrollProgress } from '../ParallaxBackground';
 import { InlineEditableText } from '../InlineEditableText';
 import { parseNumSafe } from '../utils';
 import { useEditorStore } from '../../../store/editorStore';
@@ -31,14 +31,41 @@ export const CTAModule: React.FC<{
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
   
   const containerRef = useRef(null);
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start end", "end start"]
-  });
+  const { scrollYProgress } = useParallaxScrollProgress(containerRef);
 
   const getVal = (elementId: string | null, settingId: string, defaultValue: any) => {
     const key = elementId ? `${elementId}_${settingId}` : `${moduleId}_global_${settingId}`;
     return settingsValues[key] !== undefined ? settingsValues[key] : defaultValue;
+  };
+
+  const toBoolean = (value: unknown) => {
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'string') {
+      const normalized = value.trim().toLowerCase();
+      return normalized === 'true' || normalized === '1';
+    }
+    if (typeof value === 'number') return value === 1;
+    return false;
+  };
+
+  const normalizeThemeValue = (value: unknown) =>
+    typeof value === 'string' ? value.trim().toLowerCase() : value;
+
+  const resolveThemeColor = (
+    value: unknown,
+    lightDefault: string,
+    darkDefault: string,
+    isDark: boolean
+  ) => {
+    if (!isDark) {
+      return typeof value === 'string' && value.trim() !== '' ? value : lightDefault;
+    }
+
+    if (typeof value !== 'string' || value.trim() === '') return darkDefault;
+
+    return normalizeThemeValue(value) === normalizeThemeValue(lightDefault)
+      ? darkDefault
+      : value;
   };
 
   // Global Settings
@@ -46,8 +73,9 @@ export const CTAModule: React.FC<{
   const maxWidth = parseNumSafe(getVal(null, 'max_width', 1000), 1000);
   const paddingY = parseNumSafe(getVal(null, 'padding_y', 100), 100);
   const bgType = getVal(null, 'bg_type', 'color');
-  const darkMode = getVal(null, 'dark_mode', false);
-  const bgColor = getVal(null, 'bg_color', darkMode ? '#0F172A' : '#FFFFFF');
+  const darkMode = toBoolean(getVal(null, 'dark_mode', false));
+  const rawBgColor = getVal(null, 'bg_color', '#FFFFFF');
+  const bgColor = resolveThemeColor(rawBgColor, '#FFFFFF', '#0F172A', darkMode);
   const bgGradient = getVal(null, 'bg_gradient', 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)');
   const bgImage = getVal(null, 'bg_image', '');
   const bgVideo = getVal(null, 'bg_video', '');
@@ -79,8 +107,10 @@ export const CTAModule: React.FC<{
   const subtitleSize = getVal(`${moduleId}_el_cta_content`, 'subtitle_size', 'p');
   const subtitleWeight = getVal(`${moduleId}_el_cta_content`, 'subtitle_weight', 'normal');
   const textAlign = getVal(`${moduleId}_el_cta_content`, 'text_align', 'center');
-  const titleColor = getVal(`${moduleId}_el_cta_content`, 'title_color', darkMode ? '#FFFFFF' : '#0F172A');
-  const subtitleColor = getVal(`${moduleId}_el_cta_content`, 'subtitle_color', darkMode ? '#94A3B8' : '#475569');
+  const rawTitleColor = getVal(`${moduleId}_el_cta_content`, 'title_color', '#0F172A');
+  const rawSubtitleColor = getVal(`${moduleId}_el_cta_content`, 'subtitle_color', '#475569');
+  const titleColor = resolveThemeColor(rawTitleColor, '#0F172A', '#FFFFFF', darkMode);
+  const subtitleColor = resolveThemeColor(rawSubtitleColor, '#475569', '#94A3B8', darkMode);
   const marginB = parseNumSafe(getVal(`${moduleId}_el_cta_content`, 'margin_b', 40), 40);
 
   // Highlight Settings
@@ -126,7 +156,8 @@ export const CTAModule: React.FC<{
   const showTrust = getVal(`${moduleId}_el_cta_trust`, 'show_trust', true);
   const trustText = getVal(`${moduleId}_el_cta_trust`, 'trust_text', 'Únete a +5,000 usuarios activos');
   const trustSize = parseNumSafe(getVal(`${moduleId}_el_cta_trust`, 'trust_size', 14), 14);
-  const trustColor = darkMode ? '#94A3B8' : getVal(`${moduleId}_el_cta_trust`, 'trust_color', '#64748B');
+  const rawTrustColor = getVal(`${moduleId}_el_cta_trust`, 'trust_color', '#64748B');
+  const trustColor = resolveThemeColor(rawTrustColor, '#64748B', '#94A3B8', darkMode);
   const showAvatars = getVal(`${moduleId}_el_cta_trust`, 'show_avatars', true);
   const showLogos = getVal(`${moduleId}_el_cta_trust`, 'show_logos', false);
   const companyLogos = getVal(`${moduleId}_el_cta_trust`, 'company_logos', []);

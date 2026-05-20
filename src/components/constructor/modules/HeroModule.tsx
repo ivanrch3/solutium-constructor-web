@@ -1,10 +1,10 @@
 import React from 'react';
-import { motion, useScroll } from 'motion/react';
+import { motion } from 'motion/react';
 import { ArrowRight, ChevronDown, Play } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
 import { TextRenderer } from '../TextRenderer';
-import { ParallaxBackground } from '../ParallaxBackground';
+import { ParallaxBackground, useParallaxScrollProgress } from '../ParallaxBackground';
 import { RotatingText } from '../RotatingText';
 import { InlineEditableText } from '../InlineEditableText';
 import { parseNumSafe } from '../utils';
@@ -50,6 +50,30 @@ export const HeroModule: React.FC<{
     return defaultValue;
   };
 
+  const toBoolean = (value: unknown) => {
+    return value === true || value === 'true' || value === 1 || value === '1';
+  };
+
+  const resolveThemeColor = (
+    value: string | undefined,
+    lightDefault: string,
+    darkDefault: string,
+    darkMode: boolean
+  ) => {
+    const safeValue = String(value || '').trim();
+    const safeLight = String(lightDefault || '').trim().toLowerCase();
+
+    if (!darkMode) {
+      return safeValue || lightDefault;
+    }
+
+    if (!safeValue || safeValue.toLowerCase() === safeLight) {
+      return darkDefault;
+    }
+
+    return safeValue;
+  };
+
   /**
    * PROTOCOLO SOLUTIUM v8.1: Normalización robusta de items rotativos.
    * Acepta arrays de objetos, arrays de strings o strings delimitados.
@@ -79,10 +103,7 @@ export const HeroModule: React.FC<{
   };
 
   const containerRef = React.useRef(null);
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start end", "end start"]
-  });
+  const { scrollYProgress } = useParallaxScrollProgress(containerRef);
 
   // Global Settings
   const layout = getVal(null, 'layout', 'split');
@@ -100,10 +121,13 @@ export const HeroModule: React.FC<{
   });
 
   const height = getVal(null, 'height', 'screen');
+  const verticalAlign = getVal(null, 'vertical_align', 'start');
   const maxWidth = parseNumSafe(getVal(null, 'max_width', 1200), 1200);
-  const darkMode = getVal(null, 'dark_mode', false);
+  const paddingY = parseNumSafe(getVal(null, 'padding_y', 40), 40);
+  const darkMode = toBoolean(getVal(null, 'dark_mode', false));
   const bgType = getVal(null, 'bg_type', 'color');
-  const bgColor = getVal(null, 'bg_color', darkMode ? '#0F172A' : '#FFFFFF');
+  const rawBgColor = getVal(null, 'bg_color', '#FFFFFF');
+  const bgColor = resolveThemeColor(rawBgColor, '#FFFFFF', '#0F172A', darkMode);
   const bgGradient = getVal(null, 'bg_gradient', 'linear-gradient(135deg, #F8FAFC 0%, #E2E8F0 100%)');
   const overlayColor = getVal(null, 'overlay_color', '#000000');
   const overlayOpacity = parseNumSafe(getVal(null, 'overlay_opacity', 0), 0);
@@ -174,6 +198,7 @@ export const HeroModule: React.FC<{
   const eyebrowColor = getVal(`${moduleId}_el_hero_typography`, 'eyebrow_color', '#3B82F6');
   const typographyAlign = getVal(`${moduleId}_el_hero_typography`, 'align', 'inherit');
   const typographyMarginB = parseNumSafe(getVal(`${moduleId}_el_hero_typography`, 'margin_b', 0), 0);
+  const proofColor = darkMode ? '#94A3B8' : '#475569';
 
   // Element: Media
   const mediaType = getVal(`${moduleId}_el_hero_media`, 'media_type', 'image');
@@ -512,6 +537,7 @@ export const HeroModule: React.FC<{
             isPreviewMode={isPreviewMode}
             className="opacity-60 uppercase tracking-wider"
             style={{ 
+              color: proofColor,
               fontSize: `${TYPOGRAPHY_SCALE[proofFontSize as keyof typeof TYPOGRAPHY_SCALE]?.fontSize || 12}px`,
               fontWeight: FONT_WEIGHTS[proofWeight as keyof typeof FONT_WEIGHTS]?.value || 800
             }}
@@ -640,7 +666,13 @@ export const HeroModule: React.FC<{
     );
   };
 
-  const containerClassName = `relative w-full overflow-hidden flex items-center ${sectionHeight} @container`;
+  const verticalAlignClass = verticalAlign === 'start'
+    ? 'items-start'
+    : verticalAlign === 'end'
+      ? 'items-end'
+      : 'items-center';
+
+  const containerClassName = `relative w-full overflow-hidden flex ${verticalAlignClass} ${sectionHeight} @container`;
   
   logDebug('[HERO_LAYOUT_DEBUG]', {
     moduleId,
@@ -675,8 +707,12 @@ export const HeroModule: React.FC<{
       />
 
       <div 
-        className="relative z-30 w-full px-8 mx-auto py-20"
-        style={{ maxWidth: `${maxWidth}px` }}
+        className="relative z-30 w-full px-8 mx-auto"
+        style={{ 
+          maxWidth: `${maxWidth}px`,
+          paddingTop: `${paddingY}px`,
+          paddingBottom: `${paddingY}px`
+        }}
       >
         {layout === 'split' && (
           <div className="grid grid-cols-1 @lg:grid-cols-2 gap-16 @lg:gap-24 items-center">

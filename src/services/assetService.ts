@@ -3,12 +3,15 @@ import { Asset } from '../types/schema';
 import { uploadAsset } from './assetsClient';
 import { logDebug } from '../utils/debug';
 
-const APP_NAME = 'Constructor Web';
+const APP_NAME = 'solutium constructor web';
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export interface SyncAssetResult {
   url: string;
   storagePath: string;
 }
+
+const isUuid = (value?: string) => typeof value === 'string' && UUID_REGEX.test(value);
 
 /**
  * Sincroniza un activo con la App Madre y Supabase siguiendo el estándar de Solutium.
@@ -44,14 +47,18 @@ export const syncAsset = async (
       blob = new Blob([file], { type: contentType });
     }
 
-    const { public_url, storage_path } = await uploadAsset(blob, {
+    const uploaded = await uploadAsset(blob, {
       projectId: entity.projectId,
       siteId: entity.metadata?.siteId,
       webBuilderSiteId: entity.metadata?.webBuilderSiteId,
       assetType: type as any,
       fileName,
-      contentType
+      contentType,
+      sourceApp: APP_NAME
     });
+
+    const { public_url, storage_path, asset_id } = uploaded;
+    const persistedAssetId = isUuid(asset_id) ? asset_id : undefined;
 
     logDebug(`[AssetService] Subida a App Madre exitosa: ${public_url}`);
 
@@ -61,7 +68,7 @@ export const syncAsset = async (
       : `${type}: ${entity.id}`;
 
     const assetData: any = {
-      id: entity.id,
+      ...(persistedAssetId ? { id: persistedAssetId } : {}),
       project_id: entity.projectId,
       origin_app: APP_NAME,
       name: assetName,
@@ -71,6 +78,8 @@ export const syncAsset = async (
       metadata: {
         assetName: assetName,
         path: storage_path,
+        external_asset_id: asset_id,
+        local_entity_id: entity.id,
         ...entity.metadata
       },
       updated_at: new Date().toISOString()

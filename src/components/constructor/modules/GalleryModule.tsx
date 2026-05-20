@@ -120,6 +120,30 @@ const GalleryItem = ({
   );
 };
 
+const toBoolean = (value: unknown) => {
+  return value === true || value === 'true' || value === 1 || value === '1';
+};
+
+const resolveThemeColor = (
+  value: string | undefined,
+  lightDefault: string,
+  darkDefault: string,
+  darkMode: boolean
+) => {
+  const safeValue = String(value || '').trim();
+  const safeLight = String(lightDefault || '').trim().toLowerCase();
+
+  if (!darkMode) {
+    return safeValue || lightDefault;
+  }
+
+  if (!safeValue || safeValue.toLowerCase() === safeLight) {
+    return darkDefault;
+  }
+
+  return safeValue;
+};
+
 export const GalleryModule: React.FC<{ 
   moduleId: string, 
   settingsValues: Record<string, any>,
@@ -138,8 +162,9 @@ export const GalleryModule: React.FC<{
   const columns = Math.max(1, parseNumSafe(getVal(null, 'columns', 3), 3));
   const gap = parseNumSafe(getVal(null, 'gap', 20), 20);
   const paddingY = parseNumSafe(getVal(null, 'padding_y', 100), 100);
-  const darkMode = getVal(null, 'dark_mode', false);
-  const bgColor = getVal(null, 'bg_color', darkMode ? '#0F172A' : '#FFFFFF');
+  const darkMode = toBoolean(getVal(null, 'dark_mode', false));
+  const rawBgColor = getVal(null, 'bg_color', '#FFFFFF');
+  const bgColor = resolveThemeColor(rawBgColor, '#FFFFFF', '#0F172A', darkMode);
   const sectionGradient = getVal(null, 'section_gradient', false);
   const bgGradient = getVal(null, 'bg_gradient', 'linear-gradient(to bottom, #FFFFFF, #F8FAFC)');
   const imageFilter = getVal(null, 'image_filter', 'none');
@@ -172,6 +197,8 @@ export const GalleryModule: React.FC<{
   const subtitleHighlightColor = getVal(`${moduleId}_el_gallery_header`, 'subtitle_highlight_color', '#3B82F6');
   const subtitleHighlightGradient = getVal(`${moduleId}_el_gallery_header`, 'subtitle_highlight_gradient', 'linear-gradient(to right, #3B82F6, #2563EB)');
   const subtitleHighlightBold = getVal(`${moduleId}_el_gallery_header`, 'subtitle_highlight_bold', true);
+  const headerTitleColor = resolveThemeColor(undefined, '#0F172A', '#FFFFFF', darkMode);
+  const headerSubtitleColor = resolveThemeColor(undefined, '#64748B', '#94A3B8', darkMode);
 
   // Element: Image Style
   const radius = getVal(`${moduleId}_el_gallery_item`, 'radius', 16);
@@ -258,7 +285,7 @@ export const GalleryModule: React.FC<{
             className="mb-4 leading-tight"
             style={{ 
               ...getTypographyStyle(headerTitleSize as any, headerTitleWeight, headerAlign),
-              color: darkMode ? '#FFFFFF' : '#0F172A'
+              color: headerTitleColor
             }}
           >
             <InlineEditableText
@@ -282,7 +309,7 @@ export const GalleryModule: React.FC<{
               className="max-w-2xl text-lg leading-relaxed"
               style={{ 
                 ...getTypographyStyle(headerSubtitleSize as any, headerSubtitleWeight, headerAlign),
-                color: darkMode ? '#94A3B8' : '#64748B' 
+                color: headerSubtitleColor 
               }}
             >
               <InlineEditableText

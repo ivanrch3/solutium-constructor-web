@@ -55,6 +55,24 @@ import { logDebug } from '../../../utils/debug';
 
 import { GLOBAL_ANIMATIONS, getGlobalAnimation } from '../../../constants/animations';
 
+const toBoolean = (value: unknown) => {
+  return value === true || value === 'true' || value === 1 || value === '1';
+};
+
+const resolveThemeColor = (
+  value: string | undefined,
+  lightDefault: string,
+  darkDefault: string,
+  darkMode: boolean
+) => {
+  const safeValue = String(value || '').trim();
+  const safeLight = String(lightDefault || '').trim().toLowerCase();
+
+  if (!darkMode) return safeValue || lightDefault;
+  if (!safeValue || safeValue.toLowerCase() === safeLight) return darkDefault;
+  return safeValue;
+};
+
 export const PricingModule: React.FC<{ 
   moduleId: string, 
   settingsValues: Record<string, any>,
@@ -71,8 +89,9 @@ export const PricingModule: React.FC<{
   // Global Settings
   const columns = parseNumSafe(getVal(null, 'columns', 3), 3);
   const gap = parseNumSafe(getVal(null, 'gap', 32), 32);
-  const darkMode = getVal(null, 'dark_mode', false);
-  const bgColor = getVal(null, 'bg_color', darkMode ? '#0F172A' : '#F8FAFC');
+  const darkMode = toBoolean(getVal(null, 'dark_mode', false));
+  const rawBgColor = getVal(null, 'bg_color', '#F8FAFC');
+  const bgColor = resolveThemeColor(rawBgColor, '#F8FAFC', '#0F172A', darkMode);
   const sectionGradient = getVal(null, 'section_gradient', false);
   const bgGradient = getVal(null, 'bg_gradient', 'linear-gradient(to bottom, #F8FAFC, #FFFFFF)');
   const entranceAnim = getVal(null, 'entrance_anim', 'slide-up');
@@ -104,32 +123,42 @@ export const PricingModule: React.FC<{
   const subtitleHighlightColor = getVal(`${moduleId}_el_pricing_header`, 'subtitle_highlight_color', '#3B82F6');
   const subtitleHighlightGradient = getVal(`${moduleId}_el_pricing_header`, 'subtitle_highlight_gradient', 'linear-gradient(90deg, #3B82F6 0%, #8B5CF6 100%)');
   const subtitleHighlightBold = getVal(`${moduleId}_el_pricing_header`, 'subtitle_highlight_bold', true);
+  const headerTitleColor = resolveThemeColor(undefined, '#0F172A', '#FFFFFF', darkMode);
+  const headerSubtitleColor = resolveThemeColor(undefined, '#64748B', '#94A3B8', darkMode);
 
   // Element: Toggle
   const showToggle = getVal(`${moduleId}_el_pricing_toggle`, 'show_toggle', true);
   const discountLabel = getVal(`${moduleId}_el_pricing_toggle`, 'discount_label', '-20%');
-  const toggleBg = darkMode ? '#1E293B' : getVal(`${moduleId}_el_pricing_toggle`, 'toggle_bg', '#F1F5F9');
-  const activeBg = darkMode ? '#334155' : getVal(`${moduleId}_el_pricing_toggle`, 'active_bg', '#FFFFFF');
-  const activeColor = darkMode ? '#FFFFFF' : getVal(`${moduleId}_el_pricing_toggle`, 'active_color', '#0F172A');
+  const rawToggleBg = getVal(`${moduleId}_el_pricing_toggle`, 'toggle_bg', '#F1F5F9');
+  const toggleBg = resolveThemeColor(rawToggleBg, '#F1F5F9', '#1E293B', darkMode);
+  const rawActiveBg = getVal(`${moduleId}_el_pricing_toggle`, 'active_bg', '#FFFFFF');
+  const activeBg = resolveThemeColor(rawActiveBg, '#FFFFFF', '#334155', darkMode);
+  const rawActiveColor = getVal(`${moduleId}_el_pricing_toggle`, 'active_color', '#0F172A');
+  const activeColor = resolveThemeColor(rawActiveColor, '#0F172A', '#FFFFFF', darkMode);
 
   // Element: Card
-  const cardBg = getVal(`${moduleId}_el_pricing_card`, 'card_bg', '#FFFFFF');
+  const rawCardBg = getVal(`${moduleId}_el_pricing_card`, 'card_bg', '#FFFFFF');
+  const cardBg = resolveThemeColor(rawCardBg, '#FFFFFF', '#1E293B', darkMode);
   const cardRadius = parseNumSafe(getVal(`${moduleId}_el_pricing_card`, 'card_radius', 32), 32);
   const highlightColor = getVal(`${moduleId}_el_pricing_card`, 'highlight_color', 'var(--primary-color)');
   const showShadow = getVal(`${moduleId}_el_pricing_card`, 'show_shadow', true);
   const hoverEffect = getVal(`${moduleId}_el_pricing_card`, 'hover_effect', 'lift');
   const glassMode = getVal(`${moduleId}_el_pricing_card`, 'glass_mode', false);
+  const planTitleColor = resolveThemeColor(undefined, '#0F172A', '#FFFFFF', darkMode);
+  const planDescColor = resolveThemeColor(undefined, '#64748B', '#94A3B8', darkMode);
 
   // Element: Price
   const priceSize = getVal(`${moduleId}_el_pricing_price`, 'price_size', 't1');
   const priceWeight = getVal(`${moduleId}_el_pricing_price`, 'price_weight', 'black');
   const currencySymbol = getVal(`${moduleId}_el_pricing_price`, 'currency_symbol', '$');
-  const priceColor = darkMode ? '#FFFFFF' : getVal(`${moduleId}_el_pricing_price`, 'price_color', '#0F172A');
+  const rawPriceColor = getVal(`${moduleId}_el_pricing_price`, 'price_color', '#0F172A');
+  const priceColor = resolveThemeColor(rawPriceColor, '#0F172A', '#FFFFFF', darkMode);
 
   // Element: Features
   const featSize = getVal(`${moduleId}_el_pricing_features`, 'feat_size', 'p');
   const featWeight = getVal(`${moduleId}_el_pricing_features`, 'feat_weight', 'normal');
-  const featColor = darkMode ? '#94A3B8' : getVal(`${moduleId}_el_pricing_features`, 'feat_color', '#475569');
+  const rawFeatColor = getVal(`${moduleId}_el_pricing_features`, 'feat_color', '#475569');
+  const featColor = resolveThemeColor(rawFeatColor, '#475569', '#94A3B8', darkMode);
   const iconType = getVal(`${moduleId}_el_pricing_features`, 'icon_type', 'check');
   const iconColor = getVal(`${moduleId}_el_pricing_features`, 'icon_color', 'var(--primary-color)');
   const showNegative = getVal(`${moduleId}_el_pricing_features`, 'show_negative', true);
@@ -284,7 +313,7 @@ export const PricingModule: React.FC<{
             className="mb-4 leading-tight"
             style={{ 
               ...getTypographyStyle(headerTitleSize as any, headerTitleWeight, headerAlign),
-              color: darkMode ? '#FFFFFF' : '#0F172A'
+              color: headerTitleColor
             }}
           >
             <InlineEditableText
@@ -308,7 +337,7 @@ export const PricingModule: React.FC<{
               className="text-lg max-w-2xl leading-relaxed"
               style={{ 
                 ...getTypographyStyle(headerSubtitleSize as any, headerSubtitleWeight, headerAlign),
-                color: darkMode ? '#94A3B8' : '#64748B' 
+                color: headerSubtitleColor 
               }}
             >
               <InlineEditableText
@@ -392,7 +421,7 @@ export const PricingModule: React.FC<{
                 }}
                 className={`relative flex flex-col h-full transition-all duration-500 group p-6 @md:p-10 ${plan.highlight ? 'z-10' : 'z-1'} cursor-pointer`}
                 style={{
-                  backgroundColor: glassMode ? (darkMode ? 'rgba(30,41,59,0.7)' : 'rgba(255,255,255,0.7)') : (darkMode ? '#1E293B' : cardBg),
+                  backgroundColor: glassMode ? (darkMode ? 'rgba(30,41,59,0.7)' : 'rgba(255,255,255,0.7)') : cardBg,
                   backdropFilter: glassMode ? 'blur(12px)' : 'none',
                   borderRadius: `${cardRadius}px`,
                   boxShadow: showShadow && !darkMode ? (plan.highlight ? `0 25px 60px -15px ${highlightColor}25` : '0 10px 40px -10px rgba(0,0,0,0.04)') : 'none',
@@ -417,7 +446,7 @@ export const PricingModule: React.FC<{
                   </div>
                   <h3 
                     className="text-2xl font-black mb-2"
-                    style={{ color: darkMode ? '#FFFFFF' : '#0F172A' }}
+                    style={{ color: planTitleColor }}
                   >
                     <InlineEditableText
                       moduleId={moduleId}
@@ -434,7 +463,7 @@ export const PricingModule: React.FC<{
                   </h3>
                   <p 
                     className="text-sm leading-relaxed"
-                    style={{ color: darkMode ? '#94A3B8' : '#64748B' }}
+                    style={{ color: planDescColor }}
                   >
                     <InlineEditableText
                       moduleId={moduleId}

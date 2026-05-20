@@ -7,6 +7,21 @@ import { InlineEditableText } from '../InlineEditableText';
 import { useEditorStore } from '../../../store/editorStore';
 import { resolveFooterSocialLinks } from '../../../utils/socialUtils';
 
+const toBoolean = (value: unknown) => value === true || value === 'true' || value === 1 || value === '1';
+
+const resolveThemeColor = (
+  value: string | undefined,
+  lightDefault: string,
+  darkDefault: string,
+  darkMode: boolean
+) => {
+  const safeValue = String(value || '').trim();
+  const safeLight = String(lightDefault || '').trim().toLowerCase();
+  if (!darkMode) return safeValue || lightDefault;
+  if (!safeValue || safeValue.toLowerCase() === safeLight) return darkDefault;
+  return safeValue;
+};
+
 export const FooterModule: React.FC<{ 
   moduleId: string, 
   settingsValues: Record<string, any>,
@@ -22,17 +37,23 @@ export const FooterModule: React.FC<{
   // Global Settings
   const paddingY = parseFloat(getVal(null, 'padding_y', 80)) || 80;
   const maxWidth = parseFloat(getVal(null, 'max_width', 1400)) || 1400;
-  const darkMode = getVal(null, 'dark_mode', false);
-  const bgColor = getVal(null, 'bg_color', darkMode ? '#0F172A' : '#F8FAFC');
-  const textColor = darkMode ? '#94A3B8' : getVal(null, 'text_color', '#475569');
+  const darkMode = toBoolean(getVal(null, 'dark_mode', false));
+  const rawBgColor = getVal(null, 'bg_color', '#F8FAFC');
+  const bgColor = resolveThemeColor(rawBgColor, '#F8FAFC', '#0F172A', darkMode);
+  const rawTextColor = getVal(null, 'text_color', '#475569');
+  const textColor = resolveThemeColor(rawTextColor, '#475569', '#94A3B8', darkMode);
   const borderTop = getVal(null, 'border_top', true);
-  const borderColor = darkMode ? 'rgba(255,255,255,0.1)' : getVal(null, 'border_color', '#E2E8F0');
+  const rawBorderColor = getVal(null, 'border_color', '#E2E8F0');
+  const borderColor = resolveThemeColor(rawBorderColor, '#E2E8F0', 'rgba(255,255,255,0.1)', darkMode);
+  const sectionTitleColor = resolveThemeColor(undefined, '#0F172A', '#FFFFFF', darkMode);
 
   // Element: Brand
   const showLogo = getVal(`${moduleId}_el_footer_brand`, 'show_logo', true);
-  const bio = getVal(`${moduleId}_el_footer_brand`, 'bio', 'Creamos soluciones digitales innovadoras para impulsar el crecimiento de tu negocio en la era moderna.');
+  const defaultBio = 'Creamos soluciones digitales innovadoras para impulsar el crecimiento de tu negocio en la era moderna.';
+  const bio = getVal(`${moduleId}_el_footer_brand`, 'bio', defaultBio);
   const logoImg = getVal(`${moduleId}_el_footer_brand`, 'logo_img', '');
   const logoWidth = parseFloat(getVal(`${moduleId}_el_footer_brand`, 'logo_width', 120)) || 120;
+  const resolvedLogo = logoImg || logoUrl || logoWhiteUrl || '';
 
   // Element: Nav
   const columns = getVal(`${moduleId}_el_footer_nav`, 'columns', [
@@ -49,7 +70,8 @@ export const FooterModule: React.FC<{
   const project = (useEditorStore.getState() as any).project;
   const socialLinks = resolveFooterSocialLinks(rawSocialLinks, project?.socials, { debug: !isPreviewMode && (window as any).SOLUTIUM_DEBUG_RENDER, moduleId });
   
-  const iconColor = getVal(`${moduleId}_el_footer_social`, 'icon_color', '#64748B');
+  const rawIconColor = getVal(`${moduleId}_el_footer_social`, 'icon_color', '#64748B');
+  const iconColor = resolveThemeColor(rawIconColor, '#64748B', '#94A3B8', darkMode);
   const iconHover = getVal(`${moduleId}_el_footer_social`, 'icon_hover', 'var(--primary-color)');
 
   // Element: Contact
@@ -58,6 +80,12 @@ export const FooterModule: React.FC<{
   const phone = getVal(`${moduleId}_el_footer_contact`, 'phone', '+1 (555) 000-0000');
   const email = getVal(`${moduleId}_el_footer_contact`, 'email', 'hola@mimarca.com');
   const contactIconColor = getVal(`${moduleId}_el_footer_contact`, 'icon_color', 'var(--primary-color)');
+  const resolvedBio = (bio === defaultBio && (project?.industry || project?.name))
+    ? (project?.industry || `Servicios profesionales de ${project?.name}`)
+    : bio;
+  const resolvedAddress = (address === 'Calle InnovaciÃ³n 123, Ciudad Digital' && project?.address) ? project.address : address;
+  const resolvedPhone = (phone === '+1 (555) 000-0000' && project?.whatsapp) ? project.whatsapp : phone;
+  const resolvedEmail = (email === 'hola@mimarca.com' && project?.email) ? project.email : email;
 
   // Element: Newsletter
   const showNewsletter = getVal(`${moduleId}_el_footer_newsletter`, 'show_newsletter', true);
@@ -65,7 +93,8 @@ export const FooterModule: React.FC<{
   const newsDesc = getVal(`${moduleId}_el_footer_newsletter`, 'news_desc', 'Recibe las últimas noticias y ofertas.');
   const newsPlaceholder = getVal(`${moduleId}_el_footer_newsletter`, 'placeholder', 'Tu email');
   const newsBtnText = getVal(`${moduleId}_el_footer_newsletter`, 'btn_text', 'Unirse');
-  const newsInputBg = darkMode ? '#1E293B' : getVal(`${moduleId}_el_footer_newsletter`, 'input_bg', '#FFFFFF');
+  const rawNewsInputBg = getVal(`${moduleId}_el_footer_newsletter`, 'input_bg', '#FFFFFF');
+  const newsInputBg = resolveThemeColor(rawNewsInputBg, '#FFFFFF', '#1E293B', darkMode);
   const newsBtnBg = getVal(`${moduleId}_el_footer_newsletter`, 'btn_bg', 'var(--primary-color)');
   const newsBtnColor = getVal(`${moduleId}_el_footer_newsletter`, 'btn_color', '#FFFFFF');
 
@@ -118,16 +147,16 @@ export const FooterModule: React.FC<{
             <div className="space-y-6">
               {showLogo && (
                 <div className="flex-shrink-0">
-                  {(darkMode ? (logoWhiteUrl || logoImg) : (logoUrl || logoImg)) ? (
+                  {resolvedLogo ? (
                     <img 
-                      src={darkMode ? (logoWhiteUrl || logoImg) : (logoUrl || logoImg)} 
+                      src={resolvedLogo} 
                       alt="Logo" 
                       style={{ width: `${logoWidth}px` }} 
                       className="h-auto object-contain"
                       referrerPolicy="no-referrer"
                     />
                   ) : (
-                    <span className="font-black tracking-tighter text-xl" style={{ color: darkMode ? '#FFFFFF' : 'inherit' }}>
+                    <span className="font-black tracking-tighter text-xl" style={{ color: sectionTitleColor }}>
                       MI MARCA
                     </span>
                   )}
@@ -138,7 +167,7 @@ export const FooterModule: React.FC<{
                   moduleId={moduleId}
                   elementId={`${moduleId}_el_footer_brand`}
                   settingId="bio"
-                  value={bio}
+                    value={resolvedBio}
                   isPreviewMode={isPreviewMode}
                 />
               </p>
@@ -155,7 +184,7 @@ export const FooterModule: React.FC<{
                       moduleId={moduleId}
                       elementId={`${moduleId}_el_footer_contact`}
                       settingId="address"
-                      value={address}
+                      value={resolvedAddress}
                       isPreviewMode={isPreviewMode}
                     />
                   </span>
@@ -169,7 +198,7 @@ export const FooterModule: React.FC<{
                       moduleId={moduleId}
                       elementId={`${moduleId}_el_footer_contact`}
                       settingId="phone"
-                      value={phone}
+                      value={resolvedPhone}
                       isPreviewMode={isPreviewMode}
                     />
                   </span>
@@ -183,7 +212,7 @@ export const FooterModule: React.FC<{
                       moduleId={moduleId}
                       elementId={`${moduleId}_el_footer_contact`}
                       settingId="email"
-                      value={email}
+                      value={resolvedEmail}
                       isPreviewMode={isPreviewMode}
                     />
                   </span>
@@ -217,7 +246,7 @@ export const FooterModule: React.FC<{
                   className="uppercase tracking-widest"
                   style={{ 
                     ...getTypographyStyle(titleSize as any, titleWeight),
-                    color: darkMode ? '#FFFFFF' : 'inherit' 
+                      color: sectionTitleColor 
                   }}
                 >
                   <TextRenderer 
@@ -252,7 +281,7 @@ export const FooterModule: React.FC<{
           {showNewsletter && (
             <div className="@md:col-span-3 space-y-6">
               <div className="space-y-2">
-                <h4 className="font-bold uppercase tracking-widest" style={{ fontSize: `${TYPOGRAPHY_SCALE[titleSize as keyof typeof TYPOGRAPHY_SCALE]?.fontSize || 14}px`, color: darkMode ? '#FFFFFF' : 'inherit' }}>
+                <h4 className="font-bold uppercase tracking-widest" style={{ fontSize: `${TYPOGRAPHY_SCALE[titleSize as keyof typeof TYPOGRAPHY_SCALE]?.fontSize || 14}px`, color: sectionTitleColor }}>
                   <InlineEditableText
                     moduleId={moduleId}
                     elementId={`${moduleId}_el_footer_newsletter`}

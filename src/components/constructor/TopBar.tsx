@@ -1,7 +1,6 @@
 import React from 'react';
 import { 
   RotateCcw, 
-  Eye, 
   Monitor, 
   Tablet, 
   Smartphone, 
@@ -10,16 +9,13 @@ import {
   Check, 
   X, 
   Save, 
-  Send,
-  Image as ImageIcon
+  Send
 } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface TopBarProps {
   onSave: () => void;
   onPublish: () => void;
-  onReload: () => void;
-  onUpdatePreview?: () => void;
   logoUrl: string | null;
   viewport: 'desktop' | 'tablet' | 'mobile';
   setViewport: (v: 'desktop' | 'tablet' | 'mobile') => void;
@@ -38,8 +34,6 @@ interface TopBarProps {
 export const TopBar: React.FC<TopBarProps> = ({ 
   onSave, 
   onPublish, 
-  onReload,
-  onUpdatePreview,
   logoUrl,
   viewport,
   setViewport,
@@ -47,7 +41,6 @@ export const TopBar: React.FC<TopBarProps> = ({
   setIsFullscreen,
   saveStatus,
   publishStatus,
-  previewStatus = 'idle',
   isMobile,
   isPreviewMode,
   hasUnsavedChanges = false,
@@ -110,37 +103,6 @@ export const TopBar: React.FC<TopBarProps> = ({
       <div className="flex items-center gap-2 md:gap-3 border-r border-border/60 pr-2 md:pr-4">
         {!isMobile && (
           <div className="flex items-center gap-1">
-            <button 
-              onClick={onReload}
-              className="p-2 text-text/60 hover:text-primary hover:bg-secondary rounded-lg transition-all flex items-center gap-2"
-              title="Recargar Contexto (Resuelve problemas de sesión/token)"
-            >
-              <RotateCcw size={16} />
-              <span className="text-[10px] font-bold uppercase tracking-tight hidden lg:block">Recargar Contexto</span>
-            </button>
-            {onUpdatePreview && (
-              <button 
-                onClick={onUpdatePreview}
-                disabled={previewStatus === 'loading'}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-xl transition-all relative ${
-                  previewStatus === 'success' ? 'text-green-600 bg-green-50 animate-pulse' : 
-                  previewStatus === 'error' ? 'text-red-600 bg-red-50' : 
-                  previewStatus === 'loading' ? 'bg-secondary text-primary' :
-                  'text-text/60 hover:text-primary hover:bg-secondary border border-transparent hover:border-primary/20'
-                }`}
-                title="Actualizar Vista Previa (Screenshot)"
-              >
-                {previewStatus === 'loading' ? (
-                  <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: "linear" }}>
-                    <RotateCcw size={16} />
-                  </motion.div>
-                ) : <ImageIcon size={16} />}
-                <span className="text-[10px] font-bold uppercase tracking-tight hidden md:block">
-                  {previewStatus === 'loading' ? 'Generando preview...' : 'Actualizar Preview'}
-                </span>
-                {previewStatus === 'success' && <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white shadow-sm" />}
-              </button>
-            )}
             <button 
               onClick={() => setIsFullscreen(!isFullscreen)}
               className={`p-2 rounded-lg transition-all ${isFullscreen ? 'text-primary bg-primary/10' : 'text-text/60 hover:text-primary hover:bg-secondary'}`}

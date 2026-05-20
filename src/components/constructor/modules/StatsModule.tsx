@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { motion, useInView, useSpring, useTransform, animate, useScroll } from 'motion/react';
+import { motion, useInView, useSpring, useTransform, animate } from 'motion/react';
 import * as LucideIcons from 'lucide-react';
 import { Star } from 'lucide-react';
 import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
 import { TextRenderer } from '../TextRenderer';
-import { ParallaxBackground } from '../ParallaxBackground';
+import { ParallaxBackground, useParallaxScrollProgress } from '../ParallaxBackground';
 import { parseNumSafe, isDarkColor } from '../utils';
 
 const CountUp = ({ value, duration = 2, easing = 'spring' }: { value: number | string, duration?: number, easing?: string }) => {
@@ -185,19 +185,41 @@ export const StatsModule: React.FC<{
     return settingsValues[key] !== undefined ? settingsValues[key] : defaultValue;
   };
 
+  const toBoolean = (value: unknown) => {
+    return value === true || value === 'true' || value === 1 || value === '1';
+  };
+
+  const resolveThemeColor = (
+    value: string | undefined,
+    lightDefault: string,
+    darkDefault: string,
+    darkMode: boolean
+  ) => {
+    const safeValue = String(value || '').trim();
+    const safeLight = String(lightDefault || '').trim().toLowerCase();
+
+    if (!darkMode) {
+      return safeValue || lightDefault;
+    }
+
+    if (!safeValue || safeValue.toLowerCase() === safeLight) {
+      return darkDefault;
+    }
+
+    return safeValue;
+  };
+
   const containerRef = useRef(null);
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start end", "end start"]
-  });
+  const { scrollYProgress } = useParallaxScrollProgress(containerRef);
 
   // Global Settings
   const layout = getVal(null, 'layout', 'grid');
   const columns = parseNumSafe(getVal(null, 'columns', 4), 4);
   const gap = parseNumSafe(getVal(null, 'gap', 30), 30);
   const paddingY = parseNumSafe(getVal(null, 'padding_y', 100), 100);
-  const darkMode = getVal(null, 'dark_mode', false);
-  const bgColor = getVal(null, 'bg_color', darkMode ? '#0F172A' : '#FFFFFF');
+  const darkMode = toBoolean(getVal(null, 'dark_mode', false));
+  const rawBgColor = getVal(null, 'bg_color', '#FFFFFF');
+  const bgColor = resolveThemeColor(rawBgColor, '#FFFFFF', '#0F172A', darkMode);
   const sectionGradient = getVal(null, 'section_gradient', false);
   const bgGradient = getVal(null, 'bg_gradient', 'linear-gradient(to bottom, #FFFFFF, #F8FAFC)');
   const entranceAnim = getVal(null, 'entrance_anim', 'slide-up');
@@ -243,16 +265,24 @@ export const StatsModule: React.FC<{
   const subtitleHighlightBold = getVal(`${moduleId}_el_stats_header`, 'subtitle_highlight_bold', true);
 
   const isBgDark = isDarkColor(bgColor);
-  const headerTitleColor = (darkMode || isBgDark) ? '#FFFFFF' : undefined;
+  const effectiveDarkMode = darkMode || isBgDark;
+  const rawHeaderTitleColor = getVal(`${moduleId}_el_stats_header`, 'title_color', '#0F172A');
+  const rawHeaderSubtitleColor = getVal(`${moduleId}_el_stats_header`, 'subtitle_color', '#64748B');
+  const headerTitleColor = resolveThemeColor(rawHeaderTitleColor, '#0F172A', '#FFFFFF', effectiveDarkMode);
+  const headerSubtitleColor = resolveThemeColor(rawHeaderSubtitleColor, '#64748B', '#94A3B8', effectiveDarkMode);
 
   // Element: Stat Item Style
-  const cardBg = getVal(`${moduleId}_el_stat_item`, 'card_bg', darkMode ? '#1E293B' : 'transparent');
+  const rawCardBg = getVal(`${moduleId}_el_stat_item`, 'card_bg', 'transparent');
+  const cardBg = resolveThemeColor(rawCardBg, 'transparent', '#1E293B', effectiveDarkMode);
   const cardRadius = parseNumSafe(getVal(`${moduleId}_el_stat_item`, 'card_radius', 24), 24);
   const showBorder = getVal(`${moduleId}_el_stat_item`, 'show_border', false);
   const cardShadow = getVal(`${moduleId}_el_stat_item`, 'card_shadow', 'none');
-  const numberColor = getVal(`${moduleId}_el_stat_item`, 'number_color', (darkMode || isBgDark) ? '#FFFFFF' : '#0F172A');
-  const labelColor = getVal(`${moduleId}_el_stat_item`, 'label_color', (darkMode || isBgDark) ? '#94A3B8' : '#64748B');
-  const descColor = getVal(`${moduleId}_el_stat_item`, 'desc_color', (darkMode || isBgDark) ? '#64748B' : '#94A3B8');
+  const rawNumberColor = getVal(`${moduleId}_el_stat_item`, 'number_color', '#0F172A');
+  const rawLabelColor = getVal(`${moduleId}_el_stat_item`, 'label_color', '#64748B');
+  const rawDescColor = getVal(`${moduleId}_el_stat_item`, 'desc_color', '#94A3B8');
+  const numberColor = resolveThemeColor(rawNumberColor, '#0F172A', '#FFFFFF', effectiveDarkMode);
+  const labelColor = resolveThemeColor(rawLabelColor, '#64748B', '#94A3B8', effectiveDarkMode);
+  const descColor = resolveThemeColor(rawDescColor, '#94A3B8', '#64748B', effectiveDarkMode);
   const numberSize = getVal(`${moduleId}_el_stat_item`, 'number_size', 't1');
   const numberWeight = getVal(`${moduleId}_el_stat_item`, 'number_weight', 'black');
   const hoverEffect = getVal(`${moduleId}_el_stat_item`, 'hover_effect', 'scale');
@@ -262,7 +292,8 @@ export const StatsModule: React.FC<{
   const iconSize = parseNumSafe(getVal(`${moduleId}_el_stat_icon`, 'icon_size', 24), 24);
   const iconShape = getVal(`${moduleId}_el_stat_icon`, 'icon_shape', 'squircle');
   const iconColor = getVal(`${moduleId}_el_stat_icon`, 'icon_color', 'var(--primary-color)');
-  const iconBg = darkMode ? 'rgba(255, 255, 255, 0.05)' : getVal(`${moduleId}_el_stat_icon`, 'icon_bg', 'rgba(59, 130, 246, 0.1)');
+  const rawIconBg = getVal(`${moduleId}_el_stat_icon`, 'icon_bg', 'rgba(59, 130, 246, 0.1)');
+  const iconBg = resolveThemeColor(rawIconBg, 'rgba(59, 130, 246, 0.1)', 'rgba(255, 255, 255, 0.05)', effectiveDarkMode);
 
   const getTypographyStyle = (sizeToken: string, weightToken: string, alignToken?: string) => {
     const size = TYPOGRAPHY_SCALE[sizeToken as keyof typeof TYPOGRAPHY_SCALE] || TYPOGRAPHY_SCALE.p;
@@ -341,7 +372,7 @@ export const StatsModule: React.FC<{
               className="mb-4 leading-tight"
               style={{ 
                 ...getTypographyStyle(headerTitleSize as any, headerTitleWeight, headerAlign),
-                color: darkMode ? '#FFFFFF' : getVal(`${moduleId}_el_stats_header`, 'title_color', '#0F172A')
+                color: headerTitleColor
               }}
             >
               <InlineEditableText
@@ -365,7 +396,7 @@ export const StatsModule: React.FC<{
                 className="max-w-2xl text-lg leading-relaxed"
                 style={{ 
                   ...getTypographyStyle(headerSubtitleSize as any, headerSubtitleWeight, headerAlign),
-                  color: darkMode ? '#94A3B8' : getVal(`${moduleId}_el_stats_header`, 'subtitle_color', '#64748B') 
+                  color: headerSubtitleColor 
                 }}
               >
                 <InlineEditableText

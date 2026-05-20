@@ -53,8 +53,8 @@ const FeatureCard = ({
     rel: feature.link_target === '_blank' ? 'noopener noreferrer' : undefined 
   } : {};
 
-  const finalCardBg = darkMode ? '#1E293B' : cardBg;
-  const finalCardBorder = darkMode ? 'rgba(255,255,255,0.1)' : cardBorder;
+  const finalCardBg = cardBg;
+  const finalCardBorder = cardBorder;
   const finalTitleColor = darkMode ? '#FFFFFF' : undefined;
   const finalDescColor = darkMode ? '#94A3B8' : '#64748B';
 
@@ -285,6 +285,30 @@ export const FeaturesModule: React.FC<{
     return settingsValues[key] !== undefined ? settingsValues[key] : defaultValue;
   };
 
+  const toBoolean = (value: unknown) => {
+    return value === true || value === 'true' || value === 1 || value === '1';
+  };
+
+  const resolveThemeColor = (
+    value: string | undefined,
+    lightDefault: string,
+    darkDefault: string,
+    darkMode: boolean
+  ) => {
+    const safeValue = String(value || '').trim();
+    const safeLight = String(lightDefault || '').trim().toLowerCase();
+
+    if (!darkMode) {
+      return safeValue || lightDefault;
+    }
+
+    if (!safeValue || safeValue.toLowerCase() === safeLight) {
+      return darkDefault;
+    }
+
+    return safeValue;
+  };
+
   const parseF = (val: any, fallback: number) => {
     const f = parseFloat(val);
     return isNaN(f) ? fallback : f;
@@ -295,8 +319,9 @@ export const FeaturesModule: React.FC<{
   const columns = Math.max(1, parseInt(getVal(null, 'columns', 3)) || 3);
   const gap = parseF(getVal(null, 'gap', 32), 32);
   const paddingY = parseF(getVal(null, 'padding_y', 100), 100);
-  const darkMode = getVal(null, 'dark_mode', false);
-  const bgColor = getVal(null, 'bg_color', darkMode ? '#0F172A' : '#FFFFFF');
+  const darkMode = toBoolean(getVal(null, 'dark_mode', false));
+  const rawBgColor = getVal(null, 'bg_color', '#FFFFFF');
+  const bgColor = resolveThemeColor(rawBgColor, '#FFFFFF', '#0F172A', darkMode);
   const sectionGradient = getVal(null, 'section_gradient', false);
   const bgGradient = getVal(null, 'bg_gradient', 'linear-gradient(to bottom, #FFFFFF, #F8FAFC)');
   const staggerAnim = getVal(null, 'stagger_anim', true);
@@ -317,6 +342,7 @@ export const FeaturesModule: React.FC<{
   const headerMarginB = parseF(getVal(`${moduleId}_el_features_header`, 'margin_b', 80), 80);
 
   const headerTitleColor = darkMode ? '#FFFFFF' : undefined;
+  const headerSubtitleColor = darkMode ? '#94A3B8' : '#64748B';
 
   // Highlight Settings
   const titleHighlightType = getVal(`${moduleId}_el_features_header`, 'title_highlight_type', 'gradient');
@@ -325,8 +351,10 @@ export const FeaturesModule: React.FC<{
   const titleHighlightBold = getVal(`${moduleId}_el_features_header`, 'title_highlight_bold', true);
 
   // Card Style
-  const cardBg = getVal(`${moduleId}_el_feature_card`, 'card_bg', '#FFFFFF');
-  const cardBorder = getVal(`${moduleId}_el_feature_card`, 'card_border', 'rgba(0,0,0,0.05)');
+  const rawCardBg = getVal(`${moduleId}_el_feature_card`, 'card_bg', '#FFFFFF');
+  const cardBg = resolveThemeColor(rawCardBg, '#FFFFFF', '#1E293B', darkMode);
+  const rawCardBorder = getVal(`${moduleId}_el_feature_card`, 'card_border', 'rgba(0,0,0,0.05)');
+  const cardBorder = resolveThemeColor(rawCardBorder, 'rgba(0,0,0,0.05)', 'rgba(255,255,255,0.1)', darkMode);
   const cardShadow = getVal(`${moduleId}_el_feature_card`, 'card_shadow', 'sm');
   const cardPadding = getVal(`${moduleId}_el_feature_card`, 'card_padding', 32);
   const cardRadius = getVal(`${moduleId}_el_feature_card`, 'card_radius', 24);
@@ -340,7 +368,8 @@ export const FeaturesModule: React.FC<{
   // Icon Style
   const iconSize = getVal(`${moduleId}_el_feature_card`, 'icon_size', 24);
   const iconColor = getVal(`${moduleId}_el_feature_card`, 'icon_color', '#3B82F6');
-  const iconBg = getVal(`${moduleId}_el_feature_card`, 'icon_bg', 'rgba(59, 130, 246, 0.1)');
+  const rawIconBg = getVal(`${moduleId}_el_feature_card`, 'icon_bg', 'rgba(59, 130, 246, 0.1)');
+  const iconBg = resolveThemeColor(rawIconBg, 'rgba(59, 130, 246, 0.1)', 'rgba(255,255,255,0.05)', darkMode);
   const iconRadius = getVal(`${moduleId}_el_feature_card`, 'icon_radius', 12);
   const iconStyle = getVal(`${moduleId}_el_feature_card`, 'icon_style', 'soft');
 
@@ -462,7 +491,7 @@ export const FeaturesModule: React.FC<{
               tagName="p"
               isPreviewMode={isPreviewMode}
               className="max-w-2xl text-lg leading-relaxed"
-              style={{ color: darkMode ? '#94A3B8' : '#64748B' }}
+              style={{ color: headerSubtitleColor }}
             />
           )}
         </div>

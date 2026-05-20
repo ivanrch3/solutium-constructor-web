@@ -29,13 +29,38 @@ export const VideoModule: React.FC<{
     return settingsValues && settingsValues[key] !== undefined ? settingsValues[key] : defaultValue;
   };
 
+  const toBoolean = (value: unknown) => {
+    return value === true || value === 'true' || value === 1 || value === '1';
+  };
+
+  const resolveThemeColor = (
+    value: string | undefined,
+    lightDefault: string,
+    darkDefault: string,
+    darkMode: boolean
+  ) => {
+    const safeValue = String(value || '').trim();
+    const safeLight = String(lightDefault || '').trim().toLowerCase();
+
+    if (!darkMode) {
+      return safeValue || lightDefault;
+    }
+
+    if (!safeValue || safeValue.toLowerCase() === safeLight) {
+      return darkDefault;
+    }
+
+    return safeValue;
+  };
+
   // Global Settings
   const layout = getVal(null, 'layout', 'centered');
   const aspectRatio = getVal(null, 'aspect_ratio', '16/9');
   const paddingY = parseFloat(getVal(null, 'padding_y', 100)) || 100;
   const maxWidth = parseFloat(getVal(null, 'max_width', 1000)) || 1000;
-  const darkMode = getVal(null, 'dark_mode', false);
-  const bgColor = getVal(null, 'bg_color', darkMode ? '#0F172A' : '#FFFFFF');
+  const darkMode = toBoolean(getVal(null, 'dark_mode', false));
+  const rawBgColor = getVal(null, 'bg_color', '#FFFFFF');
+  const bgColor = resolveThemeColor(rawBgColor, '#FFFFFF', '#0F172A', darkMode);
   const sectionGradient = getVal(null, 'section_gradient', false);
   const bgGradient = getVal(null, 'bg_gradient', 'linear-gradient(to bottom, #FFFFFF, #F8FAFC)');
   const overlayColor = getVal(null, 'overlay_color', 'rgba(0,0,0,0.2)');
@@ -56,7 +81,8 @@ export const VideoModule: React.FC<{
   const controls = getVal(`${moduleId}_el_video_player`, 'controls', true);
   const radius = parseFloat(getVal(`${moduleId}_el_video_player`, 'radius', 24)) || 24;
   const shadow = getVal(`${moduleId}_el_video_player`, 'shadow', true);
-  const borderColor = darkMode ? 'rgba(255,255,255,0.1)' : getVal(`${moduleId}_el_video_player`, 'border_color', 'rgba(0,0,0,0.1)');
+  const rawBorderColor = getVal(`${moduleId}_el_video_player`, 'border_color', 'rgba(0,0,0,0.1)');
+  const borderColor = resolveThemeColor(rawBorderColor, 'rgba(0,0,0,0.1)', 'rgba(255,255,255,0.1)', darkMode);
   const useLightbox = getVal(`${moduleId}_el_video_player`, 'lightbox', false);
   const playButtonStyle = getVal(`${moduleId}_el_video_player`, 'play_button_style', 'pulse');
 
@@ -71,7 +97,9 @@ export const VideoModule: React.FC<{
   const titleWeight = getVal(`${moduleId}_el_video_text`, 'title_weight', 'bold');
   const subtitleSize = getVal(`${moduleId}_el_video_text`, 'subtitle_size', 'p');
   const subtitleWeight = getVal(`${moduleId}_el_video_text`, 'subtitle_weight', 'normal');
-  const titleColor = darkMode ? '#FFFFFF' : getVal(`${moduleId}_el_video_text`, 'title_color', '#0F172A');
+  const rawTitleColor = getVal(`${moduleId}_el_video_text`, 'title_color', '#0F172A');
+  const titleColor = resolveThemeColor(rawTitleColor, '#0F172A', '#FFFFFF', darkMode);
+  const subtitleColor = resolveThemeColor('#64748B', '#64748B', '#94A3B8', darkMode);
   const eyebrowColor = getVal(`${moduleId}_el_video_text`, 'eyebrow_color', 'var(--primary-color)');
   const marginB = parseFloat(getVal(`${moduleId}_el_video_text`, 'margin_b', 40)) || 40;
 
@@ -198,8 +226,6 @@ export const VideoModule: React.FC<{
   const renderTextContent = (isOverlay = false) => {
     if (!showText) return null;
     const colorClass = isOverlay ? 'text-white' : '';
-    const subColorClass = isOverlay ? 'text-white/80' : (darkMode ? 'text-slate-400' : 'text-slate-500');
-
     return (
       <div 
         className={`flex flex-col w-full ${textAlign === 'center' ? 'items-center text-center' : textAlign === 'right' ? 'items-end text-right' : 'items-start text-left'}`}
@@ -245,8 +271,11 @@ export const VideoModule: React.FC<{
         </h2>
         {subtitle && (
           <p 
-            className={`max-w-2xl text-lg mb-8 ${subColorClass}`}
-            style={getTypographyStyle(subtitleSize as any, subtitleWeight, textAlign)}
+            className={`max-w-2xl text-lg mb-8 ${isOverlay ? 'text-white/80' : ''}`}
+            style={{ 
+              ...getTypographyStyle(subtitleSize as any, subtitleWeight, textAlign),
+              color: isOverlay ? 'rgba(255,255,255,0.8)' : subtitleColor
+            }}
           >
             <InlineEditableText
               moduleId={moduleId}

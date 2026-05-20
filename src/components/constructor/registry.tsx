@@ -222,7 +222,7 @@ export const MENU_MODULE: WebModule = {
         { label: 'Fin', value: 'end' }
       ]},
       { id: 'gap', label: 'Espaciado entre items', type: 'range', defaultValue: 24, min: 0, max: 64, unit: 'px' },
-      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 20, min: 0, max: 100, unit: 'px' },
+      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 40, min: 0, max: 100, unit: 'px' },
       { id: 'desktop_hamburger', label: 'Usar Menú Hamburguesa en Escritorio', type: 'boolean', defaultValue: false }
     ],
     estilo: [
@@ -311,7 +311,7 @@ export const FOOTER_MODULE: WebModule = {
   globalGroups: ['estructura', 'estilo'],
   globalSettings: {
     estructura: [
-      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 80, min: 40, max: 160, unit: 'px' },
+      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 40, min: 40, max: 160, unit: 'px' },
       { id: 'max_width', label: 'Ancho Máximo', type: 'range', defaultValue: 1400, min: 1000, max: 1920, unit: 'px' }
     ],
     estilo: [
@@ -543,7 +543,7 @@ export const PRODUCTS_MODULE: WebModule = {
       ]},
       { id: 'columns', label: 'Columnas (Desktop)', type: 'range', defaultValue: 4, min: 1, max: 6 },
       { id: 'gap', label: 'Espaciado entre productos', type: 'range', defaultValue: 24, min: 0, max: 80, unit: 'px' },
-      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 100, min: 40, max: 200, unit: 'px' }
+      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 40, min: 40, max: 200, unit: 'px' }
     ],
     estilo: [
       { id: 'dark_mode', label: 'Modo Oscuro', type: 'boolean', defaultValue: false },
@@ -792,7 +792,13 @@ export const HERO_MODULE: WebModule = {
         { label: 'Mediana (60vh)', value: 'medium' },
         { label: 'Automática', value: 'auto' }
       ]},
-      { id: 'max_width', label: 'Ancho Máximo Contenido', type: 'range', defaultValue: 1200, min: 800, max: 1600, unit: 'px' }
+      { id: 'vertical_align', label: 'Alineación Vertical', type: 'select', defaultValue: 'start', options: [
+        { label: 'Superior', value: 'start' },
+        { label: 'Centro', value: 'center' },
+        { label: 'Inferior', value: 'end' }
+      ]},
+      { id: 'max_width', label: 'Ancho Máximo Contenido', type: 'range', defaultValue: 1200, min: 800, max: 1600, unit: 'px' },
+      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 40, min: 0, max: 200, unit: 'px' }
     ],
     estilo: [
       { id: 'dark_mode', label: 'Modo Oscuro', type: 'boolean', defaultValue: false },
@@ -951,7 +957,7 @@ export const FEATURES_MODULE: WebModule = {
       ]},
       { id: 'columns', label: 'Columnas (Grilla)', type: 'range', defaultValue: 3, min: 1, max: 4 },
       { id: 'gap', label: 'Espaciado entre Tarjetas', type: 'range', defaultValue: 32, min: 16, max: 80, unit: 'px' },
-      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 100, min: 40, max: 200, unit: 'px' }
+      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 40, min: 40, max: 200, unit: 'px' }
     ],
     estilo: [
       { id: 'dark_mode', label: 'Modo Oscuro', type: 'boolean', defaultValue: false },
@@ -1069,7 +1075,7 @@ export const ABOUT_MODULE: WebModule = {
         { label: 'Superpuesto (Overlapping)', value: 'overlapping' }
       ]},
       { id: 'content_width', label: 'Ancho Máximo Contenido', type: 'range', defaultValue: 1200, min: 800, max: 1600, unit: 'px' },
-      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 120, min: 40, max: 200, unit: 'px' }
+      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 40, min: 40, max: 200, unit: 'px' }
     ],
     estilo: [
       { id: 'dark_mode', label: 'Modo Oscuro', type: 'boolean', defaultValue: false },
@@ -1209,7 +1215,7 @@ export const PROCESS_MODULE: WebModule = {
       ]},
       { id: 'columns', label: 'Columnas (Horizontal)', type: 'range', defaultValue: 4, min: 2, max: 5 },
       { id: 'gap', label: 'Espaciado', type: 'range', defaultValue: 40, min: 20, max: 100, unit: 'px' },
-      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 120, min: 40, max: 200, unit: 'px' }
+      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 40, min: 40, max: 200, unit: 'px' }
     ],
     estilo: [
       { id: 'dark_mode', label: 'Modo Oscuro', type: 'boolean', defaultValue: false },
@@ -1344,7 +1350,7 @@ export const GALLERY_MODULE: WebModule = {
       ]},
       { id: 'columns', label: 'Columnas', type: 'range', defaultValue: 3, min: 1, max: 5 },
       { id: 'gap', label: 'Espaciado', type: 'range', defaultValue: 20, min: 0, max: 60, unit: 'px' },
-      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 100, min: 40, max: 200, unit: 'px' }
+      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 40, min: 40, max: 200, unit: 'px' }
     ],
     estilo: [
       { id: 'dark_mode', label: 'Modo Oscuro', type: 'boolean', defaultValue: false },
@@ -1511,7 +1517,7 @@ export const VIDEO_MODULE: WebModule = {
       { id: 'bg_color', label: 'Fondo de Sección', type: 'color', defaultValue: '#FFFFFF' },
       { id: 'section_gradient', label: 'Gradiente de Fondo', type: 'boolean', defaultValue: false },
       { id: 'bg_gradient', label: 'Gradiente Personalizado', type: 'gradient', defaultValue: 'linear-gradient(to bottom, #FFFFFF, #F8FAFC)', showIf: { settingId: 'section_gradient', value: true } },
-      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 100, min: 40, max: 200, unit: 'px' },
+      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 40, min: 40, max: 200, unit: 'px' },
       { id: 'max_width', label: 'Ancho Máximo Contenido', type: 'range', defaultValue: 1000, min: 600, max: 1400, unit: 'px' }
     ],
     multimedia: [
@@ -1619,7 +1625,7 @@ export const TESTIMONIALS_MODULE: WebModule = {
         ]},
         { id: 'columns', label: 'Columnas (Grid)', type: 'range', defaultValue: 3, min: 1, max: 4 },
         { id: 'gap', label: 'Espaciado', type: 'range', defaultValue: 30, min: 10, max: 60, unit: 'px' },
-        { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 100, min: 40, max: 200, unit: 'px' }
+        { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 40, min: 40, max: 200, unit: 'px' }
       ],
       estilo: [
         { id: 'dark_mode', label: 'Modo Oscuro', type: 'boolean', defaultValue: false },
@@ -1773,7 +1779,7 @@ export const STATS_MODULE: WebModule = {
       ]},
       { id: 'columns', label: 'Columnas (Desktop)', type: 'range', defaultValue: 4, min: 1, max: 6 },
       { id: 'gap', label: 'Espaciado', type: 'range', defaultValue: 30, min: 10, max: 60, unit: 'px' },
-      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 100, min: 40, max: 200, unit: 'px' }
+      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 40, min: 40, max: 200, unit: 'px' }
     ],
     estilo: [
       { id: 'dark_mode', label: 'Modo Oscuro', type: 'boolean', defaultValue: false },
@@ -1910,7 +1916,7 @@ export const NEWSLETTER_MODULE: WebModule = {
         { label: 'Mínimo', value: 'minimal' }
       ]},
       { id: 'max_width', label: 'Ancho Máximo', type: 'range', defaultValue: 800, min: 600, max: 1200, unit: 'px' },
-      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 80, min: 20, max: 160, unit: 'px' },
+      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 40, min: 20, max: 160, unit: 'px' },
       { id: 'border_radius', label: 'Redondeo de Caja', type: 'range', defaultValue: 32, min: 0, max: 60 }
     ],
     estilo: [
@@ -2026,7 +2032,7 @@ export const CONTACT_MODULE: WebModule = {
         { label: 'Centrado', value: 'centered' }
       ]},
       { id: 'max_width', label: 'Ancho Máximo', type: 'range', defaultValue: 1200, min: 800, max: 1600, unit: 'px' },
-      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 100, min: 40, max: 200, unit: 'px' }
+      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 40, min: 40, max: 200, unit: 'px' }
     ],
     estilo: [
       { id: 'dark_mode', label: 'Modo Oscuro', type: 'boolean', defaultValue: false },
@@ -2195,7 +2201,7 @@ export const TEAM_MODULE: WebModule = {
       ]},
       { id: 'columns', label: 'Columnas (Desktop)', type: 'range', defaultValue: 3, min: 1, max: 4 },
       { id: 'gap', label: 'Espaciado', type: 'range', defaultValue: 32, min: 16, max: 60, unit: 'px' },
-      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 100, min: 40, max: 200, unit: 'px' },
+      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 40, min: 40, max: 200, unit: 'px' },
       { id: 'show_filters', label: 'Mostrar Filtros', type: 'boolean', defaultValue: true }
     ],
     estilo: [
@@ -2363,7 +2369,7 @@ export const CTA_MODULE: WebModule = {
         { label: 'Mosaico (Bento)', value: 'bento' }
       ]},
       { id: 'max_width', label: 'Ancho Máximo', type: 'range', defaultValue: 1000, min: 600, max: 1400, unit: 'px' },
-      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 100, min: 40, max: 240, unit: 'px' }
+      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 40, min: 40, max: 240, unit: 'px' }
     ],
     estilo: [
       { id: 'dark_mode', label: 'Modo Oscuro', type: 'boolean', defaultValue: false },
@@ -2477,7 +2483,7 @@ export const PRICING_MODULE: WebModule = {
     estructura: [
       { id: 'columns', label: 'Columnas (Desktop)', type: 'range', defaultValue: 3, min: 1, max: 4 },
       { id: 'gap', label: 'Espaciado entre Tarjetas', type: 'range', defaultValue: 32, min: 16, max: 60, unit: 'px' },
-      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 100, min: 40, max: 200, unit: 'px' }
+      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 40, min: 40, max: 200, unit: 'px' }
     ],
     estilo: [
       { id: 'dark_mode', label: 'Modo Oscuro', type: 'boolean', defaultValue: false },
@@ -2640,7 +2646,7 @@ export const FAQ_MODULE: WebModule = {
         { label: 'Pestañas Superiores', value: 'tabs_top' }
       ]},
       { id: 'max_width', label: 'Ancho Máximo', type: 'range', defaultValue: 1000, min: 600, max: 1200, unit: 'px' },
-      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 100, min: 40, max: 200, unit: 'px' },
+      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 40, min: 40, max: 200, unit: 'px' },
       { id: 'item_gap', label: 'Espaciado entre Preguntas', type: 'range', defaultValue: 16, min: 0, max: 40, unit: 'px' }
     ],
     estilo: [
@@ -2797,7 +2803,7 @@ export const CLIENTS_MODULE: WebModule = {
       { id: 'columns', label: 'Columnas (Grilla)', type: 'range', defaultValue: 5, min: 2, max: 8 },
       { id: 'alignment', label: 'Alineación Horizontal', type: 'text_align', defaultValue: 'center' },
       { id: 'gap', label: 'Espaciado entre Logos', type: 'range', defaultValue: 40, min: 10, max: 100, unit: 'px' },
-      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 80, min: 20, max: 200, unit: 'px' }
+      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 40, min: 20, max: 200, unit: 'px' }
     ],
     estilo: [
       { id: 'dark_mode', label: 'Modo Oscuro', type: 'boolean', defaultValue: false },
@@ -2898,7 +2904,7 @@ export const TRUSTED_LOGOS_MODULE: WebModule = {
     estructura: [
       { id: 'columns', label: 'Columnas', type: 'range', defaultValue: 4, min: 2, max: 6 },
       { id: 'gap', label: 'Espaciado entre logos', type: 'range', defaultValue: 32, min: 12, max: 80, unit: 'px' },
-      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 80, min: 20, max: 200, unit: 'px' }
+      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 40, min: 20, max: 200, unit: 'px' }
     ],
     estilo: [
       { id: 'dark_mode', label: 'Modo Oscuro', type: 'boolean', defaultValue: false },
@@ -2976,7 +2982,7 @@ export const BENTO_MODULE: WebModule = {
       ] },
       { id: 'columns', label: 'Columnas Desktop', type: 'range', defaultValue: 12, min: 1, max: 12 },
       { id: 'gap', label: 'Espaciado (Gap)', type: 'range', defaultValue: 20, min: 0, max: 100, unit: 'px' },
-      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 100, min: 0, max: 200, unit: 'px' },
+      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 40, min: 0, max: 200, unit: 'px' },
       { id: 'max_width', label: 'Ancho Máximo', type: 'range', defaultValue: 1200, min: 800, max: 1600, unit: 'px' }
     ],
     estilo: [
@@ -3139,7 +3145,7 @@ export const COMPARISON_MODULE: WebModule = {
   globalSettings: {
     contenido: [],
     estructura: [
-      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 100, min: 40, max: 200, unit: 'px' },
+      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 40, min: 40, max: 200, unit: 'px' },
       { id: 'max_width', label: 'Ancho Máximo Slider', type: 'range', defaultValue: 1000, min: 600, max: 1400, unit: 'px' },
       { id: 'aspect_ratio', label: 'Proporción de Imagen', type: 'select', defaultValue: '16/9', options: [
         { label: 'Panorámico (16:9)', value: '16/9' },

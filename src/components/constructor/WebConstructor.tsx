@@ -1180,7 +1180,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         });
       }
     });
-    
+
     updateEditorState(prev => {
       const addedModules = prev.addedModules || [];
       let newModules = [...addedModules];
@@ -1230,7 +1230,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
 
       // SOP: Auto-generate menu link if not utility
       if (!isPreviewMode && !isUtilityModule) {
-        const menuMod = newModules.find(m => m.type === 'navegacion');
+        const menuMod = newModules.find(m => m.type === 'navegacion' || m.type === 'menu');
         if (menuMod) {
           const menuItemsElId = `${menuMod.id}_el_menu_items`;
           const currentLinks = finalState.settingsValues[`${menuItemsElId}_links`] || [];
@@ -1311,7 +1311,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       });
 
       // Automatically remove link from menu if it exists
-      const menuModule = newModules.find(m => m.type === 'navegacion');
+      const menuModule = newModules.find(m => m.type === 'navegacion' || m.type === 'menu');
       if (menuModule) {
         const menuElementId = `${menuModule.id}_el_menu_items`;
         const currentLinks = newSettingsValues[`${menuElementId}_links`] || [];
@@ -2099,9 +2099,11 @@ const formatTimestampName = () => {
   };
 
   const handleSaveDraft = async (forcedStatus?: 'draft' | 'published' | 'modified') => {
-    if (!projectId || isPreviewMode) return;
+    if (!projectId || isPreviewMode || isSaving || saveStatus === 'loading') return;
+    const savedCanvasScrollTop = getCanvasScrollContainer()?.scrollTop ?? 0;
     setSaveStatus('loading');
     setIsSaving(true);
+    await waitForNextPaint();
     
     try {
       const finalSiteName = siteName || formatTimestampName();
@@ -2111,6 +2113,7 @@ const formatTimestampName = () => {
       const migratedState = migrateEditorStateToUUIDs(editorState);
       if (migratedState !== editorState) {
         setEditorState(migratedState);
+        restoreCanvasScroll(savedCanvasScrollTop);
       }
       const activeState = migratedState;
 
@@ -2187,10 +2190,6 @@ const formatTimestampName = () => {
 
       if (result) {
         logDebug(`[SIP v6.1] Cambios sincronizados en tabla 'pages' (Status: ${newStatus})`);
-        setSaveStatus('success');
-        setHasUnsavedChanges(false);
-        setCurrentStatus(newStatus);
-        
         sendToMother('SOLUTIUM_SAVE', {
           site_id: siteId,
           site_name: finalSiteName,
@@ -2198,41 +2197,51 @@ const formatTimestampName = () => {
           timestamp: new Date().toISOString()
         });
 
-        setTimeout(() => setSaveStatus('idle'), 3000);
+        restoreCanvasScroll(savedCanvasScrollTop);
+        setPreviewStatus('loading');
 
-        // --- BACKGROUND TASK: Generate Server-Side Preview ---
-        (async () => {
-          try {
-            const webBuilderSiteId = initialPage?.id || (window as any).WEB_BUILDER_SITE_ID;
-            const previewResult = await generatePreviewServerSide({
-              project_id: projectId!,
+        try {
+          const webBuilderSiteId = initialPage?.id || (window as any).WEB_BUILDER_SITE_ID;
+          const previewResult = await generatePreviewServerSide({
+            project_id: projectId!,
+            site_id: siteId,
+            web_builder_site_id: webBuilderSiteId,
+            mode: 'thumbnail'
+          });
+
+          if (previewResult.success && previewResult.preview_image_url) {
+            await updateSitePreview(siteId, {
+              previewImageUrl: previewResult.preview_image_url,
+              previewThumbnailUrl: previewResult.preview_thumbnail_url || previewResult.preview_image_url,
+              previewImagePath: previewResult.preview_image_path,
+              previewImageHash: previewResult.preview_image_hash,
+            });
+            
+            sendToMother('SOLUTIUM_PREVIEW_GENERATED', {
               site_id: siteId,
-              web_builder_site_id: webBuilderSiteId,
-              mode: 'thumbnail'
+              preview_image_url: previewResult.preview_image_url
             });
 
-            if (previewResult.success && previewResult.preview_image_url) {
-              await updateSitePreview(siteId, {
-                previewImageUrl: previewResult.preview_image_url,
-                previewThumbnailUrl: previewResult.preview_thumbnail_url || previewResult.preview_image_url,
-                previewImagePath: previewResult.preview_image_path,
-                previewImageHash: previewResult.preview_image_hash,
-              });
-              
-              sendToMother('SOLUTIUM_PREVIEW_GENERATED', {
-                site_id: siteId,
-                preview_image_url: previewResult.preview_image_url
-              });
-
-              logDebug('[PREVIEW_CAPTURE_DEBUG] Server-side preview generated (Save):', { 
-                siteId, 
-                url: previewResult.preview_image_url 
-              });
-            }
-          } catch (pError) {
-            console.error('[PREVIEW_CAPTURE_DEBUG] Error en preview server-side (Save):', pError);
+            logDebug('[PREVIEW_CAPTURE_DEBUG] Server-side preview generated (Save):', { 
+              siteId, 
+              url: previewResult.preview_image_url 
+            });
+            setPreviewStatus('success');
+          } else {
+            setPreviewStatus('error');
           }
-        })();
+        } catch (pError) {
+          console.error('[PREVIEW_CAPTURE_DEBUG] Error en preview server-side (Save):', pError);
+          setPreviewStatus('error');
+        } finally {
+          restoreCanvasScroll(savedCanvasScrollTop);
+          setTimeout(() => setPreviewStatus('idle'), 3000);
+        }
+
+        setHasUnsavedChanges(false);
+        setCurrentStatus(newStatus);
+        setSaveStatus('success');
+        setTimeout(() => setSaveStatus('idle'), 3000);
       } else {
         throw new Error('Error al guardar el borrador');
       }
@@ -2261,7 +2270,7 @@ const formatTimestampName = () => {
   };
 
   const handlePublish = async () => {
-    if (!projectId || isPreviewMode) return;
+    if (!projectId || isPreviewMode || isSaving || publishStatus === 'loading') return;
     
     if (isDefaultName(siteName)) {
       setShowPublishModal(true);
@@ -2528,6 +2537,27 @@ const formatTimestampName = () => {
 
   const handleReload = () => {
     window.location.reload();
+  };
+
+  const getCanvasScrollContainer = () => {
+    return document.getElementById('constructor-canvas-scroll-container');
+  };
+
+  const restoreCanvasScroll = (scrollTop: number) => {
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        const container = getCanvasScrollContainer();
+        if (container) {
+          container.scrollTop = scrollTop;
+        }
+      });
+    });
+  };
+
+  const waitForNextPaint = async () => {
+    await new Promise<void>((resolve) => {
+      window.requestAnimationFrame(() => resolve());
+    });
   };
 
   const handlePreview = () => {
@@ -2797,7 +2827,6 @@ const formatTimestampName = () => {
                   <TopBar 
                     onSave={handleSaveDraft} 
                     onPublish={handlePublish} 
-                    onReload={handleReload}
                     logoUrl={logoUrl}
                     viewport={viewport}
                     setViewport={setViewport}
@@ -3033,7 +3062,6 @@ const formatTimestampName = () => {
                         setIsFullscreen={() => {}}
                         isPreviewMode={isPreviewMode || isExternalRender}
                         onSettingChange={handleSettingChange}
-                        onReload={handleReload}
                         onOpenBentoGenerator={() => setShowBentoPrompt(true)}
                       />
                     </div>
@@ -3063,22 +3091,19 @@ const formatTimestampName = () => {
                 )}
                 <div className="flex-1 flex flex-col h-full">
                   {!isPreviewMode && !isExternalRender && (
-                    <TopBar 
-                      onSave={handleSaveDraft} 
-                      onPublish={handlePublish} 
-                      onReload={handleReload}
-                      onUpdatePreview={handleUpdatePreview}
-                      logoUrl={logoUrl}
-                      viewport={viewport}
-                      setViewport={setViewport}
-                      isFullscreen={isFullscreen}
-                      setIsFullscreen={setIsFullscreen}
-                      saveStatus={saveStatus}
-                      publishStatus={publishStatus}
-                      previewStatus={previewStatus}
-                      isMobile={false}
-                      isPreviewMode={isPreviewMode}
-                      hasUnsavedChanges={hasUnsavedChanges}
+                  <TopBar 
+                    onSave={handleSaveDraft} 
+                    onPublish={handlePublish} 
+                    logoUrl={logoUrl}
+                    viewport={viewport}
+                    setViewport={setViewport}
+                    isFullscreen={isFullscreen}
+                    setIsFullscreen={setIsFullscreen}
+                    saveStatus={saveStatus}
+                    publishStatus={publishStatus}
+                    isMobile={false}
+                    isPreviewMode={isPreviewMode}
+                    hasUnsavedChanges={hasUnsavedChanges}
                       currentStatus={currentStatus}
                       isNewSite={!initialPage}
                     />
@@ -3097,11 +3122,10 @@ const formatTimestampName = () => {
                         project={project}
                         viewport={viewport}
                         setViewport={setViewport}
-                        isFullscreen={isFullscreen}
-                        setIsFullscreen={setIsFullscreen}
-                        isPreviewMode={isPreviewMode || isExternalRender}
-                        onSettingChange={handleSettingChange}
-                        onReload={handleReload}
+                      isFullscreen={isFullscreen}
+                      setIsFullscreen={setIsFullscreen}
+                      isPreviewMode={isPreviewMode || isExternalRender}
+                      onSettingChange={handleSettingChange}
                         reloadKey={reloadKey}
                         onOpenBentoGenerator={() => setShowBentoPrompt(true)}
                       />

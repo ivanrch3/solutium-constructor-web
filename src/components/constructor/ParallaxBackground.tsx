@@ -1,6 +1,27 @@
 import React from 'react';
-import { motion, MotionValue, useTransform } from 'motion/react';
+import { motion, MotionValue, useScroll, useTransform } from 'motion/react';
 import { parseNumSafe } from './utils';
+
+type ScrollContainerRef = React.RefObject<HTMLElement | null>;
+
+export const ParallaxScrollContext = React.createContext<ScrollContainerRef | null>(null);
+
+export const useParallaxScrollProgress = (targetRef: React.RefObject<HTMLElement | null>) => {
+  const scrollContainerRef = React.useContext(ParallaxScrollContext);
+
+  return useScroll(
+    scrollContainerRef
+      ? {
+          container: scrollContainerRef,
+          target: targetRef,
+          offset: ['start end', 'end start']
+        }
+      : {
+          target: targetRef,
+          offset: ['start end', 'end start']
+        }
+  );
+};
 
 interface ParallaxBackgroundProps {
   scrollYProgress: MotionValue<number>;

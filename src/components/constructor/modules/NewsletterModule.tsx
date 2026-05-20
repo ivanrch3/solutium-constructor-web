@@ -1,9 +1,9 @@
 import React, { useState, useRef } from 'react';
-import { motion, AnimatePresence, useScroll } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Mail, Check, Send, Bell, User, ShieldCheck, X } from 'lucide-react';
 import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
 import { TextRenderer } from '../TextRenderer';
-import { ParallaxBackground } from '../ParallaxBackground';
+import { ParallaxBackground, useParallaxScrollProgress } from '../ParallaxBackground';
 import { parseNumSafe } from '../utils';
 
 import { InlineEditableText } from '../InlineEditableText';
@@ -22,23 +22,45 @@ export const NewsletterModule: React.FC<{
   const [showFloating, setShowFloating] = useState(true);
 
   const containerRef = useRef(null);
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start end", "end start"]
-  });
+  const { scrollYProgress } = useParallaxScrollProgress(containerRef);
 
   const getVal = (elementId: string | null, settingId: string, defaultValue: any) => {
     const key = elementId ? `${elementId}_${settingId}` : `${moduleId}_global_${settingId}`;
     return settingsValues[key] !== undefined ? settingsValues[key] : defaultValue;
   };
 
+  const toBoolean = (value: unknown) => {
+    return value === true || value === 'true' || value === 1 || value === '1';
+  };
+
+  const resolveThemeColor = (
+    value: string | undefined,
+    lightDefault: string,
+    darkDefault: string,
+    darkMode: boolean
+  ) => {
+    const safeValue = String(value || '').trim();
+    const safeLight = String(lightDefault || '').trim().toLowerCase();
+
+    if (!darkMode) {
+      return safeValue || lightDefault;
+    }
+
+    if (!safeValue || safeValue.toLowerCase() === safeLight) {
+      return darkDefault;
+    }
+
+    return safeValue;
+  };
+
   // Global Settings
   const layout = getVal(null, 'layout', 'centered');
   const maxWidth = parseNumSafe(getVal(null, 'max_width', 800), 800);
   const paddingY = parseNumSafe(getVal(null, 'padding_y', 80), 80);
-  const darkMode = getVal(null, 'dark_mode', false);
+  const darkMode = toBoolean(getVal(null, 'dark_mode', false));
   const bgType = getVal(null, 'bg_type', 'color');
-  const bgColor = getVal(null, 'bg_color', darkMode ? '#0F172A' : '#FFFFFF');
+  const rawBgColor = getVal(null, 'bg_color', '#F8FAFC');
+  const bgColor = resolveThemeColor(rawBgColor, '#F8FAFC', '#0F172A', darkMode);
   const bgGradient = darkMode ? 'linear-gradient(135deg, #0F172A 0%, #1E293B 100%)' : getVal(null, 'bg_gradient', 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)');
   const bgPattern = getVal(null, 'bg_pattern', 'none');
   const backdropBlur = parseNumSafe(getVal(null, 'backdrop_blur', 0), 0);
@@ -64,7 +86,8 @@ export const NewsletterModule: React.FC<{
   const titleWeight = getVal(`${moduleId}_el_news_header`, 'title_weight', 'black');
   const subtitleSize = getVal(`${moduleId}_el_news_header`, 'subtitle_size', 'p');
   const subtitleWeight = getVal(`${moduleId}_el_news_header`, 'subtitle_weight', 'normal');
-  const textColor = darkMode ? '#FFFFFF' : getVal(`${moduleId}_el_news_header`, 'text_color', '#0F172A');
+  const rawTitleColor = getVal(`${moduleId}_el_news_header`, 'title_color', '#0F172A');
+  const textColor = resolveThemeColor(rawTitleColor, '#0F172A', '#FFFFFF', darkMode);
   const marginB = parseNumSafe(getVal(`${moduleId}_el_news_header`, 'margin_b', 32), 32);
 
   const titleHighlightType = getVal(`${moduleId}_el_news_header`, 'title_highlight_type', 'gradient');
@@ -85,7 +108,8 @@ export const NewsletterModule: React.FC<{
   const btnTarget = getVal(`${moduleId}_el_news_form`, 'btn_target', '_self');
   const showGdpr = getVal(`${moduleId}_el_news_form`, 'show_gdpr', true);
   const gdprText = getVal(`${moduleId}_el_news_form`, 'gdpr_text', 'Acepto recibir comunicaciones comerciales y la política de privacidad.');
-  const inputBg = darkMode ? '#334155' : getVal(`${moduleId}_el_news_form`, 'input_bg', '#F8FAFC');
+  const rawInputBg = getVal(`${moduleId}_el_news_form`, 'input_bg', '#FFFFFF');
+  const inputBg = resolveThemeColor(rawInputBg, '#FFFFFF', '#334155', darkMode);
   const btnBg = getVal(`${moduleId}_el_news_form`, 'btn_bg', 'var(--primary-color)');
   const btnColor = getVal(`${moduleId}_el_news_form`, 'btn_color', '#FFFFFF');
   const inputRadius = parseNumSafe(getVal(`${moduleId}_el_news_form`, 'input_radius', 16), 16);
@@ -100,7 +124,8 @@ export const NewsletterModule: React.FC<{
   const privacyText = getVal(`${moduleId}_el_news_trust`, 'privacy_text', 'Respetamos tu privacidad. Sin spam, solo valor.');
   const subscriberCount = getVal(`${moduleId}_el_news_trust`, 'subscriber_count', 'Únete a +2,000 suscriptores');
   const trustTextSize = parseNumSafe(getVal(`${moduleId}_el_news_trust`, 'text_size', 12), 12);
-  const trustTextColor = darkMode ? '#94A3B8' : getVal(`${moduleId}_el_news_trust`, 'text_color', '#64748B');
+  const rawTrustTextColor = getVal(`${moduleId}_el_news_trust`, 'text_color', '#64748B');
+  const trustTextColor = resolveThemeColor(rawTrustTextColor, '#64748B', '#94A3B8', darkMode);
   const showIcon = getVal(`${moduleId}_el_news_trust`, 'show_icon', true);
 
   const getTypographyStyle = (sizeToken: string, weightToken: string, alignToken?: string) => {
@@ -234,6 +259,7 @@ export const NewsletterModule: React.FC<{
             type="email"
             placeholder={placeholder}
             className={`flex-1 px-4 py-2.5 text-sm rounded-xl focus:ring-2 focus:ring-primary/20 outline-none border ${darkMode ? 'bg-slate-800 border-white/10 text-white placeholder:text-slate-500' : 'bg-white border-slate-200 text-slate-900'}`}
+            style={{ backgroundColor: inputBg }}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
@@ -396,6 +422,7 @@ export const NewsletterModule: React.FC<{
                           type="text"
                           placeholder="Tu nombre"
                           className={`w-full pl-12 pr-4 py-4 text-sm font-medium focus:outline-none bg-transparent ${darkMode ? 'text-white placeholder:text-slate-500' : 'text-slate-900 placeholder:text-slate-400'}`}
+                          style={{ backgroundColor: inputBg, borderRadius: `${inputRadius}px` }}
                           value={name}
                           onChange={(e) => setName(e.target.value)}
                         />
@@ -411,6 +438,7 @@ export const NewsletterModule: React.FC<{
                           type="email"
                           placeholder={placeholder}
                           className={`w-full pl-12 pr-4 py-4 text-sm font-medium focus:outline-none bg-transparent ${darkMode ? 'text-white placeholder:text-slate-500' : 'text-slate-900 placeholder:text-slate-400'}`}
+                          style={{ backgroundColor: inputBg, borderRadius: `${inputRadius}px` }}
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
                         />

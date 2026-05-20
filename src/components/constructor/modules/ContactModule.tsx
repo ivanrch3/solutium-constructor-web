@@ -23,6 +23,30 @@ export const ContactModule: React.FC<{
     return settingsValues[key] !== undefined ? settingsValues[key] : defaultValue;
   };
 
+  const toBoolean = (value: unknown) => {
+    return value === true || value === 'true' || value === 1 || value === '1';
+  };
+
+  const resolveThemeColor = (
+    value: string | undefined,
+    lightDefault: string,
+    darkDefault: string,
+    darkMode: boolean
+  ) => {
+    const safeValue = String(value || '').trim();
+    const safeLight = String(lightDefault || '').trim().toLowerCase();
+
+    if (!darkMode) {
+      return safeValue || lightDefault;
+    }
+
+    if (!safeValue || safeValue.toLowerCase() === safeLight) {
+      return darkDefault;
+    }
+
+    return safeValue;
+  };
+
   const parseF = (val: any, fallback: number) => {
     const f = parseFloat(val);
     return isNaN(f) ? fallback : f;
@@ -32,8 +56,9 @@ export const ContactModule: React.FC<{
   const layout = getVal(null, 'layout', 'split');
   const maxWidth = parseF(getVal(null, 'max_width', 1200), 1200);
   const paddingY = parseF(getVal(null, 'padding_y', 100), 100);
-  const darkMode = getVal(null, 'dark_mode', false);
-  const bgColor = getVal(null, 'bg_color', darkMode ? '#0F172A' : '#F8FAFC');
+  const darkMode = toBoolean(getVal(null, 'dark_mode', false));
+  const rawBgColor = getVal(null, 'bg_color', '#F8FAFC');
+  const bgColor = resolveThemeColor(rawBgColor, '#F8FAFC', '#0F172A', darkMode);
   const bgImage = getVal(null, 'bg_image', '');
   const bgOverlay = parseF(getVal(null, 'bg_overlay', 0), 0);
   const entranceAnim = getVal(null, 'entrance_anim', 'none');
@@ -49,7 +74,9 @@ export const ContactModule: React.FC<{
   const headerAlign = getVal(`${moduleId}_el_contact_header`, 'align', 'left');
   const headerTitleSize = getVal(`${moduleId}_el_contact_header`, 'title_size', 't2');
   const headerTitleWeight = getVal(`${moduleId}_el_contact_header`, 'title_weight', 'bold');
-  const headerTitleColor = darkMode ? '#FFFFFF' : getVal(`${moduleId}_el_contact_header`, 'title_color', '#0F172A');
+  const rawHeaderTitleColor = getVal(`${moduleId}_el_contact_header`, 'title_color', '#0F172A');
+  const headerTitleColor = resolveThemeColor(rawHeaderTitleColor, '#0F172A', '#FFFFFF', darkMode);
+  const headerSubtitleColor = resolveThemeColor('#64748B', '#64748B', '#94A3B8', darkMode);
   const headerMarginB = parseF(getVal(`${moduleId}_el_contact_header`, 'margin_b', 60), 60);
 
   const titleHighlightType = getVal(`${moduleId}_el_contact_header`, 'title_highlight_type', 'gradient');
@@ -71,9 +98,11 @@ export const ContactModule: React.FC<{
   const socialLinks = getVal(`${moduleId}_el_contact_info`, 'social_links', []);
   const infoSize = getVal(`${moduleId}_el_contact_info`, 'info_size', 'p');
   const infoWeight = getVal(`${moduleId}_el_contact_info`, 'info_weight', 'normal');
-  const infoColor = darkMode ? '#94A3B8' : getVal(`${moduleId}_el_contact_info`, 'info_color', '#475569');
+  const rawInfoColor = getVal(`${moduleId}_el_contact_info`, 'info_color', '#475569');
+  const infoColor = resolveThemeColor(rawInfoColor, '#475569', '#94A3B8', darkMode);
   const iconColor = getVal(`${moduleId}_el_contact_info`, 'icon_color', 'var(--primary-color)');
-  const infoCardBg = darkMode ? '#1E293B' : getVal(`${moduleId}_el_contact_info`, 'card_bg', 'transparent');
+  const rawInfoCardBg = getVal(`${moduleId}_el_contact_info`, 'card_bg', 'transparent');
+  const infoCardBg = resolveThemeColor(rawInfoCardBg, 'transparent', '#1E293B', darkMode);
   const showCopyButtons = getVal(`${moduleId}_el_contact_info`, 'show_copy_buttons', true);
 
   // Element: Form
@@ -86,7 +115,8 @@ export const ContactModule: React.FC<{
     { label: 'Correo Electrónico', type: 'email', placeholder: 'juan@ejemplo.com', required: true },
     { label: 'Mensaje', type: 'textarea', placeholder: '¿En qué podemos ayudarte?', required: true }
   ]);
-  const inputBg = darkMode ? '#334155' : getVal(`${moduleId}_el_contact_form`, 'input_bg', '#FFFFFF');
+  const rawInputBg = getVal(`${moduleId}_el_contact_form`, 'input_bg', '#FFFFFF');
+  const inputBg = resolveThemeColor(rawInputBg, '#FFFFFF', '#334155', darkMode);
   const inputRadius = parseF(getVal(`${moduleId}_el_contact_form`, 'input_radius', 12), 12);
   const btnBg = getVal(`${moduleId}_el_contact_form`, 'btn_bg', 'var(--primary-color)');
   const btnColor = getVal(`${moduleId}_el_contact_form`, 'btn_color', '#FFFFFF');
@@ -99,7 +129,8 @@ export const ContactModule: React.FC<{
   const showCalendly = getVal(`${moduleId}_el_contact_integrations`, 'show_calendly', false);
   const calendlyUrl = getVal(`${moduleId}_el_contact_integrations`, 'calendly_url', '');
   const calendlyText = getVal(`${moduleId}_el_contact_integrations`, 'calendly_text', '¿Prefieres una videollamada? Reserva aquí');
-  const calendlyBg = darkMode ? '#1E293B' : getVal(`${moduleId}_el_contact_integrations`, 'calendly_bg', '#F1F5F9');
+  const rawCalendlyBg = getVal(`${moduleId}_el_contact_integrations`, 'calendly_bg', '#F1F5F9');
+  const calendlyBg = resolveThemeColor(rawCalendlyBg, '#F1F5F9', '#1E293B', darkMode);
 
   // Element: Map
   const showMap = getVal(`${moduleId}_el_contact_map`, 'show_map', true);
@@ -440,11 +471,11 @@ export const ContactModule: React.FC<{
             {headerSubtitle && (
               <p 
                 className="text-lg max-w-2xl leading-relaxed"
-                style={{ 
-                  ...getTypographyStyle(headerSubtitleSize as any, headerSubtitleWeight, headerAlign),
-                  color: darkMode ? '#94A3B8' : '#64748B' 
-                }}
-              >
+              style={{ 
+                ...getTypographyStyle(headerSubtitleSize as any, headerSubtitleWeight, headerAlign),
+                color: headerSubtitleColor 
+              }}
+            >
                 <InlineEditableText
                   moduleId={moduleId}
                   elementId={`${moduleId}_el_contact_header`}

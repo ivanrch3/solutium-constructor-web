@@ -7,6 +7,21 @@ import { InlineEditableText } from '../InlineEditableText';
 import { useEditorStore } from '../../../store/editorStore';
 import { logDebug } from '../../../utils/debug';
 
+const toBoolean = (value: unknown) => value === true || value === 'true' || value === 1 || value === '1';
+
+const resolveThemeColor = (
+  value: string | undefined,
+  lightDefault: string,
+  darkDefault: string,
+  darkMode: boolean
+) => {
+  const safeValue = String(value || '').trim();
+  const safeLight = String(lightDefault || '').trim().toLowerCase();
+  if (!darkMode) return safeValue || lightDefault;
+  if (!safeValue || safeValue.toLowerCase() === safeLight) return darkDefault;
+  return safeValue;
+};
+
 export const MenuModule: React.FC<{ 
   moduleId: string, 
   settingsValues: Record<string, any>,
@@ -37,7 +52,7 @@ export const MenuModule: React.FC<{
   
   const logoImgAlt = getVal(`${moduleId}_el_menu_logo`, 'logo_img_alt', '');
   const logoWidth = parseFloat(getVal(`${moduleId}_el_menu_logo`, 'logo_width', 120)) || 120;
-  const logoColor = getVal(`${moduleId}_el_menu_logo`, 'text_color', '#0F172A');
+  const rawLogoColor = getVal(`${moduleId}_el_menu_logo`, 'text_color', '#0F172A');
   const logoFontSize = getVal(`${moduleId}_el_menu_logo`, 'font_size', 't3');
   const logoFontWeight = getVal(`${moduleId}_el_menu_logo`, 'font_weight', 'bold');
 
@@ -111,17 +126,19 @@ export const MenuModule: React.FC<{
   const align = getVal(null, 'align', 'center');
   const gap = parseFloat(getVal(null, 'gap', 24)) || 24;
   const paddingY = parseFloat(getVal(null, 'padding_y', 20)) || 20;
-  const darkMode = getVal(null, 'dark_mode', false);
-  const rawBgColor = getVal(null, 'bg_color', darkMode ? '#0F172A' : 'transparent');
+  const darkMode = toBoolean(getVal(null, 'dark_mode', false));
+  const rawBgColor = getVal(null, 'bg_color', 'transparent');
   const glassEffect = getVal(null, 'glass_effect', false);
   const isFloating = position === 'sticky' || position === 'fixed';
 
-  const bgColor = (isFloating && rawBgColor === 'transparent') 
+  const resolvedBgColor = resolveThemeColor(rawBgColor, 'transparent', '#0F172A', darkMode);
+  const bgColor = (isFloating && resolvedBgColor === 'transparent') 
     ? (darkMode ? '#1E293B' : '#FFFFFF') 
-    : rawBgColor;
+    : resolvedBgColor;
   const borderRadius = parseFloat(getVal(null, 'border_radius', 12)) || 12;
   const entranceAnim = getVal(null, 'entrance_anim', true);
   const invertOrder = getVal(null, 'invert_order', false);
+  const borderColor = resolveThemeColor(getVal(null, 'border_color', 'rgba(0,0,0,0.05)'), 'rgba(0,0,0,0.05)', 'rgba(255,255,255,0.1)', darkMode);
 
   // Overflow Detection Logic: Show recommendation if many modules are present (desktop/tablet horizontal)
   useEffect(() => {
@@ -143,13 +160,16 @@ export const MenuModule: React.FC<{
 
   const fontSize = getVal(`${moduleId}_el_menu_items`, 'font_size', 'p');
   const fontWeight = getVal(`${moduleId}_el_menu_items`, 'font_weight', 'medium');
-  const textColor = darkMode ? '#FFFFFF' : getVal(`${moduleId}_el_menu_items`, 'text_color', '#0F172A');
+  const rawTextColor = getVal(`${moduleId}_el_menu_items`, 'text_color', '#0F172A');
+  const textColor = resolveThemeColor(rawTextColor, '#0F172A', '#FFFFFF', darkMode);
   const showIcons = getVal(`${moduleId}_el_menu_items`, 'show_icons', true);
   const iconSize = getVal(`${moduleId}_el_menu_items`, 'icon_size', 18);
+  const logoColor = resolveThemeColor(rawLogoColor, '#0F172A', '#FFFFFF', darkMode);
 
   // Element: Style
   const hoverStyle = getVal(`${moduleId}_el_menu_style`, 'hover_style', 'pill');
-  const hoverBg = darkMode ? 'rgba(255,255,255,0.1)' : getVal(`${moduleId}_el_menu_style`, 'hover_bg', 'rgba(0,0,0,0.05)');
+  const rawHoverBg = getVal(`${moduleId}_el_menu_style`, 'hover_bg', 'rgba(0,0,0,0.05)');
+  const hoverBg = resolveThemeColor(rawHoverBg, 'rgba(0,0,0,0.05)', 'rgba(255,255,255,0.1)', darkMode);
   const activeColor = getVal(`${moduleId}_el_menu_style`, 'active_color', 'var(--primary-color)');
   const hoverScale = getVal(`${moduleId}_el_menu_style`, 'hover_scale', true);
 
@@ -176,9 +196,7 @@ export const MenuModule: React.FC<{
     transition: { duration: 0.5, ease: 'easeOut' as any }
   } : {};
 
-  const activeLogo = darkMode 
-    ? (logoImgAlt || logoWhiteUrl || logoImg || logoUrl) 
-    : (logoImg || logoUrl);
+  const activeLogo = logoImg || logoImgAlt || logoUrl || logoWhiteUrl || '';
 
   const navStyle: React.CSSProperties = {
     backgroundColor: getGlassColor(bgColor),
@@ -191,7 +209,7 @@ export const MenuModule: React.FC<{
     top: isFloating ? 0 : 'auto',
     width: '100%',
     zIndex: 1000,
-    borderBottom: isFloating ? `1px solid ${darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'}` : 'none'
+    borderBottom: isFloating ? `1px solid ${borderColor}` : 'none'
   };
 
   const renderLinks = (isMobile: boolean = false) => {
@@ -302,7 +320,7 @@ export const MenuModule: React.FC<{
               <span 
                 className="tracking-tighter" 
                 style={{ 
-                  color: darkMode ? '#FFFFFF' : logoColor,
+                  color: logoColor,
                   fontSize: `${TYPOGRAPHY_SCALE[logoFontSize as keyof typeof TYPOGRAPHY_SCALE]?.fontSize || 24}px`,
                   fontWeight: FONT_WEIGHTS[logoFontWeight as keyof typeof FONT_WEIGHTS]?.value || 900
                 }}
@@ -362,7 +380,7 @@ export const MenuModule: React.FC<{
               className="absolute top-full left-4 right-4 mt-2 p-6 rounded-3xl shadow-2xl z-[1001] border overflow-hidden"
               style={{ 
                 backgroundColor: darkMode ? '#1E293B' : '#FFFFFF',
-                borderColor: darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'
+                borderColor: borderColor
               }}
             >
               <div className="flex flex-col gap-2">

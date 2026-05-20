@@ -1336,14 +1336,76 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     setModuleToDelete(null);
   };
 
-  const handleSettingChange = (elementOrModuleId: string, settingId: string, value: any) => {
-    updateEditorState(prev => ({
-      ...prev,
+  const rebuildMenuLinksIfNeeded = (state: EditorState, menuModuleId: string) => {
+    const menuItemsElId = `${menuModuleId}_el_menu_items`;
+    const menuLinksKey = `${menuItemsElId}_links`;
+    const currentLinks = state.settingsValues[menuLinksKey] || [];
+
+    if (Array.isArray(currentLinks) && currentLinks.length > 0) {
+      return state;
+    }
+
+    const visibleLinks = (state.addedModules || [])
+      .filter((module) => {
+        const isUtilityModule =
+          ['navegacion', 'menu', 'espaciador', 'footer'].includes(module.type) ||
+          module.id.startsWith('mod_header_1') ||
+          module.id.startsWith('mod_menu_1') ||
+          module.id.startsWith('mod_footer_1');
+
+        return !isUtilityModule;
+      })
+      .map((module) => {
+        const moduleInfo =
+          (module.iconKey && MODULE_INFO[module.iconKey]) ||
+          MODULE_INFO[module.type] ||
+          { label: module.name };
+
+        return {
+          label: moduleInfo.label,
+          url: `#${module.id}`,
+          icon: module.iconKey || module.type || ''
+        };
+      });
+
+    return {
+      ...state,
       settingsValues: {
-        ...prev.settingsValues,
-        [`${elementOrModuleId}_${settingId}`]: value
+        ...state.settingsValues,
+        [menuLinksKey]: visibleLinks
       }
-    }));
+    };
+  };
+
+  const handleSettingChange = (elementOrModuleId: string, settingId: string, value: any) => {
+    updateEditorState(prev => {
+      let nextState: EditorState = {
+        ...prev,
+        settingsValues: {
+          ...prev.settingsValues,
+          [`${elementOrModuleId}_${settingId}`]: value
+        }
+      };
+
+      const isDesktopHamburgerToggle =
+        settingId === 'global_desktop_hamburger' ||
+        settingId === 'desktop_hamburger';
+
+      if (isDesktopHamburgerToggle && value === false) {
+        const menuModule = prev.addedModules.find(
+          (module) =>
+            module.id === elementOrModuleId ||
+            module.type === 'navegacion' ||
+            module.type === 'menu'
+        );
+
+        if (menuModule) {
+          nextState = rebuildMenuLinksIfNeeded(nextState, menuModule.id);
+        }
+      }
+
+      return nextState;
+    });
   };
 
   const handleMobileTabChange = (tab: 'constructor' | 'structure' | 'preview') => {

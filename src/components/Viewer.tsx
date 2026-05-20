@@ -166,6 +166,8 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
       sectionsCount: sections.length,
       isDebug
     });
+    const publicTitle = 'No se pudo cargar este sitio.';
+    const publicMessage = 'Intenta recargar la pagina en unos segundos.';
     
     return (
       <div className="min-h-screen bg-secondary flex flex-col items-center justify-center p-6 text-center">
@@ -174,12 +176,18 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
             <AlertCircle className="w-10 h-10 text-rose-600" />
           </div>
           <h1 className="text-2xl font-bold text-text mb-4">
-            {sections.length === 0 ? 'No se encontraron secciones' : 'Error de Hidratación'}
+            {isPublishedViewer
+              ? publicTitle
+              : sections.length === 0
+                ? 'No se encontraron secciones'
+                : 'Error de carga'}
           </h1>
           <p className="text-text/60 mb-8 leading-relaxed text-sm">
-            {sections.length === 0 
-              ? 'Este sitio parece estar vacío. Asegúrate de haber guardado y publicado tus cambios.'
-              : 'La integridad del sitio no pudo ser validada. (Protocolo 10.2).'}
+            {isPublishedViewer
+              ? publicMessage
+              : sections.length === 0 
+                ? 'Este sitio parece estar vacio. Asegurate de haber guardado y publicado tus cambios.'
+                : 'La integridad del sitio no pudo ser validada. (Protocolo 10.2).'}
           </p>
           {isDebug && (
             <div className="mt-4 p-4 bg-slate-50 rounded-lg text-left text-[10px] font-mono overflow-auto max-h-40 w-full">

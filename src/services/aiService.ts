@@ -3,30 +3,41 @@ import { SiteContent, VisualStyle } from "../types";
 import { AIGenerationContext } from "../types/ai";
 import { configService } from "./configService";
 import { mapStyleToTheme } from "../lib/styleMapper";
+import { searchPexelsMedia } from "./pexelsMediaClient";
 
 const getAI = () => {
   const key = configService.geminiApiKey || '';
   return new GoogleGenAI({ apiKey: key });
 };
 
-const getPexelsKey = () => configService.pexelsApiKey || '';
+// Pexels ya no debe resolverse desde config runtime del frontend.
 
 /**
  * Busca imágenes en Pexels basadas en una consulta
  */
-const searchStockPhotos = async (query: string): Promise<string[]> => {
-  const pexelsKey = getPexelsKey();
-  if (!pexelsKey) return [];
+const searchStockPhotos = async (
+  query: string,
+  options?: {
+    projectId?: string | null;
+    moduleType?: string;
+    fieldKey?: string;
+    industry?: string;
+    orientation?: string;
+  }
+): Promise<string[]> => {
   try {
-    const response = await fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=5`, {
-      headers: {
-        Authorization: pexelsKey
-      }
+    const response = await searchPexelsMedia({
+      query,
+      per_page: 5,
+      projectId: options?.projectId,
+      moduleType: options?.moduleType,
+      fieldKey: options?.fieldKey,
+      industry: options?.industry,
+      orientation: options?.orientation
     });
-    const data = await response.json();
-    return data.photos?.map((p: any) => p.src.large) || [];
+    return response.photos?.map((p: any) => p?.src?.large || p?.src?.landscape || p?.src?.medium).filter(Boolean) || [];
   } catch (err) {
-    console.error("Pexels Search Error:", err);
+    console.error("Secure stock search error:", err);
     return [];
   }
 };
@@ -167,7 +178,11 @@ async function processResponse(text: string, brief: AIGenerationContext): Promis
     const enrichedElements = await Promise.all(section.elements.map(async (el: any) => {
       const enrichedFields = await Promise.all(el.fields.map(async (field: any) => {
         if (field.id.includes('img') || field.id.includes('logo')) {
-          const photos = await searchStockPhotos(`${brief.industry} ${field.value || ''}`);
+          const photos = await searchStockPhotos(`${brief.industry} ${field.value || ''}`, {
+            moduleType: section.type,
+            fieldKey: field.id,
+            industry: brief.industry
+          });
           return { ...field, value: photos[0] || 'https://images.pexels.com/photos/1181244/pexels-photo-1181244.jpeg' };
         }
         return field;

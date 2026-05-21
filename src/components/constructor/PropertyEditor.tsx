@@ -52,7 +52,8 @@ export const PropertyEditor: React.FC = () => {
     selectedSectionId, 
     updateSectionSettings,
     selectedBentoCellIndex,
-    setSelectedBentoCellIndex
+    setSelectedBentoCellIndex,
+    project
   } = useEditorStore();
   
   const [expandedPillars, setExpandedPillars] = React.useState<Record<string, boolean>>({
@@ -63,8 +64,14 @@ export const PropertyEditor: React.FC = () => {
     multimedia: false,
     interaccion: false
   });
+  const [expandedSubsections, setExpandedSubsections] = React.useState<Record<string, boolean>>({});
 
   const selectedSection = siteContent.sections.find(s => s.id === selectedSectionId);
+  const projectColors = Array.from(new Set([
+    project?.brandColors?.primary,
+    project?.brandColors?.secondary,
+    project?.brandColors?.accent,
+  ].filter((color): color is string => typeof color === 'string' && color.trim().length > 0)));
   
   if (!selectedSection) {
     return (
@@ -150,6 +157,40 @@ export const PropertyEditor: React.FC = () => {
 
   const togglePillar = (pillar: string) => {
     setExpandedPillars(prev => ({ ...prev, [pillar]: !prev[pillar] }));
+  };
+
+  const toggleSubsection = (subsectionKey: string) => {
+    setExpandedSubsections(prev => ({ ...prev, [subsectionKey]: !prev[subsectionKey] }));
+  };
+
+  const evaluateCondition = (condition: any, currentSettings: Record<string, any>, contextId: string) => {
+    if (!condition) return { result: true };
+
+    let val = currentSettings[`${contextId}_${condition.settingId}`];
+    if (val === undefined) {
+      const modulePrefix = contextId.split('_').slice(0, 3).join('_') + '_global';
+      val = currentSettings[`${modulePrefix}_${condition.settingId}`];
+    }
+
+    const op = condition.operator || 'eq';
+    let result = false;
+
+    switch (op) {
+      case 'eq':
+        result = Array.isArray(condition.value) ? condition.value.includes(val) : val === condition.value;
+        break;
+      case 'neq':
+        result = Array.isArray(condition.value) ? !condition.value.includes(val) : val !== condition.value;
+        break;
+      case 'includes':
+        result = Array.isArray(val) ? val.includes(condition.value) : Array.isArray(condition.value) ? condition.value.includes(val) : false;
+        break;
+      case 'not_includes':
+        result = Array.isArray(val) ? !val.includes(condition.value) : Array.isArray(condition.value) ? !condition.value.includes(val) : true;
+        break;
+    }
+
+    return { result, message: condition.message };
   };
 
   const handleFieldChange = (contextId: string, settingId: string, value: any, extraUpdates?: Record<string, any>) => {
@@ -244,39 +285,86 @@ export const PropertyEditor: React.FC = () => {
                     className="overflow-hidden"
                   >
                     <div className="px-4 pb-5 space-y-5">
-                      {fields.map(({ label, setting, contextId }) => {
-                        const defaultValue = setting.defaultValue;
-                        const value = selectedSection.settings[`${contextId}_${setting.id}`] ?? defaultValue;
-                        
-                        if (setting.id === 'social_links' && selectedSection.type === 'footer') {
-                          console.log('[FOOTER_PROPERTY_EDITOR_SOCIAL_STATE_DEBUG]', {
-                            moduleId: selectedSection.id,
-                            fieldKey: `${contextId}_${setting.id}`,
-                            rawEditorValue: selectedSection.settings[`${contextId}_${setting.id}`],
-                            plainEditorValue: value,
-                            itemsCount: Array.isArray(value) ? value.length : 0,
-                            items: value
-                          });
+                      {Object.entries(
+                        fields.reduce((acc, field) => {
+                          const subsection = field.setting.subsection || '__default__';
+                          if (!acc[subsection]) acc[subsection] = [];
+                          acc[subsection].push(field);
+                          return acc;
+                        }, {} as Record<string, typeof fields>)
+                      ).map(([subsection, subsectionFields]) => {
+                        const renderField = ({ label, setting, contextId }: typeof subsectionFields[number]) => {
+                          const show = evaluateCondition(setting.showIf, selectedSection.settings, contextId);
+                          if (!show.result) return null;
+
+                          const defaultValue = setting.defaultValue;
+                          const value = selectedSection.settings[`${contextId}_${setting.id}`] ?? defaultValue;
+
+                          if (setting.id === 'social_links' && selectedSection.type === 'footer') {
+                            console.log('[FOOTER_PROPERTY_EDITOR_SOCIAL_STATE_DEBUG]', {
+                              moduleId: selectedSection.id,
+                              fieldKey: `${contextId}_${setting.id}`,
+                              rawEditorValue: selectedSection.settings[`${contextId}_${setting.id}`],
+                              plainEditorValue: value,
+                              itemsCount: Array.isArray(value) ? value.length : 0,
+                              items: value
+                            });
+                          }
+
+                          return (
+                            <div key={`${contextId}_${setting.id}`} className="space-y-1">
+                              <SettingControl 
+                                setting={{ ...setting, label: setting.subsection ? setting.label : label }}
+                                value={value}
+                                onChange={(val, extras) => handleFieldChange(contextId, setting.id, val, extras)}
+                                projectId={project?.id || null}
+                                products={project?.products || []}
+                                customers={project?.customers || []}
+                                projectColors={projectColors}
+                                project={project}
+                                contextId={contextId}
+                                moduleType={selectedSection.type}
+                              />
+                              {setting.description && (
+                                <p className="text-[10px] text-gray-400 mt-1 italic pl-1">{setting.description}</p>
+                              )}
+                            </div>
+                          );
+                        };
+
+                        if (subsection === '__default__') {
+                          return subsectionFields.map(renderField);
                         }
 
-                        // Get project data from store for SettingControl
-                        const project = useEditorStore.getState().project;
-                        const brandColors = project?.brandColors ? Object.values(project.brandColors).filter(c => typeof c === 'string') as string[] : [];
+                        const subsectionKey = `${selectedSection.id}:${pillar}:${subsection}`;
+                        const isSubsectionExpanded = expandedSubsections[subsectionKey] ?? true;
 
                         return (
-                          <div key={`${contextId}_${setting.id}`} className="space-y-1">
-                            <SettingControl 
-                              setting={{ ...setting, label }} // Forward label to SettingControl
-                              value={value}
-                              onChange={(val, extras) => handleFieldChange(contextId, setting.id, val, extras)}
-                              projectId={project?.id || null}
-                              products={project?.products || []}
-                              customers={project?.customers || []}
-                              projectColors={brandColors}
-                            />
-                            {setting.description && (
-                              <p className="text-[10px] text-gray-400 mt-1 italic pl-1">{setting.description}</p>
-                            )}
+                          <div key={subsectionKey} className="overflow-hidden rounded-2xl border border-gray-100 bg-gray-50/70">
+                            <button
+                              onClick={() => toggleSubsection(subsectionKey)}
+                              className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-100/80 transition-colors"
+                            >
+                              <span className="text-[11px] font-black uppercase tracking-wider text-gray-700">
+                                {subsection}
+                              </span>
+                              {isSubsectionExpanded ? <ChevronDown size={14} className="text-gray-400" /> : <ChevronRight size={14} className="text-gray-400" />}
+                            </button>
+                            <AnimatePresence initial={false}>
+                              {isSubsectionExpanded && (
+                                <motion.div
+                                  initial={{ height: 0, opacity: 0 }}
+                                  animate={{ height: 'auto', opacity: 1 }}
+                                  exit={{ height: 0, opacity: 0 }}
+                                  transition={{ duration: 0.2, ease: 'easeInOut' }}
+                                  className="overflow-hidden"
+                                >
+                                  <div className="px-4 pb-4 space-y-4">
+                                    {subsectionFields.map(renderField)}
+                                  </div>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
                           </div>
                         );
                       })}

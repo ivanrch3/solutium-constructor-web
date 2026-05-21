@@ -82,12 +82,14 @@ const BUTTON_LINK_SETTINGS = (prefix: string, defaultUrl: string = '#'): Setting
   ]}
 ];
 
+const DEFAULT_PARALLAX_BG_IMAGE = '/parallax-default-centered.svg';
+
 const PARALLAX_BACKGROUND_SETTINGS: SettingDefinition[] = [
   { id: 'bg_parallax_enabled', label: 'Habilitar Fondo con Paralaje', type: 'boolean', defaultValue: false },
-  { id: 'bg_parallax_img', label: 'Imagen de Fondo', type: 'image', defaultValue: '', showIf: { settingId: 'bg_parallax_enabled', value: true } },
-  { id: 'bg_parallax_opacity', label: 'Opacidad Imagen', type: 'range', defaultValue: 20, min: 0, max: 100, unit: '%', showIf: { settingId: 'bg_parallax_enabled', value: true } },
+  { id: 'bg_parallax_img', label: 'Imagen de Fondo', type: 'image', defaultValue: DEFAULT_PARALLAX_BG_IMAGE, showIf: { settingId: 'bg_parallax_enabled', value: true } },
+  { id: 'bg_parallax_opacity', label: 'Opacidad Imagen', type: 'range', defaultValue: 38, min: 0, max: 100, unit: '%', showIf: { settingId: 'bg_parallax_enabled', value: true } },
   { id: 'bg_parallax_overlay', label: 'Color de Overlay', type: 'color', defaultValue: '#000000', showIf: { settingId: 'bg_parallax_enabled', value: true } },
-  { id: 'bg_parallax_speed', label: 'Intensidad de Movimiento', type: 'range', defaultValue: 100, min: 20, max: 300, unit: 'px', showIf: { settingId: 'bg_parallax_enabled', value: true } }
+  { id: 'bg_parallax_speed', label: 'Intensidad de Movimiento', type: 'range', defaultValue: 160, min: 20, max: 300, unit: 'px', showIf: { settingId: 'bg_parallax_enabled', value: true } }
 ];
 
 export const HEADER_MODULE: WebModule = {
@@ -784,6 +786,8 @@ export const HERO_MODULE: WebModule = {
         { label: 'Dividido (Texto + Imagen)', value: 'split' },
         { label: 'Centrado (Impacto)', value: 'center' },
         { label: 'Invertido (Imagen + Texto)', value: 'reverse' },
+        { label: 'Solo Texto a la Izquierda', value: 'text_left' },
+        { label: 'Solo Texto a la Derecha', value: 'text_right' },
         { label: 'Fondo Completo', value: 'full_bg' }
       ]},
       { id: 'height', label: 'Altura de Sección', type: 'select', defaultValue: 'screen', options: [
@@ -892,26 +896,28 @@ export const HERO_MODULE: WebModule = {
     }},
     { id: 'el_hero_ctas', name: 'Llamados a la Acción', type: 'button', groups: ['contenido', 'estilo', 'interaccion', 'estructura'], settings: {
       contenido: [
-        { id: 'primary_text', label: 'Botón Primario', type: 'text', defaultValue: 'Comenzar Ahora' },
-        { id: 'primary_icon', label: 'Icono Primario', type: 'icon', defaultValue: 'ArrowRight' },
-        ...BUTTON_LINK_SETTINGS('primary', '#'),
-        { id: 'secondary_text', label: 'Botón Secundario', type: 'text', defaultValue: 'Saber Más' },
-        { id: 'secondary_icon', label: 'Icono Secundario', type: 'icon', defaultValue: '' },
-        ...BUTTON_LINK_SETTINGS('secondary', '#')
+        { id: 'show_primary', label: 'Mostrar Botón Primario', type: 'boolean', defaultValue: true, subsection: 'Botón Primario' },
+        { id: 'primary_text', label: 'Texto', type: 'text', defaultValue: 'Comenzar Ahora', subsection: 'Botón Primario', showIf: { settingId: 'show_primary', value: true } },
+        { id: 'primary_icon', label: 'Icono', type: 'icon', defaultValue: 'ArrowRight', subsection: 'Botón Primario', showIf: { settingId: 'show_primary', value: true } },
+        ...BUTTON_LINK_SETTINGS('primary', '#').map(setting => ({ ...setting, subsection: 'Botón Primario', showIf: { settingId: 'show_primary', value: true } })),
+        { id: 'show_secondary', label: 'Mostrar Botón Secundario', type: 'boolean', defaultValue: true, subsection: 'Botón Secundario' },
+        { id: 'secondary_text', label: 'Texto', type: 'text', defaultValue: 'Saber Más', subsection: 'Botón Secundario', showIf: { settingId: 'show_secondary', value: true } },
+        { id: 'secondary_icon', label: 'Icono', type: 'icon', defaultValue: '', subsection: 'Botón Secundario', showIf: { settingId: 'show_secondary', value: true } },
+        ...BUTTON_LINK_SETTINGS('secondary', '#').map(setting => ({ ...setting, subsection: 'Botón Secundario', showIf: { settingId: 'show_secondary', value: true } }))
       ],
       estilo: [
-        { id: 'primary_bg', label: 'Fondo Primario', type: 'color', defaultValue: '#3B82F6' },
-        { id: 'primary_color', label: 'Texto Primario', type: 'color', defaultValue: '#FFFFFF' },
-        { id: 'secondary_style', label: 'Estilo Secundario', type: 'select', defaultValue: 'outline', options: [{label:'Sólido', value:'solid'}, {label:'Contorno', value:'outline'}]},
-        { id: 'shimmer_effect', label: 'Efecto Shimmer', type: 'boolean', defaultValue: false }
+        { id: 'primary_bg', label: 'Fondo', type: 'color', defaultValue: '#3B82F6', subsection: 'Botón Primario', showIf: { settingId: 'show_primary', value: true } },
+        { id: 'primary_color', label: 'Color de Texto', type: 'color', defaultValue: '#FFFFFF', subsection: 'Botón Primario', showIf: { settingId: 'show_primary', value: true } },
+        { id: 'secondary_style', label: 'Estilo', type: 'select', defaultValue: 'outline', options: [{label:'Sólido', value:'solid'}, {label:'Contorno', value:'outline'}], subsection: 'Botón Secundario', showIf: { settingId: 'show_secondary', value: true }},
+        { id: 'shimmer_effect', label: 'Efecto Shimmer', type: 'boolean', defaultValue: false, subsection: 'Botón Primario', showIf: { settingId: 'show_primary', value: true } }
       ],
       interaccion: [
-        { id: 'hover_effect', label: 'Efecto Hover', type: 'select', defaultValue: 'lift', options: [{label:'Elevar', value:'lift'}, {label:'Brillo', value:'glow'}]},
-        { id: 'pulse_effect', label: 'Efecto Pulso (Principal)', type: 'boolean', defaultValue: true }
+        { id: 'hover_effect', label: 'Efecto Hover', type: 'select', defaultValue: 'lift', options: [{label:'Elevar', value:'lift'}, {label:'Brillo', value:'glow'}], subsection: 'Botón Primario', showIf: { settingId: 'show_primary', value: true }},
+        { id: 'pulse_effect', label: 'Efecto Pulso', type: 'boolean', defaultValue: true, subsection: 'Botón Primario', showIf: { settingId: 'show_primary', value: true } }
       ],
       estructura: [
-        { id: 'btn_radius', label: 'Redondeado Botones', type: 'range', defaultValue: 16, min: 0, max: 40 },
-        { id: 'btn_width', label: 'Ancho (Mobile)', type: 'select', defaultValue: 'auto', options: [{label:'Automático', value:'auto'}, {label:'Ancho Completo', value:'full'}]}
+        { id: 'btn_radius', label: 'Redondeado', type: 'range', defaultValue: 16, min: 0, max: 40, subsection: 'Botones' },
+        { id: 'btn_width', label: 'Ancho (Mobile)', type: 'select', defaultValue: 'auto', options: [{label:'Automático', value:'auto'}, {label:'Ancho Completo', value:'full'}], subsection: 'Botones' }
       ],
       tipografia: [], multimedia: []
     }},

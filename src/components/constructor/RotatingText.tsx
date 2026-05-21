@@ -81,16 +81,18 @@ export const RotatingText: React.FC<RotatingTextProps> = ({
   };
 
   const isCentered = align === 'center';
+  const lineAlignmentClass = isCentered ? 'items-center text-center' : align === 'right' ? 'items-end text-right' : 'items-start text-left';
+  const dynamicLineMaxWidth = 'min(100%, 14ch)';
 
   return (
     <span 
-      className={`${isCentered ? 'flex flex-col items-center text-center w-full' : 'inline whitespace-normal'} ${className}`}
+      className={`flex w-full flex-col ${lineAlignmentClass} gap-[0.08em] whitespace-normal ${className}`}
       style={{ 
         textAlign: align === 'inherit' ? 'inherit' : align,
       }}
     >
       {fixedText && (
-        <span className={`${isCentered ? 'block' : 'inline'} mr-[0.25em]`}>
+        <span className="block w-full max-w-full break-words [overflow-wrap:anywhere]">
           {moduleId ? (
             <InlineEditableText
               moduleId={moduleId}
@@ -100,14 +102,17 @@ export const RotatingText: React.FC<RotatingTextProps> = ({
               isPreviewMode={isPreviewMode}
               onSave={onSaveFixed}
               tagName="span"
-              className="inline"
+              className="block w-full max-w-full break-words [overflow-wrap:anywhere]"
             />
           ) : (
-            <span>{fixedText}</span>
+            <span className="block w-full max-w-full break-words [overflow-wrap:anywhere]">{fixedText}</span>
           )}
         </span>
       )}
-      <span className="relative inline-flex items-baseline overflow-hidden py-[0.1em] -my-[0.1em] min-h-[1.1em] max-w-full align-baseline">
+      <span
+        className="relative block w-full max-w-full overflow-visible py-[0.1em] -my-[0.1em] min-h-[1.2em]"
+        style={{ maxWidth: dynamicLineMaxWidth }}
+      >
         <AnimatePresence mode="wait">
           <motion.span
             key={`${index}-${currentOptionValue}`}
@@ -115,9 +120,9 @@ export const RotatingText: React.FC<RotatingTextProps> = ({
             animate={currentVariant.animate}
             exit={currentVariant.exit}
             transition={{ duration: 0.5, ease: "easeOut" }}
-            className="whitespace-nowrap inline-block align-baseline max-w-full"
+            className="block w-full max-w-full whitespace-normal break-words [overflow-wrap:anywhere] align-baseline"
           >
-            <ScaledOption 
+            <RotatingOption
               value={currentOptionValue}
               index={index}
               moduleId={moduleId}
@@ -133,12 +138,7 @@ export const RotatingText: React.FC<RotatingTextProps> = ({
   );
 };
 
-/**
- * ScaledOption handles the auto-fit scaling logic for individual words.
- * Using useLayoutEffect ensures measurement happens before the first paint,
- * avoiding the visual "jump" when text scales down.
- */
-const ScaledOption: React.FC<{
+const RotatingOption: React.FC<{
   value: string;
   index: number;
   moduleId?: string;
@@ -147,63 +147,82 @@ const ScaledOption: React.FC<{
   style: React.CSSProperties;
   setIsPaused: (paused: boolean) => void;
 }> = ({ value, index, moduleId, isPreviewMode, onSaveOption, style, setIsPaused }) => {
-  const [scale, setScale] = useState(1);
-  const [isReady, setIsReady] = useState(false);
   const ref = React.useRef<HTMLSpanElement>(null);
+  const [fontScale, setFontScale] = useState(1);
+  const isSingleWord = !/\s/.test(String(value || '').trim());
 
   useLayoutEffect(() => {
-    let mounted = true;
-    
+    const element = ref.current;
+    if (!element) return;
+
+    const findAvailableWidth = () => {
+      let node: HTMLElement | null = element.parentElement;
+
+      while (node) {
+        const computed = window.getComputedStyle(node);
+        const width = node.clientWidth;
+        const isUsableBlock = width > 0 && computed.display !== 'inline';
+
+        if (isUsableBlock) {
+          return width;
+        }
+
+        node = node.parentElement;
+      }
+
+      return 0;
+    };
+
     const measure = () => {
-      if (!ref.current || !mounted) return;
-      
-      // Better measurement: look for the nearest container that defines the text width
-      let container: HTMLElement | null = ref.current.parentElement;
-      while (container && container.clientWidth === 0) {
-        container = container.parentElement;
+      if (!element) return;
+
+      element.style.fontSize = '1em';
+      const naturalWidth = element.scrollWidth;
+      const availableWidth = findAvailableWidth();
+
+      if (!isSingleWord || !availableWidth || naturalWidth <= availableWidth) {
+        setFontScale(1);
+        return;
       }
-      
-      const availableWidth = container ? container.clientWidth - 20 : window.innerWidth - 60;
-      
-      // Temporal measurement without scaling to find natural width
-      const originalFS = ref.current.style.fontSize;
-      ref.current.style.fontSize = '1em';
-      const actualWidth = ref.current.offsetWidth;
-      ref.current.style.fontSize = originalFS;
-      
-      if (actualWidth > availableWidth && availableWidth > 0) {
-        const newScale = Math.max(0.3, availableWidth / actualWidth);
-        setScale(newScale);
-      } else {
-        setScale(1);
-      }
-      
-      // All these state updates happen synchronously in the browser's layout phase
-      setIsReady(true);
+
+      const nextScale = Math.max(0.72, Math.min(1, availableWidth / naturalWidth));
+      setFontScale(nextScale);
     };
 
     measure();
-    
-    window.addEventListener('resize', measure);
-    
+
+    const resizeObserver = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null;
+    if (resizeObserver) {
+      let node: HTMLElement | null = element;
+      let hops = 0;
+      while (node && hops < 4) {
+        resizeObserver.observe(node);
+        node = node.parentElement;
+        hops += 1;
+      }
+    } else {
+      window.addEventListener('resize', measure);
+    }
+
     return () => {
-      mounted = false;
-      window.removeEventListener('resize', measure);
+      resizeObserver?.disconnect();
+      if (!resizeObserver) {
+        window.removeEventListener('resize', measure);
+      }
     };
-  }, [value]);
+  }, [value, isSingleWord]);
 
   return (
     <span 
       ref={ref}
       style={{
         ...style,
-        fontSize: scale < 1 ? `${scale}em` : 'inherit',
         lineHeight: 1.1,
-        opacity: isReady ? 1 : 0, 
-        visibility: isReady ? 'visible' : 'hidden',
-        transition: isReady ? 'opacity 0.3s ease-out' : 'none'
+        maxWidth: '100%',
+        display: 'inline-block',
+        fontSize: fontScale < 1 ? `${fontScale}em` : 'inherit'
       }}
-      className="inline-block"
+      className={`inline-block max-w-full ${isSingleWord ? 'whitespace-nowrap' : 'whitespace-normal break-words [overflow-wrap:anywhere]'}`}
     >
       {moduleId ? (
         <InlineEditableText
@@ -217,6 +236,7 @@ const ScaledOption: React.FC<{
             setIsPaused(false);
           }}
           tagName="span"
+          className={`inline-block max-w-full ${isSingleWord ? 'whitespace-nowrap' : 'whitespace-normal break-words [overflow-wrap:anywhere]'}`}
           onClick={() => setIsPaused(true)}
         />
       ) : (
@@ -225,4 +245,3 @@ const ScaledOption: React.FC<{
     </span>
   );
 };
-

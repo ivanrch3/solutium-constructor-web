@@ -25,6 +25,7 @@ import { Product, Customer, TrustedCompanyLogo } from '../../types/schema';
 import { syncAsset } from '../../services/assetService';
 import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../constants/typography';
 import { MOCK_PRODUCTS, MOCK_CUSTOMERS } from '../../constants/mockData';
+import { PexelsImagePickerModal, SelectedPexelsImageMetadata } from './media/PexelsImagePickerModal';
 
 import { normalizeSocialPlatform, SOCIAL_PLATFORMS, getIconForPlatform } from '../../utils/socialUtils';
 
@@ -37,6 +38,9 @@ interface SettingControlProps {
   customers?: Customer[];
   trustedCompanyLogos?: TrustedCompanyLogo[];
   projectColors?: string[]; // New prop for theme colors
+  project?: any;
+  contextId?: string;
+  moduleType?: string;
 }
 
 // --- REFACTORED COLOR PICKER COMPONENTS ---
@@ -52,6 +56,33 @@ const PRESET_COLORS = [
 ];
 
 const SOCIAL_ICONS = ['Facebook', 'Instagram', 'Twitter', 'Linkedin', 'Youtube', 'Github', 'Twitch', 'MessageCircle', 'Music2', 'Globe', 'Link'];
+
+const STOCK_IMAGE_BLOCKLIST = ['logo', 'logos', 'signature', 'firma', 'brand', 'company_logo', 'trusted', 'partner'];
+
+const getPreferredProjectGradientColors = (projectColors?: string[]) => {
+  const fallback = { color1: '#3B82F6', color2: '#8B5CF6' };
+  if (!projectColors || projectColors.length === 0) return fallback;
+
+  const [primary, secondary, accent] = projectColors;
+  return {
+    color1: primary || fallback.color1,
+    color2: accent || secondary || primary || fallback.color2
+  };
+};
+
+const shouldHidePexelsButton = (setting: SettingDefinition, moduleType?: string) => {
+  const raw = `${setting.id} ${setting.label || ''} ${moduleType || ''}`.toLowerCase();
+  if (moduleType === 'trusted_logos') return true;
+  return STOCK_IMAGE_BLOCKLIST.some(token => raw.includes(token));
+};
+
+const inferPexelsOrientation = (setting: SettingDefinition, moduleType?: string): 'landscape' | 'portrait' | 'square' => {
+  const raw = `${setting.id} ${setting.label || ''} ${moduleType || ''}`.toLowerCase();
+  if (/(avatar|team|portrait)/.test(raw)) return 'portrait';
+  if (/(square|icon|card_image)/.test(raw)) return 'square';
+  if (/(bg|background|hero|poster)/.test(raw)) return 'landscape';
+  return 'landscape';
+};
 
 const InlineColorPicker = ({ value, onChange, label, projectColors }: { value: string, onChange: (v: string) => void, label?: string, projectColors?: string[] }) => {
   return (
@@ -128,13 +159,19 @@ export const SettingControl: React.FC<SettingControlProps> = ({
   products, 
   customers,
   trustedCompanyLogos,
-  projectColors
+  projectColors,
+  project,
+  contextId,
+  moduleType
 }) => {
   const [isUploading, setIsUploading] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
+  const [isPexelsOpen, setIsPexelsOpen] = useState(false);
   const currentValue = value !== undefined ? value : setting.defaultValue;
 
   const isDisabled = setting.disabledMessage !== undefined;
+  const shouldShowPexels = setting.type === 'image' && !shouldHidePexelsButton(setting, moduleType);
+  const preferredOrientation = inferPexelsOrientation(setting, moduleType);
 
   // Helpers for Gradient parsing
   const parseGradient = (grad: string) => {
@@ -143,7 +180,8 @@ export const SettingControl: React.FC<SettingControlProps> = ({
     if (match) {
       return { angle: parseInt(match[1]), color1: match[2], color2: match[3] };
     }
-    return { angle: 135, color1: '#3B82F6', color2: '#8B5CF6' };
+    const preferred = getPreferredProjectGradientColors(projectColors);
+    return { angle: 135, color1: preferred.color1, color2: preferred.color2 };
   };
 
   const stringifyGradient = (angle: number, c1: string, c2: string) => {
@@ -172,6 +210,17 @@ export const SettingControl: React.FC<SettingControlProps> = ({
     } finally {
       setIsUploading(false);
     }
+  };
+
+  const handlePexelsSelect = (imageUrl: string, metadata: SelectedPexelsImageMetadata) => {
+    const extras = contextId
+      ? {
+          [`${contextId}_${setting.id}_media_metadata`]: metadata
+        }
+      : undefined;
+
+    onChange(imageUrl, extras);
+    setIsPexelsOpen(false);
   };
 
   switch (setting.type) {
@@ -391,6 +440,16 @@ export const SettingControl: React.FC<SettingControlProps> = ({
                   </button>
                 </div>
               </div>
+              {shouldShowPexels && (
+                <button
+                  type="button"
+                  onClick={() => setIsPexelsOpen(true)}
+                  className="px-3 py-2 bg-blue-50 text-blue-700 border border-blue-100 rounded-xl hover:bg-blue-100 transition-colors text-[10px] font-bold whitespace-nowrap"
+                  title="Buscar en Pexels"
+                >
+                  Buscar en Pexels
+                </button>
+              )}
               {currentValue && (
                 <button 
                   onClick={() => onChange('')}
@@ -401,6 +460,20 @@ export const SettingControl: React.FC<SettingControlProps> = ({
                 </button>
               )}
             </div>
+
+            {shouldShowPexels && (
+              <PexelsImagePickerModal
+                isOpen={isPexelsOpen}
+                onClose={() => setIsPexelsOpen(false)}
+                onSelect={handlePexelsSelect}
+                projectId={projectId}
+                industry={project?.industry}
+                moduleType={moduleType}
+                fieldKey={setting.id}
+                fieldLabel={setting.label}
+                initialOrientation={preferredOrientation}
+              />
+            )}
           </div>
         </div>
       );
@@ -489,7 +562,10 @@ export const SettingControl: React.FC<SettingControlProps> = ({
     case 'gradient':
       const gradData = parseGradient(currentValue);
       const isSafeGradient = (val: any) => typeof val === 'string' && !val.includes('NaN');
-      const safeGradientValue = isSafeGradient(currentValue) ? currentValue : stringifyGradient(135, '#3B82F6', '#8B5CF6');
+      const preferredGradient = getPreferredProjectGradientColors(projectColors);
+      const safeGradientValue = isSafeGradient(currentValue)
+        ? currentValue
+        : stringifyGradient(135, preferredGradient.color1, preferredGradient.color2);
 
       return (
         <div className="space-y-2">

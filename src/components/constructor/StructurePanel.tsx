@@ -58,7 +58,7 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
   isMobile,
   activeTab = 'constructor'
 }) => {
-  const { siteContent } = useEditorStore();
+  const { siteContent, project } = useEditorStore();
   const containerRef = React.useRef<HTMLDivElement>(null);
   const [shiningGroup, setShiningGroup] = React.useState<string | null>(null);
   const [expandedBentoItem, setExpandedBentoItem] = React.useState<number | null>(null);
@@ -170,13 +170,21 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
 
   // Extract project theme colors for the ColorPicker
   const getProjectColors = () => {
+    const projectBrandColors = [
+      project?.brandColors?.primary,
+      project?.brandColors?.secondary,
+      project?.brandColors?.accent
+    ].filter(Boolean) as string[];
+
+    if (projectBrandColors.length > 0) {
+      return Array.from(new Set(projectBrandColors));
+    }
+
     const settings = editorState.settingsValues;
     const colors = [
       settings['global_theme_primary_color'],
       settings['global_theme_secondary_color'],
       settings['global_theme_accent_color'],
-      settings['global_theme_background_color'],
-      settings['global_theme_text_color'],
     ].filter(Boolean) as string[];
     
     // Add default solutium primary if not exists

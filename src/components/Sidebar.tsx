@@ -10,6 +10,8 @@ interface SidebarProps {
   onTabChange: (tab: string) => void;
 }
 
+const CONSTRUCTOR_WEB_LOGO_URL = 'https://nyc3.digitaloceanspaces.com/solutium-space/988cd339-a2c7-4951-b944-998d32dc349b-solutium-constructor-web-imagotipo.png';
+
 export const Sidebar: React.FC<SidebarProps> = ({ profile, project, urlLogo, activeTab, onTabChange }) => {
   const role = profile?.role || 'user';
   const isSuperAdmin = role.toLowerCase().replace('-', '') === 'superadmin';
@@ -28,7 +30,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ profile, project, urlLogo, act
   };
 
   const [logoError, setLogoError] = React.useState(false);
-  const displayLogo = urlLogo || project?.logoUrl || project?.isoUrl;
+  const displayLogo = CONSTRUCTOR_WEB_LOGO_URL;
 
   return (
     <div 

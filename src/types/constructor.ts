@@ -18,6 +18,7 @@ export interface SettingDefinition {
   label: string;
   type: SettingType;
   defaultValue: any;
+  subsection?: string;
   options?: { label: string; value: any; icon?: string }[];
   min?: number;
   max?: number;

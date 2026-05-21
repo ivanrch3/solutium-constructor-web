@@ -130,6 +130,7 @@ const loadGoogleFont = (fontFamily: string) => {
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const applyTheme = (themeData: any) => {
     const root = document.documentElement;
+    const currentStyles = getComputedStyle(root);
     
     // Si recibimos un nombre de tema (string), buscamos en nuestros temas predefinidos
     if (typeof themeData === 'string') {
@@ -193,10 +194,10 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     root.style.setProperty('--solutium-dark', solutiumDark);
 
     // Sidebar variables - Robustez en nombres de claves
-    const sidebarBg = theme.sidebar_bg || theme.sidebarBg || theme.sidebarBackground || theme.primary || theme.primaryColor;
-    const sidebarFg = theme.sidebar_foreground || theme.sidebarForeground || theme.sidebarText || '#FFFFFF';
-    const sidebarAccent = theme.sidebar_accent || theme.sidebarAccent || 'rgba(255, 255, 255, 0.1)';
-    const sidebarBorder = theme.sidebar_border || theme.sidebarBorder || 'rgba(255, 255, 255, 0.1)';
+    const sidebarBg = theme.sidebar_bg || theme.sidebarBg || theme.sidebarBackground || currentStyles.getPropertyValue('--sidebar-bg').trim() || SOLUTIUM_COLORS.blue;
+    const sidebarFg = theme.sidebar_foreground || theme.sidebarForeground || theme.sidebarText || currentStyles.getPropertyValue('--sidebar-foreground').trim() || '#FFFFFF';
+    const sidebarAccent = theme.sidebar_accent || theme.sidebarAccent || currentStyles.getPropertyValue('--sidebar-accent').trim() || 'rgba(255, 255, 255, 0.1)';
+    const sidebarBorder = theme.sidebar_border || theme.sidebarBorder || currentStyles.getPropertyValue('--sidebar-border').trim() || 'rgba(255, 255, 255, 0.1)';
 
     root.style.setProperty('--sidebar-bg', sidebarBg);
     root.style.setProperty('--sidebar-foreground', sidebarFg);

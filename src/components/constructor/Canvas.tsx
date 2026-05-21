@@ -83,12 +83,21 @@ export const Canvas: React.FC<CanvasProps> = ({
   const lastModuleRef = React.useRef<HTMLDivElement>(null);
   const prevModulesLength = React.useRef(editorState.addedModules?.length || 0);
   const canvasScrollContainerRef = React.useRef<HTMLDivElement>(null);
+  const fullscreenRootRef = React.useRef<HTMLDivElement>(null);
+  const setCanvasRootRef = React.useCallback((node: HTMLDivElement | null) => {
+    canvasScrollContainerRef.current = node;
+    fullscreenRootRef.current = node;
+  }, []);
 
   const viewportWidths = {
     desktop: '100%',
     tablet: '768px',
     mobile: '375px'
   };
+
+  const fullscreenViewportWidth = viewport === 'desktop'
+    ? '100%'
+    : `min(${viewportWidths[viewport]}, calc(100vw - 48px))`;
 
   React.useEffect(() => {
     if ((editorState.addedModules?.length || 0) > prevModulesLength.current) {
@@ -116,12 +125,37 @@ export const Canvas: React.FC<CanvasProps> = ({
     }
   }, [editorState.expandedModuleId]);
 
+  React.useEffect(() => {
+    const target = fullscreenRootRef.current;
+    if (!target || isPreviewMode) return;
+
+    const syncFullscreenState = () => {
+      const isActuallyFullscreen = document.fullscreenElement === target;
+      if (isFullscreen !== isActuallyFullscreen) {
+        setIsFullscreen(isActuallyFullscreen);
+      }
+    };
+
+    document.addEventListener('fullscreenchange', syncFullscreenState);
+
+    if (isFullscreen && document.fullscreenElement !== target) {
+      target.requestFullscreen?.().catch(() => {});
+    } else if (!isFullscreen && document.fullscreenElement === target) {
+      document.exitFullscreen?.().catch(() => {});
+    }
+
+    return () => {
+      document.removeEventListener('fullscreenchange', syncFullscreenState);
+    };
+  }, [isFullscreen, isPreviewMode, setIsFullscreen]);
+
   return (
     <ParallaxScrollContext.Provider value={isPreviewMode ? null : canvasScrollContainerRef}>
       <div
-        ref={canvasScrollContainerRef}
+        ref={setCanvasRootRef}
         id="constructor-canvas-scroll-container"
-        className={`flex-1 bg-secondary/50 overflow-y-auto custom-scrollbar transition-all duration-500 ${isFullscreen ? 'fixed inset-0 z-[100] bg-secondary' : ''} ${isPreviewMode ? 'bg-surface p-0' : ''}`}
+        className={`flex-1 bg-secondary/50 overflow-y-scroll custom-scrollbar preview-scrollbar transition-all duration-500 ${isFullscreen ? 'fixed inset-0 z-[100] bg-secondary' : ''} ${isPreviewMode ? 'bg-surface p-0' : ''}`}
+        style={{ scrollbarGutter: 'stable both-edges' }}
       >
       {isFullscreen && !isPreviewMode && (
         <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[110] flex items-center gap-2 bg-surface/80 backdrop-blur-md border border-border/50 p-1.5 rounded-2xl shadow-2xl">
@@ -157,18 +191,18 @@ export const Canvas: React.FC<CanvasProps> = ({
           </button>
         </div>
       )}
-      <div className={`flex justify-center min-h-full transition-all duration-500 ${isFullscreen ? 'p-12 pt-24' : isPreviewMode ? 'p-0' : 'p-12'}`}>
+      <div className={`flex justify-center min-h-full transition-all duration-500 ${isFullscreen ? 'p-6 pt-24' : isPreviewMode ? 'p-0' : 'p-12'}`}>
         <div 
           id="constructor-canvas-render"
           data-preview-root="true"
           className={`bg-surface relative transition-all duration-500 ease-in-out @container ${
             isPreviewMode ? 'w-full max-w-none border-none rounded-none shadow-none' : 
-            isFullscreen ? 'rounded-3xl border border-border/50 shadow-2xl' : 'rounded-2xl border border-border/50 shadow-2xl'
+            (isFullscreen && viewport === 'desktop') ? 'w-full max-w-none min-h-full rounded-none border-none shadow-none' : 'rounded-2xl border border-border/50 shadow-2xl'
           } ${viewport === 'mobile' && !isPreviewMode ? 'rounded-[3rem] border-[8px] border-slate-900 shadow-[0_0_0_2px_rgba(0,0,0,0.1)]' : ''} ${viewport === 'tablet' && !isPreviewMode ? 'rounded-[2rem] border-[12px] border-slate-900 shadow-[0_0_0_2px_rgba(0,0,0,0.1)]' : ''}`}
           style={{ 
-            width: isPreviewMode ? '100%' : viewportWidths[viewport], 
-            maxWidth: isPreviewMode ? 'none' : viewport === 'desktop' ? '1200px' : viewportWidths[viewport],
-            minHeight: isPreviewMode ? '100vh' : viewport === 'mobile' ? '667px' : viewport === 'tablet' ? '1024px' : '800px'
+            width: isPreviewMode ? '100%' : (isFullscreen ? fullscreenViewportWidth : viewportWidths[viewport]), 
+            maxWidth: isPreviewMode ? 'none' : (isFullscreen ? (viewport === 'desktop' ? 'none' : viewportWidths[viewport]) : viewport === 'desktop' ? '1200px' : viewportWidths[viewport]),
+            minHeight: isPreviewMode ? '100vh' : (isFullscreen && viewport === 'desktop' ? '100vh' : viewport === 'mobile' ? '667px' : viewport === 'tablet' ? '1024px' : '800px')
           }}
         >
           {viewport === 'mobile' && !isPreviewMode && (

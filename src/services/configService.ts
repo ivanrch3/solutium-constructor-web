@@ -6,13 +6,11 @@ import { logDebug } from '../utils/debug';
 
 interface AppConfig {
   geminiApiKey: string | null;
-  pexelsApiKey: string | null;
 }
 
 class ConfigService {
   private config: AppConfig = {
-    geminiApiKey: null,
-    pexelsApiKey: null
+    geminiApiKey: null
   };
 
   constructor() {
@@ -20,7 +18,7 @@ class ConfigService {
   }
 
   /**
-   * Intenta extraer las API Keys de todas las fuentes posibles:
+   * Intenta extraer la API Key de Gemini de todas las fuentes posibles:
    * 1. window.name (JSON inyectado por la madre)
    * 2. Parámetros de URL (query string)
    * 3. Variables de entorno (Build-time)
@@ -37,17 +35,13 @@ class ConfigService {
     // B. Buscar en Parámetros de URL
     const params = new URLSearchParams(window.location.search);
     const urlData = {
-      gemini_api_key: params.get('gemini_api_key') || params.get('apiKey'),
-      pexels_api_key: params.get('pexels_api_key') || params.get('pexelsKey')
+      gemini_api_key: params.get('gemini_api_key') || params.get('apiKey')
     };
     this.extractFromObject(urlData);
 
     // C. Fallback a Variables de Entorno
     if (!this.config.geminiApiKey) {
       this.config.geminiApiKey = (import.meta.env.VITE_GEMINI_API_KEY as string) || null;
-    }
-    if (!this.config.pexelsApiKey) {
-      this.config.pexelsApiKey = (import.meta.env.VITE_PEXELS_API_KEY as string) || null;
     }
   }
 
@@ -58,9 +52,6 @@ class ConfigService {
     const geminiKey = data.gemini_api_key || data.GEMINI_API_KEY || data.apiKey || data.geminiKey || data.VITE_GEMINI_API_KEY;
     if (geminiKey) this.config.geminiApiKey = geminiKey;
 
-    // Mapeo flexible para Pexels
-    const pexelsKey = data.pexels_api_key || data.PEXELS_API_KEY || data.pexelsKey || data.VITE_PEXELS_API_KEY;
-    if (pexelsKey) this.config.pexelsApiKey = pexelsKey;
   }
 
   updateConfig(newConfig: Partial<AppConfig>) {
@@ -70,10 +61,6 @@ class ConfigService {
 
   get geminiApiKey(): string | null {
     return this.config.geminiApiKey;
-  }
-
-  get pexelsApiKey(): string | null {
-    return this.config.pexelsApiKey;
   }
 }
 

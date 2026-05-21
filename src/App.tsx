@@ -21,6 +21,36 @@ import { getAssets } from './services/dataService';
 
 type View = 'dashboard' | 'selection-method' | 'form' | 'generator' | 'constructor' | 'viewer';
 
+const CONSTRUCTOR_WEB_LOGO_URL = 'https://nyc3.digitaloceanspaces.com/solutium-space/988cd339-a2c7-4951-b944-998d32dc349b-solutium-constructor-web-imagotipo.png';
+
+const normalizeBrandColors = (rawBrandColors: any) => {
+  if (!rawBrandColors || typeof rawBrandColors !== 'object') return null;
+
+  return {
+    ...rawBrandColors,
+    primary: rawBrandColors.primary || rawBrandColors.primary_color || null,
+    secondary: rawBrandColors.secondary || rawBrandColors.secondary_color || null,
+    accent: rawBrandColors.accent || rawBrandColors.accent_color || null
+  };
+};
+
+const normalizeIncomingProject = (rawProject: any): Project | null => {
+  if (!rawProject || typeof rawProject !== 'object') return null;
+
+  return {
+    ...rawProject,
+    logoWhiteUrl: rawProject.logoWhiteUrl || rawProject.logo_white_url || null,
+    projectIconUrl: rawProject.projectIconUrl || rawProject.project_icon_url || null,
+    fontFamily: rawProject.fontFamily || rawProject.font_family || null,
+    brandColors: normalizeBrandColors(rawProject.brandColors || rawProject.brand_colors),
+    webConfig: rawProject.webConfig || rawProject.web_config || null,
+    imageMappings: rawProject.imageMappings || rawProject.image_mappings || null,
+    schemaVersion: rawProject.schemaVersion || rawProject.schema_version || null,
+    createdAt: rawProject.createdAt || rawProject.created_at || null,
+    updatedAt: rawProject.updatedAt || rawProject.updated_at || null
+  } as Project;
+};
+
 const AppContent: React.FC = () => {
   const queryParams = new URLSearchParams(window.location.search);
   const isPublicRenderMode =
@@ -43,6 +73,14 @@ const AppContent: React.FC = () => {
   const [loadingLogoError, setLoadingLogoError] = useState(false);
   const [urlLogo, setUrlLogo] = useState<string | null>(null);
   const [urlLogoWhite, setUrlLogoWhite] = useState<string | null>(null);
+  const loadingMessages = React.useMemo(() => ([
+    'Estableciendo handshake seguro...',
+    'Inicializando sesión de Supabase...',
+    'Sincronizando contexto del proyecto...',
+    'Aplicando identidad visual...',
+    'Preparando módulos del constructor...'
+  ]), []);
+  const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
   const { applyTheme } = useTheme();
 
   // --- PERSISTENCE PROTOCOL v1.0 ---
@@ -81,6 +119,16 @@ const AppContent: React.FC = () => {
       });
     }
   }, [debugEnabled, productsDebugEnabled]);
+
+  useEffect(() => {
+    if (isHandshakeComplete) return;
+
+    const interval = window.setInterval(() => {
+      setLoadingMessageIndex((prev) => (prev + 1) % loadingMessages.length);
+    }, 1400);
+
+    return () => window.clearInterval(interval);
+  }, [isHandshakeComplete, loadingMessages]);
 
   // Sync state to local storage
   useEffect(() => {
@@ -229,8 +277,7 @@ const AppContent: React.FC = () => {
 
       // Actualizar configuración dinámica (API Keys) desde la Madre
       configService.updateConfig({
-        geminiApiKey: payload.gemini_api_key || payload.VITE_GEMINI_API_KEY || null,
-        pexelsApiKey: payload.pexels_api_key || payload.VITE_PEXELS_API_KEY || null
+        geminiApiKey: payload.gemini_api_key || payload.VITE_GEMINI_API_KEY || null
       });
 
       // Extraer fontFamily con máxima cobertura de claves posibles
@@ -315,14 +362,33 @@ const AppContent: React.FC = () => {
         setAppId(handshakeAppId);
         
         if (payload.project) {
-          setProject(payload.project);
-          if (payload.project.logoWhiteUrl || payload.project.logo_white_url) {
-            setUrlLogoWhite(payload.project.logoWhiteUrl || payload.project.logo_white_url);
+          const normalizedProject = normalizeIncomingProject(payload.project);
+          if (normalizedProject) {
+            setProject(normalizedProject);
+            if (normalizedProject.brandColors || normalizedProject.fontFamily) {
+              applyTheme({
+                primaryColor: normalizedProject.brandColors?.primary,
+                secondaryColor: normalizedProject.brandColors?.secondary,
+                accentColor: normalizedProject.brandColors?.accent,
+                fontFamily: handshakeFont || normalizedProject.fontFamily || undefined
+              });
+            }
+          }
+          if (normalizedProject?.logoWhiteUrl) {
+            setUrlLogoWhite(normalizedProject.logoWhiteUrl);
           }
         } else if (finalProjectId) {
-          const projectData = await getProject(finalProjectId);
+          const projectData = normalizeIncomingProject(await getProject(finalProjectId));
           if (projectData) {
             setProject(projectData);
+            if (projectData.brandColors || projectData.fontFamily) {
+              applyTheme({
+                primaryColor: projectData.brandColors?.primary,
+                secondaryColor: projectData.brandColors?.secondary,
+                accentColor: projectData.brandColors?.accent,
+                fontFamily: handshakeFont || projectData.fontFamily || undefined
+              });
+            }
             if (projectData.logoWhiteUrl) setUrlLogoWhite(projectData.logoWhiteUrl);
           }
         }
@@ -569,7 +635,7 @@ const AppContent: React.FC = () => {
           className="flex flex-col items-center gap-6"
         >
           {/* Solutium Isotipo central */}
-          <div className="relative flex items-center justify-center">
+          <div className="flex items-center justify-center">
             <motion.div
               animate={{
                 opacity: [0.92, 1, 0.92]
@@ -579,7 +645,7 @@ const AppContent: React.FC = () => {
                 repeat: Infinity,
                 ease: "easeInOut"
               }}
-              className="relative z-10 flex items-center justify-center"
+              className="flex items-center justify-center"
             >
               {loadingLogoError ? (
                 <div className="flex h-24 w-24 items-center justify-center rounded-[28px] bg-white shadow-[0_20px_45px_rgba(15,23,42,0.08)] ring-1 ring-slate-200/80">
@@ -587,9 +653,9 @@ const AppContent: React.FC = () => {
                 </div>
               ) : (
                 <img
-                  src="https://nyc3.digitaloceanspaces.com/solutium-space/9e52afcf-2229-4b3a-9206-1a0c4bf404b9-solutium-isotipo.png"
+                  src={CONSTRUCTOR_WEB_LOGO_URL}
                   alt="Constructor Web"
-                  className="h-24 w-24 object-contain drop-shadow-[0_20px_45px_rgba(15,23,42,0.08)]"
+                  className="h-24 w-auto object-contain drop-shadow-[0_20px_45px_rgba(15,23,42,0.08)]"
                   referrerPolicy="no-referrer"
                   onError={() => setLoadingLogoError(true)}
                 />
@@ -597,20 +663,10 @@ const AppContent: React.FC = () => {
             </motion.div>
             
             {/* Círculo de Carga animado */}
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 1.15, repeat: Infinity, ease: "linear" }}
-              className="pointer-events-none absolute inset-0 z-20"
-            >
-              <div className="absolute right-0 top-1/2 -mt-1.5 h-3 w-3 rounded-full bg-[#F97316] shadow-[0_0_0_5px_rgba(249,115,22,0.14)]" />
-            </motion.div>
           </div>
           <div className="flex flex-col items-center gap-1">
-            <p className="text-xs font-semibold uppercase tracking-[0.34em] text-slate-400">
-              Constructor Web
-            </p>
             <p className="text-sm text-slate-500">
-              Cargando entorno de edición...
+              {loadingMessages[loadingMessageIndex]}
             </p>
           </div>
         </motion.div>

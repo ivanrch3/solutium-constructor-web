@@ -58,6 +58,8 @@ import {
 } from './ConstructorModals';
 import { BentoPromptGenerator } from './BentoPromptGenerator';
 import { BentoSchema } from '../../types/bentoSchema';
+
+const DEFAULT_PARALLAX_BG_IMAGE = '/parallax-default-centered.svg';
 import { 
   getThemeVal,
   getFontFamily,
@@ -90,6 +92,25 @@ const getPlainValue = (val: any) => {
     return val.value;
   }
   return val;
+};
+
+const PROJECT_BRAND_COLOR_DEFAULTS = new Set([
+  '#3b82f6', '#2563eb', '#1d4ed8',
+  '#8b5cf6', '#7c3aed', '#6d28d9'
+]);
+
+const isProjectBrandDefaultColor = (value: any) => {
+  return typeof value === 'string' && PROJECT_BRAND_COLOR_DEFAULTS.has(value.trim().toLowerCase());
+};
+
+const isGradientTextSetting = (settingId: string, label?: string) => {
+  const raw = `${settingId} ${label || ''}`.toLowerCase();
+  return /(highlight|rotating|texto|title|subtitle|eyebrow|heading)/.test(raw) && /gradient|degrad/.test(raw);
+};
+
+const isProjectTextAccentSetting = (settingId: string, label?: string) => {
+  const raw = `${settingId} ${label || ''}`.toLowerCase();
+  return /(eyebrow|highlight|accent|role|icon|rotating|price|search_border|handle_color|active_color|trust_color|btn(_|[a-z])|button|primary_bg|secondary_bg|primary_color|secondary_color|cta_bg|color)/.test(raw);
 };
 
 const checkDictionarySync = async (contract: RenderingContract): Promise<void> => {
@@ -306,23 +327,59 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
   const [showBentoPrompt, setShowBentoPrompt] = useState(false);
 
+  const projectThemeSeed = React.useMemo(() => ({
+    primary: project?.brandColors?.primary || '#3B82F6',
+    secondary: project?.brandColors?.secondary || '#F1F5F9',
+    accent: project?.brandColors?.accent || '#7C3AED',
+    background: '#F8FAFC',
+    text: '#0F172A',
+    fontSans: project?.fontFamily || 'Inter',
+    fontHeading: project?.fontFamily || 'Inter'
+  }), [project]);
+
+  const getThemePaletteForDefaults = useCallback((settingsValues?: Record<string, any>) => {
+    const source = settingsValues || {};
+    return {
+      primary: source['global_theme_primary_color'] || projectThemeSeed.primary,
+      secondary: source['global_theme_secondary_color'] || projectThemeSeed.secondary,
+      accent: source['global_theme_accent_color'] || projectThemeSeed.accent,
+      text: source['global_theme_text_color'] || projectThemeSeed.text,
+      background: source['global_theme_background_color'] || projectThemeSeed.background
+    };
+  }, [projectThemeSeed]);
+
+  const resolveProjectAwareSettingDefault = useCallback((setting: any, rawValue: any, settingsValues?: Record<string, any>) => {
+    const palette = getThemePaletteForDefaults(settingsValues);
+    const label = setting?.label || '';
+
+    if (setting?.type === 'gradient' && isGradientTextSetting(setting.id, label)) {
+      return `linear-gradient(90deg, ${palette.primary} 0%, ${palette.accent} 100%)`;
+    }
+
+    if (setting?.type === 'color' && isProjectBrandDefaultColor(rawValue) && isProjectTextAccentSetting(setting.id, label)) {
+      return palette.primary;
+    }
+
+    return rawValue;
+  }, [getThemePaletteForDefaults]);
+  
   const [editorState, setEditorState] = useState<EditorState>(() => {
     const defaultState: EditorState = {
-      addedModules: [],
-      expandedModuleId: null,
-      selectedElementId: null,
-      expandedGroupsByElement: {},
-      settingsValues: {
-        'global_theme_primary_color': project?.brandColors?.primary || '#3B82F6',
-        'global_theme_secondary_color': project?.brandColors?.secondary || '#F1F5F9',
-        'global_theme_accent_color': project?.brandColors?.accent || '#7C3AED',
-        'global_theme_background_color': '#F8FAFC',
-        'global_theme_text_color': '#0F172A',
-        'global_theme_font_sans': project?.fontFamily || 'Inter',
-        'global_theme_font_heading': project?.fontFamily || 'Inter',
-        'global_theme_radius': 12,
-        'global_theme_container_width': 1400
-      },
+        addedModules: [],
+        expandedModuleId: null,
+        selectedElementId: null,
+        expandedGroupsByElement: {},
+        settingsValues: {
+          'global_theme_primary_color': projectThemeSeed.primary,
+          'global_theme_secondary_color': projectThemeSeed.secondary,
+          'global_theme_accent_color': projectThemeSeed.accent,
+          'global_theme_background_color': projectThemeSeed.background,
+          'global_theme_text_color': projectThemeSeed.text,
+          'global_theme_font_sans': projectThemeSeed.fontSans,
+          'global_theme_font_heading': projectThemeSeed.fontHeading,
+          'global_theme_radius': 12,
+          'global_theme_container_width': 1400
+        },
       recentlyAddedModuleId: null,
       totalModulesAdded: 0
     };
@@ -452,8 +509,126 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     });
 
 
-    return defaultState;
-  });
+      return defaultState;
+    });
+
+    useEffect(() => {
+      if (!project) return;
+
+      const shouldSeedValue = (currentValue: unknown, defaults: string[]) => {
+        if (currentValue === undefined || currentValue === null || String(currentValue).trim() === '') {
+          return true;
+        }
+
+        const normalizedCurrent = String(currentValue).trim().toLowerCase();
+        return defaults.some((candidate) => normalizedCurrent === candidate.toLowerCase());
+      };
+
+      updateEditorState((prev) => {
+        const nextSettings = { ...prev.settingsValues };
+        let changed = false;
+
+        const seedThemeValue = (key: string, nextValue: string, defaults: string[]) => {
+          if (!nextValue) return;
+          if (shouldSeedValue(nextSettings[key], defaults) && nextSettings[key] !== nextValue) {
+            nextSettings[key] = nextValue;
+            changed = true;
+          }
+        };
+
+        seedThemeValue('global_theme_primary_color', projectThemeSeed.primary, ['#3B82F6', '#3b82f6']);
+        seedThemeValue('global_theme_secondary_color', projectThemeSeed.secondary, ['#F1F5F9', '#f1f5f9']);
+        seedThemeValue('global_theme_accent_color', projectThemeSeed.accent, ['#7C3AED', '#7c3aed']);
+        seedThemeValue('global_theme_background_color', projectThemeSeed.background, ['#F8FAFC', '#f8fafc']);
+        seedThemeValue('global_theme_text_color', projectThemeSeed.text, ['#0F172A', '#0f172a']);
+        seedThemeValue('global_theme_font_sans', projectThemeSeed.fontSans, ['Inter', 'inter']);
+        seedThemeValue('global_theme_font_heading', projectThemeSeed.fontHeading, ['Inter', 'inter']);
+
+        Object.keys(nextSettings).forEach((key) => {
+          const currentValue = nextSettings[key];
+          const normalizedKey = key.toLowerCase();
+
+          if (typeof currentValue === 'string' && isProjectBrandDefaultColor(currentValue)) {
+            if (normalizedKey.includes('gradient')) {
+              nextSettings[key] = `linear-gradient(90deg, ${projectThemeSeed.primary} 0%, ${projectThemeSeed.accent} 100%)`;
+              changed = true;
+              return;
+            }
+
+            if (/(btn(_|[a-z])|button|primary_bg|secondary_bg|eyebrow_color|highlight_color|accent_color|role_color|icon_color|price_color|rotating_color|trust_color|search_border|handle_color|active_color)/.test(normalizedKey)) {
+              nextSettings[key] = projectThemeSeed.primary;
+              changed = true;
+            }
+          }
+        });
+
+        prev.addedModules.forEach((module) => {
+          Object.values(module.globalSettings || {}).forEach((groupSettings) => {
+            groupSettings.forEach((setting: any) => {
+              const key = `${module.id}_global_${setting.id}`;
+              if (nextSettings[key] !== undefined) return;
+
+              const projectAwareDefault = resolveProjectAwareSettingDefault(setting, setting.defaultValue, nextSettings);
+              if (projectAwareDefault !== setting.defaultValue) {
+                nextSettings[key] = projectAwareDefault;
+                changed = true;
+              }
+            });
+          });
+
+          module.elements.forEach((element) => {
+            Object.values(element.settings || {}).forEach((groupSettings) => {
+              groupSettings.forEach((setting: any) => {
+                const key = `${element.id}_${setting.id}`;
+                if (nextSettings[key] !== undefined) return;
+
+                const projectAwareDefault = resolveProjectAwareSettingDefault(setting, setting.defaultValue, nextSettings);
+                if (projectAwareDefault !== setting.defaultValue) {
+                  nextSettings[key] = projectAwareDefault;
+                  changed = true;
+                }
+              });
+            });
+          });
+        });
+
+        return changed ? { ...prev, settingsValues: nextSettings } : prev;
+      });
+
+      const themeDefaults = {
+        primaryColor: ['#3b82f6'],
+        secondaryColor: ['#1e293b', '#f1f5f9'],
+        accentColor: ['#7c3aed'],
+        backgroundColor: ['#ffffff', '#f8fafc'],
+        textColor: ['#1f2937', '#0f172a'],
+        fontFamily: ['inter']
+      };
+
+      const shouldSeedThemeValue = (currentValue: unknown, nextValue: string, defaults: string[]) => {
+        if (currentValue === undefined || currentValue === null || String(currentValue).trim() === '') {
+          return true;
+        }
+
+        const normalizedCurrent = String(currentValue).trim().toLowerCase();
+        const normalizedNext = String(nextValue || '').trim().toLowerCase();
+        if (normalizedCurrent === normalizedNext) {
+          return false;
+        }
+        return defaults.some((candidate) => normalizedCurrent === candidate.toLowerCase());
+      };
+
+      const themeUpdate: Record<string, any> = {};
+      if (shouldSeedThemeValue(siteContent.theme?.primaryColor, projectThemeSeed.primary, themeDefaults.primaryColor)) themeUpdate.primaryColor = projectThemeSeed.primary;
+      if (shouldSeedThemeValue(siteContent.theme?.secondaryColor, projectThemeSeed.secondary, themeDefaults.secondaryColor)) themeUpdate.secondaryColor = projectThemeSeed.secondary;
+      if (shouldSeedThemeValue(siteContent.theme?.accentColor, projectThemeSeed.accent, themeDefaults.accentColor)) themeUpdate.accentColor = projectThemeSeed.accent;
+      if (shouldSeedThemeValue(siteContent.theme?.backgroundColor, projectThemeSeed.background, themeDefaults.backgroundColor)) themeUpdate.backgroundColor = projectThemeSeed.background;
+      if (shouldSeedThemeValue(siteContent.theme?.textColor, projectThemeSeed.text, themeDefaults.textColor)) themeUpdate.textColor = projectThemeSeed.text;
+      if (shouldSeedThemeValue(siteContent.theme?.fontFamily, projectThemeSeed.fontSans, themeDefaults.fontFamily)) themeUpdate.fontFamily = projectThemeSeed.fontSans;
+
+      if (Object.keys(themeUpdate).length > 0) {
+        updateTheme(themeUpdate);
+      }
+    }, [project, projectThemeSeed, siteContent.theme, updateTheme]);
 
   // Effect to load from pages table strictly if we only have a siteId (SIP v6.1)
   useEffect(() => {
@@ -549,12 +724,12 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     const getThemeVal = (key: string, fallback: any) => settings[`global_theme_${key}`] ?? fallback;
 
     // Apply Colors
-    root.style.setProperty('--primary-color', getThemeVal('primary_color', project?.brandColors?.primary || '#3B82F6'));
-    root.style.setProperty('--secondary-color', getThemeVal('secondary_color', '#F1F5F9'));
-    root.style.setProperty('--accent-color', getThemeVal('accent_color', '#7C3AED'));
-    root.style.setProperty('--background-color', getThemeVal('background_color', '#F8FAFC'));
-    root.style.setProperty('--foreground-color', getThemeVal('text_color', '#0F172A'));
-    root.style.setProperty('--card-color', getThemeVal('background_color', '#F8FAFC'));
+    root.style.setProperty('--primary-color', getThemeVal('primary_color', projectThemeSeed.primary));
+    root.style.setProperty('--secondary-color', getThemeVal('secondary_color', projectThemeSeed.secondary));
+    root.style.setProperty('--accent-color', getThemeVal('accent_color', projectThemeSeed.accent));
+    root.style.setProperty('--background-color', getThemeVal('background_color', projectThemeSeed.background));
+    root.style.setProperty('--foreground-color', getThemeVal('text_color', projectThemeSeed.text));
+    root.style.setProperty('--card-color', getThemeVal('background_color', projectThemeSeed.background));
     
     // Apply Typography
     const fontSans = getThemeVal('font_sans', 'Inter');
@@ -579,7 +754,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     root.style.setProperty('--radius', `${getThemeVal('radius', 12)}px`);
     root.style.setProperty('--max-width', `${getThemeVal('container_width', 1400)}px`);
     
-  }, [editorState.settingsValues, project]);
+  }, [editorState.settingsValues, projectThemeSeed]);
 
   // [PRODUCTS_SELECTION_STATE_AUDIT]
   useEffect(() => {
@@ -1088,7 +1263,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     if (module.globalSettings) {
       Object.values(module.globalSettings).forEach(groupSettings => {
         groupSettings.forEach(setting => {
-          let val = setting.defaultValue;
+          let val = resolveProjectAwareSettingDefault(setting, setting.defaultValue);
           
           // Custom logic for specific settings
           if (setting.id === 'logo_text' && project?.name) {
@@ -1125,7 +1300,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       if (element.settings) {
         Object.values(element.settings).forEach(groupSettings => {
           groupSettings.forEach(setting => {
-            let val = setting.defaultValue;
+            let val = resolveProjectAwareSettingDefault(setting, setting.defaultValue);
             
             // Custom logic for specific settings
             if ((setting.id === 'logo_text' || setting.id === 'brand_name') && project?.name) {
@@ -1391,12 +1566,33 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
 
   const handleSettingChange = (elementOrModuleId: string, settingId: string, value: any) => {
     updateEditorState(prev => {
+      const nextSettingsValues: Record<string, any> = {
+        ...prev.settingsValues,
+        [`${elementOrModuleId}_${settingId}`]: value
+      };
+
+      if (settingId === 'bg_parallax_enabled' && value === true) {
+        const parallaxImageKey = `${elementOrModuleId}_bg_parallax_img`;
+        const parallaxOpacityKey = `${elementOrModuleId}_bg_parallax_opacity`;
+        const parallaxSpeedKey = `${elementOrModuleId}_bg_parallax_speed`;
+        const currentParallaxImage = prev.settingsValues[parallaxImageKey];
+        const currentParallaxOpacity = prev.settingsValues[parallaxOpacityKey];
+        const currentParallaxSpeed = prev.settingsValues[parallaxSpeedKey];
+
+        if (!currentParallaxImage || String(currentParallaxImage).trim() === '') {
+          nextSettingsValues[parallaxImageKey] = DEFAULT_PARALLAX_BG_IMAGE;
+        }
+        if (currentParallaxOpacity === undefined || currentParallaxOpacity === null || currentParallaxOpacity === 20 || currentParallaxOpacity === '20') {
+          nextSettingsValues[parallaxOpacityKey] = 38;
+        }
+        if (currentParallaxSpeed === undefined || currentParallaxSpeed === null || currentParallaxSpeed === 100 || currentParallaxSpeed === '100') {
+          nextSettingsValues[parallaxSpeedKey] = 160;
+        }
+      }
+
       let nextState: EditorState = {
         ...prev,
-        settingsValues: {
-          ...prev.settingsValues,
-          [`${elementOrModuleId}_${settingId}`]: value
-        }
+        settingsValues: nextSettingsValues
       };
 
       const isDesktopHamburgerToggle =
@@ -2919,7 +3115,7 @@ const formatTimestampName = () => {
     // Global settings
     Object.values(BENTO_MODULE.globalSettings || {}).forEach(groupSettings => {
       groupSettings.forEach(setting => {
-        let val = setting.defaultValue;
+        let val = resolveProjectAwareSettingDefault(setting, setting.defaultValue);
         if (setting.id === 'columns') val = schema.layout.columns;
         if (setting.id === 'gap') val = schema.layout.gap;
         if (setting.id === 'bento_type') val = schema.layout.bento_type || 'mixed_content';
@@ -2932,7 +3128,7 @@ const formatTimestampName = () => {
       const cleanElementId = element.id.replace(`${moduleId}_`, '');
       Object.values(element.settings || {}).forEach(groupSettings => {
         groupSettings.forEach(setting => {
-          let val = setting.defaultValue;
+          let val = resolveProjectAwareSettingDefault(setting, setting.defaultValue);
           if (cleanElementId === 'el_bento_header') {
             if (setting.id === 'eyebrow') val = schema.header.eyebrow;
             if (setting.id === 'title') val = schema.header.title;

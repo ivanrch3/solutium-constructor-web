@@ -16,6 +16,8 @@ interface DashboardProps {
   logoWhiteUrl?: string | null;
 }
 
+const CONSTRUCTOR_WEB_LOGO_URL = 'https://nyc3.digitaloceanspaces.com/solutium-space/988cd339-a2c7-4951-b944-998d32dc349b-solutium-constructor-web-imagotipo.png';
+
 export const Dashboard: React.FC<DashboardProps> = ({ 
   assets, 
   pages, 
@@ -26,6 +28,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   logoUrl, 
   logoWhiteUrl 
 }) => {
+  const displayLogo = CONSTRUCTOR_WEB_LOGO_URL;
   const [editingSiteId, setEditingSiteId] = useState<string | null>(null);
   const [tempName, setTempName] = useState('');
 
@@ -38,18 +41,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-secondary p-8 flex flex-col items-center">
-      {/* Header Logo */}
-      <div className="flex flex-col items-center mb-16">
-        {logoUrl && (
+    <div className="min-h-screen bg-secondary px-8 pb-8 pt-4 flex flex-col items-center">
+        {/* Header Logo */}
+        <div className="w-full min-h-[170px] flex items-center justify-center">
           <img 
-            src={logoUrl} 
-            alt="Logo" 
+            src={displayLogo} 
+            alt="Constructor Web" 
             className="h-20 w-auto object-contain" 
             referrerPolicy="no-referrer" 
           />
-        )}
-      </div>
+        </div>
 
       {/* Main Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-6xl">
@@ -239,7 +240,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
           
           <button 
             onClick={onNewPage}
-            className="flex items-center justify-center gap-2 bg-solutium-dark hover:opacity-90 text-white font-bold py-3 px-6 rounded-xl transition-all shadow-lg shadow-primary/20 w-fit group border border-black/5"
+            className="flex items-center justify-center gap-2 hover:opacity-90 text-white font-bold py-3 px-6 rounded-xl transition-all shadow-lg shadow-primary/20 w-fit group border border-black/5"
+            style={{ backgroundColor: 'var(--primary-color)' }}
           >
             <PlusSquare className="w-5 h-5 group-hover:scale-110 transition-transform" />
             <span className="text-base">Crear nuevo</span>

@@ -84,39 +84,13 @@ async function startServer() {
     }
   });
 
-  // Pexels Proxy
+  // Deprecated local media proxy.
+  // Stock media search must be resolved by App Madre through /api/media/pexels/search.
   app.get("/api/images/search", async (req, res) => {
-    try {
-      const { query, per_page = "15", page = "1" } = req.query;
-      const apiKey = process.env.VITE_PEXELS_API_KEY;
-
-      if (!apiKey) {
-        return res.status(500).json({ error: "Pexels API Key not configured on server" });
-      }
-
-      if (!query) {
-        return res.status(400).json({ error: "Query parameter is required" });
-      }
-
-      const pexelsUrl = `https://api.pexels.com/v1/search?query=${encodeURIComponent(query as string)}&per_page=${per_page}&page=${page}`;
-      
-      const response = await fetch(pexelsUrl, {
-        headers: {
-          Authorization: apiKey,
-        },
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        return res.status(response.status).json(errorData);
-      }
-
-      const data = await response.json();
-      res.json(data);
-    } catch (error: any) {
-      console.error("[Server] Pexels proxy failed:", error);
-      res.status(500).json({ error: error.message || "Internal Server Error" });
-    }
+    res.status(410).json({
+      error: "Deprecated endpoint",
+      message: "Use App Madre /api/media/pexels/search instead of the local constructor proxy."
+    });
   });
 
   // Vite middleware for development

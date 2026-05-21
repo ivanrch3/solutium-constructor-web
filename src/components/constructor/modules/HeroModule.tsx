@@ -229,14 +229,17 @@ export const HeroModule: React.FC<{
   const secondaryUrl = getVal(`${moduleId}_el_hero_ctas`, 'secondary_url', '#');
   const secondaryTarget = getVal(`${moduleId}_el_hero_ctas`, 'secondary_target', '_self');
 
+  const showPrimary = toBoolean(getVal(`${moduleId}_el_hero_ctas`, 'show_primary', true));
+  const showSecondary = toBoolean(getVal(`${moduleId}_el_hero_ctas`, 'show_secondary', true));
+
   const isValidCta = (text?: string, url?: string) => {
     const safeText = String(text || '').trim();
     const safeUrl = String(url || '').trim();
-    return safeText !== '' && safeUrl !== '' && safeUrl !== '#';
+    return safeText !== '' && (safeUrl === '' || safeUrl === '#' || safeUrl.startsWith('#') || safeUrl.startsWith('/') || /^https?:/i.test(safeUrl));
   };
 
-  const hasPrimary = isValidCta(primaryText, primaryUrl);
-  const hasSecondary = isValidCta(secondaryText, secondaryUrl);
+  const hasPrimary = showPrimary && isValidCta(primaryText, primaryUrl);
+  const hasSecondary = showSecondary && isValidCta(secondaryText, secondaryUrl);
 
   const primaryBg = getVal(`${moduleId}_el_hero_ctas`, 'primary_bg', 'var(--primary-color)');
   const primaryColor = getVal(`${moduleId}_el_hero_ctas`, 'primary_color', '#FFFFFF');
@@ -272,12 +275,25 @@ export const HeroModule: React.FC<{
     } as React.CSSProperties;
   };
 
-  const sectionHeight = height === 'screen' ? 'min-h-screen' : 
-                        height === 'large' ? 'min-h-[80vh]' : 
-                        height === 'medium' ? 'min-h-[60vh]' : 'min-h-auto';
+  const sectionHeight = !showProof
+    ? height === 'screen' ? 'min-h-[82vh]' :
+      height === 'large' ? 'min-h-[70vh]' :
+      height === 'medium' ? 'min-h-[52vh]' : 'min-h-auto'
+    : height === 'screen' ? 'min-h-screen' :
+      height === 'large' ? 'min-h-[80vh]' :
+      height === 'medium' ? 'min-h-[60vh]' : 'min-h-auto';
 
-  const renderContent = (isCentered = false) => {
-    const finalAlign = typographyAlign === 'inherit' ? (isCentered ? 'center' : 'left') : typographyAlign;
+  const renderContent = (forcedAlign?: 'left' | 'center' | 'right') => {
+    const inheritedAlign = forcedAlign || 'left';
+    const finalAlign = typographyAlign === 'inherit' ? inheritedAlign : typographyAlign;
+    const titleWidthClass = layout === 'center' || layout === 'full_bg'
+      ? 'max-w-[12ch]'
+      : 'max-w-[11ch] sm:max-w-[12ch]';
+    const subtitleWidthClass = layout === 'center' || layout === 'full_bg'
+      ? 'max-w-[34ch]'
+      : 'max-w-[40ch]';
+    const proofTextWidthClass = 'max-w-[28ch]';
+    const ctaTextClass = 'text-center whitespace-normal break-words [overflow-wrap:anywhere] leading-tight';
     
     return (
       <motion.div 
@@ -285,7 +301,7 @@ export const HeroModule: React.FC<{
           finalAlign === 'center' ? 'items-center text-center mx-auto' : 
           finalAlign === 'right' ? 'items-end text-right ml-auto' : 
           'items-start text-left mr-auto'
-        } gap-6 max-w-2xl overflow-hidden`}
+        } gap-6 max-w-3xl overflow-hidden`}
         style={{ marginBottom: `${typographyMarginB}px` }}
       >
       {eyebrow && (
@@ -302,10 +318,11 @@ export const HeroModule: React.FC<{
       )}
       
       <motion.h1 
-        className="leading-[1.1] tracking-tight max-w-full"
+        className={`leading-[1.1] tracking-tight w-full break-words [overflow-wrap:anywhere] ${titleWidthClass}`}
         style={{ 
           ...getTypographyStyle(titleSize, titleWeight),
-          color: darkMode ? '#FFFFFF' : '#0F172A'
+          color: darkMode ? '#FFFFFF' : '#0F172A',
+          textWrap: 'balance'
         }}
       >
         {rotatingEnabled && rotatingOptions.length > 0 ? (
@@ -341,6 +358,7 @@ export const HeroModule: React.FC<{
             value={title}
             tagName="span"
             isPreviewMode={isPreviewMode}
+            className="inline-block max-w-full break-words [overflow-wrap:anywhere]"
             style={{ display: 'inline-block' }}
           >
             <TextRenderer 
@@ -356,10 +374,11 @@ export const HeroModule: React.FC<{
 
       {subtitle && (
           <motion.p
-            className="text-lg leading-relaxed opacity-70 w-full"
+            className={`text-lg leading-relaxed opacity-70 w-full break-words [overflow-wrap:anywhere] ${subtitleWidthClass}`}
           style={{ 
             ...getTypographyStyle(subtitleSize, subtitleWeight),
-            color: darkMode ? '#94A3B8' : '#475569'
+            color: darkMode ? '#94A3B8' : '#475569',
+            textWrap: 'pretty'
           }}
         >
           <InlineEditableText
@@ -369,6 +388,7 @@ export const HeroModule: React.FC<{
             value={subtitle}
             tagName="span"
             isPreviewMode={isPreviewMode}
+            className="inline-block max-w-full break-words [overflow-wrap:anywhere]"
             style={{ display: 'inline-block', width: '100%' }}
           >
             <TextRenderer 
@@ -383,11 +403,13 @@ export const HeroModule: React.FC<{
       )}
 
         <motion.div 
-          className={`flex flex-wrap gap-4 w-full ${isCentered ? 'justify-center' : 'justify-start'}`}
+          className={`flex flex-wrap gap-4 w-full ${
+            finalAlign === 'center' ? 'justify-center' : finalAlign === 'right' ? 'justify-end' : 'justify-start'
+          }`}
         >
         {hasPrimary && (
           <motion.a 
-            href={primaryUrl}
+            href={primaryUrl || '#'}
             target={primaryTarget === '_blank' ? '_blank' : undefined}
             rel={primaryTarget === '_blank' ? 'noopener noreferrer' : undefined}
             whileHover={hoverEffect === 'lift' ? { y: -5 } : { boxShadow: `0 0 20px ${primaryBg}40` }}
@@ -406,6 +428,7 @@ export const HeroModule: React.FC<{
             style={{ 
               backgroundColor: primaryBg,
               color: primaryColor,
+              minHeight: '56px',
               borderRadius: `${btnRadius}px`
             }}
           >
@@ -419,6 +442,7 @@ export const HeroModule: React.FC<{
               value={primaryText}
               tagName="span"
               isPreviewMode={isPreviewMode}
+              className={ctaTextClass}
             />
             {primaryIcon && <IconRenderer name={primaryIcon} className="group-hover:translate-x-1 transition-transform" />}
           </motion.a>
@@ -426,7 +450,7 @@ export const HeroModule: React.FC<{
 
         {hasSecondary && (
           <motion.a 
-            href={secondaryUrl}
+            href={secondaryUrl || '#'}
             target={secondaryTarget === '_blank' ? '_blank' : undefined}
             rel={secondaryTarget === '_blank' ? 'noopener noreferrer' : undefined}
             whileHover={{ scale: 1.05 }}
@@ -442,6 +466,7 @@ export const HeroModule: React.FC<{
               backgroundColor: secondaryStyle === 'solid' ? (darkMode ? '#334155' : '#F1F5F9') : 'transparent',
               color: darkMode ? '#FFFFFF' : '#0F172A',
               border: secondaryStyle === 'outline' ? `2px solid ${darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}` : 'none',
+              minHeight: '56px',
               borderRadius: `${btnRadius}px`
             }}
           >
@@ -452,6 +477,7 @@ export const HeroModule: React.FC<{
               value={secondaryText}
               tagName="span"
               isPreviewMode={isPreviewMode}
+              className={ctaTextClass}
             />
             {secondaryIcon && <IconRenderer name={secondaryIcon} />}
           </motion.a>
@@ -460,7 +486,7 @@ export const HeroModule: React.FC<{
 
       {showProof && (
           <motion.div 
-            className="flex items-center gap-4 mt-4"
+            className="flex w-full max-w-full flex-wrap items-center gap-4 mt-4"
             style={{ marginBottom: `${proofMarginB}px` }}
           >
             <div className="flex -space-x-3">
@@ -505,11 +531,12 @@ export const HeroModule: React.FC<{
             value={proofText}
             tagName="span"
             isPreviewMode={isPreviewMode}
-            className="opacity-60 uppercase tracking-wider"
+            className={`opacity-60 uppercase tracking-wider break-words [overflow-wrap:anywhere] ${proofTextWidthClass}`}
             style={{ 
               color: proofColor,
               fontSize: `${TYPOGRAPHY_SCALE[proofFontSize as keyof typeof TYPOGRAPHY_SCALE]?.fontSize || 12}px`,
-              fontWeight: FONT_WEIGHTS[proofWeight as keyof typeof FONT_WEIGHTS]?.value || 800
+              fontWeight: FONT_WEIGHTS[proofWeight as keyof typeof FONT_WEIGHTS]?.value || 800,
+              textWrap: 'pretty'
             }}
           />
         </motion.div>
@@ -685,7 +712,7 @@ export const HeroModule: React.FC<{
       >
         {layout === 'split' && (
           <div className="grid grid-cols-1 @lg:grid-cols-2 gap-16 @lg:gap-24 items-center">
-            {renderContent()}
+            {renderContent('left')}
             {renderVisual()}
           </div>
         )}
@@ -696,15 +723,27 @@ export const HeroModule: React.FC<{
               {renderVisual()}
             </div>
             <div className="order-1 @lg:order-2">
-              {renderContent()}
+              {renderContent('left')}
             </div>
           </div>
         )}
 
         {(layout === 'center' || layout === 'full_bg') && (
           <div className="flex flex-col items-center gap-16">
-            {renderContent(true)}
+            {renderContent('center')}
             {layout === 'center' && renderVisual()}
+          </div>
+        )}
+
+        {layout === 'text_left' && (
+          <div className="flex">
+            {renderContent('left')}
+          </div>
+        )}
+
+        {layout === 'text_right' && (
+          <div className="flex justify-end">
+            {renderContent('right')}
           </div>
         )}
       </div>

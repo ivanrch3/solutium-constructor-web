@@ -6,6 +6,8 @@ import { TextRenderer } from '../TextRenderer';
 import { InlineEditableText } from '../InlineEditableText';
 import { useEditorStore } from '../../../store/editorStore';
 import { resolveFooterSocialLinks } from '../../../utils/socialUtils';
+import { SectionAnimation } from '../animations/SectionAnimation';
+import { normalizeSectionAnimation } from '../../../constants/moduleAnimations';
 
 const toBoolean = (value: unknown) => value === true || value === 'true' || value === 1 || value === '1';
 
@@ -37,6 +39,14 @@ export const FooterModule: React.FC<{
   // Global Settings
   const paddingY = parseFloat(getVal(null, 'padding_y', 80)) || 80;
   const maxWidth = parseFloat(getVal(null, 'max_width', 1400)) || 1400;
+  const globalThemeSectionAnimation = settingsValues['global_theme_section_animation'];
+  const globalThemeSectionAnimationSpeed = parseFloat(settingsValues['global_theme_section_animation_speed']) || 1;
+  const moduleSectionAnimation = getVal(null, 'section_animation', undefined);
+  const legacyEntranceAnim = getVal(null, 'entrance_anim', 'none');
+  const sectionAnimation = normalizeSectionAnimation(
+    globalThemeSectionAnimation ?? moduleSectionAnimation ?? legacyEntranceAnim,
+    'fade-up'
+  );
   const darkMode = toBoolean(getVal(null, 'dark_mode', false));
   const rawBgColor = getVal(null, 'bg_color', '#F8FAFC');
   const bgColor = resolveThemeColor(rawBgColor, '#F8FAFC', '#0F172A', darkMode);
@@ -125,16 +135,17 @@ export const FooterModule: React.FC<{
   };
 
   return (
-    <footer 
-      className="w-full py-12 @md:py-16 @lg:py-20"
-      style={{ 
-        backgroundColor: bgColor, 
-        color: textColor,
-        borderTopWidth: borderTop ? '1px' : '0px',
-        borderTopStyle: 'solid',
-        borderTopColor: borderColor
-      }}
-    >
+    <SectionAnimation animation={sectionAnimation} speed={globalThemeSectionAnimationSpeed}>
+      <footer 
+        className="w-full py-12 @md:py-16 @lg:py-20"
+        style={{ 
+          backgroundColor: bgColor, 
+          color: textColor,
+          borderTopWidth: borderTop ? '1px' : '0px',
+          borderTopStyle: 'solid',
+          borderTopColor: borderColor
+        }}
+      >
       <div 
         className="mx-auto px-6" 
         style={{ 
@@ -372,6 +383,7 @@ export const FooterModule: React.FC<{
           </div>
         </div>
       </div>
-    </footer>
+      </footer>
+    </SectionAnimation>
   );
 };

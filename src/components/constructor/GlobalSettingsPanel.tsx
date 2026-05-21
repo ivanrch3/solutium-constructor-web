@@ -18,6 +18,7 @@ import { motion } from 'motion/react';
 import { SettingControl } from './SettingControl';
 import { useEditorStore } from '../../store/editorStore';
 import { parseNumSafe } from './utils';
+import * as registryModules from './registry';
 
 interface GlobalSettingsPanelProps {
   view?: string;
@@ -36,9 +37,26 @@ export const GlobalSettingsPanel: React.FC<GlobalSettingsPanelProps> = ({
   projectId,
   isSidebarMode = false
 }) => {
-  const { siteContent, updateTheme } = useEditorStore();
+  const { siteContent, updateTheme, selectedSectionId } = useEditorStore();
   const theme = siteContent.theme;
   const [activeInternalTab, setActiveInternalTab] = React.useState<'seo' | 'marketing' | 'conversion' | 'style'>('style');
+
+  const selectedSection = selectedSectionId
+    ? siteContent.sections.find((section) => section.id === selectedSectionId)
+    : null;
+
+  const selectedModuleDef = selectedSection
+    ? (Object.values(registryModules).find((module) => {
+        if ('id' in module) {
+          return selectedSection.id.startsWith((module as any).id);
+        }
+        return false;
+      }) as any)
+    : null;
+
+  const selectedAnimationElement = selectedModuleDef?.elements?.find((element: any) =>
+    element.id?.includes('animation_2')
+  );
 
   const getVal = (settingId: string, defaultValue: any) => {
     return settingsValues[`global_theme_${settingId}`] !== undefined 
@@ -303,6 +321,112 @@ export const GlobalSettingsPanel: React.FC<GlobalSettingsPanelProps> = ({
   }
 
   if (view === 'design-animations') {
+    const moduleProjectColors = [
+      getVal('primary_color', project?.brandColors?.primary || '#3B82F6'),
+      getVal('secondary_color', '#F1F5F9'),
+      getVal('accent_color', '#7C3AED'),
+      getVal('background_color', '#F8FAFC'),
+      getVal('text_color', '#0F172A'),
+    ].filter(Boolean) as string[];
+    const globalSectionAnimationSetting = {
+      id: 'section_animation',
+      label: 'Animacion Global de Seccion',
+      type: 'select',
+      defaultValue: 'fade-up',
+      options: [
+        { label: 'Sin animacion', value: 'none' },
+        { label: 'Desvanecer', value: 'fade' },
+        { label: 'Desvanecer hacia arriba', value: 'fade-up' },
+        { label: 'Desvanecer hacia abajo', value: 'fade-down' },
+        { label: 'Desvanecer desde izquierda', value: 'fade-left' },
+        { label: 'Desvanecer desde derecha', value: 'fade-right' },
+        { label: 'Zoom suave', value: 'zoom' },
+        { label: 'Blur suave', value: 'blur' },
+        { label: 'Clip reveal', value: 'clip' },
+      ]
+    };
+    const globalSectionAnimationSpeedSetting = {
+      id: 'section_animation_speed',
+      label: 'Velocidad de Animacion',
+      type: 'range',
+      defaultValue: 1,
+      min: 0.4,
+      max: 2,
+      step: 0.1,
+      unit: 'x'
+    };
+
+    return (
+      <div className={`${isSidebarMode ? 'p-4 space-y-6' : 'max-w-2xl w-full mx-auto p-12 space-y-10'}`}>
+        {!isSidebarMode && (
+          <div className="flex flex-col space-y-2">
+            <h2 className="text-3xl font-black text-slate-900 tracking-tight flex items-center gap-3">
+              <Sparkles className="text-primary w-8 h-8" />
+              Animaciones
+            </h2>
+            <p className="text-slate-500 font-medium">Define la animacion global del sistema nuevo para los modulos migrados.</p>
+          </div>
+        )}
+
+        <div className="space-y-4">
+          <div className={`${isSidebarMode ? 'p-3 rounded-xl' : 'p-5 rounded-2xl'} bg-white border border-slate-100`}>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">
+                  Sistema nuevo
+                </p>
+                <h3 className={`${isSidebarMode ? 'text-sm' : 'text-lg'} font-black text-slate-900 tracking-tight`}>
+                  Animacion global de seccion
+                </h3>
+                <p className="text-xs text-slate-500 mt-1">
+                  Este control reemplaza el uso del panel legacy para los modulos que migremos al sistema nuevo.
+                </p>
+              </div>
+              <div className="px-2.5 py-1 rounded-full bg-primary/5 text-primary text-[10px] font-bold uppercase tracking-[0.15em]">
+                Global
+              </div>
+            </div>
+          </div>
+
+          <div className={`${isSidebarMode ? 'p-3 rounded-xl' : 'p-5 rounded-2xl'} bg-white border border-slate-100`}>
+            <SettingControl
+              setting={globalSectionAnimationSetting as any}
+              value={getVal('section_animation', 'fade-up')}
+              onChange={(val) => handleThemeChange('section_animation', val)}
+              projectId={projectId}
+              projectColors={moduleProjectColors}
+            />
+          </div>
+
+          <div className={`${isSidebarMode ? 'p-3 rounded-xl' : 'p-5 rounded-2xl'} bg-white border border-slate-100`}>
+            <SettingControl
+              setting={globalSectionAnimationSpeedSetting as any}
+              value={getVal('section_animation_speed', 1)}
+              onChange={(val) => handleThemeChange('section_animation_speed', val)}
+              projectId={projectId}
+              projectColors={moduleProjectColors}
+            />
+          </div>
+
+          <div className={`${isSidebarMode ? 'p-4 rounded-xl' : 'p-6 rounded-2xl'} bg-primary/5 border border-primary/10`}>
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-white text-primary flex items-center justify-center shrink-0 border border-primary/10">
+                <AlertCircle size={18} />
+              </div>
+              <div>
+                <h3 className="text-sm font-black text-slate-900">Alcance actual</h3>
+                <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                  En esta fase, `Stats` ya responde a esta animacion global. Los demas modulos se iran migrando al mismo contrato nuevo sin depender de `entrance_anim`.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (view === 'design-animations-legacy-disabled') {
     return (
       <div className={`${isSidebarMode ? 'p-4 space-y-6' : 'max-w-2xl w-full mx-auto p-12 space-y-10'}`}>
         {!isSidebarMode && (

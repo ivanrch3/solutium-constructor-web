@@ -5,8 +5,8 @@ import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
 import { TextRenderer } from '../TextRenderer';
 import { InlineEditableText } from '../InlineEditableText';
 import { parseNumSafe } from '../utils';
-
-import { GLOBAL_ANIMATIONS, getGlobalAnimation } from '../../../constants/animations';
+import { SectionAnimation } from '../animations/SectionAnimation';
+import { normalizeSectionAnimation } from '../../../constants/moduleAnimations';
 
 const getAspectRatioClass = (ratio: string) => {
   switch (ratio) {
@@ -169,10 +169,15 @@ export const GalleryModule: React.FC<{
   const bgGradient = getVal(null, 'bg_gradient', 'linear-gradient(to bottom, #FFFFFF, #F8FAFC)');
   const imageFilter = getVal(null, 'image_filter', 'none');
   const filterOnHover = getVal(null, 'filter_on_hover', true);
-  const entranceAnim = getVal(null, 'entrance_anim', 'fade_up');
-
-  // Animation Overrides
-  const globalAnimOverride = getGlobalAnimation(entranceAnim, 'gallery');
+  const legacyEntranceAnim = getVal(null, 'entrance_anim', 'fade_up');
+  const globalThemeSectionAnimation = settingsValues['global_theme_section_animation'];
+  const globalThemeSectionAnimationSpeed = parseNumSafe(settingsValues['global_theme_section_animation_speed'], 1);
+  const moduleSectionAnimation = getVal(null, 'section_animation', undefined);
+  const sectionAnimation = normalizeSectionAnimation(
+    globalThemeSectionAnimation ?? moduleSectionAnimation ?? legacyEntranceAnim,
+    'fade-up'
+  );
+  const entranceAnim = false as any;
 
   // Element: Filtros de Categoría
   const showFilters = getVal(`${moduleId}_el_gallery_filters`, 'show_filters', true);
@@ -236,7 +241,7 @@ export const GalleryModule: React.FC<{
     }
   };
 
-  const itemVariants = globalAnimOverride || {
+  const itemVariants = {
     hidden: { scale: 0.9, opacity: 0 },
     visible: { scale: 1, opacity: 1, transition: { duration: 0.5, ease: "easeOut" } }
   };
@@ -266,16 +271,17 @@ export const GalleryModule: React.FC<{
   };
 
   return (
-    <section 
-      className="w-full relative overflow-hidden"
-      style={{ 
-        backgroundColor: bgColor,
-        backgroundImage: (sectionGradient && typeof bgGradient === 'string' && !bgGradient.includes('NaN')) ? bgGradient : 'none',
-        paddingTop: `${paddingY}px`,
-        paddingBottom: `${paddingY}px`
-      }}
-    >
-      <div className="max-w-7xl mx-auto px-8 relative z-10">
+    <SectionAnimation animation={sectionAnimation} speed={globalThemeSectionAnimationSpeed}>
+      <section 
+        className="w-full relative overflow-hidden"
+        style={{ 
+          backgroundColor: bgColor,
+          backgroundImage: (sectionGradient && typeof bgGradient === 'string' && !bgGradient.includes('NaN')) ? bgGradient : 'none',
+          paddingTop: `${paddingY}px`,
+          paddingBottom: `${paddingY}px`
+        }}
+      >
+        <div className="max-w-7xl mx-auto px-8 relative z-10">
         {/* Header */}
         <div 
           className={`flex flex-col mb-12 w-full ${headerAlign === 'center' ? 'items-center text-center' : headerAlign === 'right' ? 'items-end text-right' : 'items-start text-left'}`}
@@ -396,77 +402,78 @@ export const GalleryModule: React.FC<{
         </motion.div>
       </div>
 
-      {/* Lightbox */}
-      <AnimatePresence>
-        {selectedIndex !== null && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 p-4 md:p-12"
-            onClick={() => setSelectedIndex(null)}
-          >
-            <button 
-              className="absolute top-8 right-8 text-white/50 hover:text-white transition-colors z-[110] bg-white/10 p-2 rounded-full backdrop-blur-md"
+        {/* Lightbox */}
+        <AnimatePresence>
+          {selectedIndex !== null && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 p-4 md:p-12"
               onClick={() => setSelectedIndex(null)}
             >
-              <X size={24} />
-            </button>
+              <button 
+                className="absolute top-8 right-8 text-white/50 hover:text-white transition-colors z-[110] bg-white/10 p-2 rounded-full backdrop-blur-md"
+                onClick={() => setSelectedIndex(null)}
+              >
+                <X size={24} />
+              </button>
 
-            {lightboxNav && filteredImages.length > 1 && (
-              <>
-                <button 
-                  className="absolute left-4 md:left-8 top-1/2 -translate-y-1/2 text-white/50 hover:text-white transition-colors z-[110] bg-white/10 p-3 rounded-full backdrop-blur-md"
-                  onClick={handlePrev}
-                >
-                  <ChevronLeft size={32} />
-                </button>
-                <button 
-                  className="absolute right-4 md:right-8 top-1/2 -translate-y-1/2 text-white/50 hover:text-white transition-colors z-[110] bg-white/10 p-3 rounded-full backdrop-blur-md"
-                  onClick={handleNext}
-                >
-                  <ChevronRight size={32} />
-                </button>
-              </>
-            )}
-            
-            <motion.div
-              key={selectedIndex}
-              initial={{ scale: 0.9, opacity: 0, x: 20 }}
-              animate={{ scale: 1, opacity: 1, x: 0 }}
-              exit={{ scale: 0.9, opacity: 0, x: -20 }}
-              className="relative max-w-full max-h-full flex flex-col items-center"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {isVideo(filteredImages[selectedIndex].url) ? (
-                <div className="aspect-video w-full max-w-5xl bg-black rounded-xl overflow-hidden shadow-2xl">
-                  <iframe 
-                    src={filteredImages[selectedIndex].url.replace('watch?v=', 'embed/')} 
-                    className="w-full h-full"
-                    allowFullScreen
-                  />
-                </div>
-              ) : (
-                <img 
-                  src={filteredImages[selectedIndex].url || 'https://picsum.photos/seed/gal/800/800'} 
-                  className="max-w-full max-h-[80vh] object-contain shadow-2xl rounded-lg"
-                  referrerPolicy="no-referrer"
-                />
+              {lightboxNav && filteredImages.length > 1 && (
+                <>
+                  <button 
+                    className="absolute left-4 md:left-8 top-1/2 -translate-y-1/2 text-white/50 hover:text-white transition-colors z-[110] bg-white/10 p-3 rounded-full backdrop-blur-md"
+                    onClick={handlePrev}
+                  >
+                    <ChevronLeft size={32} />
+                  </button>
+                  <button 
+                    className="absolute right-4 md:right-8 top-1/2 -translate-y-1/2 text-white/50 hover:text-white transition-colors z-[110] bg-white/10 p-3 rounded-full backdrop-blur-md"
+                    onClick={handleNext}
+                  >
+                    <ChevronRight size={32} />
+                  </button>
+                </>
               )}
+            
+              <motion.div
+                key={selectedIndex}
+                initial={{ scale: 0.9, opacity: 0, x: 20 }}
+                animate={{ scale: 1, opacity: 1, x: 0 }}
+                exit={{ scale: 0.9, opacity: 0, x: -20 }}
+                className="relative max-w-full max-h-full flex flex-col items-center"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {isVideo(filteredImages[selectedIndex].url) ? (
+                  <div className="aspect-video w-full max-w-5xl bg-black rounded-xl overflow-hidden shadow-2xl">
+                    <iframe 
+                      src={filteredImages[selectedIndex].url.replace('watch?v=', 'embed/')} 
+                      className="w-full h-full"
+                      allowFullScreen
+                    />
+                  </div>
+                ) : (
+                  <img 
+                    src={filteredImages[selectedIndex].url || 'https://picsum.photos/seed/gal/800/800'} 
+                    className="max-w-full max-h-[80vh] object-contain shadow-2xl rounded-lg"
+                    referrerPolicy="no-referrer"
+                  />
+                )}
               
-              <div className="mt-6 text-center">
-                <h3 className="text-white text-xl font-bold">{filteredImages[selectedIndex].title}</h3>
-                {filteredImages[selectedIndex].desc && <p className="text-white/60 text-sm mt-1">{filteredImages[selectedIndex].desc}</p>}
-                <div className="mt-4 px-3 py-1 bg-white/10 rounded-full inline-block">
-                  <span className="text-white/40 text-xs font-mono">
-                    {selectedIndex + 1} / {filteredImages.length}
-                  </span>
+                <div className="mt-6 text-center">
+                  <h3 className="text-white text-xl font-bold">{filteredImages[selectedIndex].title}</h3>
+                  {filteredImages[selectedIndex].desc && <p className="text-white/60 text-sm mt-1">{filteredImages[selectedIndex].desc}</p>}
+                  <div className="mt-4 px-3 py-1 bg-white/10 rounded-full inline-block">
+                    <span className="text-white/40 text-xs font-mono">
+                      {selectedIndex + 1} / {filteredImages.length}
+                    </span>
+                  </div>
                 </div>
-              </div>
+              </motion.div>
             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </section>
+          )}
+        </AnimatePresence>
+      </section>
+    </SectionAnimation>
   );
 };

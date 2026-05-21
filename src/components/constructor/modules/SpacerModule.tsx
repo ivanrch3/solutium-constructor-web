@@ -2,6 +2,8 @@ import React, { useRef } from 'react';
 import { motion } from 'motion/react';
 import * as LucideIcons from 'lucide-react';
 import { ParallaxBackground, useParallaxScrollProgress } from '../ParallaxBackground';
+import { SectionAnimation } from '../animations/SectionAnimation';
+import { normalizeSectionAnimation } from '../../../constants/moduleAnimations';
 
 const toBoolean = (value: unknown) => value === true || value === 'true' || value === 1 || value === '1';
 
@@ -64,6 +66,14 @@ export const SpacerModule: React.FC<{
   const bgParallaxOpacity = parseF(getVal(null, 'bg_parallax_opacity', 20), 20);
   const bgParallaxOverlay = getVal(null, 'bg_parallax_overlay', '#000000');
   const bgParallaxSpeed = parseF(getVal(null, 'bg_parallax_speed', 100), 100);
+  const globalThemeSectionAnimation = settingsValues['global_theme_section_animation'];
+  const globalThemeSectionAnimationSpeed = parseF(settingsValues['global_theme_section_animation_speed'], 1);
+  const moduleSectionAnimation = getVal(null, 'section_animation', undefined);
+  const legacyEntranceAnim = getVal(null, 'entrance_anim', 'none');
+  const sectionAnimation = normalizeSectionAnimation(
+    globalThemeSectionAnimation ?? moduleSectionAnimation ?? legacyEntranceAnim,
+    'fade-up'
+  );
 
   const alignmentClasses = {
     start: 'justify-start',
@@ -77,95 +87,97 @@ export const SpacerModule: React.FC<{
   };
 
   return (
-    <div 
-      id={moduleId}
-      ref={containerRef}
-      className="w-full relative flex items-center overflow-hidden transition-all duration-300 group/spacer"
-      data-module-type="spacer"
-      style={{ 
-        backgroundColor: bgColor,
-        minHeight: `${heightMobile}px`
-      }}
-    >
-      <ParallaxBackground 
-        scrollYProgress={scrollYProgress}
-        enabled={bgParallaxEnabled}
-        imageUrl={bgParallaxImg}
-        opacity={bgParallaxOpacity}
-        overlayColor={bgParallaxOverlay}
-        speed={bgParallaxSpeed}
-      />
-      {/* CSS Variable injection for responsive height */}
-      <style dangerouslySetInnerHTML={{ __html: `
-        #spacer-container-${moduleId} { height: ${heightMobile}px; }
-        @media (min-width: 768px) {
-          #spacer-container-${moduleId} { height: ${heightDesktop}px; }
-        }
-      `}} />
-
+    <SectionAnimation animation={sectionAnimation} speed={globalThemeSectionAnimationSpeed}>
       <div 
-        id={`spacer-container-${moduleId}`}
-        className={`w-full flex items-center transition-[height] duration-300 ${alignmentClasses[align as keyof typeof alignmentClasses]}`}
+        id={moduleId}
+        ref={containerRef}
+        className="w-full relative flex items-center overflow-hidden transition-all duration-300 group/spacer"
+        data-module-type="spacer"
+        style={{ 
+          backgroundColor: bgColor,
+          minHeight: `${heightMobile}px`
+        }}
       >
-        <div 
-          className="flex items-center w-full transition-all duration-300"
-          style={{ 
-            width: `${width}%`,
-            margin: align === 'center' ? '0 auto' : align === 'end' ? '0 0 0 auto' : '0 auto 0 0'
-          }}
-        >
-          {type !== 'none' ? (
-            <>
-              <div 
-                className="flex-1"
-                style={{ 
-                  borderTopWidth: `${thickness}px`,
-                  borderTopStyle: type as any,
-                  borderTopColor: color === '#E2E8F0' ? 'var(--color-border, #E2E8F0)' : color,
-                  height: '0px',
-                  opacity: color === '#E2E8F0' ? 0.6 : 1
-                }}
-              />
-              
-              {showContent && (
-                <div 
-                  className="px-6 flex-shrink-0 flex items-center justify-center transition-all"
-                  style={{ 
-                    color: contentColor === '#94A3B8' ? 'var(--color-text-dim, #94A3B8)' : contentColor,
-                    fontSize: `${contentSize}px`,
-                    fontWeight: 800,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.2em'
-                  }}
-                >
-                  {contentType === 'icon' ? getIcon(iconName) : text}
-                </div>
-              )}
+        <ParallaxBackground 
+          scrollYProgress={scrollYProgress}
+          enabled={bgParallaxEnabled}
+          imageUrl={bgParallaxImg}
+          opacity={bgParallaxOpacity}
+          overlayColor={bgParallaxOverlay}
+          speed={bgParallaxSpeed}
+        />
+        {/* CSS Variable injection for responsive height */}
+        <style dangerouslySetInnerHTML={{ __html: `
+          #spacer-container-${moduleId} { height: ${heightMobile}px; }
+          @media (min-width: 768px) {
+            #spacer-container-${moduleId} { height: ${heightDesktop}px; }
+          }
+        `}} />
 
+        <div 
+          id={`spacer-container-${moduleId}`}
+          className={`w-full flex items-center transition-[height] duration-300 ${alignmentClasses[align as keyof typeof alignmentClasses]}`}
+        >
+          <div 
+            className="flex items-center w-full transition-all duration-300"
+            style={{ 
+              width: `${width}%`,
+              margin: align === 'center' ? '0 auto' : align === 'end' ? '0 0 0 auto' : '0 auto 0 0'
+            }}
+          >
+            {type !== 'none' ? (
+              <>
+                <div 
+                  className="flex-1"
+                  style={{ 
+                    borderTopWidth: `${thickness}px`,
+                    borderTopStyle: type as any,
+                    borderTopColor: color === '#E2E8F0' ? 'var(--color-border, #E2E8F0)' : color,
+                    height: '0px',
+                    opacity: color === '#E2E8F0' ? 0.6 : 1
+                  }}
+                />
+                
+                {showContent && (
+                  <div 
+                    className="px-6 flex-shrink-0 flex items-center justify-center transition-all"
+                    style={{ 
+                      color: contentColor === '#94A3B8' ? 'var(--color-text-dim, #94A3B8)' : contentColor,
+                      fontSize: `${contentSize}px`,
+                      fontWeight: 800,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.2em'
+                    }}
+                  >
+                    {contentType === 'icon' ? getIcon(iconName) : text}
+                  </div>
+                )}
+
+                <div 
+                  className="flex-1"
+                  style={{ 
+                    borderTopWidth: `${thickness}px`,
+                    borderTopStyle: type as any,
+                    borderTopColor: color === '#E2E8F0' ? 'var(--color-border, #E2E8F0)' : color,
+                    height: '0px',
+                    opacity: color === '#E2E8F0' ? 0.6 : 1
+                  }}
+                />
+              </>
+            ) : (
               <div 
-                className="flex-1"
+                className="w-full group-hover/spacer:opacity-80 transition-opacity" 
                 style={{ 
-                  borderTopWidth: `${thickness}px`,
-                  borderTopStyle: type as any,
-                  borderTopColor: color === '#E2E8F0' ? 'var(--color-border, #E2E8F0)' : color,
-                  height: '0px',
-                  opacity: color === '#E2E8F0' ? 0.6 : 1
-                }}
+                  height: '1px',
+                  borderTopWidth: '1px',
+                  borderTopStyle: 'dashed',
+                  borderTopColor: 'rgba(148, 163, 184, 0.2)'
+                }} 
               />
-            </>
-          ) : (
-            <div 
-              className="w-full group-hover/spacer:opacity-80 transition-opacity" 
-              style={{ 
-                height: '1px',
-                borderTopWidth: '1px',
-                borderTopStyle: 'dashed',
-                borderTopColor: 'rgba(148, 163, 184, 0.2)'
-              }} 
-            />
-          )}
+            )}
+          </div>
         </div>
       </div>
-    </div>
+    </SectionAnimation>
   );
 };

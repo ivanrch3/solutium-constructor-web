@@ -7,10 +7,10 @@ import { TextRenderer } from '../TextRenderer';
 import { ParallaxBackground, useParallaxScrollProgress } from '../ParallaxBackground';
 import { RotatingText } from '../RotatingText';
 import { InlineEditableText } from '../InlineEditableText';
+import { SectionAnimation } from '../animations/SectionAnimation';
 import { parseNumSafe } from '../utils';
 import { useEditorStore } from '../../../store/editorStore';
-
-import { GLOBAL_ANIMATIONS, getGlobalAnimation } from '../../../constants/animations';
+import { normalizeSectionAnimation } from '../../../constants/moduleAnimations';
 
 import { logDebug } from '../../../utils/debug';
 
@@ -135,10 +135,14 @@ export const HeroModule: React.FC<{
   const showBlobs = getVal(null, 'show_blobs', true);
   const scrollIndicator = getVal(null, 'scroll_indicator', true);
   const scrollText = getVal(null, 'scroll_text', 'SCROLL');
+  const globalThemeSectionAnimationSpeed = parseNumSafe(settingsValues['global_theme_section_animation_speed'], 1);
+  const globalThemeSectionAnimation = settingsValues['global_theme_section_animation'];
+  const moduleSectionAnimation = getVal(null, 'section_animation', undefined);
   const entranceAnim = getVal(null, 'entrance_anim', 'fade_up');
-
-  // Animation Overrides
-  const globalAnimOverride = getGlobalAnimation(entranceAnim, 'hero');
+  const sectionAnimation = normalizeSectionAnimation(
+    globalThemeSectionAnimation ?? moduleSectionAnimation ?? entranceAnim,
+    'fade-up'
+  );
 
   // Multimedia (Parallax Background)
   const bgParallaxEnabled = getVal(null, 'bg_parallax_enabled', false);
@@ -272,41 +276,11 @@ export const HeroModule: React.FC<{
                         height === 'large' ? 'min-h-[80vh]' : 
                         height === 'medium' ? 'min-h-[60vh]' : 'min-h-auto';
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: { staggerChildren: 0.15 }
-    }
-  };
-
-  const itemVariants: any = globalAnimOverride || {
-    fade_up: {
-      hidden: { y: 30, opacity: 0 },
-      visible: { y: 0, opacity: 1, transition: { duration: 0.8, ease: [0.22, 1, 0.36, 1] } }
-    },
-    reveal: {
-      hidden: { x: -30, opacity: 0 },
-      visible: { x: 0, opacity: 1, transition: { duration: 0.8, ease: "easeOut" } }
-    },
-    zoom: {
-      hidden: { scale: 0.9, opacity: 0 },
-      visible: { scale: 1, opacity: 1, transition: { duration: 0.8, ease: "easeOut" } }
-    }
-  }[entranceAnim as 'fade_up' | 'reveal' | 'zoom'] || {
-    hidden: { y: 30, opacity: 0 },
-    visible: { y: 0, opacity: 1, transition: { duration: 0.8 } }
-  };
-
   const renderContent = (isCentered = false) => {
     const finalAlign = typographyAlign === 'inherit' ? (isCentered ? 'center' : 'left') : typographyAlign;
     
     return (
       <motion.div 
-        variants={containerVariants}
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true }}
         className={`flex flex-col w-full relative z-30 ${
           finalAlign === 'center' ? 'items-center text-center mx-auto' : 
           finalAlign === 'right' ? 'items-end text-right ml-auto' : 
@@ -328,7 +302,6 @@ export const HeroModule: React.FC<{
       )}
       
       <motion.h1 
-        variants={itemVariants}
         className="leading-[1.1] tracking-tight max-w-full"
         style={{ 
           ...getTypographyStyle(titleSize, titleWeight),
@@ -382,9 +355,8 @@ export const HeroModule: React.FC<{
       </motion.h1>
 
       {subtitle && (
-        <motion.p
-          variants={itemVariants}
-          className="text-lg leading-relaxed opacity-70 w-full"
+          <motion.p
+            className="text-lg leading-relaxed opacity-70 w-full"
           style={{ 
             ...getTypographyStyle(subtitleSize, subtitleWeight),
             color: darkMode ? '#94A3B8' : '#475569'
@@ -410,10 +382,9 @@ export const HeroModule: React.FC<{
         </motion.p>
       )}
 
-      <motion.div 
-        variants={itemVariants} 
-        className={`flex flex-wrap gap-4 w-full ${isCentered ? 'justify-center' : 'justify-start'}`}
-      >
+        <motion.div 
+          className={`flex flex-wrap gap-4 w-full ${isCentered ? 'justify-center' : 'justify-start'}`}
+        >
         {hasPrimary && (
           <motion.a 
             href={primaryUrl}
@@ -488,11 +459,10 @@ export const HeroModule: React.FC<{
       </motion.div>
 
       {showProof && (
-        <motion.div 
-          variants={itemVariants} 
-          className="flex items-center gap-4 mt-4"
-          style={{ marginBottom: `${proofMarginB}px` }}
-        >
+          <motion.div 
+            className="flex items-center gap-4 mt-4"
+            style={{ marginBottom: `${proofMarginB}px` }}
+          >
             <div className="flex -space-x-3">
             {[1,2,3,4].map((_, i: number) => {
               const baseSize = TYPOGRAPHY_SCALE[proofFontSize as keyof typeof TYPOGRAPHY_SCALE]?.fontSize || 12;
@@ -549,12 +519,10 @@ export const HeroModule: React.FC<{
   };
 
   const renderVisual = () => (
-    <motion.div 
-      initial={{ opacity: 0, scale: 0.9, rotateY: rotationY }}
-      whileInView={{ opacity: 1, scale: 1, rotateY: 0 }}
-      animate={floatingAnim ? {
-        y: [0, -15, 0],
-        rotate: [0, 1, 0]
+      <motion.div 
+        animate={floatingAnim ? {
+          y: [0, -15, 0],
+          rotate: [0, 1, 0]
       } : {}}
       transition={floatingAnim ? {
         y: { duration: 4, repeat: Infinity, ease: "easeInOut" },
@@ -684,6 +652,7 @@ export const HeroModule: React.FC<{
   });
 
   return (
+    <SectionAnimation animation={sectionAnimation} speed={globalThemeSectionAnimationSpeed}>
     <section 
       id={moduleId}
       ref={containerRef}
@@ -771,5 +740,6 @@ export const HeroModule: React.FC<{
         }
       `}</style>
     </section>
+    </SectionAnimation>
   );
 };

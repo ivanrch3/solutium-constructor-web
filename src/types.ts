@@ -62,6 +62,8 @@ export interface Theme {
   alternatingThemeMode?: boolean;
   themeBackgroundColor?: string;
   globalAnimationType?: string;
+  sectionAnimation?: string;
+  sectionAnimationSpeed?: number;
   invertedAlternatingMode?: boolean;
 }
 

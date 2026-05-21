@@ -7,7 +7,8 @@ import { TextRenderer } from '../TextRenderer';
 import { ParallaxBackground, useParallaxScrollProgress } from '../ParallaxBackground';
 import { parseNumSafe } from '../utils';
 import { Responsive, WidthProvider } from 'react-grid-layout/legacy';
-import { GLOBAL_ANIMATIONS, getGlobalAnimation } from '../../../constants/animations';
+import { SectionAnimation } from '../animations/SectionAnimation';
+import { normalizeSectionAnimation } from '../../../constants/moduleAnimations';
 import '/node_modules/react-grid-layout/css/styles.css';
 import '/node_modules/react-resizable/css/styles.css';
 
@@ -697,10 +698,16 @@ export const BentoModule: React.FC<{
   const bgColor = resolveThemeColor(rawBgColor, '#FFFFFF', '#0F172A', darkMode);
   const sectionGradient = getVal(null, 'section_gradient', false);
   const bgGradient = getVal(null, 'bg_gradient', 'linear-gradient(to bottom, #FFFFFF, #F8FAFC)');
-  const entranceAnim = getVal(null, 'entrance_anim', 'fade_up');
-
-  // Animation Overrides
-  const globalAnimOverride = getGlobalAnimation(entranceAnim, 'bento');
+  const legacyEntranceAnim = getVal(null, 'entrance_anim', 'fade_up');
+  const globalThemeSectionAnimation = settingsValues['global_theme_section_animation'];
+  const globalThemeSectionAnimationSpeed = parseNumSafe(settingsValues['global_theme_section_animation_speed'], 1);
+  const moduleSectionAnimation = getVal(null, 'section_animation', undefined);
+  const sectionAnimation = normalizeSectionAnimation(
+    globalThemeSectionAnimation ?? moduleSectionAnimation ?? legacyEntranceAnim,
+    'fade-up'
+  );
+  const entranceAnim = 'none';
+  const globalAnimOverride = null;
 
   // Multimedia (Parallax Background)
   const bgParallaxEnabled = getVal(null, 'bg_parallax_enabled', false);
@@ -917,19 +924,20 @@ export const BentoModule: React.FC<{
   const bentoType = getVal(null, 'bento_type', 'mixed_content');
 
   return (
-    <section 
-      id={moduleId}
-      ref={containerRef}
-      onClick={() => !isPreviewMode && setSelectedIndex(null)}
-      className={`w-full relative overflow-hidden transition-colors duration-500 bento-specialization-${bentoType} ${isDragging ? 'bento-dragging' : ''}`}
-      data-bento-type={bentoType}
-      style={{ 
-        backgroundColor: bgColor,
-        backgroundImage: (sectionGradient && typeof bgGradient === 'string' && !bgGradient.includes('NaN')) ? bgGradient : 'none',
-        paddingTop: `${paddingY}px`,
-        paddingBottom: `${paddingY}px`
-      }}
-    >
+    <SectionAnimation animation={sectionAnimation} speed={globalThemeSectionAnimationSpeed}>
+      <section 
+        id={moduleId}
+        ref={containerRef}
+        onClick={() => !isPreviewMode && setSelectedIndex(null)}
+        className={`w-full relative overflow-hidden transition-colors duration-500 bento-specialization-${bentoType} ${isDragging ? 'bento-dragging' : ''}`}
+        data-bento-type={bentoType}
+        style={{ 
+          backgroundColor: bgColor,
+          backgroundImage: (sectionGradient && typeof bgGradient === 'string' && !bgGradient.includes('NaN')) ? bgGradient : 'none',
+          paddingTop: `${paddingY}px`,
+          paddingBottom: `${paddingY}px`
+        }}
+      >
       <ParallaxBackground 
         scrollYProgress={scrollYProgress}
         enabled={bgParallaxEnabled}
@@ -1296,6 +1304,7 @@ export const BentoModule: React.FC<{
           </div>
         )}
       </div>
-    </section>
+      </section>
+    </SectionAnimation>
   );
 };

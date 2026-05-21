@@ -3,10 +3,11 @@ import { motion, useInView, useSpring, useTransform, animate } from 'motion/reac
 import * as LucideIcons from 'lucide-react';
 import { Star } from 'lucide-react';
 import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
-import { ModuleAnimationWrapper, normalizeModuleAnimation } from '../ModuleAnimationWrapper';
 import { TextRenderer } from '../TextRenderer';
 import { ParallaxBackground, useParallaxScrollProgress } from '../ParallaxBackground';
 import { parseNumSafe, isDarkColor } from '../utils';
+import { SectionAnimation } from '../animations/SectionAnimation';
+import { normalizeSectionAnimation } from '../../../constants/moduleAnimations';
 
 const CountUp = ({ value, duration = 2, easing = 'spring' }: { value: number | string, duration?: number, easing?: string }) => {
   const ref = useRef(null);
@@ -218,7 +219,14 @@ export const StatsModule: React.FC<{
   const bgColor = resolveThemeColor(rawBgColor, '#FFFFFF', '#0F172A', darkMode);
   const sectionGradient = getVal(null, 'section_gradient', false);
   const bgGradient = getVal(null, 'bg_gradient', 'linear-gradient(to bottom, #FFFFFF, #F8FAFC)');
-  const entranceAnim = normalizeModuleAnimation(getVal(null, 'entrance_anim', 'slide-up'), 'slide-up');
+  const globalThemeSectionAnimationSpeed = parseNumSafe(settingsValues['global_theme_section_animation_speed'], 1);
+  const globalThemeSectionAnimation = settingsValues['global_theme_section_animation'];
+  const elementSectionAnimation = getVal(`${moduleId}_el_stats_animation_2`, 'section_animation', undefined);
+  const legacyEntranceAnimation = getVal(null, 'entrance_anim', undefined);
+  const sectionAnimation = normalizeSectionAnimation(
+    globalThemeSectionAnimation ?? elementSectionAnimation ?? getVal(null, 'section_animation', legacyEntranceAnimation ?? 'fade-up'),
+    'fade-up'
+  );
   const countSpeed = parseNumSafe(getVal(null, 'count_speed', 2), 2);
   const countEasing = getVal(null, 'count_easing', 'spring');
 
@@ -307,7 +315,7 @@ export const StatsModule: React.FC<{
   ];
 
   return (
-    <ModuleAnimationWrapper animation={entranceAnim} moduleType="stats">
+    <SectionAnimation animation={sectionAnimation} speed={globalThemeSectionAnimationSpeed}>
       <section 
         id={moduleId}
         ref={containerRef}
@@ -444,6 +452,6 @@ export const StatsModule: React.FC<{
         </div>
       </div>
     </section>
-    </ModuleAnimationWrapper>
+    </SectionAnimation>
   );
 };

@@ -7,7 +7,8 @@ import { ParallaxBackground, useParallaxScrollProgress } from '../ParallaxBackgr
 import { InlineEditableText } from '../InlineEditableText';
 import { parseNumSafe } from '../utils';
 import { useEditorStore } from '../../../store/editorStore';
-import { GLOBAL_ANIMATIONS, getGlobalAnimation } from '../../../constants/animations';
+import { SectionAnimation } from '../animations/SectionAnimation';
+import { normalizeSectionAnimation } from '../../../constants/moduleAnimations';
 
 export const AboutModule: React.FC<{ 
   moduleId: string, 
@@ -56,11 +57,16 @@ export const AboutModule: React.FC<{
   const bgColor = resolveThemeColor(rawBgColor, '#FFFFFF', '#0F172A', darkMode);
   const sectionGradient = getVal(null, 'section_gradient', false);
   const bgGradient = getVal(null, 'bg_gradient', 'linear-gradient(to bottom, #FFFFFF, #F8FAFC)');
-  const entranceAnim = getVal(null, 'entrance_anim', 'none');
+  const legacyEntranceAnim = getVal(null, 'entrance_anim', 'none');
+  const globalThemeSectionAnimation = settingsValues['global_theme_section_animation'];
+  const globalThemeSectionAnimationSpeed = parseNumSafe(settingsValues['global_theme_section_animation_speed'], 1);
+  const moduleSectionAnimation = getVal(null, 'section_animation', undefined);
+  const sectionAnimation = normalizeSectionAnimation(
+    globalThemeSectionAnimation ?? moduleSectionAnimation ?? legacyEntranceAnim,
+    'fade-up'
+  );
+  const entranceAnim = false as any;
   const showDecor = getVal(null, 'show_decor', true);
-
-  // Animation Overrides
-  const globalAnimOverride = getGlobalAnimation(entranceAnim, 'about');
 
   // Multimedia (Parallax Background)
   const bgParallaxEnabled = getVal(null, 'bg_parallax_enabled', false);
@@ -131,7 +137,7 @@ export const AboutModule: React.FC<{
     }
   };
 
-  const itemVariants: any = globalAnimOverride || {
+  const itemVariants: any = {
     hidden: { y: 20, opacity: 0 },
     visible: { y: 0, opacity: 1, transition: { duration: 0.6, ease: "easeOut" } }
   };
@@ -329,73 +335,75 @@ export const AboutModule: React.FC<{
   };
 
   return (
-    <section 
-      id={moduleId}
-      ref={containerRef}
-      className="w-full relative overflow-hidden"
-      onClick={(e) => {
-        if (isPreviewMode) return;
-        e.stopPropagation();
-        selectSection(moduleId);
-        selectElement(`${moduleId}_global`);
-      }}
-      style={{ 
-        backgroundColor: bgColor,
-        backgroundImage: (sectionGradient && typeof bgGradient === 'string' && !bgGradient.includes('NaN')) ? bgGradient : 'none',
-        paddingTop: `${paddingY}px`,
-        paddingBottom: `${paddingY}px`
-      }}
-    >
-      <ParallaxBackground 
-        scrollYProgress={scrollYProgress}
-        enabled={bgParallaxEnabled}
-        imageUrl={bgParallaxImg}
-        opacity={bgParallaxOpacity}
-        overlayColor={bgParallaxOverlay}
-        speed={bgParallaxSpeed}
-      />
-      {showDecor && (
-        <>
-          <div className="absolute top-1/4 left-0 w-64 h-64 bg-primary/5 rounded-full blur-[100px] -translate-x-1/2" />
-          <div className="absolute bottom-1/4 right-0 w-96 h-96 bg-primary/5 rounded-full blur-[120px] translate-x-1/2" />
-        </>
-      )}
-
-      <div 
-        className="px-8 mx-auto relative z-10"
-        style={{ maxWidth: `${contentWidth}px` }}
+    <SectionAnimation animation={sectionAnimation} speed={globalThemeSectionAnimationSpeed}>
+      <section 
+        id={moduleId}
+        ref={containerRef}
+        className="w-full relative overflow-hidden"
+        onClick={(e) => {
+          if (isPreviewMode) return;
+          e.stopPropagation();
+          selectSection(moduleId);
+          selectElement(`${moduleId}_global`);
+        }}
+        style={{ 
+          backgroundColor: bgColor,
+          backgroundImage: (sectionGradient && typeof bgGradient === 'string' && !bgGradient.includes('NaN')) ? bgGradient : 'none',
+          paddingTop: `${paddingY}px`,
+          paddingBottom: `${paddingY}px`
+        }}
       >
-        {layout === 'centered' ? (
-          <div className="flex flex-col items-center gap-16 @md:gap-24">
-            <div className="max-w-3xl w-full">
-              {renderNarrative()}
-            </div>
-            <div className="w-full max-w-4xl">
-              {renderVisual()}
-            </div>
-          </div>
-        ) : layout === 'overlapping' ? (
-          <div className="grid grid-cols-1 @lg:grid-cols-12 gap-12 items-center">
-            <div className="@lg:col-span-7 relative z-10">
-              {renderVisual()}
-            </div>
-            <div 
-              className={`@lg:col-span-6 @lg:-ml-24 relative z-20 backdrop-blur-md p-8 @md:p-12 rounded-[40px] shadow-2xl shadow-black/5 ${darkMode ? 'bg-slate-800/80' : 'bg-white/80'}`}
-            >
-              {renderNarrative()}
-            </div>
-          </div>
-        ) : (
-          <div className={`grid grid-cols-1 @lg:grid-cols-2 gap-16 @md:gap-24 items-center`}>
-            <div className={layout === 'split_left' ? '@lg:order-2' : '@lg:order-1'}>
-              {renderNarrative()}
-            </div>
-            <div className={layout === 'split_left' ? '@lg:order-1' : '@lg:order-2'}>
-              {renderVisual()}
-            </div>
-          </div>
+        <ParallaxBackground 
+          scrollYProgress={scrollYProgress}
+          enabled={bgParallaxEnabled}
+          imageUrl={bgParallaxImg}
+          opacity={bgParallaxOpacity}
+          overlayColor={bgParallaxOverlay}
+          speed={bgParallaxSpeed}
+        />
+        {showDecor && (
+          <>
+            <div className="absolute top-1/4 left-0 w-64 h-64 bg-primary/5 rounded-full blur-[100px] -translate-x-1/2" />
+            <div className="absolute bottom-1/4 right-0 w-96 h-96 bg-primary/5 rounded-full blur-[120px] translate-x-1/2" />
+          </>
         )}
-      </div>
-    </section>
+
+        <div 
+          className="px-8 mx-auto relative z-10"
+          style={{ maxWidth: `${contentWidth}px` }}
+        >
+          {layout === 'centered' ? (
+            <div className="flex flex-col items-center gap-16 @md:gap-24">
+              <div className="max-w-3xl w-full">
+                {renderNarrative()}
+              </div>
+              <div className="w-full max-w-4xl">
+                {renderVisual()}
+              </div>
+            </div>
+          ) : layout === 'overlapping' ? (
+            <div className="grid grid-cols-1 @lg:grid-cols-12 gap-12 items-center">
+              <div className="@lg:col-span-7 relative z-10">
+                {renderVisual()}
+              </div>
+              <div 
+                className={`@lg:col-span-6 @lg:-ml-24 relative z-20 backdrop-blur-md p-8 @md:p-12 rounded-[40px] shadow-2xl shadow-black/5 ${darkMode ? 'bg-slate-800/80' : 'bg-white/80'}`}
+              >
+                {renderNarrative()}
+              </div>
+            </div>
+          ) : (
+            <div className={`grid grid-cols-1 @lg:grid-cols-2 gap-16 @md:gap-24 items-center`}>
+              <div className={layout === 'split_left' ? '@lg:order-2' : '@lg:order-1'}>
+                {renderNarrative()}
+              </div>
+              <div className={layout === 'split_left' ? '@lg:order-1' : '@lg:order-2'}>
+                {renderVisual()}
+              </div>
+            </div>
+          )}
+        </div>
+      </section>
+    </SectionAnimation>
   );
 };

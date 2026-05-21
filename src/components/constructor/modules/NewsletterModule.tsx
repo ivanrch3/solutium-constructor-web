@@ -4,11 +4,12 @@ import { Mail, Check, Send, Bell, User, ShieldCheck, X } from 'lucide-react';
 import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
 import { TextRenderer } from '../TextRenderer';
 import { ParallaxBackground, useParallaxScrollProgress } from '../ParallaxBackground';
+import { SectionAnimation } from '../animations/SectionAnimation';
 import { parseNumSafe } from '../utils';
 
 import { InlineEditableText } from '../InlineEditableText';
 import { useEditorStore } from '../../../store/editorStore';
-import { GLOBAL_ANIMATIONS, getGlobalAnimation } from '../../../constants/animations';
+import { normalizeSectionAnimation } from '../../../constants/moduleAnimations';
 
 export const NewsletterModule: React.FC<{ 
   moduleId: string, 
@@ -66,10 +67,14 @@ export const NewsletterModule: React.FC<{
   const backdropBlur = parseNumSafe(getVal(null, 'backdrop_blur', 0), 0);
   const borderRadius = parseNumSafe(getVal(null, 'border_radius', 32), 32);
   const showShadow = getVal(null, 'show_shadow', true);
+  const globalThemeSectionAnimation = settingsValues['global_theme_section_animation'];
+  const globalThemeSectionAnimationSpeed = parseNumSafe(settingsValues['global_theme_section_animation_speed'], 1);
+  const moduleSectionAnimation = getVal(null, 'section_animation', undefined);
   const entranceAnim = getVal(null, 'entrance_anim', 'fade_up');
-
-  // Animation Overrides
-  const globalAnimOverride = getGlobalAnimation(entranceAnim, 'newsletter');
+  const sectionAnimation = normalizeSectionAnimation(
+    globalThemeSectionAnimation ?? moduleSectionAnimation ?? entranceAnim,
+    'fade-up'
+  );
 
   // Multimedia (Parallax Background)
   const bgParallaxEnabled = getVal(null, 'bg_parallax_enabled', false);
@@ -178,17 +183,6 @@ export const NewsletterModule: React.FC<{
   }
   if (bgType === 'transparent') containerStyle.backgroundColor = 'transparent';
 
-  const animProps = globalAnimOverride ? {
-    initial: globalAnimOverride.hidden as any,
-    whileInView: globalAnimOverride.visible as any,
-    viewport: { once: true },
-  } : (entranceAnim ? {
-    initial: { opacity: 0, y: 20 },
-    whileInView: { opacity: 1, y: 0 },
-    viewport: { once: true },
-    transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] as any }
-  } : {});
-
   const renderPattern = () => {
     if (bgPattern === 'dots') {
       return (
@@ -280,6 +274,7 @@ export const NewsletterModule: React.FC<{
   }
 
   return (
+    <SectionAnimation animation={sectionAnimation} speed={globalThemeSectionAnimationSpeed}>
     <section 
       id={moduleId}
       ref={containerRef}
@@ -294,7 +289,6 @@ export const NewsletterModule: React.FC<{
         speed={bgParallaxSpeed}
       />
       <motion.div 
-        {...animProps}
         className={`mx-auto px-8 @md:px-12 relative overflow-hidden transition-all duration-500 ${layout === 'minimal' ? 'py-8' : 'py-12 @md:py-16 @lg:py-20'}`}
         style={containerStyle}
       >
@@ -504,5 +498,6 @@ export const NewsletterModule: React.FC<{
         </div>
       </motion.div>
     </section>
+    </SectionAnimation>
   );
 };

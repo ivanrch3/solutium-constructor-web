@@ -1,5 +1,18 @@
 import { Variants } from 'motion/react';
 
+export const OFFICIAL_MODULE_ANIMATION_TYPES = [
+  'none',
+  'fade-in',
+  'slide-up',
+  'slide-down',
+  'fade-left',
+  'fade-right',
+  'zoom-in',
+  'blur-in'
+] as const;
+
+export type OfficialModuleAnimationType = typeof OFFICIAL_MODULE_ANIMATION_TYPES[number];
+
 export const GLOBAL_ANIMATIONS: Record<string, Variants> = {
   'fade-in': {
     hidden: { opacity: 0 },
@@ -12,6 +25,14 @@ export const GLOBAL_ANIMATIONS: Record<string, Variants> = {
   'slide-down': {
     hidden: { y: -50, opacity: 0 },
     visible: { y: 0, opacity: 1, transition: { duration: 0.6, ease: "easeOut" } }
+  },
+  'fade-left': {
+    hidden: { x: 40, opacity: 0 },
+    visible: { x: 0, opacity: 1, transition: { duration: 0.6, ease: "easeOut" } }
+  },
+  'fade-right': {
+    hidden: { x: -40, opacity: 0 },
+    visible: { x: 0, opacity: 1, transition: { duration: 0.6, ease: "easeOut" } }
   },
   'scale-up': {
     hidden: { scale: 0.8, opacity: 0 },
@@ -49,6 +70,13 @@ export const GLOBAL_ANIMATIONS: Record<string, Variants> = {
     hidden: { scale: 2, opacity: 0, filter: 'blur(10px)' },
     visible: { scale: 1, opacity: 1, filter: 'blur(0px)', transition: { duration: 0.5 } }
   }
+};
+
+export const isOfficialModuleAnimationType = (
+  value: string | undefined
+): value is OfficialModuleAnimationType => {
+  if (!value) return false;
+  return (OFFICIAL_MODULE_ANIMATION_TYPES as readonly string[]).includes(value);
 };
 
 export const getGlobalAnimation = (type: string | undefined, moduleType?: string): Variants | null => {

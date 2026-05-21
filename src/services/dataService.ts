@@ -4,6 +4,7 @@ import { profileSchema, projectSchema, customerSchema, productSchema, webBuilder
 import { z } from 'zod';
 import { getUploadAuthToken } from './authTokenProvider';
 import { logDebug } from '../utils/debug';
+import { requestFreshSupabaseConfig } from './handshakeService';
 
 // Helper to handle validation and logging
 const validateData = <T>(schema: z.ZodType<T>, data: unknown, context: string): T | null => {
@@ -13,6 +14,44 @@ const validateData = <T>(schema: z.ZodType<T>, data: unknown, context: string): 
     return null;
   }
   return result.data;
+};
+
+const isSupabaseAuthExpiredError = (error: any): boolean => {
+  const message = String(error?.message || '').toLowerCase();
+  const code = String(error?.code || '').toUpperCase();
+  const status = Number(error?.status || error?.statusCode || 0);
+
+  return (
+    code === 'PGRST303' ||
+    message.includes('jwt expired') ||
+    message.includes('invalid jwt') ||
+    message.includes('unauthorized') ||
+    status === 401 ||
+    status === 403
+  );
+};
+
+const withSupabaseAuthRetry = async <T>(operation: () => Promise<T>, context: string): Promise<T> => {
+  try {
+    return await operation();
+  } catch (error) {
+    if (!isSupabaseAuthExpiredError(error)) {
+      throw error;
+    }
+
+    logDebug(`[SIP AUTH RECOVERY] ${context} detected expired Supabase JWT. Requesting fresh config...`, {
+      code: error?.code || null,
+      message: error?.message || null,
+      status: error?.status || error?.statusCode || null
+    });
+
+    const refreshed = await requestFreshSupabaseConfig();
+    if (!refreshed) {
+      throw error;
+    }
+
+    return await operation();
+  }
 };
 
 export const getProfile = async (userId: string): Promise<Profile | null> => {
@@ -436,72 +475,75 @@ export const getAssets = async (projectId: string, type?: string): Promise<Asset
 
 export const saveWebBuilderSiteDraft = async (site: Partial<WebBuilderSite>): Promise<WebBuilderSite | null> => {
   try {
-    const supabase = getSupabase();
-    if (!supabase) return null;
+    return await withSupabaseAuthRetry(async () => {
+      const supabase = getSupabase();
+      if (!supabase) return null;
 
-    const { data: userData } = await supabase.auth.getUser();
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (userError) throw userError;
 
-    const dbData: any = {
-      project_id: site.projectId,
-      app_id: site.appId || '11111111-1111-1111-1111-111111111111',
-      user_id: site.userId || userData.user?.id,
-      site_id: site.siteId,
-      site_name: site.siteName || 'Mi Sitio Web',
-      name: site.name || site.siteName || 'Mi Sitio Web',
-      content_draft: site.contentDraft,
-      status: site.status || 'draft',
-      origin_app: 'Constructor Web',
-      updated_at: new Date().toISOString()
-    };
+      const dbData: any = {
+        project_id: site.projectId,
+        app_id: site.appId || '11111111-1111-1111-1111-111111111111',
+        user_id: site.userId || userData.user?.id,
+        site_id: site.siteId,
+        site_name: site.siteName || 'Mi Sitio Web',
+        name: site.name || site.siteName || 'Mi Sitio Web',
+        content_draft: site.contentDraft,
+        status: site.status || 'draft',
+        origin_app: 'Constructor Web',
+        updated_at: new Date().toISOString()
+      };
 
-    if (site.previewImageUrl !== undefined || site.previewThumbnailUrl !== undefined || site.previewImagePath !== undefined || site.previewImageHash !== undefined) {
-      console.log('[PREVIEW_OVERWRITE_AUDIT]', {
-        source: 'constructor',
-        table: 'web_builder_sites',
-        operation: 'saveDraft',
-        siteId: site.siteId,
-        preview_image_url: site.previewImageUrl,
-        preview_image_path: site.previewImagePath,
-        preview_image_hash: site.previewImageHash
-      });
-    }
+      if (site.previewImageUrl !== undefined || site.previewThumbnailUrl !== undefined || site.previewImagePath !== undefined || site.previewImageHash !== undefined) {
+        console.log('[PREVIEW_OVERWRITE_AUDIT]', {
+          source: 'constructor',
+          table: 'web_builder_sites',
+          operation: 'saveDraft',
+          siteId: site.siteId,
+          preview_image_url: site.previewImageUrl,
+          preview_image_path: site.previewImagePath,
+          preview_image_hash: site.previewImageHash
+        });
+      }
 
-    if (site.previewImageUrl !== undefined) dbData.preview_image_url = site.previewImageUrl;
-    if (site.previewThumbnailUrl !== undefined) dbData.preview_thumbnail_url = site.previewThumbnailUrl;
-    if (site.previewImagePath !== undefined) dbData.preview_image_path = site.previewImagePath;
-    if (site.previewImageUpdatedAt !== undefined) dbData.preview_image_updated_at = site.previewImageUpdatedAt;
-    if (site.previewImageHash !== undefined) dbData.preview_image_hash = site.previewImageHash;
+      if (site.previewImageUrl !== undefined) dbData.preview_image_url = site.previewImageUrl;
+      if (site.previewThumbnailUrl !== undefined) dbData.preview_thumbnail_url = site.previewThumbnailUrl;
+      if (site.previewImagePath !== undefined) dbData.preview_image_path = site.previewImagePath;
+      if (site.previewImageUpdatedAt !== undefined) dbData.preview_image_updated_at = site.previewImageUpdatedAt;
+      if (site.previewImageHash !== undefined) dbData.preview_image_hash = site.previewImageHash;
 
-    if (site.id) dbData.id = site.id;
+      if (site.id) dbData.id = site.id;
 
-    const { data, error } = await supabase
-      .from('web_builder_sites')
-      .upsert(dbData, { onConflict: 'site_id' })
-      .select()
-      .single();
+      const { data, error } = await supabase
+        .from('web_builder_sites')
+        .upsert(dbData, { onConflict: 'site_id' })
+        .select()
+        .single();
 
-    if (error) throw error;
-    
-    const mapped = {
-      id: data.id,
-      projectId: data.project_id,
-      appId: data.app_id,
-      userId: data.user_id,
-      siteId: data.site_id,
-      siteName: data.site_name,
-      name: data.name,
-      contentDraft: data.content_draft,
-      status: data.status,
-      createdAt: data.created_at,
-      updatedAt: data.updated_at,
-      previewImageUrl: data.preview_image_url,
-      previewThumbnailUrl: data.preview_thumbnail_url,
-      previewImagePath: data.preview_image_path,
-      previewImageUpdatedAt: data.preview_image_updated_at,
-      previewImageHash: data.preview_image_hash,
-    };
+      if (error) throw error;
+      
+      const mapped = {
+        id: data.id,
+        projectId: data.project_id,
+        appId: data.app_id,
+        userId: data.user_id,
+        siteId: data.site_id,
+        siteName: data.site_name,
+        name: data.name,
+        contentDraft: data.content_draft,
+        status: data.status,
+        createdAt: data.created_at,
+        updatedAt: data.updated_at,
+        previewImageUrl: data.preview_image_url,
+        previewThumbnailUrl: data.preview_thumbnail_url,
+        previewImagePath: data.preview_image_path,
+        previewImageUpdatedAt: data.preview_image_updated_at,
+        previewImageHash: data.preview_image_hash,
+      };
 
-    return validateData(webBuilderSiteSchema, mapped, 'saveWebBuilderSiteDraft');
+      return validateData(webBuilderSiteSchema, mapped, 'saveWebBuilderSiteDraft');
+    }, 'saveWebBuilderSiteDraft');
   } catch (err) {
     console.error('Error in saveWebBuilderSiteDraft:', err);
     return null;
@@ -783,29 +825,32 @@ export const registerAsset = async (asset: Partial<Asset>): Promise<Asset | null
  */
 export async function upsertPage(pageData: Partial<Page>): Promise<Page | null> {
   try {
-    const supabase = getSupabase();
-    if (!supabase) return null;
+    return await withSupabaseAuthRetry(async () => {
+      const supabase = getSupabase();
+      if (!supabase) return null;
 
-    const { data: userData } = await supabase.auth.getUser();
-    if (!userData.user) return null;
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (userError) throw userError;
+      if (!userData.user) return null;
 
-    const now = new Date().toISOString();
-    
-    const payload = {
-      ...pageData,
-      user_id: userData.user.id,
-      updated_at: now
-    };
+      const now = new Date().toISOString();
+      
+      const payload = {
+        ...pageData,
+        user_id: userData.user.id,
+        updated_at: now
+      };
 
-    // SIP v6.1: Resolved conflict target to project_id,slug as per DB constraint pages_project_id_slug_key
-    const { data, error } = await supabase
-      .from('pages')
-      .upsert(payload, { onConflict: 'project_id,slug' })
-      .select()
-      .single();
+      // SIP v6.1: Resolved conflict target to project_id,slug as per DB constraint pages_project_id_slug_key
+      const { data, error } = await supabase
+        .from('pages')
+        .upsert(payload, { onConflict: 'project_id,slug' })
+        .select()
+        .single();
 
-    if (error) throw error;
-    return data;
+      if (error) throw error;
+      return data;
+    }, 'upsertPage');
   } catch (error) {
     console.error('Error upserting page:', error);
     throw error;
@@ -867,27 +912,29 @@ export async function getPageBySiteId(siteId: string, projectId?: string, slug: 
  */
 export async function upsertPageSections(pageId: string, sections: Partial<PageSection>[]): Promise<PageSection[]> {
   try {
-    const supabase = getSupabase();
-    if (!supabase) return [];
+    return await withSupabaseAuthRetry(async () => {
+      const supabase = getSupabase();
+      if (!supabase) return [];
 
-    const now = new Date().toISOString();
-    const payload = sections.map((s, idx) => ({
-      ...s,
-      page_id: pageId,
-      order_index: s.order_index ?? idx,
-      updated_at: now
-    }));
+      const now = new Date().toISOString();
+      const payload = sections.map((s, idx) => ({
+        ...s,
+        page_id: pageId,
+        order_index: s.order_index ?? idx,
+        updated_at: now
+      }));
 
-    // Use upsert to handle both new and existing records by ID
-    // Note: We don't delete here to avoid losing UUIDs, but we might need a way to 
-    // handle deleted sections from the UI. For now, we perform a clean sync.
-    const { data, error } = await supabase
-      .from('page_sections')
-      .upsert(payload, { onConflict: 'id' })
-      .select();
+      // Use upsert to handle both new and existing records by ID
+      // Note: We don't delete here to avoid losing UUIDs, but we might need a way to 
+      // handle deleted sections from the UI. For now, we perform a clean sync.
+      const { data, error } = await supabase
+        .from('page_sections')
+        .upsert(payload, { onConflict: 'id' })
+        .select();
 
-    if (error) throw error;
-    return data || [];
+      if (error) throw error;
+      return data || [];
+    }, 'upsertPageSections');
   } catch (error) {
     console.error('Error upserting page sections:', error);
     throw error;

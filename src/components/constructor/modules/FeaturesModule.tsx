@@ -5,8 +5,9 @@ import { ArrowRight } from 'lucide-react';
 import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
 import { TextRenderer } from '../TextRenderer';
 import { InlineEditableText } from '../InlineEditableText';
+import { SectionAnimation } from '../animations/SectionAnimation';
 import { useEditorStore } from '../../../store/editorStore';
-import { GLOBAL_ANIMATIONS, getGlobalAnimation } from '../../../constants/animations';
+import { normalizeSectionAnimation } from '../../../constants/moduleAnimations';
 import { logDebug } from '../../../utils/debug';
 
 const FeatureCard = ({ 
@@ -324,11 +325,15 @@ export const FeaturesModule: React.FC<{
   const bgColor = resolveThemeColor(rawBgColor, '#FFFFFF', '#0F172A', darkMode);
   const sectionGradient = getVal(null, 'section_gradient', false);
   const bgGradient = getVal(null, 'bg_gradient', 'linear-gradient(to bottom, #FFFFFF, #F8FAFC)');
-  const staggerAnim = getVal(null, 'stagger_anim', true);
+  const staggerAnim = false;
+  const globalThemeSectionAnimation = settingsValues['global_theme_section_animation'];
+  const globalThemeSectionAnimationSpeed = parseFloat(settingsValues['global_theme_section_animation_speed']) || 1;
+  const moduleSectionAnimation = getVal(null, 'section_animation', undefined);
   const entranceAnim = getVal(null, 'entrance_anim', 'none');
-
-  // Animation Overrides
-  const globalAnimOverride = getGlobalAnimation(entranceAnim, 'feature');
+  const sectionAnimation = normalizeSectionAnimation(
+    globalThemeSectionAnimation ?? moduleSectionAnimation ?? entranceAnim,
+    'fade-up'
+  );
 
   // Header Settings
   const eyebrow = getVal(`${moduleId}_el_features_header`, 'eyebrow', 'CARACTERÍSTICAS');
@@ -412,12 +417,13 @@ export const FeaturesModule: React.FC<{
     }
   };
 
-  const itemVariants = globalAnimOverride || {
-    hidden: { y: 20, opacity: 0 },
-    visible: { y: 0, opacity: 1, transition: { duration: 0.5, ease: "easeOut" } }
-  };
+  const itemVariants = {
+      hidden: { y: 20, opacity: 0 },
+      visible: { y: 0, opacity: 1, transition: { duration: 0.5, ease: "easeOut" } }
+    };
 
   return (
+    <SectionAnimation animation={sectionAnimation} speed={globalThemeSectionAnimationSpeed}>
     <section 
       id={moduleId}
       className="w-full relative overflow-hidden"
@@ -579,5 +585,6 @@ export const FeaturesModule: React.FC<{
         )}
       </div>
     </section>
+    </SectionAnimation>
   );
 };

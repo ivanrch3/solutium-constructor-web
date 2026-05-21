@@ -3,10 +3,18 @@ import { motion } from 'motion/react';
 import { Mail, Phone, MapPin, Send, MessageCircle, Copy, Check, Calendar, Linkedin, Twitter, Instagram, Facebook, Github } from 'lucide-react';
 import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
 import { TextRenderer } from '../TextRenderer';
+import { SectionAnimation } from '../animations/SectionAnimation';
 
 import { InlineEditableText } from '../InlineEditableText';
 import { useEditorStore } from '../../../store/editorStore';
-import { GLOBAL_ANIMATIONS, getGlobalAnimation } from '../../../constants/animations';
+import { normalizeSectionAnimation } from '../../../constants/moduleAnimations';
+
+const CONTACT_DEFAULTS = {
+  email: 'hola@tuempresa.com',
+  phone: '+34 900 000 000',
+  address: 'Calle Innovación 123, Madrid, España',
+  whatsappNumber: ''
+};
 
 export const ContactModule: React.FC<{ 
   moduleId: string, 
@@ -52,6 +60,16 @@ export const ContactModule: React.FC<{
     return isNaN(f) ? fallback : f;
   };
 
+  const isDefaultText = (value: unknown, defaults: string | string[]) => {
+    const normalizedValue = String(value ?? '').trim();
+    if (Array.isArray(defaults)) {
+      return !normalizedValue || defaults.includes(normalizedValue);
+    }
+    return !normalizedValue || normalizedValue === defaults;
+  };
+
+  const sanitizeWhatsappNumber = (value: unknown) => String(value ?? '').replace(/[^\d]/g, '');
+
   // Global Settings
   const layout = getVal(null, 'layout', 'split');
   const maxWidth = parseF(getVal(null, 'max_width', 1200), 1200);
@@ -62,9 +80,13 @@ export const ContactModule: React.FC<{
   const bgImage = getVal(null, 'bg_image', '');
   const bgOverlay = parseF(getVal(null, 'bg_overlay', 0), 0);
   const entranceAnim = getVal(null, 'entrance_anim', 'none');
-
-  // Animation Overrides
-  const globalAnimOverride = getGlobalAnimation(entranceAnim, 'contact');
+  const globalThemeSectionAnimation = settingsValues['global_theme_section_animation'];
+  const globalThemeSectionAnimationSpeed = parseF(settingsValues['global_theme_section_animation_speed'], 1);
+  const moduleSectionAnimation = getVal(null, 'section_animation', undefined);
+  const sectionAnimation = normalizeSectionAnimation(
+    globalThemeSectionAnimation ?? moduleSectionAnimation ?? entranceAnim,
+    'fade-up'
+  );
 
   // Element: Header
   const headerTitle = getVal(`${moduleId}_el_contact_header`, 'title', 'Ponte en contacto');
@@ -90,9 +112,9 @@ export const ContactModule: React.FC<{
   const subtitleHighlightBold = getVal(`${moduleId}_el_contact_header`, 'subtitle_highlight_bold', true);
 
   // Element: Info
-  const email = getVal(`${moduleId}_el_contact_info`, 'email', 'hola@tuempresa.com');
-  const phone = getVal(`${moduleId}_el_contact_info`, 'phone', '+34 900 000 000');
-  const address = getVal(`${moduleId}_el_contact_info`, 'address', 'Calle Innovación 123, Madrid, España');
+  const email = getVal(`${moduleId}_el_contact_info`, 'email', CONTACT_DEFAULTS.email);
+  const phone = getVal(`${moduleId}_el_contact_info`, 'phone', CONTACT_DEFAULTS.phone);
+  const address = getVal(`${moduleId}_el_contact_info`, 'address', CONTACT_DEFAULTS.address);
   const showAvailability = getVal(`${moduleId}_el_contact_info`, 'show_availability', true);
   const availabilityText = getVal(`${moduleId}_el_contact_info`, 'availability_text', 'Disponible ahora (9:00 - 18:00)');
   const socialLinks = getVal(`${moduleId}_el_contact_info`, 'social_links', []);
@@ -109,7 +131,7 @@ export const ContactModule: React.FC<{
   const buttonText = getVal(`${moduleId}_el_contact_form`, 'button_text', 'Enviar Mensaje');
   const btnUrl = getVal(`${moduleId}_el_contact_form`, 'btn_url', '#');
   const btnTarget = getVal(`${moduleId}_el_contact_form`, 'btn_target', '_self');
-  const whatsappNumber = getVal(`${moduleId}_el_contact_form`, 'whatsapp_number', '');
+  const whatsappNumber = getVal(`${moduleId}_el_contact_form`, 'whatsapp_number', CONTACT_DEFAULTS.whatsappNumber);
   const customFields = getVal(`${moduleId}_el_contact_form`, 'custom_fields', [
     { label: 'Nombre Completo', type: 'text', placeholder: 'Ej: Juan Pérez', required: true },
     { label: 'Correo Electrónico', type: 'email', placeholder: 'juan@ejemplo.com', required: true },
@@ -138,6 +160,13 @@ export const ContactModule: React.FC<{
   const mapHeight = parseF(getVal(`${moduleId}_el_contact_map`, 'map_height', 400), 400);
   const mapGrayscale = getVal(`${moduleId}_el_contact_map`, 'grayscale', false);
   const mapRadius = parseF(getVal(`${moduleId}_el_contact_map`, 'map_radius', 24), 24);
+  const resolvedEmail = email;
+  const resolvedWhatsapp = sanitizeWhatsappNumber(whatsappNumber || phone);
+  const resolvedAddress = address;
+  const primaryContactLabel = resolvedWhatsapp ? 'WhatsApp' : 'Correo electrónico';
+  const primaryButtonText = isDefaultText(buttonText, 'Enviar Mensaje')
+    ? (resolvedWhatsapp ? 'Enviar por WhatsApp' : 'Enviar por correo')
+    : buttonText;
 
   const getTypographyStyle = (sizeToken: string, weightToken: string, alignToken?: string) => {
     const size = TYPOGRAPHY_SCALE[sizeToken as keyof typeof TYPOGRAPHY_SCALE] || TYPOGRAPHY_SCALE.p;
@@ -151,8 +180,33 @@ export const ContactModule: React.FC<{
     } as React.CSSProperties;
   };
 
+  const buildSubmissionSummary = () => customFields
+    .map((field: any) => {
+      const value = String(formState[field.label] || '').trim();
+      if (!value) return null;
+      return `${field.label}: ${value}`;
+    })
+    .filter(Boolean)
+    .join('\n');
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const summary = buildSubmissionSummary() || 'Hola, me gustaría recibir más información.';
+
+    if (resolvedWhatsapp) {
+      const target = `https://wa.me/${resolvedWhatsapp}?text=${encodeURIComponent(summary)}`;
+      window.open(target, '_blank', 'noopener,noreferrer');
+      setIsSubmitted(true);
+      setTimeout(() => setIsSubmitted(false), 5000);
+      return;
+    }
+
+    if (resolvedEmail) {
+      const subject = encodeURIComponent('Nueva solicitud de contacto');
+      const body = encodeURIComponent(summary);
+      window.location.href = `mailto:${resolvedEmail}?subject=${subject}&body=${body}`;
+    }
+
     setIsSubmitted(true);
     setTimeout(() => setIsSubmitted(false), 5000);
   };
@@ -174,17 +228,6 @@ export const ContactModule: React.FC<{
     }
   };
 
-  const animProps = globalAnimOverride ? {
-    initial: globalAnimOverride.hidden as any,
-    whileInView: globalAnimOverride.visible as any,
-    viewport: { once: true },
-  } : (entranceAnim ? {
-    initial: { opacity: 0, y: 30 } as any,
-    whileInView: { opacity: 1, y: 0 } as any,
-    viewport: { once: true },
-    transition: { duration: 0.8, ease: [0.22, 1, 0.36, 1] as any }
-  } : {});
-
   const renderInfo = (isBento: boolean = false) => (
     <div className={`space-y-6 ${isBento ? 'h-full flex flex-col' : ''}`}>
       <div 
@@ -204,9 +247,11 @@ export const ContactModule: React.FC<{
         )}
 
         {[
-          { icon: Mail, label: 'Email', value: email, id: 'email' },
-          { icon: Phone, label: 'Teléfono', value: phone, id: 'phone' },
-          { icon: MapPin, label: 'Dirección', value: address, id: 'address' }
+          ...(resolvedWhatsapp
+            ? [{ icon: MessageCircle, label: 'WhatsApp', value: phone, id: 'phone' }]
+            : (phone ? [{ icon: Phone, label: 'Teléfono', value: phone, id: 'phone' }] : [])),
+          { icon: Mail, label: 'Email', value: resolvedEmail, id: 'email' },
+          { icon: MapPin, label: 'Dirección', value: resolvedAddress, id: 'address' }
         ].map((item) => (
           <div key={item.id} className="flex items-start gap-4 group">
             <div 
@@ -265,9 +310,9 @@ export const ContactModule: React.FC<{
         )}
       </div>
 
-      {whatsappNumber && (
+      {resolvedWhatsapp && (
         <a 
-          href={`https://wa.me/${whatsappNumber}`}
+          href={`https://wa.me/${resolvedWhatsapp}`}
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center gap-3 px-8 py-4 rounded-2xl bg-[#25D366] text-white font-black text-sm shadow-xl shadow-green-500/20 hover:scale-105 transition-all active:scale-95 w-full justify-center"
@@ -301,9 +346,13 @@ export const ContactModule: React.FC<{
             className="text-2xl font-black mb-2"
             style={{ color: darkMode ? '#FFFFFF' : '#0F172A' }}
           >
-            ¡Mensaje Enviado!
+            ¡Solicitud lista!
           </h3>
-          <p style={{ color: darkMode ? '#94A3B8' : '#64748B' }}>Gracias por contactarnos. Te responderemos muy pronto.</p>
+          <p style={{ color: darkMode ? '#94A3B8' : '#64748B' }}>
+            {resolvedWhatsapp
+              ? 'Abrimos WhatsApp con tu mensaje para que puedas enviarlo de inmediato.'
+              : 'Abrimos tu correo para que puedas enviar la solicitud de contacto.'}
+          </p>
         </motion.div>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-5">
@@ -346,7 +395,7 @@ export const ContactModule: React.FC<{
             whileTap={{ scale: 0.98 }}
             type="submit"
             onClick={() => {
-              if (btnUrl && btnUrl !== '#') window.open(btnUrl, btnTarget === '_blank' ? '_blank' : '_self');
+              if (btnUrl && btnUrl !== '#' && !resolvedWhatsapp) window.open(btnUrl, btnTarget === '_blank' ? '_blank' : '_self');
             }}
             className={`w-full py-5 font-black text-sm shadow-xl transition-all flex items-center justify-center gap-2 relative overflow-hidden group`}
             style={{ backgroundColor: btnBg, color: btnColor, borderRadius: `${inputRadius}px` }}
@@ -354,9 +403,23 @@ export const ContactModule: React.FC<{
             {shimmer && (
               <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]" />
             )}
-            <span className="relative z-10">{buttonText}</span>
-            <Send size={18} className="relative z-10" />
+            <span className="relative z-10">{primaryButtonText}</span>
+            {resolvedWhatsapp ? <MessageCircle size={18} className="relative z-10" /> : <Send size={18} className="relative z-10" />}
           </motion.button>
+          {resolvedEmail && (
+            <a
+              href={`mailto:${resolvedEmail}?subject=${encodeURIComponent('Nueva solicitud de contacto')}`}
+              className={`w-full inline-flex items-center justify-center gap-2 py-4 text-sm font-bold rounded-2xl border transition-colors ${
+                darkMode ? 'border-white/10 text-white hover:bg-white/5' : 'border-slate-200 text-slate-700 hover:bg-slate-50'
+              }`}
+            >
+              <Mail size={16} />
+              Contactar por correo
+            </a>
+          )}
+          <p className={`text-xs leading-relaxed ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+            Canal principal: {primaryContactLabel}. El correo queda disponible como contacto secundario.
+          </p>
         </form>
       )}
     </div>
@@ -419,6 +482,7 @@ export const ContactModule: React.FC<{
   };
 
   return (
+    <SectionAnimation animation={sectionAnimation} speed={globalThemeSectionAnimationSpeed}>
     <section 
       id={moduleId}
       onClick={(e) => {
@@ -437,8 +501,8 @@ export const ContactModule: React.FC<{
         </div>
       )}
 
-      <div className="mx-auto px-8 relative z-10" style={{ maxWidth: `${maxWidth}px` }}>
-        <motion.div {...animProps}>
+        <div className="mx-auto px-8 relative z-10" style={{ maxWidth: `${maxWidth}px` }}>
+          <motion.div>
           {/* Header */}
           <div 
             className={`flex flex-col w-full mb-12 @md:mb-16 ${headerAlign === 'center' ? 'items-center text-center' : headerAlign === 'right' ? 'items-end text-right' : 'items-start text-left'}`}
@@ -564,5 +628,6 @@ export const ContactModule: React.FC<{
         }
       `}</style>
     </section>
+    </SectionAnimation>
   );
 };

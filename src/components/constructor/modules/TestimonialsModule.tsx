@@ -4,6 +4,8 @@ import { Quote, Star, ChevronLeft, ChevronRight } from 'lucide-react';
 import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
 import { TextRenderer } from '../TextRenderer';
 import { ParallaxBackground, useParallaxScrollProgress } from '../ParallaxBackground';
+import { SectionAnimation } from '../animations/SectionAnimation';
+import { normalizeSectionAnimation } from '../../../constants/moduleAnimations';
 
 const MOCK_TESTIMONIALS = [
   {
@@ -46,7 +48,6 @@ const MOCK_TESTIMONIALS = [
 
 import { InlineEditableText } from '../InlineEditableText';
 import { useEditorStore } from '../../../store/editorStore';
-import { GLOBAL_ANIMATIONS, getGlobalAnimation } from '../../../constants/animations';
 
 const TestimonialCard = ({ 
   testimonial, 
@@ -248,10 +249,14 @@ export const TestimonialsModule: React.FC<{
   const bgGradient = getVal(null, 'bg_gradient', 'linear-gradient(to bottom, #F8FAFC, #FFFFFF)');
   const autoplay = getVal(null, 'autoplay', true);
   const autoplaySpeed = parseF(getVal(null, 'autoplay_speed', 5000), 5000);
-  const entranceAnim = getVal(null, 'entrance_anim', 'fade_up');
-
-  // Animation Overrides
-  const globalAnimOverride = getGlobalAnimation(entranceAnim, 'testimonials');
+  const globalThemeSectionAnimation = settingsValues['global_theme_section_animation'];
+  const globalThemeSectionAnimationSpeed = parseF(settingsValues['global_theme_section_animation_speed'], 1);
+  const moduleSectionAnimation = getVal(null, 'section_animation', undefined);
+  const entranceAnim = false as any;
+  const sectionAnimation = normalizeSectionAnimation(
+    globalThemeSectionAnimation ?? moduleSectionAnimation ?? getVal(null, 'entrance_anim', 'fade_up'),
+    'fade-up'
+  );
 
   // Multimedia (Parallax Background)
   const bgParallaxEnabled = getVal(null, 'bg_parallax_enabled', false);
@@ -333,10 +338,10 @@ export const TestimonialsModule: React.FC<{
     }
   };
 
-  const itemVariants = globalAnimOverride || {
-    hidden: { y: 20, opacity: 0 },
-    visible: { y: 0, opacity: 1, transition: { duration: 0.5, ease: "easeOut" } }
-  };
+  const itemVariants = {
+      hidden: { y: 20, opacity: 0 },
+      visible: { y: 0, opacity: 1, transition: { duration: 0.5, ease: "easeOut" } }
+    };
 
   const getTypographyStyle = (sizeToken: string, weightToken: string, alignToken?: string) => {
     const size = TYPOGRAPHY_SCALE[sizeToken as keyof typeof TYPOGRAPHY_SCALE] || TYPOGRAPHY_SCALE.p;
@@ -375,6 +380,7 @@ export const TestimonialsModule: React.FC<{
   };
 
   return (
+    <SectionAnimation animation={sectionAnimation} speed={globalThemeSectionAnimationSpeed}>
     <section 
       id={moduleId}
       ref={containerRef}
@@ -551,5 +557,6 @@ export const TestimonialsModule: React.FC<{
         )}
       </div>
     </section>
+    </SectionAnimation>
   );
 };

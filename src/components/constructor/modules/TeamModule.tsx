@@ -3,8 +3,9 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Linkedin, Twitter, Globe, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
 import { TextRenderer } from '../TextRenderer';
+import { SectionAnimation } from '../animations/SectionAnimation';
 import { parseNumSafe } from '../utils';
-import { GLOBAL_ANIMATIONS, getGlobalAnimation } from '../../../constants/animations';
+import { normalizeSectionAnimation } from '../../../constants/moduleAnimations';
 
 import { InlineEditableText } from '../InlineEditableText';
 import { useEditorStore } from '../../../store/editorStore';
@@ -59,11 +60,15 @@ export const TeamModule: React.FC<{
   const bgColor = resolveThemeColor(rawBgColor, '#FFFFFF', '#0F172A', darkMode);
   const sectionGradient = getVal(null, 'section_gradient', false);
   const bgGradient = getVal(null, 'bg_gradient', 'linear-gradient(to bottom, #FFFFFF, #F8FAFC)');
-  const entranceAnim = getVal(null, 'entrance_anim', 'none');
-  const staggerAnim = getVal(null, 'stagger_anim', true);
-
-  // Animation Overrides
-  const globalAnimOverride = getGlobalAnimation(entranceAnim, 'team');
+  const globalThemeSectionAnimation = settingsValues['global_theme_section_animation'];
+  const globalThemeSectionAnimationSpeed = parseNumSafe(settingsValues['global_theme_section_animation_speed'], 1);
+  const moduleSectionAnimation = getVal(null, 'section_animation', undefined);
+  const entranceAnim = false as any;
+  const staggerAnim = false;
+  const sectionAnimation = normalizeSectionAnimation(
+    globalThemeSectionAnimation ?? moduleSectionAnimation ?? getVal(null, 'entrance_anim', 'none'),
+    'fade-up'
+  );
   const enableModal = getVal(null, 'enable_modal', true);
 
   // Element: Header
@@ -177,10 +182,7 @@ export const TeamModule: React.FC<{
     }
   };
 
-  const itemVariants = globalAnimOverride ? {
-    hidden: globalAnimOverride.hidden as any,
-    visible: globalAnimOverride.visible as any
-  } : {
+  const itemVariants = {
     hidden: { y: 20, opacity: 0 } as any,
     visible: { y: 0, opacity: 1, transition: { duration: 0.5, ease: "easeOut" as any } } as any
   };
@@ -205,6 +207,7 @@ export const TeamModule: React.FC<{
   };
 
   return (
+    <SectionAnimation animation={sectionAnimation} speed={globalThemeSectionAnimationSpeed}>
     <section 
       id={moduleId}
       onClick={(e) => {
@@ -593,5 +596,6 @@ export const TeamModule: React.FC<{
         </defs>
       </svg>
     </section>
+    </SectionAnimation>
   );
 };

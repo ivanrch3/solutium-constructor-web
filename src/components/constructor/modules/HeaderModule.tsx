@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Menu, X, ArrowRight, Sparkles, Phone } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
+import { SectionAnimation } from '../animations/SectionAnimation';
+import { normalizeSectionAnimation } from '../../../constants/moduleAnimations';
 
 const toBoolean = (value: unknown) => value === true || value === 'true' || value === 1 || value === '1';
 
@@ -53,7 +55,15 @@ export const HeaderModule: React.FC<{
   const borderColor = resolveThemeColor(getVal(null, 'border_color', 'rgba(0,0,0,0.05)'), 'rgba(0,0,0,0.05)', 'rgba(255,255,255,0.1)', darkMode);
   const shadow = getVal(null, 'shadow', 'sm');
   const shrinkOnScroll = getVal(null, 'shrink_on_scroll', true);
-  const entranceAnim = getVal(null, 'entrance_anim', true);
+  const legacyEntranceAnim = getVal(null, 'entrance_anim', true);
+  const globalThemeSectionAnimation = settingsValues['global_theme_section_animation'];
+  const globalThemeSectionAnimationSpeed = parseFloat(settingsValues['global_theme_section_animation_speed']) || 1;
+  const moduleSectionAnimation = getVal(null, 'section_animation', undefined);
+  const sectionAnimation = normalizeSectionAnimation(
+    globalThemeSectionAnimation ?? moduleSectionAnimation ?? legacyEntranceAnim,
+    'fade-up'
+  );
+  const entranceAnim = false;
 
   // Element: Marquee
   const showMarquee = getVal(`${moduleId}_el_header_marquee`, 'show_marquee', true);
@@ -163,7 +173,8 @@ export const HeaderModule: React.FC<{
   };
 
   return (
-    <div className={`${positionClass} w-full z-[100] ${entranceAnim ? 'animate-in fade-in slide-in-from-top duration-700' : ''}`}>
+    <SectionAnimation animation={sectionAnimation} speed={globalThemeSectionAnimationSpeed}>
+      <div className={`${positionClass} w-full z-[100] ${entranceAnim ? 'animate-in fade-in slide-in-from-top duration-700' : ''}`}>
       {/* Marquee Banner */}
       {showMarquee && marqueeMessages.length > 0 && (
         <div 
@@ -430,6 +441,7 @@ export const HeaderModule: React.FC<{
           animation-play-state: var(--pause);
         }
       `}</style>
-    </div>
+      </div>
+    </SectionAnimation>
   );
 };

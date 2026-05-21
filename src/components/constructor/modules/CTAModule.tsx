@@ -16,9 +16,10 @@ import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
 import { TextRenderer } from '../TextRenderer';
 import { ParallaxBackground, useParallaxScrollProgress } from '../ParallaxBackground';
 import { InlineEditableText } from '../InlineEditableText';
+import { SectionAnimation } from '../animations/SectionAnimation';
 import { parseNumSafe } from '../utils';
 import { useEditorStore } from '../../../store/editorStore';
-import { GLOBAL_ANIMATIONS, getGlobalAnimation } from '../../../constants/animations';
+import { normalizeSectionAnimation } from '../../../constants/moduleAnimations';
 
 export const CTAModule: React.FC<{ 
   moduleId: string, 
@@ -80,11 +81,15 @@ export const CTAModule: React.FC<{
   const bgImage = getVal(null, 'bg_image', '');
   const bgVideo = getVal(null, 'bg_video', '');
   const overlayOpacity = parseNumSafe(getVal(null, 'overlay_opacity', 50), 50) / 100;
+  const globalThemeSectionAnimationSpeed = parseNumSafe(settingsValues['global_theme_section_animation_speed'], 1);
+  const globalThemeSectionAnimation = settingsValues['global_theme_section_animation'];
+  const moduleSectionAnimation = getVal(null, 'section_animation', undefined);
   const entranceAnim = getVal(null, 'entrance_anim', 'none');
   const enableShimmer = getVal(null, 'enable_shimmer', true);
-
-  // Animation Overrides
-  const globalAnimOverride = getGlobalAnimation(entranceAnim, 'cta');
+  const sectionAnimation = normalizeSectionAnimation(
+    globalThemeSectionAnimation ?? moduleSectionAnimation ?? entranceAnim,
+    'fade-up'
+  );
   const magneticButton = getVal(null, 'magnetic_button', false);
   const showFloatingAssets = getVal(null, 'show_floating_assets', false);
   const floatingIcon1 = getVal(null, 'floating_icon_1', 'Sparkles');
@@ -205,17 +210,6 @@ export const CTAModule: React.FC<{
       bgStyle.backgroundColor = bgColor;
     }
   }
-
-  const animProps = globalAnimOverride ? {
-    initial: globalAnimOverride.hidden as any,
-    whileInView: globalAnimOverride.visible as any,
-    viewport: { once: true },
-  } : (entranceAnim ? {
-    initial: { opacity: 0, y: 30 } as any,
-    whileInView: { opacity: 1, y: 0 } as any,
-    viewport: { once: true },
-    transition: { duration: 0.8, ease: [0.22, 1, 0.36, 1] as any }
-  } : {});
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -461,10 +455,11 @@ export const CTAModule: React.FC<{
   };
 
   return (
+    <SectionAnimation animation={sectionAnimation} speed={globalThemeSectionAnimationSpeed}>
     <section 
-      id={moduleId}
-      ref={containerRef}
-      className="w-full relative overflow-hidden py-12 @md:py-20 @lg:py-24" 
+        id={moduleId}
+        ref={containerRef}
+        className="w-full relative overflow-hidden py-12 @md:py-20 @lg:py-24" 
       onClick={(e) => {
         if (isPreviewMode) return;
         e.stopPropagation();
@@ -502,8 +497,8 @@ export const CTAModule: React.FC<{
       
       {renderFloatingAssets()}
       
-      <div className="relative z-10 mx-auto px-8" style={{ maxWidth: `${maxWidth}px` }}>
-        <motion.div {...animProps}>
+        <div className="relative z-10 mx-auto px-8" style={{ maxWidth: `${maxWidth}px` }}>
+          <motion.div>
           {layout === 'bento' ? (
             <div 
               className="p-12 @md:p-20 rounded-[48px] shadow-2xl relative overflow-hidden"
@@ -707,5 +702,6 @@ export const CTAModule: React.FC<{
         </motion.div>
       </div>
     </section>
+    </SectionAnimation>
   );
 };

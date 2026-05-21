@@ -4,6 +4,7 @@ import * as LucideIcons from 'lucide-react';
 import { Check, X, ShieldCheck, Zap, Clock, CreditCard } from 'lucide-react';
 import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
 import { TextRenderer } from '../TextRenderer';
+import { SectionAnimation } from '../animations/SectionAnimation';
 import { parseNumSafe } from '../utils';
 
 const AnimatedPrice: React.FC<{ value: number, color: string, size: string, weight: string }> = ({ value, color, size, weight }) => {
@@ -52,8 +53,7 @@ const AnimatedPrice: React.FC<{ value: number, color: string, size: string, weig
 import { InlineEditableText } from '../InlineEditableText';
 import { useEditorStore } from '../../../store/editorStore';
 import { logDebug } from '../../../utils/debug';
-
-import { GLOBAL_ANIMATIONS, getGlobalAnimation } from '../../../constants/animations';
+import { normalizeSectionAnimation } from '../../../constants/moduleAnimations';
 
 const toBoolean = (value: unknown) => {
   return value === true || value === 'true' || value === 1 || value === '1';
@@ -94,10 +94,15 @@ export const PricingModule: React.FC<{
   const bgColor = resolveThemeColor(rawBgColor, '#F8FAFC', '#0F172A', darkMode);
   const sectionGradient = getVal(null, 'section_gradient', false);
   const bgGradient = getVal(null, 'bg_gradient', 'linear-gradient(to bottom, #F8FAFC, #FFFFFF)');
-  const entranceAnim = getVal(null, 'entrance_anim', 'slide-up');
+  const globalThemeSectionAnimation = settingsValues['global_theme_section_animation'];
+  const globalThemeSectionAnimationSpeed = parseNumSafe(settingsValues['global_theme_section_animation_speed'], 1);
+  const moduleSectionAnimation = getVal(null, 'section_animation', undefined);
+  const entranceAnim = false as any;
+  const sectionAnimation = normalizeSectionAnimation(
+    globalThemeSectionAnimation ?? moduleSectionAnimation ?? getVal(null, 'entrance_anim', 'slide-up'),
+    'fade-up'
+  );
   const staggerAnim = getVal(null, 'stagger_anim', true);
-  
-  const globalAnimOverride = getGlobalAnimation(entranceAnim, 'pricing');
 
   // Element: Header
   const headerEyebrow = getVal(`${moduleId}_el_pricing_header`, 'eyebrow', '');
@@ -266,12 +271,13 @@ export const PricingModule: React.FC<{
     }
   };
 
-  const itemVariants = globalAnimOverride || {
-    hidden: { y: 30, opacity: 0 },
-    visible: { y: 0, opacity: 1, transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] as any } }
-  };
+  const itemVariants = {
+      hidden: { y: 30, opacity: 0 },
+      visible: { y: 0, opacity: 1, transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] as any } }
+    };
 
   return (
+    <SectionAnimation animation={sectionAnimation} speed={globalThemeSectionAnimationSpeed}>
     <section 
       className="w-full relative overflow-hidden py-12 @md:py-20 @lg:py-24"
       onClick={(e) => {
@@ -582,5 +588,6 @@ export const PricingModule: React.FC<{
         )}
       </div>
     </section>
+    </SectionAnimation>
   );
 };

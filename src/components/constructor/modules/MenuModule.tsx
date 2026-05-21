@@ -6,6 +6,8 @@ import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
 import { InlineEditableText } from '../InlineEditableText';
 import { useEditorStore } from '../../../store/editorStore';
 import { logDebug } from '../../../utils/debug';
+import { SectionAnimation } from '../animations/SectionAnimation';
+import { normalizeSectionAnimation } from '../../../constants/moduleAnimations';
 
 const toBoolean = (value: unknown) => value === true || value === 'true' || value === 1 || value === '1';
 
@@ -155,7 +157,15 @@ export const MenuModule: React.FC<{
     ? (darkMode ? '#1E293B' : '#FFFFFF') 
     : resolvedBgColor;
   const borderRadius = parseFloat(getVal(null, 'border_radius', 12)) || 12;
-  const entranceAnim = getVal(null, 'entrance_anim', true);
+  const legacyEntranceAnim = getVal(null, 'entrance_anim', true);
+  const globalThemeSectionAnimation = settingsValues['global_theme_section_animation'];
+  const globalThemeSectionAnimationSpeed = parseFloat(settingsValues['global_theme_section_animation_speed']) || 1;
+  const moduleSectionAnimation = getVal(null, 'section_animation', undefined);
+  const sectionAnimation = normalizeSectionAnimation(
+    globalThemeSectionAnimation ?? moduleSectionAnimation ?? legacyEntranceAnim,
+    'fade-up'
+  );
+  const entranceAnim = false;
   const invertOrder = getVal(null, 'invert_order', false);
   const borderColor = resolveThemeColor(getVal(null, 'border_color', 'rgba(0,0,0,0.05)'), 'rgba(0,0,0,0.05)', 'rgba(255,255,255,0.1)', darkMode);
 
@@ -342,7 +352,8 @@ export const MenuModule: React.FC<{
   };
 
     return (
-      <div className="w-full @container">
+      <SectionAnimation animation={sectionAnimation} speed={globalThemeSectionAnimationSpeed}>
+        <div className="w-full @container">
         <nav ref={navRef} className={`w-full transition-all duration-300 ${isFloating ? 'shadow-sm' : ''}`} style={navStyle}>
           <motion.div 
             {...animProps}
@@ -446,6 +457,7 @@ export const MenuModule: React.FC<{
           style={{ height: `${(menuHeight || fallbackMenuHeight) + editorTopOffset}px` }}
         />
       )}
-    </div>
+        </div>
+      </SectionAnimation>
   );
 };

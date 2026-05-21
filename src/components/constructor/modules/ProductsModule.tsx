@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { GLOBAL_ANIMATIONS, getGlobalAnimation } from '../../../constants/animations';
+import { SectionAnimation } from '../animations/SectionAnimation';
+import { normalizeSectionAnimation } from '../../../constants/moduleAnimations';
 import { Star, ShoppingCart, Eye, Heart, X, ChevronLeft, ChevronRight, Zap, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Product } from '../../../types/schema';
@@ -242,7 +243,15 @@ export const ProductsModule: React.FC<{
   const bgColor = resolveThemeColor(rawBgColor, '#FFFFFF', '#0F172A', darkMode);
   const sectionGradient = getVal(null, 'section_gradient', false);
   const bgGradient = getVal(null, 'bg_gradient', 'linear-gradient(to bottom, #FFFFFF, #F8FAFC)');
-  const entranceAnim = getVal(null, 'entrance_anim', 'none');
+  const legacyEntranceAnim = getVal(null, 'entrance_anim', 'none');
+  const globalThemeSectionAnimation = settingsValues['global_theme_section_animation'];
+  const globalThemeSectionAnimationSpeed = parseF(settingsValues['global_theme_section_animation_speed'], 1);
+  const moduleSectionAnimation = getVal(null, 'section_animation', undefined);
+  const sectionAnimation = normalizeSectionAnimation(
+    globalThemeSectionAnimation ?? moduleSectionAnimation ?? legacyEntranceAnim,
+    'fade-up'
+  );
+  const entranceAnim = 'none';
   const headerTitleColor = resolveThemeColor(undefined, '#0F172A', '#FFFFFF', darkMode);
   const headerSubtitleColor = resolveThemeColor(undefined, '#64748B', '#94A3B8', darkMode);
 
@@ -313,7 +322,7 @@ export const ProductsModule: React.FC<{
 
 
   // Animation Overrides
-  const globalAnimOverride = getGlobalAnimation(entranceAnim, 'product');
+  const globalAnimOverride = null;
   const enableQuickview = getVal(null, 'enable_quickview', true);
   const showPagination = getVal(null, 'show_pagination', true);
   const showUrgency = getVal(null, 'show_urgency', false);
@@ -459,20 +468,21 @@ export const ProductsModule: React.FC<{
   }
 
   return (
-    <section 
-      id={moduleId}
-      className={`py-12 @md:py-20 @lg:py-24 px-8 w-full transition-colors duration-300 relative ${darkMode ? 'bg-slate-900' : ''}`}
-      onClick={(e) => {
-        if (isPreviewMode) return;
-        e.stopPropagation();
-        selectSection(moduleId);
-        selectElement(`${moduleId}_global`);
-      }}
-      style={{ 
-        backgroundColor: bgColor,
-        backgroundImage: (sectionGradient && typeof bgGradient === 'string' && !bgGradient.includes('NaN')) ? bgGradient : 'none'
-      }}
-    >
+    <SectionAnimation animation={sectionAnimation} speed={globalThemeSectionAnimationSpeed}>
+      <section 
+        id={moduleId}
+        className={`py-12 @md:py-20 @lg:py-24 px-8 w-full transition-colors duration-300 relative ${darkMode ? 'bg-slate-900' : ''}`}
+        onClick={(e) => {
+          if (isPreviewMode) return;
+          e.stopPropagation();
+          selectSection(moduleId);
+          selectElement(`${moduleId}_global`);
+        }}
+        style={{ 
+          backgroundColor: bgColor,
+          backgroundImage: (sectionGradient && typeof bgGradient === 'string' && !bgGradient.includes('NaN')) ? bgGradient : 'none'
+        }}
+      >
       <div className="max-w-7xl mx-auto relative z-10">
         {/* Header */}
         <div 
@@ -889,6 +899,7 @@ export const ProductsModule: React.FC<{
           </div>
         )}
       </AnimatePresence>
-    </section>
+      </section>
+    </SectionAnimation>
   );
 };

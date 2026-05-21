@@ -1,6 +1,6 @@
 import React from 'react';
-import { motion } from 'motion/react';
-import { getGlobalAnimation } from '../../constants/animations';
+import { motion, useReducedMotion } from 'motion/react';
+import { getGlobalAnimation, isOfficialModuleAnimationType } from '../../constants/animations';
 
 type ModuleAnimationWrapperProps = {
   animation?: unknown;
@@ -35,6 +35,14 @@ export const normalizeModuleAnimation = (
   if (!rawValue) return 'none';
 
   const normalized = LEGACY_TO_ANIMATION[rawValue] || rawValue;
+  if (normalized === 'none') {
+    return 'none';
+  }
+
+  if (isOfficialModuleAnimationType(normalized)) {
+    return normalized;
+  }
+
   return normalized;
 };
 
@@ -62,9 +70,10 @@ export const ModuleAnimationWrapper: React.FC<ModuleAnimationWrapperProps> = ({
   className,
   disabled = false
 }) => {
+  const prefersReducedMotion = useReducedMotion();
   const normalizedAnimation = normalizeModuleAnimation(animation);
 
-  if (disabled || normalizedAnimation === 'none') {
+  if (disabled || prefersReducedMotion || normalizedAnimation === 'none') {
     return className ? <div className={className}>{children}</div> : <>{children}</>;
   }
 
@@ -83,6 +92,7 @@ export const ModuleAnimationWrapper: React.FC<ModuleAnimationWrapperProps> = ({
       initial="hidden"
       whileInView="visible"
       viewport={{ once: true, amount: 0.1 }}
+      style={{ willChange: 'transform, opacity' }}
     >
       {children}
     </motion.div>

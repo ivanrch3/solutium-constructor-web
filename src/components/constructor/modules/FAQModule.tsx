@@ -6,8 +6,10 @@ import remarkGfm from 'remark-gfm';
 import * as LucideIcons from 'lucide-react';
 import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
 import { TextRenderer } from '../TextRenderer';
+import { SectionAnimation } from '../animations/SectionAnimation';
 import { InlineEditableText } from '../InlineEditableText';
 import { useEditorStore } from '../../../store/editorStore';
+import { normalizeSectionAnimation } from '../../../constants/moduleAnimations';
 
 const DEFAULT_CATEGORIES = [
   { id: 'all', label: 'Todas' },
@@ -54,8 +56,6 @@ const IconRenderer = ({ name, size = 20, className = "" }: { name: string, size?
   if (!IconComponent) return null;
   return <IconComponent size={size} className={className} />;
 };
-
-import { GLOBAL_ANIMATIONS, getGlobalAnimation } from '../../../constants/animations';
 
 export const FAQModule: React.FC<{ 
   moduleId: string, 
@@ -113,13 +113,18 @@ export const FAQModule: React.FC<{
   const bgGradient = getVal(null, 'bg_gradient', 'linear-gradient(to bottom, #FFFFFF, #F8FAFC)');
   const glassmorphism = getVal(null, 'glassmorphism', false);
   const dividerStyle = getVal(null, 'divider_style', 'line');
-  const entranceAnim = getVal(null, 'entrance_anim', 'slide-up');
+  const globalThemeSectionAnimation = settingsValues['global_theme_section_animation'];
+  const globalThemeSectionAnimationSpeed = parseF(settingsValues['global_theme_section_animation_speed'], 1);
+  const moduleSectionAnimation = getVal(null, 'section_animation', undefined);
+  const entranceAnim = false as any;
   const singleOpen = getVal(null, 'single_open', true);
   const scrollToActive = getVal(null, 'scroll_to_active', false);
   const itemGap = parseF(getVal(null, 'item_gap', 16), 16);
-
-  const globalAnimOverride = getGlobalAnimation(entranceAnim, 'faq');
-  const itemVariants = globalAnimOverride || {
+  const sectionAnimation = normalizeSectionAnimation(
+    globalThemeSectionAnimation ?? moduleSectionAnimation ?? getVal(null, 'entrance_anim', 'slide-up'),
+    'fade-up'
+  );
+  const itemVariants = {
     hidden: { y: 20, opacity: 0 },
     visible: { y: 0, opacity: 1, transition: { duration: 0.4 } }
   };
@@ -345,6 +350,7 @@ export const FAQModule: React.FC<{
   };
 
   return (
+    <SectionAnimation animation={sectionAnimation} speed={globalThemeSectionAnimationSpeed}>
     <section 
       className="w-full relative overflow-hidden"
       style={{ 
@@ -606,5 +612,6 @@ export const FAQModule: React.FC<{
         )}
       </div>
     </section>
+    </SectionAnimation>
   );
 };

@@ -2,6 +2,7 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { logDebug } from '../utils/debug';
 
 let supabaseInstance: SupabaseClient | null = null;
+let supabaseConfig: { url: string; key: string; token: string } | null = null;
 
 export const initSupabase = (url: string, key: string, token: string) => {
   if (!url || !key) {
@@ -10,6 +11,7 @@ export const initSupabase = (url: string, key: string, token: string) => {
   }
   
   try {
+    supabaseConfig = { url, key, token };
     supabaseInstance = createClient(url, key, {
       global: {
         headers: {
@@ -29,3 +31,5 @@ export const initSupabase = (url: string, key: string, token: string) => {
 export const getSupabase = () => {
   return supabaseInstance;
 };
+
+export const getSupabaseConfig = () => supabaseConfig;

@@ -1,4 +1,5 @@
 import { logDebug } from '../utils/debug';
+import { initSupabase } from './supabaseClient';
 
 export interface HandshakePayload {
   projectId: string;
@@ -150,6 +151,57 @@ export const sendToMother = (typeOrMessage: any, payload?: any) => {
       ? { type: typeOrMessage, payload } 
       : typeOrMessage;
       
-    motherWindow.postMessage(message, '*');
+      motherWindow.postMessage(message, '*');
   }
+};
+
+export const requestFreshSupabaseConfig = async (timeoutMs: number = 6000): Promise<boolean> => {
+  return new Promise((resolve) => {
+    let settled = false;
+
+    const finish = (result: boolean) => {
+      if (settled) return;
+      settled = true;
+      window.removeEventListener('message', handleMessage);
+      clearTimeout(timer);
+      resolve(result);
+    };
+
+    const handleMessage = (event: MessageEvent) => {
+      const eventType = event.data?.type;
+      if (!eventType || !['SOLUTIUM_CONFIG', 'SOLUTIUM_CONFIG_RESPONSE', 'SOLUTIUM_SET_CONFIG'].includes(eventType)) {
+        return;
+      }
+
+      const payload = event.data?.payload || event.data?.config || (event.data?.projectId || event.data?.satellite_id ? event.data : null);
+      const supabaseUrl = payload?.supabase_url;
+      const supabaseAnonKey = payload?.supabase_anon_key;
+      const sessionToken = payload?.session_token || payload?.supabaseAccessToken || payload?.accessToken;
+
+      if (!supabaseUrl || !supabaseAnonKey || !sessionToken) {
+        return;
+      }
+
+      try {
+        sessionStorage.setItem('solutium_supabase_access_token', sessionToken);
+        localStorage.setItem('solutium_handshake_cache', JSON.stringify(payload));
+        (window as any).SOLUTIUM_SUPABASE_SESSION = { access_token: sessionToken };
+        initSupabase(supabaseUrl, supabaseAnonKey, sessionToken);
+        logDebug('[SIP AUTH RECOVERY] Supabase config refreshed from App Madre.');
+        finish(true);
+      } catch (error) {
+        console.error('[SIP AUTH RECOVERY] Failed to reinitialize Supabase after fresh config:', error);
+        finish(false);
+      }
+    };
+
+    const timer = window.setTimeout(() => {
+      logDebug('[SIP AUTH RECOVERY] Timed out waiting for fresh Supabase config.');
+      finish(false);
+    }, timeoutMs);
+
+    window.addEventListener('message', handleMessage);
+    logDebug('[SIP AUTH RECOVERY] Requesting fresh Supabase config from App Madre...');
+    sendToMother({ type: 'SOLUTIUM_GET_CONFIG' });
+  });
 };

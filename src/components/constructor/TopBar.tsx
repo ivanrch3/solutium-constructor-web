@@ -29,6 +29,8 @@ interface TopBarProps {
   hasUnsavedChanges?: boolean;
   currentStatus?: 'draft' | 'published' | 'modified';
   isNewSite?: boolean;
+  onReloadPreview?: () => void;
+  assetName?: string;
 }
 
 export const TopBar: React.FC<TopBarProps> = ({ 
@@ -45,11 +47,13 @@ export const TopBar: React.FC<TopBarProps> = ({
   isPreviewMode,
   hasUnsavedChanges = false,
   currentStatus = 'draft',
-  isNewSite = true
+  isNewSite = true,
+  onReloadPreview,
+  assetName = 'Activo sin nombre'
 }) => (
-  <div className={`bg-surface border-b border-border/60 flex items-center justify-between px-4 md:px-6 z-20 ${isMobile ? 'h-[70px]' : 'h-[60px]'}`}>
+  <div className={`bg-surface border-b border-border/60 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-4 md:px-6 z-20 ${isMobile ? 'h-[70px]' : 'h-[60px]'}`}>
     {/* Left Section: Viewports */}
-    <div className="flex-1 flex items-center gap-4">
+    <div className="flex items-center gap-4">
       {!isMobile && (
         <div className="flex items-center gap-1 bg-secondary p-1 rounded-xl">
           <button 
@@ -77,11 +81,11 @@ export const TopBar: React.FC<TopBarProps> = ({
       )}
     </div>
 
-    {/* Center Section: Brand/Status */}
-    <div className="flex-1 flex flex-col items-center justify-center">
-      <div className="flex items-center gap-2">
-        <h2 className={`${isMobile ? 'text-sm' : 'text-base'} font-bold text-text truncate`}>
-          Constructor Web
+    {/* Center Section: Asset Name */}
+    <div className="pointer-events-none flex items-center justify-center min-w-0">
+      <div className="flex items-center gap-2 min-w-0 max-w-full">
+        <h2 className={`${isMobile ? 'text-sm' : 'text-base'} font-bold text-text truncate text-center min-w-0`}>
+          {assetName}
         </h2>
         {saveStatus === 'loading' && (
           <div className="flex items-center gap-1.5 px-2 py-0.5 bg-primary/10 rounded-full">
@@ -95,14 +99,20 @@ export const TopBar: React.FC<TopBarProps> = ({
           </div>
         )}
       </div>
-      {!isMobile && <p className="text-[9px] font-semibold text-text/30 uppercase tracking-[0.2em] whitespace-nowrap">Constructor Web</p>}
     </div>
 
     {/* Right Section: Actions */}
-    <div className="flex-1 flex items-center justify-end gap-2 md:gap-4">
+    <div className="flex items-center justify-end gap-2 md:gap-4">
       <div className="flex items-center gap-2 md:gap-3 border-r border-border/60 pr-2 md:pr-4">
         {!isMobile && (
           <div className="flex items-center gap-1">
+            <button 
+              onClick={onReloadPreview}
+              className="p-2 rounded-lg transition-all text-text/60 hover:text-primary hover:bg-secondary"
+              title="Recargar Preview"
+            >
+              <RotateCcw size={18} />
+            </button>
             <button 
               onClick={() => setIsFullscreen(!isFullscreen)}
               className={`p-2 rounded-lg transition-all ${isFullscreen ? 'text-primary bg-primary/10' : 'text-text/60 hover:text-primary hover:bg-secondary'}`}

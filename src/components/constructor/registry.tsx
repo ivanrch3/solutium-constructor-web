@@ -211,7 +211,7 @@ export const MENU_MODULE: WebModule = {
         { label: 'Fijo al scroll (Sticky)', value: 'sticky' },
         { label: 'Fijo al tope (Fixed)', value: 'fixed' }
       ]},
-      { id: 'layout', label: 'Diseño', type: 'select', defaultValue: 'horizontal', options: [
+      { id: 'layout', label: 'Diseño', type: 'select', defaultValue: 'alternating', options: [
         { label: 'Horizontal (Barra)', value: 'horizontal' },
         { label: 'Vertical (Lista)', value: 'vertical' }
       ]},
@@ -1788,16 +1788,6 @@ export const STATS_MODULE: WebModule = {
       { id: 'bg_gradient', label: 'Gradiente Personalizado', type: 'gradient', defaultValue: 'linear-gradient(to bottom, #FFFFFF, #F8FAFC)' }
     ],
     interaccion: [
-      { id: 'entrance_anim', label: 'Animación de Entrada', type: 'select', defaultValue: 'slide-up', options: [
-        { label: 'Sin animación', value: 'none' },
-        { label: 'Desvanecer', value: 'fade-in' },
-        { label: 'Deslizar arriba', value: 'slide-up' },
-        { label: 'Deslizar abajo', value: 'slide-down' },
-        { label: 'Desvanecer desde izquierda', value: 'fade-left' },
-        { label: 'Desvanecer desde derecha', value: 'fade-right' },
-        { label: 'Zoom suave', value: 'zoom-in' },
-        { label: 'Blur In', value: 'blur-in' }
-      ] },
       { id: 'count_speed', label: 'Velocidad de Conteo (seg)', type: 'range', defaultValue: 2, min: 0.5, max: 5, step: 0.5 },
       { id: 'count_easing', label: 'Estilo de Animación', type: 'select', defaultValue: 'spring', options: [
         { label: 'Elástico (Spring)', value: 'spring' },
@@ -1878,6 +1868,24 @@ export const STATS_MODULE: WebModule = {
       estilo: [
         { id: 'icon_color', label: 'Color Icono', type: 'color', defaultValue: '#3B82F6' },
         { id: 'icon_bg', label: 'Fondo Icono', type: 'color', defaultValue: 'rgba(59, 130, 246, 0.1)' }
+      ],
+      tipografia: [], multimedia: [], interaccion: []
+    }},
+    { id: 'el_stats_animation_2', name: 'Animaciones 2', type: 'style', groups: ['estilo'], settings: {
+      contenido: [],
+      estructura: [],
+      estilo: [
+        { id: 'section_animation', label: 'Animación de Sección', type: 'select', defaultValue: 'fade-up', options: [
+          { label: 'Sin animación', value: 'none' },
+          { label: 'Desvanecer', value: 'fade' },
+          { label: 'Desvanecer hacia arriba', value: 'fade-up' },
+          { label: 'Desvanecer hacia abajo', value: 'fade-down' },
+          { label: 'Desvanecer desde izquierda', value: 'fade-left' },
+          { label: 'Desvanecer desde derecha', value: 'fade-right' },
+          { label: 'Zoom suave', value: 'zoom' },
+          { label: 'Blur suave', value: 'blur' },
+          { label: 'Clip reveal', value: 'clip' }
+        ] }
       ],
       tipografia: [], multimedia: [], interaccion: []
     }},
@@ -2081,7 +2089,7 @@ export const CONTACT_MODULE: WebModule = {
     { id: 'el_contact_info', name: 'Información y Redes', type: 'text', groups: ['contenido', 'estilo', 'estructura'], settings: {
       contenido: [
         { id: 'email', label: 'Email de Contacto', type: 'text', defaultValue: 'hola@tuempresa.com' },
-        { id: 'phone', label: 'Teléfono', type: 'text', defaultValue: '+34 900 000 000' },
+        { id: 'phone', label: 'WhatsApp Principal', type: 'text', defaultValue: '+34 900 000 000' },
         { id: 'address', label: 'Dirección Física', type: 'text', defaultValue: 'Calle Innovación 123, Madrid, España' },
         { id: 'availability_text', label: 'Texto Disponibilidad', type: 'text', defaultValue: 'Disponible ahora (9:00 - 18:00)' },
         { 
@@ -2118,9 +2126,9 @@ export const CONTACT_MODULE: WebModule = {
     }},
     { id: 'el_contact_form', name: 'Formulario', type: 'text', groups: ['contenido', 'estilo', 'estructura', 'interaccion', 'tipografia'], settings: {
       contenido: [
-        { id: 'button_text', label: 'Texto del Botón', type: 'text', defaultValue: 'Enviar Mensaje' },
+        { id: 'button_text', label: 'Texto del Botón', type: 'text', defaultValue: 'Enviar por WhatsApp' },
         ...BUTTON_LINK_SETTINGS('btn'),
-        { id: 'whatsapp_number', label: 'Número WhatsApp (Opcional)', type: 'text', defaultValue: '' },
+        { id: 'whatsapp_number', label: 'Número WhatsApp Principal', type: 'text', defaultValue: '' },
         { 
           id: 'custom_fields', 
           label: 'Campos del Formulario', 

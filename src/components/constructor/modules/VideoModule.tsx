@@ -5,7 +5,8 @@ import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
 import { TextRenderer } from '../TextRenderer';
 import { InlineEditableText } from '../InlineEditableText';
 import { useEditorStore } from '../../../store/editorStore';
-import { GLOBAL_ANIMATIONS, getGlobalAnimation } from '../../../constants/animations';
+import { SectionAnimation } from '../animations/SectionAnimation';
+import { normalizeSectionAnimation } from '../../../constants/moduleAnimations';
 
 export const VideoModule: React.FC<{ 
   moduleId: string, 
@@ -65,11 +66,17 @@ export const VideoModule: React.FC<{
   const bgGradient = getVal(null, 'bg_gradient', 'linear-gradient(to bottom, #FFFFFF, #F8FAFC)');
   const overlayColor = getVal(null, 'overlay_color', 'rgba(0,0,0,0.2)');
   const videoFilter = getVal(null, 'video_filter', 'none');
-  const entranceAnim = getVal(null, 'entrance_anim', 'none');
+  const legacyEntranceAnim = getVal(null, 'entrance_anim', 'none');
+  const globalThemeSectionAnimation = settingsValues['global_theme_section_animation'];
+  const globalThemeSectionAnimationSpeed = parseFloat(settingsValues['global_theme_section_animation_speed']) || 1;
+  const moduleSectionAnimation = getVal(null, 'section_animation', undefined);
+  const sectionAnimation = normalizeSectionAnimation(
+    globalThemeSectionAnimation ?? moduleSectionAnimation ?? legacyEntranceAnim,
+    'fade-up'
+  );
+  const entranceAnim = false as any;
   const parallaxEffect = getVal(null, 'parallax_effect', false);
-
-  // Animation Overrides
-  const globalAnimOverride = getGlobalAnimation(entranceAnim, 'video');
+  const globalAnimOverride = null;
   const hoverToPlay = getVal(null, 'hover_to_play', false);
   const maskShape = getVal(null, 'mask_shape', 'none');
 
@@ -348,25 +355,27 @@ export const VideoModule: React.FC<{
 
   if (layout === 'background') {
     return (
-      <section 
-        ref={containerRef}
-        className="w-full relative overflow-hidden min-h-[600px] flex items-center justify-center py-20"
-      >
-        <div className="absolute inset-0 z-0">
-          {renderVideo()}
-          <div className="absolute inset-0" style={{ backgroundColor: overlayColor }} />
-        </div>
-        <div className="relative z-10 max-w-4xl mx-auto px-8">
-          <motion.div
-            initial={(entranceAnim ? { opacity: 0, y: 30 } : {}) as any}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-            viewport={{ once: true }}
-          >
-            {renderTextContent(true)}
-          </motion.div>
-        </div>
-      </section>
+      <SectionAnimation animation={sectionAnimation} speed={globalThemeSectionAnimationSpeed}>
+        <section 
+          ref={containerRef}
+          className="w-full relative overflow-hidden min-h-[600px] flex items-center justify-center py-20"
+        >
+          <div className="absolute inset-0 z-0">
+            {renderVideo()}
+            <div className="absolute inset-0" style={{ backgroundColor: overlayColor }} />
+          </div>
+          <div className="relative z-10 max-w-4xl mx-auto px-8">
+            <motion.div
+              initial={(entranceAnim ? { opacity: 0, y: 30 } : {}) as any}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8 }}
+              viewport={{ once: true }}
+            >
+              {renderTextContent(true)}
+            </motion.div>
+          </div>
+        </section>
+      </SectionAnimation>
     );
   }
 
@@ -383,23 +392,24 @@ export const VideoModule: React.FC<{
   };
 
   return (
-    <section 
-      id={moduleId}
-      ref={containerRef}
-      className="w-full relative overflow-hidden @container"
-      onClick={(e) => {
-        if (isPreviewMode) return;
-        e.stopPropagation();
-        selectSection(moduleId);
-        selectElement(`${moduleId}_global`);
-      }}
-      style={{ 
-        backgroundColor: bgColor,
-        backgroundImage: (sectionGradient && typeof bgGradient === 'string' && !bgGradient.includes('NaN')) ? bgGradient : 'none',
-        paddingTop: `${paddingY}px`,
-        paddingBottom: `${paddingY}px`
-      }}
-    >
+    <SectionAnimation animation={sectionAnimation} speed={globalThemeSectionAnimationSpeed}>
+      <section 
+        id={moduleId}
+        ref={containerRef}
+        className="w-full relative overflow-hidden @container"
+        onClick={(e) => {
+          if (isPreviewMode) return;
+          e.stopPropagation();
+          selectSection(moduleId);
+          selectElement(`${moduleId}_global`);
+        }}
+        style={{ 
+          backgroundColor: bgColor,
+          backgroundImage: (sectionGradient && typeof bgGradient === 'string' && !bgGradient.includes('NaN')) ? bgGradient : 'none',
+          paddingTop: `${paddingY}px`,
+          paddingBottom: `${paddingY}px`
+        }}
+      >
         <div className="mx-auto px-8" style={{ maxWidth: layout === 'full' ? '100%' : `${maxWidth}px` }}>
           {layout === 'split' ? (
             <div className="grid grid-cols-1 @lg:grid-cols-2 gap-12 @md:gap-16 items-center">
@@ -440,36 +450,37 @@ export const VideoModule: React.FC<{
           )}
         </div>
 
-      {/* Lightbox */}
-      <AnimatePresence>
-        {isLightboxOpen && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 p-4 md:p-12"
-            onClick={() => setIsLightboxOpen(false)}
-          >
-            <button 
-              className="absolute top-8 right-8 text-white/50 hover:text-white transition-colors z-[110] bg-white/10 p-2 rounded-full backdrop-blur-md"
+        {/* Lightbox */}
+        <AnimatePresence>
+          {isLightboxOpen && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 p-4 md:p-12"
               onClick={() => setIsLightboxOpen(false)}
             >
-              <X size={24} />
-            </button>
-            
-            <motion.div 
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="w-full max-w-6xl relative"
-              style={{ paddingBottom: getAspectRatioPadding(aspectRatio) }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              {renderVideo(true)}
+              <button 
+                className="absolute top-8 right-8 text-white/50 hover:text-white transition-colors z-[110] bg-white/10 p-2 rounded-full backdrop-blur-md"
+                onClick={() => setIsLightboxOpen(false)}
+              >
+                <X size={24} />
+              </button>
+              
+              <motion.div 
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="w-full max-w-6xl relative"
+                style={{ paddingBottom: getAspectRatioPadding(aspectRatio) }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                {renderVideo(true)}
+              </motion.div>
             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </section>
+          )}
+        </AnimatePresence>
+      </section>
+    </SectionAnimation>
   );
 };

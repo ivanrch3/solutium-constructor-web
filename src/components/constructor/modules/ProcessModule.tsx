@@ -4,9 +4,10 @@ import * as LucideIcons from 'lucide-react';
 import { CheckCircle2 } from 'lucide-react';
 import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
 import { TextRenderer } from '../TextRenderer';
+import { SectionAnimation } from '../animations/SectionAnimation';
 import { InlineEditableText } from '../InlineEditableText';
 import { useEditorStore } from '../../../store/editorStore';
-import { GLOBAL_ANIMATIONS, getGlobalAnimation } from '../../../constants/animations';
+import { normalizeSectionAnimation } from '../../../constants/moduleAnimations';
 
 const StepItem = ({ 
   step, 
@@ -259,7 +260,7 @@ export const ProcessModule: React.FC<{
   };
 
   // Global Settings
-  const layout = getVal(null, 'layout', 'horizontal');
+  const layout = getVal(null, 'layout', 'alternating');
   const columns = Math.max(1, parseInt(getVal(null, 'columns', 4)) || 4);
   const paddingY = parseF(getVal(null, 'padding_y', 120), 120);
   const gap = parseF(getVal(null, 'gap', 40), 40);
@@ -271,10 +272,14 @@ export const ProcessModule: React.FC<{
   const connectorStyle = getVal(null, 'connector_style', 'dashed');
   const rawConnectorColor = getVal(null, 'connector_color', 'rgba(59, 130, 246, 0.2)');
   const connectorColor = resolveThemeColor(rawConnectorColor, 'rgba(59, 130, 246, 0.2)', 'rgba(255,255,255,0.1)', darkMode);
-  const entranceAnim = getVal(null, 'entrance_anim', 'fade_up');
-
-  // Animation Overrides
-  const globalAnimOverride = getGlobalAnimation(entranceAnim, 'process');
+  const globalThemeSectionAnimation = settingsValues['global_theme_section_animation'];
+  const globalThemeSectionAnimationSpeed = parseF(settingsValues['global_theme_section_animation_speed'], 1);
+  const moduleSectionAnimation = getVal(null, 'section_animation', undefined);
+  const entranceAnim = false as any;
+  const sectionAnimation = normalizeSectionAnimation(
+    globalThemeSectionAnimation ?? moduleSectionAnimation ?? getVal(null, 'entrance_anim', 'fade_up'),
+    'fade-up'
+  );
 
   const drawConnectors = getVal(null, 'draw_connectors', true);
   const hoverGlow = getVal(null, 'hover_glow', true);
@@ -327,10 +332,10 @@ export const ProcessModule: React.FC<{
     }
   };
 
-  const itemVariants = globalAnimOverride || {
-    hidden: { y: 30, opacity: 0 },
-    visible: { y: 0, opacity: 1, transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1] } }
-  };
+  const itemVariants = {
+      hidden: { y: 30, opacity: 0 },
+      visible: { y: 0, opacity: 1, transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1] } }
+    };
 
   const gridCols = {
     2: '@md:grid-cols-2',
@@ -352,6 +357,7 @@ export const ProcessModule: React.FC<{
   };
 
   return (
+    <SectionAnimation animation={sectionAnimation} speed={globalThemeSectionAnimationSpeed}>
     <section 
       className="w-full relative overflow-hidden"
       style={{ 
@@ -438,8 +444,8 @@ export const ProcessModule: React.FC<{
               step={step} 
               index={i} 
               layout={layout}
-              staggerAnim={entranceAnim}
-              itemVariants={itemVariants}
+                staggerAnim={false}
+                itemVariants={itemVariants}
               hoverLift={hoverLift}
               cardBg={cardBg}
               cardPadding={cardPadding}
@@ -473,5 +479,6 @@ export const ProcessModule: React.FC<{
         </motion.div>
       </div>
     </section>
+    </SectionAnimation>
   );
 };

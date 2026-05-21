@@ -245,6 +245,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     if (!initialPage) return '';
     return (initialPage as any).siteName || (initialPage as any).title || '';
   });
+  const assetDisplayName = (siteName || (initialPage as any)?.siteName || (initialPage as any)?.title || 'Activo sin nombre').trim();
 
   const [currentSiteId] = useState(() => {
     // 1. Si estamos editando una página existente (Borrador o Publicada), usamos su siteId.
@@ -525,6 +526,9 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   // Integrity Hash for Master App Audit
   const SOLUTIUM_MODULES_HASH = "v5.2-sha256-render-engine-stable";
   const [reloadKey, setReloadKey] = useState(0);
+  const handleReloadPreview = useCallback(() => {
+    setReloadKey((prev) => prev + 1);
+  }, []);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [showUnsavedModal, setShowUnsavedModal] = useState(false);
   const isInitialLoad = useRef(true);
@@ -1176,6 +1180,14 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
               if (setting.id === 'copyright' && project?.name) {
                 val = `© ${new Date().getFullYear()} ${project.name}. Todos los derechos reservados.`;
               }
+            }
+
+            if (module.type === 'contact') {
+              if (setting.id === 'email' && project?.email) val = project.email;
+              if (setting.id === 'phone' && project?.whatsapp) val = project.whatsapp;
+              if (setting.id === 'whatsapp_number' && project?.whatsapp) val = project.whatsapp;
+              if (setting.id === 'address' && project?.address) val = project.address;
+              if (setting.id === 'button_text' && project?.whatsapp) val = 'Enviar por WhatsApp';
             }
 
             // The element.id already contains the moduleId prefix
@@ -2041,6 +2053,52 @@ const formatTimestampName = () => {
           }
         }
 
+        if (module.type === 'contact') {
+          const isDefault = (val: any, d: string | string[]) => {
+            const cleanVal = getPlainValue(val);
+            if (Array.isArray(d)) return !cleanVal || d.includes(cleanVal);
+            return !cleanVal || cleanVal === d;
+          };
+
+          const contactDefaults = {
+            email: 'hola@tuempresa.com',
+            phone: '+34 900 000 000',
+            address: 'Calle Innovación 123, Madrid, España',
+            whatsappNumber: ''
+          };
+
+          const currentEmailVal = currentState.settingsValues[`${module.id}_el_contact_info_email`];
+          if (isDefault(currentEmailVal, contactDefaults.email) && project?.email) {
+            content.contacto = { ...(content.contacto || {}), email: project.email };
+            content.email = project.email;
+            settings[`${module.id}_el_contact_info_email`] = project.email;
+          }
+
+          const currentPhoneVal = currentState.settingsValues[`${module.id}_el_contact_info_phone`];
+          if (isDefault(currentPhoneVal, contactDefaults.phone) && project?.whatsapp) {
+            content.contacto = { ...(content.contacto || {}), telefono: project.whatsapp, whatsapp: project.whatsapp };
+            content.phone = project.whatsapp;
+            settings[`${module.id}_el_contact_info_phone`] = project.whatsapp;
+          }
+
+          const currentWhatsappVal = currentState.settingsValues[`${module.id}_el_contact_form_whatsapp_number`];
+          if (isDefault(currentWhatsappVal, contactDefaults.whatsappNumber) && project?.whatsapp) {
+            content.whatsapp = project.whatsapp;
+            settings[`${module.id}_el_contact_form_whatsapp_number`] = project.whatsapp;
+          }
+
+          const currentAddressVal = currentState.settingsValues[`${module.id}_el_contact_info_address`];
+          if (isDefault(currentAddressVal, contactDefaults.address) && project?.address) {
+            content.contacto = { ...(content.contacto || {}), direccion: project.address };
+            content.address = project.address;
+            settings[`${module.id}_el_contact_info_address`] = project.address;
+          }
+
+          if (project?.whatsapp && isDefault(currentState.settingsValues[`${module.id}_el_contact_form_button_text`], ['Enviar Mensaje', 'Enviar por WhatsApp'])) {
+            settings[`${module.id}_el_contact_form_button_text`] = 'Enviar por WhatsApp';
+          }
+        }
+
         const isDynamic = content.is_rotating_active === true;
         const tipo = isDynamic ? `${module.type}_dinamico` : module.type;
 
@@ -2172,7 +2230,11 @@ const formatTimestampName = () => {
     await waitForNextPaint();
     
     try {
-      const finalSiteName = siteName || formatTimestampName();
+      const shouldRefreshAutoName = isDefaultName(siteName);
+      const finalSiteName = shouldRefreshAutoName ? formatTimestampName() : (siteName || formatTimestampName());
+      if (finalSiteName !== siteName) {
+        setSiteName(finalSiteName);
+      }
       const siteId = currentSiteId;
 
       // --- PROTOCOLO SOLUTIUM v6.2: Prep Editor State before saving ---
@@ -2979,10 +3041,12 @@ const formatTimestampName = () => {
                     onSave={handleSaveDraft} 
                     onPublish={handlePublish} 
                     logoUrl={logoUrl}
+                    assetName={assetDisplayName}
                     viewport={viewport}
                     setViewport={setViewport}
                     isFullscreen={isFullscreen}
                     setIsFullscreen={setIsFullscreen}
+                    onReloadPreview={handleReloadPreview}
                     saveStatus={saveStatus}
                     publishStatus={publishStatus}
                     isMobile={true}
@@ -3246,10 +3310,12 @@ const formatTimestampName = () => {
                     onSave={handleSaveDraft} 
                     onPublish={handlePublish} 
                     logoUrl={logoUrl}
+                    assetName={assetDisplayName}
                     viewport={viewport}
                     setViewport={setViewport}
                     isFullscreen={isFullscreen}
                     setIsFullscreen={setIsFullscreen}
+                    onReloadPreview={handleReloadPreview}
                     saveStatus={saveStatus}
                     publishStatus={publishStatus}
                     isMobile={false}

@@ -283,6 +283,12 @@ export const Canvas: React.FC<CanvasProps> = ({
                   section.settings?.[`${section.id}_global_entrance_anim`] !== undefined ||
                   editorState.settingsValues?.[`${section.id}_global_entrance_anim`] !== undefined;
 
+                // NOTE:
+                // `theme.globalAnimationType` is still a legacy Canvas-only visual default for modules
+                // that do not yet persist an explicit animation key. Published/Viewer should rely on
+                // persisted module settings, so we never let this temporary theme default override an
+                // explicit module animation. The new `section_animation` contract intentionally does
+                // not participate in this legacy override path.
                 if (!hasExplicitModuleAnimation && theme.globalAnimationType && theme.globalAnimationType !== 'custom') {
                   moduleOverrides[`${section.id}_global_entrance_anim`] = theme.globalAnimationType;
                 }
@@ -344,6 +350,48 @@ export const Canvas: React.FC<CanvasProps> = ({
                     if (isDefault(currentLogo, defaults.logos) && project?.logoUrl) {
                       moduleOverrides[`${section.id}_el_footer_brand_logo_img`] = project.logoUrl;
                       moduleOverrides[`${section.id}_el_footer_brand_show_logo`] = true;
+                    }
+                  }
+
+                  if (section.type === 'contact') {
+                    const getPlainValueLocal = (val: any) => {
+                      if (val && typeof val === 'object' && 'value' in val && !Array.isArray(val)) {
+                        return val.value;
+                      }
+                      return val;
+                    };
+
+                    const isDefault = (val: any, d: string | string[]) => {
+                      const cleanVal = getPlainValueLocal(val);
+                      if (Array.isArray(d)) return !cleanVal || d.includes(cleanVal);
+                      return !cleanVal || cleanVal === d;
+                    };
+
+                    const contactDefaults = {
+                      email: 'hola@tuempresa.com',
+                      phone: '+34 900 000 000',
+                      address: 'Calle Innovación 123, Madrid, España',
+                      whatsappNumber: ''
+                    };
+
+                    const currentEmail = getPlainValueLocal(editorState.settingsValues[`${section.id}_el_contact_info_email`] || section.settings[`${section.id}_el_contact_info_email`]);
+                    if (isDefault(currentEmail, contactDefaults.email) && project?.email) {
+                      moduleOverrides[`${section.id}_el_contact_info_email`] = project.email;
+                    }
+
+                    const currentPhone = getPlainValueLocal(editorState.settingsValues[`${section.id}_el_contact_info_phone`] || section.settings[`${section.id}_el_contact_info_phone`]);
+                    if (isDefault(currentPhone, contactDefaults.phone) && project?.whatsapp) {
+                      moduleOverrides[`${section.id}_el_contact_info_phone`] = project.whatsapp;
+                    }
+
+                    const currentWhatsapp = getPlainValueLocal(editorState.settingsValues[`${section.id}_el_contact_form_whatsapp_number`] || section.settings[`${section.id}_el_contact_form_whatsapp_number`]);
+                    if (isDefault(currentWhatsapp, contactDefaults.whatsappNumber) && project?.whatsapp) {
+                      moduleOverrides[`${section.id}_el_contact_form_whatsapp_number`] = project.whatsapp;
+                    }
+
+                    const currentAddress = getPlainValueLocal(editorState.settingsValues[`${section.id}_el_contact_info_address`] || section.settings[`${section.id}_el_contact_info_address`]);
+                    if (isDefault(currentAddress, contactDefaults.address) && project?.address) {
+                      moduleOverrides[`${section.id}_el_contact_info_address`] = project.address;
                     }
                   }
 

@@ -4,6 +4,8 @@ import { TrustedCompanyLogo } from '../../../types/schema';
 import { InlineEditableText } from '../InlineEditableText';
 import { TextRenderer } from '../TextRenderer';
 import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
+import { SectionAnimation } from '../animations/SectionAnimation';
+import { normalizeSectionAnimation } from '../../../constants/moduleAnimations';
 
 const toBoolean = (value: unknown) => value === true || value === 'true' || value === 1 || value === '1';
 
@@ -69,6 +71,14 @@ export const TrustedLogosModule: React.FC<TrustedLogosModuleProps> = ({
   const columns = Math.max(2, parseInt(String(getVal(null, 'columns', 4)), 10) || 4);
   const gap = parseNum(getVal(null, 'gap', 32), 32);
   const paddingY = parseNum(getVal(null, 'padding_y', 80), 80);
+  const globalThemeSectionAnimation = settingsValues['global_theme_section_animation'];
+  const globalThemeSectionAnimationSpeed = parseNum(settingsValues['global_theme_section_animation_speed'], 1);
+  const moduleSectionAnimation = getVal(null, 'section_animation', undefined);
+  const legacyEntranceAnim = getVal(null, 'entrance_animation', getVal(null, 'entrance_anim', 'none'));
+  const sectionAnimation = normalizeSectionAnimation(
+    globalThemeSectionAnimation ?? moduleSectionAnimation ?? legacyEntranceAnim,
+    'fade-up'
+  );
   const logoHeight = parseNum(getVal(`${moduleId}_el_trusted_logo_style`, 'logo_height', 48), 48);
   const logoOpacity = parseNum(getVal(`${moduleId}_el_trusted_logo_style`, 'logo_opacity', 100), 100);
   const darkMode = toBoolean(getVal(null, 'dark_mode', false));
@@ -107,14 +117,15 @@ export const TrustedLogosModule: React.FC<TrustedLogosModuleProps> = ({
   };
 
   return (
-    <section
-      className="w-full"
-      style={{
-        backgroundColor: bgColor,
-        paddingTop: `${paddingY}px`,
-        paddingBottom: `${paddingY}px`
-      }}
-    >
+    <SectionAnimation animation={sectionAnimation} speed={globalThemeSectionAnimationSpeed}>
+      <section
+        className="w-full"
+        style={{
+          backgroundColor: bgColor,
+          paddingTop: `${paddingY}px`,
+          paddingBottom: `${paddingY}px`
+        }}
+      >
       <div className="max-w-7xl mx-auto px-6 md:px-8">
         <div className={`flex flex-col mb-12 ${headerClass}`}>
           {eyebrow && (
@@ -213,6 +224,7 @@ export const TrustedLogosModule: React.FC<TrustedLogosModuleProps> = ({
           </div>
         )}
       </div>
-    </section>
+      </section>
+    </SectionAnimation>
   );
 };

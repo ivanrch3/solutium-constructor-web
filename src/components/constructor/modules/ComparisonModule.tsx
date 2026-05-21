@@ -4,6 +4,8 @@ import { Columns2 } from 'lucide-react';
 import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
 import { TextRenderer } from '../TextRenderer';
 import { parseNumSafe } from '../utils';
+import { SectionAnimation } from '../animations/SectionAnimation';
+import { normalizeSectionAnimation } from '../../../constants/moduleAnimations';
 
 export const ComparisonModule: React.FC<{
   moduleId: string, 
@@ -56,6 +58,14 @@ export const ComparisonModule: React.FC<{
   const paddingY = parseNumSafe(getVal(null, 'padding_y', 100), 100);
   const maxWidth = parseNumSafe(getVal(null, 'max_width', 1000), 1000);
   const aspectRatio = getVal(null, 'aspect_ratio', '16/9');
+  const globalThemeSectionAnimation = settingsValues['global_theme_section_animation'];
+  const globalThemeSectionAnimationSpeed = parseNumSafe(settingsValues['global_theme_section_animation_speed'], 1);
+  const moduleSectionAnimation = getVal(null, 'section_animation', undefined);
+  const legacyEntranceAnim = getVal(null, 'entrance_anim', 'none');
+  const sectionAnimation = normalizeSectionAnimation(
+    globalThemeSectionAnimation ?? moduleSectionAnimation ?? legacyEntranceAnim,
+    'fade-up'
+  );
   
   // Interacción
   const showLabels = getVal(null, 'show_labels', true);
@@ -122,16 +132,17 @@ export const ComparisonModule: React.FC<{
   };
 
   return (
-    <section 
-      id={moduleId}
-      style={{ 
-        backgroundColor: darkMode ? '#0F172A' : bgColor,
-        paddingTop: responsivePaddingY,
-        paddingBottom: responsivePaddingY,
-        color: darkMode ? '#FFFFFF' : '#0F172A'
-      }}
-      className="relative overflow-hidden"
-    >
+    <SectionAnimation animation={sectionAnimation} speed={globalThemeSectionAnimationSpeed}>
+      <section 
+        id={moduleId}
+        style={{ 
+          backgroundColor: darkMode ? '#0F172A' : bgColor,
+          paddingTop: responsivePaddingY,
+          paddingBottom: responsivePaddingY,
+          color: darkMode ? '#FFFFFF' : '#0F172A'
+        }}
+        className="relative overflow-hidden"
+      >
       <div className="container mx-auto px-6 text-center mb-8 md:mb-12">
         <motion.h2 
           initial={{ opacity: 0, y: 20 }}
@@ -256,6 +267,7 @@ export const ComparisonModule: React.FC<{
       <div className="mt-8 text-center opacity-30 text-[10px] uppercase tracking-[0.2em]">
         Resolución Recomendada: 1920x1080px o Superior
       </div>
-    </section>
+      </section>
+    </SectionAnimation>
   );
 };

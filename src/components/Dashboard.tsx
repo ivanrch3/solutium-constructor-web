@@ -32,6 +32,23 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [editingSiteId, setEditingSiteId] = useState<string | null>(null);
   const [tempName, setTempName] = useState('');
 
+  const getPreviewImageSrc = (page: WebBuilderSite | PublishedSite) => {
+    const baseUrl = page.previewThumbnailUrl || page.previewImageUrl;
+    if (!baseUrl) return null;
+
+    const version =
+      page.previewImageHash ||
+      page.previewImageUpdatedAt ||
+      page.updatedAt ||
+      page.createdAt ||
+      null;
+
+    if (!version) return baseUrl;
+
+    const separator = baseUrl.includes('?') ? '&' : '?';
+    return `${baseUrl}${separator}v=${encodeURIComponent(version)}`;
+  };
+
   const handlePreview = (e: React.MouseEvent, siteId: string) => {
     e.stopPropagation();
     const url = new URL(window.location.href);
@@ -41,7 +58,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-secondary px-8 pb-8 pt-4 flex flex-col items-center">
+    <div
+      className="min-h-screen px-8 pb-8 pt-4 flex flex-col items-center"
+      style={{ background: 'linear-gradient(180deg, var(--builder-bg) 0%, #EEF2FF 100%)' }}
+    >
         {/* Header Logo */}
         <div className="w-full min-h-[170px] flex items-center justify-center">
           <img 
@@ -65,7 +85,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             {pages.length > 0 && (
               <button 
                 onClick={(e) => handlePreview(e, pages[0].siteId || '')}
-                className="p-2 text-text/40 hover:text-primary transition-all"
+            className="p-2 text-text/40 hover:text-[var(--builder-primary)] transition-all"
                 title="Previsualizar último sitio"
               >
                 <Eye className="w-5 h-5" />
@@ -81,6 +101,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   const isPublished = status === 'published' || status === 'modified';
                   const isDebug = new URLSearchParams(window.location.search).get('debug_render') === 'true';
                   const pageKey = page.siteId || page.id || `page-${index}`;
+                  const previewImageSrc = getPreviewImageSrc(page);
                   
                   return (
                     <div
@@ -101,15 +122,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
                           onSelectPage(page);
                         }
                       }}
-                      className="flex items-center justify-between p-3 rounded-xl border border-border hover:border-primary/30 hover:bg-primary/5 transition-all group text-left cursor-pointer"
+                      className="flex items-center justify-between p-3 rounded-xl border border-border hover:bg-[var(--builder-primary-soft)] transition-all group text-left cursor-pointer"
+                      style={{ borderColor: 'color-mix(in srgb, var(--builder-primary) 18%, var(--builder-border) 82%)' }}
                     >
                       <div className="flex items-center gap-3 shrink-0 min-w-0">
                         <div className={`w-14 h-10 rounded-lg flex items-center justify-center transition-colors overflow-hidden border border-border/40 shrink-0 ${
                           isPublished ? 'bg-green-50 text-green-600' : 'bg-amber-50 text-amber-600'
                         }`}>
-                          {page.previewImageUrl ? (
+                          {previewImageSrc ? (
                             <img 
-                              src={page.previewImageUrl} 
+                              src={previewImageSrc} 
                               alt={page.siteName} 
                               className="w-full h-full object-cover" 
                               referrerPolicy="no-referrer"
@@ -131,7 +153,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                   type="text"
                                   value={tempName}
                                   onChange={(e) => setTempName(e.target.value)}
-                                  className="text-sm font-bold bg-secondary border border-primary/30 rounded px-2 py-0.5 outline-none focus:ring-1 focus:ring-primary/50 w-full"
+                                  className="text-sm font-bold bg-secondary rounded px-2 py-0.5 outline-none focus:ring-1 w-full"
+                                  style={{ borderColor: 'color-mix(in srgb, var(--builder-primary) 30%, var(--builder-border) 70%)' }}
                                   autoFocus
                                   onKeyDown={(e) => {
                                     if (e.key === 'Enter') {
@@ -160,7 +183,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                               </div>
                             ) : (
                               <>
-                                <h3 className="text-base font-bold text-text group-hover:text-primary transition-colors truncate">
+                                <h3 className="text-base font-bold text-text group-hover:text-[var(--builder-primary)] transition-colors truncate">
                                   {page.siteName || 'Sin nombre'}
                                 </h3>
                                 <button 
@@ -169,7 +192,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                     setEditingSiteId(page.siteId || null);
                                     setTempName(page.siteName || '');
                                   }}
-                                  className="p-1 text-text/20 hover:text-primary opacity-0 group-hover:opacity-100 transition-all"
+                                  className="p-1 text-text/20 hover:text-[var(--builder-primary)] opacity-0 group-hover:opacity-100 transition-all"
                                 >
                                   <Edit2 className="w-3.5 h-3.5" />
                                 </button>
@@ -205,7 +228,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         )}
                         <button 
                           onClick={(e) => handlePreview(e, page.siteId || '')}
-                          className="p-2 text-text/30 hover:text-primary transition-all"
+                          className="p-2 text-text/30 hover:text-[var(--builder-primary)] transition-all"
                           title="Previsualizar"
                         >
                           <ExternalLink className="w-4 h-4" />
@@ -240,8 +263,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
           
           <button 
             onClick={onNewPage}
-            className="flex items-center justify-center gap-2 hover:opacity-90 text-white font-bold py-3 px-6 rounded-xl transition-all shadow-lg shadow-primary/20 w-fit group border border-black/5"
-            style={{ backgroundColor: 'var(--primary-color)' }}
+            className="flex items-center justify-center gap-2 hover:opacity-90 text-white font-bold py-3 px-6 rounded-xl transition-all w-fit group border border-black/5"
+            style={{ backgroundColor: 'var(--builder-primary)', boxShadow: '0 18px 36px -18px color-mix(in srgb, var(--builder-primary) 40%, transparent)' }}
           >
             <PlusSquare className="w-5 h-5 group-hover:scale-110 transition-transform" />
             <span className="text-base">Crear nuevo</span>

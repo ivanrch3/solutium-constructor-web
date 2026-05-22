@@ -882,7 +882,8 @@ export const HERO_MODULE: WebModule = {
       ],
       estilo: [
         { id: 'border_radius', label: 'Redondeado', type: 'range', defaultValue: 24, min: 0, max: 60 },
-        { id: 'shadow', label: 'Sombra', type: 'select', defaultValue: 'lg', options: [{label:'Ninguna', value:'none'}, {label:'Suave', value:'sm'}, {label:'Fuerte', value:'lg'}]}
+        { id: 'shadow', label: 'Sombra', type: 'select', defaultValue: 'lg', options: [{label:'Ninguna', value:'none'}, {label:'Suave', value:'sm'}, {label:'Fuerte', value:'lg'}]},
+        { id: 'transparent_media', label: 'Imagen PNG Transparente', type: 'boolean', defaultValue: false, showIf: { settingId: 'media_type', value: 'image' } }
       ],
       estructura: [
         { id: 'object_fit', label: 'Ajuste', type: 'select', defaultValue: 'cover', options: [{label:'Cubrir', value:'cover'}, {label:'Contener', value:'contain'}]},

@@ -29,6 +29,7 @@ import { logDebug } from '../utils/debug';
 import { bridgeModuleContent } from '../utils/hydrationBridge';
 import { getProducts } from '../services/dataService';
 import { Product, TrustedCompanyLogo } from '../types/schema';
+import { buildProjectThemeCssVariables, normalizeProjectBrandColors } from '../utils/projectTheme';
 
 interface ViewerProps {
   site: PublishedSite;
@@ -146,6 +147,7 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
 
   const sections = extractSections(content);
   const theme = content?.theme || (content as any)?.pages?.[0]?.theme || { primaryColor: '#3B82F6', fontFamily: 'sans-serif' };
+  const resolvedTheme = normalizeProjectBrandColors(theme);
 
   useEffect(() => {
     if (window.location.search.includes('debug=products') || window.location.search.includes('debug_render=true')) {
@@ -209,7 +211,7 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
     <div 
       className="min-h-screen bg-surface @container"
       style={{ 
-        '--primary-color': theme.primaryColor || '#3B82F6',
+        ...buildProjectThemeCssVariables(resolvedTheme),
         fontFamily: theme.fontFamily || 'sans-serif'
       } as React.CSSProperties}
     >

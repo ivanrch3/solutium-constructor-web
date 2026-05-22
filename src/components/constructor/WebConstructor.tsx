@@ -39,6 +39,7 @@ import {
 } from './registry';
 import { saveWebBuilderSiteDraft, publishWebBuilderSite, getProducts, getCustomers, getTrustedCompanyLogos, normalizeTrustedCompanyLogos, upsertPage, upsertPageSections, logEvolutionRequest, getPageBySiteId, updateSitePreview, generatePreviewServerSide } from '../../services/dataService';
 import { sendToMother } from '../../services/handshakeService';
+import { ensureActiveSupabaseSession, SupabaseSessionError } from '../../services/supabaseSessionService';
 import { Product, Customer, PageSection, TrustedCompanyLogo } from '../../types/schema';
 import { MOCK_PRODUCTS, MOCK_CUSTOMERS } from '../../constants/mockData';
 import { MainSidebar, ModuleItem } from './MainSidebar';
@@ -60,17 +61,18 @@ import { BentoPromptGenerator } from './BentoPromptGenerator';
 import { BentoSchema } from '../../types/bentoSchema';
 
 const DEFAULT_PARALLAX_BG_IMAGE = '/parallax-default-centered.svg';
-import { 
-  getThemeVal,
-  getFontFamily,
-  getBorderRadius,
-} from './utils';
 import { generateSite, generateLandingWithMotherAI, generateLandingDryRunLocal, MotherAIPageResponse } from '../../services/aiService';
 import { AIGenerationContext } from '../../types/ai';
 import { ProjectForm, ProjectFormData } from '../ProjectForm';
 import { initialContent, useEditorStore } from '../../store/editorStore';
 import { PropertyEditor } from './PropertyEditor';
 import { logDebug } from '../../utils/debug';
+import {
+  PROJECT_THEME_FALLBACKS,
+  buildProjectThemeCssVariables,
+  getProjectThemeFromSettings,
+  normalizeProjectBrandColors
+} from '../../utils/projectTheme';
 
 // --- CONSTANTS ---
 const MASTER_DICTIONARY = {
@@ -197,6 +199,20 @@ interface WebConstructorProps {
   creationMethod?: 'ai' | 'template' | 'scratch' | null;
 }
 
+const resolveLifecycleStatusFromPage = (
+  page?: WebBuilderSite | PublishedSite | Page | null
+): 'draft' | 'published' | 'modified' => {
+  if (page && 'status' in page) {
+    return ((page as any).status || 'draft') as 'draft' | 'published' | 'modified';
+  }
+
+  if (page && !('status' in page)) {
+    return 'published';
+  }
+
+  return 'draft';
+};
+
 export const WebConstructor: React.FC<WebConstructorProps> = ({ 
   onBackToDashboard, 
   onCancelOnboarding,
@@ -312,40 +328,55 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [publishStatus, setPublishStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [authNotice, setAuthNotice] = useState<{ type: 'info' | 'error'; message: string } | null>(null);
   const [previewStatus, setPreviewStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const [currentStatus, setCurrentStatus] = useState<'draft' | 'published' | 'modified'>(() => {
-    if (initialPage && 'status' in initialPage) {
-      return (initialPage as any).status || 'draft';
-    }
-    // Si es una PublishedSite (no tiene status field pero existe), asumimos published
-    if (initialPage && !('status' in initialPage)) return 'published';
-    return 'draft';
-  });
+  const [currentStatus, setCurrentStatus] = useState<'draft' | 'published' | 'modified'>(() => (
+    resolveLifecycleStatusFromPage(initialPage)
+  ));
   const [structurePanelCollapsed, setStructurePanelCollapsed] = useState(false);
   const [viewport, setViewport] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
   const [showBentoPrompt, setShowBentoPrompt] = useState(false);
 
-  const projectThemeSeed = React.useMemo(() => ({
-    primary: project?.brandColors?.primary || '#3B82F6',
-    secondary: project?.brandColors?.secondary || '#F1F5F9',
-    accent: project?.brandColors?.accent || '#7C3AED',
-    background: '#F8FAFC',
-    text: '#0F172A',
-    fontSans: project?.fontFamily || 'Inter',
-    fontHeading: project?.fontFamily || 'Inter'
-  }), [project]);
+  useEffect(() => {
+    if (!authNotice || authNotice.type !== 'info') return;
+    const timer = window.setTimeout(() => setAuthNotice(null), 3500);
+    return () => window.clearTimeout(timer);
+  }, [authNotice]);
+
+  const projectThemeSeed = React.useMemo(() => {
+    const tokens = normalizeProjectBrandColors(project?.brandColors, {
+      background: PROJECT_THEME_FALLBACKS.background,
+      text: PROJECT_THEME_FALLBACKS.text,
+      muted: PROJECT_THEME_FALLBACKS.muted,
+      border: PROJECT_THEME_FALLBACKS.border
+    });
+
+    return {
+      ...tokens,
+      fontSans: project?.fontFamily || 'Inter',
+      fontHeading: project?.fontFamily || 'Inter'
+    };
+  }, [project]);
+
+  const incomingLifecycleStatus = React.useMemo(
+    () => resolveLifecycleStatusFromPage(initialPage),
+    [initialPage]
+  );
+
+  useEffect(() => {
+    setCurrentStatus((previousStatus) => (
+      previousStatus === incomingLifecycleStatus ? previousStatus : incomingLifecycleStatus
+    ));
+  }, [
+    incomingLifecycleStatus,
+    initialPage ? ((initialPage as any).siteId || (initialPage as any).id || null) : null,
+    initialPage && 'status' in initialPage ? (initialPage as any).status : 'published'
+  ]);
 
   const getThemePaletteForDefaults = useCallback((settingsValues?: Record<string, any>) => {
-    const source = settingsValues || {};
-    return {
-      primary: source['global_theme_primary_color'] || projectThemeSeed.primary,
-      secondary: source['global_theme_secondary_color'] || projectThemeSeed.secondary,
-      accent: source['global_theme_accent_color'] || projectThemeSeed.accent,
-      text: source['global_theme_text_color'] || projectThemeSeed.text,
-      background: source['global_theme_background_color'] || projectThemeSeed.background
-    };
+    return getProjectThemeFromSettings(settingsValues, projectThemeSeed);
   }, [projectThemeSeed]);
 
   const resolveProjectAwareSettingDefault = useCallback((setting: any, rawValue: any, settingsValues?: Record<string, any>) => {
@@ -375,6 +406,8 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
           'global_theme_accent_color': projectThemeSeed.accent,
           'global_theme_background_color': projectThemeSeed.background,
           'global_theme_text_color': projectThemeSeed.text,
+          'global_theme_muted_color': projectThemeSeed.muted,
+          'global_theme_border_color': projectThemeSeed.border,
           'global_theme_font_sans': projectThemeSeed.fontSans,
           'global_theme_font_heading': projectThemeSeed.fontHeading,
           'global_theme_radius': 12,
@@ -537,10 +570,12 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         };
 
         seedThemeValue('global_theme_primary_color', projectThemeSeed.primary, ['#3B82F6', '#3b82f6']);
-        seedThemeValue('global_theme_secondary_color', projectThemeSeed.secondary, ['#F1F5F9', '#f1f5f9']);
-        seedThemeValue('global_theme_accent_color', projectThemeSeed.accent, ['#7C3AED', '#7c3aed']);
-        seedThemeValue('global_theme_background_color', projectThemeSeed.background, ['#F8FAFC', '#f8fafc']);
+        seedThemeValue('global_theme_secondary_color', projectThemeSeed.secondary, ['#F1F5F9', '#f1f5f9', '#8B5CF6', '#8b5cf6']);
+        seedThemeValue('global_theme_accent_color', projectThemeSeed.accent, ['#7C3AED', '#7c3aed', '#10B981', '#10b981']);
+        seedThemeValue('global_theme_background_color', projectThemeSeed.background, ['#F8FAFC', '#f8fafc', '#FFFFFF', '#ffffff']);
         seedThemeValue('global_theme_text_color', projectThemeSeed.text, ['#0F172A', '#0f172a']);
+        seedThemeValue('global_theme_muted_color', projectThemeSeed.muted, ['#64748B', '#64748b']);
+        seedThemeValue('global_theme_border_color', projectThemeSeed.border, ['#E2E8F0', '#e2e8f0']);
         seedThemeValue('global_theme_font_sans', projectThemeSeed.fontSans, ['Inter', 'inter']);
         seedThemeValue('global_theme_font_heading', projectThemeSeed.fontHeading, ['Inter', 'inter']);
 
@@ -597,10 +632,12 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
 
       const themeDefaults = {
         primaryColor: ['#3b82f6'],
-        secondaryColor: ['#1e293b', '#f1f5f9'],
-        accentColor: ['#7c3aed'],
+        secondaryColor: ['#1e293b', '#f1f5f9', '#8b5cf6'],
+        accentColor: ['#7c3aed', '#10b981'],
         backgroundColor: ['#ffffff', '#f8fafc'],
         textColor: ['#1f2937', '#0f172a'],
+        mutedColor: ['#64748b'],
+        borderColor: ['#e2e8f0'],
         fontFamily: ['inter']
       };
 
@@ -623,6 +660,8 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       if (shouldSeedThemeValue(siteContent.theme?.accentColor, projectThemeSeed.accent, themeDefaults.accentColor)) themeUpdate.accentColor = projectThemeSeed.accent;
       if (shouldSeedThemeValue(siteContent.theme?.backgroundColor, projectThemeSeed.background, themeDefaults.backgroundColor)) themeUpdate.backgroundColor = projectThemeSeed.background;
       if (shouldSeedThemeValue(siteContent.theme?.textColor, projectThemeSeed.text, themeDefaults.textColor)) themeUpdate.textColor = projectThemeSeed.text;
+      if (shouldSeedThemeValue((siteContent.theme as any)?.mutedColor, projectThemeSeed.muted, themeDefaults.mutedColor)) (themeUpdate as any).mutedColor = projectThemeSeed.muted;
+      if (shouldSeedThemeValue((siteContent.theme as any)?.borderColor, projectThemeSeed.border, themeDefaults.borderColor)) (themeUpdate as any).borderColor = projectThemeSeed.border;
       if (shouldSeedThemeValue(siteContent.theme?.fontFamily, projectThemeSeed.fontSans, themeDefaults.fontFamily)) themeUpdate.fontFamily = projectThemeSeed.fontSans;
 
       if (Object.keys(themeUpdate).length > 0) {
@@ -718,24 +757,22 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
 
   // Apply Global Theme to CSS Variables
   useEffect(() => {
-    const root = document.documentElement;
-    const settings = editorState.settingsValues;
-    
-    const getThemeVal = (key: string, fallback: any) => settings[`global_theme_${key}`] ?? fallback;
+    const siteRoot = document.getElementById('constructor-canvas-render');
+    if (!siteRoot) return;
 
-    // Apply Colors
-    root.style.setProperty('--primary-color', getThemeVal('primary_color', projectThemeSeed.primary));
-    root.style.setProperty('--secondary-color', getThemeVal('secondary_color', projectThemeSeed.secondary));
-    root.style.setProperty('--accent-color', getThemeVal('accent_color', projectThemeSeed.accent));
-    root.style.setProperty('--background-color', getThemeVal('background_color', projectThemeSeed.background));
-    root.style.setProperty('--foreground-color', getThemeVal('text_color', projectThemeSeed.text));
-    root.style.setProperty('--card-color', getThemeVal('background_color', projectThemeSeed.background));
+    const themeTokens = getProjectThemeFromSettings(editorState.settingsValues, projectThemeSeed);
+    const cssVars = buildProjectThemeCssVariables(themeTokens);
+
+    Object.entries(cssVars).forEach(([key, value]) => {
+      siteRoot.style.setProperty(key, value);
+    });
+    siteRoot.style.setProperty('--card-color', themeTokens.background);
     
     // Apply Typography
-    const fontSans = getThemeVal('font_sans', 'Inter');
-    const fontHeading = getThemeVal('font_heading', 'Inter');
-    root.style.setProperty('--solutium-font', `"${fontSans}", sans-serif`);
-    root.style.setProperty('--font-heading', `"${fontHeading}", sans-serif`);
+    const fontSans = editorState.settingsValues['global_theme_font_sans'] ?? projectThemeSeed.fontSans;
+    const fontHeading = editorState.settingsValues['global_theme_font_heading'] ?? projectThemeSeed.fontHeading;
+    siteRoot.style.setProperty('--solutium-font', `"${fontSans}", sans-serif`);
+    siteRoot.style.setProperty('--font-heading', `"${fontHeading}", sans-serif`);
 
     // Dynamic Font Loading
     const fontsToLoad = Array.from(new Set([fontSans, fontHeading]));
@@ -751,8 +788,8 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     });
     
     // Apply Layout
-    root.style.setProperty('--radius', `${getThemeVal('radius', 12)}px`);
-    root.style.setProperty('--max-width', `${getThemeVal('container_width', 1400)}px`);
+    siteRoot.style.setProperty('--radius', `${editorState.settingsValues['global_theme_radius'] ?? 12}px`);
+    siteRoot.style.setProperty('--max-width', `${editorState.settingsValues['global_theme_container_width'] ?? 1400}px`);
     
   }, [editorState.settingsValues, projectThemeSeed]);
 
@@ -1802,10 +1839,14 @@ const formatTimestampName = () => {
     };
 
     // 1. Determine Global Theme
-    const firstModuleId = currentState.addedModules[0]?.id;
-    const primaryColor = firstModuleId 
-      ? getVal(firstModuleId, null, 'primary_color', project?.brandColors?.primary || '#2563EB')
-      : (project?.brandColors?.primary || '#2563EB');
+    const resolvedTheme = getProjectThemeFromSettings(currentState.settingsValues, projectThemeSeed);
+    const primaryColor = resolvedTheme.primary;
+    const secondaryColor = resolvedTheme.secondary;
+    const accentColor = resolvedTheme.accent;
+    const backgroundColor = resolvedTheme.background;
+    const textColor = resolvedTheme.text;
+    const mutedColor = resolvedTheme.muted;
+    const borderColor = resolvedTheme.border;
 
     const sections = currentState.addedModules.map(module => {
         const content: any = {
@@ -2345,7 +2386,21 @@ const formatTimestampName = () => {
 
     // Generate CSS block for identical visualization
     let cssBlock = `/* Solutium Generated CSS for Identical Visualization v5.5 */\n`;
-    cssBlock += `:root { --primary-color: ${primaryColor}; }\n`;
+    cssBlock += `:root {\n`;
+    cssBlock += `  --brand-primary: ${primaryColor};\n`;
+    cssBlock += `  --brand-secondary: ${secondaryColor};\n`;
+    cssBlock += `  --brand-accent: ${accentColor};\n`;
+    cssBlock += `  --brand-bg: ${backgroundColor};\n`;
+    cssBlock += `  --brand-text: ${textColor};\n`;
+    cssBlock += `  --brand-muted: ${mutedColor};\n`;
+    cssBlock += `  --brand-border: ${borderColor};\n`;
+    cssBlock += `  --primary-color: ${primaryColor};\n`;
+    cssBlock += `  --secondary-color: ${secondaryColor};\n`;
+    cssBlock += `  --accent-color: ${accentColor};\n`;
+    cssBlock += `  --background-color: ${backgroundColor};\n`;
+    cssBlock += `  --foreground-color: ${textColor};\n`;
+    cssBlock += `  --border-color: ${borderColor};\n`;
+    cssBlock += `}\n`;
     
     sections.forEach(section => {
       const { id, styles, content } = section;
@@ -2393,7 +2448,13 @@ const formatTimestampName = () => {
       css: cssBlock,
       theme: {
         primaryColor,
-        fontFamily: project?.fontFamily || 'Inter',
+        secondaryColor,
+        accentColor,
+        backgroundColor,
+        textColor,
+        mutedColor,
+        borderColor,
+        fontFamily: currentState.settingsValues['global_theme_font_sans'] || project?.fontFamily || 'Inter',
       },
       sections
     };
@@ -2423,9 +2484,27 @@ const formatTimestampName = () => {
     const savedCanvasScrollTop = getCanvasScrollContainer()?.scrollTop ?? 0;
     setSaveStatus('loading');
     setIsSaving(true);
+    setAuthNotice(null);
     await waitForNextPaint();
     
     try {
+      const sessionState = await ensureActiveSupabaseSession();
+      if (sessionState.state === 'missing_session' || sessionState.state === 'expired_session') {
+        setAuthNotice({
+          type: 'error',
+          message: 'Tu sesión expiró. Inicia sesión nuevamente para guardar. Tus cambios siguen en pantalla.'
+        });
+        setSaveStatus('error');
+        return;
+      }
+
+      if (sessionState.state === 'refreshed') {
+        setAuthNotice({
+          type: 'info',
+          message: 'Sesión actualizada. Guardando cambios...'
+        });
+      }
+
       const shouldRefreshAutoName = isDefaultName(siteName);
       const finalSiteName = shouldRefreshAutoName ? formatTimestampName() : (siteName || formatTimestampName());
       if (finalSiteName !== siteName) {
@@ -2601,6 +2680,12 @@ const formatTimestampName = () => {
       }
     } catch (error) {
       console.error('Error saving draft:', error);
+      if (error instanceof SupabaseSessionError) {
+        setAuthNotice({
+          type: 'error',
+          message: 'Tu sesión expiró. Inicia sesión nuevamente para guardar. Tus cambios siguen en pantalla.'
+        });
+      }
       setSaveStatus('error');
       setTimeout(() => setSaveStatus('idle'), 3000);
     } finally {
@@ -2634,7 +2719,25 @@ const formatTimestampName = () => {
     const finalSiteName = siteName;
     setPublishStatus('loading');
     setIsSaving(true);
+    setAuthNotice(null);
     try {
+      const sessionState = await ensureActiveSupabaseSession();
+      if (sessionState.state === 'missing_session' || sessionState.state === 'expired_session') {
+        setAuthNotice({
+          type: 'error',
+          message: 'Tu sesión expiró. Inicia sesión nuevamente para publicar. Tus cambios siguen en pantalla.'
+        });
+        setPublishStatus('error');
+        return;
+      }
+
+      if (sessionState.state === 'refreshed') {
+        setAuthNotice({
+          type: 'info',
+          message: 'Sesión actualizada. Publicando cambios...'
+        });
+      }
+
       // --- PROTOCOLO SOLUTIUM v2.0: Identidad UUID Persistente ---
       const migratedState = migrateEditorStateToUUIDs(editorState);
       if (migratedState !== editorState) {
@@ -2862,6 +2965,12 @@ const formatTimestampName = () => {
       }
     } catch (error) {
       console.error('Error publishing site:', error);
+      if (error instanceof SupabaseSessionError) {
+        setAuthNotice({
+          type: 'error',
+          message: 'Tu sesión expiró. Inicia sesión nuevamente para publicar. Tus cambios siguen en pantalla.'
+        });
+      }
       setPublishStatus('error');
       setTimeout(() => setPublishStatus('idle'), 3000);
     } finally {
@@ -3582,6 +3691,46 @@ const formatTimestampName = () => {
           </div>
         )}
       </div>
+
+      {/* AI Error Alert */}
+      {authNotice && (
+        <motion.div
+          initial={{ opacity: 0, y: 40 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 20 }}
+          className={`fixed bottom-8 right-8 z-[110] max-w-md w-[90vw] rounded-2xl border p-4 shadow-2xl ${
+            authNotice.type === 'error'
+              ? 'bg-white border-amber-200'
+              : 'bg-white border-blue-200'
+          }`}
+        >
+          <div className="flex items-start gap-3">
+            <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
+              authNotice.type === 'error' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'
+            }`}>
+              {authNotice.type === 'error' ? <LucideIcons.AlertTriangle size={18} /> : <LucideIcons.RefreshCw size={18} />}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className={`text-sm font-bold ${
+                authNotice.type === 'error' ? 'text-amber-900' : 'text-blue-900'
+              }`}>
+                {authNotice.type === 'error' ? 'Sesión expirada' : 'Sesión actualizada'}
+              </p>
+              <p className={`text-xs leading-relaxed ${
+                authNotice.type === 'error' ? 'text-amber-800' : 'text-blue-800'
+              }`}>
+                {authNotice.message}
+              </p>
+            </div>
+            <button
+              onClick={() => setAuthNotice(null)}
+              className="rounded-lg p-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+            >
+              <LucideIcons.X size={16} />
+            </button>
+          </div>
+        </motion.div>
+      )}
 
       {/* AI Error Alert */}
       {aiError && (

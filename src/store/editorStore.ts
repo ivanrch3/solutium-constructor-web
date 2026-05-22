@@ -39,10 +39,13 @@ export const initialContent: SiteContent = {
   theme: {
     primaryColor: '#3b82f6',
     secondaryColor: '#1e293b',
+    accentColor: '#8b5cf6',
     fontFamily: 'Inter',
     borderRadius: '0.5rem',
     backgroundColor: '#ffffff',
     textColor: '#1f2937',
+    mutedColor: '#64748b',
+    borderColor: '#e2e8f0',
     alternatingDarkMode: false,
     alternatingThemeMode: false,
     themeBackgroundColor: '#1e293b',

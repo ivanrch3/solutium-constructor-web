@@ -16,7 +16,10 @@ export const MethodSelection: React.FC<MethodSelectionProps> = ({ onSelect, onBa
   const displayLogo = CONSTRUCTOR_WEB_LOGO_URL;
 
   return (
-    <div className="min-h-screen bg-secondary px-8 pb-8 pt-4 flex flex-col items-center">
+    <div
+      className="min-h-screen px-8 pb-8 pt-4 flex flex-col items-center"
+      style={{ background: 'linear-gradient(180deg, var(--builder-bg) 0%, #EEF2FF 100%)' }}
+    >
       {/* Header Logo */}
       <div className="w-full min-h-[170px] flex items-center justify-center">
         <img 
@@ -36,8 +39,11 @@ export const MethodSelection: React.FC<MethodSelectionProps> = ({ onSelect, onBa
           whileHover={{ y: -5 }}
           whileTap={{ scale: 0.98 }}
           onClick={() => onSelect('ai')}
-          className="rounded-3xl p-8 text-left flex flex-col h-[400px] shadow-xl shadow-primary/10 group transition-all border border-black/5 text-white"
-          style={{ backgroundColor: 'var(--primary-color)' }}
+          className="rounded-3xl p-8 text-left flex flex-col h-[400px] group transition-all border border-black/5 text-white"
+          style={{
+            backgroundColor: 'var(--builder-primary)',
+            boxShadow: '0 20px 40px -20px color-mix(in srgb, var(--builder-primary) 45%, transparent)'
+          }}
         >
           <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center mb-6">
             <Sparkles className="text-white w-6 h-6" />
@@ -67,13 +73,16 @@ export const MethodSelection: React.FC<MethodSelectionProps> = ({ onSelect, onBa
           whileHover={{ y: -5 }}
           whileTap={{ scale: 0.98 }}
           onClick={() => onSelect('scratch')}
-          className="bg-surface rounded-3xl p-8 text-left flex flex-col h-[400px] shadow-sm border border-border group transition-all hover:shadow-xl hover:shadow-primary/5"
-          style={{ borderColor: 'color-mix(in srgb, var(--primary-color) 18%, var(--border-color) 82%)' }}
+          className="bg-surface rounded-3xl p-8 text-left flex flex-col h-[400px] shadow-sm border border-border group transition-all hover:shadow-xl"
+          style={{
+            borderColor: 'color-mix(in srgb, var(--builder-primary) 18%, var(--builder-border) 82%)',
+            boxShadow: '0 18px 36px -28px color-mix(in srgb, var(--builder-primary) 20%, transparent)'
+          }}
         >
-          <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center mb-6 group-hover:bg-primary/10 transition-colors">
-            <PlusSquare className="text-text w-6 h-6 group-hover:text-primary transition-colors" />
+          <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center mb-6 transition-colors group-hover:bg-[var(--builder-primary-soft)]">
+            <PlusSquare className="text-text w-6 h-6 transition-colors group-hover:text-[var(--builder-primary)]" />
           </div>
-          <h3 className="text-xl font-bold text-text mb-4 group-hover:text-primary transition-colors">Lienzo en Blanco</h3>
+          <h3 className="text-xl font-bold text-text mb-4 transition-colors group-hover:text-[var(--builder-primary)]">Lienzo en Blanco</h3>
           <p className="text-text/60 text-sm leading-relaxed">
             Empieza desde cero. Añade secciones una a una y construye tu sitio con total control creativo sin distracciones.
           </p>

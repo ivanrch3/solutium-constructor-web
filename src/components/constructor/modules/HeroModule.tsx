@@ -11,6 +11,7 @@ import { SectionAnimation } from '../animations/SectionAnimation';
 import { parseNumSafe } from '../utils';
 import { useEditorStore } from '../../../store/editorStore';
 import { normalizeSectionAnimation } from '../../../constants/moduleAnimations';
+import { getProjectThemeFromSettings, resolveBrandColor } from '../../../utils/projectTheme';
 
 import { logDebug } from '../../../utils/debug';
 
@@ -143,6 +144,7 @@ export const HeroModule: React.FC<{
     globalThemeSectionAnimation ?? moduleSectionAnimation ?? entranceAnim,
     'fade-up'
   );
+  const projectTheme = getProjectThemeFromSettings(settingsValues);
 
   // Multimedia (Parallax Background)
   const bgParallaxEnabled = getVal(null, 'bg_parallax_enabled', false);
@@ -159,11 +161,47 @@ export const HeroModule: React.FC<{
   const titleWeight = getVal(`${moduleId}_el_hero_typography`, 'title_weight', 'bold');
   const subtitleSize = getVal(`${moduleId}_el_hero_typography`, 'subtitle_size', 'p');
   const subtitleWeight = getVal(`${moduleId}_el_hero_typography`, 'subtitle_weight', 'normal');
+  const rawTitleColor = getVal(`${moduleId}_el_hero_typography`, 'title_color', '#0F172A');
+  const titleColor = darkMode
+    ? resolveThemeColor(rawTitleColor, '#0F172A', '#FFFFFF', true)
+    : resolveBrandColor({
+        value: rawTitleColor,
+        defaultValue: '#0F172A',
+        token: 'text',
+        projectTheme
+      });
+  const rawSubtitleColor = getVal(`${moduleId}_el_hero_typography`, 'subtitle_color', '#475569');
+  const subtitleColor = darkMode
+    ? resolveThemeColor(rawSubtitleColor, '#475569', '#94A3B8', true)
+    : resolveBrandColor({
+        value: rawSubtitleColor,
+        defaultValue: '#475569',
+        token: 'muted',
+        projectTheme
+      });
   
   // Highlight Settings
   const titleHighlightType = getVal(`${moduleId}_el_hero_typography`, 'title_highlight_type', 'gradient');
-  const titleHighlightColor = getVal(`${moduleId}_el_hero_typography`, 'title_highlight_color', '#3B82F6');
-  const titleHighlightGradient = getVal(`${moduleId}_el_hero_typography`, 'title_highlight_gradient', 'linear-gradient(90deg, #3B82F6 0%, #8B5CF6 100%)');
+  const rawTitleHighlightColor = getVal(`${moduleId}_el_hero_typography`, 'title_highlight_color', '#3B82F6');
+  const titleHighlightColor = resolveBrandColor({
+    value: rawTitleHighlightColor,
+    defaultValue: '#3B82F6',
+    token: 'primary',
+    projectTheme
+  });
+  const rawTitleHighlightGradient = getVal(`${moduleId}_el_hero_typography`, 'title_highlight_gradient', 'linear-gradient(90deg, #3B82F6 0%, #8B5CF6 100%)');
+  const titleHighlightGradient = resolveBrandColor({
+    value: rawTitleHighlightGradient,
+    defaultValue: [
+      'linear-gradient(90deg, #3B82F6 0%, #8B5CF6 100%)',
+      'linear-gradient(90deg,#3B82F6 0%,#8B5CF6 100%)'
+    ],
+    token: 'primary',
+    projectTheme: {
+      ...projectTheme,
+      primary: `linear-gradient(90deg, ${projectTheme.primary} 0%, ${projectTheme.secondary} 100%)`
+    }
+  });
   const titleHighlightBold = getVal(`${moduleId}_el_hero_typography`, 'title_highlight_bold', true);
 
   // Rotating Text Settings
@@ -190,19 +228,70 @@ export const HeroModule: React.FC<{
 
   const rotatingAnim = getVal(`${moduleId}_el_hero_typography`, 'rotating_anim', 'fade');
   const rotatingSpeed = getVal(`${moduleId}_el_hero_typography`, 'rotating_speed', 3000);
-  const rotatingColor = getVal(`${moduleId}_el_hero_typography`, 'rotating_color', '#3B82F6');
-  const rotatingGradient = getVal(`${moduleId}_el_hero_typography`, 'rotating_gradient', '');
+  const rawRotatingColor = getVal(`${moduleId}_el_hero_typography`, 'rotating_color', '#3B82F6');
+  const rotatingColor = resolveBrandColor({
+    value: rawRotatingColor,
+    defaultValue: '#3B82F6',
+    token: 'primary',
+    projectTheme
+  });
+  const rawRotatingGradient = getVal(`${moduleId}_el_hero_typography`, 'rotating_gradient', '');
+  const rotatingGradient = typeof rawRotatingGradient === 'string' && rawRotatingGradient.trim() !== ''
+    ? resolveBrandColor({
+        value: rawRotatingGradient,
+        defaultValue: [
+          'linear-gradient(90deg, #3B82F6 0%, #8B5CF6 100%)',
+          'linear-gradient(90deg,#3B82F6 0%,#8B5CF6 100%)'
+        ],
+        token: 'primary',
+        projectTheme: {
+          ...projectTheme,
+          primary: `linear-gradient(90deg, ${projectTheme.primary} 0%, ${projectTheme.secondary} 100%)`
+        }
+      })
+    : '';
 
   const subtitleHighlightType = getVal(`${moduleId}_el_hero_typography`, 'subtitle_highlight_type', 'gradient');
-  const subtitleHighlightColor = getVal(`${moduleId}_el_hero_typography`, 'subtitle_highlight_color', '#3B82F6');
-  const subtitleHighlightGradient = getVal(`${moduleId}_el_hero_typography`, 'subtitle_highlight_gradient', 'linear-gradient(90deg, #3B82F6 0%, #8B5CF6 100%)');
+  const rawSubtitleHighlightColor = getVal(`${moduleId}_el_hero_typography`, 'subtitle_highlight_color', '#3B82F6');
+  const subtitleHighlightColor = resolveBrandColor({
+    value: rawSubtitleHighlightColor,
+    defaultValue: '#3B82F6',
+    token: 'primary',
+    projectTheme
+  });
+  const rawSubtitleHighlightGradient = getVal(`${moduleId}_el_hero_typography`, 'subtitle_highlight_gradient', 'linear-gradient(90deg, #3B82F6 0%, #8B5CF6 100%)');
+  const subtitleHighlightGradient = resolveBrandColor({
+    value: rawSubtitleHighlightGradient,
+    defaultValue: [
+      'linear-gradient(90deg, #3B82F6 0%, #8B5CF6 100%)',
+      'linear-gradient(90deg,#3B82F6 0%,#8B5CF6 100%)'
+    ],
+    token: 'primary',
+    projectTheme: {
+      ...projectTheme,
+      primary: `linear-gradient(90deg, ${projectTheme.primary} 0%, ${projectTheme.secondary} 100%)`
+    }
+  });
   const subtitleHighlightBold = getVal(`${moduleId}_el_hero_typography`, 'subtitle_highlight_bold', true);
 
   const eyebrowBg = getVal(`${moduleId}_el_hero_typography`, 'eyebrow_bg', 'rgba(59, 130, 246, 0.1)');
-  const eyebrowColor = getVal(`${moduleId}_el_hero_typography`, 'eyebrow_color', '#3B82F6');
+  const rawEyebrowColor = getVal(`${moduleId}_el_hero_typography`, 'eyebrow_color', '#3B82F6');
+  const eyebrowColor = resolveBrandColor({
+    value: rawEyebrowColor,
+    defaultValue: '#3B82F6',
+    token: 'primary',
+    projectTheme
+  });
   const typographyAlign = getVal(`${moduleId}_el_hero_typography`, 'align', 'inherit');
   const typographyMarginB = parseNumSafe(getVal(`${moduleId}_el_hero_typography`, 'margin_b', 0), 0);
-  const proofColor = darkMode ? '#94A3B8' : '#475569';
+  const proofColor = darkMode
+    ? '#94A3B8'
+    : resolveBrandColor({
+        value: '#475569',
+        defaultValue: '#475569',
+        token: 'muted',
+        projectTheme
+      });
 
   // Element: Media
   const mediaType = getVal(`${moduleId}_el_hero_media`, 'media_type', 'image');
@@ -212,9 +301,17 @@ export const HeroModule: React.FC<{
   const visualRadius = parseNumSafe(getVal(`${moduleId}_el_hero_media`, 'border_radius', 24), 24);
   const visualShadow = getVal(`${moduleId}_el_hero_media`, 'shadow', 'lg');
   const visualFit = getVal(`${moduleId}_el_hero_media`, 'object_fit', 'cover');
+  const transparentMedia = toBoolean(getVal(`${moduleId}_el_hero_media`, 'transparent_media', false));
   const perspective = parseNumSafe(getVal(`${moduleId}_el_hero_media`, 'perspective', 1000), 1000);
   const rotationY = parseNumSafe(getVal(`${moduleId}_el_hero_media`, 'rotation_y', 15), 15);
   const floatingAnim = getVal(`${moduleId}_el_hero_media`, 'floating_anim', true);
+  const isLikelyTransparentVisual = mediaType === 'image' && typeof visualImage === 'string' && (
+    /\.png($|[?#])/i.test(visualImage) ||
+    /\.svg($|[?#])/i.test(visualImage) ||
+    /format=png/i.test(visualImage) ||
+    /transparent/i.test(visualImage)
+  );
+  const shouldRenderTransparentMedia = mediaType === 'image' && (transparentMedia || isLikelyTransparentVisual);
 
   // Element: CTAs
   const primaryText = getVal(`${moduleId}_el_hero_ctas`, 'primary_text', 'Comenzar Ahora');
@@ -241,7 +338,13 @@ export const HeroModule: React.FC<{
   const hasPrimary = showPrimary && isValidCta(primaryText, primaryUrl);
   const hasSecondary = showSecondary && isValidCta(secondaryText, secondaryUrl);
 
-  const primaryBg = getVal(`${moduleId}_el_hero_ctas`, 'primary_bg', 'var(--primary-color)');
+  const rawPrimaryBg = getVal(`${moduleId}_el_hero_ctas`, 'primary_bg', 'var(--primary-color)');
+  const primaryBg = resolveBrandColor({
+    value: rawPrimaryBg,
+    defaultValue: ['var(--primary-color)', '#3B82F6', '#2563EB'],
+    token: 'primary',
+    projectTheme
+  });
   const primaryColor = getVal(`${moduleId}_el_hero_ctas`, 'primary_color', '#FFFFFF');
   const secondaryStyle = getVal(`${moduleId}_el_hero_ctas`, 'secondary_style', 'outline');
   const shimmerEffect = getVal(`${moduleId}_el_hero_ctas`, 'shimmer_effect', false);
@@ -287,8 +390,8 @@ export const HeroModule: React.FC<{
     const inheritedAlign = forcedAlign || 'left';
     const finalAlign = typographyAlign === 'inherit' ? inheritedAlign : typographyAlign;
     const titleWidthClass = layout === 'center' || layout === 'full_bg'
-      ? 'max-w-[12ch]'
-      : 'max-w-[11ch] sm:max-w-[12ch]';
+      ? 'max-w-[13ch] sm:max-w-[14ch]'
+      : 'max-w-[12ch] sm:max-w-[13ch] lg:max-w-[14ch]';
     const subtitleWidthClass = layout === 'center' || layout === 'full_bg'
       ? 'max-w-[34ch]'
       : 'max-w-[40ch]';
@@ -321,7 +424,7 @@ export const HeroModule: React.FC<{
         className={`leading-[1.1] tracking-tight w-full break-words [overflow-wrap:anywhere] ${titleWidthClass}`}
         style={{ 
           ...getTypographyStyle(titleSize, titleWeight),
-          color: darkMode ? '#FFFFFF' : '#0F172A',
+          color: titleColor,
           textWrap: 'balance'
         }}
       >
@@ -374,10 +477,10 @@ export const HeroModule: React.FC<{
 
       {subtitle && (
           <motion.p
-            className={`text-lg leading-relaxed opacity-70 w-full break-words [overflow-wrap:anywhere] ${subtitleWidthClass}`}
+          className={`text-lg leading-relaxed opacity-70 w-full break-words [overflow-wrap:anywhere] ${subtitleWidthClass}`}
           style={{ 
             ...getTypographyStyle(subtitleSize, subtitleWeight),
-            color: darkMode ? '#94A3B8' : '#475569',
+            color: subtitleColor,
             textWrap: 'pretty'
           }}
         >
@@ -568,21 +671,25 @@ export const HeroModule: React.FC<{
       style={{ perspective: `${perspective}px` }}
     >
       <div 
-        className={`relative overflow-hidden transition-all duration-500 ${
-          visualShadow === 'lg' ? 'shadow-[0_50px_100px_-20px_rgba(0,0,0,0.3)]' : 
-          visualShadow === 'sm' ? 'shadow-xl' : ''
+        className={`relative transition-all duration-500 ${
+          shouldRenderTransparentMedia
+            ? 'overflow-visible bg-transparent'
+            : `overflow-hidden ${
+                visualShadow === 'lg' ? 'shadow-[0_50px_100px_-20px_rgba(0,0,0,0.3)]' : 
+                visualShadow === 'sm' ? 'shadow-xl' : ''
+              }`
         }`}
         style={{ 
-          borderRadius: `${visualRadius}px`,
-          backgroundColor: darkMode ? '#1E293B' : '#F8FAFC'
+          borderRadius: shouldRenderTransparentMedia ? 0 : `${visualRadius}px`,
+          backgroundColor: shouldRenderTransparentMedia ? 'transparent' : (darkMode ? '#1E293B' : '#F8FAFC')
         }}
       >
         {mediaType === 'image' && visualImage ? (
           <img 
             src={visualImage} 
             alt="Hero Visual" 
-            className="w-full h-auto block"
-            style={{ objectFit: visualFit as any }}
+            className={`w-full h-auto block ${shouldRenderTransparentMedia ? 'object-contain' : ''}`}
+            style={{ objectFit: (shouldRenderTransparentMedia ? 'contain' : visualFit) as any }}
             referrerPolicy="no-referrer"
           />
         ) : mediaType === 'image' ? (

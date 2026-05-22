@@ -76,6 +76,18 @@ const shouldHidePexelsButton = (setting: SettingDefinition, moduleType?: string)
   return STOCK_IMAGE_BLOCKLIST.some(token => raw.includes(token));
 };
 
+const isLikelyTransparentImageUrl = (value: unknown) => {
+  const normalized = String(value || '').toLowerCase().trim();
+  if (!normalized) return false;
+
+  return (
+    /\.png($|[?#])/.test(normalized) ||
+    /\.svg($|[?#])/.test(normalized) ||
+    normalized.includes('format=png') ||
+    normalized.includes('transparent')
+  );
+};
+
 const inferPexelsOrientation = (setting: SettingDefinition, moduleType?: string): 'landscape' | 'portrait' | 'square' => {
   const raw = `${setting.id} ${setting.label || ''} ${moduleType || ''}`.toLowerCase();
   if (/(avatar|team|portrait)/.test(raw)) return 'portrait';
@@ -85,6 +97,9 @@ const inferPexelsOrientation = (setting: SettingDefinition, moduleType?: string)
 };
 
 const InlineColorPicker = ({ value, onChange, label, projectColors }: { value: string, onChange: (v: string) => void, label?: string, projectColors?: string[] }) => {
+  const [projectPaletteOpen, setProjectPaletteOpen] = useState(true);
+  const [presetPaletteOpen, setPresetPaletteOpen] = useState(true);
+
   return (
     <div className="space-y-3 p-3 bg-secondary/30 rounded-2xl border border-border/50 animate-in fade-in slide-in-from-top-2 duration-300">
       {label && <p className="text-[10px] font-black text-text/30 uppercase tracking-widest">{label}</p>}
@@ -92,38 +107,69 @@ const InlineColorPicker = ({ value, onChange, label, projectColors }: { value: s
       {/* Project Colors Section */}
       {projectColors && projectColors.length > 0 && (
         <div className="space-y-2 pb-2 border-b border-border/30">
-          <p className="text-[8px] font-bold text-primary uppercase tracking-tighter">Colores del Proyecto</p>
-          <div className="flex flex-wrap gap-1.5">
-            {projectColors.map((color, idx) => (
-              <button
-                key={`${color}-${idx}`}
-                onClick={() => onChange(color)}
-                className={`w-8 h-8 rounded-full border-2 transition-all hover:scale-110 active:scale-95 shadow-sm ${
-                  value?.toLowerCase() === color.toLowerCase() 
-                    ? 'border-primary ring-2 ring-primary/20 scale-110 z-10' 
-                    : 'border-white hover:border-primary/30'
-                }`}
-                style={{ backgroundColor: color }}
-                title={color}
-              />
-            ))}
-          </div>
+          <button
+            type="button"
+            onClick={() => setProjectPaletteOpen((prev) => !prev)}
+            className="flex w-full items-center justify-between gap-2"
+          >
+            <p className="text-[8px] font-bold text-primary uppercase tracking-tighter">Colores del Proyecto</p>
+            {projectPaletteOpen ? (
+              <LucideIcons.ChevronUp size={12} className="text-primary/70" />
+            ) : (
+              <LucideIcons.ChevronDown size={12} className="text-primary/70" />
+            )}
+          </button>
+
+          {projectPaletteOpen && (
+            <div className="flex flex-wrap gap-1.5">
+              {projectColors.map((color, idx) => (
+                <button
+                  key={`${color}-${idx}`}
+                  onClick={() => onChange(color)}
+                  className={`w-8 h-8 rounded-full border-2 transition-all hover:scale-110 active:scale-95 shadow-sm ${
+                    value?.toLowerCase() === color.toLowerCase() 
+                      ? 'border-primary ring-2 ring-primary/20 scale-110 z-10' 
+                      : 'border-white hover:border-primary/30'
+                  }`}
+                  style={{ backgroundColor: color }}
+                  title={color}
+                />
+              ))}
+            </div>
+          )}
         </div>
       )}
 
-      <div className="grid grid-cols-6 gap-1.5 pt-1">
-        {PRESET_COLORS.map(color => (
-          <button
-            key={color}
-            onClick={() => onChange(color)}
-            className={`w-full aspect-square rounded-lg border transition-all hover:scale-110 active:scale-95 ${
-              value?.toLowerCase() === color.toLowerCase() 
-                ? 'border-primary ring-2 ring-primary/20 scale-110 z-10 shadow-sm' 
-                : 'border-black/5 hover:border-black/20'
-            }`}
-            style={{ backgroundColor: color }}
-          />
-        ))}
+      <div className="space-y-2 pt-1">
+        <button
+          type="button"
+          onClick={() => setPresetPaletteOpen((prev) => !prev)}
+          className="flex w-full items-center justify-between gap-2"
+        >
+          <p className="text-[8px] font-bold text-text/40 uppercase tracking-tighter">Paleta Base</p>
+          {presetPaletteOpen ? (
+            <LucideIcons.ChevronUp size={12} className="text-text/40" />
+          ) : (
+            <LucideIcons.ChevronDown size={12} className="text-text/40" />
+          )}
+        </button>
+
+        {presetPaletteOpen && (
+          <div className="grid grid-cols-6 gap-1.5">
+            {PRESET_COLORS.map(color => (
+              <button
+                key={color}
+                onClick={() => onChange(color)}
+                className={`w-full aspect-square rounded-lg border transition-all hover:scale-110 active:scale-95 ${
+                  value?.toLowerCase() === color.toLowerCase() 
+                    ? 'border-primary ring-2 ring-primary/20 scale-110 z-10 shadow-sm' 
+                    : 'border-black/5 hover:border-black/20'
+                }`}
+                style={{ backgroundColor: color }}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="flex items-center gap-3 pt-1 border-t border-border/30">
@@ -385,6 +431,7 @@ export const SettingControl: React.FC<SettingControlProps> = ({
         </div>
       );
     case 'image':
+      const transparentPreviewMode = isLikelyTransparentImageUrl(currentValue);
       return (
         <div className={`space-y-2 ${isDisabled ? 'opacity-50 pointer-events-none grayscale' : ''}`}>
           <div className="flex items-center justify-between">
@@ -393,10 +440,10 @@ export const SettingControl: React.FC<SettingControlProps> = ({
           </div>
           
           <div className="flex flex-col gap-2">
-            <div className="flex items-center gap-3">
-              <div className="w-14 h-14 rounded-xl bg-secondary border border-border overflow-hidden flex-shrink-0 shadow-inner">
+            <div className="grid grid-cols-[56px_minmax(0,1fr)] gap-3 items-start">
+              <div className={`w-14 h-14 rounded-xl flex-shrink-0 ${transparentPreviewMode ? 'overflow-visible bg-transparent border-none shadow-none' : 'bg-secondary border border-border overflow-hidden shadow-inner'}`}>
                 {currentValue ? (
-                  <img src={currentValue} alt="Preview" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  <img src={currentValue} alt="Preview" className={`w-full h-full ${transparentPreviewMode ? 'object-contain' : 'object-cover'}`} referrerPolicy="no-referrer" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-text/20">
                     <ImageIcon size={20} />
@@ -418,27 +465,32 @@ export const SettingControl: React.FC<SettingControlProps> = ({
               </div>
             </div>
 
-            <div className="flex gap-2">
-              <div className="flex-1">
-                <div className="relative">
-                   <button 
-                    disabled={isUploading || isDisabled}
-                    className="w-full flex items-center justify-center gap-2 py-2 px-3 border border-dashed border-border rounded-xl text-[10px] font-bold bg-secondary/30 text-text/60 hover:bg-secondary/50 hover:border-primary/30 transition-all overflow-hidden"
-                  >
-                    {isUploading ? (
-                      <Loader2 size={12} className="animate-spin text-primary" />
-                    ) : (
-                      <Upload size={12} />
-                    )}
-                    {isUploading ? 'Subiendo...' : 'Subir Archivo'}
-                    <input 
-                      type="file" 
-                      accept="image/*"
-                      onChange={handleFileChange}
-                      className="absolute inset-0 opacity-0 cursor-pointer disabled:cursor-not-allowed"
-                    />
-                  </button>
-                </div>
+            {transparentPreviewMode && (
+              <div className="rounded-xl border border-primary/10 bg-primary/5 px-3 py-2">
+                <p className="text-[9px] font-bold text-primary uppercase tracking-wide">PNG/SVG con transparencia detectado</p>
+                <p className="mt-1 text-[9px] text-text/50 leading-relaxed">La vista previa del editor ya no muestra un contenedor sólido detrás de la imagen.</p>
+              </div>
+            )}
+
+            <div className={`grid gap-2 items-stretch ${shouldShowPexels ? 'grid-cols-[minmax(0,1fr)_minmax(0,1fr)_44px]' : 'grid-cols-[minmax(0,1fr)_44px]'}`}>
+              <div className="relative">
+                 <button 
+                  disabled={isUploading || isDisabled}
+                  className="w-full h-full flex items-center justify-center gap-2 py-2 px-3 border border-dashed border-border rounded-xl text-[10px] font-bold bg-secondary/30 text-text/60 hover:bg-secondary/50 hover:border-primary/30 transition-all overflow-hidden"
+                >
+                  {isUploading ? (
+                    <Loader2 size={12} className="animate-spin text-primary" />
+                  ) : (
+                    <Upload size={12} />
+                  )}
+                  {isUploading ? 'Subiendo...' : 'Subir Archivo'}
+                  <input 
+                    type="file" 
+                    accept="image/*"
+                    onChange={handleFileChange}
+                    className="absolute inset-0 opacity-0 cursor-pointer disabled:cursor-not-allowed"
+                  />
+                </button>
               </div>
               {shouldShowPexels && (
                 <button
@@ -450,15 +502,14 @@ export const SettingControl: React.FC<SettingControlProps> = ({
                   Buscar en Pexels
                 </button>
               )}
-              {currentValue && (
-                <button 
-                  onClick={() => onChange('')}
-                  className="px-3 py-2 bg-red-50 text-red-500 border border-red-100 rounded-xl hover:bg-red-100 transition-colors"
-                  title="Liminar imagen"
-                >
-                  <Trash2 size={14} />
-                </button>
-              )}
+              <button 
+                onClick={() => onChange('')}
+                disabled={!currentValue}
+                className="flex items-center justify-center px-3 py-2 bg-red-50 text-red-500 border border-red-100 rounded-xl hover:bg-red-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                title="Eliminar imagen"
+              >
+                <Trash2 size={14} />
+              </button>
             </div>
 
             {shouldShowPexels && (
@@ -616,14 +667,7 @@ export const SettingControl: React.FC<SettingControlProps> = ({
                  />
                </div>
 
-               <div className="pt-3 border-t border-border/30">
-                 <p className="text-[10px] font-black text-text/30 uppercase tracking-widest mb-2">Vista Previa</p>
-                 <div 
-                   className="w-full h-12 rounded-xl border border-black/10 shadow-lg"
-                   style={{ background: stringifyGradient(gradData.angle, gradData.color1, gradData.color2) }}
-                 />
-               </div>
-            </div>
+             </div>
           )}
         </div>
       );
@@ -650,7 +694,7 @@ export const SettingControl: React.FC<SettingControlProps> = ({
         <div className="space-y-2">
           <label className="text-[10px] font-bold text-text/40 uppercase tracking-wider">{setting.label}</label>
           
-          <div className="relative">
+          <div className="relative z-10">
             <button
               onClick={() => setShowPicker(!showPicker)}
               className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all ${
@@ -684,7 +728,7 @@ export const SettingControl: React.FC<SettingControlProps> = ({
                   initial={{ opacity: 0, y: 10, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                  className="absolute left-0 right-0 top-full mt-2 z-50 p-3 bg-white rounded-2xl border border-slate-200 shadow-2xl overflow-hidden"
+                  className="mt-2 p-3 bg-white rounded-2xl border border-slate-200 shadow-2xl"
                 >
                   <div className="mb-3 px-1">
                     <input 

@@ -2,6 +2,10 @@ export interface BrandColors {
   primary?: string;
   secondary?: string;
   accent?: string;
+  background?: string;
+  text?: string;
+  muted?: string;
+  border?: string;
 }
 
 export interface WebConfig {
@@ -36,6 +40,13 @@ export interface Theme {
   borderRadius?: string;
   baseSize?: string;
   uiStyle?: 'windows' | 'solutium';
+  primaryColor?: string;
+  secondaryColor?: string;
+  accentColor?: string;
+  backgroundColor?: string;
+  textColor?: string;
+  mutedColor?: string;
+  borderColor?: string;
 }
 
 export interface Profile {
@@ -89,7 +100,7 @@ export interface Project {
   fontFamily?: string;
   currency?: string;
   isMaster?: boolean;
-  brandColors?: BrandColors;
+  brandColors?: BrandColors | string[];
   webConfig?: any;
   socials?: any;
   integrations?: any;
@@ -181,6 +192,12 @@ export interface RenderingContract {
   css?: string;
   theme: {
     primaryColor: string;
+    secondaryColor?: string;
+    accentColor?: string;
+    backgroundColor?: string;
+    textColor?: string;
+    mutedColor?: string;
+    borderColor?: string;
     fontFamily: string;
   };
   sections: Array<{

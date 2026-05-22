@@ -55,6 +55,8 @@ export interface Theme {
   backgroundColor: string;
   textColor: string;
   accentColor?: string;
+  mutedColor?: string;
+  borderColor?: string;
   fontSans?: string;
   fontDisplay?: string;
   // Global Settings

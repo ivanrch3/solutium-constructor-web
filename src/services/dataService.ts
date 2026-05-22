@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { getUploadAuthToken } from './authTokenProvider';
 import { logDebug } from '../utils/debug';
 import { requestFreshSupabaseConfig } from './handshakeService';
+import { assertActiveSupabaseSession, SupabaseSessionError } from './supabaseSessionService';
 
 // Helper to handle validation and logging
 const validateData = <T>(schema: z.ZodType<T>, data: unknown, context: string): T | null => {
@@ -32,6 +33,8 @@ const isSupabaseAuthExpiredError = (error: any): boolean => {
 };
 
 const withSupabaseAuthRetry = async <T>(operation: () => Promise<T>, context: string): Promise<T> => {
+  await assertActiveSupabaseSession();
+
   try {
     return await operation();
   } catch (error) {
@@ -45,9 +48,17 @@ const withSupabaseAuthRetry = async <T>(operation: () => Promise<T>, context: st
       status: error?.status || error?.statusCode || null
     });
 
-    const refreshed = await requestFreshSupabaseConfig();
-    if (!refreshed) {
-      throw error;
+    try {
+      await assertActiveSupabaseSession({ forceRefresh: true });
+    } catch (sessionError) {
+      if (sessionError instanceof SupabaseSessionError) {
+        throw sessionError;
+      }
+
+      const refreshed = await requestFreshSupabaseConfig();
+      if (!refreshed) {
+        throw error;
+      }
     }
 
     return await operation();
@@ -545,6 +556,9 @@ export const saveWebBuilderSiteDraft = async (site: Partial<WebBuilderSite>): Pr
       return validateData(webBuilderSiteSchema, mapped, 'saveWebBuilderSiteDraft');
     }, 'saveWebBuilderSiteDraft');
   } catch (err) {
+    if (err instanceof SupabaseSessionError) {
+      throw err;
+    }
     console.error('Error in saveWebBuilderSiteDraft:', err);
     return null;
   }
@@ -552,10 +566,12 @@ export const saveWebBuilderSiteDraft = async (site: Partial<WebBuilderSite>): Pr
 
 export const publishWebBuilderSite = async (site: Partial<PublishedSite>): Promise<PublishedSite | null> => {
   try {
+    return await withSupabaseAuthRetry(async () => {
     const supabase = getSupabase();
     if (!supabase) return null;
 
-    const { data: userData } = await supabase.auth.getUser();
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+    if (userError) throw userError;
     const now = new Date().toISOString();
 
     // 1. Actualizar estado y contenido publicado en web_builder_sites
@@ -654,7 +670,11 @@ export const publishWebBuilderSite = async (site: Partial<PublishedSite>): Promi
     };
 
     return validateData(publishedSiteSchema, mapped, 'publishWebBuilderSite');
+    }, 'publishWebBuilderSite');
   } catch (err) {
+    if (err instanceof SupabaseSessionError) {
+      throw err;
+    }
     console.error('Error in publishWebBuilderSite:', err);
     return null;
   }
@@ -711,6 +731,7 @@ export const getPublishedSites = async (projectId: string): Promise<PublishedSit
       .from('published_sites')
       .select('*')
       .eq('project_id', projectId)
+      .eq('is_active', true)
       .order('updated_at', { ascending: false });
 
     if (error) throw error;

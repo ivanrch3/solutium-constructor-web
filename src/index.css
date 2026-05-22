@@ -1,14 +1,25 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap');
 @import "tailwindcss";
 
+:root {
+  --builder-primary: #2563EB;
+  --builder-primary-soft: rgba(37, 99, 235, 0.1);
+  --builder-bg: #F8FAFC;
+  --builder-surface: #FFFFFF;
+  --builder-surface-muted: #F1F5F9;
+  --builder-text: #0F172A;
+  --builder-muted: #64748B;
+  --builder-border: #E2E8F0;
+}
+
 @theme {
-  --color-primary: var(--primary-color, #3B82F6);
-  --color-secondary: var(--secondary-color, #F1F5F9);
+  --color-primary: var(--primary-color, var(--builder-primary, #2563EB));
+  --color-secondary: var(--secondary-color, var(--builder-surface-muted, #F1F5F9));
   --color-accent: var(--accent-color, #7C3AED);
-  --color-background: var(--background-color, #F8FAFC);
-  --color-surface: var(--card-color, #FFFFFF);
-  --color-text: var(--foreground-color, #0F172A);
-  --color-border: var(--border-color, #E2E8F0);
+  --color-background: var(--background-color, var(--builder-bg, #F8FAFC));
+  --color-surface: var(--card-color, var(--builder-surface, #FFFFFF));
+  --color-text: var(--foreground-color, var(--builder-text, #0F172A));
+  --color-border: var(--border-color, var(--builder-border, #E2E8F0));
   
   --color-sidebar-bg: var(--sidebar-bg, #0F172A);
   --color-sidebar-foreground: var(--sidebar-foreground, #FFFFFF);
@@ -39,8 +50,8 @@
 }
 
 body {
-  background-color: var(--color-background);
-  color: var(--color-text);
+  background-color: var(--builder-bg);
+  color: var(--builder-text);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }

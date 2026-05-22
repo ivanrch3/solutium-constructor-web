@@ -154,8 +154,11 @@ export const Canvas: React.FC<CanvasProps> = ({
       <div
         ref={setCanvasRootRef}
         id="constructor-canvas-scroll-container"
-        className={`flex-1 bg-secondary/50 overflow-y-scroll custom-scrollbar preview-scrollbar transition-all duration-500 ${isFullscreen ? 'fixed inset-0 z-[100] bg-secondary' : ''} ${isPreviewMode ? 'bg-surface p-0' : ''}`}
-        style={{ scrollbarGutter: 'stable both-edges' }}
+        className={`flex-1 overflow-y-scroll custom-scrollbar preview-scrollbar transition-all duration-500 ${isFullscreen ? 'fixed inset-0 z-[100]' : ''} ${isPreviewMode ? 'p-0' : ''}`}
+        style={{
+          scrollbarGutter: 'stable both-edges',
+          backgroundColor: isPreviewMode ? 'var(--builder-surface)' : 'var(--builder-surface-muted)'
+        }}
       >
       {isFullscreen && !isPreviewMode && (
         <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[110] flex items-center gap-2 bg-surface/80 backdrop-blur-md border border-border/50 p-1.5 rounded-2xl shadow-2xl">

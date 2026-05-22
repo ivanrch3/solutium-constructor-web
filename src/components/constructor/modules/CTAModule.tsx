@@ -20,6 +20,7 @@ import { SectionAnimation } from '../animations/SectionAnimation';
 import { parseNumSafe } from '../utils';
 import { useEditorStore } from '../../../store/editorStore';
 import { normalizeSectionAnimation } from '../../../constants/moduleAnimations';
+import { getProjectThemeFromSettings, resolveBrandColor } from '../../../utils/projectTheme';
 
 export const CTAModule: React.FC<{ 
   moduleId: string, 
@@ -69,6 +70,8 @@ export const CTAModule: React.FC<{
       : value;
   };
 
+  const projectTheme = getProjectThemeFromSettings(settingsValues);
+
   // Global Settings
   const layout = getVal(null, 'layout', 'centered');
   const maxWidth = parseNumSafe(getVal(null, 'max_width', 1000), 1000);
@@ -76,7 +79,14 @@ export const CTAModule: React.FC<{
   const bgType = getVal(null, 'bg_type', 'color');
   const darkMode = toBoolean(getVal(null, 'dark_mode', false));
   const rawBgColor = getVal(null, 'bg_color', '#FFFFFF');
-  const bgColor = resolveThemeColor(rawBgColor, '#FFFFFF', '#0F172A', darkMode);
+  const bgColor = darkMode
+    ? resolveThemeColor(rawBgColor, '#FFFFFF', '#0F172A', true)
+    : resolveBrandColor({
+        value: rawBgColor,
+        defaultValue: '#FFFFFF',
+        token: 'background',
+        projectTheme
+      });
   const bgGradient = getVal(null, 'bg_gradient', 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)');
   const bgImage = getVal(null, 'bg_image', '');
   const bgVideo = getVal(null, 'bg_video', '');
@@ -114,19 +124,65 @@ export const CTAModule: React.FC<{
   const textAlign = getVal(`${moduleId}_el_cta_content`, 'text_align', 'center');
   const rawTitleColor = getVal(`${moduleId}_el_cta_content`, 'title_color', '#0F172A');
   const rawSubtitleColor = getVal(`${moduleId}_el_cta_content`, 'subtitle_color', '#475569');
-  const titleColor = resolveThemeColor(rawTitleColor, '#0F172A', '#FFFFFF', darkMode);
-  const subtitleColor = resolveThemeColor(rawSubtitleColor, '#475569', '#94A3B8', darkMode);
+  const titleColor = darkMode
+    ? resolveThemeColor(rawTitleColor, '#0F172A', '#FFFFFF', true)
+    : resolveBrandColor({
+        value: rawTitleColor,
+        defaultValue: '#0F172A',
+        token: 'text',
+        projectTheme
+      });
+  const subtitleColor = darkMode
+    ? resolveThemeColor(rawSubtitleColor, '#475569', '#94A3B8', true)
+    : resolveBrandColor({
+        value: rawSubtitleColor,
+        defaultValue: '#475569',
+        token: 'muted',
+        projectTheme
+      });
   const marginB = parseNumSafe(getVal(`${moduleId}_el_cta_content`, 'margin_b', 40), 40);
 
   // Highlight Settings
   const titleHighlightType = getVal(`${moduleId}_el_cta_content`, 'title_highlight_type', 'gradient');
-  const titleHighlightColor = getVal(`${moduleId}_el_cta_content`, 'title_highlight_color', '#3B82F6');
-  const titleHighlightGradient = getVal(`${moduleId}_el_cta_content`, 'title_highlight_gradient', 'linear-gradient(90deg, #3B82F6 0%, #8B5CF6 100%)');
+  const titleHighlightColor = resolveBrandColor({
+    value: getVal(`${moduleId}_el_cta_content`, 'title_highlight_color', '#3B82F6'),
+    defaultValue: '#3B82F6',
+    token: 'primary',
+    projectTheme
+  });
+  const titleHighlightGradient = resolveBrandColor({
+    value: getVal(`${moduleId}_el_cta_content`, 'title_highlight_gradient', 'linear-gradient(90deg, #3B82F6 0%, #8B5CF6 100%)'),
+    defaultValue: [
+      'linear-gradient(90deg, #3B82F6 0%, #8B5CF6 100%)',
+      'linear-gradient(90deg,#3B82F6 0%,#8B5CF6 100%)'
+    ],
+    token: 'primary',
+    projectTheme: {
+      ...projectTheme,
+      primary: `linear-gradient(90deg, ${projectTheme.primary} 0%, ${projectTheme.secondary} 100%)`
+    }
+  });
   const titleHighlightBold = getVal(`${moduleId}_el_cta_content`, 'title_highlight_bold', true);
 
   const subtitleHighlightType = getVal(`${moduleId}_el_cta_content`, 'subtitle_highlight_type', 'gradient');
-  const subtitleHighlightColor = getVal(`${moduleId}_el_cta_content`, 'subtitle_highlight_color', '#3B82F6');
-  const subtitleHighlightGradient = getVal(`${moduleId}_el_cta_content`, 'subtitle_highlight_gradient', 'linear-gradient(90deg, #3B82F6 0%, #8B5CF6 100%)');
+  const subtitleHighlightColor = resolveBrandColor({
+    value: getVal(`${moduleId}_el_cta_content`, 'subtitle_highlight_color', '#3B82F6'),
+    defaultValue: '#3B82F6',
+    token: 'primary',
+    projectTheme
+  });
+  const subtitleHighlightGradient = resolveBrandColor({
+    value: getVal(`${moduleId}_el_cta_content`, 'subtitle_highlight_gradient', 'linear-gradient(90deg, #3B82F6 0%, #8B5CF6 100%)'),
+    defaultValue: [
+      'linear-gradient(90deg, #3B82F6 0%, #8B5CF6 100%)',
+      'linear-gradient(90deg,#3B82F6 0%,#8B5CF6 100%)'
+    ],
+    token: 'primary',
+    projectTheme: {
+      ...projectTheme,
+      primary: `linear-gradient(90deg, ${projectTheme.primary} 0%, ${projectTheme.secondary} 100%)`
+    }
+  });
   const subtitleHighlightBold = getVal(`${moduleId}_el_cta_content`, 'subtitle_highlight_bold', true);
 
   // Element: Actions
@@ -152,7 +208,12 @@ export const CTAModule: React.FC<{
   
   const placeholder = getVal(`${moduleId}_el_cta_actions`, 'placeholder', 'tu@email.com');
   const showSecondary = getVal(`${moduleId}_el_cta_actions`, 'show_secondary', true);
-  const btnPrimaryBg = getVal(`${moduleId}_el_cta_actions`, 'btn_primary_bg', 'var(--primary-color)');
+  const btnPrimaryBg = resolveBrandColor({
+    value: getVal(`${moduleId}_el_cta_actions`, 'btn_primary_bg', 'var(--primary-color)'),
+    defaultValue: ['var(--primary-color)', '#3B82F6', '#2563EB'],
+    token: 'primary',
+    projectTheme
+  });
   const btnPrimaryColor = getVal(`${moduleId}_el_cta_actions`, 'btn_primary_color', '#FFFFFF');
   const btnRadius = parseNumSafe(getVal(`${moduleId}_el_cta_actions`, 'btn_radius', 16), 16);
   const hoverEffect = getVal(`${moduleId}_el_cta_actions`, 'hover_effect', 'scale');
@@ -162,7 +223,14 @@ export const CTAModule: React.FC<{
   const trustText = getVal(`${moduleId}_el_cta_trust`, 'trust_text', 'Únete a +5,000 usuarios activos');
   const trustSize = parseNumSafe(getVal(`${moduleId}_el_cta_trust`, 'trust_size', 14), 14);
   const rawTrustColor = getVal(`${moduleId}_el_cta_trust`, 'trust_color', '#64748B');
-  const trustColor = resolveThemeColor(rawTrustColor, '#64748B', '#94A3B8', darkMode);
+  const trustColor = darkMode
+    ? resolveThemeColor(rawTrustColor, '#64748B', '#94A3B8', true)
+    : resolveBrandColor({
+        value: rawTrustColor,
+        defaultValue: '#64748B',
+        token: 'muted',
+        projectTheme
+      });
   const showAvatars = getVal(`${moduleId}_el_cta_trust`, 'show_avatars', true);
   const showLogos = getVal(`${moduleId}_el_cta_trust`, 'show_logos', false);
   const companyLogos = getVal(`${moduleId}_el_cta_trust`, 'company_logos', []);

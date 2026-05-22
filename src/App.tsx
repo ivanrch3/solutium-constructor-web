@@ -18,21 +18,11 @@ import { Viewer } from './components/Viewer';
 import { logDebug } from './utils/debug';
 import { Profile, Project, Asset, WebBuilderSite, PublishedSite } from './types/schema';
 import { getAssets } from './services/dataService';
+import { normalizeProjectBrandColors } from './utils/projectTheme';
 
 type View = 'dashboard' | 'selection-method' | 'form' | 'generator' | 'constructor' | 'viewer';
 
 const CONSTRUCTOR_WEB_LOGO_URL = 'https://nyc3.digitaloceanspaces.com/solutium-space/988cd339-a2c7-4951-b944-998d32dc349b-solutium-constructor-web-imagotipo.png';
-
-const normalizeBrandColors = (rawBrandColors: any) => {
-  if (!rawBrandColors || typeof rawBrandColors !== 'object') return null;
-
-  return {
-    ...rawBrandColors,
-    primary: rawBrandColors.primary || rawBrandColors.primary_color || null,
-    secondary: rawBrandColors.secondary || rawBrandColors.secondary_color || null,
-    accent: rawBrandColors.accent || rawBrandColors.accent_color || null
-  };
-};
 
 const normalizeIncomingProject = (rawProject: any): Project | null => {
   if (!rawProject || typeof rawProject !== 'object') return null;
@@ -42,13 +32,76 @@ const normalizeIncomingProject = (rawProject: any): Project | null => {
     logoWhiteUrl: rawProject.logoWhiteUrl || rawProject.logo_white_url || null,
     projectIconUrl: rawProject.projectIconUrl || rawProject.project_icon_url || null,
     fontFamily: rawProject.fontFamily || rawProject.font_family || null,
-    brandColors: normalizeBrandColors(rawProject.brandColors || rawProject.brand_colors),
+    brandColors: normalizeProjectBrandColors(rawProject.brandColors || rawProject.brand_colors),
     webConfig: rawProject.webConfig || rawProject.web_config || null,
     imageMappings: rawProject.imageMappings || rawProject.image_mappings || null,
     schemaVersion: rawProject.schemaVersion || rawProject.schema_version || null,
     createdAt: rawProject.createdAt || rawProject.created_at || null,
     updatedAt: rawProject.updatedAt || rawProject.updated_at || null
   } as Project;
+};
+
+const normalizeDraftLifecycleStatus = (
+  rawStatus: unknown,
+  hasActivePublishedVersion: boolean
+): 'draft' | 'published' | 'modified' => {
+  const normalized = String(rawStatus || '').trim().toLowerCase();
+
+  if (hasActivePublishedVersion) {
+    return normalized === 'draft' ? 'draft' : 'modified';
+  }
+
+  if (normalized === 'published' || normalized === 'modified' || normalized === 'unpublished') {
+    return 'draft';
+  }
+
+  return 'draft';
+};
+
+const mergePagesByCurrentLifecycle = (
+  drafts: WebBuilderSite[],
+  published: PublishedSite[]
+): (WebBuilderSite | PublishedSite)[] => {
+  const sitesMap = new Map<string, WebBuilderSite | PublishedSite>();
+
+  published.forEach((site) => {
+    if (site.siteId) {
+      sitesMap.set(site.siteId, { ...site, status: 'published' as const });
+    }
+  });
+
+  drafts.forEach((site) => {
+    if (!site.siteId) return;
+
+    const existingPublished = sitesMap.get(site.siteId);
+    const status = normalizeDraftLifecycleStatus(site.status, Boolean(existingPublished));
+    sitesMap.set(site.siteId, {
+      ...existingPublished,
+      ...site,
+      status
+    } as WebBuilderSite | PublishedSite);
+  });
+
+  return Array.from(sitesMap.values()).sort((a, b) => {
+    const dateA = new Date(a.updatedAt || 0).getTime();
+    const dateB = new Date(b.updatedAt || 0).getTime();
+    return dateB - dateA;
+  });
+};
+
+const getLaunchSiteContext = () => {
+  const params = new URLSearchParams(window.location.search);
+  const launchSiteId = params.get('site_id') || params.get('asset_id') || null;
+  const rawLaunchStatus = params.get('site_status');
+  const launchSiteStatus =
+    rawLaunchStatus && ['draft', 'published', 'modified', 'unpublished'].includes(rawLaunchStatus.toLowerCase())
+      ? rawLaunchStatus.toLowerCase()
+      : null;
+
+  return {
+    launchSiteId,
+    launchSiteStatus
+  };
 };
 
 const AppContent: React.FC = () => {
@@ -204,27 +257,16 @@ const AppContent: React.FC = () => {
         getPublishedSites(idToUse)
       ]);
       
-      const sitesMap = new Map<string, WebBuilderSite | PublishedSite>();
-      published.forEach(p => { 
-        if (p.siteId) {
-          const siteWithStatus = { ...p, status: 'published' as const };
-          sitesMap.set(p.siteId, siteWithStatus); 
-        }
-      });
-      drafts.forEach(d => { 
-        if (d.siteId) {
-          const existing = sitesMap.get(d.siteId);
-          const status = d.status || (existing ? 'modified' : 'draft');
-          const siteWithStatus = { ...existing, ...d, status };
-          sitesMap.set(d.siteId, siteWithStatus); 
-        }
-      });
+      const allPages = mergePagesByCurrentLifecycle(drafts, published);
+      const { launchSiteId, launchSiteStatus } = getLaunchSiteContext();
 
-      const allPages = Array.from(sitesMap.values()).sort((a, b) => {
-        const dateA = new Date(a.updatedAt || 0).getTime();
-        const dateB = new Date(b.updatedAt || 0).getTime();
-        return dateB - dateA;
-      });
+      if (launchSiteId && (launchSiteStatus === 'draft' || launchSiteStatus === 'unpublished')) {
+        allPages.forEach((page) => {
+          if (page.siteId === launchSiteId || (page as any).id === launchSiteId) {
+            (page as any).status = 'draft';
+          }
+        });
+      }
       
       setPages(allPages);
       return allPages;
@@ -365,11 +407,8 @@ const AppContent: React.FC = () => {
           const normalizedProject = normalizeIncomingProject(payload.project);
           if (normalizedProject) {
             setProject(normalizedProject);
-            if (normalizedProject.brandColors || normalizedProject.fontFamily) {
+            if (normalizedProject.fontFamily || handshakeFont) {
               applyTheme({
-                primaryColor: normalizedProject.brandColors?.primary,
-                secondaryColor: normalizedProject.brandColors?.secondary,
-                accentColor: normalizedProject.brandColors?.accent,
                 fontFamily: handshakeFont || normalizedProject.fontFamily || undefined
               });
             }
@@ -381,11 +420,8 @@ const AppContent: React.FC = () => {
           const projectData = normalizeIncomingProject(await getProject(finalProjectId));
           if (projectData) {
             setProject(projectData);
-            if (projectData.brandColors || projectData.fontFamily) {
+            if (projectData.fontFamily || handshakeFont) {
               applyTheme({
-                primaryColor: projectData.brandColors?.primary,
-                secondaryColor: projectData.brandColors?.secondary,
-                accentColor: projectData.brandColors?.accent,
                 fontFamily: handshakeFont || projectData.fontFamily || undefined
               });
             }
@@ -395,28 +431,46 @@ const AppContent: React.FC = () => {
 
         if (finalProjectId) {
           const allPages = await refreshData(finalProjectId);
+          const resolvedSiteId = payload.site_id || payload.asset_id || null;
 
-          if (payload.site_id) {
+          if (resolvedSiteId) {
             // SIP v7.2: Robust search by either logical siteId or primary key id
-            const existingPage = allPages.find(p => p.siteId === payload.site_id || (p as any).id === payload.site_id);
+            const existingPage = allPages.find(p => p.siteId === resolvedSiteId || (p as any).id === resolvedSiteId);
             let finalPage = existingPage;
             
             // SIP v5.5 (Protocolo 10.2): Robust hydration from payload
             const providedContent = payload.site_content || payload.site_data || payload.content || payload.full_site;
             
+            const launchStatus =
+              payload.site_status ||
+              payload.editor_mode ||
+              payload.status ||
+              payload.siteStatus ||
+              payload.mode;
+            const shouldForceDraftLifecycle =
+              typeof launchStatus === 'string' &&
+              ['draft', 'unpublished'].includes(launchStatus.toLowerCase());
+
             if (providedContent) {
               logDebug('[GATEWAY] Hidratando sitio desde payload (Protocolo 10.2)');
               finalPage = { 
                 ...(existingPage || {}),
-                siteId: payload.site_id, 
+                siteId: resolvedSiteId, 
                 name: payload.siteName || (existingPage as any)?.name || 'Sitio Remoto',
                 content: providedContent,
-                isActive: payload.isActive ?? (existingPage as any)?.isActive ?? true
+                isActive: payload.isActive ?? (existingPage as any)?.isActive ?? true,
+                status: shouldForceDraftLifecycle ? 'draft' : ((existingPage as any)?.status || 'draft')
               } as any;
             } else if (existingPage) {
-              finalPage = existingPage;
+              finalPage = shouldForceDraftLifecycle
+                ? ({ ...existingPage, status: 'draft' } as any)
+                : existingPage;
             } else {
-              finalPage = { siteId: payload.site_id, name: payload.siteName || 'Nuevo Sitio' } as any;
+              finalPage = {
+                siteId: resolvedSiteId,
+                name: payload.siteName || 'Nuevo Sitio',
+                status: 'draft'
+              } as any;
             }
 
             setSelectedPage(finalPage);
@@ -587,20 +641,7 @@ const AppContent: React.FC = () => {
         getPublishedSites(projectId)
       ]);
       
-      const sitesMap = new Map<string, WebBuilderSite | PublishedSite>();
-      published.forEach(p => { if (p.siteId) sitesMap.set(p.siteId, p); });
-      drafts.forEach(d => {
-        if (d.siteId) {
-          const existing = sitesMap.get(d.siteId);
-          sitesMap.set(d.siteId, { ...existing, ...d });
-        }
-      });
-
-      const allPages = Array.from(sitesMap.values()).sort((a, b) => {
-        const dateA = new Date(a.updatedAt || 0).getTime();
-        const dateB = new Date(b.updatedAt || 0).getTime();
-        return dateB - dateA;
-      });
+      const allPages = mergePagesByCurrentLifecycle(drafts, published);
       
       setPages(allPages);
     }

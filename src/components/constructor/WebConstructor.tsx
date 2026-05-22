@@ -84,7 +84,7 @@ const MASTER_DICTIONARY = {
   styles: [
     'border_radius', 'box_shadow', 'font_family', 'button_styles', 
     'bg_type', 'dark_mode', 'primary_color', 'accent_color', 'text_color',
-    'rotating_enabled', 'rotating_fixed', 'rotating_options', 'rotating_speed', 'rotating_anim', 'rotating_color', 'rotating_gradient'
+    'title_mode', 'rotating_enabled', 'rotating_fixed', 'rotating_options', 'rotating_speed', 'rotating_anim', 'rotating_color', 'rotating_gradient'
   ]
 };
 
@@ -1902,18 +1902,18 @@ const formatTimestampName = () => {
             // Rotating Text Detection (Solutium Protocol)
             const isRotatingFixed = cleanKey === 'rotating_fixed' || cleanKey === 'texto_base' || cleanKey.endsWith('_rotating_fixed');
             const isRotatingOptions = cleanKey === 'rotating_options' || cleanKey === 'rotating_items' || cleanKey === 'rotating_words' || cleanKey === 'palabras_efecto' || cleanKey.endsWith('_rotating_options');
+            const isTitleMode = cleanKey === 'title_mode' || cleanKey.endsWith('_title_mode');
             const isRotatingEnabled = cleanKey === 'rotating_enabled' || cleanKey === 'is_rotating_active' || cleanKey.endsWith('_rotating_enabled');
             const isRotatingSpeed = cleanKey === 'rotating_speed' || cleanKey === 'intervalo_ms' || cleanKey.endsWith('_rotating_speed');
 
             // --- ALLOCATION (Solutium v7.7 - Order Sensitive) ---
-            const isContentField = isEyebrowText || isTitleText || isSubtitleText || isImageField || isPrimaryCtaText || isPrimaryCtaUrl || isSecondaryCtaText || isSecondaryCtaUrl || isRotatingOptions || isRotatingFixed || isRotatingEnabled || isRotatingSpeed;
+            const isContentField = isEyebrowText || isTitleText || isSubtitleText || isImageField || isPrimaryCtaText || isPrimaryCtaUrl || isSecondaryCtaText || isSecondaryCtaUrl || isRotatingOptions || isRotatingFixed || isTitleMode || isRotatingEnabled || isRotatingSpeed;
 
             if (isEyebrowText) {
               content.eyebrow = value;
             } else if (isTitleText && !content.title) {
               if (module.type === 'hero' || module.id.startsWith('mod_hero')) {
                 content.texto_principal = value;
-                content.texto_base = value;
               }
               content.title = value;
             } else if (isSubtitleText && !content.subtitle) {
@@ -1940,6 +1940,10 @@ const formatTimestampName = () => {
               } else {
                 content.palabras_efecto = [value];
               }
+            } else if (isTitleMode) {
+              const normalizedTitleMode = value === 'dynamic' ? 'dynamic' : 'static';
+              content.title_mode = normalizedTitleMode;
+              content.is_rotating_active = normalizedTitleMode === 'dynamic';
             } else if (isRotatingEnabled) {
               content.is_rotating_active = value === true || value === 'true';
             } else if (isRotatingSpeed) {
@@ -1948,7 +1952,7 @@ const formatTimestampName = () => {
             
             // Allocation to Styles/Settings & Audit Specs (Solutium Protocol v2.3)
             // Note: Colors and styles should ALWAYS go to settings, even if they contain text-like keywords
-            if (!isContentField || isPrimaryCtaUrl || isPrimaryCtaText || isEyebrowText || isImageField || isRotatingOptions || isRotatingFixed || isRotatingEnabled || isRotatingSpeed) {
+            if (!isContentField || isPrimaryCtaUrl || isPrimaryCtaText || isEyebrowText || isImageField || isRotatingOptions || isRotatingFixed || isTitleMode || isRotatingEnabled || isRotatingSpeed) {
               // Standard mapping for common containers
               const isBorderRadius = cleanKey.includes('radius') || cleanKey.includes('rounded');
               const isShadow = cleanKey.includes('shadow');
@@ -2336,11 +2340,21 @@ const formatTimestampName = () => {
           }
         }
 
-        const isDynamic = content.is_rotating_active === true;
+        const resolvedHeroTitleMode =
+          content.title_mode === 'dynamic' || content.title_mode === 'static'
+            ? content.title_mode
+            : content.is_rotating_active === true
+              ? 'dynamic'
+              : 'static';
+
+        content.title_mode = resolvedHeroTitleMode;
+        content.is_rotating_active = resolvedHeroTitleMode === 'dynamic';
+
+        const isDynamic = resolvedHeroTitleMode === 'dynamic';
         const tipo = isDynamic ? `${module.type}_dinamico` : module.type;
 
         if (isDynamic) {
-          const rawBase = content.texto_base || content.texto_principal || content.title || '';
+          const rawBase = content.texto_base || '';
           const marcador = '%ROTATIVO%';
           
           content.config = {
@@ -2355,6 +2369,7 @@ const formatTimestampName = () => {
         logDebug('[HERO_DYNAMIC_PUBLISH_DEBUG]', {
           moduleId: module.id,
           tipo,
+          draftTitleMode: currentState.settingsValues?.[`${module.id}_el_hero_typography_title_mode`],
           draftEnabled: currentState.settingsValues?.[`${module.id}_el_hero_typography_rotating_enabled`],
           draftFixed: currentState.settingsValues?.[`${module.id}_el_hero_typography_rotating_fixed`],
           draftOptions: currentState.settingsValues?.[`${module.id}_el_hero_typography_rotating_options`],
@@ -2364,6 +2379,7 @@ const formatTimestampName = () => {
           draftGradient: currentState.settingsValues?.[`${module.id}_el_hero_typography_rotating_gradient`],
 
           contractEnabled: content.is_rotating_active,
+          contractTitleMode: content.title_mode,
           contractFixed: content.texto_base,
           contractOptions: content.palabras_efecto,
           contractSpeed: content.intervalo_ms,

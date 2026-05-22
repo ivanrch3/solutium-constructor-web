@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import * as LucideIcons from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -58,6 +58,63 @@ const PRESET_COLORS = [
 const SOCIAL_ICONS = ['Facebook', 'Instagram', 'Twitter', 'Linkedin', 'Youtube', 'Github', 'Twitch', 'MessageCircle', 'Music2', 'Globe', 'Link'];
 
 const STOCK_IMAGE_BLOCKLIST = ['logo', 'logos', 'signature', 'firma', 'brand', 'company_logo', 'trusted', 'partner'];
+
+const ICON_CATEGORY_ORDER = [
+  'Favoritos',
+  'Interfaz',
+  'Negocio',
+  'Comercio',
+  'Comunicacion',
+  'Personas',
+  'Media',
+  'Archivos',
+  'Datos',
+  'Seguridad',
+  'Redes',
+  'Navegacion',
+  'Tiempo',
+  'Lugares',
+  'Objetos',
+  'Formas',
+  'Otros'
+] as const;
+
+const ICON_CATEGORY_KEYWORDS: Array<{ category: typeof ICON_CATEGORY_ORDER[number]; keywords: string[] }> = [
+  { category: 'Comunicacion', keywords: ['mail', 'message', 'messages', 'phone', 'send', 'reply', 'contact', 'inbox', 'voicemail', 'badgehelp', 'badgeinfo'] },
+  { category: 'Redes', keywords: ['facebook', 'instagram', 'linkedin', 'twitter', 'youtube', 'github', 'twitch', 'dribbble', 'figma', 'slack', 'disc', 'rss', 'globe', 'share', 'wifi'] },
+  { category: 'Personas', keywords: ['user', 'users', 'contact', 'person', 'baby'] },
+  { category: 'Negocio', keywords: ['briefcase', 'building', 'target', 'presentation', 'handshake', 'badgecent', 'banknote', 'wallet', 'scale', 'filebadge'] },
+  { category: 'Comercio', keywords: ['shopping', 'cart', 'bag', 'package', 'store', 'tag', 'receipt', 'creditcard', 'badgepercent', 'gift'] },
+  { category: 'Seguridad', keywords: ['shield', 'lock', 'unlock', 'key', 'fingerprint', 'scanface', 'shieldcheck', 'shieldalert'] },
+  { category: 'Datos', keywords: ['database', 'server', 'harddrive', 'cpu', 'binary', 'chart', 'barchart', 'piechart', 'activity', 'workflow', 'network', 'monitor', 'smartphone', 'tablet', 'laptop'] },
+  { category: 'Media', keywords: ['image', 'camera', 'video', 'film', 'mic', 'music', 'play', 'pause', 'volume', 'radio', 'tv', 'headphones'] },
+  { category: 'Archivos', keywords: ['file', 'folder', 'archive', 'book', 'bookmark', 'newspaper', 'scroll', 'clipboard', 'notebook', 'pen', 'pencil'] },
+  { category: 'Tiempo', keywords: ['clock', 'calendar', 'timer', 'watch', 'hourglass', 'alarm'] },
+  { category: 'Lugares', keywords: ['map', 'pin', 'route', 'compass', 'navigation', 'plane', 'car', 'bike', 'train', 'ship', 'hotel', 'house', 'home'] },
+  { category: 'Formas', keywords: ['circle', 'square', 'triangle', 'hexagon', 'star', 'sparkles', 'diamond'] },
+  { category: 'Navegacion', keywords: ['arrow', 'chevron', 'move', 'corner', 'expand', 'shrink', 'align', 'menu', 'panel', 'sidebar', 'layout', 'list', 'columns', 'rows'] },
+  { category: 'Objetos', keywords: ['heart', 'bell', 'flame', 'sun', 'moon', 'cloud', 'umbrella', 'lamp', 'rocket', 'bot', 'trophy', 'medal', 'gem', 'palette'] },
+  { category: 'Interfaz', keywords: ['plus', 'minus', 'x', 'check', 'settings', 'sliders', 'filter', 'search', 'edit', 'trash', 'copy', 'link', 'external', 'refresh', 'loader', 'ellipsis', 'mouse', 'pointer', 'toggle'] }
+];
+
+const ICON_FAVORITES = [
+  'Star', 'Sparkles', 'Zap', 'Shield', 'ShieldCheck', 'CheckCircle2', 'ArrowRight',
+  'Play', 'Mail', 'Phone', 'MessageCircle', 'Globe', 'Users', 'User', 'Briefcase',
+  'ShoppingCart', 'Package', 'Heart', 'Award', 'Rocket', 'Target', 'Camera',
+  'Image', 'Headphones', 'Clock', 'Calendar', 'MapPin', 'Link'
+];
+
+const normalizeIconName = (name: string) => name.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+const categorizeIconName = (iconName: string): typeof ICON_CATEGORY_ORDER[number] => {
+  const normalized = normalizeIconName(iconName);
+  for (const entry of ICON_CATEGORY_KEYWORDS) {
+    if (entry.keywords.some(keyword => normalized.includes(keyword))) {
+      return entry.category;
+    }
+  }
+  return 'Otros';
+};
 
 const getPreferredProjectGradientColors = (projectColors?: string[]) => {
   const fallback = { color1: '#3B82F6', color2: '#8B5CF6' };
@@ -673,20 +730,57 @@ export const SettingControl: React.FC<SettingControlProps> = ({
       );
     case 'icon':
       const [searchTerm, setSearchTerm] = useState('');
+      const [activeIconCategory, setActiveIconCategory] = useState<string>('Favoritos');
       
-      let ALL_ICON_NAMES = Object.keys(LucideIcons).filter(name => 
+      let allIconNames = Object.keys(LucideIcons).filter(name => 
         typeof (LucideIcons as any)[name] === 'function' || 
         (typeof (LucideIcons as any)[name] === 'object' && (LucideIcons as any)[name].$$typeof)
       );
 
       // SIP v11.5: Filter social icons if socialOnly is enabled
       if ((setting as any).socialOnly) {
-        ALL_ICON_NAMES = ALL_ICON_NAMES.filter(name => SOCIAL_ICONS.includes(name));
+        allIconNames = allIconNames.filter(name => SOCIAL_ICONS.includes(name));
       }
       
-      const filteredIcons = searchTerm 
-        ? ALL_ICON_NAMES.filter(name => name.toLowerCase().includes(searchTerm.toLowerCase())).slice(0, 100)
-        : ALL_ICON_NAMES.slice(0, 60); // Show a subset initially for performance
+      const iconCategories = useMemo(() => {
+        const grouped = new Map<string, string[]>();
+        ICON_CATEGORY_ORDER.forEach(category => grouped.set(category, []));
+
+        [...allIconNames]
+          .sort((a, b) => a.localeCompare(b))
+          .forEach(iconName => {
+            const category = ICON_FAVORITES.includes(iconName) ? 'Favoritos' : categorizeIconName(iconName);
+            const icons = grouped.get(category) || [];
+            if (!icons.includes(iconName)) {
+              icons.push(iconName);
+              grouped.set(category, icons);
+            }
+          });
+
+        if (!grouped.get('Favoritos')?.length) {
+          grouped.delete('Favoritos');
+        }
+
+        return grouped;
+      }, [allIconNames]);
+
+      const normalizedSearch = searchTerm.trim().toLowerCase();
+
+      const searchResults = useMemo(() => {
+        if (!normalizedSearch) return [];
+        return [...allIconNames]
+          .filter(name => name.toLowerCase().includes(normalizedSearch))
+          .sort((a, b) => a.localeCompare(b));
+      }, [allIconNames, normalizedSearch]);
+
+      const visibleCategories = useMemo(
+        () => Array.from(iconCategories.entries()).filter(([, icons]) => icons.length > 0),
+        [iconCategories]
+      );
+
+      const fallbackCategory = visibleCategories[0]?.[0] || 'Favoritos';
+      const resolvedCategory = iconCategories.has(activeIconCategory) ? activeIconCategory : fallbackCategory;
+      const displayedIcons = normalizedSearch ? searchResults : (iconCategories.get(resolvedCategory) || []);
       
       const SelectedIconComp = currentValue ? (LucideIcons as any)[currentValue] : null;
 
@@ -728,9 +822,9 @@ export const SettingControl: React.FC<SettingControlProps> = ({
                   initial={{ opacity: 0, y: 10, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                  className="mt-2 p-3 bg-white rounded-2xl border border-slate-200 shadow-2xl"
+                  className="mt-2 p-3 bg-white rounded-2xl border border-slate-200 shadow-2xl space-y-3"
                 >
-                  <div className="mb-3 px-1">
+                  <div className="px-1">
                     <input 
                       type="text" 
                       placeholder="Buscar ícono..."
@@ -740,8 +834,35 @@ export const SettingControl: React.FC<SettingControlProps> = ({
                       onClick={(e) => e.stopPropagation()}
                     />
                   </div>
-                  <div className="grid grid-cols-6 gap-2 max-h-[240px] overflow-y-auto custom-scrollbar pr-1">
-                    {filteredIcons.map(iconName => {
+                  {!normalizedSearch && visibleCategories.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 px-1">
+                      {visibleCategories.map(([category]) => (
+                        <button
+                          key={category}
+                          type="button"
+                          onClick={() => setActiveIconCategory(category)}
+                          className={`px-2.5 py-1 rounded-full border text-[9px] font-bold transition-all ${
+                            category === resolvedCategory
+                              ? 'bg-primary text-white border-primary shadow-sm'
+                              : 'bg-slate-50 text-slate-500 border-slate-200 hover:border-primary/30 hover:text-primary'
+                          }`}
+                        >
+                          {category}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <div className="px-1">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-[9px] font-black uppercase tracking-wider text-text/35">
+                        {normalizedSearch ? `Resultados (${searchResults.length})` : `${resolvedCategory} (${displayedIcons.length})`}
+                      </p>
+                      {!normalizedSearch && displayedIcons.length > 20 && (
+                        <p className="text-[8px] text-text/35">Desplaza para ver más</p>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 max-h-[320px] overflow-y-auto custom-scrollbar pr-1">
+                    {displayedIcons.map(iconName => {
                       const IconComp = (LucideIcons as any)[iconName];
                       const isSelected = currentValue === iconName;
                       return (
@@ -753,18 +874,22 @@ export const SettingControl: React.FC<SettingControlProps> = ({
                             setSearchTerm('');
                           }}
                           title={iconName}
-                          className={`aspect-square flex items-center justify-center rounded-lg transition-all ${
+                          className={`min-h-[72px] p-2 flex flex-col items-center justify-center gap-1.5 rounded-xl transition-all ${
                             isSelected 
                               ? 'bg-primary text-white shadow-md shadow-primary/20 scale-110 z-10' 
                               : 'bg-slate-50 text-slate-400 hover:text-primary hover:bg-primary/5 border border-slate-100'
                           }`}
                         >
-                          {IconComp ? <IconComp size={16} /> : <span className="text-[8px]">{iconName}</span>}
+                          {IconComp ? <IconComp size={18} /> : <span className="text-[8px]">{iconName}</span>}
+                          <span className={`text-[8px] leading-tight text-center break-words ${isSelected ? 'text-white/90' : 'text-slate-500'}`}>
+                            {iconName}
+                          </span>
                         </button>
                       );
-                    })}
+                      })}
+                    </div>
                   </div>
-                  {filteredIcons.length === 0 && (
+                  {displayedIcons.length === 0 && (
                     <div className="py-8 text-center">
                       <p className="text-[10px] text-slate-400">No se encontraron íconos.</p>
                     </div>
@@ -1005,6 +1130,7 @@ export const SettingControl: React.FC<SettingControlProps> = ({
         </div>
       );
     case 'textarea':
+      const textareaRows = typeof (setting as any).rows === 'number' ? (setting as any).rows : 4;
       return (
         <div className={`space-y-1.5 ${isDisabled ? 'opacity-50 pointer-events-none grayscale' : ''}`}>
           <div className="flex items-center justify-between">
@@ -1015,8 +1141,9 @@ export const SettingControl: React.FC<SettingControlProps> = ({
             value={currentValue} 
             disabled={isDisabled}
             onChange={(e) => onChange(e.target.value)}
-            rows={4}
-            className="w-full p-2 border border-border rounded-xl text-[10px] font-medium focus:outline-none focus:border-primary/30 bg-surface min-h-[80px] resize-none" 
+            rows={textareaRows}
+            className="w-full p-2 border border-border rounded-xl text-[10px] font-medium focus:outline-none focus:border-primary/30 bg-surface resize-none" 
+            style={{ minHeight: `${Math.max(textareaRows, 3) * 22}px` }}
           />
         </div>
       );

@@ -10,6 +10,11 @@ export interface EnsureSupabaseSessionResult {
   message?: string;
 }
 
+export interface ResolvedSupabaseUserIdentity {
+  userId: string | null;
+  source: 'supabase_session' | 'stored_access_token' | 'decoded_jwt' | 'missing';
+}
+
 export class SupabaseSessionError extends Error {
   state: 'missing_session' | 'expired_session';
 
@@ -70,6 +75,45 @@ const getStoredAccessToken = (): string | null => {
   } catch {}
 
   return null;
+};
+
+export const resolveSupabaseUserIdentity = async (): Promise<ResolvedSupabaseUserIdentity> => {
+  const supabase = getSupabase();
+  if (!supabase) {
+    return { userId: null, source: 'missing' };
+  }
+
+  try {
+    const { data, error } = await supabase.auth.getUser();
+    if (!error && data?.user?.id) {
+      return { userId: data.user.id, source: 'supabase_session' };
+    }
+  } catch {
+    // continue to token-based recovery
+  }
+
+  const fallbackToken = getStoredAccessToken();
+  if (!fallbackToken) {
+    return { userId: null, source: 'missing' };
+  }
+
+  try {
+    const getUserWithToken = (supabase.auth.getUser as any).bind(supabase.auth);
+    const { data, error } = await getUserWithToken(fallbackToken);
+    if (!error && data?.user?.id) {
+      return { userId: data.user.id, source: 'stored_access_token' };
+    }
+  } catch {
+    // continue to JWT decode fallback
+  }
+
+  const payload = decodeJwtPayload(fallbackToken);
+  const userId = typeof payload?.sub === 'string' ? payload.sub : null;
+  if (userId) {
+    return { userId, source: 'decoded_jwt' };
+  }
+
+  return { userId: null, source: 'missing' };
 };
 
 export const ensureActiveSupabaseSession = async (

@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { getUploadAuthToken } from './authTokenProvider';
 import { logDebug } from '../utils/debug';
 import { requestFreshSupabaseConfig } from './handshakeService';
-import { assertActiveSupabaseSession, SupabaseSessionError } from './supabaseSessionService';
+import { assertActiveSupabaseSession, resolveSupabaseUserIdentity, SupabaseSessionError } from './supabaseSessionService';
 
 // Helper to handle validation and logging
 const validateData = <T>(schema: z.ZodType<T>, data: unknown, context: string): T | null => {
@@ -490,13 +490,18 @@ export const saveWebBuilderSiteDraft = async (site: Partial<WebBuilderSite>): Pr
       const supabase = getSupabase();
       if (!supabase) return null;
 
-      const { data: userData, error: userError } = await supabase.auth.getUser();
-      if (userError) throw userError;
+      const resolvedUser = site.userId
+        ? { userId: site.userId, source: 'payload' as const }
+        : await resolveSupabaseUserIdentity();
+
+      if (!resolvedUser.userId) {
+        throw new SupabaseSessionError('missing_session', 'No hay una sesión válida para asociar el borrador al usuario actual.');
+      }
 
       const dbData: any = {
         project_id: site.projectId,
         app_id: site.appId || '11111111-1111-1111-1111-111111111111',
-        user_id: site.userId || userData.user?.id,
+        user_id: resolvedUser.userId,
         site_id: site.siteId,
         site_name: site.siteName || 'Mi Sitio Web',
         name: site.name || site.siteName || 'Mi Sitio Web',
@@ -570,8 +575,10 @@ export const publishWebBuilderSite = async (site: Partial<PublishedSite>): Promi
     const supabase = getSupabase();
     if (!supabase) return null;
 
-    const { data: userData, error: userError } = await supabase.auth.getUser();
-    if (userError) throw userError;
+    const resolvedUser = await resolveSupabaseUserIdentity();
+    if (!resolvedUser.userId) {
+      throw new SupabaseSessionError('missing_session', 'No hay una sesión válida para publicar este sitio.');
+    }
     const now = new Date().toISOString();
 
     // 1. Actualizar estado y contenido publicado en web_builder_sites
@@ -618,7 +625,7 @@ export const publishWebBuilderSite = async (site: Partial<PublishedSite>): Promi
       app_id: site.appId || '11111111-1111-1111-1111-111111111111',
       site_id: site.siteId,
       site_name: site.siteName || 'Mi Sitio Web',
-      user_id: userData.user?.id,
+      user_id: resolvedUser.userId,
       is_active: true,
       content: site.content,
       metadata: { 
@@ -850,15 +857,18 @@ export async function upsertPage(pageData: Partial<Page>): Promise<Page | null> 
       const supabase = getSupabase();
       if (!supabase) return null;
 
-      const { data: userData, error: userError } = await supabase.auth.getUser();
-      if (userError) throw userError;
-      if (!userData.user) return null;
+      const resolvedUser = pageData.user_id
+        ? { userId: pageData.user_id, source: 'payload' as const }
+        : await resolveSupabaseUserIdentity();
+      if (!resolvedUser.userId) {
+        throw new SupabaseSessionError('missing_session', 'No hay una sesión válida para sincronizar la página.');
+      }
 
       const now = new Date().toISOString();
       
       const payload = {
         ...pageData,
-        user_id: userData.user.id,
+        user_id: resolvedUser.userId,
         updated_at: now
       };
 

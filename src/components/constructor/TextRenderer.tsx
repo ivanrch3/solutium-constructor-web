@@ -6,6 +6,7 @@ interface TextRendererProps {
   highlightColor?: string;
   highlightGradient?: string;
   highlightBold?: boolean;
+  inlineFlow?: boolean;
 }
 
 export const TextRenderer: React.FC<TextRendererProps> = ({
@@ -14,6 +15,7 @@ export const TextRenderer: React.FC<TextRendererProps> = ({
   highlightColor = '#3B82F6',
   highlightGradient = 'linear-gradient(90deg, #3B82F6 0%, #8B5CF6 100%)',
   highlightBold = true,
+  inlineFlow = true,
 }) => {
   if (highlightType === 'none' || !text) return <>{text}</>;
 
@@ -37,7 +39,9 @@ export const TextRenderer: React.FC<TextRendererProps> = ({
             style.WebkitBackgroundClip = isSafeGradient ? 'text' : 'border-box';
             style.WebkitTextFillColor = isSafeGradient ? 'transparent' : 'inherit';
             style.backgroundClip = isSafeGradient ? 'text' : 'border-box';
-            style.display = 'inline-block';
+            style.display = inlineFlow ? 'inline' : 'inline-block';
+            style.WebkitBoxDecorationBreak = 'clone';
+            style.boxDecorationBreak = 'clone';
           }
 
           return (

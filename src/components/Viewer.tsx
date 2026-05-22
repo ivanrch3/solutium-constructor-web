@@ -50,6 +50,18 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
   const isPublishedViewer = !isConstructorMode && !!site.siteId;
 
   useEffect(() => {
+    (window as any).__SOLUTIUM_READ_ONLY_RENDER__ = true;
+
+    return () => {
+      try {
+        delete (window as any).__SOLUTIUM_READ_ONLY_RENDER__;
+      } catch {
+        (window as any).__SOLUTIUM_READ_ONLY_RENDER__ = false;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     // [SATELLITE_PRODUCTS_PAYLOAD_RECEIVE_DEBUG] (FASE 3)
     const isDebug = window.location.search.includes('debug=products');
     if (isDebug || window.location.search.includes('debug_render=true')) {

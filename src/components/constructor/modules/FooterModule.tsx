@@ -93,7 +93,7 @@ export const FooterModule: React.FC<{
   const resolvedBio = (bio === defaultBio && (project?.industry || project?.name))
     ? (project?.industry || `Servicios profesionales de ${project?.name}`)
     : bio;
-  const resolvedAddress = (address === 'Calle InnovaciÃ³n 123, Ciudad Digital' && project?.address) ? project.address : address;
+  const resolvedAddress = (address === 'Calle Innovación 123, Ciudad Digital' && project?.address) ? project.address : address;
   const resolvedPhone = (phone === '+1 (555) 000-0000' && project?.whatsapp) ? project.whatsapp : phone;
   const resolvedEmail = (email === 'hola@mimarca.com' && project?.email) ? project.email : email;
 

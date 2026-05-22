@@ -24,6 +24,7 @@ export interface SettingDefinition {
   max?: number;
   step?: number;
   unit?: string;
+  rows?: number;
   icon?: string;
   description?: string;
   placeholder?: string;

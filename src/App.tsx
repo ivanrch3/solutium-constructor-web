@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { startHandshake } from './services/handshakeService';
 import { configService } from './services/configService';
 import { initSupabase } from './services/supabaseClient';
 import { captureAuthToken } from './services/authTokenProvider';
+import { ensureActiveSupabaseSession } from './services/supabaseSessionService';
 import { getProfile, getProject, getWebBuilderSites, getPublishedSites, renameWebBuilderSite } from './services/dataService';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { Sidebar } from './components/Sidebar';
@@ -23,6 +24,8 @@ import { normalizeProjectBrandColors } from './utils/projectTheme';
 type View = 'dashboard' | 'selection-method' | 'form' | 'generator' | 'constructor' | 'viewer';
 
 const CONSTRUCTOR_WEB_LOGO_URL = 'https://nyc3.digitaloceanspaces.com/solutium-space/988cd339-a2c7-4951-b944-998d32dc349b-solutium-constructor-web-imagotipo.png';
+const PREVENTIVE_SUPABASE_REFRESH_INTERVAL_MS = 10 * 60 * 1000;
+const PREVENTIVE_SUPABASE_REFRESH_THROTTLE_MS = 30 * 1000;
 
 const normalizeIncomingProject = (rawProject: any): Project | null => {
   if (!rawProject || typeof rawProject !== 'object') return null;
@@ -135,6 +138,8 @@ const AppContent: React.FC = () => {
   ]), []);
   const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
   const { applyTheme } = useTheme();
+  const sessionRefreshInFlightRef = useRef(false);
+  const lastSessionRefreshAtRef = useRef(0);
 
   // --- PERSISTENCE PROTOCOL v1.0 ---
   const saveSession = () => {
@@ -182,6 +187,81 @@ const AppContent: React.FC = () => {
 
     return () => window.clearInterval(interval);
   }, [isHandshakeComplete, loadingMessages]);
+
+  useEffect(() => {
+    if (!isHandshakeComplete || isPublicRenderMode) return;
+
+    let isMounted = true;
+
+    const refreshSupabaseSessionSilently = async (
+      reason: 'startup' | 'focus' | 'visibility' | 'interval'
+    ) => {
+      if (!isMounted || sessionRefreshInFlightRef.current) return;
+
+      const now = Date.now();
+      if (
+        reason !== 'startup' &&
+        now - lastSessionRefreshAtRef.current < PREVENTIVE_SUPABASE_REFRESH_THROTTLE_MS
+      ) {
+        return;
+      }
+
+      sessionRefreshInFlightRef.current = true;
+
+      try {
+        const result = await ensureActiveSupabaseSession();
+        lastSessionRefreshAtRef.current = Date.now();
+
+        if (result.state === 'refreshed') {
+          logDebug('[SUPABASE_PREVENTIVE_REFRESH]', {
+            reason,
+            state: result.state,
+            source: result.source
+          });
+        } else if (result.state !== 'active') {
+          logDebug('[SUPABASE_PREVENTIVE_REFRESH_WARNING]', {
+            reason,
+            state: result.state,
+            source: result.source,
+            message: result.message
+          });
+        }
+      } catch (error: any) {
+        logDebug('[SUPABASE_PREVENTIVE_REFRESH_ERROR]', {
+          reason,
+          message: error?.message || 'Unknown preventive refresh error'
+        });
+      } finally {
+        sessionRefreshInFlightRef.current = false;
+      }
+    };
+
+    void refreshSupabaseSessionSilently('startup');
+
+    const handleWindowFocus = () => {
+      void refreshSupabaseSessionSilently('focus');
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void refreshSupabaseSessionSilently('visibility');
+      }
+    };
+
+    const intervalId = window.setInterval(() => {
+      void refreshSupabaseSessionSilently('interval');
+    }, PREVENTIVE_SUPABASE_REFRESH_INTERVAL_MS);
+
+    window.addEventListener('focus', handleWindowFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      isMounted = false;
+      window.clearInterval(intervalId);
+      window.removeEventListener('focus', handleWindowFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [isHandshakeComplete, isPublicRenderMode]);
 
   // Sync state to local storage
   useEffect(() => {

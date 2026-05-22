@@ -41,6 +41,14 @@ export const InlineEditableText: React.FC<InlineEditableTextProps> = ({
   const [localValue, setLocalValue] = useState(value);
   const textRef = useRef<HTMLDivElement>(null);
   const isBlurring = useRef(false);
+  const isReadOnlyRuntime = (() => {
+    try {
+      return (window as any).__SOLUTIUM_READ_ONLY_RENDER__ === true;
+    } catch {
+      return false;
+    }
+  })();
+  const shouldDisableEditing = isPreviewMode || isReadOnlyRuntime;
 
   useEffect(() => {
     if (!isEditing) {
@@ -72,7 +80,7 @@ export const InlineEditableText: React.FC<InlineEditableTextProps> = ({
   };
 
   const handleClick = (e: React.MouseEvent) => {
-    if (isPreviewMode) return;
+    if (shouldDisableEditing) return;
     
     e.stopPropagation();
     if (onClick) onClick(e);
@@ -116,7 +124,7 @@ export const InlineEditableText: React.FC<InlineEditableTextProps> = ({
     }
   };
 
-  if (isPreviewMode) {
+  if (shouldDisableEditing) {
     return <Tag className={className} style={style}>{children || value}</Tag>;
   }
 

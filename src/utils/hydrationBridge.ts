@@ -42,6 +42,7 @@ const MODULE_ADAPTERS: Record<string, ModuleBridgeAdapter> = {
       'primary_cta.url': 'el_hero_ctas_primary_url',
       'secondary_cta.text': 'el_hero_ctas_secondary_text',
       'secondary_cta.url': 'el_hero_ctas_secondary_url',
+      'title_mode': 'el_hero_typography_title_mode',
       // Dynamic Text Compatibility (Legacy Spanish keys)
       'is_rotating_active': 'el_hero_typography_rotating_enabled',
       'texto_base': 'el_hero_typography_rotating_fixed',
@@ -1194,7 +1195,7 @@ export const bridgeModuleContent = ({
     }
 
     // --- Specialized Footer Module Logic ---
-    if (baseType === 'footer' && content) {
+  if (baseType === 'footer' && content) {
       const isDebug = isRenderDebugEnabled();
       const defaults = FOOTER_DEFAULTS;
 
@@ -1526,6 +1527,27 @@ export const bridgeModuleContent = ({
           mappedKeys.push(selectProductsKey);
         }
       }
+    }
+  }
+
+  if (baseType === 'hero' && content) {
+    const titleModeKey = `${moduleId}_el_hero_typography_title_mode`;
+    const rotatingEnabledKey = `${moduleId}_el_hero_typography_rotating_enabled`;
+    const resolvedTitleMode =
+      content.title_mode === 'dynamic' || content.title_mode === 'static'
+        ? content.title_mode
+        : content.is_rotating_active === true
+          ? 'dynamic'
+          : undefined;
+
+    if (resolvedTitleMode && result[titleModeKey] === undefined) {
+      result[titleModeKey] = resolvedTitleMode;
+      mappedKeys.push(titleModeKey);
+    }
+
+    if (result[rotatingEnabledKey] === undefined && resolvedTitleMode) {
+      result[rotatingEnabledKey] = resolvedTitleMode === 'dynamic';
+      mappedKeys.push(rotatingEnabledKey);
     }
   }
 

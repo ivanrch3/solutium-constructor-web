@@ -816,8 +816,6 @@ export const HERO_MODULE: WebModule = {
       { id: 'bg_gradient', label: 'Gradiente', type: 'gradient', defaultValue: 'linear-gradient(135deg, #F8FAFC 0%, #E2E8F0 100%)', showIf: { settingId: 'bg_type', value: 'gradient' } },
       { id: 'overlay_color', label: 'Color de Overlay', type: 'color', defaultValue: '#000000', showIf: { settingId: 'bg_type', value: ['image', 'video'] } },
       { id: 'overlay_opacity', label: 'Opacidad Overlay', type: 'range', defaultValue: 0, min: 0, max: 100, unit: '%', showIf: { settingId: 'bg_type', value: ['image', 'video'] } },
-      { id: 'show_pattern', label: 'Mostrar Patrón de Puntos', type: 'boolean', defaultValue: true },
-      { id: 'show_blobs', label: 'Mostrar Blobs Decorativos', type: 'boolean', defaultValue: true }
     ],
     interaccion: [
       { id: 'scroll_indicator', label: 'Indicador de Scroll', type: 'boolean', defaultValue: true },
@@ -832,37 +830,40 @@ export const HERO_MODULE: WebModule = {
     tipografia: []
   },
   elements: [
-    { id: 'el_hero_typography', name: 'Textos', type: 'text', groups: ['eyebrow', 'title', 'subtitle', 'texto_rotativo', 'estructura'], settings: {
+    { id: 'el_hero_typography', name: 'Textos', type: 'text', groups: ['eyebrow', 'title', 'subtitle', 'estructura'], settings: {
       eyebrow: [
         { id: 'eyebrow', label: 'Texto de la Cejilla', type: 'text', defaultValue: 'NUEVA SOLUCIÓN' },
         { id: 'eyebrow_color', label: 'Color de Texto', type: 'color', defaultValue: '#3B82F6' },
         { id: 'eyebrow_bg', label: 'Color de Fondo', type: 'color', defaultValue: 'rgba(59, 130, 246, 0.1)' }
       ],
       title: [
-        { id: 'title', label: 'Texto del Título', type: 'text', defaultValue: 'Solutium es **la mejor alternativa** para tu negocio' },
+        { id: 'title_mode', label: 'Tipo de Título', type: 'select', defaultValue: 'dynamic', options: [
+          { label: 'Texto', value: 'static' },
+          { label: 'Texto Dinámico', value: 'dynamic' }
+        ]},
+        { id: 'title', label: 'Texto del Título', type: 'text', defaultValue: 'Solutium es **la mejor alternativa** para tu negocio', showIf: { settingId: 'title_mode', value: 'static' } },
         { id: 'title_size', label: 'Tamaño', type: 'typography_size', defaultValue: 't1', allowedLevels: ['t1', 't2', 't3'] },
         { id: 'title_weight', label: 'Peso', type: 'font_weight', defaultValue: 'extrabold' },
-        ...HIGHLIGHT_SETTINGS('title')
-      ],
-      subtitle: [
-        { id: 'subtitle', label: 'Texto del Subtítulo', type: 'text', defaultValue: 'Impulsamos el **éxito** de emprendedores y empresas con soluciones digitales innovadoras y personalizadas.' },
-        { id: 'subtitle_size', label: 'Tamaño', type: 'typography_size', defaultValue: 'p', allowedLevels: ['t3', 'p', 's'] },
-        { id: 'subtitle_weight', label: 'Peso', type: 'font_weight', defaultValue: 'normal' },
-        ...HIGHLIGHT_SETTINGS('subtitle')
-      ],
-      texto_rotativo: [
-        { id: 'rotating_enabled', label: 'Habilitar Título Rotativo', type: 'boolean', defaultValue: true },
-        { id: 'rotating_fixed', label: 'Parte Fija', type: 'text', defaultValue: 'Solutium es la mejor alternativa para ', showIf: { settingId: 'rotating_enabled', value: true } },
+        { id: 'title_color', label: 'Color de Título', type: 'color', defaultValue: '#0F172A' },
+        ...HIGHLIGHT_SETTINGS('title').map(setting => ({ ...setting, showIf: { settingId: 'title_mode', value: 'static' } })),
+        { id: 'rotating_fixed', label: 'Parte Fija', type: 'text', defaultValue: 'Solutium es la mejor alternativa para ', showIf: { settingId: 'title_mode', value: 'dynamic' } },
         { id: 'rotating_options', label: 'Opciones que Cambian', type: 'repeater', defaultValue: [{text: 'emprendedores'}, {text: 'profesionales'}, {text: 'empresas'}], fields: [
           { id: 'text', label: 'Frase', type: 'text', defaultValue: 'Nueva opción' }
-        ], showIf: { settingId: 'rotating_enabled', value: true } },
+        ], showIf: { settingId: 'title_mode', value: 'dynamic' } },
         { id: 'rotating_anim', label: 'Tipo de Animación', type: 'select', defaultValue: 'fade', options: [
           { label: 'Desvanecer (Fade)', value: 'fade' },
           { label: 'Deslizar (Slide)', value: 'slide' }
-        ], showIf: { settingId: 'rotating_enabled', value: true } },
-        { id: 'rotating_speed', label: 'Velocidad de Cambio', type: 'range', defaultValue: 3000, min: 1000, max: 10000, unit: 'ms', step: 500, showIf: { settingId: 'rotating_enabled', value: true } },
-        { id: 'rotating_color', label: 'Color Texto Dinámico', type: 'color', defaultValue: '#3B82F6', showIf: { settingId: 'rotating_enabled', value: true } },
-        { id: 'rotating_gradient', label: 'Degradado Texto Dinámico', type: 'gradient', defaultValue: 'linear-gradient(90deg, #3B82F6 0%, #8B5CF6 100%)', showIf: { settingId: 'rotating_enabled', value: true } }
+        ], showIf: { settingId: 'title_mode', value: 'dynamic' } },
+        { id: 'rotating_speed', label: 'Velocidad de Cambio', type: 'range', defaultValue: 3000, min: 1000, max: 10000, unit: 'ms', step: 500, showIf: { settingId: 'title_mode', value: 'dynamic' } },
+        { id: 'rotating_color', label: 'Color Texto Dinámico', type: 'color', defaultValue: '#3B82F6', showIf: { settingId: 'title_mode', value: 'dynamic' } },
+        { id: 'rotating_gradient', label: 'Degradado Texto Dinámico', type: 'gradient', defaultValue: 'linear-gradient(90deg, #3B82F6 0%, #8B5CF6 100%)', showIf: { settingId: 'title_mode', value: 'dynamic' } }
+      ],
+      subtitle: [
+        { id: 'subtitle', label: 'Texto del Subtítulo', type: 'textarea', defaultValue: 'Impulsamos el **éxito** de emprendedores y empresas con soluciones digitales innovadoras y personalizadas.', rows: 3 },
+        { id: 'subtitle_size', label: 'Tamaño', type: 'typography_size', defaultValue: 'p', allowedLevels: ['t3', 'p', 's'] },
+        { id: 'subtitle_weight', label: 'Peso', type: 'font_weight', defaultValue: 'normal' },
+        { id: 'subtitle_color', label: 'Color de Subtítulo', type: 'color', defaultValue: '#475569' },
+        ...HIGHLIGHT_SETTINGS('subtitle')
       ],
       estructura: [
         { id: 'align', label: 'Alineación', type: 'select', defaultValue: 'inherit', options: [
@@ -940,7 +941,8 @@ export const HERO_MODULE: WebModule = {
       ],
       tipografia: [
         { id: 'font_size', label: 'Tamaño', type: 'typography_size', defaultValue: 's', allowedLevels: ['t3', 'p', 's'] },
-        { id: 'font_weight', label: 'Peso', type: 'font_weight', defaultValue: 'extrabold' }
+        { id: 'font_weight', label: 'Peso', type: 'font_weight', defaultValue: 'extrabold' },
+        { id: 'proof_color', label: 'Color de Texto', type: 'color', defaultValue: '#475569' }
       ],
       estilo: [], interaccion: []
     }}

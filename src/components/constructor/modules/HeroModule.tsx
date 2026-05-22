@@ -75,6 +75,52 @@ export const HeroModule: React.FC<{
     return safeValue;
   };
 
+  const isDarkColor = (value: string | undefined) => {
+    if (!value) return false;
+    const safe = value.trim();
+    const hex = safe.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+
+    if (hex) {
+      let normalized = hex[1];
+      if (normalized.length === 3) {
+        normalized = normalized.split('').map(char => char + char).join('');
+      }
+
+      const r = parseInt(normalized.slice(0, 2), 16);
+      const g = parseInt(normalized.slice(2, 4), 16);
+      const b = parseInt(normalized.slice(4, 6), 16);
+      const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+      return luminance < 0.45;
+    }
+
+    const rgb = safe.match(/^rgba?\(([^)]+)\)$/i);
+    if (rgb) {
+      const parts = rgb[1]
+        .split(',')
+        .map(part => Number(part.trim()))
+        .filter(part => !Number.isNaN(part));
+
+      if (parts.length >= 3) {
+        const [r, g, b] = parts;
+        const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+        return luminance < 0.45;
+      }
+    }
+
+    return false;
+  };
+
+  const sanitizeDarkBackgroundColor = (value: string | undefined, fallback: string) => {
+    return isDarkColor(value) ? String(value).trim() : fallback;
+  };
+
+  const sanitizeDarkGradient = (value: string | undefined, fallback: string) => {
+    if (!value || typeof value !== 'string') return fallback;
+    const matches = value.match(/#(?:[0-9a-f]{3}|[0-9a-f]{6})/gi) || [];
+    if (matches.length === 0) return fallback;
+    return matches.every(color => isDarkColor(color)) ? value : fallback;
+  };
+
   /**
    * PROTOCOLO SOLUTIUM v8.1: Normalización robusta de items rotativos.
    * Acepta arrays de objetos, arrays de strings o strings delimitados.
@@ -128,12 +174,17 @@ export const HeroModule: React.FC<{
   const darkMode = toBoolean(getVal(null, 'dark_mode', false));
   const bgType = getVal(null, 'bg_type', 'color');
   const rawBgColor = getVal(null, 'bg_color', '#FFFFFF');
-  const bgColor = resolveThemeColor(rawBgColor, '#FFFFFF', '#0F172A', darkMode);
-  const bgGradient = getVal(null, 'bg_gradient', 'linear-gradient(135deg, #F8FAFC 0%, #E2E8F0 100%)');
+  const darkModeBgFallback = '#0F172A';
+  const darkModeGradientFallback = 'linear-gradient(135deg, #020617 0%, #0F172A 55%, #1E293B 100%)';
+  const bgColor = darkMode
+    ? sanitizeDarkBackgroundColor(rawBgColor, darkModeBgFallback)
+    : resolveThemeColor(rawBgColor, '#FFFFFF', darkModeBgFallback, false);
+  const rawBgGradient = getVal(null, 'bg_gradient', 'linear-gradient(135deg, #F8FAFC 0%, #E2E8F0 100%)');
+  const bgGradient = darkMode
+    ? sanitizeDarkGradient(rawBgGradient, darkModeGradientFallback)
+    : rawBgGradient;
   const overlayColor = getVal(null, 'overlay_color', '#000000');
   const overlayOpacity = parseNumSafe(getVal(null, 'overlay_opacity', 0), 0);
-  const showPattern = getVal(null, 'show_pattern', true);
-  const showBlobs = getVal(null, 'show_blobs', true);
   const scrollIndicator = getVal(null, 'scroll_indicator', true);
   const scrollText = getVal(null, 'scroll_text', 'SCROLL');
   const globalThemeSectionAnimationSpeed = parseNumSafe(settingsValues['global_theme_section_animation_speed'], 1);
@@ -157,13 +208,18 @@ export const HeroModule: React.FC<{
   const eyebrow = getVal(`${moduleId}_el_hero_typography`, 'eyebrow', 'NUEVA SOLUCIÓN');
   const title = getVal(`${moduleId}_el_hero_typography`, 'title', 'Transforma tu presencia digital hoy');
   const subtitle = getVal(`${moduleId}_el_hero_typography`, 'subtitle', 'Construimos el futuro de tu marca con herramientas de última generación.');
+  const titleMode = getVal(
+    `${moduleId}_el_hero_typography`,
+    'title_mode',
+    getVal(`${moduleId}_el_hero_typography`, 'rotating_enabled', false) ? 'dynamic' : 'static'
+  );
   const titleSize = getVal(`${moduleId}_el_hero_typography`, 'title_size', 't1');
   const titleWeight = getVal(`${moduleId}_el_hero_typography`, 'title_weight', 'bold');
   const subtitleSize = getVal(`${moduleId}_el_hero_typography`, 'subtitle_size', 'p');
   const subtitleWeight = getVal(`${moduleId}_el_hero_typography`, 'subtitle_weight', 'normal');
   const rawTitleColor = getVal(`${moduleId}_el_hero_typography`, 'title_color', '#0F172A');
   const titleColor = darkMode
-    ? resolveThemeColor(rawTitleColor, '#0F172A', '#FFFFFF', true)
+    ? '#F8FAFC'
     : resolveBrandColor({
         value: rawTitleColor,
         defaultValue: '#0F172A',
@@ -172,7 +228,7 @@ export const HeroModule: React.FC<{
       });
   const rawSubtitleColor = getVal(`${moduleId}_el_hero_typography`, 'subtitle_color', '#475569');
   const subtitleColor = darkMode
-    ? resolveThemeColor(rawSubtitleColor, '#475569', '#94A3B8', true)
+    ? '#CBD5E1'
     : resolveBrandColor({
         value: rawSubtitleColor,
         defaultValue: '#475569',
@@ -183,14 +239,14 @@ export const HeroModule: React.FC<{
   // Highlight Settings
   const titleHighlightType = getVal(`${moduleId}_el_hero_typography`, 'title_highlight_type', 'gradient');
   const rawTitleHighlightColor = getVal(`${moduleId}_el_hero_typography`, 'title_highlight_color', '#3B82F6');
-  const titleHighlightColor = resolveBrandColor({
+  const titleHighlightColor = darkMode ? '#93C5FD' : resolveBrandColor({
     value: rawTitleHighlightColor,
     defaultValue: '#3B82F6',
     token: 'primary',
     projectTheme
   });
   const rawTitleHighlightGradient = getVal(`${moduleId}_el_hero_typography`, 'title_highlight_gradient', 'linear-gradient(90deg, #3B82F6 0%, #8B5CF6 100%)');
-  const titleHighlightGradient = resolveBrandColor({
+  const titleHighlightGradient = darkMode ? 'linear-gradient(90deg, #93C5FD 0%, #C4B5FD 100%)' : resolveBrandColor({
     value: rawTitleHighlightGradient,
     defaultValue: [
       'linear-gradient(90deg, #3B82F6 0%, #8B5CF6 100%)',
@@ -205,7 +261,7 @@ export const HeroModule: React.FC<{
   const titleHighlightBold = getVal(`${moduleId}_el_hero_typography`, 'title_highlight_bold', true);
 
   // Rotating Text Settings
-  const rotatingEnabled = getVal(`${moduleId}_el_hero_typography`, 'rotating_enabled', false);
+  const rotatingEnabled = titleMode === 'dynamic';
   const rotatingFixed = getVal(`${moduleId}_el_hero_typography`, 'rotating_fixed', 'Solutium es la mejor alternativa para ');
   
   // Búsqueda de items con fallback de IDs
@@ -229,7 +285,7 @@ export const HeroModule: React.FC<{
   const rotatingAnim = getVal(`${moduleId}_el_hero_typography`, 'rotating_anim', 'fade');
   const rotatingSpeed = getVal(`${moduleId}_el_hero_typography`, 'rotating_speed', 3000);
   const rawRotatingColor = getVal(`${moduleId}_el_hero_typography`, 'rotating_color', '#3B82F6');
-  const rotatingColor = resolveBrandColor({
+  const rotatingColor = darkMode ? '#E2E8F0' : resolveBrandColor({
     value: rawRotatingColor,
     defaultValue: '#3B82F6',
     token: 'primary',
@@ -237,7 +293,7 @@ export const HeroModule: React.FC<{
   });
   const rawRotatingGradient = getVal(`${moduleId}_el_hero_typography`, 'rotating_gradient', '');
   const rotatingGradient = typeof rawRotatingGradient === 'string' && rawRotatingGradient.trim() !== ''
-    ? resolveBrandColor({
+    ? (darkMode ? 'linear-gradient(90deg, #93C5FD 0%, #C4B5FD 100%)' : resolveBrandColor({
         value: rawRotatingGradient,
         defaultValue: [
           'linear-gradient(90deg, #3B82F6 0%, #8B5CF6 100%)',
@@ -248,19 +304,19 @@ export const HeroModule: React.FC<{
           ...projectTheme,
           primary: `linear-gradient(90deg, ${projectTheme.primary} 0%, ${projectTheme.secondary} 100%)`
         }
-      })
+      }))
     : '';
 
   const subtitleHighlightType = getVal(`${moduleId}_el_hero_typography`, 'subtitle_highlight_type', 'gradient');
   const rawSubtitleHighlightColor = getVal(`${moduleId}_el_hero_typography`, 'subtitle_highlight_color', '#3B82F6');
-  const subtitleHighlightColor = resolveBrandColor({
+  const subtitleHighlightColor = darkMode ? '#93C5FD' : resolveBrandColor({
     value: rawSubtitleHighlightColor,
     defaultValue: '#3B82F6',
     token: 'primary',
     projectTheme
   });
   const rawSubtitleHighlightGradient = getVal(`${moduleId}_el_hero_typography`, 'subtitle_highlight_gradient', 'linear-gradient(90deg, #3B82F6 0%, #8B5CF6 100%)');
-  const subtitleHighlightGradient = resolveBrandColor({
+  const subtitleHighlightGradient = darkMode ? 'linear-gradient(90deg, #93C5FD 0%, #C4B5FD 100%)' : resolveBrandColor({
     value: rawSubtitleHighlightGradient,
     defaultValue: [
       'linear-gradient(90deg, #3B82F6 0%, #8B5CF6 100%)',
@@ -276,18 +332,20 @@ export const HeroModule: React.FC<{
 
   const eyebrowBg = getVal(`${moduleId}_el_hero_typography`, 'eyebrow_bg', 'rgba(59, 130, 246, 0.1)');
   const rawEyebrowColor = getVal(`${moduleId}_el_hero_typography`, 'eyebrow_color', '#3B82F6');
-  const eyebrowColor = resolveBrandColor({
+  const eyebrowColor = darkMode ? '#BFDBFE' : resolveBrandColor({
     value: rawEyebrowColor,
     defaultValue: '#3B82F6',
     token: 'primary',
     projectTheme
   });
+  const safeEyebrowBg = darkMode ? 'rgba(148, 163, 184, 0.16)' : eyebrowBg;
   const typographyAlign = getVal(`${moduleId}_el_hero_typography`, 'align', 'inherit');
   const typographyMarginB = parseNumSafe(getVal(`${moduleId}_el_hero_typography`, 'margin_b', 0), 0);
+  const rawProofColor = getVal(`${moduleId}_el_hero_social_proof`, 'proof_color', '#475569');
   const proofColor = darkMode
-    ? '#94A3B8'
+    ? '#CBD5E1'
     : resolveBrandColor({
-        value: '#475569',
+        value: rawProofColor,
         defaultValue: '#475569',
         token: 'muted',
         projectTheme
@@ -416,7 +474,7 @@ export const HeroModule: React.FC<{
           tagName="span"
           isPreviewMode={isPreviewMode}
           className="px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em]"
-          style={{ backgroundColor: eyebrowBg, color: eyebrowColor, display: 'inline-block' }}
+          style={{ backgroundColor: safeEyebrowBg, color: eyebrowColor, display: 'inline-block' }}
         />
       )}
       
@@ -477,7 +535,7 @@ export const HeroModule: React.FC<{
 
       {subtitle && (
           <motion.p
-          className={`text-lg leading-relaxed opacity-70 w-full break-words [overflow-wrap:anywhere] ${subtitleWidthClass}`}
+          className={`text-lg leading-relaxed w-full break-words [overflow-wrap:anywhere] ${subtitleWidthClass}`}
           style={{ 
             ...getTypographyStyle(subtitleSize, subtitleWeight),
             color: subtitleColor,
@@ -712,13 +770,6 @@ export const HeroModule: React.FC<{
         )}
       </div>
       
-      {/* Decorative elements */}
-      {showBlobs && (
-        <>
-          <div className="absolute -z-10 -top-12 -right-12 w-64 h-64 bg-primary/10 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute -z-10 -bottom-12 -left-12 w-64 h-64 bg-accent/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
-        </>
-      )}
     </motion.div>
   );
 
@@ -870,13 +921,6 @@ export const HeroModule: React.FC<{
             <ChevronDown size={20} />
           </motion.div>
         </motion.div>
-      )}
-
-      {/* Background patterns */}
-      {showPattern && (
-        <div className="absolute inset-0 z-10 opacity-[0.03] pointer-events-none" 
-          style={{ backgroundImage: `radial-gradient(${darkMode ? '#fff' : '#000'} 1px, transparent 1px)`, backgroundSize: '40px 40px' }} 
-        />
       )}
 
       <style>{`

@@ -192,7 +192,6 @@ export const HEADER_MODULE: WebModule = {
         { id: 'secondary_style', label: 'Estilo Secundario', type: 'select', defaultValue: 'outline', options: [{label:'Sólido', value:'solid'}, {label:'Contorno', value:'outline'}]}
       ],
       interaccion: [
-        { id: 'pulse_effect', label: 'Efecto Pulso (Principal)', type: 'boolean', defaultValue: true },
         { id: 'hover_anim', label: 'Animación Hover', type: 'select', defaultValue: 'scale', options: [{label:'Escala', value:'scale'}, {label:'Brillo', value:'glow'}]}
       ],
       estructura: [], tipografia: [], multimedia: []
@@ -818,8 +817,6 @@ export const HERO_MODULE: WebModule = {
       { id: 'overlay_opacity', label: 'Opacidad Overlay', type: 'range', defaultValue: 0, min: 0, max: 100, unit: '%', showIf: { settingId: 'bg_type', value: ['image', 'video'] } },
     ],
     interaccion: [
-      { id: 'scroll_indicator', label: 'Indicador de Scroll', type: 'boolean', defaultValue: true },
-      { id: 'scroll_text', label: 'Texto de Scroll', type: 'text', defaultValue: 'SCROLL' },
       { id: 'entrance_anim', label: 'Animación de Entrada', type: 'select', defaultValue: 'fade_up', options: [
         { label: 'Desvanecer Arriba', value: 'fade_up' },
         { label: 'Revelar Lados', value: 'reveal' },
@@ -913,10 +910,9 @@ export const HERO_MODULE: WebModule = {
         { id: 'secondary_style', label: 'Estilo', type: 'select', defaultValue: 'outline', options: [{label:'Sólido', value:'solid'}, {label:'Contorno', value:'outline'}], subsection: 'Botón Secundario', showIf: { settingId: 'show_secondary', value: true }},
         { id: 'shimmer_effect', label: 'Efecto Shimmer', type: 'boolean', defaultValue: false, subsection: 'Botón Primario', showIf: { settingId: 'show_primary', value: true } }
       ],
-      interaccion: [
-        { id: 'hover_effect', label: 'Efecto Hover', type: 'select', defaultValue: 'lift', options: [{label:'Elevar', value:'lift'}, {label:'Brillo', value:'glow'}], subsection: 'Botón Primario', showIf: { settingId: 'show_primary', value: true }},
-        { id: 'pulse_effect', label: 'Efecto Pulso', type: 'boolean', defaultValue: true, subsection: 'Botón Primario', showIf: { settingId: 'show_primary', value: true } }
-      ],
+        interaccion: [
+          { id: 'hover_effect', label: 'Efecto Hover', type: 'select', defaultValue: 'lift', options: [{label:'Elevar', value:'lift'}, {label:'Brillo', value:'glow'}], subsection: 'Botón Primario', showIf: { settingId: 'show_primary', value: true }}
+        ],
       estructura: [
         { id: 'btn_radius', label: 'Redondeado', type: 'range', defaultValue: 16, min: 0, max: 40, subsection: 'Botones' },
         { id: 'btn_width', label: 'Ancho (Mobile)', type: 'select', defaultValue: 'auto', options: [{label:'Automático', value:'auto'}, {label:'Ancho Completo', value:'full'}], subsection: 'Botones' }
@@ -1568,8 +1564,7 @@ export const VIDEO_MODULE: WebModule = {
           { id: 'radius', label: 'Redondeado', type: 'range', defaultValue: 24, min: 0, max: 100 },
           { id: 'shadow', label: 'Sombra Elevada', type: 'boolean', defaultValue: true },
           { id: 'border_color', label: 'Color de Borde', type: 'color', defaultValue: 'rgba(0,0,0,0.1)' },
-          { id: 'play_button_style', label: 'Estilo Botón Play', type: 'select', defaultValue: 'pulse', options: [
-            { label: 'Pulso', value: 'pulse' },
+          { id: 'play_button_style', label: 'Estilo Botón Play', type: 'select', defaultValue: 'simple', options: [
             { label: 'Simple', value: 'simple' },
             { label: 'Ninguno', value: 'none' }
           ]}

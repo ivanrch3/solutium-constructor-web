@@ -140,6 +140,7 @@ const AppContent: React.FC = () => {
   const { applyTheme } = useTheme();
   const sessionRefreshInFlightRef = useRef(false);
   const lastSessionRefreshAtRef = useRef(0);
+  const handshakeStartedRef = useRef(false);
 
   // --- PERSISTENCE PROTOCOL v1.0 ---
   const saveSession = () => {
@@ -356,6 +357,60 @@ const AppContent: React.FC = () => {
     }
   };
 
+  const hydrateProfileAndThemeFromSession = async (payload: any, handshakeFont: string, fallbackTheme: any) => {
+    if (!payload.supabase_url || !payload.supabase_anon_key || !payload.session_token) {
+      return;
+    }
+
+    try {
+      (window as any).SOLUTIUM_SUPABASE_SESSION = { access_token: payload.session_token };
+
+      const supabase = initSupabase(
+        payload.supabase_url,
+        payload.supabase_anon_key,
+        payload.session_token
+      );
+
+      if (!supabase) return;
+
+      const userResult = await Promise.race([
+        supabase.auth.getUser(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Supabase timeout')), 1500))
+      ]).catch((error) => ({ data: { user: null }, error }));
+
+      const { data: { user }, error: userError } = userResult as any;
+      if (!user || userError) {
+        return;
+      }
+
+      const mappedProfile = await getProfile(user.id);
+      const themeToApply = mappedProfile?.activeTheme || fallbackTheme || 'blue-light';
+
+      if (mappedProfile) {
+        setProfile(mappedProfile);
+      } else {
+        setProfile({
+          id: user.id,
+          email: user.email,
+          role: 'user',
+          activeTheme: (typeof themeToApply === 'string' ? themeToApply : 'blue-light') as any
+        });
+      }
+
+      if (typeof themeToApply === 'object') {
+        applyTheme({
+          ...themeToApply,
+          fontFamily: handshakeFont || themeToApply.fontFamily || themeToApply.font_family
+        });
+      } else {
+        applyTheme(themeToApply);
+        if (handshakeFont) applyTheme({ fontFamily: handshakeFont });
+      }
+    } catch (error) {
+      console.warn('[HANDSHAKE] Delayed profile/theme hydration failed:', error);
+    }
+  };
+
   const processHandshake = async (payload: any) => {
     try {
       logDebug('[HANDSHAKE] Procesando payload:', payload);
@@ -415,47 +470,22 @@ const AppContent: React.FC = () => {
         payload.activeThemeData?.font ||
         '';
 
-      // Si hay datos de Supabase, inicializamos y cargamos perfil
-      if (payload.supabase_url && payload.supabase_anon_key && payload.session_token) {
-        // [SIP v6.3] Runtime enrichment for the auth provider
-        (window as any).SOLUTIUM_SUPABASE_SESSION = { access_token: payload.session_token };
+      const handshakeThemeData = payload.activeThemeData;
+      const handshakeThemeName = payload.profile?.activeTheme || payload.project?.activeTheme;
+      const hasThemeData = handshakeThemeData && Object.keys(handshakeThemeData).length > 0;
+      const initialThemeToApply = (hasThemeData ? handshakeThemeData : null) || handshakeThemeName || 'blue-light';
 
-        const supabase = initSupabase(
-          payload.supabase_url,
-          payload.supabase_anon_key,
-          payload.session_token
-        );
-
-        // Intento de obtener usuario con timeout para no bloquear el splash screen infinitamente
-        const userPromise = supabase.auth.getUser();
-        const userResult = await Promise.race([
-          userPromise,
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Supabase timeout')), 5000))
-        ]).catch(e => ({ data: { user: null }, error: e }));
-
-        const { data: { user }, error: userError } = userResult as any;
-        
-        if (user && !userError) {
-          const mappedProfile = await getProfile(user.id);
-          const handshakeThemeData = payload.activeThemeData;
-          const handshakeThemeName = payload.profile?.activeTheme || payload.project?.activeTheme;
-          const hasThemeData = handshakeThemeData && Object.keys(handshakeThemeData).length > 0;
-          const themeToApply = (hasThemeData ? handshakeThemeData : null) || handshakeThemeName || mappedProfile?.activeTheme || 'blue-light';
-
-          if (mappedProfile) {
-            setProfile(mappedProfile);
-          } else {
-            setProfile({ id: user.id, email: user.email, role: 'user', activeTheme: (typeof themeToApply === 'string' ? themeToApply : 'blue-light') as any });
-          }
-
-          if (typeof themeToApply === 'object') {
-            applyTheme({ ...themeToApply, fontFamily: handshakeFont || themeToApply.fontFamily || themeToApply.font_family });
-          } else {
-            applyTheme(themeToApply);
-            if (handshakeFont) applyTheme({ fontFamily: handshakeFont });
-          }
-        }
+      if (typeof initialThemeToApply === 'object') {
+        applyTheme({
+          ...initialThemeToApply,
+          fontFamily: handshakeFont || initialThemeToApply.fontFamily || initialThemeToApply.font_family
+        });
+      } else {
+        applyTheme(initialThemeToApply);
+        if (handshakeFont) applyTheme({ fontFamily: handshakeFont });
       }
+
+      void hydrateProfileAndThemeFromSession(payload, handshakeFont, initialThemeToApply);
       
       // Update favicon if provided
       const handshakeFavicon = 
@@ -482,35 +512,29 @@ const AppContent: React.FC = () => {
         
         const handshakeAppId = payload.appId || (payload as any).app_id || '11111111-1111-1111-1111-111111111111';
         setAppId(handshakeAppId);
-        
-        if (payload.project) {
-          const normalizedProject = normalizeIncomingProject(payload.project);
-          if (normalizedProject) {
-            setProject(normalizedProject);
-            if (normalizedProject.fontFamily || handshakeFont) {
-              applyTheme({
-                fontFamily: handshakeFont || normalizedProject.fontFamily || undefined
-              });
-            }
+
+        const projectPromise = payload.project
+          ? Promise.resolve(normalizeIncomingProject(payload.project))
+          : finalProjectId
+            ? getProject(finalProjectId).then((data) => normalizeIncomingProject(data))
+            : Promise.resolve(null);
+
+        const pagesPromise = finalProjectId ? refreshData(finalProjectId) : Promise.resolve([]);
+        const [resolvedProject, allPages] = await Promise.all([projectPromise, pagesPromise]);
+
+        if (resolvedProject) {
+          setProject(resolvedProject);
+          if (resolvedProject.fontFamily || handshakeFont) {
+            applyTheme({
+              fontFamily: handshakeFont || resolvedProject.fontFamily || undefined
+            });
           }
-          if (normalizedProject?.logoWhiteUrl) {
-            setUrlLogoWhite(normalizedProject.logoWhiteUrl);
-          }
-        } else if (finalProjectId) {
-          const projectData = normalizeIncomingProject(await getProject(finalProjectId));
-          if (projectData) {
-            setProject(projectData);
-            if (projectData.fontFamily || handshakeFont) {
-              applyTheme({
-                fontFamily: handshakeFont || projectData.fontFamily || undefined
-              });
-            }
-            if (projectData.logoWhiteUrl) setUrlLogoWhite(projectData.logoWhiteUrl);
+          if (resolvedProject.logoWhiteUrl) {
+            setUrlLogoWhite(resolvedProject.logoWhiteUrl);
           }
         }
 
         if (finalProjectId) {
-          const allPages = await refreshData(finalProjectId);
           const resolvedSiteId = payload.site_id || payload.asset_id || null;
 
           if (resolvedSiteId) {
@@ -687,8 +711,10 @@ const AppContent: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    if (handshakeStartedRef.current) return;
+    handshakeStartedRef.current = true;
     startHandshake(processHandshake);
-  }, [applyTheme, projectId]);
+  }, []);
 
   const handleNewPage = () => {
     setSelectedPage(null);

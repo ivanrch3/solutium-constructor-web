@@ -12,7 +12,8 @@ import {
   MousePointer2,
   Layout,
   AlertCircle,
-  Settings
+  Settings,
+  Save
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { SettingControl } from './SettingControl';
@@ -624,8 +625,74 @@ export const GlobalSettingsPanel: React.FC<GlobalSettingsPanelProps> = ({
           unit: 'px'
         }
       ]
+    },
+    {
+      id: 'autosave',
+      title: 'Guardado AutomÃ¡tico',
+      description: 'Guarda el borrador en segundo plano para reducir el riesgo de perder cambios.',
+      icon: <Save className="w-5 h-5" />,
+      settings: [
+        {
+          id: 'builder_autosave_enabled',
+          label: 'Activar guardado automÃ¡tico',
+          type: 'boolean',
+          defaultValue: true,
+          description: 'Mantiene el borrador protegido con guardados silenciosos en segundo plano.'
+        },
+        {
+          id: 'builder_autosave_interval_ms',
+          label: 'Guardar cada',
+          type: 'select',
+          defaultValue: 180000,
+          options: [
+            { label: '1 minuto', value: 60000 },
+            { label: '2 minutos', value: 120000 },
+            { label: '3 minutos', value: 180000 },
+            { label: '5 minutos', value: 300000 },
+            { label: '10 minutos', value: 600000 }
+          ],
+          description: 'El guardado automÃ¡tico solo corre si detecta cambios sin guardar.'
+        },
+        {
+          id: 'builder_autosave_show_indicator',
+          label: 'Mostrar estado en la barra superior',
+          type: 'boolean',
+          defaultValue: true,
+          description: 'Muestra mensajes discretos del guardado automÃ¡tico en la barra superior.'
+        }
+      ]
     }
   ];
+
+  const normalizedSections = sections.map((section) => {
+    if (section.id !== 'autosave') return section;
+
+    return {
+      ...section,
+      title: 'Guardado Automático',
+      settings: section.settings.map((setting: any) => {
+        if (setting.id === 'builder_autosave_enabled') {
+          return { ...setting, label: 'Activar guardado automático' };
+        }
+
+        if (setting.id === 'builder_autosave_interval_ms') {
+          return {
+            ...setting,
+            description: 'El guardado automático solo corre si detecta cambios sin guardar.'
+          };
+        }
+
+        if (setting.id === 'builder_autosave_show_indicator') {
+          return {
+            ...setting,
+            description: 'Muestra mensajes discretos del guardado automático en la barra superior.'
+          };
+        }
+
+        return setting;
+      })
+    };
+  });
 
   return (
     <div className="max-w-4xl w-full mx-auto p-8 space-y-10">
@@ -728,7 +795,7 @@ export const GlobalSettingsPanel: React.FC<GlobalSettingsPanelProps> = ({
             </div>
 
             <div className="lg:col-span-2 space-y-10">
-              {sections.map((section) => (
+              {normalizedSections.map((section) => (
                 <section key={section.id} className="space-y-6">
                   <div className="flex items-center gap-4 border-b border-slate-100 pb-4">
                     <div className="w-10 h-10 bg-white rounded-2xl border border-slate-100 flex items-center justify-center shadow-sm text-primary">
@@ -761,6 +828,16 @@ export const GlobalSettingsPanel: React.FC<GlobalSettingsPanelProps> = ({
                       </div>
                     ))}
                   </div>
+                  {section.id === 'autosave' && (
+                    <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 [&_p:last-child]:hidden">
+                      <p className="text-[11px] text-slate-500 font-medium leading-relaxed">
+                        El guardado automático no publica la página ni genera preview. Solo guarda el borrador y su estructura para reducir el riesgo de pérdida de cambios.
+                      </p>
+                      <p className="text-[11px] text-slate-500 font-medium leading-relaxed">
+                        El guardado automÃ¡tico no publica la pÃ¡gina ni genera preview. Solo guarda el borrador y su estructura para reducir riesgo de pÃ©rdida de cambios.
+                      </p>
+                    </div>
+                  )}
                 </section>
               ))}
             </div>

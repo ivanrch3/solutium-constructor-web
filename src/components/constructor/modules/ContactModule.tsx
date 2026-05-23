@@ -315,7 +315,8 @@ export const ContactModule: React.FC<{
           href={`https://wa.me/${resolvedWhatsapp}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-3 px-8 py-4 rounded-2xl bg-[#25D366] text-white font-black text-sm shadow-xl shadow-green-500/20 hover:scale-105 transition-all active:scale-95 w-full justify-center"
+          className="inline-flex items-center gap-3 px-8 py-4 rounded-2xl bg-[#25D366] text-white font-black text-sm hover:scale-105 transition-all active:scale-95 w-full justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+          style={{ boxShadow: 'none' }}
         >
           <MessageCircle size={20} />
           Chatear por WhatsApp
@@ -390,15 +391,15 @@ export const ContactModule: React.FC<{
               )}
             </div>
           ))}
-          <motion.button
-            whileHover={hoverEffect === 'lift' ? { y: -5 } : hoverEffect === 'glow' ? { boxShadow: `0 0 25px ${btnBg}60` } : hoverEffect === 'magnetic' ? { scale: 1.02 } : {}}
-            whileTap={{ scale: 0.98 }}
-            type="submit"
+            <motion.button
+              whileHover={hoverEffect === 'lift' ? { y: -5 } : hoverEffect === 'magnetic' ? { scale: 1.02 } : {}}
+              whileTap={{ scale: 0.98 }}
+              type="submit"
             onClick={() => {
               if (btnUrl && btnUrl !== '#' && !resolvedWhatsapp) window.open(btnUrl, btnTarget === '_blank' ? '_blank' : '_self');
             }}
-            className={`w-full py-5 font-black text-sm shadow-xl transition-all flex items-center justify-center gap-2 relative overflow-hidden group`}
-            style={{ backgroundColor: btnBg, color: btnColor, borderRadius: `${inputRadius}px` }}
+            className={`w-full py-5 font-black text-sm transition-all flex items-center justify-center gap-2 relative overflow-hidden group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2`}
+            style={{ backgroundColor: btnBg, color: btnColor, borderRadius: `${inputRadius}px`, boxShadow: 'none' }}
           >
             {shimmer && (
               <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]" />
@@ -473,7 +474,8 @@ export const ContactModule: React.FC<{
           href={calendlyUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className={`px-6 py-3 rounded-xl text-sm font-bold shadow-sm hover:shadow-md transition-all hover:-translate-y-1 ${darkMode ? 'bg-slate-800 text-white' : 'bg-white text-slate-900'}`}
+          className={`px-6 py-3 rounded-xl text-sm font-bold transition-all hover:-translate-y-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${darkMode ? 'bg-slate-800 text-white' : 'bg-white text-slate-900'}`}
+          style={{ boxShadow: 'none' }}
         >
           Reservar Cita
         </a>

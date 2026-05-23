@@ -342,6 +342,8 @@ export const FeaturesModule: React.FC<{
   const headerAlign = getVal(`${moduleId}_el_features_header`, 'align', 'center');
   const headerTitleSize = getVal(`${moduleId}_el_features_header`, 'title_size', 't2');
   const headerTitleWeight = getVal(`${moduleId}_el_features_header`, 'title_weight', 'bold');
+  const headerSubtitleSize = getVal(`${moduleId}_el_features_header`, 'subtitle_size', 'p');
+  const headerSubtitleWeight = getVal(`${moduleId}_el_features_header`, 'subtitle_weight', 'normal');
   const headerEyebrowColor = getVal(`${moduleId}_el_features_header`, 'eyebrow_color', '#3B82F6');
   const headerEyebrowBg = getVal(`${moduleId}_el_features_header`, 'eyebrow_bg', 'rgba(59, 130, 246, 0.1)');
   const headerMarginB = parseF(getVal(`${moduleId}_el_features_header`, 'margin_b', 80), 80);
@@ -354,6 +356,10 @@ export const FeaturesModule: React.FC<{
   const titleHighlightColor = getVal(`${moduleId}_el_features_header`, 'title_highlight_color', '#3B82F6');
   const titleHighlightGradient = getVal(`${moduleId}_el_features_header`, 'title_highlight_gradient', 'linear-gradient(90deg, #3B82F6 0%, #8B5CF6 100%)');
   const titleHighlightBold = getVal(`${moduleId}_el_features_header`, 'title_highlight_bold', true);
+  const subtitleHighlightType = getVal(`${moduleId}_el_features_header`, 'subtitle_highlight_type', 'gradient');
+  const subtitleHighlightColor = getVal(`${moduleId}_el_features_header`, 'subtitle_highlight_color', '#3B82F6');
+  const subtitleHighlightGradient = getVal(`${moduleId}_el_features_header`, 'subtitle_highlight_gradient', 'linear-gradient(90deg, #3B82F6 0%, #8B5CF6 100%)');
+  const subtitleHighlightBold = getVal(`${moduleId}_el_features_header`, 'subtitle_highlight_bold', true);
 
   // Card Style
   const rawCardBg = getVal(`${moduleId}_el_feature_card`, 'card_bg', '#FFFFFF');
@@ -407,6 +413,17 @@ export const FeaturesModule: React.FC<{
       case 'lg': return 'shadow-xl';
       default: return 'shadow-none';
     }
+  };
+
+  const getTypographyStyle = (sizeToken: string, weightToken: string) => {
+    const size = TYPOGRAPHY_SCALE[sizeToken as keyof typeof TYPOGRAPHY_SCALE] || TYPOGRAPHY_SCALE.p;
+    const weight = FONT_WEIGHTS[weightToken as keyof typeof FONT_WEIGHTS] || FONT_WEIGHTS.normal;
+
+    return {
+      fontSize: `${size.fontSize}px`,
+      lineHeight: size.lineHeight,
+      fontWeight: weight.value
+    } as React.CSSProperties;
   };
 
   const containerVariants = {
@@ -496,9 +513,20 @@ export const FeaturesModule: React.FC<{
               value={subtitle}
               tagName="p"
               isPreviewMode={isPreviewMode}
-              className="max-w-2xl text-lg leading-relaxed"
-              style={{ color: headerSubtitleColor }}
-            />
+              className="max-w-2xl leading-relaxed"
+              style={{
+                ...getTypographyStyle(headerSubtitleSize, headerSubtitleWeight),
+                color: headerSubtitleColor
+              }}
+            >
+              <TextRenderer 
+                text={subtitle}
+                highlightType={subtitleHighlightType}
+                highlightColor={subtitleHighlightColor}
+                highlightGradient={subtitleHighlightGradient}
+                highlightBold={subtitleHighlightBold}
+              />
+            </InlineEditableText>
           )}
         </div>
 

@@ -107,7 +107,6 @@ export const HeaderModule: React.FC<{
   const primaryBg = getVal(`${moduleId}_el_header_actions`, 'primary_bg', 'var(--primary-color)');
   const primaryColor = getVal(`${moduleId}_el_header_actions`, 'primary_color', '#FFFFFF');
   const secondaryStyle = getVal(`${moduleId}_el_header_actions`, 'secondary_style', 'outline');
-  const pulseEffect = getVal(`${moduleId}_el_header_actions`, 'pulse_effect', true);
   const hoverAnim = getVal(`${moduleId}_el_header_actions`, 'hover_anim', 'scale');
   const secondaryBg = resolveThemeColor(undefined, '#F1F5F9', '#334155', darkMode);
   const neutralTextColor = resolveThemeColor(undefined, '#0F172A', '#FFFFFF', darkMode);
@@ -274,23 +273,14 @@ export const HeaderModule: React.FC<{
                     href={primaryUrl}
                     target={primaryTarget === '_blank' ? '_blank' : undefined}
                     rel={primaryTarget === '_blank' ? 'noopener noreferrer' : undefined}
-                    whileHover={hoverAnim === 'scale' ? { scale: 1.05 } : { boxShadow: primaryBg.startsWith('#') ? `0 0 20px ${primaryBg}40` : `0 0 20px rgba(0,0,0,0.1)` }}
+                    whileHover={hoverAnim === 'scale' ? { scale: 1.05 } : {}}
                     whileTap={{ scale: 0.95 }}
-                    animate={pulseEffect ? { 
-                      boxShadow: primaryBg.startsWith('#') ? [
-                        `0 0 0 0px ${primaryBg}40`,
-                        `0 0 0 10px ${primaryBg}00`
-                      ] : [
-                        `0 0 0 0px rgba(0,0,0,0.1)`,
-                        `0 0 0 10px rgba(0,0,0,0)`
-                      ]
-                    } : {}}
-                    transition={pulseEffect ? { repeat: Infinity, duration: 2 } : {}}
-                    className={`flex items-center gap-2 font-black uppercase tracking-widest transition-all shadow-lg ${isCompact ? 'px-4 py-2 text-[9px]' : 'px-6 py-2.5 text-[10px]'}`}
+                    className={`flex items-center gap-2 font-black uppercase tracking-widest transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${isCompact ? 'px-4 py-2 text-[9px]' : 'px-6 py-2.5 text-[10px]'}`}
                     style={{ 
                       backgroundColor: primaryBg,
                       color: primaryColor,
-                      borderRadius: `${parseFloat(isCompact ? '10' : '14') || 14}px`
+                      borderRadius: `${parseFloat(isCompact ? '10' : '14') || 14}px`,
+                      boxShadow: 'none'
                     }}
                   >
                     {primaryBtnText}
@@ -370,8 +360,8 @@ export const HeaderModule: React.FC<{
                       />
                       <button 
                         type="submit"
-                        className="w-full py-3 rounded-xl font-black uppercase tracking-widest shadow-lg"
-                        style={{ backgroundColor: regBtnBg, color: regBtnColor }}
+                        className="w-full py-3 rounded-xl font-black uppercase tracking-widest"
+                        style={{ backgroundColor: regBtnBg, color: regBtnColor, boxShadow: 'none' }}
                       >
                         {isSubscribed ? '¡Suscrito!' : regBtnText}
                       </button>
@@ -386,8 +376,8 @@ export const HeaderModule: React.FC<{
                       href={primaryUrl}
                       target={primaryTarget === '_blank' ? '_blank' : undefined}
                       rel={primaryTarget === '_blank' ? 'noopener noreferrer' : undefined}
-                      className="w-full py-4 font-black text-center shadow-lg rounded-xl flex items-center justify-center gap-2 uppercase tracking-widest text-xs"
-                      style={{ backgroundColor: primaryBg, color: primaryColor }}
+                      className="w-full py-4 font-black text-center rounded-xl flex items-center justify-center gap-2 uppercase tracking-widest text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+                      style={{ backgroundColor: primaryBg, color: primaryColor, boxShadow: 'none' }}
                     >
                       {primaryBtnText}
                       <ArrowRight size={18} />

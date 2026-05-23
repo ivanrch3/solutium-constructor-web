@@ -88,6 +88,27 @@ const MASTER_DICTIONARY = {
   ]
 };
 
+const AUTOSAVE_INTERVAL_OPTIONS = [60000, 120000, 180000, 300000, 600000] as const;
+const DEFAULT_AUTOSAVE_INTERVAL_MS = 180000;
+
+const resolveBooleanSetting = (value: any, fallback: boolean): boolean => {
+  if (value === undefined || value === null) return fallback;
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === 'true') return true;
+    if (normalized === 'false') return false;
+  }
+  return Boolean(value);
+};
+
+const resolveAutosaveInterval = (value: any): number => {
+  const numericValue = Number(value);
+  return AUTOSAVE_INTERVAL_OPTIONS.includes(numericValue as typeof AUTOSAVE_INTERVAL_OPTIONS[number])
+    ? numericValue
+    : DEFAULT_AUTOSAVE_INTERVAL_MS;
+};
+
 // --- HELPERS ---
 const getPlainValue = (val: any) => {
   if (val && typeof val === 'object' && 'value' in val && !Array.isArray(val)) {
@@ -411,7 +432,10 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
           'global_theme_font_sans': projectThemeSeed.fontSans,
           'global_theme_font_heading': projectThemeSeed.fontHeading,
           'global_theme_radius': 12,
-          'global_theme_container_width': 1400
+          'global_theme_container_width': 1400,
+          'global_theme_builder_autosave_enabled': true,
+          'global_theme_builder_autosave_interval_ms': DEFAULT_AUTOSAVE_INTERVAL_MS,
+          'global_theme_builder_autosave_show_indicator': true
         },
       recentlyAddedModuleId: null,
       totalModulesAdded: 0
@@ -744,8 +768,29 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     setReloadKey((prev) => prev + 1);
   }, []);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [autosaveStatus, setAutosaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [lastAutosavedAt, setLastAutosavedAt] = useState<Date | null>(null);
+  const [autosaveError, setAutosaveError] = useState<string | null>(null);
   const [showUnsavedModal, setShowUnsavedModal] = useState(false);
   const isInitialLoad = useRef(true);
+  const saveInProgressRef = useRef(false);
+  const autosaveInProgressRef = useRef(false);
+  const pendingChangesDuringSaveRef = useRef(false);
+  const lastSaveSourceRef = useRef<'manual' | 'autosave' | 'publish' | null>(null);
+  const activeSavePromiseRef = useRef<Promise<boolean> | null>(null);
+  const changeVersionRef = useRef(0);
+  const lastSaveChangeVersionRef = useRef(0);
+  const autosaveEnabled = resolveBooleanSetting(
+    editorState.settingsValues['global_theme_builder_autosave_enabled'],
+    true
+  );
+  const autosaveIntervalMs = resolveAutosaveInterval(
+    editorState.settingsValues['global_theme_builder_autosave_interval_ms']
+  );
+  const autosaveShowIndicator = resolveBooleanSetting(
+    editorState.settingsValues['global_theme_builder_autosave_show_indicator'],
+    true
+  );
 
   // Mark initial load as finished after a short delay to allow sync effects to run
   useEffect(() => {
@@ -753,6 +798,30 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       isInitialLoad.current = false;
     }, 1500);
     return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (autosaveStatus !== 'saved') return;
+    const timer = window.setTimeout(() => setAutosaveStatus('idle'), 4000);
+    return () => window.clearTimeout(timer);
+  }, [autosaveStatus]);
+
+  useEffect(() => {
+    if (autosaveEnabled) return;
+    setAutosaveStatus('idle');
+    setAutosaveError(null);
+  }, [autosaveEnabled]);
+
+  const markUnsavedChanges = useCallback(() => {
+    changeVersionRef.current += 1;
+    if (saveInProgressRef.current) {
+      pendingChangesDuringSaveRef.current = true;
+    }
+    setHasUnsavedChanges(true);
+    setSaveStatus('idle');
+    setPublishStatus('idle');
+    setAutosaveStatus('idle');
+    setAutosaveError(null);
   }, []);
 
   // Apply Global Theme to CSS Variables
@@ -858,9 +927,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
           next.settingsValues !== prev.settingsValues;
 
         if (dataChanged) {
-          setHasUnsavedChanges(true);
-          setSaveStatus('idle');
-          setPublishStatus('idle');
+          markUnsavedChanges();
         }
       }
       return next;
@@ -870,9 +937,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   const updateSiteName = (name: string) => {
     setSiteName(name);
     if (!isInitialLoad.current) {
-      setHasUnsavedChanges(true);
-      setSaveStatus('idle');
-      setPublishStatus('idle');
+      markUnsavedChanges();
     }
   };
 
@@ -1165,7 +1230,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       });
 
       setSiteName(motherAIBrief.name);
-      setHasUnsavedChanges(true);
+      markUnsavedChanges();
       setIsGeneratingAI(false);
       setOnboardingFinished(true);
 
@@ -1265,7 +1330,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       });
 
       setSiteName(data.name);
-      setHasUnsavedChanges(true);
+      markUnsavedChanges();
       setIsGeneratingAI(false);
     } catch (error: any) {
       console.error("Error en Solutium AI Engine:", error);
@@ -2496,6 +2561,18 @@ const formatTimestampName = () => {
   };
 
   const handleSaveDraft = async (forcedStatus?: 'draft' | 'published' | 'modified') => {
+    if (!projectId || isPreviewMode) return;
+    if (autosaveInProgressRef.current && activeSavePromiseRef.current) {
+      const autosaveResult = await activeSavePromiseRef.current;
+      if (!autosaveResult) return;
+    }
+    await performDraftSave({
+      source: 'manual',
+      skipPreview: false,
+      silent: false,
+      forcedStatus
+    });
+    return;
     if (!projectId || isPreviewMode || isSaving || saveStatus === 'loading') return;
     const savedCanvasScrollTop = getCanvasScrollContainer()?.scrollTop ?? 0;
     setSaveStatus('loading');
@@ -2709,11 +2786,334 @@ const formatTimestampName = () => {
     }
   };
 
+  const performDraftSave = useCallback(async ({
+    source,
+    skipPreview,
+    silent,
+    forcedStatus
+  }: {
+    source: 'manual' | 'autosave';
+    skipPreview: boolean;
+    silent: boolean;
+    forcedStatus?: 'draft' | 'published' | 'modified';
+  }): Promise<boolean> => {
+    if (!projectId || isPreviewMode) return false;
+
+    if (saveInProgressRef.current && activeSavePromiseRef.current) {
+      return activeSavePromiseRef.current;
+    }
+
+    const runSave = async (): Promise<boolean> => {
+      const savedCanvasScrollTop = skipPreview ? 0 : (getCanvasScrollContainer()?.scrollTop ?? 0);
+      const changeVersionAtSaveStart = changeVersionRef.current;
+      pendingChangesDuringSaveRef.current = false;
+      saveInProgressRef.current = true;
+      autosaveInProgressRef.current = source === 'autosave';
+      lastSaveSourceRef.current = source;
+      setIsSaving(true);
+      setAuthNotice(null);
+
+      if (source === 'manual') {
+        setSaveStatus('loading');
+        await waitForNextPaint();
+      } else {
+        setAutosaveStatus('saving');
+        setAutosaveError(null);
+      }
+
+      try {
+        const sessionState = await ensureActiveSupabaseSession();
+        if (sessionState.state === 'missing_session' || sessionState.state === 'expired_session') {
+          const sessionMessage = source === 'autosave'
+            ? 'Tu sesión expiró. Inicia sesión nuevamente para continuar guardando. Tus cambios siguen en pantalla.'
+            : 'Tu sesiÃ³n expirÃ³. Inicia sesiÃ³n nuevamente para guardar. Tus cambios siguen en pantalla.';
+          setAuthNotice({ type: 'error', message: sessionMessage });
+          if (source === 'manual') {
+            setSaveStatus('error');
+          } else {
+            setAutosaveStatus('error');
+            setAutosaveError(sessionMessage);
+          }
+          return false;
+        }
+
+        if (sessionState.state === 'refreshed' && !silent) {
+          setAuthNotice({
+            type: 'info',
+            message: source === 'autosave'
+              ? 'Sesión actualizada. Guardando automáticamente...'
+              : 'SesiÃ³n actualizada. Guardando cambios...'
+          });
+        }
+
+        const shouldRefreshAutoName = isDefaultName(siteName);
+        const finalSiteName = shouldRefreshAutoName ? formatTimestampName() : (siteName || formatTimestampName());
+        if (finalSiteName !== siteName) {
+          setSiteName(finalSiteName);
+        }
+        const siteId = currentSiteId;
+
+        const migratedState = migrateEditorStateToUUIDs(editorState);
+        if (migratedState !== editorState) {
+          setEditorState(migratedState);
+          if (!skipPreview) {
+            restoreCanvasScroll(savedCanvasScrollTop);
+          }
+        }
+        const activeState = migratedState;
+
+        let newStatus: 'draft' | 'published' | 'modified' = currentStatus;
+        if (typeof forcedStatus === 'string' && ['draft', 'published', 'modified'].includes(forcedStatus)) {
+          newStatus = forcedStatus;
+        } else if (currentStatus === 'published') {
+          newStatus = 'modified';
+        }
+
+        const dbStatus = (newStatus === 'modified') ? 'published' : newStatus;
+
+        const siteData: Partial<WebBuilderSite> = {
+          projectId,
+          appId: appId || '11111111-1111-1111-1111-111111111111',
+          userId: currentUserId || undefined,
+          siteId,
+          siteName: finalSiteName,
+          name: finalSiteName,
+          contentDraft: activeState,
+          status: dbStatus as any
+        };
+
+        if (initialPage && 'id' in initialPage) {
+          siteData.id = initialPage.id;
+        }
+
+        const result = await saveWebBuilderSiteDraft(siteData);
+        if (!result) {
+          throw new Error('Error al guardar el borrador base');
+        }
+
+        const contract = generateRenderingContract(finalSiteName, activeState);
+        await checkDictionarySync(contract);
+
+        const savedPage = await upsertPage({
+          project_id: projectId,
+          web_builder_site_id: result.id,
+          slug: 'index',
+          title: finalSiteName,
+          content: contract,
+          status: newStatus === 'published' || newStatus === 'modified' ? 'published' : 'draft',
+          metadata: {
+            origin_app: 'Constructor Web',
+            version: '2.3-Atomic',
+            editor_state: activeState
+          }
+        });
+
+        if (savedPage && savedPage.id) {
+          const pageSections: Partial<PageSection>[] = contract.sections.map((section: any, idx) => ({
+            id: isUUID(section.id) ? section.id : undefined,
+            page_id: savedPage.id!,
+            section_type: section.tipo,
+            content_json: section.content,
+            styles_json: { ...section.styles, ...section.settings },
+            order_index: idx,
+            metadata: {
+              version: '2.3-Atomic',
+              audit_specs: section.audit_specs,
+              config_hash: section.config_hash
+            }
+          }));
+          await upsertPageSections(savedPage.id!, pageSections);
+        }
+
+        logDebug(`[SIP v6.1] Cambios sincronizados en tabla 'pages' (Status: ${newStatus}, Source: ${source})`);
+        sendToMother('SOLUTIUM_SAVE', {
+          site_id: siteId,
+          site_name: finalSiteName,
+          status: newStatus,
+          timestamp: new Date().toISOString()
+        });
+
+        const hadChangesDuringSave =
+          pendingChangesDuringSaveRef.current || changeVersionRef.current !== changeVersionAtSaveStart;
+
+        if (!hadChangesDuringSave) {
+          setHasUnsavedChanges(false);
+          lastSaveChangeVersionRef.current = changeVersionAtSaveStart;
+        } else {
+          setHasUnsavedChanges(true);
+        }
+
+        setCurrentStatus(newStatus);
+
+        if (!skipPreview) {
+          const previewDisableReason = getPreviewDisableReason(siteId);
+          if (isPreviewConfigDisabled(previewDisableReason)) {
+            logDebug('[PREVIEW_CAPTURE_DEBUG] Preview generation skipped because backend preview configuration is disabled for this session.', {
+              siteId,
+              previewDisableReason
+            });
+            setPreviewStatus('idle');
+          } else {
+            setPreviewStatus('loading');
+
+            try {
+              const webBuilderSiteId = initialPage?.id || (window as any).WEB_BUILDER_SITE_ID;
+              const previewResult = await generatePreviewServerSide({
+                project_id: projectId!,
+                site_id: siteId,
+                web_builder_site_id: webBuilderSiteId,
+                mode: 'thumbnail'
+              });
+
+              if (previewResult.success && previewResult.preview_image_url) {
+                await updateSitePreview(siteId, {
+                  previewImageUrl: previewResult.preview_image_url,
+                  previewThumbnailUrl: previewResult.preview_thumbnail_url || previewResult.preview_image_url,
+                  previewImagePath: previewResult.preview_image_path,
+                  previewImageHash: previewResult.preview_image_hash,
+                });
+
+                sendToMother('SOLUTIUM_PREVIEW_GENERATED', {
+                  site_id: siteId,
+                  preview_image_url: previewResult.preview_image_url
+                });
+
+                logDebug('[PREVIEW_CAPTURE_DEBUG] Server-side preview generated (Save):', {
+                  siteId,
+                  url: previewResult.preview_image_url
+                });
+                setPreviewStatus('success');
+              } else {
+                if (previewResult.errorCode === 'preview_region_missing' || previewResult.errorCode === 'preview_missing_storage_config') {
+                  const disableReason = previewResult.errorCode === 'preview_missing_storage_config'
+                    ? 'preview_missing_storage_config'
+                    : 'preview_region_missing';
+                  setPreviewDisableReason(disableReason, siteId);
+                  logDebug('[PREVIEW_CAPTURE_DEBUG] Draft saved. Preview omitted because backend storage is not configured.', {
+                    siteId,
+                    reason: previewResult.reason || disableReason
+                  });
+                  setPreviewStatus('idle');
+                } else if (previewResult.skipped) {
+                  logDebug('[PREVIEW_CAPTURE_DEBUG] Draft saved. Preview skipped by client/backend guard.', {
+                    siteId,
+                    reason: previewResult.reason || null
+                  });
+                  setPreviewStatus('idle');
+                } else {
+                  console.warn('[PREVIEW_CAPTURE_DEBUG] Draft saved, but preview generation failed.', previewResult.error);
+                  setPreviewStatus('error');
+                }
+              }
+            } catch (pError) {
+              console.warn('[PREVIEW_CAPTURE_DEBUG] Preview failed after saving draft. Draft remains saved.', pError);
+              setPreviewStatus('error');
+            } finally {
+              stabilizeCanvasScroll(savedCanvasScrollTop);
+              setTimeout(() => setPreviewStatus('idle'), 3000);
+            }
+          }
+        } else {
+          // Autosave deliberately skips preview to avoid expensive render cycles and scroll jumps.
+          logDebug('[AUTOSAVE_DEBUG] Preview skipped intentionally during autosave.');
+        }
+
+        if (source === 'manual') {
+          setSaveStatus('success');
+          if (!skipPreview) {
+            stabilizeCanvasScroll(savedCanvasScrollTop);
+          }
+          setTimeout(() => setSaveStatus('idle'), 3000);
+        } else {
+          setAutosaveStatus('saved');
+          setLastAutosavedAt(new Date());
+          setAutosaveError(null);
+        }
+
+        return true;
+      } catch (error) {
+        console.error(source === 'autosave' ? 'Error autosaving draft:' : 'Error saving draft:', error);
+        if (error instanceof SupabaseSessionError) {
+          setAuthNotice({
+            type: 'error',
+            message: source === 'autosave'
+              ? 'Tu sesión expiró. Inicia sesión nuevamente para continuar guardando. Tus cambios siguen en pantalla.'
+              : 'Tu sesiÃ³n expirÃ³. Inicia sesiÃ³n nuevamente para guardar. Tus cambios siguen en pantalla.'
+          });
+        }
+        if (source === 'manual') {
+          setSaveStatus('error');
+          setTimeout(() => setSaveStatus('idle'), 3000);
+        } else {
+          setAutosaveStatus('error');
+          setAutosaveError(
+            error instanceof SupabaseSessionError
+              ? 'Tu sesión expiró. Inicia sesión nuevamente para continuar guardando.'
+              : 'No se pudo guardar automáticamente. Tus cambios siguen en pantalla.'
+          );
+        }
+        return false;
+      } finally {
+        pendingChangesDuringSaveRef.current = false;
+        autosaveInProgressRef.current = false;
+        saveInProgressRef.current = false;
+        lastSaveSourceRef.current = null;
+        activeSavePromiseRef.current = null;
+        setIsSaving(false);
+      }
+    };
+
+    const promise = runSave();
+    activeSavePromiseRef.current = promise;
+    return promise;
+  }, [
+    appId,
+    currentSiteId,
+    currentStatus,
+    currentUserId,
+    editorState,
+    generateRenderingContract,
+    initialPage,
+    isPreviewMode,
+    projectId,
+    siteName
+  ]);
+
   const isDefaultName = (name: string) => {
     if (!name) return true;
     const timestampRegex = /^\d{2}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}-(am|pm)$/;
     return timestampRegex.test(name) || name === 'Mi Sitio Web';
   };
+
+  useEffect(() => {
+    if (!autosaveEnabled) return;
+    if (isPreviewMode || isExternalRender || !projectId || !currentSiteId) return;
+
+    const intervalId = window.setInterval(() => {
+      if (!hasUnsavedChanges) return;
+      if (saveInProgressRef.current || autosaveInProgressRef.current) return;
+      if (isSaving || publishStatus === 'loading') return;
+
+      void performDraftSave({
+        source: 'autosave',
+        skipPreview: true,
+        silent: true
+      });
+    }, autosaveIntervalMs);
+
+    return () => window.clearInterval(intervalId);
+  }, [
+    autosaveEnabled,
+    autosaveIntervalMs,
+    currentSiteId,
+    hasUnsavedChanges,
+    isExternalRender,
+    isPreviewMode,
+    isSaving,
+    performDraftSave,
+    projectId,
+    publishStatus
+  ]);
 
   const handleCloseOnboarding = () => {
     setShowAIInitialForm(false);
@@ -3373,6 +3773,11 @@ const formatTimestampName = () => {
                     isMobile={true}
                     isPreviewMode={isPreviewMode}
                     hasUnsavedChanges={hasUnsavedChanges}
+                    isSaving={isSaving}
+                    autosaveStatus={autosaveStatus}
+                    autosaveError={autosaveError}
+                    lastAutosavedAt={lastAutosavedAt}
+                    showAutosaveIndicator={autosaveEnabled && autosaveShowIndicator}
                     currentStatus={currentStatus}
                     isNewSite={!initialPage}
                   />
@@ -3642,6 +4047,11 @@ const formatTimestampName = () => {
                     isMobile={false}
                     isPreviewMode={isPreviewMode}
                     hasUnsavedChanges={hasUnsavedChanges}
+                      isSaving={isSaving}
+                      autosaveStatus={autosaveStatus}
+                      autosaveError={autosaveError}
+                      lastAutosavedAt={lastAutosavedAt}
+                      showAutosaveIndicator={autosaveEnabled && autosaveShowIndicator}
                       currentStatus={currentStatus}
                       isNewSite={!initialPage}
                     />

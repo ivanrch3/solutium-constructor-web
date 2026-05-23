@@ -80,6 +80,7 @@ import {
   getShowInMenuKey,
   isMenuEligibleModule,
   isUtilityMenuModule,
+  resolveMenuMode,
   resolveShowInMenuState
 } from '../../utils/menuNavigation';
 
@@ -1850,6 +1851,10 @@ const formatTimestampName = () => {
 
   const generateRenderingContract = (finalSiteName: string, stateToUse?: any): RenderingContract => {
     const currentState = stateToUse || editorState;
+    const automaticMenuItems = buildAutomaticMenuItems({
+      modules: currentState.addedModules || [],
+      settingsValues: currentState.settingsValues || {}
+    });
     // Helper to get setting value with fallback and CLEAN value extraction
     const getVal = (moduleId: string, elementId: string | null, settingId: string, defaultValue: any) => {
       const key = elementId ? `${moduleId}_${elementId}_${settingId}` : `${moduleId}_global_${settingId}`;
@@ -2071,6 +2076,19 @@ const formatTimestampName = () => {
 
         // Safeguard: Ensure content has meaningful values or generic placeholders
         if (!content.title) content.title = module.name;
+
+        if ((module.type === 'menu' || module.type === 'navegacion') && !module.id.startsWith('mod_footer_1')) {
+          const menuMode = resolveMenuMode(module.id, currentState.settingsValues || {});
+          const manualLinksKey = `${module.id}_el_menu_items_links`;
+          const manualLinks = dedupeMenuLinks(
+            Array.isArray(currentState.settingsValues?.[manualLinksKey])
+              ? currentState.settingsValues[manualLinksKey]
+              : []
+          );
+
+          settings['global_menu_mode'] = menuMode;
+          settings['el_menu_items_links'] = menuMode === 'manual' ? manualLinks : automaticMenuItems;
+        }
 
         // Specific overrides for modules that have multiple items (like products/clients)
         if (module.type === 'products' || module.type === 'product_grid') {

@@ -73,6 +73,15 @@ import {
   getProjectThemeFromSettings,
   normalizeProjectBrandColors
 } from '../../utils/projectTheme';
+import {
+  buildAutomaticMenuItems,
+  dedupeMenuLinks,
+  getMenuModeKey,
+  getShowInMenuKey,
+  isMenuEligibleModule,
+  isUtilityMenuModule,
+  resolveShowInMenuState
+} from '../../utils/menuNavigation';
 
 // --- CONSTANTS ---
 const MASTER_DICTIONARY = {
@@ -1502,9 +1511,9 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         }
       }
 
-      const isUtilityModule = ['navegacion', 'espaciador', 'footer'].includes(module.type) || module.id.startsWith('mod_header_1') || module.id.startsWith('mod_menu_1') || module.id.startsWith('mod_footer_1');
+      const isUtilityModule = isUtilityMenuModule(module);
 
-      const finalState = {
+      let finalState: EditorState = {
         ...prev,
         addedModules: newModules,
         expandedModuleId: moduleId,
@@ -1521,22 +1530,27 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         totalModulesAdded: (prev.totalModulesAdded || 0) + 1
       };
 
+      if (isMenuEligibleModule(module)) {
+        finalState.settingsValues[getShowInMenuKey(moduleId)] = true;
+      } else {
+        finalState.settingsValues[getShowInMenuKey(moduleId)] = false;
+      }
+
+      if (module.type === 'navegacion' || module.type === 'menu') {
+        finalState.settingsValues[getMenuModeKey(moduleId)] =
+          finalState.settingsValues[getMenuModeKey(moduleId)] || 'automatic';
+      }
+
       // SOP: Auto-generate menu link if not utility
       if (!isPreviewMode && !isUtilityModule) {
         const menuMod = newModules.find(m => m.type === 'navegacion' || m.type === 'menu');
         if (menuMod) {
-          const menuItemsElId = `${menuMod.id}_el_menu_items`;
-          const currentLinks = finalState.settingsValues[`${menuItemsElId}_links`] || [];
-          const anchor = `#${moduleId}`;
-          const isLinked = currentLinks.some((l: any) => l.url === anchor);
-          
-          if (!isLinked) {
-            const moduleInfo = (module.iconKey && MODULE_INFO[module.iconKey]) || MODULE_INFO[module.type] || { label: module.name };
-            const iconKey = module?.iconKey || module?.type || '';
-            const newLinks = [...currentLinks, { label: moduleInfo.label, url: anchor, icon: iconKey }];
-            finalState.settingsValues[`${menuItemsElId}_links`] = newLinks;
-          }
+          finalState = rebuildMenuLinksIfNeeded(finalState, menuMod.id);
         }
+      }
+
+      if (!isPreviewMode && (module.type === 'navegacion' || module.type === 'menu')) {
+        finalState = rebuildMenuLinksIfNeeded(finalState, moduleId);
       }
 
       return finalState;
@@ -1603,24 +1617,24 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         }
       });
 
-      // Automatically remove link from menu if it exists
       const menuModule = newModules.find(m => m.type === 'navegacion' || m.type === 'menu');
       if (menuModule) {
-        const menuElementId = `${menuModule.id}_el_menu_items`;
-        const currentLinks = newSettingsValues[`${menuElementId}_links`] || [];
-        const anchor = `#${moduleId}`;
-        if (currentLinks.some((l: any) => l.url === anchor)) {
-          newSettingsValues[`${menuElementId}_links`] = currentLinks.filter((l: any) => l.url !== anchor);
-        }
+        newSettingsValues[getShowInMenuKey(moduleId)] = false;
       }
 
-      return {
+      let nextState: EditorState = {
         ...prev,
         addedModules: newModules,
         expandedModuleId: prev.expandedModuleId === moduleId ? null : prev.expandedModuleId,
         selectedElementId: prev.selectedElementId?.startsWith(moduleId) ? null : prev.selectedElementId,
         settingsValues: newSettingsValues
       };
+
+      if (menuModule) {
+        nextState = rebuildMenuLinksIfNeeded(nextState, menuModule.id);
+      }
+
+      return nextState;
     });
     setModuleToDelete(null);
   };
@@ -1628,40 +1642,31 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   const rebuildMenuLinksIfNeeded = (state: EditorState, menuModuleId: string) => {
     const menuItemsElId = `${menuModuleId}_el_menu_items`;
     const menuLinksKey = `${menuItemsElId}_links`;
-    const currentLinks = state.settingsValues[menuLinksKey] || [];
+    const currentLinks = dedupeMenuLinks(state.settingsValues[menuLinksKey] || []);
+    const autoAnchors = new Set(
+      (state.addedModules || [])
+        .filter((module) => isMenuEligibleModule(module))
+        .map((module) => `#${module.id}`)
+    );
 
-    if (Array.isArray(currentLinks) && currentLinks.length > 0) {
-      return state;
-    }
+    const manualLinks = currentLinks.filter((link) => {
+      if (!link || typeof link !== 'object') return false;
+      if (link.is_title) return true;
+      const url = String(link.url || '').trim();
+      if (!url.startsWith('#')) return true;
+      return !autoAnchors.has(url);
+    });
 
-    const visibleLinks = (state.addedModules || [])
-      .filter((module) => {
-        const isUtilityModule =
-          ['navegacion', 'menu', 'espaciador', 'footer'].includes(module.type) ||
-          module.id.startsWith('mod_header_1') ||
-          module.id.startsWith('mod_menu_1') ||
-          module.id.startsWith('mod_footer_1');
-
-        return !isUtilityModule;
-      })
-      .map((module) => {
-        const moduleInfo =
-          (module.iconKey && MODULE_INFO[module.iconKey]) ||
-          MODULE_INFO[module.type] ||
-          { label: module.name };
-
-        return {
-          label: moduleInfo.label,
-          url: `#${module.id}`,
-          icon: module.iconKey || module.type || ''
-        };
-      });
+    const visibleLinks = buildAutomaticMenuItems({
+      modules: state.addedModules || [],
+      settingsValues: state.settingsValues
+    });
 
     return {
       ...state,
       settingsValues: {
         ...state.settingsValues,
-        [menuLinksKey]: visibleLinks
+        [menuLinksKey]: dedupeMenuLinks([...visibleLinks, ...manualLinks])
       }
     };
   };
@@ -1700,6 +1705,9 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       const isDesktopHamburgerToggle =
         settingId === 'global_desktop_hamburger' ||
         settingId === 'desktop_hamburger';
+      const isShowInMenuToggle =
+        settingId === 'global_show_in_menu' ||
+        settingId === 'show_in_menu';
 
       if (isDesktopHamburgerToggle && value === false) {
         const menuModule = prev.addedModules.find(
@@ -1707,6 +1715,16 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
             module.id === elementOrModuleId ||
             module.type === 'navegacion' ||
             module.type === 'menu'
+        );
+
+        if (menuModule) {
+          nextState = rebuildMenuLinksIfNeeded(nextState, menuModule.id);
+        }
+      }
+
+      if (isShowInMenuToggle) {
+        const menuModule = prev.addedModules.find(
+          (module) => module.type === 'navegacion' || module.type === 'menu'
         );
 
         if (menuModule) {

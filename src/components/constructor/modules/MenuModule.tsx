@@ -8,6 +8,8 @@ import { useEditorStore } from '../../../store/editorStore';
 import { logDebug } from '../../../utils/debug';
 import { SectionAnimation } from '../animations/SectionAnimation';
 import { normalizeSectionAnimation } from '../../../constants/moduleAnimations';
+import { MODULE_INFO } from '../registry';
+import { MenuMode, dedupeMenuLinks, resolveMenuMode } from '../../../utils/menuNavigation';
 
 const toBoolean = (value: unknown) => value === true || value === 'true' || value === 1 || value === '1';
 
@@ -30,8 +32,10 @@ export const MenuModule: React.FC<{
   logoUrl?: string | null,
   logoWhiteUrl?: string | null,
   isPreviewMode?: boolean,
-  isEditorCanvas?: boolean
-}> = ({ moduleId, settingsValues, logoUrl, logoWhiteUrl, isPreviewMode = false, isEditorCanvas = false }) => {
+  isEditorCanvas?: boolean,
+  menuMode?: MenuMode,
+  automaticMenuItems?: any[]
+}> = ({ moduleId, settingsValues, logoUrl, logoWhiteUrl, isPreviewMode = false, isEditorCanvas = false, menuMode: menuModeProp, automaticMenuItems = [] }) => {
   const { updateSectionSettings, setShowMenuRecommendation } = useEditorStore();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const navRef = useRef<HTMLElement | null>(null);
@@ -64,8 +68,12 @@ export const MenuModule: React.FC<{
   const logoFontWeight = getVal(`${moduleId}_el_menu_logo`, 'font_weight', 'bold');
 
   // Element: Items
+  const resolvedMenuMode = menuModeProp || resolveMenuMode(moduleId, settingsValues);
   const rawLinks = getVal(`${moduleId}_el_menu_items`, 'links', []);
-  const links = Array.isArray(rawLinks) ? rawLinks : [];
+  const manualLinks = dedupeMenuLinks(Array.isArray(rawLinks) ? rawLinks : []);
+  const links = resolvedMenuMode === 'automatic'
+    ? dedupeMenuLinks(automaticMenuItems)
+    : manualLinks;
 
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
 
@@ -225,6 +233,10 @@ export const MenuModule: React.FC<{
   }, [paddingY, layout, desktopHamburger, links.length, logoWidth, activeLogo, logoText]);
 
   const getIcon = (iconName: string) => {
+    const moduleIcon = (MODULE_INFO as any)?.[iconName]?.icon;
+    if (moduleIcon) {
+      return React.createElement(moduleIcon, { size: iconSize });
+    }
     const IconComponent = (LucideIcons as any)[iconName];
     return IconComponent ? <IconComponent size={iconSize} /> : null;
   };

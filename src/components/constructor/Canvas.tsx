@@ -38,6 +38,7 @@ import { ComparisonModule } from './modules/ComparisonModule';
 import { ParallaxScrollContext } from './ParallaxBackground';
 
 import { normalizeSocialUrl, getIconForPlatform, resolveFooterSocialLinks, FOOTER_DEFAULTS } from '../../utils/socialUtils';
+import { buildAutomaticMenuItems, resolveMenuMode } from '../../utils/menuNavigation';
 
 interface CanvasProps {
   editorState: EditorState;
@@ -94,6 +95,14 @@ export const Canvas: React.FC<CanvasProps> = ({
     tablet: '768px',
     mobile: '375px'
   };
+  const automaticMenuItems = React.useMemo(
+    () =>
+      buildAutomaticMenuItems({
+        modules: editorState.addedModules || [],
+        settingsValues: editorState.settingsValues || {}
+      }),
+    [editorState.addedModules, editorState.settingsValues]
+  );
 
   const fullscreenViewportWidth = viewport === 'desktop'
     ? '100%'
@@ -644,6 +653,8 @@ export const Canvas: React.FC<CanvasProps> = ({
                         logoWhiteUrl={logoWhiteUrl}
                         isPreviewMode={isPreviewMode}
                         isEditorCanvas={!isPreviewMode}
+                        menuMode={resolveMenuMode(section.id, finalSettings)}
+                        automaticMenuItems={automaticMenuItems}
                       />
                     )}
                     {(section.type === 'footer') && (

@@ -41,6 +41,7 @@ interface SettingControlProps {
   project?: any;
   contextId?: string;
   moduleType?: string;
+  settingsValues?: Record<string, any>;
 }
 
 // --- REFACTORED COLOR PICKER COMPONENTS ---
@@ -128,9 +129,36 @@ const getPreferredProjectGradientColors = (projectColors?: string[]) => {
 };
 
 const shouldHidePexelsButton = (setting: SettingDefinition, moduleType?: string) => {
+  if (setting.disablePexels) return true;
   const raw = `${setting.id} ${setting.label || ''} ${moduleType || ''}`.toLowerCase();
   if (moduleType === 'trusted_logos') return true;
   return STOCK_IMAGE_BLOCKLIST.some(token => raw.includes(token));
+};
+
+const getModuleIdFromContext = (contextId?: string) => {
+  if (!contextId) return '';
+  const markerIndex = contextId.indexOf('_el_');
+  if (markerIndex > 0) return contextId.slice(0, markerIndex);
+  const globalIndex = contextId.indexOf('_global');
+  if (globalIndex > 0) return contextId.slice(0, globalIndex);
+  return '';
+};
+
+const normalizeOptionList = (rawValue: any) => {
+  if (Array.isArray(rawValue)) {
+    return rawValue
+      .map((item) => {
+        if (typeof item === 'string') return item.trim();
+        if (item && typeof item === 'object') return String(item.label || item.value || item.name || '').trim();
+        return '';
+      })
+      .filter(Boolean);
+  }
+
+  return String(rawValue || '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
 };
 
 const isLikelyTransparentImageUrl = (value: unknown) => {
@@ -265,7 +293,8 @@ export const SettingControl: React.FC<SettingControlProps> = ({
   projectColors,
   project,
   contextId,
-  moduleType
+  moduleType,
+  settingsValues
 }) => {
   const [isUploading, setIsUploading] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
@@ -275,6 +304,44 @@ export const SettingControl: React.FC<SettingControlProps> = ({
   const isDisabled = setting.disabledMessage !== undefined;
   const shouldShowPexels = setting.type === 'image' && !shouldHidePexelsButton(setting, moduleType);
   const preferredOrientation = inferPexelsOrientation(setting, moduleType);
+
+  const resolveDynamicOptions = (targetSetting: SettingDefinition, targetValue: any = currentValue) => {
+    if (!targetSetting.dynamicOptionsFrom) {
+      return targetSetting.options || [];
+    }
+
+    const moduleId = getModuleIdFromContext(contextId);
+    const sourceKey = targetSetting.dynamicOptionsFrom.startsWith(moduleId)
+      ? targetSetting.dynamicOptionsFrom
+      : `${moduleId}_${targetSetting.dynamicOptionsFrom}`;
+    const rawSource = settingsValues?.[sourceKey];
+    const excluded = new Set((targetSetting.dynamicOptionsExclude || []).map((item) => String(item).trim().toLowerCase()));
+    const values = normalizeOptionList(rawSource).filter((option) => !excluded.has(option.toLowerCase()));
+    const uniqueValues = Array.from(new Set(values));
+    let options = uniqueValues.map((option) => ({ label: option, value: option }));
+
+    if (options.length === 0) {
+      options = targetSetting.fallbackOptions || targetSetting.options || [];
+    }
+
+    const currentString = String(targetValue || '').trim();
+    if (
+      targetSetting.preserveCurrentOption &&
+      currentString &&
+      !options.some((option) => String(option.value) === currentString)
+    ) {
+      options = [{ label: `${currentString} (actual)`, value: currentString }, ...options];
+    }
+
+    return options;
+  };
+
+  const getRepeaterFieldDefaultValue = (field: SettingDefinition) => {
+    if (field.type === 'select' && field.dynamicOptionsFrom) {
+      return resolveDynamicOptions(field, field.defaultValue)[0]?.value ?? field.defaultValue;
+    }
+    return field.defaultValue;
+  };
 
   // Helpers for Gradient parsing
   const parseGradient = (grad: string) => {
@@ -608,6 +675,7 @@ export const SettingControl: React.FC<SettingControlProps> = ({
         </div>
       );
     case 'select':
+      const selectOptions = resolveDynamicOptions(setting);
       return (
         <div className={`space-y-1.5 ${isDisabled ? 'opacity-50 pointer-events-none grayscale' : ''}`}>
           <div className="flex items-center justify-between">
@@ -620,7 +688,7 @@ export const SettingControl: React.FC<SettingControlProps> = ({
             onChange={(e) => onChange(e.target.value)}
             className="w-full p-1.5 border border-border rounded-md text-[10px] font-medium focus:outline-none focus:border-primary/30 bg-surface"
           >
-            {setting.options?.map(opt => (
+            {selectOptions.map(opt => (
               <option key={opt.value} value={opt.value}>{opt.label}</option>
             ))}
           </select>
@@ -932,6 +1000,11 @@ export const SettingControl: React.FC<SettingControlProps> = ({
                       products={products}
                       customers={customers}
                       trustedCompanyLogos={trustedCompanyLogos}
+                      projectColors={projectColors}
+                      project={project}
+                      contextId={contextId}
+                      moduleType={moduleType}
+                      settingsValues={settingsValues}
                       onChange={(val) => {
                         const newItems = [...items];
                         let updatedItem = { ...item, [field.id]: val };
@@ -964,7 +1037,7 @@ export const SettingControl: React.FC<SettingControlProps> = ({
                 onClick={() => {
                   const newItem: any = {};
                   setting.fields?.forEach(f => {
-                    newItem[f.id] = f.defaultValue;
+                    newItem[f.id] = getRepeaterFieldDefaultValue(f);
                   });
                   onChange([...items, newItem]);
                 }}

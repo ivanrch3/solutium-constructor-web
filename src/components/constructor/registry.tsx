@@ -1486,10 +1486,19 @@ export const GALLERY_MODULE: WebModule = {
               { title: 'Naturaleza Urbana', desc: 'Verde en la ciudad.', category: 'Naturaleza', url: 'https://picsum.photos/seed/gal3/1000/800' }
             ],
             fields: [
-              { id: 'url', label: 'URL Imagen/Video', type: 'text', defaultValue: '' },
+              { id: 'url', label: 'URL Imagen/Video', type: 'image', defaultValue: '', disablePexels: true },
               { id: 'title', label: 'Título', type: 'text', defaultValue: 'Imagen' },
               { id: 'desc', label: 'Descripción Corta', type: 'text', defaultValue: '' },
-              { id: 'category', label: 'Categoría', type: 'text', defaultValue: 'General' }
+              {
+                id: 'category',
+                label: 'Categoría',
+                type: 'select',
+                defaultValue: 'General',
+                dynamicOptionsFrom: 'el_gallery_filters_categories',
+                dynamicOptionsExclude: ['Todos'],
+                preserveCurrentOption: true,
+                fallbackOptions: [{ label: 'General', value: 'General' }]
+              }
             ]
           }
         ],

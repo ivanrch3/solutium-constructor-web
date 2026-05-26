@@ -645,6 +645,9 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                                                               customers={customers}
                                                               trustedCompanyLogos={trustedCompanyLogos}
                                                               projectColors={projectColors}
+                                                              contextId={`${module.id}_el_bento_items`}
+                                                              moduleType={module.type}
+                                                              settingsValues={editorState.settingsValues}
                                                             />
                                                          ))}
                                                       </motion.div>
@@ -825,6 +828,9 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                                                       customers={customers}
                                                       trustedCompanyLogos={trustedCompanyLogos}
                                                       projectColors={projectColors}
+                                                      contextId={prefix}
+                                                      moduleType={module.type}
+                                                      settingsValues={editorState.settingsValues}
                                                     />
                                                   );
                                                 });

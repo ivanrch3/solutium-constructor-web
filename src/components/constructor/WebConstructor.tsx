@@ -31,7 +31,7 @@ import * as registryModules from './registry';
 import { 
   MODULE_INFO,
   HEADER_MODULE, MENU_MODULE, FOOTER_MODULE, SPACER_MODULE, 
-  PRODUCTS_MODULE, HERO_MODULE, FEATURES_MODULE, ABOUT_MODULE, 
+  PRODUCTS_MODULE, HERO_MODULE, HERO2_MODULE, FEATURES_MODULE, ABOUT_MODULE, 
   PROCESS_MODULE, GALLERY_MODULE, VIDEO_MODULE, TESTIMONIALS_MODULE, 
   STATS_MODULE, NEWSLETTER_MODULE, CONTACT_MODULE, TEAM_MODULE, 
   CTA_MODULE, PRICING_MODULE, FAQ_MODULE, TRUSTED_LOGOS_MODULE,
@@ -83,11 +83,12 @@ import {
   resolveMenuMode,
   resolveShowInMenuState
 } from '../../utils/menuNavigation';
+import { bridgeModuleContent } from '../../utils/hydrationBridge';
 
 // --- CONSTANTS ---
 const MASTER_DICTIONARY = {
   modules: [
-    'hero', 'features', 'about', 'process', 'gallery', 'video', 'testimonials', 
+    'hero', 'hero2', 'features', 'about', 'process', 'gallery', 'video', 'testimonials', 
     'stats', 'newsletter', 'contact', 'team', 'cta', 'pricing', 'faq', 'clients', 'trusted_logos',
     'bento', 'comparative', 'header', 'menu', 'footer', 'spacer', 'products'
   ],
@@ -522,31 +523,28 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
 
           // Re-aplanar settings y content
           const prefix = section.id;
+          const sectionSettings = section.settings || {};
+          const seededDeepValues: Record<string, any> = {};
           
           if (section.settings) {
             Object.entries(section.settings).forEach(([k, v]) => {
               const key = k.startsWith(prefix) ? k : `${prefix}_${k}`;
               reconstructedSettings[key] = v;
+              seededDeepValues[key] = v;
             });
           }
 
           if (section.content) {
-            Object.entries(section.content).forEach(([k, v]) => {
-              // Mapeo inverso de content a deep settings keys
-              if (k === 'title' || k === 'texto_principal' || k === 'texto_base') {
-                reconstructedSettings[`${prefix}_el_hero_typography_title`] = v;
-              } else if (k === 'subtitle' || k === 'texto_secundario' || k === 'texto_descripcion') {
-                reconstructedSettings[`${prefix}_el_hero_typography_subtitle`] = v;
-              } else if (k === 'eyebrow') {
-                reconstructedSettings[`${prefix}_el_hero_typography_eyebrow`] = v;
-              } else if (k === 'image_url') {
-                reconstructedSettings[`${prefix}_el_hero_media_image`] = v;
-              }
-              if (k === 'primary_cta' && v && typeof v === 'object') {
-                reconstructedSettings[`${prefix}_el_hero_ctas_primary_text`] = (v as any).text;
-                reconstructedSettings[`${prefix}_el_hero_ctas_primary_url`] = (v as any).url;
-              }
-            });
+            Object.assign(
+              reconstructedSettings,
+              bridgeModuleContent({
+                type: section.type || section.tipo || '',
+                moduleId: prefix,
+                content: section.content,
+                settings: sectionSettings,
+                existingDeepValues: seededDeepValues
+              })
+            );
           }
         });
 
@@ -2441,6 +2439,39 @@ const formatTimestampName = () => {
           }
         }
 
+        if (module.type === 'hero2') {
+          const hero2Cards = getVal(module.id, 'el_hero2_secondary', 'secondary_cards', []);
+          const normalizedHero2Cards = Array.isArray(hero2Cards)
+            ? hero2Cards.map((card: any, index: number) => ({
+                id: String(card?.id || `card-${index + 1}`),
+                subtitle: String(card?.subtitle || ''),
+                description: String(card?.description || ''),
+                bullets: Array.isArray(card?.bullets)
+                  ? card.bullets
+                      .map((bullet: any) => {
+                        if (typeof bullet === 'string') return bullet.trim();
+                        if (bullet && typeof bullet === 'object') return String(bullet.text || '').trim();
+                        return '';
+                      })
+                      .filter(Boolean)
+                  : []
+              }))
+            : [];
+
+          content.main_eyebrow = getVal(module.id, 'el_hero2_main', 'main_eyebrow', content.eyebrow || '');
+          content.main_title = getVal(module.id, 'el_hero2_main', 'main_title', content.title || module.name);
+          content.main_description = getVal(module.id, 'el_hero2_main', 'main_description', content.subtitle || '');
+          content.hero2_image = getVal(module.id, 'el_hero2_media', 'hero2_image', content.image_url || '');
+          content.hero2_image_alt = getVal(module.id, 'el_hero2_media', 'hero2_image_alt', '');
+          content.secondary_cards = normalizedHero2Cards;
+          content.cards = normalizedHero2Cards;
+
+          if (!content.title) content.title = content.main_title;
+          if (!content.subtitle) content.subtitle = content.main_description;
+          if (!content.eyebrow) content.eyebrow = content.main_eyebrow;
+          if (!content.image_url) content.image_url = content.hero2_image;
+        }
+
         const resolvedHeroTitleMode =
           content.title_mode === 'dynamic' || content.title_mode === 'static'
             ? content.title_mode
@@ -3838,6 +3869,7 @@ const formatTimestampName = () => {
                                   ]},
                                   { id: 'content', label: 'Contenido', modules: [
                                     { icon: MODULE_INFO.hero.icon, label: "Portada", mod: HERO_MODULE },
+                                    { icon: MODULE_INFO.hero2.icon, label: "Portada Solutium", mod: HERO2_MODULE },
                                     { icon: MODULE_INFO.features.icon, label: "Características", mod: FEATURES_MODULE },
                                     { icon: MODULE_INFO.about.icon, label: "Sobre Nosotros", mod: ABOUT_MODULE },
                                     { icon: MODULE_INFO.process.icon, label: "Proceso", mod: PROCESS_MODULE },
@@ -3927,6 +3959,7 @@ const formatTimestampName = () => {
                                     <h4 className="text-[9px] font-black text-primary uppercase tracking-widest px-2">Contenido</h4>
                                     <div className="space-y-1">
                                       <ModuleItem icon={React.createElement(MODULE_INFO.hero.icon, { size: 18 })} label="Portada" onClick={() => addModule(HERO_MODULE)} />
+                                      <ModuleItem icon={React.createElement(MODULE_INFO.hero2.icon, { size: 18 })} label="Portada Solutium" onClick={() => addModule(HERO2_MODULE)} />
                                       <ModuleItem icon={React.createElement(MODULE_INFO.features.icon, { size: 18 })} label="Características" onClick={() => addModule(FEATURES_MODULE)} />
                                       <ModuleItem icon={React.createElement(MODULE_INFO.about.icon, { size: 18 })} label="Sobre Nosotros" onClick={() => addModule(ABOUT_MODULE)} />
                                       <ModuleItem icon={React.createElement(MODULE_INFO.process.icon, { size: 18 })} label="Proceso" onClick={() => addModule(PROCESS_MODULE)} />

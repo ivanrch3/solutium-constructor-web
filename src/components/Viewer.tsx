@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { PublishedSite } from '../types/schema';
 import { HeroModule } from './constructor/modules/HeroModule';
+import { Hero2Module } from './constructor/modules/Hero2Module';
 import { FeaturesModule } from './constructor/modules/FeaturesModule';
 import { AboutModule } from './constructor/modules/AboutModule';
 import { ProductsShowcaseModule } from './constructor/modules/ProductsShowcaseModule';
@@ -356,6 +357,8 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
             return <HeaderModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} />;
           case 'hero':
             return <HeroModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} />;
+          case 'hero2':
+            return <Hero2Module key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} />;
           case 'features':
             return <FeaturesModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} />;
           case 'about':

@@ -13,6 +13,7 @@ import { isDarkColor } from './utils';
 import { logDebug } from '../../utils/debug';
 import { ProductsModule } from './modules/ProductsModule';
 import { HeroModule } from './modules/HeroModule';
+import { Hero2Module } from './modules/Hero2Module';
 import { FeaturesModule } from './modules/FeaturesModule';
 import { AboutModule } from './modules/AboutModule';
 import { ProcessModule } from './modules/ProcessModule';
@@ -521,6 +522,13 @@ export const Canvas: React.FC<CanvasProps> = ({
                         isPreviewMode={isPreviewMode}
                       />
                     )}
+                    {section.type === 'hero2' && (
+                      <Hero2Module 
+                        moduleId={section.id}
+                        settingsValues={finalSettings}
+                        isPreviewMode={isPreviewMode}
+                      />
+                    )}
                     {section.type === 'features' && (
                       <FeaturesModule 
                         moduleId={section.id}
@@ -693,7 +701,7 @@ export const Canvas: React.FC<CanvasProps> = ({
                       />
                     )}
                     {/* Fallback debug for unrendered modules */}
-                    {!['products', 'products_showcase', 'hero', 'features', 'about', 'process', 'gallery', 'video', 'testimonials', 'stats', 'team', 'pricing', 'faq', 'contact', 'clients', 'trusted_logos', 'cta', 'newsletter', 'conversion', 'navegacion', 'menu', 'footer', 'spacer', 'bento', 'comparative'].includes(section.type) && (
+                    {!['products', 'products_showcase', 'hero', 'hero2', 'features', 'about', 'process', 'gallery', 'video', 'testimonials', 'stats', 'team', 'pricing', 'faq', 'contact', 'clients', 'trusted_logos', 'cta', 'newsletter', 'conversion', 'navegacion', 'menu', 'footer', 'spacer', 'bento', 'comparative'].includes(section.type) && (
                       <div className="p-8 border-2 border-dashed border-rose-200 rounded-2xl bg-rose-50 text-rose-500 text-center">
                         <p className="font-bold">Módulo no reconocido: {section.type}</p>
                         <p className="text-xs opacity-60">ID: {section.id} | Template: {section.templateId}</p>

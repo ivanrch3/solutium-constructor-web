@@ -872,10 +872,9 @@ export async function upsertPage(pageData: Partial<Page>): Promise<Page | null> 
         updated_at: now
       };
 
-      // SIP v6.1: Resolved conflict target to project_id,slug as per DB constraint pages_project_id_slug_key
       const { data, error } = await supabase
         .from('pages')
-        .upsert(payload, { onConflict: 'project_id,slug' })
+        .upsert(payload, { onConflict: 'web_builder_site_id,slug' })
         .select()
         .single();
 

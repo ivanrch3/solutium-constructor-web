@@ -783,11 +783,15 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   const isInitialLoad = useRef(true);
   const saveInProgressRef = useRef(false);
   const autosaveInProgressRef = useRef(false);
+  const publishInProgressRef = useRef(false);
   const pendingChangesDuringSaveRef = useRef(false);
-  const lastSaveSourceRef = useRef<'manual' | 'autosave' | 'publish' | null>(null);
+  const lastSaveSourceRef = useRef<'manual' | 'autosave' | 'prepublish' | null>(null);
   const activeSavePromiseRef = useRef<Promise<boolean> | null>(null);
   const changeVersionRef = useRef(0);
   const lastSaveChangeVersionRef = useRef(0);
+  const editorStateRef = useRef(editorState);
+  const siteNameRef = useRef(siteName);
+  const currentStatusRef = useRef(currentStatus);
   const autosaveEnabled = resolveBooleanSetting(
     editorState.settingsValues['global_theme_builder_autosave_enabled'],
     true
@@ -813,6 +817,18 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     const timer = window.setTimeout(() => setAutosaveStatus('idle'), 4000);
     return () => window.clearTimeout(timer);
   }, [autosaveStatus]);
+
+  useEffect(() => {
+    editorStateRef.current = editorState;
+  }, [editorState]);
+
+  useEffect(() => {
+    siteNameRef.current = siteName;
+  }, [siteName]);
+
+  useEffect(() => {
+    currentStatusRef.current = currentStatus;
+  }, [currentStatus]);
 
   useEffect(() => {
     if (autosaveEnabled) return;
@@ -2629,9 +2645,9 @@ const formatTimestampName = () => {
 
   const handleSaveDraft = async (forcedStatus?: 'draft' | 'published' | 'modified') => {
     if (!projectId || isPreviewMode) return;
-    if (autosaveInProgressRef.current && activeSavePromiseRef.current) {
-      const autosaveResult = await activeSavePromiseRef.current;
-      if (!autosaveResult) return;
+    if (saveInProgressRef.current && activeSavePromiseRef.current) {
+      const activeSaveResult = await activeSavePromiseRef.current;
+      if (!activeSaveResult) return;
     }
     await performDraftSave({
       source: 'manual',
@@ -2859,7 +2875,7 @@ const formatTimestampName = () => {
     silent,
     forcedStatus
   }: {
-    source: 'manual' | 'autosave';
+    source: 'manual' | 'autosave' | 'prepublish';
     skipPreview: boolean;
     silent: boolean;
     forcedStatus?: 'draft' | 'published' | 'modified';
@@ -2871,19 +2887,21 @@ const formatTimestampName = () => {
     }
 
     const runSave = async (): Promise<boolean> => {
+      const isAutosave = source === 'autosave';
+      const isInteractiveManualSave = source === 'manual';
       const savedCanvasScrollTop = skipPreview ? 0 : (getCanvasScrollContainer()?.scrollTop ?? 0);
       const changeVersionAtSaveStart = changeVersionRef.current;
       pendingChangesDuringSaveRef.current = false;
       saveInProgressRef.current = true;
-      autosaveInProgressRef.current = source === 'autosave';
+      autosaveInProgressRef.current = isAutosave;
       lastSaveSourceRef.current = source;
       setIsSaving(true);
       setAuthNotice(null);
 
-      if (source === 'manual') {
+      if (isInteractiveManualSave) {
         setSaveStatus('loading');
         await waitForNextPaint();
-      } else {
+      } else if (isAutosave) {
         setAutosaveStatus('saving');
         setAutosaveError(null);
       }
@@ -2891,13 +2909,13 @@ const formatTimestampName = () => {
       try {
         const sessionState = await ensureActiveSupabaseSession();
         if (sessionState.state === 'missing_session' || sessionState.state === 'expired_session') {
-          const sessionMessage = source === 'autosave'
+          const sessionMessage = isAutosave
             ? 'Tu sesión expiró. Inicia sesión nuevamente para continuar guardando. Tus cambios siguen en pantalla.'
             : 'Tu sesiÃ³n expirÃ³. Inicia sesiÃ³n nuevamente para guardar. Tus cambios siguen en pantalla.';
           setAuthNotice({ type: 'error', message: sessionMessage });
-          if (source === 'manual') {
+          if (isInteractiveManualSave) {
             setSaveStatus('error');
-          } else {
+          } else if (isAutosave) {
             setAutosaveStatus('error');
             setAutosaveError(sessionMessage);
           }
@@ -2907,21 +2925,25 @@ const formatTimestampName = () => {
         if (sessionState.state === 'refreshed' && !silent) {
           setAuthNotice({
             type: 'info',
-            message: source === 'autosave'
+            message: isAutosave
               ? 'Sesión actualizada. Guardando automáticamente...'
               : 'SesiÃ³n actualizada. Guardando cambios...'
           });
         }
 
-        const shouldRefreshAutoName = isDefaultName(siteName);
-        const finalSiteName = shouldRefreshAutoName ? formatTimestampName() : (siteName || formatTimestampName());
-        if (finalSiteName !== siteName) {
+        const latestSiteName = siteNameRef.current;
+        const shouldRefreshAutoName = isDefaultName(latestSiteName);
+        const finalSiteName = shouldRefreshAutoName ? formatTimestampName() : (latestSiteName || formatTimestampName());
+        if (finalSiteName !== latestSiteName) {
+          siteNameRef.current = finalSiteName;
           setSiteName(finalSiteName);
         }
         const siteId = currentSiteId;
 
-        const migratedState = migrateEditorStateToUUIDs(editorState);
-        if (migratedState !== editorState) {
+        const latestEditorState = editorStateRef.current;
+        const migratedState = migrateEditorStateToUUIDs(latestEditorState);
+        if (migratedState !== latestEditorState) {
+          editorStateRef.current = migratedState;
           setEditorState(migratedState);
           if (!skipPreview) {
             restoreCanvasScroll(savedCanvasScrollTop);
@@ -2929,10 +2951,11 @@ const formatTimestampName = () => {
         }
         const activeState = migratedState;
 
-        let newStatus: 'draft' | 'published' | 'modified' = currentStatus;
+        const latestStatus = currentStatusRef.current;
+        let newStatus: 'draft' | 'published' | 'modified' = latestStatus;
         if (typeof forcedStatus === 'string' && ['draft', 'published', 'modified'].includes(forcedStatus)) {
           newStatus = forcedStatus;
-        } else if (currentStatus === 'published') {
+        } else if (latestStatus === 'published') {
           newStatus = 'modified';
         }
 
@@ -3010,6 +3033,7 @@ const formatTimestampName = () => {
           setHasUnsavedChanges(true);
         }
 
+        currentStatusRef.current = newStatus;
         setCurrentStatus(newStatus);
 
         if (!skipPreview) {
@@ -3085,13 +3109,15 @@ const formatTimestampName = () => {
           logDebug('[AUTOSAVE_DEBUG] Preview skipped intentionally during autosave.');
         }
 
-        if (source === 'manual') {
-          setSaveStatus('success');
-          if (!skipPreview) {
-            stabilizeCanvasScroll(savedCanvasScrollTop);
+        if (isInteractiveManualSave) {
+          if (hadChangesDuringSave) {
+            setSaveStatus('idle');
+          } else {
+            setSaveStatus('success');
+            setTimeout(() => setSaveStatus('idle'), 3000);
           }
-          setTimeout(() => setSaveStatus('idle'), 3000);
-        } else {
+          stabilizeCanvasScroll(savedCanvasScrollTop);
+        } else if (isAutosave) {
           setAutosaveStatus('saved');
           setLastAutosavedAt(new Date());
           setAutosaveError(null);
@@ -3099,19 +3125,19 @@ const formatTimestampName = () => {
 
         return true;
       } catch (error) {
-        console.error(source === 'autosave' ? 'Error autosaving draft:' : 'Error saving draft:', error);
+        console.error(isAutosave ? 'Error autosaving draft:' : 'Error saving draft:', error);
         if (error instanceof SupabaseSessionError) {
           setAuthNotice({
             type: 'error',
-            message: source === 'autosave'
+            message: isAutosave
               ? 'Tu sesión expiró. Inicia sesión nuevamente para continuar guardando. Tus cambios siguen en pantalla.'
               : 'Tu sesiÃ³n expirÃ³. Inicia sesiÃ³n nuevamente para guardar. Tus cambios siguen en pantalla.'
           });
         }
-        if (source === 'manual') {
+        if (isInteractiveManualSave) {
           setSaveStatus('error');
           setTimeout(() => setSaveStatus('idle'), 3000);
-        } else {
+        } else if (isAutosave) {
           setAutosaveStatus('error');
           setAutosaveError(
             error instanceof SupabaseSessionError
@@ -3146,6 +3172,31 @@ const formatTimestampName = () => {
     siteName
   ]);
 
+  const waitForActiveSaveIfNeeded = useCallback(async () => {
+    if (!activeSavePromiseRef.current) return true;
+    return activeSavePromiseRef.current;
+  }, []);
+
+  const ensureStableDraftBeforePublish = useCallback(async () => {
+    const activeSaveResult = await waitForActiveSaveIfNeeded();
+    if (!activeSaveResult) return false;
+
+    const runPrepublishSave = () => performDraftSave({
+      source: 'prepublish',
+      skipPreview: false,
+      silent: true
+    });
+
+    let saved = await runPrepublishSave();
+    if (!saved) return false;
+
+    if (lastSaveChangeVersionRef.current !== changeVersionRef.current) {
+      saved = await runPrepublishSave();
+    }
+
+    return saved && lastSaveChangeVersionRef.current === changeVersionRef.current;
+  }, [performDraftSave, waitForActiveSaveIfNeeded]);
+
   const isDefaultName = (name: string) => {
     if (!name) return true;
     const timestampRegex = /^\d{2}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}-(am|pm)$/;
@@ -3159,6 +3210,7 @@ const formatTimestampName = () => {
     const intervalId = window.setInterval(() => {
       if (!hasUnsavedChanges) return;
       if (saveInProgressRef.current || autosaveInProgressRef.current) return;
+      if (publishInProgressRef.current) return;
       if (isSaving || publishStatus === 'loading') return;
 
       void performDraftSave({
@@ -3192,18 +3244,31 @@ const formatTimestampName = () => {
   };
 
   const handlePublish = async () => {
-    if (!projectId || isPreviewMode || isSaving || publishStatus === 'loading') return;
+    if (!projectId || isPreviewMode || publishInProgressRef.current || publishStatus === 'loading') return;
     
     if (isDefaultName(siteName)) {
       setShowPublishModal(true);
       return;
     }
 
-    const finalSiteName = siteName;
+    publishInProgressRef.current = true;
     setPublishStatus('loading');
     setIsSaving(true);
     setAuthNotice(null);
     try {
+      const stableDraft = await ensureStableDraftBeforePublish();
+      if (!stableDraft) {
+        setAuthNotice({
+          type: 'error',
+          message: 'No se pudo estabilizar el borrador antes de publicar. Tus cambios siguen en pantalla.'
+        });
+        setPublishStatus('error');
+        setTimeout(() => setPublishStatus('idle'), 3000);
+        return;
+      }
+
+      const finalSiteName = siteNameRef.current || siteName;
+
       const sessionState = await ensureActiveSupabaseSession();
       if (sessionState.state === 'missing_session' || sessionState.state === 'expired_session') {
         setAuthNotice({
@@ -3222,9 +3287,11 @@ const formatTimestampName = () => {
       }
 
       // --- PROTOCOLO SOLUTIUM v2.0: Identidad UUID Persistente ---
-      const migratedState = migrateEditorStateToUUIDs(editorState);
-      if (migratedState !== editorState) {
+      const latestEditorState = editorStateRef.current;
+      const migratedState = migrateEditorStateToUUIDs(latestEditorState);
+      if (migratedState !== latestEditorState) {
         setEditorState(migratedState);
+        editorStateRef.current = migratedState;
       }
       const activeState = migratedState;
 
@@ -3351,6 +3418,7 @@ const formatTimestampName = () => {
       if (result) {
         logDebug('[SIP v6.1] Sitio publicado y sincronizado con Web Engine.');
         setPublishStatus('success');
+        currentStatusRef.current = 'published';
         setCurrentStatus('published');
         setHasUnsavedChanges(false);
         setShowPublishModal(false);
@@ -3457,6 +3525,7 @@ const formatTimestampName = () => {
       setPublishStatus('error');
       setTimeout(() => setPublishStatus('idle'), 3000);
     } finally {
+      publishInProgressRef.current = false;
       setIsSaving(false);
     }
   };

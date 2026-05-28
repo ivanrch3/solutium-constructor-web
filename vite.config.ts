@@ -11,25 +11,15 @@ export default defineConfig(({mode, command}) => {
   const env = loadEnv(mode, '.', '');
   const explicitBase =
     env.VITE_CONSTRUCTOR_PUBLIC_BASE_URL ||
-    env.VITE_CONSTRUCTOR_WEB_PROD_URL ||
+    env.VITE_PUBLIC_URL ||
     env.VITE_BASE_URL ||
     env.BASE_URL;
-  const envFlavor = (env.VITE_ENV || mode || '').toLowerCase();
   const isServe = command === 'serve';
-  const isLocalEnv = envFlavor === 'local' || envFlavor === 'development';
-  const isStagingEnv =
-    envFlavor.includes('staging') ||
-    envFlavor.includes('stage') ||
-    envFlavor.includes('preview');
   const base = isServe
     ? '/'
     : explicitBase
       ? ensureTrailingSlash(explicitBase)
-      : isLocalEnv
-        ? '/'
-        : isStagingEnv
-          ? 'https://constructor.staging.solutium.app/'
-          : 'https://constructor.solutium.app/';
+      : '/';
 
   return {
     plugins: [react(), tailwindcss()],

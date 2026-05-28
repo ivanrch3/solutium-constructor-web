@@ -546,17 +546,17 @@ export const PricingModule: React.FC<{
                 </div>
 
                 {plan.cta && (
-                  <a 
-                    href={plan.cta_url || plan.url || plan.link || '#'}
-                    target={(plan.cta_target || plan.target) === '_blank' ? '_blank' : '_self'}
-                    rel={(plan.cta_target || plan.target) === '_blank' ? 'noopener noreferrer' : undefined}
-                    className="w-full py-4 rounded-2xl font-black text-sm transition-all active:scale-95 overflow-hidden relative group/btn text-center block"
-                    style={{ 
-                      backgroundColor: plan.highlight ? highlightColor : (darkMode ? '#334155' : '#F1F5F9'),
-                      color: plan.highlight ? '#FFFFFF' : (darkMode ? '#FFFFFF' : '#0F172A'),
-                      boxShadow: plan.highlight ? `0 15px 30px -8px ${highlightColor}40` : 'none'
-                    }}
-                  >
+                    <a 
+                      href={plan.cta_url || plan.url || plan.link || '#'}
+                      target={(plan.cta_target || plan.target) === '_blank' ? '_blank' : '_self'}
+                      rel={(plan.cta_target || plan.target) === '_blank' ? 'noopener noreferrer' : undefined}
+                      className="w-full py-4 rounded-2xl font-black text-sm transition-all active:scale-95 overflow-hidden relative group/btn text-center block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+                      style={{ 
+                        backgroundColor: plan.highlight ? highlightColor : (darkMode ? '#334155' : '#F1F5F9'),
+                        color: plan.highlight ? '#FFFFFF' : (darkMode ? '#FFFFFF' : '#0F172A'),
+                        boxShadow: 'none'
+                      }}
+                    >
                     <span className="relative z-10">{plan.cta}</span>
                     {plan.highlight && (
                       <div className="absolute inset-0 bg-white/20 translate-y-full group-hover/btn:translate-y-0 transition-transform duration-300" />

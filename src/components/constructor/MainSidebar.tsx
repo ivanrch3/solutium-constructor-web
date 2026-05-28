@@ -27,6 +27,7 @@ import {
   MENU_MODULE, 
   FOOTER_MODULE, 
   HERO_MODULE, 
+  HERO2_MODULE,
   FEATURES_MODULE, 
   ABOUT_MODULE, 
   PROCESS_MODULE, 
@@ -231,6 +232,11 @@ export const MainSidebar: React.FC<MainSidebarProps> = ({
                       icon={React.createElement(MODULE_INFO.hero.icon, { size: 18 })} 
                       label="Portada" 
                       onClick={() => onAddModule(HERO_MODULE)}
+                    />
+                    <ModuleItem 
+                      icon={React.createElement(MODULE_INFO.hero2.icon, { size: 18 })} 
+                      label="Portada Solutium" 
+                      onClick={() => onAddModule(HERO2_MODULE)}
                     />
                     <ModuleItem 
                       icon={React.createElement(MODULE_INFO.features.icon, { size: 18 })} 

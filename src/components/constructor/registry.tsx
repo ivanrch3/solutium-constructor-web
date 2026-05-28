@@ -192,7 +192,6 @@ export const HEADER_MODULE: WebModule = {
         { id: 'secondary_style', label: 'Estilo Secundario', type: 'select', defaultValue: 'outline', options: [{label:'Sólido', value:'solid'}, {label:'Contorno', value:'outline'}]}
       ],
       interaccion: [
-        { id: 'pulse_effect', label: 'Efecto Pulso (Principal)', type: 'boolean', defaultValue: true },
         { id: 'hover_anim', label: 'Animación Hover', type: 'select', defaultValue: 'scale', options: [{label:'Escala', value:'scale'}, {label:'Brillo', value:'glow'}]}
       ],
       estructura: [], tipografia: [], multimedia: []
@@ -818,8 +817,6 @@ export const HERO_MODULE: WebModule = {
       { id: 'overlay_opacity', label: 'Opacidad Overlay', type: 'range', defaultValue: 0, min: 0, max: 100, unit: '%', showIf: { settingId: 'bg_type', value: ['image', 'video'] } },
     ],
     interaccion: [
-      { id: 'scroll_indicator', label: 'Indicador de Scroll', type: 'boolean', defaultValue: true },
-      { id: 'scroll_text', label: 'Texto de Scroll', type: 'text', defaultValue: 'SCROLL' },
       { id: 'entrance_anim', label: 'Animación de Entrada', type: 'select', defaultValue: 'fade_up', options: [
         { label: 'Desvanecer Arriba', value: 'fade_up' },
         { label: 'Revelar Lados', value: 'reveal' },
@@ -913,10 +910,9 @@ export const HERO_MODULE: WebModule = {
         { id: 'secondary_style', label: 'Estilo', type: 'select', defaultValue: 'outline', options: [{label:'Sólido', value:'solid'}, {label:'Contorno', value:'outline'}], subsection: 'Botón Secundario', showIf: { settingId: 'show_secondary', value: true }},
         { id: 'shimmer_effect', label: 'Efecto Shimmer', type: 'boolean', defaultValue: false, subsection: 'Botón Primario', showIf: { settingId: 'show_primary', value: true } }
       ],
-      interaccion: [
-        { id: 'hover_effect', label: 'Efecto Hover', type: 'select', defaultValue: 'lift', options: [{label:'Elevar', value:'lift'}, {label:'Brillo', value:'glow'}], subsection: 'Botón Primario', showIf: { settingId: 'show_primary', value: true }},
-        { id: 'pulse_effect', label: 'Efecto Pulso', type: 'boolean', defaultValue: true, subsection: 'Botón Primario', showIf: { settingId: 'show_primary', value: true } }
-      ],
+        interaccion: [
+          { id: 'hover_effect', label: 'Efecto Hover', type: 'select', defaultValue: 'lift', options: [{label:'Elevar', value:'lift'}, {label:'Brillo', value:'glow'}], subsection: 'Botón Primario', showIf: { settingId: 'show_primary', value: true }}
+        ],
       estructura: [
         { id: 'btn_radius', label: 'Redondeado', type: 'range', defaultValue: 16, min: 0, max: 40, subsection: 'Botones' },
         { id: 'btn_width', label: 'Ancho (Mobile)', type: 'select', defaultValue: 'auto', options: [{label:'Automático', value:'auto'}, {label:'Ancho Completo', value:'full'}], subsection: 'Botones' }
@@ -945,6 +941,230 @@ export const HERO_MODULE: WebModule = {
         { id: 'proof_color', label: 'Color de Texto', type: 'color', defaultValue: '#475569' }
       ],
       estilo: [], interaccion: []
+    }}
+  ]
+};
+
+export const HERO2_MODULE: WebModule = {
+  id: 'mod_hero2_1',
+  type: 'hero2',
+  iconKey: 'hero2',
+  name: 'Portada Solutium',
+  globalGroups: ['estructura', 'estilo', 'multimedia', 'interaccion'],
+  globalSettings: {
+    estructura: [
+      { id: 'layout', label: 'Layout', type: 'select', defaultValue: 'main-left-secondary-right', options: [
+        { label: 'Principal Izquierda / Secundario Derecha', value: 'main-left-secondary-right' },
+        { label: 'Secundario Izquierda / Principal Derecha', value: 'secondary-left-main-right' },
+        { label: 'Principal Izquierda / Imagen Derecha', value: 'main-left-image-right' },
+        { label: 'Imagen Izquierda / Principal Derecha', value: 'image-left-main-right' }
+      ]},
+      { id: 'padding_top', label: 'Padding Superior', type: 'range', defaultValue: 96, min: 0, max: 220, unit: 'px' },
+      { id: 'padding_bottom', label: 'Padding Inferior', type: 'range', defaultValue: 96, min: 0, max: 220, unit: 'px' },
+      { id: 'min_height', label: 'Altura Minima', type: 'range', defaultValue: 640, min: 320, max: 1100, unit: 'px' },
+      { id: 'content_max_width', label: 'Ancho Maximo del Contenido', type: 'range', defaultValue: 1240, min: 960, max: 1600, unit: 'px' }
+    ],
+    estilo: [
+      { id: 'background_type', label: 'Tipo de Fondo', type: 'select', defaultValue: 'gradient', options: [
+        { label: 'Color', value: 'color' },
+        { label: 'Degradado', value: 'gradient' },
+        { label: 'Imagen', value: 'image' }
+      ]},
+      { id: 'background_color', label: 'Color de Fondo', type: 'color', defaultValue: '#081120', showIf: { settingId: 'background_type', value: 'color' } },
+      { id: 'gradient_from', label: 'Degradado Desde', type: 'color', defaultValue: '#081120', showIf: { settingId: 'background_type', value: 'gradient' } },
+      { id: 'gradient_to', label: 'Degradado Hacia', type: 'color', defaultValue: '#163B6B', showIf: { settingId: 'background_type', value: 'gradient' } },
+      { id: 'gradient_direction', label: 'Direccion del Degradado', type: 'select', defaultValue: '135deg', options: [
+        { label: 'Diagonal', value: '135deg' },
+        { label: 'Horizontal', value: '90deg' },
+        { label: 'Vertical', value: '180deg' },
+        { label: 'Diagonal Inversa', value: '315deg' }
+      ], showIf: { settingId: 'background_type', value: 'gradient' } },
+      { id: 'overlay_color', label: 'Color Overlay', type: 'color', defaultValue: '#020617' },
+      { id: 'overlay_opacity', label: 'Opacidad Overlay', type: 'range', defaultValue: 28, min: 0, max: 100, unit: '%' }
+    ],
+    multimedia: [
+      { id: 'background_image', label: 'Imagen de Fondo', type: 'image', defaultValue: '', showIf: { settingId: 'background_type', value: 'image' } },
+      { id: 'background_image_position', label: 'Posicion Imagen Fondo', type: 'select', defaultValue: 'center center', options: [
+        { label: 'Centro', value: 'center center' },
+        { label: 'Arriba', value: 'center top' },
+        { label: 'Abajo', value: 'center bottom' },
+        { label: 'Izquierda', value: 'left center' },
+        { label: 'Derecha', value: 'right center' }
+      ], showIf: { settingId: 'background_type', value: 'image' } },
+      { id: 'background_image_size', label: 'Ajuste Imagen Fondo', type: 'select', defaultValue: 'cover', options: [
+        { label: 'Cover', value: 'cover' },
+        { label: 'Contain', value: 'contain' },
+        { label: 'Auto', value: 'auto' }
+      ], showIf: { settingId: 'background_type', value: 'image' } }
+    ],
+    interaccion: [
+      { id: 'speed_lines_enabled', label: 'Lineas de Velocidad', type: 'boolean', defaultValue: true },
+      { id: 'speed_lines_direction', label: 'Direccion de Lineas', type: 'select', defaultValue: 'left-to-right', options: [
+        { label: 'Izquierda a Derecha', value: 'left-to-right' },
+        { label: 'Derecha a Izquierda', value: 'right-to-left' }
+      ], showIf: { settingId: 'speed_lines_enabled', value: true } },
+      { id: 'speed_lines_speed', label: 'Velocidad de Lineas', type: 'select', defaultValue: 'medium', options: [
+        { label: 'Lenta', value: 'slow' },
+        { label: 'Media', value: 'medium' },
+        { label: 'Rapida', value: 'fast' }
+      ], showIf: { settingId: 'speed_lines_enabled', value: true } },
+      { id: 'speed_lines_intensity', label: 'Intensidad de Lineas', type: 'select', defaultValue: 'medium', options: [
+        { label: 'Baja', value: 'low' },
+        { label: 'Media', value: 'medium' },
+        { label: 'Alta', value: 'high' }
+      ], showIf: { settingId: 'speed_lines_enabled', value: true } },
+      { id: 'speed_lines_color', label: 'Color de Lineas', type: 'color', defaultValue: 'rgba(255,255,255,0.22)', showIf: { settingId: 'speed_lines_enabled', value: true } },
+      { id: 'speed_lines_opacity', label: 'Opacidad de Lineas', type: 'range', defaultValue: 36, min: 0, max: 100, unit: '%', showIf: { settingId: 'speed_lines_enabled', value: true } },
+      { id: 'speed_lines_mobile_enabled', label: 'Mostrar en Movil', type: 'boolean', defaultValue: false, showIf: { settingId: 'speed_lines_enabled', value: true } }
+    ],
+    contenido: [], tipografia: []
+  },
+  elements: [
+    { id: 'el_hero2_main', name: 'Contenido Principal', type: 'text', groups: ['contenido', 'estructura', 'tipografia', 'interaccion'], settings: {
+      contenido: [
+        { id: 'main_text_mode', label: 'Modo de Texto', type: 'select', defaultValue: 'fixed', options: [
+          { label: 'Fijo', value: 'fixed' }
+        ]},
+        { id: 'main_eyebrow', label: 'Eyebrow', type: 'text', defaultValue: 'PORTADA SOLUTIUM' },
+        { id: 'main_title', label: 'Titulo Principal', type: 'textarea', defaultValue: 'Automatiza, disena y publica con una portada lista para impactar.', rows: 3 },
+        { id: 'main_description', label: 'Descripcion Principal', type: 'textarea', defaultValue: 'Una portada avanzada con estructura clara, movimiento controlado y espacio para mensajes secundarios rotativos sin romper el render publicado.', rows: 4 },
+        { id: 'main_cta_primary_label', label: 'CTA Primario', type: 'text', defaultValue: 'Solicitar demo' },
+        { id: 'main_cta_primary_url', label: 'URL CTA Primario', type: 'text', defaultValue: '#' },
+        { id: 'main_cta_secondary_label', label: 'CTA Secundario', type: 'text', defaultValue: 'Ver soluciones' },
+        { id: 'main_cta_secondary_url', label: 'URL CTA Secundario', type: 'text', defaultValue: '#' }
+      ],
+      estructura: [
+        { id: 'main_text_align', label: 'Alineacion del Texto', type: 'select', defaultValue: 'left', options: [
+          { label: 'Izquierda', value: 'left' },
+          { label: 'Centro', value: 'center' },
+          { label: 'Derecha', value: 'right' }
+        ]}
+      ],
+      tipografia: [
+        { id: 'main_title_size', label: 'Tamano del Titulo', type: 'typography_size', defaultValue: 't1', allowedLevels: ['t1', 't2', 't3'] },
+        { id: 'main_title_color', label: 'Color del Titulo', type: 'color', defaultValue: '#FFFFFF' },
+        { id: 'main_description_color', label: 'Color de la Descripcion', type: 'color', defaultValue: 'rgba(226,232,240,0.92)' }
+      ],
+      interaccion: [
+        { id: 'main_gravity_enabled', label: 'Gravitacion del Bloque Principal', type: 'boolean', defaultValue: true },
+        { id: 'main_gravity_intensity', label: 'Intensidad de Gravitacion', type: 'select', defaultValue: 'medium', options: [
+          { label: 'Baja', value: 'low' },
+          { label: 'Media', value: 'medium' },
+          { label: 'Alta', value: 'high' }
+        ], showIf: { settingId: 'main_gravity_enabled', value: true } },
+        { id: 'main_gravity_speed', label: 'Velocidad de Gravitacion', type: 'select', defaultValue: 'medium', options: [
+          { label: 'Lenta', value: 'slow' },
+          { label: 'Media', value: 'medium' },
+          { label: 'RÃ¡pida', value: 'fast' }
+        ], showIf: { settingId: 'main_gravity_enabled', value: true } }
+      ],
+      estilo: [], multimedia: []
+    }},
+    { id: 'el_hero2_secondary', name: 'Tarjetas Secundarias', type: 'repeater', groups: ['contenido', 'interaccion'], settings: {
+      contenido: [
+        { id: 'secondary_cards_enabled', label: 'Mostrar Tarjetas Secundarias', type: 'boolean', defaultValue: true },
+        { id: 'secondary_cards', label: 'Tarjetas Secundarias', type: 'repeater', defaultValue: [
+          {
+            id: 'card-1',
+            subtitle: 'Automatizacion',
+            description: 'Centraliza procesos del negocio sin sacrificar velocidad visual ni claridad en la portada.',
+            bullets: [
+              { text: 'Integra catalogo, CRM y formularios' },
+              { text: 'Mantiene snapshot estable para published' },
+              { text: 'Escala bien en desktop y movil' }
+            ]
+          },
+          {
+            id: 'card-2',
+            subtitle: 'Experiencia visual',
+            description: 'Combina mensaje principal, refuerzo secundario y un sistema de movimiento suave y controlado.',
+            bullets: [
+              { text: 'Animaciones internas encapsuladas' },
+              { text: 'Fondo edge-to-edge con overlay configurable' },
+              { text: 'Respeta prefers-reduced-motion' }
+            ]
+          }
+        ], fields: [
+          { id: 'id', label: 'ID', type: 'text', defaultValue: 'card-x' },
+          { id: 'subtitle', label: 'Subtitulo', type: 'text', defaultValue: 'Subtitulo' },
+          { id: 'description', label: 'Descripcion', type: 'textarea', defaultValue: 'Describe el valor secundario de esta tarjeta.', rows: 3 },
+          { id: 'bullets', label: 'Vinetas', type: 'repeater', defaultValue: [{ text: 'Nueva vineta' }], fields: [
+            { id: 'text', label: 'Texto', type: 'text', defaultValue: 'Nueva vineta' }
+          ]}
+        ], showIf: { settingId: 'secondary_cards_enabled', value: true } }
+      ],
+      interaccion: [
+        { id: 'secondary_card_interval_ms', label: 'Intervalo de Rotacion', type: 'range', defaultValue: 4200, min: 1000, max: 12000, step: 100, unit: 'ms', showIf: { settingId: 'secondary_cards_enabled', value: true } },
+        { id: 'secondary_card_enter_effect', label: 'Efecto de Entrada', type: 'select', defaultValue: 'fade-up', options: [
+          { label: 'Fade', value: 'fade' },
+          { label: 'Fade Up', value: 'fade-up' },
+          { label: 'Fade Down', value: 'fade-down' },
+          { label: 'Fade Left', value: 'fade-left' },
+          { label: 'Fade Right', value: 'fade-right' },
+          { label: 'Zoom', value: 'zoom' },
+          { label: 'Blur', value: 'blur' }
+        ], showIf: { settingId: 'secondary_cards_enabled', value: true } },
+        { id: 'secondary_card_exit_effect', label: 'Efecto de Salida', type: 'select', defaultValue: 'fade', options: [
+          { label: 'Fade', value: 'fade' },
+          { label: 'Fade Up', value: 'fade-up' },
+          { label: 'Fade Down', value: 'fade-down' },
+          { label: 'Fade Left', value: 'fade-left' },
+          { label: 'Fade Right', value: 'fade-right' },
+          { label: 'Zoom', value: 'zoom' },
+          { label: 'Blur', value: 'blur' }
+        ], showIf: { settingId: 'secondary_cards_enabled', value: true } },
+        { id: 'secondary_card_motion_direction', label: 'Direccion de Permanencia', type: 'select', defaultValue: 'right', options: [
+          { label: 'Sin desplazamiento', value: 'none' },
+          { label: 'Hacia la Izquierda', value: 'left' },
+          { label: 'Hacia la Derecha', value: 'right' }
+        ], showIf: { settingId: 'secondary_cards_enabled', value: true } },
+        { id: 'secondary_card_motion_intensity', label: 'Intensidad del Desplazamiento', type: 'select', defaultValue: 'subtle', options: [
+          { label: 'Sutil', value: 'subtle' },
+          { label: 'Media', value: 'medium' },
+          { label: 'Fuerte', value: 'strong' }
+        ], showIf: { settingId: 'secondary_cards_enabled', value: true } },
+        { id: 'secondary_card_gravity_enabled', label: 'Gravitacion de Tarjetas', type: 'boolean', defaultValue: true, showIf: { settingId: 'secondary_cards_enabled', value: true } },
+        { id: 'secondary_card_gravity_intensity', label: 'Intensidad de Gravitacion', type: 'select', defaultValue: 'low', options: [
+          { label: 'Baja', value: 'low' },
+          { label: 'Media', value: 'medium' },
+          { label: 'Alta', value: 'high' }
+        ], showIf: { settingId: 'secondary_card_gravity_enabled', value: true } },
+        { id: 'secondary_card_gravity_speed', label: 'Velocidad de Gravitacion', type: 'select', defaultValue: 'slow', options: [
+          { label: 'Lenta', value: 'slow' },
+          { label: 'Media', value: 'medium' },
+          { label: 'Rapida', value: 'fast' }
+        ], showIf: { settingId: 'secondary_card_gravity_enabled', value: true } }
+      ],
+      estructura: [], estilo: [], tipografia: [], multimedia: []
+    }},
+    { id: 'el_hero2_media', name: 'Imagen del Layout', type: 'multimedia', groups: ['multimedia', 'estructura', 'estilo'], settings: {
+      multimedia: [
+        { id: 'hero2_image', label: 'Imagen Principal', type: 'image', defaultValue: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=1600&auto=format&fit=crop' },
+        { id: 'hero2_image_alt', label: 'Texto Alternativo', type: 'text', defaultValue: 'Visual principal del modulo' }
+      ],
+      estructura: [
+        { id: 'image_position', label: 'Posicion de Imagen', type: 'select', defaultValue: 'center center', options: [
+          { label: 'Centro', value: 'center center' },
+          { label: 'Arriba', value: 'center top' },
+          { label: 'Abajo', value: 'center bottom' },
+          { label: 'Izquierda', value: 'left center' },
+          { label: 'Derecha', value: 'right center' }
+        ]},
+        { id: 'image_fit', label: 'Ajuste de Imagen', type: 'select', defaultValue: 'contain', options: [
+          { label: 'Contain', value: 'contain' },
+          { label: 'Cover', value: 'cover' },
+          { label: 'Fill', value: 'fill' }
+        ]}
+      ],
+      estilo: [
+        { id: 'image_radius', label: 'Radio de Imagen', type: 'range', defaultValue: 28, min: 0, max: 80, unit: 'px' },
+        { id: 'image_shadow', label: 'Sombra de Imagen', type: 'select', defaultValue: 'sm', options: [
+          { label: 'Ninguna', value: 'none' },
+          { label: 'Suave', value: 'sm' },
+          { label: 'Media', value: 'md' }
+        ]}
+      ],
+      contenido: [], tipografia: [], interaccion: []
     }}
   ]
 };
@@ -1490,10 +1710,19 @@ export const GALLERY_MODULE: WebModule = {
               { title: 'Naturaleza Urbana', desc: 'Verde en la ciudad.', category: 'Naturaleza', url: 'https://picsum.photos/seed/gal3/1000/800' }
             ],
             fields: [
-              { id: 'url', label: 'URL Imagen/Video', type: 'text', defaultValue: '' },
+              { id: 'url', label: 'URL Imagen/Video', type: 'image', defaultValue: '', disablePexels: true },
               { id: 'title', label: 'Título', type: 'text', defaultValue: 'Imagen' },
               { id: 'desc', label: 'Descripción Corta', type: 'text', defaultValue: '' },
-              { id: 'category', label: 'Categoría', type: 'text', defaultValue: 'General' }
+              {
+                id: 'category',
+                label: 'Categoría',
+                type: 'select',
+                defaultValue: 'General',
+                dynamicOptionsFrom: 'el_gallery_filters_categories',
+                dynamicOptionsExclude: ['Todos'],
+                preserveCurrentOption: true,
+                fallbackOptions: [{ label: 'General', value: 'General' }]
+              }
             ]
           }
         ],
@@ -1568,8 +1797,7 @@ export const VIDEO_MODULE: WebModule = {
           { id: 'radius', label: 'Redondeado', type: 'range', defaultValue: 24, min: 0, max: 100 },
           { id: 'shadow', label: 'Sombra Elevada', type: 'boolean', defaultValue: true },
           { id: 'border_color', label: 'Color de Borde', type: 'color', defaultValue: 'rgba(0,0,0,0.1)' },
-          { id: 'play_button_style', label: 'Estilo Botón Play', type: 'select', defaultValue: 'pulse', options: [
-            { label: 'Pulso', value: 'pulse' },
+          { id: 'play_button_style', label: 'Estilo Botón Play', type: 'select', defaultValue: 'simple', options: [
             { label: 'Simple', value: 'simple' },
             { label: 'Ninguno', value: 'none' }
           ]}
@@ -3255,6 +3483,7 @@ export const MODULE_INFO: Record<string, {
     replacement: 'products'
   },
   hero: { label: 'Portada', icon: Sparkles },
+  hero2: { label: 'Portada Solutium', icon: Sparkles },
   features: { label: 'Características', icon: ListChecks },
   about: { label: 'Sobre Nosotros', icon: Info },
   process: { label: 'Proceso', icon: Workflow },

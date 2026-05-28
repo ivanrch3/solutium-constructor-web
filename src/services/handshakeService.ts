@@ -15,13 +15,25 @@ export interface HandshakePayload {
 let motherWindow: any = window.opener || window.parent;
 let isStable = false;
 
+const CONFIG_EVENT_TYPES = ['SOLUTIUM_CONFIG', 'SOLUTIUM_CONFIG_RESPONSE', 'SOLUTIUM_SET_CONFIG'] as const;
+
+const extractConfigPayload = (message: any) =>
+  message?.payload || message?.config || (message?.projectId || message?.satellite_id ? message : null);
+
+const syncSupabaseAccessToken = (payload: any) => {
+  if (payload?.session_token) {
+    sessionStorage.setItem('solutium_supabase_access_token', payload.session_token);
+  }
+  if (payload?.supabaseAccessToken) {
+    sessionStorage.setItem('solutium_supabase_access_token', payload.supabaseAccessToken);
+  }
+};
+
 /**
  * SIP v5.2: Protocolo de Arranque y Comunicación
  */
-export const startHandshake = (
-  onConfig: (payload: HandshakePayload) => void
-) => {
-  logDebug("🛠️ [SIP v5.2] Iniciando protocolo de arranque...");
+export const startHandshake = (onConfig: (payload: HandshakePayload) => void) => {
+  logDebug('[SIP v5.2] Iniciando protocolo de arranque...');
 
   const processConfig = (payload: any) => {
     if (!payload) return;
@@ -33,19 +45,12 @@ export const startHandshake = (
       session_token: payload.session_token,
       appId: payload.appId || payload.app_id || '11111111-1111-1111-1111-111111111111',
       site_id: payload.site_id,
-      siteName: payload.siteName
+      siteName: payload.siteName,
     };
 
-    // SIP v6.3: Proactive storage sync for the auth provider
-    if (payload.session_token) {
-      sessionStorage.setItem('solutium_supabase_access_token', payload.session_token);
-    }
-    if (payload.supabaseAccessToken) {
-      sessionStorage.setItem('solutium_supabase_access_token', payload.supabaseAccessToken);
-    }
+    syncSupabaseAccessToken(payload);
 
-    // Copiar el resto de propiedades
-    Object.keys(payload).forEach(key => {
+    Object.keys(payload).forEach((key) => {
       if (!(key in config)) {
         (config as any)[key] = payload[key];
       }
@@ -54,51 +59,50 @@ export const startHandshake = (
     onConfig(config);
   };
 
-  const setupMessageListener = () => {
-    window.addEventListener('message', (event) => {
-      if (event.data && event.data.type) {
-        // Estabilizar conexión capturando la fuente
-        if (event.source && event.source !== window) {
-          motherWindow = event.source;
-          isStable = true;
-          logDebug("✅ [SIP v5.2] Conexión estabilizada con la App Madre.");
-        }
+  const handleMessage = (event: MessageEvent) => {
+    if (!event.data?.type) return;
 
-        if (event.data.type === 'SOLUTIUM_CONFIG' || event.data.type === 'SOLUTIUM_CONFIG_RESPONSE' || event.data.type === 'SOLUTIUM_SET_CONFIG') {
-          logDebug(`✅ [SIP v5.2] Configuración recibida (${event.data.type}).`);
-          
-          // LOG DE DIAGNÓSTICO SOLICITADO
-          logDebug('[CONSTRUCTOR_MESSAGE_RECEIVED_DEBUG]', {
-            eventType: event.data.type,
-            topLevelFirstSectionContent: event.data.sections?.[0]?.content,
-            contentFirstSectionContent: event.data.content?.sections?.[0]?.content,
-            configFirstSectionContent: event.data.config?.sections?.[0]?.content,
-            fullFirstSection: event.data.sections?.[0] || event.data.content?.sections?.[0] || event.data.config?.sections?.[0]
-          });
+    if (event.source && event.source !== window) {
+      motherWindow = event.source;
+      isStable = true;
+      logDebug('[SIP v5.2] Conexión estabilizada con la App Madre.');
+    }
 
-          // SOP: Max robustness - check payload, config, or root if it looks like a config
-          const dataPayload = event.data.payload || event.data.config || (event.data.projectId || event.data.satellite_id ? event.data : null);
-          if (dataPayload) {
-            processConfig(dataPayload);
-            sendToMother({ type: 'SOLUTIUM_ACK', status: 'success' });
-          } else {
-            logDebug("⚠️ [SIP v5.2] Recibido mensaje SOLUTIUM_CONFIG pero el payload está vacío.");
-          }
-        }
-      }
+    if (!CONFIG_EVENT_TYPES.includes(event.data.type)) return;
+
+    logDebug(`[SIP v5.2] Configuración recibida (${event.data.type}).`);
+    logDebug('[CONSTRUCTOR_MESSAGE_RECEIVED_DEBUG]', {
+      eventType: event.data.type,
+      topLevelFirstSectionContent: event.data.sections?.[0]?.content,
+      contentFirstSectionContent: event.data.content?.sections?.[0]?.content,
+      configFirstSectionContent: event.data.config?.sections?.[0]?.content,
+      fullFirstSection:
+        event.data.sections?.[0] || event.data.content?.sections?.[0] || event.data.config?.sections?.[0],
     });
+
+    const dataPayload = extractConfigPayload(event.data);
+    if (!dataPayload) {
+      logDebug('[SIP v5.2] Recibido mensaje SOLUTIUM_CONFIG pero el payload está vacío.');
+      return;
+    }
+
+    processConfig(dataPayload);
+    sendToMother({ type: 'SOLUTIUM_ACK', status: 'success' });
+  };
+
+  const setupMessageListener = () => {
+    window.addEventListener('message', handleMessage);
   };
 
   const urlParams = new URLSearchParams(window.location.search);
-  
-  console.log('[CONSTRUCTOR_BOOT_START] ⚡️ startHandshake iniciado', {
+
+  console.log('[CONSTRUCTOR_BOOT_START] startHandshake iniciado', {
     hasOpener: !!window.opener,
     hasParent: window.parent !== window,
     urlParams: Object.fromEntries(urlParams.entries()),
-    isStable: isStable
+    isStable,
   });
 
-  // PRIORIDAD 1: URL (Fat URL) - Sobrevive a todo
   const configFromUrl = {
     supabase_url: urlParams.get('supabase_url'),
     supabase_anon_key: urlParams.get('supabase_anon_key'),
@@ -106,52 +110,52 @@ export const startHandshake = (
     projectId: urlParams.get('satellite_id'),
     appId: urlParams.get('app_id'),
     site_id: urlParams.get('site_id'),
-    siteName: urlParams.get('site_name')
+    siteName: urlParams.get('site_name'),
   };
 
   if (configFromUrl.supabase_url && configFromUrl.session_token) {
-    console.log("🚀 [SIP v5.2] Configuración recuperada desde URL.", configFromUrl);
+    console.log('[SIP v5.2] Configuración recuperada desde URL.', configFromUrl);
     processConfig(configFromUrl);
-    setupMessageListener(); // Solo para escuchar futuras órdenes
+    setupMessageListener();
     return;
   }
 
-  // PRIORIDAD 2: window.name (Cajón persistente)
   if (window.name) {
     try {
       const data = JSON.parse(window.name);
       if (data.type === 'SOLUTIUM_DIRECT_INJECTION' || data.type === 'SOLUTIUM_CONFIG') {
-        logDebug("📦 [SIP v5.2] Configuración recuperada desde window.name.");
+        logDebug('[SIP v5.2] Configuración recuperada desde window.name.');
         processConfig(data.payload);
         setupMessageListener();
         return;
       }
-    } catch(e) {}
+    } catch {
+      // noop
+    }
   }
 
-  // PRIORIDAD 3: Escucha Pasiva (Esperar a la Madre) y Solicitud Proactiva
-  logDebug("⏳ [SIP v5.2] Esperando configuración de la App Madre...");
+  logDebug('[SIP v5.2] Esperando configuración de la App Madre...');
   setupMessageListener();
-  
-  // Solicitar proactivamente si tardamos más de 500ms
-  setTimeout(() => {
+
+  const requestConfig = () => {
     if (!isStable) {
-      logDebug("📡 [SIP v5.2] Solicitando configuración (SOLUTIUM_GET_CONFIG)...");
+      logDebug('[SIP v5.2] Solicitando configuración (SOLUTIUM_GET_CONFIG)...');
       sendToMother({ type: 'SOLUTIUM_GET_CONFIG' });
     }
-  }, 500);
+  };
+
+  requestConfig();
+  window.setTimeout(requestConfig, 250);
+  window.setTimeout(requestConfig, 900);
 };
 
 /**
- * SIP v5.2: Envío Robusto con Estabilización
+ * SIP v5.2: Envío robusto con estabilización
  */
 export const sendToMother = (typeOrMessage: any, payload?: any) => {
   if (motherWindow && motherWindow !== window) {
-    const message = payload !== undefined 
-      ? { type: typeOrMessage, payload } 
-      : typeOrMessage;
-      
-      motherWindow.postMessage(message, '*');
+    const message = payload !== undefined ? { type: typeOrMessage, payload } : typeOrMessage;
+    motherWindow.postMessage(message, '*');
   }
 };
 
@@ -169,11 +173,11 @@ export const requestFreshSupabaseConfig = async (timeoutMs: number = 6000): Prom
 
     const handleMessage = (event: MessageEvent) => {
       const eventType = event.data?.type;
-      if (!eventType || !['SOLUTIUM_CONFIG', 'SOLUTIUM_CONFIG_RESPONSE', 'SOLUTIUM_SET_CONFIG'].includes(eventType)) {
+      if (!eventType || !CONFIG_EVENT_TYPES.includes(eventType)) {
         return;
       }
 
-      const payload = event.data?.payload || event.data?.config || (event.data?.projectId || event.data?.satellite_id ? event.data : null);
+      const payload = extractConfigPayload(event.data);
       const supabaseUrl = payload?.supabase_url;
       const supabaseAnonKey = payload?.supabase_anon_key;
       const sessionToken = payload?.session_token || payload?.supabaseAccessToken || payload?.accessToken;

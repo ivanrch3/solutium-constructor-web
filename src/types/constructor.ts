@@ -20,6 +20,10 @@ export interface SettingDefinition {
   defaultValue: any;
   subsection?: string;
   options?: { label: string; value: any; icon?: string }[];
+  dynamicOptionsFrom?: string;
+  dynamicOptionsExclude?: any[];
+  preserveCurrentOption?: boolean;
+  fallbackOptions?: { label: string; value: any }[];
   min?: number;
   max?: number;
   step?: number;
@@ -36,6 +40,7 @@ export interface SettingDefinition {
   showIf?: SettingCondition;
   disabledIf?: SettingCondition;
   socialOnly?: boolean;
+  disablePexels?: boolean;
 }
 
 export interface ModuleElement {

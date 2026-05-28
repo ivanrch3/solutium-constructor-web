@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { ArrowRight, ChevronDown, Play } from 'lucide-react';
+import { ArrowRight, Play } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
 import { TextRenderer } from '../TextRenderer';
@@ -185,8 +185,6 @@ export const HeroModule: React.FC<{
     : rawBgGradient;
   const overlayColor = getVal(null, 'overlay_color', '#000000');
   const overlayOpacity = parseNumSafe(getVal(null, 'overlay_opacity', 0), 0);
-  const scrollIndicator = getVal(null, 'scroll_indicator', true);
-  const scrollText = getVal(null, 'scroll_text', 'SCROLL');
   const globalThemeSectionAnimationSpeed = parseNumSafe(settingsValues['global_theme_section_animation_speed'], 1);
   const globalThemeSectionAnimation = settingsValues['global_theme_section_animation'];
   const moduleSectionAnimation = getVal(null, 'section_animation', undefined);
@@ -407,7 +405,6 @@ export const HeroModule: React.FC<{
   const secondaryStyle = getVal(`${moduleId}_el_hero_ctas`, 'secondary_style', 'outline');
   const shimmerEffect = getVal(`${moduleId}_el_hero_ctas`, 'shimmer_effect', false);
   const hoverEffect = getVal(`${moduleId}_el_hero_ctas`, 'hover_effect', 'lift');
-  const pulseEffect = getVal(`${moduleId}_el_hero_ctas`, 'pulse_effect', true);
   const btnRadius = parseNumSafe(getVal(`${moduleId}_el_hero_ctas`, 'btn_radius', 16), 16);
   const btnWidthMobile = getVal(`${moduleId}_el_hero_ctas`, 'btn_width', 'auto');
 
@@ -443,6 +440,9 @@ export const HeroModule: React.FC<{
     : height === 'screen' ? 'min-h-screen' :
       height === 'large' ? 'min-h-[80vh]' :
       height === 'medium' ? 'min-h-[60vh]' : 'min-h-auto';
+  const contentBottomPadding = height === 'screen'
+    ? Math.max(16, Math.round(paddingY * 0.35))
+    : Math.max(16, Math.round(paddingY * 0.6));
 
   const renderContent = (forcedAlign?: 'left' | 'center' | 'right') => {
     const inheritedAlign = forcedAlign || 'left';
@@ -569,44 +569,41 @@ export const HeroModule: React.FC<{
           }`}
         >
         {hasPrimary && (
-          <motion.a 
-            href={primaryUrl || '#'}
-            target={primaryTarget === '_blank' ? '_blank' : undefined}
-            rel={primaryTarget === '_blank' ? 'noopener noreferrer' : undefined}
-            whileHover={hoverEffect === 'lift' ? { y: -5 } : { boxShadow: `0 0 20px ${primaryBg}40` }}
-            whileTap={{ scale: 0.95 }}
-            animate={pulseEffect ? { 
-              boxShadow: [`0 0 0 0px ${primaryBg}40`, `0 0 0 15px ${primaryBg}00`]
-            } : {}}
-            transition={pulseEffect ? { repeat: Infinity, duration: 2 } : {}}
-            onClick={(e) => {
-              if (isPreviewMode) return;
-              e.stopPropagation();
-              selectSection(moduleId);
-              selectElement(`${moduleId}_el_hero_ctas`);
-            }}
-            className={`group relative overflow-hidden flex items-center justify-center gap-2 px-8 py-4 font-black uppercase tracking-widest text-[11px] shadow-2xl transition-all ${btnWidthMobile === 'full' ? 'w-full sm:w-auto' : 'w-auto'}`}
-            style={{ 
-              backgroundColor: primaryBg,
-              color: primaryColor,
-              minHeight: '56px',
-              borderRadius: `${btnRadius}px`
-            }}
-          >
-            {shimmerEffect && (
-              <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full animate-[shimmer_2s_infinite]" />
-            )}
-            <InlineEditableText
-              moduleId={moduleId}
-              elementId={`${moduleId}_el_hero_ctas`}
-              settingId="primary_text"
-              value={primaryText}
-              tagName="span"
-              isPreviewMode={isPreviewMode}
-              className={ctaTextClass}
-            />
-            {primaryIcon && <IconRenderer name={primaryIcon} className="group-hover:translate-x-1 transition-transform" />}
-          </motion.a>
+            <motion.a 
+              href={primaryUrl || '#'}
+              target={primaryTarget === '_blank' ? '_blank' : undefined}
+              rel={primaryTarget === '_blank' ? 'noopener noreferrer' : undefined}
+              whileHover={hoverEffect === 'lift' ? { y: -5 } : {}}
+              whileTap={{ scale: 0.95 }}
+              onClick={(e) => {
+                if (isPreviewMode) return;
+                e.stopPropagation();
+                selectSection(moduleId);
+                selectElement(`${moduleId}_el_hero_ctas`);
+              }}
+              className={`group relative overflow-hidden flex items-center justify-center gap-2 px-8 py-4 font-black uppercase tracking-widest text-[11px] transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${btnWidthMobile === 'full' ? 'w-full sm:w-auto' : 'w-auto'}`}
+              style={{ 
+                backgroundColor: primaryBg,
+                color: primaryColor,
+                minHeight: '56px',
+                borderRadius: `${btnRadius}px`,
+                boxShadow: 'none'
+              }}
+            >
+              {shimmerEffect && (
+                <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full animate-[shimmer_2s_infinite]" />
+              )}
+              <InlineEditableText
+                moduleId={moduleId}
+                elementId={`${moduleId}_el_hero_ctas`}
+                settingId="primary_text"
+                value={primaryText}
+                tagName="span"
+                isPreviewMode={isPreviewMode}
+                className={ctaTextClass}
+              />
+              {primaryIcon && <IconRenderer name={primaryIcon} className="group-hover:translate-x-1 transition-transform" />}
+            </motion.a>
         )}
 
         {hasSecondary && (
@@ -865,7 +862,7 @@ export const HeroModule: React.FC<{
         style={{ 
           maxWidth: `${maxWidth}px`,
           paddingTop: `${paddingY}px`,
-          paddingBottom: `${paddingY}px`
+          paddingBottom: `${contentBottomPadding}px`
         }}
       >
         {layout === 'split' && (
@@ -905,23 +902,6 @@ export const HeroModule: React.FC<{
           </div>
         )}
       </div>
-
-      {scrollIndicator && (
-        <motion.div 
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 2 }}
-          className="absolute bottom-10 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center gap-2 text-primary"
-        >
-          <span className="text-[9px] font-black uppercase tracking-[0.3em] opacity-50">{scrollText}</span>
-          <motion.div
-            animate={{ y: [0, 8, 0] }}
-            transition={{ duration: 2, repeat: Infinity }}
-          >
-            <ChevronDown size={20} />
-          </motion.div>
-        </motion.div>
-      )}
 
       <style>{`
         @keyframes shimmer {

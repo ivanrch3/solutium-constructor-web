@@ -352,11 +352,11 @@ export const CTAModule: React.FC<{
                   className={`flex-1 bg-transparent border-none focus:ring-0 font-medium px-4 ${darkMode ? 'text-white' : 'text-slate-900'}`}
                   required
                 />
-                <button 
-                  type="submit"
-                  className="px-6 py-3 bg-primary text-white font-black text-xs uppercase tracking-widest rounded-xl hover:bg-blue-700 transition-all shadow-lg"
-                  style={{ backgroundColor: btnPrimaryBg, color: btnPrimaryColor }}
-                >
+                  <button 
+                    type="submit"
+                    className="px-6 py-3 bg-primary text-white font-black text-xs uppercase tracking-widest rounded-xl hover:bg-blue-700 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+                    style={{ backgroundColor: btnPrimaryBg, color: btnPrimaryColor, boxShadow: 'none' }}
+                  >
                   {primaryText}
                 </button>
               </motion.div>
@@ -384,19 +384,20 @@ export const CTAModule: React.FC<{
             href={primaryUrl}
             target={primaryTarget === '_blank' ? '_blank' : undefined}
             rel={primaryTarget === '_blank' ? 'noopener noreferrer' : undefined}
-            whileHover={magneticButton ? { x: 5, y: -5, scale: 1.05 } : hoverEffect === 'scale' ? { scale: 1.05 } : { boxShadow: `0 0 30px ${btnPrimaryBg}60` }}
-            whileTap={{ scale: 0.95 }}
+              whileHover={magneticButton ? { x: 5, y: -5, scale: 1.05 } : hoverEffect === 'scale' ? { scale: 1.05 } : {}}
+              whileTap={{ scale: 0.95 }}
             onClick={(e) => {
               if (isPreviewMode) return;
               e.stopPropagation();
               selectSection(moduleId);
               selectElement(`${moduleId}_el_cta_actions`);
             }}
-            className="relative px-8 py-4 font-black text-sm flex items-center gap-2 shadow-xl transition-all overflow-hidden group"
+            className="relative px-8 py-4 font-black text-sm flex items-center gap-2 transition-all overflow-hidden group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
             style={{ 
               backgroundColor: btnPrimaryBg, 
               color: btnPrimaryColor,
-              borderRadius: `${btnRadius}px` 
+              borderRadius: `${btnRadius}px`,
+              boxShadow: 'none'
             }}
           >
             {enableShimmer && (

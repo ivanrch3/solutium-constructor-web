@@ -26,6 +26,7 @@ import { useEditorStore } from '../../store/editorStore';
 import { MODULE_INFO, GROUP_LABELS, BENTO_MODULE } from './registry';
 import { SettingControl } from './SettingControl';
 import { GlobalSettingsPanel } from './GlobalSettingsPanel';
+import { resolveModuleDisplayLabel } from '../../utils/menuNavigation';
 
 interface StructurePanelProps {
   editorState: EditorState;
@@ -222,32 +223,43 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
     }));
   };
 
-  const toggleMenuLink = (moduleId: string, moduleLabel: string) => {
+  const toggleMenuLink = (moduleId: string) => {
     const menuModule = editorState.addedModules.find(m => m.type === 'navegacion' || m.type === 'menu');
     if (!menuModule) return;
 
-    const elementId = `${menuModule.id}_el_menu_items`;
-    const currentLinks = editorState.settingsValues[`${elementId}_links`] || [];
-    const anchor = `#${moduleId}`;
-    const isLinked = currentLinks.some((l: any) => l.url === anchor);
+    const module = editorState.addedModules.find(m => m.id === moduleId);
+    const isUtilityModule = module
+      ? ['navegacion', 'menu', 'espaciador', 'footer', 'trusted_logos'].includes(module.type) ||
+        module.id.startsWith('mod_header_1') ||
+        module.id.startsWith('mod_menu_1') ||
+        module.id.startsWith('mod_footer_1')
+      : true;
+    if (!module || isUtilityModule) return;
 
-    let newLinks;
-    if (isLinked) {
-      newLinks = currentLinks.filter((l: any) => l.url !== anchor);
-    } else {
-      const module = editorState.addedModules.find(m => m.id === moduleId);
-      const iconKey = module?.iconKey || module?.type || '';
-      newLinks = [...currentLinks, { label: moduleLabel, url: anchor, icon: iconKey }];
-    }
-
-    onSettingChange(elementId, 'links', newLinks);
+    const currentState = isModuleLinked(moduleId);
+    onSettingChange(moduleId, 'global_show_in_menu', !currentState);
   };
 
   const isModuleLinked = (moduleId: string) => {
-    const menuModule = editorState.addedModules.find(m => m.type === 'navegacion' || m.type === 'menu');
-    if (!menuModule) return false;
-    const currentLinks = editorState.settingsValues[`${menuModule.id}_el_menu_items_links`] || [];
-    return currentLinks.some((l: any) => l.url === `#${moduleId}`);
+    const module = editorState.addedModules.find(m => m.id === moduleId);
+    if (!module) return false;
+
+    const isUtilityModule =
+      ['navegacion', 'menu', 'espaciador', 'footer', 'trusted_logos'].includes(module.type) ||
+      module.id.startsWith('mod_header_1') ||
+      module.id.startsWith('mod_menu_1') ||
+      module.id.startsWith('mod_footer_1');
+
+    if (isUtilityModule) return false;
+
+    const rawValue = editorState.settingsValues[`${moduleId}_global_show_in_menu`];
+    if (rawValue === undefined || rawValue === null) return true;
+    if (typeof rawValue === 'string') {
+      const normalized = rawValue.trim().toLowerCase();
+      if (normalized === 'true') return true;
+      if (normalized === 'false') return false;
+    }
+    return Boolean(rawValue);
   };
 
   const getElementIcon = (type: string) => {
@@ -314,8 +326,14 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
           const canMoveUp = index > 0 && !isMenu && !isFooter;
           const canMoveDown = index < (editorState.addedModules?.length || 0) - 1 && !isHeader && !isMenu;
           const hasMultipleModules = (editorState.addedModules?.length || 0) > 1;
+          const hasMenuModule = editorState.addedModules.some(m => m.type === 'navegacion' || m.type === 'menu');
+          const isMenuEligible =
+            !['navegacion', 'menu', 'espaciador', 'footer', 'trusted_logos'].includes(module.type) &&
+            !module.id.startsWith('mod_header_1') &&
+            !module.id.startsWith('mod_menu_1') &&
+            !module.id.startsWith('mod_footer_1');
           
-          const moduleInfo = (module.iconKey && MODULE_INFO[module.iconKey]) || MODULE_INFO[module.type] || { icon: Layout, label: module.name };
+          const moduleInfo = (module.iconKey && MODULE_INFO[module.iconKey]) || MODULE_INFO[module.type] || { icon: Layout, label: resolveModuleDisplayLabel(module) };
           
           // Virtual element for global configuration
           const globalElement: ModuleElement = {
@@ -387,16 +405,16 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                       {moduleInfo.label}
                     </span>
 
-                    {module.type !== 'navegacion' && module.type !== 'menu' && editorState.addedModules.some(m => m.type === 'navegacion' || m.type === 'menu') && (
+                    {isMenuEligible && hasMenuModule && (
                       <button 
                         onClick={(e) => {
                           e.stopPropagation();
-                          toggleMenuLink(module.id, moduleInfo.label);
+                          toggleMenuLink(module.id);
                         }}
                         className={`p-1.5 rounded-lg transition-all ${
                           isModuleLinked(module.id) 
                             ? 'text-primary bg-primary/10 opacity-100' 
-                            : 'text-text/20 hover:text-primary hover:bg-primary/5 opacity-0 group-hover:opacity-100'
+                            : 'text-text/35 hover:text-primary hover:bg-primary/5 opacity-70 group-hover:opacity-100'
                         }`}
                         title={isModuleLinked(module.id) ? "Quitar del menú" : "Agregar al menú"}
                       >
@@ -627,6 +645,9 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                                                               customers={customers}
                                                               trustedCompanyLogos={trustedCompanyLogos}
                                                               projectColors={projectColors}
+                                                              contextId={`${module.id}_el_bento_items`}
+                                                              moduleType={module.type}
+                                                              settingsValues={editorState.settingsValues}
                                                             />
                                                          ))}
                                                       </motion.div>
@@ -807,6 +828,9 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                                                       customers={customers}
                                                       trustedCompanyLogos={trustedCompanyLogos}
                                                       projectColors={projectColors}
+                                                      contextId={prefix}
+                                                      moduleType={module.type}
+                                                      settingsValues={editorState.settingsValues}
                                                     />
                                                   );
                                                 });

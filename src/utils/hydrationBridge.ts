@@ -55,6 +55,32 @@ const MODULE_ADAPTERS: Record<string, ModuleBridgeAdapter> = {
       'config.estilo_efecto': 'el_hero_typography_rotating_color'
     }
   },
+  hero2: {
+    contentToSettings: {
+      'title': 'el_hero2_main_main_title',
+      'main_title': 'el_hero2_main_main_title',
+      'subtitle': 'el_hero2_main_main_description',
+      'main_description': 'el_hero2_main_main_description',
+      'eyebrow': 'el_hero2_main_main_eyebrow',
+      'main_eyebrow': 'el_hero2_main_main_eyebrow',
+      'image_url': 'el_hero2_media_hero2_image',
+      'hero2_image': 'el_hero2_media_hero2_image',
+      'image_alt': 'el_hero2_media_hero2_image_alt',
+      'hero2_image_alt': 'el_hero2_media_hero2_image_alt',
+      'primary_cta.text': 'el_hero2_main_main_cta_primary_label',
+      'primary_cta.url': 'el_hero2_main_main_cta_primary_url',
+      'secondary_cta.text': 'el_hero2_main_main_cta_secondary_label',
+      'secondary_cta.url': 'el_hero2_main_main_cta_secondary_url',
+      'secondary_cards': 'el_hero2_secondary_secondary_cards',
+      'cards': 'el_hero2_secondary_secondary_cards'
+    },
+    settingsToDeep: {
+      'layout': 'global_layout',
+      'background_type': 'global_background_type',
+      'background_color': 'global_background_color',
+      'background_image': 'global_background_image'
+    }
+  },
   features: {
     contentToSettings: {
       'title': 'el_features_header_title',
@@ -701,6 +727,28 @@ export const bridgeModuleContent = ({
           aliasesUsed.push(contentPath);
         }
       });
+    }
+
+    if (baseType === 'hero2' && content) {
+      const cardsSource = content.secondary_cards || content.cards;
+      const cardsKey = `${moduleId}_el_hero2_secondary_secondary_cards`;
+
+      if (Array.isArray(cardsSource) && result[cardsKey] === undefined) {
+        result[cardsKey] = cardsSource.map((card: any, index: number) => ({
+          id: String(card?.id || `card-${index + 1}`),
+          subtitle: String(card?.subtitle || ''),
+          description: String(card?.description || ''),
+          bullets: Array.isArray(card?.bullets)
+            ? card.bullets.map((bullet: any) => {
+                if (typeof bullet === 'string') return { text: bullet };
+                if (bullet && typeof bullet === 'object') return { text: String(bullet.text || '') };
+                return { text: '' };
+              }).filter((bullet: any) => bullet.text)
+            : []
+        }));
+        mappedKeys.push(cardsKey);
+        aliasesUsed.push('secondary_cards');
+      }
     }
 
     // --- Specialized Products Showcase Logic ---

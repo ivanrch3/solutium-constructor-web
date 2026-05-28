@@ -31,7 +31,7 @@ import * as registryModules from './registry';
 import { 
   MODULE_INFO,
   HEADER_MODULE, MENU_MODULE, FOOTER_MODULE, SPACER_MODULE, 
-  PRODUCTS_MODULE, HERO_MODULE, FEATURES_MODULE, ABOUT_MODULE, 
+  PRODUCTS_MODULE, HERO_MODULE, HERO2_MODULE, FEATURES_MODULE, ABOUT_MODULE, 
   PROCESS_MODULE, GALLERY_MODULE, VIDEO_MODULE, TESTIMONIALS_MODULE, 
   STATS_MODULE, NEWSLETTER_MODULE, CONTACT_MODULE, TEAM_MODULE, 
   CTA_MODULE, PRICING_MODULE, FAQ_MODULE, TRUSTED_LOGOS_MODULE,
@@ -73,11 +73,22 @@ import {
   getProjectThemeFromSettings,
   normalizeProjectBrandColors
 } from '../../utils/projectTheme';
+import {
+  buildAutomaticMenuItems,
+  dedupeMenuLinks,
+  getMenuModeKey,
+  getShowInMenuKey,
+  isMenuEligibleModule,
+  isUtilityMenuModule,
+  resolveMenuMode,
+  resolveShowInMenuState
+} from '../../utils/menuNavigation';
+import { bridgeModuleContent } from '../../utils/hydrationBridge';
 
 // --- CONSTANTS ---
 const MASTER_DICTIONARY = {
   modules: [
-    'hero', 'features', 'about', 'process', 'gallery', 'video', 'testimonials', 
+    'hero', 'hero2', 'features', 'about', 'process', 'gallery', 'video', 'testimonials', 
     'stats', 'newsletter', 'contact', 'team', 'cta', 'pricing', 'faq', 'clients', 'trusted_logos',
     'bento', 'comparative', 'header', 'menu', 'footer', 'spacer', 'products'
   ],
@@ -86,6 +97,27 @@ const MASTER_DICTIONARY = {
     'bg_type', 'dark_mode', 'primary_color', 'accent_color', 'text_color',
     'title_mode', 'rotating_enabled', 'rotating_fixed', 'rotating_options', 'rotating_speed', 'rotating_anim', 'rotating_color', 'rotating_gradient'
   ]
+};
+
+const AUTOSAVE_INTERVAL_OPTIONS = [60000, 120000, 180000, 300000, 600000] as const;
+const DEFAULT_AUTOSAVE_INTERVAL_MS = 180000;
+
+const resolveBooleanSetting = (value: any, fallback: boolean): boolean => {
+  if (value === undefined || value === null) return fallback;
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === 'true') return true;
+    if (normalized === 'false') return false;
+  }
+  return Boolean(value);
+};
+
+const resolveAutosaveInterval = (value: any): number => {
+  const numericValue = Number(value);
+  return AUTOSAVE_INTERVAL_OPTIONS.includes(numericValue as typeof AUTOSAVE_INTERVAL_OPTIONS[number])
+    ? numericValue
+    : DEFAULT_AUTOSAVE_INTERVAL_MS;
 };
 
 // --- HELPERS ---
@@ -411,7 +443,10 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
           'global_theme_font_sans': projectThemeSeed.fontSans,
           'global_theme_font_heading': projectThemeSeed.fontHeading,
           'global_theme_radius': 12,
-          'global_theme_container_width': 1400
+          'global_theme_container_width': 1400,
+          'global_theme_builder_autosave_enabled': true,
+          'global_theme_builder_autosave_interval_ms': DEFAULT_AUTOSAVE_INTERVAL_MS,
+          'global_theme_builder_autosave_show_indicator': true
         },
       recentlyAddedModuleId: null,
       totalModulesAdded: 0
@@ -488,31 +523,28 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
 
           // Re-aplanar settings y content
           const prefix = section.id;
+          const sectionSettings = section.settings || {};
+          const seededDeepValues: Record<string, any> = {};
           
           if (section.settings) {
             Object.entries(section.settings).forEach(([k, v]) => {
               const key = k.startsWith(prefix) ? k : `${prefix}_${k}`;
               reconstructedSettings[key] = v;
+              seededDeepValues[key] = v;
             });
           }
 
           if (section.content) {
-            Object.entries(section.content).forEach(([k, v]) => {
-              // Mapeo inverso de content a deep settings keys
-              if (k === 'title' || k === 'texto_principal' || k === 'texto_base') {
-                reconstructedSettings[`${prefix}_el_hero_typography_title`] = v;
-              } else if (k === 'subtitle' || k === 'texto_secundario' || k === 'texto_descripcion') {
-                reconstructedSettings[`${prefix}_el_hero_typography_subtitle`] = v;
-              } else if (k === 'eyebrow') {
-                reconstructedSettings[`${prefix}_el_hero_typography_eyebrow`] = v;
-              } else if (k === 'image_url') {
-                reconstructedSettings[`${prefix}_el_hero_media_image`] = v;
-              }
-              if (k === 'primary_cta' && v && typeof v === 'object') {
-                reconstructedSettings[`${prefix}_el_hero_ctas_primary_text`] = (v as any).text;
-                reconstructedSettings[`${prefix}_el_hero_ctas_primary_url`] = (v as any).url;
-              }
-            });
+            Object.assign(
+              reconstructedSettings,
+              bridgeModuleContent({
+                type: section.type || section.tipo || '',
+                moduleId: prefix,
+                content: section.content,
+                settings: sectionSettings,
+                existingDeepValues: seededDeepValues
+              })
+            );
           }
         });
 
@@ -744,8 +776,33 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     setReloadKey((prev) => prev + 1);
   }, []);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [autosaveStatus, setAutosaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [lastAutosavedAt, setLastAutosavedAt] = useState<Date | null>(null);
+  const [autosaveError, setAutosaveError] = useState<string | null>(null);
   const [showUnsavedModal, setShowUnsavedModal] = useState(false);
   const isInitialLoad = useRef(true);
+  const saveInProgressRef = useRef(false);
+  const autosaveInProgressRef = useRef(false);
+  const publishInProgressRef = useRef(false);
+  const pendingChangesDuringSaveRef = useRef(false);
+  const lastSaveSourceRef = useRef<'manual' | 'autosave' | 'prepublish' | null>(null);
+  const activeSavePromiseRef = useRef<Promise<boolean> | null>(null);
+  const changeVersionRef = useRef(0);
+  const lastSaveChangeVersionRef = useRef(0);
+  const editorStateRef = useRef(editorState);
+  const siteNameRef = useRef(siteName);
+  const currentStatusRef = useRef(currentStatus);
+  const autosaveEnabled = resolveBooleanSetting(
+    editorState.settingsValues['global_theme_builder_autosave_enabled'],
+    true
+  );
+  const autosaveIntervalMs = resolveAutosaveInterval(
+    editorState.settingsValues['global_theme_builder_autosave_interval_ms']
+  );
+  const autosaveShowIndicator = resolveBooleanSetting(
+    editorState.settingsValues['global_theme_builder_autosave_show_indicator'],
+    true
+  );
 
   // Mark initial load as finished after a short delay to allow sync effects to run
   useEffect(() => {
@@ -753,6 +810,42 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       isInitialLoad.current = false;
     }, 1500);
     return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (autosaveStatus !== 'saved') return;
+    const timer = window.setTimeout(() => setAutosaveStatus('idle'), 4000);
+    return () => window.clearTimeout(timer);
+  }, [autosaveStatus]);
+
+  useEffect(() => {
+    editorStateRef.current = editorState;
+  }, [editorState]);
+
+  useEffect(() => {
+    siteNameRef.current = siteName;
+  }, [siteName]);
+
+  useEffect(() => {
+    currentStatusRef.current = currentStatus;
+  }, [currentStatus]);
+
+  useEffect(() => {
+    if (autosaveEnabled) return;
+    setAutosaveStatus('idle');
+    setAutosaveError(null);
+  }, [autosaveEnabled]);
+
+  const markUnsavedChanges = useCallback(() => {
+    changeVersionRef.current += 1;
+    if (saveInProgressRef.current) {
+      pendingChangesDuringSaveRef.current = true;
+    }
+    setHasUnsavedChanges(true);
+    setSaveStatus('idle');
+    setPublishStatus('idle');
+    setAutosaveStatus('idle');
+    setAutosaveError(null);
   }, []);
 
   // Apply Global Theme to CSS Variables
@@ -858,9 +951,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
           next.settingsValues !== prev.settingsValues;
 
         if (dataChanged) {
-          setHasUnsavedChanges(true);
-          setSaveStatus('idle');
-          setPublishStatus('idle');
+          markUnsavedChanges();
         }
       }
       return next;
@@ -870,9 +961,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   const updateSiteName = (name: string) => {
     setSiteName(name);
     if (!isInitialLoad.current) {
-      setHasUnsavedChanges(true);
-      setSaveStatus('idle');
-      setPublishStatus('idle');
+      markUnsavedChanges();
     }
   };
 
@@ -1165,7 +1254,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       });
 
       setSiteName(motherAIBrief.name);
-      setHasUnsavedChanges(true);
+      markUnsavedChanges();
       setIsGeneratingAI(false);
       setOnboardingFinished(true);
 
@@ -1265,7 +1354,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       });
 
       setSiteName(data.name);
-      setHasUnsavedChanges(true);
+      markUnsavedChanges();
       setIsGeneratingAI(false);
     } catch (error: any) {
       console.error("Error en Solutium AI Engine:", error);
@@ -1437,9 +1526,9 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         }
       }
 
-      const isUtilityModule = ['navegacion', 'espaciador', 'footer'].includes(module.type) || module.id.startsWith('mod_header_1') || module.id.startsWith('mod_menu_1') || module.id.startsWith('mod_footer_1');
+      const isUtilityModule = isUtilityMenuModule(module);
 
-      const finalState = {
+      let finalState: EditorState = {
         ...prev,
         addedModules: newModules,
         expandedModuleId: moduleId,
@@ -1456,22 +1545,27 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         totalModulesAdded: (prev.totalModulesAdded || 0) + 1
       };
 
+      if (isMenuEligibleModule(module)) {
+        finalState.settingsValues[getShowInMenuKey(moduleId)] = true;
+      } else {
+        finalState.settingsValues[getShowInMenuKey(moduleId)] = false;
+      }
+
+      if (module.type === 'navegacion' || module.type === 'menu') {
+        finalState.settingsValues[getMenuModeKey(moduleId)] =
+          finalState.settingsValues[getMenuModeKey(moduleId)] || 'automatic';
+      }
+
       // SOP: Auto-generate menu link if not utility
       if (!isPreviewMode && !isUtilityModule) {
         const menuMod = newModules.find(m => m.type === 'navegacion' || m.type === 'menu');
         if (menuMod) {
-          const menuItemsElId = `${menuMod.id}_el_menu_items`;
-          const currentLinks = finalState.settingsValues[`${menuItemsElId}_links`] || [];
-          const anchor = `#${moduleId}`;
-          const isLinked = currentLinks.some((l: any) => l.url === anchor);
-          
-          if (!isLinked) {
-            const moduleInfo = (module.iconKey && MODULE_INFO[module.iconKey]) || MODULE_INFO[module.type] || { label: module.name };
-            const iconKey = module?.iconKey || module?.type || '';
-            const newLinks = [...currentLinks, { label: moduleInfo.label, url: anchor, icon: iconKey }];
-            finalState.settingsValues[`${menuItemsElId}_links`] = newLinks;
-          }
+          finalState = rebuildMenuLinksIfNeeded(finalState, menuMod.id);
         }
+      }
+
+      if (!isPreviewMode && (module.type === 'navegacion' || module.type === 'menu')) {
+        finalState = rebuildMenuLinksIfNeeded(finalState, moduleId);
       }
 
       return finalState;
@@ -1538,24 +1632,24 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         }
       });
 
-      // Automatically remove link from menu if it exists
       const menuModule = newModules.find(m => m.type === 'navegacion' || m.type === 'menu');
       if (menuModule) {
-        const menuElementId = `${menuModule.id}_el_menu_items`;
-        const currentLinks = newSettingsValues[`${menuElementId}_links`] || [];
-        const anchor = `#${moduleId}`;
-        if (currentLinks.some((l: any) => l.url === anchor)) {
-          newSettingsValues[`${menuElementId}_links`] = currentLinks.filter((l: any) => l.url !== anchor);
-        }
+        newSettingsValues[getShowInMenuKey(moduleId)] = false;
       }
 
-      return {
+      let nextState: EditorState = {
         ...prev,
         addedModules: newModules,
         expandedModuleId: prev.expandedModuleId === moduleId ? null : prev.expandedModuleId,
         selectedElementId: prev.selectedElementId?.startsWith(moduleId) ? null : prev.selectedElementId,
         settingsValues: newSettingsValues
       };
+
+      if (menuModule) {
+        nextState = rebuildMenuLinksIfNeeded(nextState, menuModule.id);
+      }
+
+      return nextState;
     });
     setModuleToDelete(null);
   };
@@ -1563,40 +1657,31 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   const rebuildMenuLinksIfNeeded = (state: EditorState, menuModuleId: string) => {
     const menuItemsElId = `${menuModuleId}_el_menu_items`;
     const menuLinksKey = `${menuItemsElId}_links`;
-    const currentLinks = state.settingsValues[menuLinksKey] || [];
+    const currentLinks = dedupeMenuLinks(state.settingsValues[menuLinksKey] || []);
+    const autoAnchors = new Set(
+      (state.addedModules || [])
+        .filter((module) => isMenuEligibleModule(module))
+        .map((module) => `#${module.id}`)
+    );
 
-    if (Array.isArray(currentLinks) && currentLinks.length > 0) {
-      return state;
-    }
+    const manualLinks = currentLinks.filter((link) => {
+      if (!link || typeof link !== 'object') return false;
+      if (link.is_title) return true;
+      const url = String(link.url || '').trim();
+      if (!url.startsWith('#')) return true;
+      return !autoAnchors.has(url);
+    });
 
-    const visibleLinks = (state.addedModules || [])
-      .filter((module) => {
-        const isUtilityModule =
-          ['navegacion', 'menu', 'espaciador', 'footer'].includes(module.type) ||
-          module.id.startsWith('mod_header_1') ||
-          module.id.startsWith('mod_menu_1') ||
-          module.id.startsWith('mod_footer_1');
-
-        return !isUtilityModule;
-      })
-      .map((module) => {
-        const moduleInfo =
-          (module.iconKey && MODULE_INFO[module.iconKey]) ||
-          MODULE_INFO[module.type] ||
-          { label: module.name };
-
-        return {
-          label: moduleInfo.label,
-          url: `#${module.id}`,
-          icon: module.iconKey || module.type || ''
-        };
-      });
+    const visibleLinks = buildAutomaticMenuItems({
+      modules: state.addedModules || [],
+      settingsValues: state.settingsValues
+    });
 
     return {
       ...state,
       settingsValues: {
         ...state.settingsValues,
-        [menuLinksKey]: visibleLinks
+        [menuLinksKey]: dedupeMenuLinks([...visibleLinks, ...manualLinks])
       }
     };
   };
@@ -1635,6 +1720,9 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       const isDesktopHamburgerToggle =
         settingId === 'global_desktop_hamburger' ||
         settingId === 'desktop_hamburger';
+      const isShowInMenuToggle =
+        settingId === 'global_show_in_menu' ||
+        settingId === 'show_in_menu';
 
       if (isDesktopHamburgerToggle && value === false) {
         const menuModule = prev.addedModules.find(
@@ -1642,6 +1730,16 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
             module.id === elementOrModuleId ||
             module.type === 'navegacion' ||
             module.type === 'menu'
+        );
+
+        if (menuModule) {
+          nextState = rebuildMenuLinksIfNeeded(nextState, menuModule.id);
+        }
+      }
+
+      if (isShowInMenuToggle) {
+        const menuModule = prev.addedModules.find(
+          (module) => module.type === 'navegacion' || module.type === 'menu'
         );
 
         if (menuModule) {
@@ -1767,6 +1865,10 @@ const formatTimestampName = () => {
 
   const generateRenderingContract = (finalSiteName: string, stateToUse?: any): RenderingContract => {
     const currentState = stateToUse || editorState;
+    const automaticMenuItems = buildAutomaticMenuItems({
+      modules: currentState.addedModules || [],
+      settingsValues: currentState.settingsValues || {}
+    });
     // Helper to get setting value with fallback and CLEAN value extraction
     const getVal = (moduleId: string, elementId: string | null, settingId: string, defaultValue: any) => {
       const key = elementId ? `${moduleId}_${elementId}_${settingId}` : `${moduleId}_global_${settingId}`;
@@ -1988,6 +2090,19 @@ const formatTimestampName = () => {
 
         // Safeguard: Ensure content has meaningful values or generic placeholders
         if (!content.title) content.title = module.name;
+
+        if ((module.type === 'menu' || module.type === 'navegacion') && !module.id.startsWith('mod_footer_1')) {
+          const menuMode = resolveMenuMode(module.id, currentState.settingsValues || {});
+          const manualLinksKey = `${module.id}_el_menu_items_links`;
+          const manualLinks = dedupeMenuLinks(
+            Array.isArray(currentState.settingsValues?.[manualLinksKey])
+              ? currentState.settingsValues[manualLinksKey]
+              : []
+          );
+
+          settings['global_menu_mode'] = menuMode;
+          settings['el_menu_items_links'] = menuMode === 'manual' ? manualLinks : automaticMenuItems;
+        }
 
         // Specific overrides for modules that have multiple items (like products/clients)
         if (module.type === 'products' || module.type === 'product_grid') {
@@ -2340,6 +2455,39 @@ const formatTimestampName = () => {
           }
         }
 
+        if (module.type === 'hero2') {
+          const hero2Cards = getVal(module.id, 'el_hero2_secondary', 'secondary_cards', []);
+          const normalizedHero2Cards = Array.isArray(hero2Cards)
+            ? hero2Cards.map((card: any, index: number) => ({
+                id: String(card?.id || `card-${index + 1}`),
+                subtitle: String(card?.subtitle || ''),
+                description: String(card?.description || ''),
+                bullets: Array.isArray(card?.bullets)
+                  ? card.bullets
+                      .map((bullet: any) => {
+                        if (typeof bullet === 'string') return bullet.trim();
+                        if (bullet && typeof bullet === 'object') return String(bullet.text || '').trim();
+                        return '';
+                      })
+                      .filter(Boolean)
+                  : []
+              }))
+            : [];
+
+          content.main_eyebrow = getVal(module.id, 'el_hero2_main', 'main_eyebrow', content.eyebrow || '');
+          content.main_title = getVal(module.id, 'el_hero2_main', 'main_title', content.title || module.name);
+          content.main_description = getVal(module.id, 'el_hero2_main', 'main_description', content.subtitle || '');
+          content.hero2_image = getVal(module.id, 'el_hero2_media', 'hero2_image', content.image_url || '');
+          content.hero2_image_alt = getVal(module.id, 'el_hero2_media', 'hero2_image_alt', '');
+          content.secondary_cards = normalizedHero2Cards;
+          content.cards = normalizedHero2Cards;
+
+          if (!content.title) content.title = content.main_title;
+          if (!content.subtitle) content.subtitle = content.main_description;
+          if (!content.eyebrow) content.eyebrow = content.main_eyebrow;
+          if (!content.image_url) content.image_url = content.hero2_image;
+        }
+
         const resolvedHeroTitleMode =
           content.title_mode === 'dynamic' || content.title_mode === 'static'
             ? content.title_mode
@@ -2496,6 +2644,18 @@ const formatTimestampName = () => {
   };
 
   const handleSaveDraft = async (forcedStatus?: 'draft' | 'published' | 'modified') => {
+    if (!projectId || isPreviewMode) return;
+    if (saveInProgressRef.current && activeSavePromiseRef.current) {
+      const activeSaveResult = await activeSavePromiseRef.current;
+      if (!activeSaveResult) return;
+    }
+    await performDraftSave({
+      source: 'manual',
+      skipPreview: false,
+      silent: false,
+      forcedStatus
+    });
+    return;
     if (!projectId || isPreviewMode || isSaving || saveStatus === 'loading') return;
     const savedCanvasScrollTop = getCanvasScrollContainer()?.scrollTop ?? 0;
     setSaveStatus('loading');
@@ -2709,11 +2869,370 @@ const formatTimestampName = () => {
     }
   };
 
+  const performDraftSave = useCallback(async ({
+    source,
+    skipPreview,
+    silent,
+    forcedStatus
+  }: {
+    source: 'manual' | 'autosave' | 'prepublish';
+    skipPreview: boolean;
+    silent: boolean;
+    forcedStatus?: 'draft' | 'published' | 'modified';
+  }): Promise<boolean> => {
+    if (!projectId || isPreviewMode) return false;
+
+    if (saveInProgressRef.current && activeSavePromiseRef.current) {
+      return activeSavePromiseRef.current;
+    }
+
+    const runSave = async (): Promise<boolean> => {
+      const isAutosave = source === 'autosave';
+      const isInteractiveManualSave = source === 'manual';
+      const savedCanvasScrollTop = skipPreview ? 0 : (getCanvasScrollContainer()?.scrollTop ?? 0);
+      const changeVersionAtSaveStart = changeVersionRef.current;
+      pendingChangesDuringSaveRef.current = false;
+      saveInProgressRef.current = true;
+      autosaveInProgressRef.current = isAutosave;
+      lastSaveSourceRef.current = source;
+      setIsSaving(true);
+      setAuthNotice(null);
+
+      if (isInteractiveManualSave) {
+        setSaveStatus('loading');
+        await waitForNextPaint();
+      } else if (isAutosave) {
+        setAutosaveStatus('saving');
+        setAutosaveError(null);
+      }
+
+      try {
+        const sessionState = await ensureActiveSupabaseSession();
+        if (sessionState.state === 'missing_session' || sessionState.state === 'expired_session') {
+          const sessionMessage = isAutosave
+            ? 'Tu sesión expiró. Inicia sesión nuevamente para continuar guardando. Tus cambios siguen en pantalla.'
+            : 'Tu sesiÃ³n expirÃ³. Inicia sesiÃ³n nuevamente para guardar. Tus cambios siguen en pantalla.';
+          setAuthNotice({ type: 'error', message: sessionMessage });
+          if (isInteractiveManualSave) {
+            setSaveStatus('error');
+          } else if (isAutosave) {
+            setAutosaveStatus('error');
+            setAutosaveError(sessionMessage);
+          }
+          return false;
+        }
+
+        if (sessionState.state === 'refreshed' && !silent) {
+          setAuthNotice({
+            type: 'info',
+            message: isAutosave
+              ? 'Sesión actualizada. Guardando automáticamente...'
+              : 'SesiÃ³n actualizada. Guardando cambios...'
+          });
+        }
+
+        const latestSiteName = siteNameRef.current;
+        const shouldRefreshAutoName = isDefaultName(latestSiteName);
+        const finalSiteName = shouldRefreshAutoName ? formatTimestampName() : (latestSiteName || formatTimestampName());
+        if (finalSiteName !== latestSiteName) {
+          siteNameRef.current = finalSiteName;
+          setSiteName(finalSiteName);
+        }
+        const siteId = currentSiteId;
+
+        const latestEditorState = editorStateRef.current;
+        const migratedState = migrateEditorStateToUUIDs(latestEditorState);
+        if (migratedState !== latestEditorState) {
+          editorStateRef.current = migratedState;
+          setEditorState(migratedState);
+          if (!skipPreview) {
+            restoreCanvasScroll(savedCanvasScrollTop);
+          }
+        }
+        const activeState = migratedState;
+
+        const latestStatus = currentStatusRef.current;
+        let newStatus: 'draft' | 'published' | 'modified' = latestStatus;
+        if (typeof forcedStatus === 'string' && ['draft', 'published', 'modified'].includes(forcedStatus)) {
+          newStatus = forcedStatus;
+        } else if (latestStatus === 'published') {
+          newStatus = 'modified';
+        }
+
+        const dbStatus = (newStatus === 'modified') ? 'published' : newStatus;
+
+        const siteData: Partial<WebBuilderSite> = {
+          projectId,
+          appId: appId || '11111111-1111-1111-1111-111111111111',
+          userId: currentUserId || undefined,
+          siteId,
+          siteName: finalSiteName,
+          name: finalSiteName,
+          contentDraft: activeState,
+          status: dbStatus as any
+        };
+
+        if (initialPage && 'id' in initialPage) {
+          siteData.id = initialPage.id;
+        }
+
+        const result = await saveWebBuilderSiteDraft(siteData);
+        if (!result) {
+          throw new Error('Error al guardar el borrador base');
+        }
+
+        const contract = generateRenderingContract(finalSiteName, activeState);
+        await checkDictionarySync(contract);
+
+        const savedPage = await upsertPage({
+          project_id: projectId,
+          web_builder_site_id: result.id,
+          slug: 'index',
+          title: finalSiteName,
+          content: contract,
+          status: newStatus === 'published' || newStatus === 'modified' ? 'published' : 'draft',
+          metadata: {
+            origin_app: 'Constructor Web',
+            version: '2.3-Atomic',
+            editor_state: activeState
+          }
+        });
+
+        if (savedPage && savedPage.id) {
+          const pageSections: Partial<PageSection>[] = contract.sections.map((section: any, idx) => ({
+            id: isUUID(section.id) ? section.id : undefined,
+            page_id: savedPage.id!,
+            section_type: section.tipo,
+            content_json: section.content,
+            styles_json: { ...section.styles, ...section.settings },
+            order_index: idx,
+            metadata: {
+              version: '2.3-Atomic',
+              audit_specs: section.audit_specs,
+              config_hash: section.config_hash
+            }
+          }));
+          await upsertPageSections(savedPage.id!, pageSections);
+        }
+
+        logDebug(`[SIP v6.1] Cambios sincronizados en tabla 'pages' (Status: ${newStatus}, Source: ${source})`);
+        sendToMother('SOLUTIUM_SAVE', {
+          site_id: siteId,
+          site_name: finalSiteName,
+          status: newStatus,
+          timestamp: new Date().toISOString()
+        });
+
+        const hadChangesDuringSave =
+          pendingChangesDuringSaveRef.current || changeVersionRef.current !== changeVersionAtSaveStart;
+
+        if (!hadChangesDuringSave) {
+          setHasUnsavedChanges(false);
+          lastSaveChangeVersionRef.current = changeVersionAtSaveStart;
+        } else {
+          setHasUnsavedChanges(true);
+        }
+
+        currentStatusRef.current = newStatus;
+        setCurrentStatus(newStatus);
+
+        if (!skipPreview) {
+          const previewDisableReason = getPreviewDisableReason(siteId);
+          if (isPreviewConfigDisabled(previewDisableReason)) {
+            logDebug('[PREVIEW_CAPTURE_DEBUG] Preview generation skipped because backend preview configuration is disabled for this session.', {
+              siteId,
+              previewDisableReason
+            });
+            setPreviewStatus('idle');
+          } else {
+            setPreviewStatus('loading');
+
+            try {
+              const webBuilderSiteId = initialPage?.id || (window as any).WEB_BUILDER_SITE_ID;
+              const previewResult = await generatePreviewServerSide({
+                project_id: projectId!,
+                site_id: siteId,
+                web_builder_site_id: webBuilderSiteId,
+                mode: 'thumbnail'
+              });
+
+              if (previewResult.success && previewResult.preview_image_url) {
+                await updateSitePreview(siteId, {
+                  previewImageUrl: previewResult.preview_image_url,
+                  previewThumbnailUrl: previewResult.preview_thumbnail_url || previewResult.preview_image_url,
+                  previewImagePath: previewResult.preview_image_path,
+                  previewImageHash: previewResult.preview_image_hash,
+                });
+
+                sendToMother('SOLUTIUM_PREVIEW_GENERATED', {
+                  site_id: siteId,
+                  preview_image_url: previewResult.preview_image_url
+                });
+
+                logDebug('[PREVIEW_CAPTURE_DEBUG] Server-side preview generated (Save):', {
+                  siteId,
+                  url: previewResult.preview_image_url
+                });
+                setPreviewStatus('success');
+              } else {
+                if (previewResult.errorCode === 'preview_region_missing' || previewResult.errorCode === 'preview_missing_storage_config') {
+                  const disableReason = previewResult.errorCode === 'preview_missing_storage_config'
+                    ? 'preview_missing_storage_config'
+                    : 'preview_region_missing';
+                  setPreviewDisableReason(disableReason, siteId);
+                  logDebug('[PREVIEW_CAPTURE_DEBUG] Draft saved. Preview omitted because backend storage is not configured.', {
+                    siteId,
+                    reason: previewResult.reason || disableReason
+                  });
+                  setPreviewStatus('idle');
+                } else if (previewResult.skipped) {
+                  logDebug('[PREVIEW_CAPTURE_DEBUG] Draft saved. Preview skipped by client/backend guard.', {
+                    siteId,
+                    reason: previewResult.reason || null
+                  });
+                  setPreviewStatus('idle');
+                } else {
+                  console.warn('[PREVIEW_CAPTURE_DEBUG] Draft saved, but preview generation failed.', previewResult.error);
+                  setPreviewStatus('error');
+                }
+              }
+            } catch (pError) {
+              console.warn('[PREVIEW_CAPTURE_DEBUG] Preview failed after saving draft. Draft remains saved.', pError);
+              setPreviewStatus('error');
+            } finally {
+              stabilizeCanvasScroll(savedCanvasScrollTop);
+              setTimeout(() => setPreviewStatus('idle'), 3000);
+            }
+          }
+        } else {
+          // Autosave deliberately skips preview to avoid expensive render cycles and scroll jumps.
+          logDebug('[AUTOSAVE_DEBUG] Preview skipped intentionally during autosave.');
+        }
+
+        if (isInteractiveManualSave) {
+          if (hadChangesDuringSave) {
+            setSaveStatus('idle');
+          } else {
+            setSaveStatus('success');
+            setTimeout(() => setSaveStatus('idle'), 3000);
+          }
+          stabilizeCanvasScroll(savedCanvasScrollTop);
+        } else if (isAutosave) {
+          setAutosaveStatus('saved');
+          setLastAutosavedAt(new Date());
+          setAutosaveError(null);
+        }
+
+        return true;
+      } catch (error) {
+        console.error(isAutosave ? 'Error autosaving draft:' : 'Error saving draft:', error);
+        if (error instanceof SupabaseSessionError) {
+          setAuthNotice({
+            type: 'error',
+            message: isAutosave
+              ? 'Tu sesión expiró. Inicia sesión nuevamente para continuar guardando. Tus cambios siguen en pantalla.'
+              : 'Tu sesiÃ³n expirÃ³. Inicia sesiÃ³n nuevamente para guardar. Tus cambios siguen en pantalla.'
+          });
+        }
+        if (isInteractiveManualSave) {
+          setSaveStatus('error');
+          setTimeout(() => setSaveStatus('idle'), 3000);
+        } else if (isAutosave) {
+          setAutosaveStatus('error');
+          setAutosaveError(
+            error instanceof SupabaseSessionError
+              ? 'Tu sesión expiró. Inicia sesión nuevamente para continuar guardando.'
+              : 'No se pudo guardar automáticamente. Tus cambios siguen en pantalla.'
+          );
+        }
+        return false;
+      } finally {
+        pendingChangesDuringSaveRef.current = false;
+        autosaveInProgressRef.current = false;
+        saveInProgressRef.current = false;
+        lastSaveSourceRef.current = null;
+        activeSavePromiseRef.current = null;
+        setIsSaving(false);
+      }
+    };
+
+    const promise = runSave();
+    activeSavePromiseRef.current = promise;
+    return promise;
+  }, [
+    appId,
+    currentSiteId,
+    currentStatus,
+    currentUserId,
+    editorState,
+    generateRenderingContract,
+    initialPage,
+    isPreviewMode,
+    projectId,
+    siteName
+  ]);
+
+  const waitForActiveSaveIfNeeded = useCallback(async () => {
+    if (!activeSavePromiseRef.current) return true;
+    return activeSavePromiseRef.current;
+  }, []);
+
+  const ensureStableDraftBeforePublish = useCallback(async () => {
+    const activeSaveResult = await waitForActiveSaveIfNeeded();
+    if (!activeSaveResult) return false;
+
+    const runPrepublishSave = () => performDraftSave({
+      source: 'prepublish',
+      skipPreview: false,
+      silent: true
+    });
+
+    let saved = await runPrepublishSave();
+    if (!saved) return false;
+
+    if (lastSaveChangeVersionRef.current !== changeVersionRef.current) {
+      saved = await runPrepublishSave();
+    }
+
+    return saved && lastSaveChangeVersionRef.current === changeVersionRef.current;
+  }, [performDraftSave, waitForActiveSaveIfNeeded]);
+
   const isDefaultName = (name: string) => {
     if (!name) return true;
     const timestampRegex = /^\d{2}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}-(am|pm)$/;
     return timestampRegex.test(name) || name === 'Mi Sitio Web';
   };
+
+  useEffect(() => {
+    if (!autosaveEnabled) return;
+    if (isPreviewMode || isExternalRender || !projectId || !currentSiteId) return;
+
+    const intervalId = window.setInterval(() => {
+      if (!hasUnsavedChanges) return;
+      if (saveInProgressRef.current || autosaveInProgressRef.current) return;
+      if (publishInProgressRef.current) return;
+      if (isSaving || publishStatus === 'loading') return;
+
+      void performDraftSave({
+        source: 'autosave',
+        skipPreview: true,
+        silent: true
+      });
+    }, autosaveIntervalMs);
+
+    return () => window.clearInterval(intervalId);
+  }, [
+    autosaveEnabled,
+    autosaveIntervalMs,
+    currentSiteId,
+    hasUnsavedChanges,
+    isExternalRender,
+    isPreviewMode,
+    isSaving,
+    performDraftSave,
+    projectId,
+    publishStatus
+  ]);
 
   const handleCloseOnboarding = () => {
     setShowAIInitialForm(false);
@@ -2725,18 +3244,31 @@ const formatTimestampName = () => {
   };
 
   const handlePublish = async () => {
-    if (!projectId || isPreviewMode || isSaving || publishStatus === 'loading') return;
+    if (!projectId || isPreviewMode || publishInProgressRef.current || publishStatus === 'loading') return;
     
     if (isDefaultName(siteName)) {
       setShowPublishModal(true);
       return;
     }
 
-    const finalSiteName = siteName;
+    publishInProgressRef.current = true;
     setPublishStatus('loading');
     setIsSaving(true);
     setAuthNotice(null);
     try {
+      const stableDraft = await ensureStableDraftBeforePublish();
+      if (!stableDraft) {
+        setAuthNotice({
+          type: 'error',
+          message: 'No se pudo estabilizar el borrador antes de publicar. Tus cambios siguen en pantalla.'
+        });
+        setPublishStatus('error');
+        setTimeout(() => setPublishStatus('idle'), 3000);
+        return;
+      }
+
+      const finalSiteName = siteNameRef.current || siteName;
+
       const sessionState = await ensureActiveSupabaseSession();
       if (sessionState.state === 'missing_session' || sessionState.state === 'expired_session') {
         setAuthNotice({
@@ -2755,9 +3287,11 @@ const formatTimestampName = () => {
       }
 
       // --- PROTOCOLO SOLUTIUM v2.0: Identidad UUID Persistente ---
-      const migratedState = migrateEditorStateToUUIDs(editorState);
-      if (migratedState !== editorState) {
+      const latestEditorState = editorStateRef.current;
+      const migratedState = migrateEditorStateToUUIDs(latestEditorState);
+      if (migratedState !== latestEditorState) {
         setEditorState(migratedState);
+        editorStateRef.current = migratedState;
       }
       const activeState = migratedState;
 
@@ -2884,6 +3418,7 @@ const formatTimestampName = () => {
       if (result) {
         logDebug('[SIP v6.1] Sitio publicado y sincronizado con Web Engine.');
         setPublishStatus('success');
+        currentStatusRef.current = 'published';
         setCurrentStatus('published');
         setHasUnsavedChanges(false);
         setShowPublishModal(false);
@@ -2990,6 +3525,7 @@ const formatTimestampName = () => {
       setPublishStatus('error');
       setTimeout(() => setPublishStatus('idle'), 3000);
     } finally {
+      publishInProgressRef.current = false;
       setIsSaving(false);
     }
   };
@@ -3373,6 +3909,11 @@ const formatTimestampName = () => {
                     isMobile={true}
                     isPreviewMode={isPreviewMode}
                     hasUnsavedChanges={hasUnsavedChanges}
+                    isSaving={isSaving}
+                    autosaveStatus={autosaveStatus}
+                    autosaveError={autosaveError}
+                    lastAutosavedAt={lastAutosavedAt}
+                    showAutosaveIndicator={autosaveEnabled && autosaveShowIndicator}
                     currentStatus={currentStatus}
                     isNewSite={!initialPage}
                   />
@@ -3397,6 +3938,7 @@ const formatTimestampName = () => {
                                   ]},
                                   { id: 'content', label: 'Contenido', modules: [
                                     { icon: MODULE_INFO.hero.icon, label: "Portada", mod: HERO_MODULE },
+                                    { icon: MODULE_INFO.hero2.icon, label: "Portada Solutium", mod: HERO2_MODULE },
                                     { icon: MODULE_INFO.features.icon, label: "Características", mod: FEATURES_MODULE },
                                     { icon: MODULE_INFO.about.icon, label: "Sobre Nosotros", mod: ABOUT_MODULE },
                                     { icon: MODULE_INFO.process.icon, label: "Proceso", mod: PROCESS_MODULE },
@@ -3486,6 +4028,7 @@ const formatTimestampName = () => {
                                     <h4 className="text-[9px] font-black text-primary uppercase tracking-widest px-2">Contenido</h4>
                                     <div className="space-y-1">
                                       <ModuleItem icon={React.createElement(MODULE_INFO.hero.icon, { size: 18 })} label="Portada" onClick={() => addModule(HERO_MODULE)} />
+                                      <ModuleItem icon={React.createElement(MODULE_INFO.hero2.icon, { size: 18 })} label="Portada Solutium" onClick={() => addModule(HERO2_MODULE)} />
                                       <ModuleItem icon={React.createElement(MODULE_INFO.features.icon, { size: 18 })} label="Características" onClick={() => addModule(FEATURES_MODULE)} />
                                       <ModuleItem icon={React.createElement(MODULE_INFO.about.icon, { size: 18 })} label="Sobre Nosotros" onClick={() => addModule(ABOUT_MODULE)} />
                                       <ModuleItem icon={React.createElement(MODULE_INFO.process.icon, { size: 18 })} label="Proceso" onClick={() => addModule(PROCESS_MODULE)} />
@@ -3642,6 +4185,11 @@ const formatTimestampName = () => {
                     isMobile={false}
                     isPreviewMode={isPreviewMode}
                     hasUnsavedChanges={hasUnsavedChanges}
+                      isSaving={isSaving}
+                      autosaveStatus={autosaveStatus}
+                      autosaveError={autosaveError}
+                      lastAutosavedAt={lastAutosavedAt}
+                      showAutosaveIndicator={autosaveEnabled && autosaveShowIndicator}
                       currentStatus={currentStatus}
                       isNewSite={!initialPage}
                     />

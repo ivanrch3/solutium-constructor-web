@@ -216,15 +216,9 @@ export const VideoModule: React.FC<{
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
         onClick={handlePlayClick}
-        className="absolute inset-0 m-auto w-20 h-20 bg-white rounded-full flex items-center justify-center shadow-2xl z-20 group"
+        className="absolute inset-0 m-auto w-20 h-20 bg-white rounded-full flex items-center justify-center z-20 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+        style={{ boxShadow: 'none' }}
       >
-        {playButtonStyle === 'pulse' && (
-          <motion.div 
-            animate={{ scale: [1, 1.5, 1], opacity: [0.5, 0, 0.5] }}
-            transition={{ duration: 2, repeat: Infinity }}
-            className="absolute inset-0 bg-white rounded-full"
-          />
-        )}
         <Play className="text-primary fill-primary ml-1 group-hover:scale-110 transition-transform" size={32} />
       </motion.button>
     );

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { PublishedSite } from '../types/schema';
 import { HeroModule } from './constructor/modules/HeroModule';
+import { Hero2Module } from './constructor/modules/Hero2Module';
 import { FeaturesModule } from './constructor/modules/FeaturesModule';
 import { AboutModule } from './constructor/modules/AboutModule';
 import { ProductsShowcaseModule } from './constructor/modules/ProductsShowcaseModule';
@@ -29,6 +30,7 @@ import { logDebug } from '../utils/debug';
 import { bridgeModuleContent } from '../utils/hydrationBridge';
 import { getProducts } from '../services/dataService';
 import { Product, TrustedCompanyLogo } from '../types/schema';
+import { buildAutomaticMenuItems, resolveMenuMode } from '../utils/menuNavigation';
 import { buildProjectThemeCssVariables, normalizeProjectBrandColors } from '../utils/projectTheme';
 
 interface ViewerProps {
@@ -160,6 +162,39 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
   const sections = extractSections(content);
   const theme = content?.theme || (content as any)?.pages?.[0]?.theme || { primaryColor: '#3B82F6', fontFamily: 'sans-serif' };
   const resolvedTheme = normalizeProjectBrandColors(theme);
+  const aggregatedSectionSettings = React.useMemo(
+    () =>
+      sections.reduce((acc, section: any) => {
+        const moduleId = section?.id;
+        const settings = section?.settings || {};
+        if (!moduleId) {
+          return acc;
+        }
+
+        Object.entries(settings).forEach(([key, value]) => {
+          if (key.startsWith(moduleId)) {
+            acc[key] = value;
+          } else {
+            acc[`${moduleId}_${key}`] = value;
+          }
+        });
+
+        return acc;
+      }, {} as Record<string, any>),
+    [sections]
+  );
+  const automaticMenuItems = React.useMemo(
+    () =>
+      buildAutomaticMenuItems({
+        modules: sections.map((section: any) => ({
+          id: section.id,
+          type: section.type || section.tipo || '',
+          name: section.name || section.label || section.type || section.tipo || section.id
+        })),
+        settingsValues: aggregatedSectionSettings
+      }),
+    [aggregatedSectionSettings, sections]
+  );
 
   useEffect(() => {
     if (window.location.search.includes('debug=products') || window.location.search.includes('debug_render=true')) {
@@ -322,6 +357,8 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
             return <HeaderModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} />;
           case 'hero':
             return <HeroModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} />;
+          case 'hero2':
+            return <Hero2Module key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} />;
           case 'features':
             return <FeaturesModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} />;
           case 'about':
@@ -540,7 +577,15 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
             if (moduleId.startsWith('mod_footer_1')) {
               return <FooterModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} />;
             }
-            return <MenuModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} />;
+            return (
+              <MenuModule
+                key={moduleId}
+                moduleId={moduleId}
+                settingsValues={finalSettingsValues}
+                menuMode={resolveMenuMode(moduleId, finalSettingsValues)}
+                automaticMenuItems={automaticMenuItems}
+              />
+            );
           case 'footer':
             const isDebug = window.location.search.includes('debug_render=true');
             if (isDebug) {

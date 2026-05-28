@@ -27,10 +27,15 @@ interface TopBarProps {
   isMobile: boolean;
   isPreviewMode: boolean;
   hasUnsavedChanges?: boolean;
+  isSaving?: boolean;
   currentStatus?: 'draft' | 'published' | 'modified';
   isNewSite?: boolean;
   onReloadPreview?: () => void;
   assetName?: string;
+  autosaveStatus?: 'idle' | 'saving' | 'saved' | 'error';
+  autosaveError?: string | null;
+  lastAutosavedAt?: Date | null;
+  showAutosaveIndicator?: boolean;
 }
 
 export const TopBar: React.FC<TopBarProps> = ({ 
@@ -46,10 +51,15 @@ export const TopBar: React.FC<TopBarProps> = ({
   isMobile,
   isPreviewMode,
   hasUnsavedChanges = false,
+  isSaving = false,
   currentStatus = 'draft',
   isNewSite = true,
   onReloadPreview,
-  assetName = 'Activo sin nombre'
+  assetName = 'Activo sin nombre',
+  autosaveStatus = 'idle',
+  autosaveError = null,
+  lastAutosavedAt = null,
+  showAutosaveIndicator = true
 }) => (
   <div className={`bg-surface border-b border-border/60 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-4 md:px-6 z-20 ${isMobile ? 'h-[70px]' : 'h-[60px]'}`}>
     {/* Left Section: Viewports */}
@@ -98,6 +108,31 @@ export const TopBar: React.FC<TopBarProps> = ({
             <span className="text-[9px] font-bold text-primary uppercase tracking-tighter shrink-0">Sincronizando...</span>
           </div>
         )}
+        {showAutosaveIndicator && saveStatus !== 'loading' && autosaveStatus === 'saving' && (
+          <div className="flex items-center gap-1.5 px-2 py-0.5 bg-primary/10 rounded-full">
+            <motion.div 
+              animate={{ rotate: 360 }} 
+              transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+            >
+              <RotateCcw size={10} className="text-primary" />
+            </motion.div>
+            <span className="text-[9px] font-bold text-primary uppercase tracking-tighter shrink-0">Guardando automáticamente...</span>
+          </div>
+        )}
+        {showAutosaveIndicator && saveStatus !== 'loading' && autosaveStatus === 'saved' && lastAutosavedAt && (
+          <div className="px-2 py-0.5 bg-secondary rounded-full">
+            <span className="text-[9px] font-bold text-text/70 uppercase tracking-tighter shrink-0">
+              Guardado automático {lastAutosavedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          </div>
+        )}
+        {showAutosaveIndicator && saveStatus !== 'loading' && autosaveStatus === 'error' && (
+          <div className="px-2 py-0.5 bg-red-500/10 rounded-full">
+            <span className="text-[9px] font-bold text-red-600 uppercase tracking-tighter shrink-0" title={autosaveError || undefined}>
+              No se pudo guardar automáticamente
+            </span>
+          </div>
+        )}
       </div>
     </div>
 
@@ -126,10 +161,10 @@ export const TopBar: React.FC<TopBarProps> = ({
 
       <div className="flex items-center gap-1.5 md:gap-2">
         <motion.button 
-          whileHover={(saveStatus === 'idle' && hasUnsavedChanges) ? { scale: 1.02 } : {}}
-          whileTap={(saveStatus === 'idle' && hasUnsavedChanges) ? { scale: 0.98 } : {}}
-          onClick={(saveStatus === 'idle' && hasUnsavedChanges) ? onSave : undefined}
-          disabled={saveStatus !== 'idle' || !hasUnsavedChanges}
+          whileHover={(saveStatus === 'idle' && !isSaving && hasUnsavedChanges) ? { scale: 1.02 } : {}}
+          whileTap={(saveStatus === 'idle' && !isSaving && hasUnsavedChanges) ? { scale: 0.98 } : {}}
+          onClick={(saveStatus === 'idle' && !isSaving && hasUnsavedChanges) ? onSave : undefined}
+          disabled={saveStatus !== 'idle' || isSaving || !hasUnsavedChanges}
           className={`flex items-center gap-2 px-3 md:px-4 py-2 font-bold text-[10px] md:text-xs rounded-xl transition-all ${
             saveStatus === 'success' ? 'bg-green-500/10 text-green-600' : 
             saveStatus === 'error' ? 'bg-red-500/10 text-red-600' : 
@@ -150,14 +185,14 @@ export const TopBar: React.FC<TopBarProps> = ({
           )}
         </motion.button>
         <motion.button 
-          whileHover={(publishStatus === 'idle' && !hasUnsavedChanges && currentStatus !== 'published') ? { scale: 1.02 } : {}}
-          whileTap={(publishStatus === 'idle' && !hasUnsavedChanges && currentStatus !== 'published') ? { scale: 0.98 } : {}}
-          onClick={(publishStatus === 'idle' && !hasUnsavedChanges && currentStatus !== 'published') ? onPublish : undefined}
-          disabled={publishStatus !== 'idle' || hasUnsavedChanges || currentStatus === 'published'}
+          whileHover={(publishStatus === 'idle' && saveStatus !== 'loading' && autosaveStatus !== 'saving' && !isSaving && (currentStatus !== 'published' || hasUnsavedChanges)) ? { scale: 1.02 } : {}}
+          whileTap={(publishStatus === 'idle' && saveStatus !== 'loading' && autosaveStatus !== 'saving' && !isSaving && (currentStatus !== 'published' || hasUnsavedChanges)) ? { scale: 0.98 } : {}}
+          onClick={(publishStatus === 'idle' && saveStatus !== 'loading' && autosaveStatus !== 'saving' && !isSaving && (currentStatus !== 'published' || hasUnsavedChanges)) ? onPublish : undefined}
+          disabled={publishStatus !== 'idle' || saveStatus === 'loading' || autosaveStatus === 'saving' || isSaving || (currentStatus === 'published' && !hasUnsavedChanges)}
           className={`flex items-center gap-2 px-3 md:px-5 py-2 font-bold text-[10px] md:text-xs rounded-xl shadow-lg transition-all ${
             publishStatus === 'success' ? 'bg-green-500 text-white shadow-green-500/20' : 
             publishStatus === 'error' ? 'bg-red-500 text-white shadow-red-500/20' : 
-            (hasUnsavedChanges || currentStatus === 'published') ? 'bg-primary/40 text-white/50 shadow-none cursor-not-allowed' :
+            (currentStatus === 'published' && !hasUnsavedChanges) ? 'bg-primary/40 text-white/50 shadow-none cursor-not-allowed' :
             'bg-primary text-white shadow-primary/20'
           }`}
         >

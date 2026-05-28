@@ -437,13 +437,13 @@ export const NewsletterModule: React.FC<{
                           onChange={(e) => setEmail(e.target.value)}
                         />
                       </div>
-                      <motion.button
-                        whileHover={hoverEffect === 'scale' ? { scale: 1.02 } : { boxShadow: btnBg.startsWith('#') ? `0 0 25px ${btnBg}60` : `0 0 25px rgba(0,0,0,0.1)` }}
-                        whileTap={{ scale: 0.98 }}
-                        type="submit"
-                        className="px-8 py-4 font-black text-sm shadow-xl flex items-center justify-center gap-2 transition-all"
-                        style={{ backgroundColor: btnBg, color: btnColor, borderRadius: `${inputRadius - 8}px` }}
-                      >
+                        <motion.button
+                          whileHover={hoverEffect === 'scale' ? { scale: 1.02 } : {}}
+                          whileTap={{ scale: 0.98 }}
+                          type="submit"
+                          className="px-8 py-4 font-black text-sm flex items-center justify-center gap-2 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+                          style={{ backgroundColor: btnBg, color: btnColor, borderRadius: `${inputRadius - 8}px`, boxShadow: 'none' }}
+                        >
                         {buttonText}
                         <Send size={16} />
                       </motion.button>

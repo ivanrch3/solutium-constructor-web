@@ -1131,6 +1131,9 @@ export const generatePreviewServerSide = async (params: {
   preview_image_path?: string;
   preview_image_hash?: string;
   preview_image_updated_at?: string;
+  web_builder_updated?: boolean;
+  published_updated?: boolean;
+  warnings?: string[];
   error?: string;
   errorCode?: 'preview_region_missing' | 'preview_missing_storage_config' | 'preview_request_failed';
 }> => {
@@ -1273,7 +1276,10 @@ export const generatePreviewServerSide = async (params: {
       preview_thumbnail_url: data.preview_thumbnail_url || data.preview_image_url,
       preview_image_path: data.preview_image_path,
       preview_image_hash: data.preview_image_hash,
-      preview_image_updated_at: data.preview_image_updated_at
+      preview_image_updated_at: data.preview_image_updated_at,
+      web_builder_updated: data.web_builder_updated === true,
+      published_updated: data.published_updated === true,
+      warnings: Array.isArray(data.warnings) ? data.warnings : []
     };
   } catch (error: any) {
     const message = String(error?.message || 'Unknown preview error');

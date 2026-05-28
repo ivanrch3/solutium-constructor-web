@@ -37,7 +37,7 @@ import {
   CTA_MODULE, PRICING_MODULE, FAQ_MODULE, TRUSTED_LOGOS_MODULE,
   BENTO_MODULE, COMPARISON_MODULE
 } from './registry';
-import { saveWebBuilderSiteDraft, publishWebBuilderSite, getProducts, getCustomers, getTrustedCompanyLogos, normalizeTrustedCompanyLogos, upsertPage, upsertPageSections, logEvolutionRequest, getPageBySiteId, updateSitePreview, generatePreviewServerSide } from '../../services/dataService';
+import { saveWebBuilderSiteDraft, publishWebBuilderSite, getProducts, getCustomers, getTrustedCompanyLogos, normalizeTrustedCompanyLogos, upsertPage, upsertPageSections, logEvolutionRequest, getPageBySiteId, generatePreviewServerSide } from '../../services/dataService';
 import { sendToMother } from '../../services/handshakeService';
 import { ensureActiveSupabaseSession, SupabaseSessionError } from '../../services/supabaseSessionService';
 import { Product, Customer, PageSection, TrustedCompanyLogo } from '../../types/schema';
@@ -362,6 +362,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   const [publishStatus, setPublishStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [authNotice, setAuthNotice] = useState<{ type: 'info' | 'error'; message: string } | null>(null);
   const [previewStatus, setPreviewStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [previewWarning, setPreviewWarning] = useState<string | null>(null);
   const [currentStatus, setCurrentStatus] = useState<'draft' | 'published' | 'modified'>(() => (
     resolveLifecycleStatusFromPage(initialPage)
   ));
@@ -370,6 +371,15 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
   const [showBentoPrompt, setShowBentoPrompt] = useState(false);
+
+  const setPreviewWarningsFromResult = useCallback((
+    warnings: string[] | undefined,
+    fallbackMessage: string
+  ) => {
+    if (Array.isArray(warnings) && warnings.length > 0) {
+      setPreviewWarning(`${fallbackMessage} ${warnings.join(' ')}`);
+    }
+  }, []);
 
   useEffect(() => {
     if (!authNotice || authNotice.type !== 'info') return;
@@ -2786,8 +2796,10 @@ const formatTimestampName = () => {
             siteId,
             previewDisableReason
           });
+          setPreviewWarning(null);
           setPreviewStatus('idle');
         } else {
+          setPreviewWarning(null);
           setPreviewStatus('loading');
 
           try {
@@ -2800,13 +2812,11 @@ const formatTimestampName = () => {
             });
 
             if (previewResult.success && previewResult.preview_image_url) {
-              await updateSitePreview(siteId, {
-                previewImageUrl: previewResult.preview_image_url,
-                previewThumbnailUrl: previewResult.preview_thumbnail_url || previewResult.preview_image_url,
-                previewImagePath: previewResult.preview_image_path,
-                previewImageHash: previewResult.preview_image_hash,
-              });
-              
+              setPreviewWarningsFromResult(
+                previewResult.warnings,
+                'Preview generado, pero hubo advertencias al guardar metadatos.'
+              );
+
               sendToMother('SOLUTIUM_PREVIEW_GENERATED', {
                 site_id: siteId,
                 preview_image_url: previewResult.preview_image_url
@@ -2836,11 +2846,13 @@ const formatTimestampName = () => {
                 setPreviewStatus('idle');
               } else {
                 console.warn('[PREVIEW_CAPTURE_DEBUG] Draft saved, but preview generation failed.', previewResult.error);
+                setPreviewWarning('Borrador guardado, pero no se pudo actualizar la vista previa.');
                 setPreviewStatus('error');
               }
             }
           } catch (pError) {
             console.warn('[PREVIEW_CAPTURE_DEBUG] Preview failed after saving draft. Draft remains saved.', pError);
+            setPreviewWarning('Borrador guardado, pero no se pudo actualizar la vista previa.');
             setPreviewStatus('error');
           } finally {
             stabilizeCanvasScroll(savedCanvasScrollTop);
@@ -3043,8 +3055,10 @@ const formatTimestampName = () => {
               siteId,
               previewDisableReason
             });
+            setPreviewWarning(null);
             setPreviewStatus('idle');
           } else {
+            setPreviewWarning(null);
             setPreviewStatus('loading');
 
             try {
@@ -3057,12 +3071,10 @@ const formatTimestampName = () => {
               });
 
               if (previewResult.success && previewResult.preview_image_url) {
-                await updateSitePreview(siteId, {
-                  previewImageUrl: previewResult.preview_image_url,
-                  previewThumbnailUrl: previewResult.preview_thumbnail_url || previewResult.preview_image_url,
-                  previewImagePath: previewResult.preview_image_path,
-                  previewImageHash: previewResult.preview_image_hash,
-                });
+                setPreviewWarningsFromResult(
+                  previewResult.warnings,
+                  'Preview generado, pero hubo advertencias al guardar metadatos.'
+                );
 
                 sendToMother('SOLUTIUM_PREVIEW_GENERATED', {
                   site_id: siteId,
@@ -3093,11 +3105,13 @@ const formatTimestampName = () => {
                   setPreviewStatus('idle');
                 } else {
                   console.warn('[PREVIEW_CAPTURE_DEBUG] Draft saved, but preview generation failed.', previewResult.error);
+                  setPreviewWarning('Borrador guardado, pero no se pudo actualizar la vista previa.');
                   setPreviewStatus('error');
                 }
               }
             } catch (pError) {
               console.warn('[PREVIEW_CAPTURE_DEBUG] Preview failed after saving draft. Draft remains saved.', pError);
+              setPreviewWarning('Borrador guardado, pero no se pudo actualizar la vista previa.');
               setPreviewStatus('error');
             } finally {
               stabilizeCanvasScroll(savedCanvasScrollTop);
@@ -3445,6 +3459,7 @@ const formatTimestampName = () => {
             }
 
             setIsGeneratingPreview(true);
+            setPreviewWarning(null);
             setPreviewStatus('loading');
             
             // [AUTO_PREVIEW_ON_PUBLISH_REQUEST_DEBUG]
@@ -3463,21 +3478,17 @@ const formatTimestampName = () => {
             });
 
             if (previewResult.success && previewResult.preview_image_url) {
+              setPreviewWarningsFromResult(
+                previewResult.warnings,
+                'Preview publicado generado, pero hubo advertencias al guardar metadatos.'
+              );
+
               logDebug('[AUTO_PREVIEW_ON_PUBLISH_SUCCESS]', {
                 preview_image_url: previewResult.preview_image_url,
                 preview_image_path: previewResult.preview_image_path,
                 preview_image_hash: previewResult.preview_image_hash
               });
 
-              // Crucial: Object contains ALL fields from backend to avoid overwriting with empties
-              await updateSitePreview(siteId, {
-                previewImageUrl: previewResult.preview_image_url,
-                previewThumbnailUrl: previewResult.preview_thumbnail_url || previewResult.preview_image_url,
-                previewImagePath: previewResult.preview_image_path,
-                previewImageHash: previewResult.preview_image_hash,
-                previewImageUpdatedAt: previewResult.preview_image_updated_at
-              });
-              
               sendToMother('SOLUTIUM_PREVIEW_GENERATED', {
                 site_id: siteId,
                 preview_image_url: previewResult.preview_image_url
@@ -3485,14 +3496,30 @@ const formatTimestampName = () => {
 
               setPreviewStatus('success');
               setTimeout(() => setPreviewStatus('idle'), 3000);
+            } else if (previewResult.errorCode === 'preview_region_missing' || previewResult.errorCode === 'preview_missing_storage_config') {
+              setPreviewDisableReason(
+                previewResult.errorCode === 'preview_missing_storage_config'
+                  ? 'preview_missing_storage_config'
+                  : 'preview_region_missing',
+                siteId
+              );
+              logDebug('[AUTO_PREVIEW_ON_PUBLISH_SKIPPED]', {
+                reason: previewResult.reason || previewResult.errorCode
+              });
+              setPreviewStatus('idle');
+            } else if (previewResult.skipped) {
+              logDebug('[AUTO_PREVIEW_ON_PUBLISH_SKIPPED]', {
+                reason: previewResult.reason || null
+              });
+              setPreviewStatus('idle');
             } else {
               throw new Error(previewResult.error || 'Preview response was empty or unsuccessful');
             }
           } catch (pError: any) {
-            // [AUTO_PREVIEW_ON_PUBLISH_ERROR]
+            // [AUTO_PREVIEW_ON_PUBLISH_WARNING]
             const wasCorsLikeFailure = pError?.message === 'Failed to fetch' || (pError instanceof TypeError && pError.message.includes('fetch'));
             
-            console.error('[AUTO_PREVIEW_ON_PUBLISH_ERROR]', {
+            console.warn('[AUTO_PREVIEW_ON_PUBLISH_WARNING]', {
               message: pError?.message,
               status: pError?.status,
               wasCorsLikeFailure,
@@ -3505,6 +3532,7 @@ const formatTimestampName = () => {
               wasCors: wasCorsLikeFailure
             });
             
+            setPreviewWarning('Sitio publicado, pero no se pudo actualizar la vista previa.');
             setPreviewStatus('error');
             setTimeout(() => setPreviewStatus('idle'), 5000);
           } finally {
@@ -3634,9 +3662,11 @@ const formatTimestampName = () => {
     if (!projectId || isPreviewMode || isGeneratingPreview) return;
     if (isPreviewConfigDisabled(getPreviewDisableReason())) {
       logDebug('[PREVIEW_CAPTURE_DEBUG] Manual preview skipped because backend preview configuration is disabled.');
+      setPreviewWarning(null);
       setPreviewStatus('idle');
       return;
     }
+    setPreviewWarning(null);
     setPreviewStatus('loading');
     setIsGeneratingPreview(true);
     try {
@@ -3650,16 +3680,11 @@ const formatTimestampName = () => {
       });
 
       if (result.success && result.preview_image_url) {
-        const previewData = {
-          previewImageUrl: result.preview_image_url,
-          previewThumbnailUrl: result.preview_thumbnail_url || result.preview_image_url,
-          previewImagePath: result.preview_image_path,
-          previewImageHash: result.preview_image_hash,
-          previewImageUpdatedAt: result.preview_image_updated_at
-        };
-        
-        await updateSitePreview(currentSiteId, previewData);
-        
+        setPreviewWarningsFromResult(
+          result.warnings,
+          'Preview generado, pero hubo advertencias al guardar metadatos.'
+        );
+
         // Notificar a la App Madre para que refresque la miniatura en su UI
         sendToMother('SOLUTIUM_PREVIEW_GENERATED', {
           site_id: currentSiteId,
@@ -3688,7 +3713,8 @@ const formatTimestampName = () => {
         }
       }
     } catch (error: any) {
-      console.error('Manual preview update failed:', error);
+      console.warn('Manual preview update failed:', error);
+      setPreviewWarning('No se pudo actualizar la vista previa. El borrador/publicación no se modifica.');
       setPreviewStatus('error');
     } finally {
       setIsGeneratingPreview(false);
@@ -3906,6 +3932,7 @@ const formatTimestampName = () => {
                     onReloadPreview={handleReloadPreview}
                     saveStatus={saveStatus}
                     publishStatus={publishStatus}
+                    previewStatus={previewStatus}
                     isMobile={true}
                     isPreviewMode={isPreviewMode}
                     hasUnsavedChanges={hasUnsavedChanges}
@@ -4182,6 +4209,7 @@ const formatTimestampName = () => {
                     onReloadPreview={handleReloadPreview}
                     saveStatus={saveStatus}
                     publishStatus={publishStatus}
+                    previewStatus={previewStatus}
                     isMobile={false}
                     isPreviewMode={isPreviewMode}
                     hasUnsavedChanges={hasUnsavedChanges}
@@ -4288,6 +4316,31 @@ const formatTimestampName = () => {
             </div>
             <button
               onClick={() => setAuthNotice(null)}
+              className="rounded-lg p-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+            >
+              <LucideIcons.X size={16} />
+            </button>
+          </div>
+        </motion.div>
+      )}
+
+      {previewWarning && (
+        <motion.div
+          initial={{ opacity: 0, y: 40 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 20 }}
+          className="fixed bottom-8 right-8 z-[110] max-w-md w-[90vw] rounded-2xl border border-amber-200 bg-white p-4 shadow-2xl"
+        >
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700">
+              <LucideIcons.ImageOff size={18} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-bold text-amber-900">Preview pendiente</p>
+              <p className="text-xs leading-relaxed text-amber-800">{previewWarning}</p>
+            </div>
+            <button
+              onClick={() => setPreviewWarning(null)}
               className="rounded-lg p-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
             >
               <LucideIcons.X size={16} />

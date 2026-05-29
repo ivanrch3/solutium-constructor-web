@@ -81,7 +81,13 @@ export const Canvas: React.FC<CanvasProps> = ({
   reloadKey = 0,
   onOpenBentoGenerator
 }) => {
-  const { selectSection, selectedSectionId, siteContent } = useEditorStore();
+  const {
+    selectSection,
+    selectedSectionId,
+    siteContent,
+    selectedCompositionElementId,
+    selectCompositionElement
+  } = useEditorStore();
 
   const lastModuleRef = React.useRef<HTMLDivElement>(null);
   const prevModulesLength = React.useRef(editorState.addedModules?.length || 0);
@@ -707,6 +713,10 @@ export const Canvas: React.FC<CanvasProps> = ({
                         settingsValues={finalSettings}
                         content={section.content}
                         isPreviewMode={isPreviewMode}
+                        selectedElementId={selectedSectionId === section.id ? selectedCompositionElementId : null}
+                        onElementSelect={!isPreviewMode ? (elementId) => {
+                          selectCompositionElement(section.id, elementId);
+                        } : undefined}
                       />
                     )}
                     {/* Fallback debug for unrendered modules */}

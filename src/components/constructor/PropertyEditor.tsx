@@ -18,6 +18,25 @@ import {
 } from 'lucide-react';
 import * as registryModules from './registry';
 import { SettingControl } from './SettingControl';
+import {
+  CompositionElement,
+  COMPOSITION_SCHEMA_DEEP_KEY,
+  CompositionElementType,
+  CompositionSectionSchema
+} from '../../types/compositionSchema';
+import { validateCompositionSchema } from '../../utils/compositionSchemaValidator';
+import {
+  addCompositionElement,
+  deleteCompositionElement,
+  duplicateCompositionElement,
+  findCompositionElement,
+  getCompositionElementLabel,
+  getCompositionSchemaKey,
+  humanizeCompositionType,
+  resolveCompositionSchema,
+  stringifyCompositionSchema,
+  updateCompositionElement
+} from '../../utils/compositionEditorUtils';
 
 const PILLAR_ICONS: Record<string, React.ReactNode> = {
   contenido: <Type size={16} />,
@@ -45,14 +64,35 @@ const PILLAR_LABELS: Record<string, string> = {
 };
 
 const PILLARS_ORDER: string[] = ['contenido', 'estructura', 'estilo', 'tipografia', 'multimedia', 'interaccion'];
+const COMPOSITION_ADDABLE_TYPES: CompositionElementType[] = [
+  'heading',
+  'paragraph',
+  'button',
+  'image',
+  'card',
+  'container',
+  'badge',
+  'list',
+  'divider'
+];
 
-export const PropertyEditor: React.FC = () => {
+interface PropertyEditorProps {
+  settingsValues?: Record<string, any>;
+  onSettingChange?: (elementOrModuleId: string, settingId: string, value: any) => void;
+}
+
+export const PropertyEditor: React.FC<PropertyEditorProps> = ({
+  settingsValues,
+  onSettingChange
+}) => {
   const { 
     siteContent, 
     selectedSectionId, 
     updateSectionSettings,
     selectedBentoCellIndex,
     setSelectedBentoCellIndex,
+    selectedCompositionElementId,
+    setSelectedCompositionElementId,
     project
   } = useEditorStore();
   
@@ -65,8 +105,48 @@ export const PropertyEditor: React.FC = () => {
     interaccion: false
   });
   const [expandedSubsections, setExpandedSubsections] = React.useState<Record<string, boolean>>({});
+  const [compositionJsonDraft, setCompositionJsonDraft] = React.useState('');
+  const [compositionJsonError, setCompositionJsonError] = React.useState<string | null>(null);
 
   const selectedSection = siteContent.sections.find(s => s.id === selectedSectionId);
+  const isCompositionSection = selectedSection?.type === 'composition_section';
+  const compositionSettingsValues = settingsValues || selectedSection?.settings;
+  const compositionSchema = React.useMemo(
+    () => selectedSection && isCompositionSection
+      ? resolveCompositionSchema(selectedSection.id, compositionSettingsValues, selectedSection.content)
+      : null,
+    [compositionSettingsValues, isCompositionSection, selectedSection]
+  );
+  const selectedCompositionElement = React.useMemo(
+    () => compositionSchema ? findCompositionElement(compositionSchema, selectedCompositionElementId) : null,
+    [compositionSchema, selectedCompositionElementId]
+  );
+  const compositionSchemaText = React.useMemo(
+    () => compositionSchema ? stringifyCompositionSchema(compositionSchema) : '',
+    [compositionSchema]
+  );
+
+  React.useEffect(() => {
+    if (!selectedSection || !isCompositionSection) {
+      if (selectedCompositionElementId) setSelectedCompositionElementId(null);
+      return;
+    }
+
+    if (selectedCompositionElementId && !selectedCompositionElement) {
+      setSelectedCompositionElementId(null);
+    }
+  }, [
+    isCompositionSection,
+    selectedCompositionElement,
+    selectedCompositionElementId,
+    selectedSection,
+    setSelectedCompositionElementId
+  ]);
+
+  React.useEffect(() => {
+    setCompositionJsonDraft(compositionSchemaText);
+    setCompositionJsonError(null);
+  }, [compositionSchemaText]);
   const projectColors = Array.from(new Set([
     project?.brandColors?.primary,
     project?.brandColors?.secondary,
@@ -86,13 +166,349 @@ export const PropertyEditor: React.FC = () => {
   const moduleDef = Object.values(registryModules).find(m => {
     // El ID real en el store puede tener un sufijo de timestamp. Buscamos el prefijo.
     if ('id' in m) {
-      return selectedSection.id.startsWith((m as any).id);
+      return selectedSection.id.startsWith((m as any).id) || selectedSection.type === (m as any).type;
     }
     return false;
   }) as any;
 
   if (!moduleDef) {
     return <div className="p-4 text-xs text-amber-600 bg-amber-50">Definición de módulo no encontrada</div>;
+  }
+
+  const updateCompositionSchema = (schema: CompositionSectionSchema) => {
+    const normalizedSchema = validateCompositionSchema(schema);
+    const schemaJson = stringifyCompositionSchema(normalizedSchema);
+
+    if (onSettingChange) {
+      onSettingChange(selectedSection.id, COMPOSITION_SCHEMA_DEEP_KEY, schemaJson);
+      return;
+    }
+
+    updateSectionSettings(selectedSection.id, {
+      [getCompositionSchemaKey(selectedSection.id)]: schemaJson
+    });
+  };
+
+  const updateSelectedCompositionElement = (
+    updater: (element: CompositionElement) => CompositionElement
+  ) => {
+    if (!compositionSchema || !selectedCompositionElementId) return;
+    updateCompositionSchema(updateCompositionElement(compositionSchema, selectedCompositionElementId, updater));
+  };
+
+  const updateCompositionContent = (updates: Record<string, any>) => {
+    updateSelectedCompositionElement((element) => ({
+      ...element,
+      content: {
+        ...(element.content || {}),
+        ...updates
+      }
+    }));
+  };
+
+  const updateCompositionStyle = (updates: Record<string, any>) => {
+    updateSelectedCompositionElement((element) => ({
+      ...element,
+      style: {
+        ...(element.style || {}),
+        ...updates
+      }
+    }));
+  };
+
+  const duplicateSelectedCompositionElement = () => {
+    if (!compositionSchema || !selectedCompositionElementId) return;
+    const result = duplicateCompositionElement(compositionSchema, selectedCompositionElementId);
+    updateCompositionSchema(result.schema);
+    setSelectedCompositionElementId(result.selectedElementId);
+  };
+
+  const deleteSelectedCompositionElement = () => {
+    if (!compositionSchema || !selectedCompositionElementId) return;
+    const result = deleteCompositionElement(compositionSchema, selectedCompositionElementId);
+    updateCompositionSchema(result.schema);
+    setSelectedCompositionElementId(result.selectedElementId);
+  };
+
+  const addCompositionElementFromEditor = (type: CompositionElementType) => {
+    if (!compositionSchema) return;
+    const canNestInSelected = selectedCompositionElement && ['card', 'container'].includes(selectedCompositionElement.type);
+    const result = addCompositionElement(
+      compositionSchema,
+      type,
+      canNestInSelected ? selectedCompositionElement.id : null
+    );
+    updateCompositionSchema(result.schema);
+    setSelectedCompositionElementId(result.selectedElementId);
+  };
+
+  const updateCompositionPadding = (padding: number) => {
+    updateSelectedCompositionElement((element) => ({
+      ...element,
+      layout: {
+        ...(element.layout || {}),
+        desktop: { ...(element.layout?.desktop || {}), padding },
+        tablet: { ...(element.layout?.tablet || {}), padding },
+        mobile: { ...(element.layout?.mobile || {}), padding }
+      }
+    }));
+  };
+
+  const applyCompositionJson = () => {
+    try {
+      const parsed = JSON.parse(compositionJsonDraft);
+      const normalizedSchema = validateCompositionSchema(parsed);
+      updateCompositionSchema(normalizedSchema);
+      if (
+        selectedCompositionElementId &&
+        !normalizedSchema.elements.some((element) => element.id === selectedCompositionElementId)
+      ) {
+        setSelectedCompositionElementId(null);
+      }
+      setCompositionJsonDraft(stringifyCompositionSchema(normalizedSchema));
+      setCompositionJsonError(null);
+    } catch (error) {
+      setCompositionJsonError(error instanceof Error ? error.message : 'JSON inválido');
+    }
+  };
+
+  const renderInput = (
+    label: string,
+    value: string | number | undefined,
+    onChange: (value: string) => void,
+    type: 'text' | 'number' | 'color' | 'url' = 'text'
+  ) => (
+    <label className="space-y-1 block">
+      <span className="text-[10px] font-black uppercase tracking-wider text-gray-500">{label}</span>
+      <input
+        type={type === 'url' ? 'text' : type}
+        value={value ?? ''}
+        onChange={(event) => onChange(event.target.value)}
+        className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs text-gray-700 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+      />
+    </label>
+  );
+
+  const renderTextarea = (label: string, value: string, onChange: (value: string) => void, rows = 4) => (
+    <label className="space-y-1 block">
+      <span className="text-[10px] font-black uppercase tracking-wider text-gray-500">{label}</span>
+      <textarea
+        rows={rows}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs text-gray-700 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+      />
+    </label>
+  );
+
+  const renderSelect = (
+    label: string,
+    value: string | number | undefined,
+    options: Array<{ label: string; value: string | number }>,
+    onChange: (value: string) => void
+  ) => (
+    <label className="space-y-1 block">
+      <span className="text-[10px] font-black uppercase tracking-wider text-gray-500">{label}</span>
+      <select
+        value={value ?? ''}
+        onChange={(event) => onChange(event.target.value)}
+        className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs text-gray-700 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+      >
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>{option.label}</option>
+        ))}
+      </select>
+    </label>
+  );
+
+  if (isCompositionSection && selectedCompositionElement && compositionSchema) {
+    const element = selectedCompositionElement;
+    const listText = (element.content?.items || []).map((item) => item.text).join('\n');
+    const currentPadding =
+      element.layout?.desktop?.padding ??
+      element.layout?.tablet?.padding ??
+      element.layout?.mobile?.padding ??
+      '';
+
+    return (
+      <div className="flex flex-col h-full bg-white border-l border-gray-100 overflow-hidden shadow-sm">
+        <div className="p-4 border-b border-gray-100 bg-gray-50/50 flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <h3 className="font-bold text-gray-900 text-sm flex items-center gap-2">
+              <div className="w-6 h-6 bg-blue-600 rounded-md flex items-center justify-center text-white">
+                <CustomSettingsIcon size={14} />
+              </div>
+              {getCompositionElementLabel(element)}
+            </h3>
+            <div className="px-2 py-0.5 bg-gray-100 rounded text-[10px] font-mono text-gray-500 uppercase">
+              {humanizeCompositionType(element.type)}
+            </div>
+          </div>
+          <button
+            onClick={() => setSelectedCompositionElementId(null)}
+            className="flex items-center gap-1.5 text-[10px] font-bold text-blue-600 hover:text-blue-700 transition-colors bg-blue-50 px-2 py-1 rounded w-fit"
+          >
+            <LucideIcons.ArrowLeft size={10} />
+            Volver a configuración del módulo
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-5">
+          <div className="rounded-2xl border border-blue-100 bg-blue-50/40 p-4 space-y-4">
+            <p className="text-[11px] font-black uppercase tracking-wider text-blue-700">Gestión del elemento</p>
+            {renderInput('Nombre en estructura', element.name ?? '', (value) => {
+              updateSelectedCompositionElement((current) => ({ ...current, name: value }));
+            })}
+            <label className="flex items-center justify-between gap-3 rounded-xl border border-blue-100 bg-white px-3 py-2">
+              <span className="text-[10px] font-black uppercase tracking-wider text-gray-500">Visible</span>
+              <input
+                type="checkbox"
+                checked={
+                  element.visibility?.desktop !== false ||
+                  element.visibility?.tablet !== false ||
+                  element.visibility?.mobile !== false
+                }
+                onChange={(event) => {
+                  const visible = event.target.checked;
+                  updateSelectedCompositionElement((current) => ({
+                    ...current,
+                    visibility: { desktop: visible, tablet: visible, mobile: visible }
+                  }));
+                }}
+                className="h-4 w-4 accent-blue-600"
+              />
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={duplicateSelectedCompositionElement}
+                className="rounded-xl border border-blue-100 bg-white px-3 py-2 text-[11px] font-black text-blue-700 hover:bg-blue-50 transition-colors"
+              >
+                Duplicar
+              </button>
+              <button
+                type="button"
+                onClick={deleteSelectedCompositionElement}
+                className="rounded-xl border border-rose-100 bg-white px-3 py-2 text-[11px] font-black text-rose-600 hover:bg-rose-50 transition-colors"
+              >
+                Eliminar
+              </button>
+            </div>
+            <div className="space-y-2">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">
+                Agregar {['card', 'container'].includes(element.type) ? 'dentro del contenedor' : 'a la raíz'}
+              </p>
+              <div className="grid grid-cols-3 gap-2">
+                {COMPOSITION_ADDABLE_TYPES.map((type) => (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => addCompositionElementFromEditor(type)}
+                    className="rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-[10px] font-bold text-gray-600 hover:border-blue-200 hover:text-blue-700 transition-colors"
+                  >
+                    {humanizeCompositionType(type)}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-gray-100 bg-gray-50/70 p-4 space-y-4">
+            <p className="text-[11px] font-black uppercase tracking-wider text-gray-700">Contenido</p>
+            {element.type === 'heading' && (
+              <>
+                {renderTextarea('Texto', element.content?.text ?? '', (value) => updateCompositionContent({ text: value }), 3)}
+                {renderSelect('Nivel', element.content?.level ?? 2, [1, 2, 3, 4, 5, 6].map((level) => ({ label: `H${level}`, value: level })), (value) => updateCompositionContent({ level: Number(value) }))}
+              </>
+            )}
+            {element.type === 'paragraph' && renderTextarea('Texto', element.content?.text ?? '', (value) => updateCompositionContent({ text: value }), 5)}
+            {element.type === 'button' && (
+              <>
+                {renderInput('Label', element.content?.label ?? '', (value) => updateCompositionContent({ label: value }))}
+                {renderInput('Href', element.content?.href ?? '', (value) => {
+                  updateSelectedCompositionElement((current) => ({
+                    ...current,
+                    content: { ...(current.content || {}), href: value },
+                    actions: [{ type: 'link', target: value }]
+                  }));
+                }, 'url')}
+              </>
+            )}
+            {element.type === 'image' && (
+              <>
+                {renderInput('Src', element.content?.src ?? '', (value) => updateCompositionContent({ src: value }), 'url')}
+                {renderInput('Alt', element.content?.alt ?? '', (value) => updateCompositionContent({ alt: value }))}
+              </>
+            )}
+            {element.type === 'badge' && renderInput('Texto', element.content?.text ?? '', (value) => updateCompositionContent({ text: value }))}
+            {element.type === 'list' && renderTextarea('Items', listText, (value) => updateCompositionContent({
+              items: value.split('\n').map((text, index) => ({
+                id: element.content?.items?.[index]?.id || `${element.id}_item_${index + 1}`,
+                text
+              }))
+            }), 6)}
+            {['card', 'container', 'divider'].includes(element.type) && (
+              <p className="text-xs text-gray-400">Este elemento no tiene contenido textual directo en esta fase.</p>
+            )}
+          </div>
+
+          <div className="rounded-2xl border border-gray-100 bg-gray-50/70 p-4 space-y-4">
+            <p className="text-[11px] font-black uppercase tracking-wider text-gray-700">Estilo</p>
+            {element.type !== 'divider' && renderInput('Color', element.style?.color || '', (value) => updateCompositionStyle({ color: value }))}
+            {['button', 'badge', 'card', 'container'].includes(element.type) && renderInput('Background', element.style?.background || '', (value) => updateCompositionStyle({ background: value }))}
+            {['button', 'badge', 'card', 'container', 'image'].includes(element.type) && renderInput('Radius', element.style?.radius ?? '', (value) => updateCompositionStyle({ radius: Number(value) || 0 }), 'number')}
+            {['heading', 'paragraph', 'button', 'badge', 'list'].includes(element.type) && (
+              <>
+                {renderInput('Font size', element.style?.fontSize ?? '', (value) => updateCompositionStyle({ fontSize: Number(value) || undefined }), 'number')}
+                {renderInput('Font weight', element.style?.fontWeight ?? '', (value) => updateCompositionStyle({ fontWeight: Number(value) || undefined }), 'number')}
+                {renderInput('Line height', element.style?.lineHeight ?? '', (value) => updateCompositionStyle({ lineHeight: Number(value) || undefined }), 'number')}
+              </>
+            )}
+            {element.type === 'image' && renderSelect('Object fit', element.style?.objectFit || 'cover', [
+              { label: 'Cover', value: 'cover' },
+              { label: 'Contain', value: 'contain' },
+              { label: 'Fill', value: 'fill' }
+            ], (value) => updateCompositionStyle({ objectFit: value }))}
+            {['card', 'container'].includes(element.type) && (
+              <>
+                {renderInput('Padding', currentPadding, (value) => updateCompositionPadding(Number(value) || 0), 'number')}
+                {renderInput('Border color', element.style?.borderColor || '', (value) => updateCompositionStyle({ borderColor: value }))}
+                {renderSelect('Shadow', element.style?.shadow || 'none', [
+                  { label: 'None', value: 'none' },
+                  { label: 'SM', value: 'sm' },
+                  { label: 'MD', value: 'md' },
+                  { label: 'LG', value: 'lg' },
+                  { label: 'XL', value: 'xl' }
+                ], (value) => updateCompositionStyle({ shadow: value }))}
+              </>
+            )}
+            {element.type === 'divider' && (
+              <>
+                {renderInput('Color', element.style?.borderColor || element.style?.color || '', (value) => updateCompositionStyle({ borderColor: value, color: value }))}
+                {renderInput('Border width', element.style?.borderWidth ?? 1, (value) => updateCompositionStyle({ borderWidth: Number(value) || 1 }), 'number')}
+              </>
+            )}
+          </div>
+
+          <div className="rounded-2xl border border-amber-100 bg-amber-50/50 p-4 space-y-3">
+            <p className="text-[11px] font-black uppercase tracking-wider text-amber-700">Avanzado · Schema JSON</p>
+            <textarea
+              rows={10}
+              value={compositionJsonDraft}
+              onChange={(event) => setCompositionJsonDraft(event.target.value)}
+              className="w-full rounded-xl border border-amber-100 bg-white px-3 py-2 text-[11px] font-mono text-gray-700 outline-none focus:border-amber-300 focus:ring-2 focus:ring-amber-100"
+            />
+            {compositionJsonError && <p className="text-[10px] font-bold text-rose-500">{compositionJsonError}</p>}
+            <button
+              onClick={applyCompositionJson}
+              className="w-full rounded-xl bg-amber-500 px-3 py-2 text-xs font-black text-white hover:bg-amber-600 transition-colors"
+            >
+              Aplicar JSON
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   // Agrupar todos los settings por Pilar

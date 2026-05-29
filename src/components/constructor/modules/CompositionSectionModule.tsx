@@ -14,6 +14,8 @@ interface CompositionSectionModuleProps {
   settingsValues: Record<string, any>;
   content?: any;
   isPreviewMode?: boolean;
+  selectedElementId?: string | null;
+  onElementSelect?: (elementId: string) => void;
 }
 
 const MAX_WIDTHS: Record<string, string> = {
@@ -99,34 +101,75 @@ const getChildren = (schema: CompositionSectionSchema, parentId: string | null) 
     .filter((element) => (element.parentId || null) === parentId)
     .sort((left, right) => left.order - right.order);
 
+const isElementGloballyHidden = (element: CompositionElement) =>
+  element.visibility?.desktop === false &&
+  element.visibility?.tablet === false &&
+  element.visibility?.mobile === false;
+
 const resolveHref = (element: CompositionElement) => {
   const linkAction = element.actions?.find((action) => action.type === 'link' || action.type === 'scroll_to');
   return element.content?.href || linkAction?.target || '#';
 };
 
-const renderElement = (schema: CompositionSectionSchema, element: CompositionElement): React.ReactNode => {
+const renderElement = (
+  schema: CompositionSectionSchema,
+  element: CompositionElement,
+  editorOptions?: {
+    enabled: boolean;
+    selectedElementId?: string | null;
+    onElementSelect?: (elementId: string) => void;
+  }
+): React.ReactNode => {
+  const isHidden = isElementGloballyHidden(element);
+  if (isHidden && !editorOptions?.enabled) return null;
+
   const children = getChildren(schema, element.id);
-  const className = `composition-element composition-element-${element.type} composition-element-${element.id}`;
-  const childNodes = children.map((child) => renderElement(schema, child));
+  const isSelected = editorOptions?.enabled && editorOptions.selectedElementId === element.id;
+  const className = [
+    'composition-element',
+    `composition-element-${element.type}`,
+    `composition-element-${element.id}`,
+    editorOptions?.enabled ? 'composition-element-editable' : '',
+    isHidden ? 'composition-element-hidden-editor' : '',
+    isSelected ? 'composition-element-selected' : ''
+  ].filter(Boolean).join(' ');
+  const childNodes = children.map((child) => renderElement(schema, child, editorOptions));
+  const editorProps = editorOptions?.enabled
+    ? {
+        'data-composition-element-id': element.id,
+        'data-composition-element-type': element.type,
+        onClick: (event: React.MouseEvent) => {
+          event.preventDefault();
+          event.stopPropagation();
+          editorOptions.onElementSelect?.(element.id);
+        }
+      }
+    : {
+        'data-composition-element-id': element.id,
+        'data-composition-element-type': element.type
+      };
+  const emptyPlaceholder = editorOptions?.enabled
+    ? <span className="composition-empty-placeholder">Texto vacío</span>
+    : null;
 
   switch (element.type) {
     case 'heading': {
-      const level = element.content?.level || 2;
-      return React.createElement(`h${level}`, { key: element.id, className }, element.content?.text);
+      const level = element.content?.level ?? 2;
+      return React.createElement(`h${level}`, { key: element.id, className, ...editorProps }, element.content?.text || emptyPlaceholder);
     }
     case 'paragraph':
-      return <p key={element.id} className={className}>{element.content?.text}</p>;
+      return <p key={element.id} className={className} {...editorProps}>{element.content?.text || emptyPlaceholder}</p>;
     case 'badge':
-      return <span key={element.id} className={className}>{element.content?.text}</span>;
+      return <span key={element.id} className={className} {...editorProps}>{element.content?.text || emptyPlaceholder}</span>;
     case 'button':
       return (
-        <a key={element.id} className={className} href={resolveHref(element)}>
-          {element.content?.label}
+        <a key={element.id} className={className} href={resolveHref(element)} {...editorProps}>
+          {element.content?.label || emptyPlaceholder}
         </a>
       );
     case 'image':
       if (!element.content?.src) {
-        return <div key={element.id} className={`${className} composition-image-fallback`} aria-hidden="true" />;
+        return <div key={element.id} className={`${className} composition-image-fallback`} aria-hidden="true" {...editorProps} />;
       }
 
       return (
@@ -134,24 +177,25 @@ const renderElement = (schema: CompositionSectionSchema, element: CompositionEle
           key={element.id}
           className={className}
           src={element.content.src}
-          alt={element.content.alt || ''}
+          alt={element.content.alt ?? ''}
           loading="lazy"
           referrerPolicy="no-referrer"
+          {...editorProps}
         />
       );
     case 'list':
       return (
-        <ul key={element.id} className={className}>
+        <ul key={element.id} className={className} {...editorProps}>
           {(element.content?.items || []).map((item) => (
-            <li key={item.id}>{item.text}</li>
+            <li key={item.id}>{item.text || emptyPlaceholder}</li>
           ))}
         </ul>
       );
     case 'divider':
-      return <hr key={element.id} className={className} />;
+      return <hr key={element.id} className={className} {...editorProps} />;
     case 'card':
     case 'container':
-      return <div key={element.id} className={className}>{childNodes}</div>;
+      return <div key={element.id} className={className} {...editorProps}>{childNodes}</div>;
     default:
       return null;
   }
@@ -183,6 +227,7 @@ const buildScopedStyles = (moduleId: string, schema: CompositionSectionSchema) =
       width: '100%'
     } as CSSProperties),
     `${rootClass} .composition-element { min-width: 0; }`,
+    `${rootClass} .composition-element-heading, ${rootClass} .composition-element-paragraph, ${rootClass} .composition-element-badge, ${rootClass} .composition-element-button, ${rootClass} .composition-element-list li { white-space: pre-wrap; }`,
     `${rootClass} .composition-element-card, ${rootClass} .composition-element-container { display: flex; flex-direction: column; justify-content: center; gap: 16px; }`,
     `${rootClass} .composition-element-badge { display: inline-flex; width: fit-content; padding: 8px 14px; letter-spacing: 0.08em; font-size: 12px; }`,
     `${rootClass} .composition-element-button { display: inline-flex; width: fit-content; align-items: center; justify-content: center; padding: 14px 20px; text-decoration: none; transition: transform 180ms ease, opacity 180ms ease; }`,
@@ -191,7 +236,12 @@ const buildScopedStyles = (moduleId: string, schema: CompositionSectionSchema) =
     `${rootClass} .composition-image-fallback { background: linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 24%, transparent), color-mix(in srgb, var(--color-primary) 8%, transparent)); }`,
     `${rootClass} .composition-element-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }`,
     `${rootClass} .composition-element-list li::before { content: "•"; margin-right: 10px; color: currentColor; opacity: 0.7; }`,
-    `${rootClass} .composition-element-divider { width: 100%; border: 0; border-top: 1px solid color-mix(in srgb, currentColor 18%, transparent); }`
+    `${rootClass} .composition-element-divider { width: 100%; border: 0; border-top: 1px solid color-mix(in srgb, currentColor 18%, transparent); }`,
+    `${rootClass} .composition-element-editable { cursor: pointer; outline: 1px dashed transparent; outline-offset: 4px; transition: outline-color 160ms ease, box-shadow 160ms ease, opacity 160ms ease; }`,
+    `${rootClass} .composition-element-hidden-editor { opacity: 0.36; filter: grayscale(0.45); }`,
+    `${rootClass} .composition-element-editable:hover { outline-color: color-mix(in srgb, var(--color-primary) 42%, transparent); }`,
+    `${rootClass} .composition-element-selected { outline: 2px solid var(--color-primary); outline-offset: 5px; box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary) 12%, transparent); }`,
+    `${rootClass} .composition-empty-placeholder { color: color-mix(in srgb, currentColor 42%, transparent); font-style: italic; }`
   ];
 
   const elementStyles = schema.elements.flatMap((element) => {
@@ -231,7 +281,10 @@ ${schema.elements.map((element) => styleToCss(`  ${rootClass} .composition-eleme
 export const CompositionSectionModule: React.FC<CompositionSectionModuleProps> = ({
   moduleId,
   settingsValues,
-  content
+  content,
+  isPreviewMode = false,
+  selectedElementId,
+  onElementSelect
 }) => {
   const schema = useMemo(() => {
     const deepSchema = settingsValues[`${moduleId}_${COMPOSITION_SCHEMA_DEEP_KEY}`];
@@ -242,6 +295,11 @@ export const CompositionSectionModule: React.FC<CompositionSectionModuleProps> =
   const rootClassName = `composition-root-${moduleId}`;
   const gridClassName = `composition-grid-${moduleId}`;
   const rootElements = getChildren(schema, null);
+  const editorOptions = {
+    enabled: !isPreviewMode && Boolean(onElementSelect),
+    selectedElementId,
+    onElementSelect
+  };
   const background = schema.background?.type === 'gradient'
     ? schema.background.gradient
     : schema.background?.type === 'transparent'
@@ -270,7 +328,7 @@ export const CompositionSectionModule: React.FC<CompositionSectionModuleProps> =
           marginRight: 'auto'
         }}
       >
-        {rootElements.map((element) => renderElement(schema, element))}
+        {rootElements.map((element) => renderElement(schema, element, editorOptions))}
       </div>
     </section>
   );

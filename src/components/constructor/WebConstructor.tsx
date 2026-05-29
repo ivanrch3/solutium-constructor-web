@@ -4246,6 +4246,14 @@ const formatTimestampName = () => {
                         onOpenBentoGenerator={() => setShowBentoPrompt(true)}
                       />
                     </div>
+                    {!isPreviewMode && !isExternalRender && (
+                      <aside className="w-80 shrink-0 border-l border-border bg-surface overflow-hidden">
+                        <PropertyEditor
+                          settingsValues={editorState.settingsValues}
+                          onSettingChange={handleSettingChange}
+                        />
+                      </aside>
+                    )}
                   </div>
                 </div>
               </>

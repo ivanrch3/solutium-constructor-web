@@ -17,7 +17,11 @@ import {
   MousePointer2,
   Settings,
   Sparkles,
-  Play
+  Play,
+  Copy,
+  Eye,
+  EyeOff,
+  Plus
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { EditorState, WebModule, ModuleElement, SettingGroupType } from '../../types/constructor';
@@ -27,6 +31,35 @@ import { MODULE_INFO, GROUP_LABELS, BENTO_MODULE } from './registry';
 import { SettingControl } from './SettingControl';
 import { GlobalSettingsPanel } from './GlobalSettingsPanel';
 import { resolveModuleDisplayLabel } from '../../utils/menuNavigation';
+import {
+  addCompositionElement,
+  buildCompositionTree,
+  deleteCompositionElement,
+  duplicateCompositionElement,
+  getCompositionElementLabel,
+  humanizeCompositionType,
+  moveCompositionElement,
+  resolveCompositionSchema,
+  stringifyCompositionSchema,
+  CompositionTreeNode
+} from '../../utils/compositionEditorUtils';
+import {
+  COMPOSITION_SCHEMA_DEEP_KEY,
+  CompositionElementType,
+  CompositionSectionSchema
+} from '../../types/compositionSchema';
+
+const COMPOSITION_ADDABLE_TYPES: CompositionElementType[] = [
+  'heading',
+  'paragraph',
+  'button',
+  'image',
+  'card',
+  'container',
+  'badge',
+  'list',
+  'divider'
+];
 
 interface StructurePanelProps {
   editorState: EditorState;
@@ -59,7 +92,13 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
   isMobile,
   activeTab = 'constructor'
 }) => {
-  const { siteContent, project } = useEditorStore();
+  const {
+    siteContent,
+    project,
+    selectedCompositionElementId,
+    setSelectedCompositionElementId,
+    selectCompositionElement
+  } = useEditorStore();
   const containerRef = React.useRef<HTMLDivElement>(null);
   const [shiningGroup, setShiningGroup] = React.useState<string | null>(null);
   const [expandedBentoItem, setExpandedBentoItem] = React.useState<number | null>(null);
@@ -198,6 +237,7 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
 
   const toggleModule = (moduleId: string) => {
     stopShining();
+    setSelectedCompositionElementId(null);
     setEditorState(prev => ({
       ...prev,
       expandedModuleId: prev.expandedModuleId === moduleId ? null : moduleId
@@ -206,6 +246,7 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
 
   const toggleElement = (elementId: string) => {
     stopShining();
+    setSelectedCompositionElementId(null);
     setEditorState(prev => ({
       ...prev,
       selectedElementId: prev.selectedElementId === elementId ? null : elementId
@@ -221,6 +262,139 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
         [elementId]: prev.expandedGroupsByElement[elementId] === group ? null : group
       }
     }));
+  };
+
+  const updateCompositionSchema = (
+    moduleId: string,
+    schema: CompositionSectionSchema,
+    nextSelectedElementId?: string | null
+  ) => {
+    onSettingChange(moduleId, COMPOSITION_SCHEMA_DEEP_KEY, stringifyCompositionSchema(schema));
+    if (nextSelectedElementId !== undefined) {
+      selectCompositionElement(moduleId, nextSelectedElementId);
+      setEditorState(prev => ({ ...prev, expandedModuleId: moduleId, selectedElementId: null }));
+    }
+  };
+
+  const renderCompositionNode = (
+    moduleId: string,
+    schema: CompositionSectionSchema,
+    node: CompositionTreeNode,
+    depth = 0
+  ): React.ReactNode => {
+    const { element, children } = node;
+    const isSelected = selectedCompositionElementId === element.id;
+    const isHidden =
+      element.visibility?.desktop === false &&
+      element.visibility?.tablet === false &&
+      element.visibility?.mobile === false;
+
+    return (
+      <div key={element.id} className="space-y-1">
+        <div className={`rounded-lg border transition-all ${
+          isSelected
+            ? 'bg-primary/10 border-primary/30 text-primary'
+            : 'bg-surface border-border/30 hover:bg-secondary text-text/70'
+        } ${isHidden ? 'opacity-50' : ''}`}>
+          <button
+            type="button"
+            onClick={() => {
+              selectCompositionElement(moduleId, isSelected ? null : element.id);
+              setEditorState(prev => ({ ...prev, expandedModuleId: moduleId, selectedElementId: null }));
+            }}
+            className="w-full flex items-center gap-2 p-2 text-left"
+            style={{ paddingLeft: `${8 + depth * 14}px` }}
+          >
+            <div className={`w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-black ${
+              isSelected ? 'bg-primary text-white' : 'bg-secondary text-text/40'
+            }`}>
+              {getElementIcon(element.type)}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-bold truncate">{getCompositionElementLabel(element)}</p>
+              <p className="text-[9px] uppercase tracking-wide opacity-60">{humanizeCompositionType(element.type)}</p>
+            </div>
+            {isHidden && <EyeOff size={12} className="shrink-0 opacity-70" />}
+          </button>
+          <div className="flex items-center justify-end gap-1 px-2 pb-2">
+            <button
+              type="button"
+              title="Mover arriba"
+              onClick={(event) => {
+                event.stopPropagation();
+                updateCompositionSchema(moduleId, moveCompositionElement(schema, element.id, 'up'));
+              }}
+              className="p-1 rounded hover:bg-secondary"
+            >
+              <ChevronUp size={12} />
+            </button>
+            <button
+              type="button"
+              title="Mover abajo"
+              onClick={(event) => {
+                event.stopPropagation();
+                updateCompositionSchema(moduleId, moveCompositionElement(schema, element.id, 'down'));
+              }}
+              className="p-1 rounded hover:bg-secondary"
+            >
+              <ChevronDown size={12} />
+            </button>
+            <button
+              type="button"
+              title={isHidden ? 'Mostrar' : 'Ocultar'}
+              onClick={(event) => {
+                event.stopPropagation();
+                const visible = isHidden;
+                updateCompositionSchema(
+                  moduleId,
+                  {
+                    ...schema,
+                    elements: schema.elements.map((current) => (
+                      current.id === element.id
+                        ? { ...current, visibility: { desktop: visible, tablet: visible, mobile: visible } }
+                        : current
+                    ))
+                  },
+                  element.id
+                );
+              }}
+              className="p-1 rounded hover:bg-secondary"
+            >
+              {isHidden ? <Eye size={12} /> : <EyeOff size={12} />}
+            </button>
+            <button
+              type="button"
+              title="Duplicar"
+              onClick={(event) => {
+                event.stopPropagation();
+                const result = duplicateCompositionElement(schema, element.id);
+                updateCompositionSchema(moduleId, result.schema, result.selectedElementId);
+              }}
+              className="p-1 rounded hover:bg-secondary"
+            >
+              <Copy size={12} />
+            </button>
+            <button
+              type="button"
+              title="Eliminar"
+              onClick={(event) => {
+                event.stopPropagation();
+                const result = deleteCompositionElement(schema, element.id);
+                updateCompositionSchema(moduleId, result.schema, result.selectedElementId);
+              }}
+              className="p-1 rounded hover:bg-rose-50 hover:text-rose-600"
+            >
+              <Trash2 size={12} />
+            </button>
+          </div>
+        </div>
+        {children.length > 0 && (
+          <div className="ml-2 border-l border-border/30 pl-1 space-y-1">
+            {children.map((child) => renderCompositionNode(moduleId, schema, child, depth + 1))}
+          </div>
+        )}
+      </div>
+    );
   };
 
   const toggleMenuLink = (moduleId: string) => {
@@ -345,6 +519,7 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
 
           const allElements = [globalElement, ...module.elements];
           const isBento = module.id.startsWith('mod_bento_1');
+          const isCompositionSection = module.type === 'composition_section';
 
           return (
             <div 
@@ -677,6 +852,69 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                            </>
                          );
                        })()}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Composition Section Internal Tree */}
+              <AnimatePresence>
+                {isModuleExpanded && isCompositionSection && !isCollapsed && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="mt-4 mb-2 p-3 bg-primary/5 rounded-2xl border border-primary/10 overflow-hidden"
+                  >
+                    <div className="flex items-center gap-2 mb-3">
+                      <Layers className="text-primary w-3 h-3" />
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-primary">Elementos internos</span>
+                    </div>
+                    <div className="space-y-1.5">
+                      {(() => {
+                        const sectionContent = siteContent.sections.find((section) => section.id === module.id)?.content;
+                        const schema = resolveCompositionSchema(module.id, editorState.settingsValues, sectionContent);
+                        const tree = buildCompositionTree(schema);
+                        const selectedElement = schema.elements.find((element) => element.id === selectedCompositionElementId);
+                        const canNestInSelected = selectedElement && ['card', 'container'].includes(selectedElement.type);
+
+                        return (
+                          <>
+                            <div className="mb-3 rounded-xl border border-primary/10 bg-surface p-2">
+                              <div className="flex items-center gap-1 mb-2 text-[9px] font-bold uppercase tracking-wider text-text/50">
+                                <Plus size={10} />
+                                Agregar {canNestInSelected ? 'dentro del seleccionado' : 'a la raíz'}
+                              </div>
+                              <div className="grid grid-cols-3 gap-1">
+                                {COMPOSITION_ADDABLE_TYPES.map((type) => (
+                                  <button
+                                    key={type}
+                                    type="button"
+                                    onClick={() => {
+                                      const result = addCompositionElement(
+                                        schema,
+                                        type,
+                                        canNestInSelected ? selectedElement!.id : null
+                                      );
+                                      updateCompositionSchema(module.id, result.schema, result.selectedElementId);
+                                    }}
+                                    className="rounded-lg border border-border/40 px-1.5 py-1 text-[9px] font-bold hover:border-primary/30 hover:text-primary transition-colors"
+                                  >
+                                    {humanizeCompositionType(type)}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                            {tree.length === 0 ? (
+                              <div className="p-4 border border-dashed border-border rounded-xl text-center text-[10px] text-text/40">
+                                No hay elementos internos.
+                              </div>
+                            ) : (
+                              tree.map((node) => renderCompositionNode(module.id, schema, node))
+                            )}
+                          </>
+                        );
+                      })()}
                     </div>
                   </motion.div>
                 )}

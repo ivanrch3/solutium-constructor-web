@@ -37,6 +37,11 @@ const safeString = (value: unknown, fallback = '') => {
   return String(value).replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '').trim();
 };
 
+const safeVisibleText = (value: unknown, fallback = '') => {
+  if (value === undefined || value === null) return fallback;
+  return String(value).replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '');
+};
+
 const safeUrl = (value: unknown) => {
   const url = safeString(value);
   if (!url || UNSAFE_URL_PROTOCOL.test(url)) return '';
@@ -91,29 +96,29 @@ const normalizeContent = (type: CompositionElementType, content: unknown): Compo
 
   if (type === 'heading') {
     normalized.level = clampNumber(source.level, 2, 1, 6) as 1 | 2 | 3 | 4 | 5 | 6;
-    normalized.text = safeString(source.text);
+    normalized.text = safeVisibleText(source.text);
   }
 
   if (type === 'paragraph' || type === 'badge') {
-    normalized.text = safeString(source.text);
+    normalized.text = safeVisibleText(source.text);
   }
 
   if (type === 'image') {
     normalized.src = safeUrl(source.src);
-    normalized.alt = safeString(source.alt);
+    normalized.alt = safeVisibleText(source.alt);
   }
 
   if (type === 'button') {
-    normalized.label = safeString(source.label || source.text, 'Botón');
-    normalized.href = safeUrl(source.href || source.url || '#') || '#';
+    normalized.label = safeVisibleText(source.label ?? source.text);
+    normalized.href = safeUrl(source.href ?? source.url ?? '#') || '#';
   }
 
   if (type === 'list') {
     normalized.items = Array.isArray(source.items)
       ? source.items.slice(0, 12).map((item: any, index: number) => ({
           id: normalizeId(item?.id, `item_${index + 1}`),
-          text: safeString(item?.text)
-        })).filter((item) => item.text)
+          text: safeVisibleText(item?.text)
+        }))
       : [];
   }
 
@@ -287,3 +292,4 @@ const normalizeResponsive = (responsive: Record<string, any>, fallback: Composit
 
   return normalized;
 };
+

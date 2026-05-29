@@ -14,6 +14,7 @@ interface EditorStoreState {
   inlineEditingId: string | null;
   showMenuRecommendation: boolean;
   selectedBentoCellIndex: number | null;
+  selectedCompositionElementId: string | null;
   
   // Acciones
   setProject: (project: any) => void;
@@ -21,6 +22,8 @@ interface EditorStoreState {
   setInlineEditingId: (id: string | null) => void;
   setShowMenuRecommendation: (show: boolean) => void;
   setSelectedBentoCellIndex: (index: number | null) => void;
+  setSelectedCompositionElementId: (id: string | null) => void;
+  selectCompositionElement: (sectionId: string, elementId: string | null) => void;
   startAIGeneration: (brief: any) => Promise<void>;
   setGenerationStep: (step: number) => void;
   updateSectionSettings: (sectionId: string, settingsUpdate: Record<string, any>) => void;
@@ -73,6 +76,7 @@ export const useEditorStore = create<EditorStoreState>((set, get) => ({
   inlineEditingId: null,
   showMenuRecommendation: false,
   selectedBentoCellIndex: null,
+  selectedCompositionElementId: null,
   
   setProject: (project) => set({ project }),
 
@@ -85,6 +89,7 @@ export const useEditorStore = create<EditorStoreState>((set, get) => ({
     inlineEditingId: null,
     showMenuRecommendation: false,
     selectedBentoCellIndex: null,
+    selectedCompositionElementId: null,
     isGenerating: false,
     generationStep: 0,
     generationSteps: state.generationSteps
@@ -94,6 +99,13 @@ export const useEditorStore = create<EditorStoreState>((set, get) => ({
 
   setShowMenuRecommendation: (show) => set({ showMenuRecommendation: show }),
   setSelectedBentoCellIndex: (index) => set({ selectedBentoCellIndex: index }),
+  setSelectedCompositionElementId: (id) => set({ selectedCompositionElementId: id }),
+  selectCompositionElement: (sectionId, elementId) => set({
+    selectedSectionId: sectionId,
+    selectedElementId: null,
+    selectedBentoCellIndex: null,
+    selectedCompositionElementId: elementId
+  }),
 
   startAIGeneration: async (brief) => {
     const { generateSiteContent } = await import('../services/aiService');
@@ -145,7 +157,12 @@ export const useEditorStore = create<EditorStoreState>((set, get) => ({
     });
   },
 
-  selectSection: (id) => set({ selectedSectionId: id, selectedElementId: null, selectedBentoCellIndex: null }),
+  selectSection: (id) => set({
+    selectedSectionId: id,
+    selectedElementId: null,
+    selectedBentoCellIndex: null,
+    selectedCompositionElementId: null
+  }),
   
   selectElement: (id) => set({ selectedElementId: id }),
 

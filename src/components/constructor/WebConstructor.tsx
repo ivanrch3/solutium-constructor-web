@@ -35,7 +35,7 @@ import {
   PROCESS_MODULE, GALLERY_MODULE, VIDEO_MODULE, TESTIMONIALS_MODULE, 
   STATS_MODULE, NEWSLETTER_MODULE, CONTACT_MODULE, TEAM_MODULE, 
   CTA_MODULE, PRICING_MODULE, FAQ_MODULE, TRUSTED_LOGOS_MODULE,
-  BENTO_MODULE, COMPARISON_MODULE
+  BENTO_MODULE, COMPARISON_MODULE, COMPOSITION_SECTION_MODULE
 } from './registry';
 import { saveWebBuilderSiteDraft, publishWebBuilderSite, getProducts, getCustomers, getTrustedCompanyLogos, normalizeTrustedCompanyLogos, upsertPage, upsertPageSections, logEvolutionRequest, getPageBySiteId, generatePreviewServerSide } from '../../services/dataService';
 import { sendToMother } from '../../services/handshakeService';
@@ -3994,7 +3994,8 @@ const formatTimestampName = () => {
                                   ]},
                                   { id: 'structure', label: 'Estructura', modules: [
                                     { icon: MODULE_INFO.spacer.icon, label: "Espaciadores", mod: SPACER_MODULE },
-                                    { icon: MODULE_INFO.bento.icon, label: "Composición Libre", mod: BENTO_MODULE }
+                                    { icon: MODULE_INFO.bento.icon, label: "Composición Libre", mod: BENTO_MODULE },
+                                    { icon: MODULE_INFO.composition_section.icon, label: "Composición Visual", mod: COMPOSITION_SECTION_MODULE }
                                   ]}
                                 ].map((cat) => (
                                   <div key={cat.id} className="border-b border-sidebar-foreground/5 last:border-0 pb-4">
@@ -4107,6 +4108,7 @@ const formatTimestampName = () => {
                                     <div className="space-y-1">
                                       <ModuleItem icon={React.createElement(MODULE_INFO.spacer.icon, { size: 18 })} label="Espaciadores" onClick={() => addModule(SPACER_MODULE)} />
                                       <ModuleItem icon={React.createElement(MODULE_INFO.bento.icon, { size: 18 })} label="Composición Libre" onClick={() => addModule(BENTO_MODULE)} />
+                                      <ModuleItem icon={React.createElement(MODULE_INFO.composition_section.icon, { size: 18 })} label="Composición Visual" onClick={() => addModule(COMPOSITION_SECTION_MODULE)} />
                                     </div>
                                   </div>
                                 </div>

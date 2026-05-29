@@ -36,6 +36,7 @@ import { FooterModule } from './modules/FooterModule';
 import { SpacerModule } from './modules/SpacerModule';
 import { BentoModule } from './modules/BentoModule';
 import { ComparisonModule } from './modules/ComparisonModule';
+import { CompositionSectionModule } from './modules/CompositionSectionModule';
 import { ParallaxScrollContext } from './ParallaxBackground';
 
 import { normalizeSocialUrl, getIconForPlatform, resolveFooterSocialLinks, FOOTER_DEFAULTS } from '../../utils/socialUtils';
@@ -700,8 +701,16 @@ export const Canvas: React.FC<CanvasProps> = ({
                         onOpenBentoGenerator={onOpenBentoGenerator}
                       />
                     )}
+                    {section.type === 'composition_section' && (
+                      <CompositionSectionModule
+                        moduleId={section.id}
+                        settingsValues={finalSettings}
+                        content={section.content}
+                        isPreviewMode={isPreviewMode}
+                      />
+                    )}
                     {/* Fallback debug for unrendered modules */}
-                    {!['products', 'products_showcase', 'hero', 'hero2', 'features', 'about', 'process', 'gallery', 'video', 'testimonials', 'stats', 'team', 'pricing', 'faq', 'contact', 'clients', 'trusted_logos', 'cta', 'newsletter', 'conversion', 'navegacion', 'menu', 'footer', 'spacer', 'bento', 'comparative'].includes(section.type) && (
+                    {!['products', 'products_showcase', 'hero', 'hero2', 'features', 'about', 'process', 'gallery', 'video', 'testimonials', 'stats', 'team', 'pricing', 'faq', 'contact', 'clients', 'trusted_logos', 'cta', 'newsletter', 'conversion', 'navegacion', 'menu', 'footer', 'spacer', 'bento', 'composition_section', 'comparative'].includes(section.type) && (
                       <div className="p-8 border-2 border-dashed border-rose-200 rounded-2xl bg-rose-50 text-rose-500 text-center">
                         <p className="font-bold">Módulo no reconocido: {section.type}</p>
                         <p className="text-xs opacity-60">ID: {section.id} | Template: {section.templateId}</p>

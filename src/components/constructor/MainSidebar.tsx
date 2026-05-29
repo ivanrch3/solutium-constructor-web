@@ -45,7 +45,8 @@ import {
   PRODUCTS_MODULE,
   SPACER_MODULE,
   BENTO_MODULE,
-  COMPARISON_MODULE
+  COMPARISON_MODULE,
+  COMPOSITION_SECTION_MODULE
 } from './registry';
 
 interface SidebarItemProps {
@@ -427,6 +428,11 @@ export const MainSidebar: React.FC<MainSidebarProps> = ({
                       icon={React.createElement(MODULE_INFO.spacer.icon, { size: 18 })} 
                       label="Espaciadores" 
                       onClick={() => onAddModule(SPACER_MODULE)}
+                    />
+                    <ModuleItem
+                      icon={React.createElement(MODULE_INFO.composition_section.icon, { size: 18 })}
+                      label="Composición Visual"
+                      onClick={() => onAddModule(COMPOSITION_SECTION_MODULE)}
                     />
                   </div>
                 )}

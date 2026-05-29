@@ -117,9 +117,13 @@ const getMotherApiBaseUrl = () => {
 };
 
 const fetchPublishedSiteById = async (siteId: string) => {
-  const primaryBaseUrl = getMotherApiBaseUrl();
-  const fallbackBaseUrl = 'https://solutium.app';
-  const baseUrls = Array.from(new Set([primaryBaseUrl, fallbackBaseUrl]));
+  const configuredBaseUrl = getMotherApiBaseUrl();
+  const productionBaseUrl = 'https://solutium.app';
+  const isProductionConstructor =
+    typeof window !== 'undefined' && window.location.hostname === 'constructor.solutium.app';
+  const baseUrls = isProductionConstructor
+    ? Array.from(new Set([productionBaseUrl, configuredBaseUrl]))
+    : Array.from(new Set([configuredBaseUrl, productionBaseUrl]));
 
   let lastError: unknown = null;
 

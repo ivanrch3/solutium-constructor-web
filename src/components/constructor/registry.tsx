@@ -58,6 +58,7 @@ import {
   Columns2
 } from 'lucide-react';
 import { WebModule, SettingGroupType, SettingDefinition } from '../../types/constructor';
+import { createDefaultCompositionSchema } from '../../types/compositionSchema';
 
 const HIGHLIGHT_SETTINGS = (prefix: string = 'title'): SettingDefinition[] => [
   { id: `${prefix}_highlight_type`, label: 'Tipo de Resaltado (**texto**)', type: 'select', defaultValue: 'gradient', options: [
@@ -3448,6 +3449,48 @@ export const COMPARISON_MODULE: WebModule = {
   ]
 };
 
+export const COMPOSITION_SECTION_MODULE: WebModule = {
+  id: 'mod_composition_section_1',
+  type: 'composition_section',
+  iconKey: 'composition_section',
+  name: 'Composición Visual',
+  globalGroups: ['estructura', 'estilo'],
+  globalSettings: {
+    estructura: [
+      {
+        id: 'usage_note',
+        label: 'Estado',
+        type: 'textarea',
+        rows: 3,
+        defaultValue: 'Base técnica inicial para secciones visuales composables. En esta fase se edita mediante schema JSON seguro; el editor visual interno llegará en una fase posterior.'
+      }
+    ],
+    estilo: []
+  },
+  content: {
+    composition: createDefaultCompositionSchema()
+  },
+  elements: [
+    {
+      id: 'el_composition_tree',
+      name: 'Schema de Composición',
+      type: 'single',
+      groups: ['contenido'],
+      settings: {
+        contenido: [
+          {
+            id: 'schema',
+            label: 'Schema JSON',
+            type: 'textarea',
+            rows: 18,
+            defaultValue: JSON.stringify(createDefaultCompositionSchema(), null, 2)
+          }
+        ]
+      }
+    }
+  ]
+};
+
 export const GROUP_LABELS: Record<SettingGroupType, string> = {
   contenido: 'Contenido',
   estructura: 'Estructura',
@@ -3506,7 +3549,8 @@ export const MODULE_INFO: Record<string, {
     replacement: 'trusted_logos'
   },
   trusted_logos: { label: 'Logos de Empresas', icon: Handshake },
-  bento: { label: 'Bento / Composición Libre', icon: Layout }
+  bento: { label: 'Bento / Composición Libre', icon: Layout },
+  composition_section: { label: 'Composición Visual', icon: Layout }
 };
 
 

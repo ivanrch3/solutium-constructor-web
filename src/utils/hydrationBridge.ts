@@ -1,5 +1,7 @@
 import { logDebug, isRenderDebugEnabled } from './debug';
 import { normalizeSocialUrl, getIconForPlatform, FOOTER_DEFAULTS } from './socialUtils';
+import { COMPOSITION_SCHEMA_DEEP_KEY } from '../types/compositionSchema';
+import { validateCompositionSchema } from './compositionSchemaValidator';
 
 /**
  * [SIP v10.6] Hydration Bridge Registry
@@ -32,6 +34,7 @@ interface ModuleBridgeAdapter {
  * Registro de adaptadores certificados por módulo.
  */
 const MODULE_ADAPTERS: Record<string, ModuleBridgeAdapter> = {
+  composition_section: {},
   hero: {
     contentToSettings: {
       'title': 'el_hero_typography_title',
@@ -727,6 +730,17 @@ export const bridgeModuleContent = ({
           aliasesUsed.push(contentPath);
         }
       });
+    }
+
+    if (baseType === 'composition_section' && content) {
+      const schemaKey = `${moduleId}_${COMPOSITION_SCHEMA_DEEP_KEY}`;
+      const contentSchema = content.composition || content;
+
+      if (result[schemaKey] === undefined && contentSchema) {
+        result[schemaKey] = JSON.stringify(validateCompositionSchema(contentSchema), null, 2);
+        mappedKeys.push(schemaKey);
+        aliasesUsed.push('composition-schema');
+      }
     }
 
     if (baseType === 'hero2' && content) {

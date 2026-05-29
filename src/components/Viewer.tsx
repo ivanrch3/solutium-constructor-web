@@ -25,6 +25,7 @@ import { SpacerModule } from './constructor/modules/SpacerModule';
 import { MenuModule } from './constructor/modules/MenuModule';
 import { BentoModule } from './constructor/modules/BentoModule';
 import { ComparisonModule } from './constructor/modules/ComparisonModule';
+import { CompositionSectionModule } from './constructor/modules/CompositionSectionModule';
 import { AlertCircle } from 'lucide-react';
 import { logDebug } from '../utils/debug';
 import { bridgeModuleContent } from '../utils/hydrationBridge';
@@ -536,6 +537,16 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
                 key={moduleId}
                 moduleId={moduleId} 
                 settingsValues={finalSettingsValues} 
+                content={content}
+                isPreviewMode={true}
+              />
+            );
+          case 'composition_section':
+            return (
+              <CompositionSectionModule
+                key={moduleId}
+                moduleId={moduleId}
+                settingsValues={finalSettingsValues}
                 content={content}
                 isPreviewMode={true}
               />

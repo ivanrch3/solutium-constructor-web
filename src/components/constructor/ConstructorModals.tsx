@@ -8,9 +8,12 @@ import {
   Trash2, 
   Send,
   Sparkles,
-  Check
+  Check,
+  ArrowLeft,
+  RotateCcw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { AIPageGenerationBrief, AIPagePlan, AIPageTone, AIPageType } from '../../types/ai';
 
 // MobileBottomNav Component
 export const MobileBottomNav = ({ 
@@ -213,6 +216,243 @@ export const PublishModal: React.FC<{
     </motion.div>
   </div>
 );
+
+const PAGE_TYPE_OPTIONS: Array<{ value: AIPageType; label: string }> = [
+  { value: 'landing', label: 'Landing page' },
+  { value: 'home', label: 'Pagina de inicio' },
+  { value: 'services', label: 'Pagina de servicios' },
+  { value: 'product', label: 'Pagina de producto' },
+  { value: 'contact', label: 'Pagina de contacto' },
+  { value: 'promo', label: 'Pagina promocional' }
+];
+
+const GOAL_OPTIONS = [
+  'conseguir clientes potenciales',
+  'recibir mensajes por WhatsApp',
+  'vender un producto',
+  'presentar servicios',
+  'agendar citas',
+  'mostrar portafolio'
+];
+
+const TONE_OPTIONS: AIPageTone[] = ['profesional', 'cercano', 'moderno', 'premium', 'juvenil', 'institucional'];
+
+const getAIPlanModeLabel = (plan: AIPagePlan) => {
+  if (plan.generationMode === 'fallback' || plan.source === 'fallback') return 'Fallback seguro';
+  if (plan.generationMode === 'broker' || plan.source === 'ai_broker') return 'AI Broker';
+  return 'Mock local';
+};
+
+export const AIPagePlanModal: React.FC<{
+  plan: AIPagePlan | null,
+  isGenerating: boolean,
+  projectName?: string,
+  onGenerate: (brief: AIPageGenerationBrief) => void,
+  onApply: () => void,
+  onCancel: () => void
+}> = ({ plan, isGenerating, projectName, onGenerate, onApply, onCancel }) => {
+  const [brief, setBrief] = React.useState<AIPageGenerationBrief>({
+    pageType: 'landing',
+    businessType: '',
+    pageGoal: GOAL_OPTIONS[0],
+    instructions: '',
+    tone: 'profesional',
+    primaryCta: '',
+    businessName: projectName || ''
+  });
+
+  const updateBrief = (patch: Partial<AIPageGenerationBrief>) => {
+    setBrief(prev => ({ ...prev, ...patch }));
+  };
+
+  const canGenerate = brief.businessType.trim().length > 1 && brief.instructions.trim().length > 8 && brief.primaryCta.trim().length > 1;
+
+  return (
+    <div className="fixed inset-0 z-[2150] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.96, y: 16 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.96, y: 16 }}
+        className="w-full max-w-5xl max-h-[92vh] overflow-hidden rounded-3xl bg-surface shadow-2xl border border-border"
+      >
+        <div className="flex items-center justify-between border-b border-border/60 px-6 py-5">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-widest text-primary">Crear con IA - Fase 1</p>
+            <h2 className="text-xl font-black text-text">Generar pagina editable</h2>
+          </div>
+          <button onClick={onCancel} className="rounded-xl p-2 text-text/40 hover:bg-secondary hover:text-text transition-all">
+            <ArrowLeft size={20} />
+          </button>
+        </div>
+
+        <div className="grid max-h-[calc(92vh-82px)] grid-cols-1 overflow-y-auto lg:grid-cols-[1fr_0.9fr]">
+          <div className="space-y-5 p-6">
+            <div className="rounded-2xl border border-primary/15 bg-primary/5 p-4">
+              <p className="text-xs font-bold text-primary">Generacion simulada local</p>
+              <p className="mt-1 text-xs leading-relaxed text-text/60">
+                Esta fase crea un pagePlan compatible con el Constructor. No llama APIs externas ni genera HTML libre.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <label className="space-y-2">
+                <span className="text-xs font-black uppercase tracking-widest text-text/45">Tipo de pagina</span>
+                <select
+                  value={brief.pageType}
+                  onChange={(event) => updateBrief({ pageType: event.target.value as AIPageType })}
+                  className="w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text outline-none focus:border-primary"
+                >
+                  {PAGE_TYPE_OPTIONS.map(option => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="space-y-2">
+                <span className="text-xs font-black uppercase tracking-widest text-text/45">Tipo de negocio</span>
+                <input
+                  value={brief.businessType}
+                  onChange={(event) => updateBrief({ businessType: event.target.value })}
+                  placeholder="restaurante, consultoria, clinica, software..."
+                  className="w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text outline-none focus:border-primary"
+                />
+              </label>
+            </div>
+
+            <label className="space-y-2 block">
+              <span className="text-xs font-black uppercase tracking-widest text-text/45">Objetivo de la pagina</span>
+              <select
+                value={brief.pageGoal}
+                onChange={(event) => updateBrief({ pageGoal: event.target.value })}
+                className="w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text outline-none focus:border-primary"
+              >
+                {GOAL_OPTIONS.map(goal => (
+                  <option key={goal} value={goal}>{goal}</option>
+                ))}
+              </select>
+            </label>
+
+            <label className="space-y-2 block">
+              <span className="text-xs font-black uppercase tracking-widest text-text/45">Instrucciones del usuario</span>
+              <textarea
+                value={brief.instructions}
+                onChange={(event) => updateBrief({ instructions: event.target.value })}
+                placeholder="Describe que quieres que tenga la pagina..."
+                rows={5}
+                className="w-full resize-none rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text outline-none focus:border-primary"
+              />
+            </label>
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <label className="space-y-2">
+                <span className="text-xs font-black uppercase tracking-widest text-text/45">Tono de comunicacion</span>
+                <select
+                  value={brief.tone}
+                  onChange={(event) => updateBrief({ tone: event.target.value as AIPageTone })}
+                  className="w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text outline-none focus:border-primary"
+                >
+                  {TONE_OPTIONS.map(tone => (
+                    <option key={tone} value={tone}>{tone}</option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="space-y-2">
+                <span className="text-xs font-black uppercase tracking-widest text-text/45">CTA principal</span>
+                <input
+                  value={brief.primaryCta}
+                  onChange={(event) => updateBrief({ primaryCta: event.target.value })}
+                  placeholder="Solicitar informacion, Agendar cita..."
+                  className="w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text outline-none focus:border-primary"
+                />
+              </label>
+            </div>
+
+            <button
+              onClick={() => onGenerate(brief)}
+              disabled={!canGenerate || isGenerating}
+              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-6 py-4 text-sm font-black uppercase tracking-widest text-white shadow-lg shadow-primary/20 transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45"
+            >
+              {isGenerating ? <div className="h-5 w-5 rounded-full border-2 border-white/30 border-t-white animate-spin" /> : <Sparkles size={18} />}
+              {plan ? 'Regenerar pagina' : 'Generar pagina'}
+            </button>
+          </div>
+
+          <div className="border-t border-border/60 bg-secondary/35 p-6 lg:border-l lg:border-t-0">
+            <h3 className="text-sm font-black uppercase tracking-widest text-text/45">Resumen generado</h3>
+            {!plan ? (
+              <div className="mt-5 rounded-2xl border border-dashed border-border bg-surface/70 p-8 text-center">
+                <Sparkles className="mx-auto mb-4 text-text/25" size={30} />
+                <p className="text-sm font-bold text-text/50">Completa el formulario para generar el plan de pagina.</p>
+              </div>
+            ) : (
+              <div className="mt-5 space-y-4">
+                <div className="rounded-2xl border border-border bg-surface p-4">
+                  <p className="text-base font-black text-text">{plan.pageTitle}</p>
+                  <p className="mt-1 text-xs text-text/55">{plan.pageGoal}</p>
+                  <p className="mt-3 inline-flex rounded-full bg-primary/10 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-primary">
+                    {getAIPlanModeLabel(plan)}
+                  </p>
+                  {typeof plan.estimatedCredits === 'number' && plan.estimatedCredits > 0 && (
+                    <p className="mt-2 text-[11px] font-bold text-text/45">
+                      Créditos estimados: {plan.estimatedCredits}
+                    </p>
+                  )}
+                </div>
+
+                {Array.isArray(plan.warnings) && plan.warnings.length > 0 && (
+                  <div className="rounded-2xl border border-amber-300/60 bg-amber-50 p-4">
+                    <p className="text-xs font-black uppercase tracking-widest text-amber-700">Advertencias</p>
+                    <ul className="mt-2 space-y-1 text-xs leading-relaxed text-amber-800">
+                      {plan.warnings.slice(0, 4).map((warning, index) => (
+                        <li key={`${warning}-${index}`}>• {warning}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  {plan.sections.map((section, index) => (
+                    <div key={section.id} className="rounded-2xl border border-border bg-surface p-4">
+                      <div className="flex items-start gap-3">
+                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-xs font-black text-primary">{index + 1}</span>
+                        <div className="min-w-0">
+                          <p className="text-sm font-black text-text">{section.title}</p>
+                          <p className="mt-1 text-[11px] font-bold uppercase tracking-wider text-text/40">
+                            {section.moduleType}{section.preset ? ` · ${section.preset}` : ''}
+                          </p>
+                          <p className="mt-2 text-xs leading-relaxed text-text/55">{section.purpose}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    onClick={() => onGenerate(brief)}
+                    disabled={isGenerating}
+                    className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-border bg-surface px-4 py-3 text-xs font-black uppercase tracking-widest text-text/55 hover:text-text disabled:opacity-50"
+                  >
+                    <RotateCcw size={15} />
+                    Regenerar
+                  </button>
+                  <button
+                    onClick={onApply}
+                    className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-3 text-xs font-black uppercase tracking-widest text-white shadow-lg shadow-primary/20"
+                  >
+                    <Check size={16} />
+                    Aplicar al sitio
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
 
 // AIGenerationModal Component
 export const AIGenerationModal: React.FC<{

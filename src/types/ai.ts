@@ -28,6 +28,76 @@ export interface AIGenerationResult {
   sections: AISectionResult[];
 }
 
+export type AIPageType =
+  | 'landing'
+  | 'home'
+  | 'services'
+  | 'product'
+  | 'contact'
+  | 'promo';
+
+export type AIPageTone =
+  | 'profesional'
+  | 'cercano'
+  | 'moderno'
+  | 'premium'
+  | 'juvenil'
+  | 'institucional';
+
+export interface AIPageGenerationBrief {
+  pageType: AIPageType;
+  businessType: string;
+  pageGoal: string;
+  instructions: string;
+  tone: AIPageTone;
+  primaryCta: string;
+  businessName?: string;
+}
+
+export type AIPagePlanGenerationMode = 'mock' | 'broker' | 'fallback';
+
+export type AIPagePlanPreset =
+  | 'hero_visual_premium'
+  | 'features_bento'
+  | 'services_grid'
+  | 'process_steps'
+  | 'cta_premium'
+  | 'comparison'
+  | 'trust_logos'
+  | 'servicios'
+  | 'proceso'
+  | 'comparativa'
+  | 'confianza_logos';
+
+export interface AIPagePlanSection {
+  id: string;
+  moduleType: string;
+  preset?: AIPagePlanPreset | null;
+  title: string;
+  purpose: string;
+  content: Record<string, unknown> & {
+    eyebrow?: string;
+    title?: string;
+    description?: string;
+    cta?: string;
+    secondaryCta?: string;
+    items?: string[];
+  };
+  settings?: Record<string, unknown>;
+}
+
+export interface AIPagePlan {
+  pageTitle: string;
+  pageGoal: string;
+  businessType?: string;
+  tone?: string;
+  source: 'mock_local' | 'ai_broker' | 'fallback';
+  generationMode?: AIPagePlanGenerationMode;
+  warnings?: string[];
+  estimatedCredits?: number;
+  sections: AIPagePlanSection[];
+}
+
 export interface PexelsImage {
   id: number;
   width: number;

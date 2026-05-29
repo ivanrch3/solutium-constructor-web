@@ -1,6 +1,7 @@
 import React from 'react';
 import { 
   RotateCcw, 
+  RotateCw,
   Monitor, 
   Tablet, 
   Smartphone, 
@@ -28,6 +29,7 @@ interface TopBarProps {
   isPreviewMode: boolean;
   hasUnsavedChanges?: boolean;
   isSaving?: boolean;
+  isDraftOperationInProgress?: boolean;
   currentStatus?: 'draft' | 'published' | 'modified';
   isNewSite?: boolean;
   onReloadPreview?: () => void;
@@ -53,6 +55,7 @@ export const TopBar: React.FC<TopBarProps> = ({
   isPreviewMode,
   hasUnsavedChanges = false,
   isSaving = false,
+  isDraftOperationInProgress = false,
   currentStatus = 'draft',
   isNewSite = true,
   onReloadPreview,
@@ -61,7 +64,18 @@ export const TopBar: React.FC<TopBarProps> = ({
   autosaveError = null,
   lastAutosavedAt = null,
   showAutosaveIndicator = true
-}) => (
+}) => {
+  const canSave = saveStatus === 'idle' && !isSaving && !isDraftOperationInProgress && hasUnsavedChanges;
+  const isPublishBlocked =
+    publishStatus !== 'idle' ||
+    saveStatus === 'loading' ||
+    autosaveStatus === 'saving' ||
+    isSaving ||
+    isDraftOperationInProgress ||
+    (currentStatus === 'published' && !hasUnsavedChanges);
+  const canPublish = !isPublishBlocked;
+
+  return (
   <div className={`bg-surface border-b border-border/60 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-4 md:px-6 z-20 ${isMobile ? 'h-[70px]' : 'h-[60px]'}`}>
     {/* Left Section: Viewports */}
     <div className="flex items-center gap-4">
@@ -104,7 +118,7 @@ export const TopBar: React.FC<TopBarProps> = ({
               animate={{ rotate: 360 }} 
               transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
             >
-              <RotateCcw size={10} className="text-primary" />
+              <RotateCw size={10} className="text-primary" />
             </motion.div>
             <span className="text-[9px] font-bold text-primary uppercase tracking-tighter shrink-0">Sincronizando...</span>
           </div>
@@ -115,7 +129,7 @@ export const TopBar: React.FC<TopBarProps> = ({
               animate={{ rotate: 360 }} 
               transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
             >
-              <RotateCcw size={10} className="text-primary" />
+              <RotateCw size={10} className="text-primary" />
             </motion.div>
             <span className="text-[9px] font-bold text-primary uppercase tracking-tighter shrink-0">Guardando automáticamente...</span>
           </div>
@@ -183,10 +197,10 @@ export const TopBar: React.FC<TopBarProps> = ({
 
       <div className="flex items-center gap-1.5 md:gap-2">
         <motion.button 
-          whileHover={(saveStatus === 'idle' && !isSaving && hasUnsavedChanges) ? { scale: 1.02 } : {}}
-          whileTap={(saveStatus === 'idle' && !isSaving && hasUnsavedChanges) ? { scale: 0.98 } : {}}
-          onClick={(saveStatus === 'idle' && !isSaving && hasUnsavedChanges) ? onSave : undefined}
-          disabled={saveStatus !== 'idle' || isSaving || !hasUnsavedChanges}
+          whileHover={canSave ? { scale: 1.02 } : {}}
+          whileTap={canSave ? { scale: 0.98 } : {}}
+          onClick={canSave ? onSave : undefined}
+          disabled={!canSave}
           className={`flex items-center gap-2 px-3 md:px-4 py-2 font-bold text-[10px] md:text-xs rounded-xl transition-all ${
             saveStatus === 'success' ? 'bg-green-500/10 text-green-600' : 
             saveStatus === 'error' ? 'bg-red-500/10 text-red-600' : 
@@ -196,7 +210,7 @@ export const TopBar: React.FC<TopBarProps> = ({
         >
           {saveStatus === 'loading' ? (
             <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: "linear" }}>
-              <RotateCcw size={14} />
+              <RotateCw size={14} />
             </motion.div>
           ) : saveStatus === 'success' ? <Check size={14} /> : saveStatus === 'error' ? <X size={14} /> : <Save size={14} />}
           {isMobile ? (isNewSite ? 'Guardar' : 'Actualizar') : (
@@ -207,14 +221,14 @@ export const TopBar: React.FC<TopBarProps> = ({
           )}
         </motion.button>
         <motion.button 
-          whileHover={(publishStatus === 'idle' && saveStatus !== 'loading' && autosaveStatus !== 'saving' && !isSaving && (currentStatus !== 'published' || hasUnsavedChanges)) ? { scale: 1.02 } : {}}
-          whileTap={(publishStatus === 'idle' && saveStatus !== 'loading' && autosaveStatus !== 'saving' && !isSaving && (currentStatus !== 'published' || hasUnsavedChanges)) ? { scale: 0.98 } : {}}
-          onClick={(publishStatus === 'idle' && saveStatus !== 'loading' && autosaveStatus !== 'saving' && !isSaving && (currentStatus !== 'published' || hasUnsavedChanges)) ? onPublish : undefined}
-          disabled={publishStatus !== 'idle' || saveStatus === 'loading' || autosaveStatus === 'saving' || isSaving || (currentStatus === 'published' && !hasUnsavedChanges)}
+          whileHover={canPublish ? { scale: 1.02 } : {}}
+          whileTap={canPublish ? { scale: 0.98 } : {}}
+          onClick={canPublish ? onPublish : undefined}
+          disabled={isPublishBlocked}
           className={`flex items-center gap-2 px-3 md:px-5 py-2 font-bold text-[10px] md:text-xs rounded-xl shadow-lg transition-all ${
             publishStatus === 'success' ? 'bg-green-500 text-white shadow-green-500/20' : 
             publishStatus === 'error' ? 'bg-red-500 text-white shadow-red-500/20' : 
-            (currentStatus === 'published' && !hasUnsavedChanges) ? 'bg-primary/40 text-white/50 shadow-none cursor-not-allowed' :
+            isPublishBlocked ? 'bg-primary/40 text-white/50 shadow-none cursor-not-allowed' :
             'bg-primary text-white shadow-primary/20'
           }`}
         >
@@ -233,4 +247,5 @@ export const TopBar: React.FC<TopBarProps> = ({
       </div>
     </div>
   </div>
-);
+  );
+};

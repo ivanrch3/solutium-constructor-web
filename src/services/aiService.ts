@@ -1,6 +1,14 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { SiteContent, VisualStyle } from "../types";
-import { AIGenerationContext } from "../types/ai";
+import { AIGenerationContext, AIPageGenerationBrief, AIPagePlan } from "../types/ai";
+import {
+  AI_PAGE_PLAN_ACTION_SLUG,
+  AI_PAGE_PLAN_ESTIMATED_CREDITS,
+  ALLOWED_AI_PAGE_MODULE_TYPES,
+  ALLOWED_COMPOSITION_PRESETS,
+  createLocalAIPagePlanFallback,
+  validateAIPagePlan
+} from "../utils/aiPagePlanValidator";
 import { configService } from "./configService";
 import { mapStyleToTheme } from "../lib/styleMapper";
 import { searchPexelsMedia } from "./pexelsMediaClient";
@@ -264,6 +272,343 @@ export const generateLandingDryRunLocal = (brief: any): MotherAIPageResponse => 
     usage: undefined, // Totalmente local
     detail: "Dry-run local: 100% aislado del backend."
   } as any;
+};
+
+const titleCase = (value: string) =>
+  value
+    .trim()
+    .split(/\s+/)
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+
+const normalizeBriefText = (value: string, fallback: string) => {
+  const clean = value.trim();
+  return clean || fallback;
+};
+
+/**
+ * Fase 1 Crear con IA: genera un pagePlan local compatible con el Constructor.
+ * No llama APIs externas ni genera HTML libre; queda listo para reemplazar por ai_broker.
+ */
+export const generatePagePlanLocal = (brief: AIPageGenerationBrief): AIPagePlan => {
+  const businessType = normalizeBriefText(brief.businessType, 'servicios profesionales');
+  const businessName = normalizeBriefText(brief.businessName || '', titleCase(businessType));
+  const goal = normalizeBriefText(brief.pageGoal, 'conseguir clientes potenciales');
+  const instructions = normalizeBriefText(brief.instructions, `Presentar ${businessName} con una propuesta clara y editable.`);
+  const primaryCta = normalizeBriefText(brief.primaryCta, 'Solicitar informacion');
+  const tone = brief.tone || 'profesional';
+  const isContactFocused = /contact|whatsapp|mensaje|cita|agenda/i.test(`${brief.pageType} ${goal} ${instructions}`);
+  const isProductFocused = brief.pageType === 'product' || /producto|comprar|venta/i.test(`${goal} ${instructions}`);
+
+  const pageTitle = brief.pageType === 'contact'
+    ? `Contacto para ${businessName}`
+    : brief.pageType === 'services'
+      ? `Servicios de ${businessName}`
+      : brief.pageType === 'product'
+        ? `${businessName}: producto destacado`
+        : `${businessName}: pagina generada con IA`;
+
+  const valueWord = tone === 'premium' ? 'premium' : tone === 'cercano' ? 'simple y cercana' : 'profesional';
+  const benefitItems = [
+    `Atencion ${valueWord} desde el primer contacto`,
+    `Informacion clara para decidir con confianza`,
+    `Ruta directa hacia: ${goal}`
+  ];
+  const serviceItems = isProductFocused
+    ? ['Beneficio principal del producto', 'Caracteristicas editables', 'Soporte antes y despues de la compra']
+    : ['Diagnostico inicial', 'Solucion a la medida', 'Acompanamiento y seguimiento'];
+
+  const sections: AIPagePlan['sections'] = [
+    {
+      id: 'ai-hero',
+      moduleType: 'composition_section',
+      preset: 'hero_visual_premium',
+      title: 'Hero principal',
+      purpose: 'Presentar la oferta y orientar al CTA principal.',
+      content: {
+        eyebrow: titleCase(businessType),
+        title: `${businessName} para ${goal}`,
+        description: instructions,
+        cta: primaryCta,
+        secondaryCta: 'Ver detalles',
+        items: benefitItems
+      },
+      settings: {}
+    },
+    {
+      id: 'ai-benefits',
+      moduleType: 'composition_section',
+      preset: 'features_bento',
+      title: 'Beneficios clave',
+      purpose: 'Resumir por que la propuesta es relevante.',
+      content: {
+        eyebrow: 'Beneficios',
+        title: 'Una experiencia pensada para convertir visitas en oportunidades',
+        description: `Contenido editable con tono ${tone} para explicar el valor de ${businessName}.`,
+        items: benefitItems
+      },
+      settings: {}
+    },
+    {
+      id: 'ai-services',
+      moduleType: 'composition_section',
+      preset: 'services_grid',
+      title: isProductFocused ? 'Producto y valor' : 'Servicios principales',
+      purpose: 'Mostrar la oferta de forma escaneable.',
+      content: {
+        eyebrow: isProductFocused ? 'Producto' : 'Servicios',
+        title: isProductFocused ? 'Todo lo necesario para avanzar con confianza' : 'Servicios creados para resolver necesidades reales',
+        description: 'Cada bloque puede editarse desde el panel de propiedades.',
+        items: serviceItems
+      },
+      settings: {}
+    },
+    {
+      id: 'ai-process',
+      moduleType: 'composition_section',
+      preset: 'process_steps',
+      title: 'Proceso',
+      purpose: 'Explicar los pasos esperados antes de la conversion.',
+      content: {
+        eyebrow: 'Como funciona',
+        title: 'Un camino claro desde el primer mensaje',
+        description: 'Una secuencia simple para que el visitante entienda que ocurre despues.',
+        items: ['Cuentanos que necesitas', 'Recibe una propuesta clara', 'Avanza con acompanamiento']
+      },
+      settings: {}
+    },
+    {
+      id: 'ai-trust',
+      moduleType: 'composition_section',
+      preset: 'trust_logos',
+      title: 'Confianza',
+      purpose: 'Reservar espacio editable para pruebas sociales o logos.',
+      content: {
+        eyebrow: 'Confianza',
+        title: 'Senales que ayudan a decidir',
+        description: 'Agrega clientes, certificaciones, metricas o testimonios cuando los tengas.',
+        items: ['Clientes', 'Resultados', 'Garantia']
+      },
+      settings: {}
+    },
+    {
+      id: 'ai-cta',
+      moduleType: 'composition_section',
+      preset: 'cta_premium',
+      title: 'CTA principal',
+      purpose: 'Cerrar la pagina con una accion concreta.',
+      content: {
+        eyebrow: 'Siguiente paso',
+        title: isContactFocused ? 'Hablemos hoy mismo' : 'Convierte esta visita en una oportunidad',
+        description: `Invita al usuario a avanzar con el objetivo: ${goal}.`,
+        cta: primaryCta
+      },
+      settings: {}
+    }
+  ];
+
+  if (isContactFocused) {
+    sections.push({
+      id: 'ai-contact',
+      moduleType: 'contact',
+      preset: null,
+      title: 'Contacto',
+      purpose: 'Facilitar el contacto posterior a la revision.',
+      content: {
+        title: 'Contacto rapido',
+        description: 'Completa los datos de contacto reales antes de publicar.',
+        cta: primaryCta
+      },
+      settings: {}
+    });
+  }
+
+  return {
+    pageTitle,
+    pageGoal: goal,
+    businessType,
+    tone,
+    source: 'mock_local',
+    generationMode: 'mock',
+    estimatedCredits: 0,
+    warnings: [],
+    sections: sections.slice(0, 7)
+  };
+};
+
+export const buildAIPagePlanPrompt = (brief: AIPageGenerationBrief) => {
+  const modules = ALLOWED_AI_PAGE_MODULE_TYPES.join(', ');
+  const presets = ALLOWED_COMPOSITION_PRESETS.join(', ');
+
+  return `
+Eres el planificador de páginas editables del Constructor Web de Solutium.
+
+Responde ÚNICAMENTE JSON válido. No uses markdown, comentarios, HTML, CSS, scripts ni bloques de código.
+
+Objetivo:
+Generar un AIPagePlan estructurado para que el Constructor lo convierta en módulos editables.
+
+Datos del usuario:
+- Tipo de página: ${brief.pageType}
+- Tipo de negocio: ${brief.businessType}
+- Objetivo: ${brief.pageGoal}
+- Tono: ${brief.tone}
+- CTA principal: ${brief.primaryCta}
+- Nombre del negocio/proyecto: ${brief.businessName || 'No indicado'}
+- Instrucciones: ${brief.instructions}
+
+Módulos permitidos:
+${modules}
+
+Presets permitidos para composition_section:
+${presets}
+
+Reglas:
+- Prioriza composition_section con presets premium.
+- Usa módulos estándar solo si encajan claramente.
+- Genera entre 4 y 7 secciones.
+- Todo texto debe estar en español y ser editable.
+- No inventes datos sensibles, números legales, testimonios reales, marcas de terceros, logos, imágenes externas ni identidad ajena.
+- No copies contenido protegido.
+- No incluyas URLs externas salvo "#".
+- No generes HTML libre.
+- No generes CSS.
+- No generes scripts.
+- No incluyas instrucciones fuera del JSON.
+
+Estructura exacta:
+{
+  "pageTitle": "string",
+  "pageGoal": "string",
+  "businessType": "string",
+  "tone": "string",
+  "estimatedCredits": ${AI_PAGE_PLAN_ESTIMATED_CREDITS},
+  "sections": [
+    {
+      "id": "string-unico-kebab-case",
+      "moduleType": "composition_section",
+      "preset": "hero_visual_premium",
+      "title": "string",
+      "purpose": "string",
+      "content": {
+        "eyebrow": "string",
+        "title": "string",
+        "description": "string",
+        "cta": "string",
+        "secondaryCta": "string",
+        "items": ["string"]
+      },
+      "settings": {}
+    }
+  ]
+}
+`.trim();
+};
+
+export const generateAIPagePlan = async (
+  brief: AIPageGenerationBrief,
+  options: {
+    projectId?: string | null;
+    userId?: string | null;
+    forceFallback?: boolean;
+    brokerResponseOverride?: unknown;
+  } = {}
+): Promise<AIPagePlan> => {
+  const localPlan = validateAIPagePlan(generatePagePlanLocal(brief), brief, {
+    source: 'mock_local',
+    generationMode: 'mock'
+  });
+
+  if (options.forceFallback) {
+    return createLocalAIPagePlanFallback(brief, ['Fallback forzado para validación.']);
+  }
+
+  if (options.brokerResponseOverride !== undefined) {
+    return validateAIPagePlan(options.brokerResponseOverride, brief, {
+      source: 'ai_broker',
+      generationMode: 'broker'
+    });
+  }
+
+  const brokerEnabled = import.meta.env.VITE_ENABLE_AI_PAGE_PLAN_BROKER === 'true';
+  const brokerUrl = import.meta.env.VITE_AI_PAGE_PLAN_BROKER_URL as string | undefined;
+
+  if (!brokerEnabled || !brokerUrl) {
+    return {
+      ...localPlan,
+      warnings: [
+        ...(localPlan.warnings || []),
+        'Broker IA seguro no configurado; se usó generación local editable.'
+      ]
+    };
+  }
+
+  const authData = await getUploadAuthToken();
+  const token = authData.token || '';
+
+  if (!token || token.split('.').length !== 3) {
+    return createLocalAIPagePlanFallback(brief, [
+      'No hay sesión válida para llamar al broker IA. Se usó fallback editable.'
+    ]);
+  }
+
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 25000);
+
+  try {
+    const response = await fetch(brokerUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      signal: controller.signal,
+      body: JSON.stringify({
+        projectId: options.projectId,
+        userId: options.userId,
+        appSlug: 'constructor_web',
+        actionSlug: AI_PAGE_PLAN_ACTION_SLUG,
+        estimatedCredits: AI_PAGE_PLAN_ESTIMATED_CREDITS,
+        prompt: buildAIPagePlanPrompt(brief),
+        brief,
+        responseFormat: 'AIPagePlan'
+      })
+    });
+
+    const text = await response.text();
+
+    if (!response.ok) {
+      return createLocalAIPagePlanFallback(brief, [
+        `Broker IA respondió HTTP ${response.status}. Se usó fallback editable.`
+      ]);
+    }
+
+    const parsed = (() => {
+      try {
+        return JSON.parse(text);
+      } catch {
+        return text;
+      }
+    })();
+
+    const plan = validateAIPagePlan(parsed, brief, {
+      source: 'ai_broker',
+      generationMode: 'broker'
+    });
+
+    return {
+      ...plan,
+      warnings: plan.warnings || []
+    };
+  } catch (error: any) {
+    return createLocalAIPagePlanFallback(brief, [
+      error?.name === 'AbortError'
+        ? 'El broker IA superó el tiempo de espera. Se usó fallback editable.'
+        : 'No se pudo contactar el broker IA. Se usó fallback editable.'
+    ]);
+  } finally {
+    window.clearTimeout(timeout);
+  }
 };
 
 /**

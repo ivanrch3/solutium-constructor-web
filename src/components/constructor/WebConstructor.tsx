@@ -53,6 +53,7 @@ import {
   UnsavedChangesModal, 
   DeleteConfirmationModal, 
   PublishModal,
+  AIPagePlanModal,
   AIGenerationModal,
   MotherAIPageConfirmationModal,
   AIUsageSuccessModal
@@ -61,8 +62,8 @@ import { BentoPromptGenerator } from './BentoPromptGenerator';
 import { BentoSchema } from '../../types/bentoSchema';
 
 const DEFAULT_PARALLAX_BG_IMAGE = '/parallax-default-centered.svg';
-import { generateSite, generateLandingWithMotherAI, generateLandingDryRunLocal, MotherAIPageResponse } from '../../services/aiService';
-import { AIGenerationContext } from '../../types/ai';
+import { generateSite, generateLandingWithMotherAI, generateLandingDryRunLocal, generateAIPagePlan, MotherAIPageResponse } from '../../services/aiService';
+import { AIGenerationContext, AIPageGenerationBrief, AIPagePlan } from '../../types/ai';
 import { ProjectForm, ProjectFormData } from '../ProjectForm';
 import { initialContent, useEditorStore } from '../../store/editorStore';
 import { PropertyEditor } from './PropertyEditor';
@@ -84,6 +85,8 @@ import {
   resolveShowInMenuState
 } from '../../utils/menuNavigation';
 import { bridgeModuleContent } from '../../utils/hydrationBridge';
+import { cloneCompositionPresetSchema, CompositionPresetId } from './modules/compositionPresets';
+import { validateCompositionSchema } from '../../utils/compositionSchemaValidator';
 
 // --- CONSTANTS ---
 const MASTER_DICTIONARY = {
@@ -358,6 +361,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   }, [projectId, initialPage, currentSiteId, project]);
 
   const [isSaving, setIsSaving] = useState(false);
+  const [isDraftOperationInProgress, setIsDraftOperationInProgress] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [publishStatus, setPublishStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [authNotice, setAuthNotice] = useState<{ type: 'info' | 'error'; message: string } | null>(null);
@@ -745,6 +749,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   const [aiError, setAiError] = useState<string | null>(null);
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [aiGenerationStep, setAiGenerationStep] = useState(0);
+  const [aiPagePlan, setAiPagePlan] = useState<AIPagePlan | null>(null);
   const aiSteps = [
     "Diseñando estructura por industria...",
     "Redactando contenido persuasivo...",
@@ -954,6 +959,9 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   const updateEditorState = (updater: (prev: EditorState) => EditorState) => {
     setEditorState(prev => {
       const next = updater(prev);
+      if (next !== prev) {
+        editorStateRef.current = next;
+      }
       if (next !== prev && !isInitialLoad.current) {
         // Only mark as dirty if functional editor state changed (SIP v7.5)
         const dataChanged = 
@@ -969,6 +977,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   };
 
   const updateSiteName = (name: string) => {
+    siteNameRef.current = name;
     setSiteName(name);
     if (!isInitialLoad.current) {
       markUnsavedChanges();
@@ -994,20 +1003,30 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   // Synchronize store settings back to local editorState
   useEffect(() => {
     if (siteContent.sections.length > 0) {
-      updateEditorState(prev => {
+      setEditorState(prev => {
         const newSettings = { ...prev.settingsValues };
         let changed = false;
         
         siteContent.sections.forEach(section => {
           Object.entries(section.settings).forEach(([key, val]) => {
-            if (newSettings[key] !== val) {
-              newSettings[key] = val;
+            const moduleId = section.id;
+            const settingsKey = key.startsWith(`${moduleId}_`) ? key : `${moduleId}_${key}`;
+
+            if (
+              Object.prototype.hasOwnProperty.call(newSettings, settingsKey) &&
+              newSettings[settingsKey] !== val
+            ) {
+              newSettings[settingsKey] = val;
               changed = true;
             }
           });
         });
 
-        if (changed) return { ...prev, settingsValues: newSettings };
+        if (changed) {
+          const next = { ...prev, settingsValues: newSettings };
+          editorStateRef.current = next;
+          return next;
+        }
         return prev;
       });
     }
@@ -1091,6 +1110,193 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       return prev;
     });
   }, [storeSelectedSectionId, storeSelectedElementId, activeTab]);
+
+  const mapAICompositionPreset = (preset: AIPagePlan['sections'][number]['preset'] | string | null): CompositionPresetId => {
+    if (preset === 'servicios') return 'services_grid';
+    if (preset === 'proceso') return 'process_steps';
+    if (preset === 'comparativa') return 'comparison';
+    if (preset === 'confianza_logos') return 'trust_logos';
+    return (preset || 'hero_visual_premium') as CompositionPresetId;
+  };
+
+  const resolveAISectionModule = (section: AIPagePlan['sections'][number]): WebModule => {
+    switch (section.moduleType) {
+      case 'contact':
+        return CONTACT_MODULE;
+      case 'faq':
+        return FAQ_MODULE;
+      case 'testimonials':
+        return TESTIMONIALS_MODULE;
+      case 'gallery':
+        return GALLERY_MODULE;
+      case 'cta':
+        return CTA_MODULE;
+      case 'features':
+        return FEATURES_MODULE;
+      case 'process':
+        return PROCESS_MODULE;
+      case 'composition_section':
+      default:
+        return COMPOSITION_SECTION_MODULE;
+    }
+  };
+
+  const hydrateCompositionSchemaFromAISection = (section: AIPagePlan['sections'][number]) => {
+    const schema = cloneCompositionPresetSchema(mapAICompositionPreset(section.preset));
+    const textQueue = [
+      section.content.eyebrow,
+      section.content.title || section.title,
+      section.content.description,
+      ...(section.content.items || [])
+    ].filter(Boolean) as string[];
+    let textIndex = 0;
+
+    const elements = schema.elements.map(element => {
+      const nextElement = { ...element, content: element.content ? { ...element.content } : undefined };
+
+      if (nextElement.content?.items && section.content.items?.length) {
+        nextElement.content.items = nextElement.content.items.map((item, index) => ({
+          ...item,
+          text: section.content.items?.[index] || item.text
+        }));
+      }
+
+      if (nextElement.type === 'button' && nextElement.content) {
+        const label = section.content.cta || nextElement.content.label || 'Solicitar informacion';
+        nextElement.content.label = label;
+        nextElement.content.href = nextElement.content.href || '#';
+        nextElement.actions = [{ type: 'link', target: nextElement.content.href, label }];
+        return nextElement;
+      }
+
+      if ((nextElement.content?.text !== undefined) && ['badge', 'heading', 'paragraph'].includes(nextElement.type)) {
+        nextElement.content.text = textQueue[textIndex] || nextElement.content.text;
+        textIndex += 1;
+      }
+
+      return nextElement;
+    });
+
+    return validateCompositionSchema({
+      ...schema,
+      name: section.title,
+      section: {
+        ...schema.section,
+        ariaLabel: section.title
+      },
+      elements
+    });
+  };
+
+  const createModuleInstanceFromTemplate = (
+    baseModule: WebModule,
+    section?: AIPagePlan['sections'][number]
+  ) => {
+    const moduleId = `mod_${crypto.randomUUID()}`;
+    const newElements = baseModule.elements.map(el => ({
+      ...el,
+      id: `${moduleId}_${el.id}`
+    }));
+    const initialValues: Record<string, any> = {};
+
+    Object.values(baseModule.globalSettings || {}).forEach(groupSettings => {
+      groupSettings.forEach(setting => {
+        initialValues[`${moduleId}_global_${setting.id}`] = resolveProjectAwareSettingDefault(setting, setting.defaultValue);
+      });
+    });
+
+    newElements.forEach(element => {
+      Object.values(element.settings || {}).forEach(groupSettings => {
+        groupSettings.forEach(setting => {
+          let val = resolveProjectAwareSettingDefault(setting, setting.defaultValue);
+          const settingId = setting.id;
+
+          if (baseModule.type === 'contact') {
+            if (settingId === 'title') val = section?.content.title || section?.title || val;
+            if (settingId === 'subtitle' || settingId === 'description') val = section?.content.description || val;
+            if (settingId === 'button_text' || settingId === 'cta_text') val = section?.content.cta || val;
+            if ((settingId === 'phone' || settingId === 'whatsapp_number') && project?.whatsapp) val = project.whatsapp;
+            if (settingId === 'email' && project?.email) val = project.email;
+            if (settingId === 'address' && project?.address) val = project.address;
+          } else if (section) {
+            if (settingId === 'title' || settingId.endsWith('_title')) val = section.content.title || section.title || val;
+            if (settingId === 'subtitle' || settingId === 'description' || settingId.endsWith('_description')) val = section.content.description || val;
+            if (settingId === 'button_text' || settingId === 'cta_text' || settingId.endsWith('_cta_text')) val = section.content.cta || val;
+          }
+
+          initialValues[`${element.id}_${setting.id}`] = val;
+        });
+      });
+    });
+
+    const newModule: WebModule = {
+      ...baseModule,
+      id: moduleId,
+      templateId: baseModule.id,
+      name: section?.title || baseModule.name,
+      elements: newElements
+    };
+
+    return { moduleId, newModule, initialValues };
+  };
+
+  const handleGenerateAIPagePlan = async (brief: AIPageGenerationBrief) => {
+    setIsGeneratingAI(true);
+    setAiError(null);
+    try {
+      await new Promise(resolve => setTimeout(resolve, 650));
+      setAiPagePlan(await generateAIPagePlan({
+        ...brief,
+        businessName: brief.businessName || project?.name || siteName
+      }, {
+        projectId,
+        userId: currentUserId
+      }));
+    } catch (error: any) {
+      setAiError(error.message || 'No se pudo generar el plan de pagina.');
+    } finally {
+      setIsGeneratingAI(false);
+    }
+  };
+
+  const handleApplyAIPagePlan = () => {
+    if (!aiPagePlan) return;
+
+    updateEditorState(prev => {
+      const nextSettings = { ...prev.settingsValues };
+      const nextModules: WebModule[] = [];
+
+      aiPagePlan.sections.forEach(section => {
+        const baseModule = resolveAISectionModule(section);
+        const { moduleId, newModule, initialValues } = createModuleInstanceFromTemplate(baseModule, section);
+        Object.assign(nextSettings, initialValues);
+
+        if (baseModule.type === 'composition_section') {
+          const schema = hydrateCompositionSchemaFromAISection(section);
+          nextSettings[`${moduleId}_el_composition_tree_schema`] = JSON.stringify(schema, null, 2);
+          (newModule as any).content = { composition: schema };
+        }
+
+        nextSettings[getShowInMenuKey(moduleId)] = isMenuEligibleModule(baseModule);
+        nextModules.push(newModule);
+      });
+
+      return {
+        ...prev,
+        addedModules: nextModules,
+        settingsValues: nextSettings,
+        expandedModuleId: nextModules[0]?.id || prev.expandedModuleId,
+        selectedElementId: nextModules[0] ? `${nextModules[0].id}_global` : prev.selectedElementId,
+        recentlyAddedModuleId: nextModules[0]?.id,
+        totalModulesAdded: nextModules.length
+      };
+    });
+
+    setShowAIInitialForm(false);
+    setOnboardingFinished(true);
+    setAiPagePlan(null);
+    markUnsavedChanges();
+  };
 
   const handleAISubmit = async (data: ProjectFormData) => {
     // [PHASE 3D.5.2] INTERCEPTAMOS EL FLUJO PARA USAR EL ENDPOINT SEGURO
@@ -2803,7 +3009,7 @@ const formatTimestampName = () => {
           setPreviewStatus('loading');
 
           try {
-            const webBuilderSiteId = initialPage?.id || (window as any).WEB_BUILDER_SITE_ID;
+            const webBuilderSiteId = result.id || initialPage?.id || (window as any).WEB_BUILDER_SITE_ID;
             const previewResult = await generatePreviewServerSide({
               project_id: projectId!,
               site_id: siteId,
@@ -2819,7 +3025,10 @@ const formatTimestampName = () => {
 
               sendToMother('SOLUTIUM_PREVIEW_GENERATED', {
                 site_id: siteId,
-                preview_image_url: previewResult.preview_image_url
+                preview_image_url: previewResult.preview_image_url,
+                preview_thumbnail_url: previewResult.preview_thumbnail_url,
+                preview_image_hash: previewResult.preview_image_hash,
+                preview_image_updated_at: previewResult.preview_image_updated_at
               });
 
               logDebug('[PREVIEW_CAPTURE_DEBUG] Server-side preview generated (Save):', { 
@@ -2907,6 +3116,7 @@ const formatTimestampName = () => {
       saveInProgressRef.current = true;
       autosaveInProgressRef.current = isAutosave;
       lastSaveSourceRef.current = source;
+      setIsDraftOperationInProgress(true);
       setIsSaving(true);
       setAuthNotice(null);
 
@@ -3062,7 +3272,7 @@ const formatTimestampName = () => {
             setPreviewStatus('loading');
 
             try {
-              const webBuilderSiteId = initialPage?.id || (window as any).WEB_BUILDER_SITE_ID;
+              const webBuilderSiteId = result.id || initialPage?.id || (window as any).WEB_BUILDER_SITE_ID;
               const previewResult = await generatePreviewServerSide({
                 project_id: projectId!,
                 site_id: siteId,
@@ -3078,7 +3288,10 @@ const formatTimestampName = () => {
 
                 sendToMother('SOLUTIUM_PREVIEW_GENERATED', {
                   site_id: siteId,
-                  preview_image_url: previewResult.preview_image_url
+                  preview_image_url: previewResult.preview_image_url,
+                  preview_thumbnail_url: previewResult.preview_thumbnail_url,
+                  preview_image_hash: previewResult.preview_image_hash,
+                  preview_image_updated_at: previewResult.preview_image_updated_at
                 });
 
                 logDebug('[PREVIEW_CAPTURE_DEBUG] Server-side preview generated (Save):', {
@@ -3166,6 +3379,7 @@ const formatTimestampName = () => {
         saveInProgressRef.current = false;
         lastSaveSourceRef.current = null;
         activeSavePromiseRef.current = null;
+        setIsDraftOperationInProgress(false);
         setIsSaving(false);
       }
     };
@@ -3491,7 +3705,10 @@ const formatTimestampName = () => {
 
               sendToMother('SOLUTIUM_PREVIEW_GENERATED', {
                 site_id: siteId,
-                preview_image_url: previewResult.preview_image_url
+                preview_image_url: previewResult.preview_image_url,
+                preview_thumbnail_url: previewResult.preview_thumbnail_url,
+                preview_image_hash: previewResult.preview_image_hash,
+                preview_image_updated_at: previewResult.preview_image_updated_at
               });
 
               setPreviewStatus('success');
@@ -3688,7 +3905,10 @@ const formatTimestampName = () => {
         // Notificar a la App Madre para que refresque la miniatura en su UI
         sendToMother('SOLUTIUM_PREVIEW_GENERATED', {
           site_id: currentSiteId,
-          preview_image_url: result.preview_image_url
+          preview_image_url: result.preview_image_url,
+          preview_thumbnail_url: result.preview_thumbnail_url,
+          preview_image_hash: result.preview_image_hash,
+          preview_image_updated_at: result.preview_image_updated_at
         });
 
         setPreviewStatus('success');
@@ -3937,6 +4157,7 @@ const formatTimestampName = () => {
                     isPreviewMode={isPreviewMode}
                     hasUnsavedChanges={hasUnsavedChanges}
                     isSaving={isSaving}
+                    isDraftOperationInProgress={isDraftOperationInProgress}
                     autosaveStatus={autosaveStatus}
                     autosaveError={autosaveError}
                     lastAutosavedAt={lastAutosavedAt}
@@ -4216,6 +4437,7 @@ const formatTimestampName = () => {
                     isPreviewMode={isPreviewMode}
                     hasUnsavedChanges={hasUnsavedChanges}
                       isSaving={isSaving}
+                      isDraftOperationInProgress={isDraftOperationInProgress}
                       autosaveStatus={autosaveStatus}
                       autosaveError={autosaveError}
                       lastAutosavedAt={lastAutosavedAt}
@@ -4390,13 +4612,17 @@ const formatTimestampName = () => {
       {/* Modals */}
       <AnimatePresence>
         {showAIInitialForm && !onboardingFinished && (
-          <ProjectForm 
-            key="project-form-modal"
-            onSubmit={handleAISubmit}
+          <AIPagePlanModal
+            key="ai-page-plan-modal"
+            plan={aiPagePlan}
+            isGenerating={isGeneratingAI}
+            projectName={project?.name || siteName}
+            onGenerate={handleGenerateAIPagePlan}
+            onApply={handleApplyAIPagePlan}
             onCancel={handleCloseOnboarding}
           />
         )}
-        {isGeneratingAI && (
+        {isGeneratingAI && !showAIInitialForm && (
           <AIGenerationModal 
             key="ai-generation-modal"
             currentStep={aiGenerationStep}
@@ -4416,7 +4642,7 @@ const formatTimestampName = () => {
           <PublishModal 
             key="publish-modal"
             siteName={siteName}
-            setSiteName={setSiteName}
+            setSiteName={updateSiteName}
             onPublish={handlePublish}
             onCancel={() => setShowPublishModal(false)}
             isSaving={isSaving}

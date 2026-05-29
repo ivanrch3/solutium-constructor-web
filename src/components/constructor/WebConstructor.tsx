@@ -62,7 +62,7 @@ import { BentoPromptGenerator } from './BentoPromptGenerator';
 import { BentoSchema } from '../../types/bentoSchema';
 
 const DEFAULT_PARALLAX_BG_IMAGE = '/parallax-default-centered.svg';
-import { generateSite, generateLandingWithMotherAI, generateLandingDryRunLocal, generateAIPagePlan, analyzeReferenceUrl, MotherAIPageResponse } from '../../services/aiService';
+import { generateSite, generateLandingWithMotherAI, generateLandingDryRunLocal, generateAIPagePlan, analyzeReferenceUrl, generateAIPagePlanFromReferenceAnalysis, MotherAIPageResponse } from '../../services/aiService';
 import { AIGenerationContext, AIPageGenerationBrief, AIPagePlan } from '../../types/ai';
 import { ProjectForm, ProjectFormData } from '../ProjectForm';
 import { initialContent, useEditorStore } from '../../store/editorStore';
@@ -1272,6 +1272,46 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       siteId: currentSiteId,
       ...request
     });
+  };
+
+  const handleGenerateFromReferenceAnalysis = async (request: {
+    referenceUrl: string;
+    analysis: any;
+    businessType?: string;
+    pageGoal?: string;
+    tone?: string;
+    cta?: string;
+    instructions?: string;
+  }) => {
+    setIsGeneratingAI(true);
+    setAiError(null);
+    try {
+      const brief: AIPageGenerationBrief = {
+        pageType: 'landing',
+        businessType: request.businessType || request.analysis?.detectedBusinessCategory || 'servicios profesionales',
+        pageGoal: request.pageGoal || 'conseguir clientes potenciales',
+        instructions: request.instructions || 'Generar una pagina original inspirada en la estructura de referencia.',
+        tone: (request.tone as any) || 'profesional',
+        primaryCta: request.cta || 'Solicitar informacion',
+        businessName: project?.name || siteName
+      };
+
+      setAiPagePlan(await generateAIPagePlanFromReferenceAnalysis({
+        projectId,
+        siteId: currentSiteId,
+        referenceUrl: request.referenceUrl,
+        analysis: request.analysis,
+        businessType: request.businessType,
+        pageGoal: request.pageGoal,
+        tone: request.tone,
+        cta: request.cta,
+        instructions: request.instructions
+      }, brief));
+    } catch (error: any) {
+      setAiError(error.message || 'No se pudo generar la pagina desde la referencia.');
+    } finally {
+      setIsGeneratingAI(false);
+    }
   };
 
   const handleApplyAIPagePlan = () => {
@@ -4634,6 +4674,7 @@ const formatTimestampName = () => {
             projectName={project?.name || siteName}
             onGenerate={handleGenerateAIPagePlan}
             onAnalyzeReferenceUrl={handleAnalyzeReferenceUrl}
+            onGenerateFromReferenceAnalysis={handleGenerateFromReferenceAnalysis}
             onApply={handleApplyAIPagePlan}
             onCancel={handleCloseOnboarding}
           />

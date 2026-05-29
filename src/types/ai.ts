@@ -54,7 +54,7 @@ export interface AIPageGenerationBrief {
   businessName?: string;
 }
 
-export type AIPagePlanGenerationMode = 'mock' | 'broker' | 'fallback';
+export type AIPagePlanGenerationMode = 'mock' | 'broker' | 'reference_url_broker' | 'fallback';
 
 export type AIPagePlanPreset =
   | 'hero_visual_premium'

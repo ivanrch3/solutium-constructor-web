@@ -239,6 +239,7 @@ const TONE_OPTIONS: AIPageTone[] = ['profesional', 'cercano', 'moderno', 'premiu
 
 const getAIPlanModeLabel = (plan: AIPagePlan) => {
   if (plan.generationMode === 'fallback' || plan.source === 'fallback') return 'Fallback seguro';
+  if (plan.generationMode === 'reference_url_broker') return 'URL Broker';
   if (plan.generationMode === 'broker' || plan.source === 'ai_broker') return 'AI Broker';
   return 'Mock local';
 };
@@ -259,9 +260,18 @@ export const AIPagePlanModal: React.FC<{
     tone?: string;
     cta?: string;
   }) => Promise<ReferenceUrlAnalysis>,
+  onGenerateFromReferenceAnalysis: (request: {
+    referenceUrl: string;
+    analysis: ReferenceUrlAnalysis;
+    businessType?: string;
+    pageGoal?: string;
+    tone?: string;
+    cta?: string;
+    instructions?: string;
+  }) => Promise<void>,
   onApply: () => void,
   onCancel: () => void
-}> = ({ plan, isGenerating, projectName, onGenerate, onAnalyzeReferenceUrl, onApply, onCancel }) => {
+}> = ({ plan, isGenerating, projectName, onGenerate, onAnalyzeReferenceUrl, onGenerateFromReferenceAnalysis, onApply, onCancel }) => {
   const [creationMode, setCreationMode] = React.useState<'instructions' | 'reference_url'>('instructions');
   const [referenceUrl, setReferenceUrl] = React.useState('');
   const [referenceBusinessType, setReferenceBusinessType] = React.useState('');
@@ -269,8 +279,10 @@ export const AIPagePlanModal: React.FC<{
   const [referenceTone, setReferenceTone] = React.useState<AIPageTone>('profesional');
   const [referenceCta, setReferenceCta] = React.useState('');
   const [referenceAnalysis, setReferenceAnalysis] = React.useState<ReferenceUrlAnalysis | null>(null);
+  const [referenceInstructions, setReferenceInstructions] = React.useState('');
   const [referenceError, setReferenceError] = React.useState<string | null>(null);
   const [isAnalyzingReference, setIsAnalyzingReference] = React.useState(false);
+  const [isGeneratingReferencePlan, setIsGeneratingReferencePlan] = React.useState(false);
   const [brief, setBrief] = React.useState<AIPageGenerationBrief>({
     pageType: 'landing',
     businessType: '',
@@ -309,15 +321,36 @@ export const AIPagePlanModal: React.FC<{
     }
   };
 
+  const handleGenerateFromReference = async () => {
+    if (!referenceAnalysis) return;
+    setIsGeneratingReferencePlan(true);
+    setReferenceError(null);
+    try {
+      await onGenerateFromReferenceAnalysis({
+        referenceUrl: referenceAnalysis.referenceUrl || referenceUrl,
+        analysis: referenceAnalysis,
+        businessType: referenceBusinessType,
+        pageGoal: referenceGoal,
+        tone: referenceTone,
+        cta: referenceCta,
+        instructions: referenceInstructions
+      });
+    } catch (error: any) {
+      setReferenceError(error?.message || 'No se pudo generar la pagina desde esta estructura.');
+    } finally {
+      setIsGeneratingReferencePlan(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-[2150] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
       <motion.div
         initial={{ opacity: 0, scale: 0.96, y: 16 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.96, y: 16 }}
-        className="w-full max-w-5xl max-h-[92vh] overflow-hidden rounded-3xl bg-surface shadow-2xl border border-border"
+        className="flex h-[min(92vh,900px)] w-full max-w-5xl flex-col overflow-hidden rounded-3xl bg-surface shadow-2xl border border-border"
       >
-        <div className="flex items-center justify-between border-b border-border/60 px-6 py-5">
+        <div className="shrink-0 flex items-center justify-between border-b border-border/60 px-6 py-5">
           <div>
             <p className="text-[10px] font-black uppercase tracking-widest text-primary">Crear con IA</p>
             <h2 className="text-xl font-black text-text">Generar pagina editable</h2>
@@ -327,7 +360,7 @@ export const AIPagePlanModal: React.FC<{
           </button>
         </div>
 
-        <div className="border-b border-border/60 px-6 py-4">
+        <div className="shrink-0 border-b border-border/60 px-6 py-4">
           <div className="grid grid-cols-1 gap-3 rounded-2xl bg-secondary/50 p-1 md:grid-cols-2">
             <button
               type="button"
@@ -346,8 +379,8 @@ export const AIPagePlanModal: React.FC<{
           </div>
         </div>
 
-        <div className="grid max-h-[calc(92vh-82px)] grid-cols-1 overflow-y-auto lg:grid-cols-[1fr_0.9fr]">
-          {creationMode === 'instructions' ? <div className="space-y-5 p-6">
+        <div className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden lg:grid-cols-[1fr_0.9fr]">
+          {creationMode === 'instructions' ? <div className="min-h-0 space-y-5 overflow-y-auto p-6">
             <div className="rounded-2xl border border-primary/15 bg-primary/5 p-4">
               <p className="text-xs font-bold text-primary">
                 {isAIPagePlanBrokerConfigured() ? 'AI Broker seguro activo' : 'Generacion simulada local'}
@@ -436,12 +469,12 @@ export const AIPagePlanModal: React.FC<{
             <button
               onClick={() => onGenerate(brief)}
               disabled={!canGenerate || isGenerating}
-              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-6 py-4 text-sm font-black uppercase tracking-widest text-white shadow-lg shadow-primary/20 transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45"
+              className="sticky bottom-0 z-10 flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-6 py-4 text-sm font-black uppercase tracking-widest text-white shadow-lg shadow-primary/20 transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45"
             >
               {isGenerating ? <div className="h-5 w-5 rounded-full border-2 border-white/30 border-t-white animate-spin" /> : <Sparkles size={18} />}
               {plan ? 'Regenerar pagina' : 'Generar pagina'}
             </button>
-          </div> : <div className="space-y-5 p-6">
+          </div> : <div className="min-h-0 space-y-5 overflow-y-auto p-6">
             <div className="rounded-2xl border border-amber-300/60 bg-amber-50 p-4">
               <p className="text-xs font-black uppercase tracking-widest text-amber-700">Inspiracion estructural segura</p>
               <p className="mt-1 text-xs leading-relaxed text-amber-800">
@@ -507,23 +540,34 @@ export const AIPagePlanModal: React.FC<{
               </select>
             </label>
 
+            <label className="space-y-2 block">
+              <span className="text-xs font-black uppercase tracking-widest text-text/45">Instrucciones adicionales para la pagina</span>
+              <textarea
+                value={referenceInstructions}
+                onChange={(event) => setReferenceInstructions(event.target.value)}
+                placeholder="Ej: usa un tono mas premium, enfocate en agendar llamadas, evita mencionar precios..."
+                rows={4}
+                className="w-full resize-none rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text outline-none focus:border-primary"
+              />
+            </label>
+
             <button
               onClick={handleAnalyzeReference}
               disabled={!canAnalyzeReference}
-              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-6 py-4 text-sm font-black uppercase tracking-widest text-white shadow-lg shadow-primary/20 transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45"
+              className="sticky bottom-0 z-10 flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-6 py-4 text-sm font-black uppercase tracking-widest text-white shadow-lg shadow-primary/20 transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45"
             >
               {isAnalyzingReference ? <div className="h-5 w-5 rounded-full border-2 border-white/30 border-t-white animate-spin" /> : <Sparkles size={18} />}
               Analizar URL
             </button>
           </div>}
 
-          <div className="border-t border-border/60 bg-secondary/35 p-6 lg:border-l lg:border-t-0">
+          <div className="min-h-0 overflow-y-auto border-t border-border/60 bg-secondary/35 p-6 lg:border-l lg:border-t-0">
             <h3 className="text-sm font-black uppercase tracking-widest text-text/45">
               {creationMode === 'reference_url' ? 'Analisis de referencia' : 'Resumen generado'}
             </h3>
             {creationMode === 'reference_url' ? (
               <div className="mt-5 space-y-4">
-                {!referenceAnalysis && !referenceError && (
+                {!referenceAnalysis && !referenceError && !plan && (
                   <div className="rounded-2xl border border-dashed border-border bg-surface/70 p-8 text-center">
                     <Sparkles className="mx-auto mb-4 text-text/25" size={30} />
                     <p className="text-sm font-bold text-text/50">Pega una URL publica para detectar estructura, secciones y presets sugeridos.</p>
@@ -535,7 +579,7 @@ export const AIPagePlanModal: React.FC<{
                     <p className="mt-2 text-xs leading-relaxed text-red-800">{referenceError}</p>
                   </div>
                 )}
-                {referenceAnalysis && (
+                {referenceAnalysis && !plan && (
                   <>
                     <div className="rounded-2xl border border-border bg-surface p-4">
                       <p className="text-base font-black text-text">{referenceAnalysis.detectedPageType}</p>
@@ -572,12 +616,77 @@ export const AIPagePlanModal: React.FC<{
                         </div>
                       ))}
                     </div>
+                    <div className="rounded-2xl border border-primary/15 bg-primary/5 p-4">
+                      <p className="text-xs font-black uppercase tracking-widest text-primary">Antes de generar</p>
+                      <p className="mt-1 text-xs leading-relaxed text-text/60">
+                        La pagina sera una version nueva inspirada en la estructura de la referencia. No se copiaran textos, imagenes, logos ni codigo.
+                      </p>
+                    </div>
                     <button
-                      disabled
-                      className="flex w-full cursor-not-allowed items-center justify-center gap-2 rounded-2xl border border-border bg-surface px-4 py-3 text-xs font-black uppercase tracking-widest text-text/35"
+                      onClick={handleGenerateFromReference}
+                      disabled={isGeneratingReferencePlan}
+                      className="sticky bottom-0 z-10 flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-3 text-xs font-black uppercase tracking-widest text-white shadow-lg shadow-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      Generar pagina desde esta estructura · Proximamente
+                      {isGeneratingReferencePlan ? <div className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" /> : <Sparkles size={15} />}
+                      {isGeneratingReferencePlan ? 'Generando pagina editable...' : 'Generar pagina desde esta estructura'}
                     </button>
+                  </>
+                )}
+                {plan && (
+                  <>
+                    <div className="rounded-2xl border border-border bg-surface p-4">
+                      <p className="text-base font-black text-text">{plan.pageTitle}</p>
+                      <p className="mt-1 text-xs text-text/55">{plan.pageGoal}</p>
+                      <p className="mt-3 inline-flex rounded-full bg-primary/10 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-primary">
+                        {getAIPlanModeLabel(plan)}
+                      </p>
+                      {typeof plan.estimatedCredits === 'number' && plan.estimatedCredits > 0 && (
+                        <p className="mt-2 text-[11px] font-bold text-text/45">Creditos estimados: {plan.estimatedCredits}</p>
+                      )}
+                    </div>
+                    {Array.isArray(plan.warnings) && plan.warnings.length > 0 && (
+                      <div className="rounded-2xl border border-amber-300/60 bg-amber-50 p-4">
+                        <p className="text-xs font-black uppercase tracking-widest text-amber-700">Advertencias</p>
+                        <ul className="mt-2 space-y-1 text-xs leading-relaxed text-amber-800">
+                          {plan.warnings.slice(0, 5).map((warning, index) => (
+                            <li key={`${warning}-${index}`}>• {warning}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    <div className="space-y-2">
+                      {plan.sections.map((section, index) => (
+                        <div key={section.id} className="rounded-2xl border border-border bg-surface p-4">
+                          <div className="flex items-start gap-3">
+                            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-xs font-black text-primary">{index + 1}</span>
+                            <div className="min-w-0">
+                              <p className="text-sm font-black text-text">{section.title}</p>
+                              <p className="mt-1 text-[11px] font-bold uppercase tracking-wider text-text/40">
+                                {section.moduleType}{section.preset ? ` · ${section.preset}` : ''}
+                              </p>
+                              <p className="mt-2 text-xs leading-relaxed text-text/55">{section.purpose}</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="sticky bottom-0 z-10 flex gap-3 bg-secondary/95 pt-3 pb-1 backdrop-blur">
+                      <button
+                        onClick={handleGenerateFromReference}
+                        disabled={isGeneratingReferencePlan}
+                        className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-border bg-surface px-4 py-3 text-xs font-black uppercase tracking-widest text-text/55 hover:text-text disabled:opacity-50"
+                      >
+                        <RotateCcw size={15} />
+                        Regenerar
+                      </button>
+                      <button
+                        onClick={onApply}
+                        className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-3 text-xs font-black uppercase tracking-widest text-white shadow-lg shadow-primary/20"
+                      >
+                        <Check size={16} />
+                        Aplicar al sitio
+                      </button>
+                    </div>
                   </>
                 )}
               </div>

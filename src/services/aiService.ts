@@ -734,6 +734,117 @@ export const analyzeReferenceUrl = async (
   }
 };
 
+export const generateAIPagePlanFromReferenceAnalysis = async (
+  request: {
+    projectId: string;
+    siteId?: string | null;
+    referenceUrl: string;
+    analysis: ReferenceUrlAnalysis;
+    businessType?: string;
+    pageGoal?: string;
+    tone?: string;
+    cta?: string;
+    instructions?: string;
+  },
+  brief: AIPageGenerationBrief
+): Promise<AIPagePlan> => {
+  const brokerEnabled = import.meta.env.VITE_ENABLE_REFERENCE_URL_PAGE_PLAN_BROKER === 'true';
+  const brokerUrl = import.meta.env.VITE_REFERENCE_URL_PAGE_PLAN_BROKER_URL
+    || `${(import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api').replace(/\/$/, '')}/ai/reference-url/generate-page-plan`;
+
+  if (!brokerEnabled || !brokerUrl) {
+    return createLocalAIPagePlanFallback(brief, [
+      'Broker para generar desde URL no configurado; se uso fallback editable.'
+    ]);
+  }
+
+  const authData = await getUploadAuthToken();
+  const token = authData.token || '';
+
+  if (!token || token.split('.').length !== 3) {
+    return createLocalAIPagePlanFallback(brief, [
+      'No hay sesion valida para generar desde URL. Se uso fallback editable.'
+    ]);
+  }
+
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 55000);
+
+  try {
+    const response = await fetch(brokerUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      signal: controller.signal,
+      body: JSON.stringify({
+        ...request,
+        idempotencyKey: `website_ai_generate_page_from_reference_url:${request.projectId}:${Date.now()}`
+      })
+    });
+
+    const text = await response.text();
+    const parsed = (() => {
+      try {
+        return JSON.parse(text);
+      } catch {
+        return null;
+      }
+    })() as {
+      success?: boolean;
+      plan?: unknown;
+      error?: string;
+      message?: string;
+      warnings?: string[];
+      usage?: {
+        estimatedCredits?: number;
+        totalConsumed?: number;
+        aiUsageLogId?: string;
+      };
+    } | null;
+
+    if (!response.ok || !parsed?.success || !parsed.plan) {
+      const safeWarnings = Array.isArray(parsed?.warnings) ? parsed.warnings : [];
+      const warning =
+        response.status === 401
+          ? 'Sesion invalida o expirada para generar desde URL. Se uso fallback editable.'
+          : response.status === 402
+            ? 'Creditos IA insuficientes para generar desde URL. Se uso fallback editable.'
+            : response.status === 403
+              ? 'No hay permisos para generar desde URL en este proyecto. Se uso fallback editable.'
+              : parsed?.error || parsed?.message || `HTTP ${response.status}`;
+
+      return createLocalAIPagePlanFallback(brief, [warning, ...safeWarnings]);
+    }
+
+    const plan = validateAIPagePlan(parsed.plan, brief, {
+      source: 'ai_broker',
+      generationMode: 'reference_url_broker'
+    });
+
+    return {
+      ...plan,
+      estimatedCredits: parsed.usage?.estimatedCredits ?? plan.estimatedCredits ?? 20,
+      warnings: [
+        ...(plan.warnings || []),
+        ...(Array.isArray(parsed.warnings) ? parsed.warnings : []),
+        'Pagina original inspirada en la estructura de referencia; no se copiaron textos, imagenes, logos ni codigo.',
+        ...(parsed.usage?.aiUsageLogId ? [`AI Broker ref: ${parsed.usage.aiUsageLogId}`] : []),
+        ...(parsed.usage?.totalConsumed !== undefined ? [`Creditos consumidos: ${parsed.usage.totalConsumed}`] : [])
+      ]
+    };
+  } catch (error: any) {
+    return createLocalAIPagePlanFallback(brief, [
+      error?.name === 'AbortError'
+        ? 'La generacion desde URL supero el tiempo de espera. Se uso fallback editable.'
+        : 'No se pudo contactar el broker para generar desde URL. Se uso fallback editable.'
+    ]);
+  } finally {
+    window.clearTimeout(timeout);
+  }
+};
+
 /**
  * [PHASE 3D.5.2] MIGRACIÓN A ENDPOINT SEGURO DE APP MADRE
  * Esta función ya no llama a Gemini client-side.

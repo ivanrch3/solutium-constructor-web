@@ -22,6 +22,85 @@ const isVideo = (url: string) => {
   return url.includes('youtube.com') || url.includes('vimeo.com') || url.endsWith('.mp4');
 };
 
+const ALL_FILTER = 'Todos';
+
+const normalizeCategoryKey = (value: unknown) => {
+  return String(value || '')
+    .trim()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+};
+
+const normalizeGalleryItem = (item: any, index: number) => {
+  if (!item || typeof item !== 'object') return null;
+
+  const rawUrl =
+    item.url ||
+    item.src ||
+    item.imageUrl ||
+    item.image_url ||
+    item.image ||
+    item.imagen ||
+    item.img ||
+    item.foto ||
+    item.photo ||
+    item.media?.url ||
+    item.asset?.url ||
+    (typeof item.image === 'object' ? item.image?.url : '') ||
+    '';
+
+  const url = String(rawUrl || '').trim();
+  if (!url) return null;
+
+  const title = item.title || item.titulo || item.name || item.nombre || `Imagen ${index + 1}`;
+  const desc = item.desc || item.description || item.descripcion || item.caption || item.pie || item.texto || '';
+  const category = item.category || item.categoria || item.grupo || item.tag || 'General';
+  const alt = item.alt || item.alt_text || item.texto_alt || title || desc || '';
+
+  return {
+    ...item,
+    url,
+    title: String(title),
+    desc: String(desc),
+    category: String(category).trim() || 'General',
+    alt: String(alt)
+  };
+};
+
+const getGalleryItemsFromContent = (content: any) => {
+  const source =
+    content?.images ||
+    content?.imagenes ||
+    content?.['imágenes'] ||
+    content?.gallery ||
+    content?.galeria ||
+    content?.['galería'] ||
+    content?.photos ||
+    content?.fotos ||
+    content?.media ||
+    content?.assets ||
+    content?.items;
+
+  return Array.isArray(source)
+    ? source.map(normalizeGalleryItem).filter(Boolean)
+    : [];
+};
+
+const resolveGalleryItems = (
+  moduleId: string,
+  settingsValues: Record<string, any>,
+  content?: any
+) => {
+  const rawSettingsItems = settingsValues[`${moduleId}_el_gallery_items_items`] || settingsValues.el_gallery_items_items;
+  const settingsItems = Array.isArray(rawSettingsItems)
+    ? rawSettingsItems.map(normalizeGalleryItem).filter(Boolean)
+    : [];
+  const contentItems = getGalleryItemsFromContent(content);
+
+  return contentItems.length > settingsItems.length ? contentItems : settingsItems;
+};
+
 const GalleryItem = ({ 
   img, 
   index, 
@@ -147,10 +226,11 @@ const resolveThemeColor = (
 export const GalleryModule: React.FC<{ 
   moduleId: string, 
   settingsValues: Record<string, any>,
+  content?: any,
   isPreviewMode?: boolean
-}> = ({ moduleId, settingsValues, isPreviewMode = false }) => {
+}> = ({ moduleId, settingsValues, content, isPreviewMode = false }) => {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
-  const [activeFilter, setActiveFilter] = useState('Todos');
+  const [activeFilter, setActiveFilter] = useState(ALL_FILTER);
 
   const getVal = (elementId: string | null, settingId: string, defaultValue: any) => {
     const key = elementId ? `${elementId}_${settingId}` : `${moduleId}_global_${settingId}`;
@@ -222,14 +302,37 @@ export const GalleryModule: React.FC<{
   const captionPosition = getVal(`${moduleId}_el_gallery_captions`, 'caption_position', 'bottom');
 
   // Element: Items
-  const items = getVal(`${moduleId}_el_gallery_items`, 'items', []);
+  const items = useMemo(
+    () => resolveGalleryItems(moduleId, settingsValues, content),
+    [moduleId, settingsValues, content]
+  );
 
-  const categories = useMemo(() => categoriesStr.split(',').map((c: string) => c.trim()), [categoriesStr]);
+  const categories = useMemo(() => {
+    const categoryMap = new Map<string, string>();
+    const addCategory = (category: unknown) => {
+      const label = String(category || '').trim();
+      if (!label) return;
+      const key = normalizeCategoryKey(label);
+      if (!categoryMap.has(key)) categoryMap.set(key, key === 'todos' || key === 'all' ? ALL_FILTER : label);
+    };
+
+    addCategory(ALL_FILTER);
+    String(categoriesStr || '').split(',').forEach(addCategory);
+    items.forEach((item: any) => addCategory(item.category));
+
+    return Array.from(categoryMap.values());
+  }, [categoriesStr, items]);
+
+  const safeActiveFilter = useMemo(() => {
+    const activeKey = normalizeCategoryKey(activeFilter);
+    return categories.some((cat) => normalizeCategoryKey(cat) === activeKey) ? activeFilter : ALL_FILTER;
+  }, [activeFilter, categories]);
 
   const filteredImages = useMemo(() => {
-    if (activeFilter === 'Todos') return items;
-    return items.filter((img: any) => img.category === activeFilter);
-  }, [activeFilter, items]);
+    const activeKey = normalizeCategoryKey(safeActiveFilter);
+    if (activeKey === 'todos' || activeKey === 'all') return items;
+    return items.filter((img: any) => normalizeCategoryKey(img.category) === activeKey);
+  }, [safeActiveFilter, items]);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -345,7 +448,7 @@ export const GalleryModule: React.FC<{
                 key={cat}
                 onClick={() => setActiveFilter(cat)}
                 className={`px-6 py-2 rounded-full text-sm font-bold transition-all duration-300 ${
-                  activeFilter === cat 
+                  normalizeCategoryKey(safeActiveFilter) === normalizeCategoryKey(cat)
                     ? (darkMode ? 'bg-white text-slate-900 shadow-lg scale-105' : 'bg-slate-900 text-white shadow-lg scale-105')
                     : (darkMode ? 'bg-slate-800 text-slate-400 hover:bg-slate-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200')
                 }`}
@@ -357,7 +460,7 @@ export const GalleryModule: React.FC<{
         )}
 
         <motion.div 
-          key={activeFilter}
+          key={safeActiveFilter}
           variants={entranceAnim ? containerVariants : {}}
           initial="hidden"
           whileInView="visible"
@@ -375,7 +478,7 @@ export const GalleryModule: React.FC<{
           }}
         >
           {filteredImages.map((img: any, i: number) => (
-            <div key={`${activeFilter}-${i}`} className={layout === 'masonry' ? 'mb-4 break-inside-avoid' : ''}>
+            <div key={`${safeActiveFilter}-${img.id || img.url || i}`} className={layout === 'masonry' ? 'mb-4 break-inside-avoid' : ''}>
               <GalleryItem 
                 img={img} 
                 index={i} 

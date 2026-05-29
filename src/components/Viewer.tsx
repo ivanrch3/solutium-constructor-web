@@ -383,7 +383,7 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
           case 'process':
             return <ProcessModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} />;
           case 'gallery':
-            return <GalleryModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} />;
+            return <GalleryModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} content={content} />;
           case 'testimonials':
             return <TestimonialsModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} />;
           case 'stats':

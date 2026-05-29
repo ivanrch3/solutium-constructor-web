@@ -107,6 +107,44 @@ const getLaunchSiteContext = () => {
   };
 };
 
+const getMotherApiBaseUrl = () => {
+  const envUrl =
+    import.meta.env.VITE_APP_MADRE_API_URL ||
+    import.meta.env.VITE_API_BASE_URL ||
+    'https://solutium.app';
+
+  return String(envUrl).replace(/\/$/, '');
+};
+
+const fetchPublishedSiteById = async (siteId: string) => {
+  const primaryBaseUrl = getMotherApiBaseUrl();
+  const fallbackBaseUrl = 'https://solutium.app';
+  const baseUrls = Array.from(new Set([primaryBaseUrl, fallbackBaseUrl]));
+
+  let lastError: unknown = null;
+
+  for (const baseUrl of baseUrls) {
+    try {
+      const response = await fetch(`${baseUrl}/api/published-site-by-id/${encodeURIComponent(siteId)}`);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const payload = await response.json();
+      return payload?.data || payload?.site || payload;
+    } catch (error) {
+      lastError = error;
+      logDebug('[PUBLISHED_RENDER_FETCH_FALLBACK]', {
+        baseUrl,
+        siteId,
+        message: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error('Published site fetch failed');
+};
+
 const AppContent: React.FC = () => {
   const queryParams = new URLSearchParams(window.location.search);
   const isPublicRenderMode =
@@ -650,7 +688,51 @@ const AppContent: React.FC = () => {
       if (assetId) {
         // Preparamos el estado para que el constructor cargue este asset
         setSelectedPage({ siteId: assetId, name: 'Cargando sitio...' } as any);
-        setCurrentView('constructor');
+        setCurrentView('viewer');
+
+        void fetchPublishedSiteById(assetId)
+          .then((publishedSite) => {
+            const content =
+              publishedSite?.content ||
+              publishedSite?.content_published ||
+              publishedSite?.site_content ||
+              publishedSite?.siteContent;
+
+            if (!content) {
+              throw new Error('Published site payload has no content');
+            }
+
+            const resolvedProjectId =
+              publishedSite.projectId ||
+              publishedSite.project_id ||
+              satelliteId;
+
+            setProjectId(resolvedProjectId);
+            setAppId(
+              publishedSite.appId ||
+              publishedSite.app_id ||
+              '11111111-1111-1111-1111-111111111111'
+            );
+            setSelectedPage({
+              id: publishedSite.id,
+              projectId: resolvedProjectId,
+              appId: publishedSite.appId || publishedSite.app_id,
+              siteId: publishedSite.siteId || publishedSite.site_id || assetId,
+              siteName: publishedSite.siteName || publishedSite.site_name || 'Sitio publicado',
+              name: publishedSite.siteName || publishedSite.site_name || 'Sitio publicado',
+              content,
+              metadata: publishedSite.metadata,
+              isActive: publishedSite.isActive ?? publishedSite.is_active ?? true,
+              status: 'published'
+            } as any);
+            setCurrentView('viewer');
+            setIsHandshakeComplete(true);
+          })
+          .catch((error) => {
+            console.error('[PUBLISHED_RENDER_FETCH_ERROR]', error);
+            setIsHandshakeComplete(true);
+            setCurrentView('viewer');
+          });
       }
     }
     

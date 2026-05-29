@@ -37,6 +37,11 @@ import {
   stringifyCompositionSchema,
   updateCompositionElement
 } from '../../utils/compositionEditorUtils';
+import {
+  cloneCompositionPresetSchema,
+  COMPOSITION_PRESETS,
+  CompositionPresetId
+} from './modules/compositionPresets';
 
 const PILLAR_ICONS: Record<string, React.ReactNode> = {
   contenido: <Type size={16} />,
@@ -107,6 +112,8 @@ export const PropertyEditor: React.FC<PropertyEditorProps> = ({
   const [expandedSubsections, setExpandedSubsections] = React.useState<Record<string, boolean>>({});
   const [compositionJsonDraft, setCompositionJsonDraft] = React.useState('');
   const [compositionJsonError, setCompositionJsonError] = React.useState<string | null>(null);
+  const [selectedCompositionPresetId, setSelectedCompositionPresetId] = React.useState<CompositionPresetId>('hero_visual_premium');
+  const [pendingCompositionPresetId, setPendingCompositionPresetId] = React.useState<CompositionPresetId | null>(null);
 
   const selectedSection = siteContent.sections.find(s => s.id === selectedSectionId);
   const isCompositionSection = selectedSection?.type === 'composition_section';
@@ -270,6 +277,22 @@ export const PropertyEditor: React.FC<PropertyEditorProps> = ({
     } catch (error) {
       setCompositionJsonError(error instanceof Error ? error.message : 'JSON inválido');
     }
+  };
+
+  const applyCompositionPreset = () => {
+    if (!compositionSchema) return;
+
+    if (pendingCompositionPresetId !== selectedCompositionPresetId) {
+      setPendingCompositionPresetId(selectedCompositionPresetId);
+      return;
+    }
+
+    const nextSchema = cloneCompositionPresetSchema(selectedCompositionPresetId);
+    updateCompositionSchema(nextSchema);
+    setSelectedCompositionElementId(null);
+    setCompositionJsonDraft(stringifyCompositionSchema(nextSchema));
+    setCompositionJsonError(null);
+    setPendingCompositionPresetId(null);
   };
 
   const renderInput = (
@@ -494,6 +517,107 @@ export const PropertyEditor: React.FC<PropertyEditorProps> = ({
             <p className="text-[11px] font-black uppercase tracking-wider text-amber-700">Avanzado · Schema JSON</p>
             <textarea
               rows={10}
+              value={compositionJsonDraft}
+              onChange={(event) => setCompositionJsonDraft(event.target.value)}
+              className="w-full rounded-xl border border-amber-100 bg-white px-3 py-2 text-[11px] font-mono text-gray-700 outline-none focus:border-amber-300 focus:ring-2 focus:ring-amber-100"
+            />
+            {compositionJsonError && <p className="text-[10px] font-bold text-rose-500">{compositionJsonError}</p>}
+            <button
+              onClick={applyCompositionJson}
+              className="w-full rounded-xl bg-amber-500 px-3 py-2 text-xs font-black text-white hover:bg-amber-600 transition-colors"
+            >
+              Aplicar JSON
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isCompositionSection && compositionSchema) {
+    const selectedPreset = COMPOSITION_PRESETS.find((preset) => preset.id === selectedCompositionPresetId) || COMPOSITION_PRESETS[0];
+
+    return (
+      <div className="flex flex-col h-full bg-white border-l border-gray-100 overflow-hidden shadow-sm">
+        <div className="p-4 border-b border-gray-100 bg-gray-50/50 flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <h3 className="font-bold text-gray-900 text-sm flex items-center gap-2">
+              <div className="w-6 h-6 bg-blue-600 rounded-md flex items-center justify-center text-white">
+                <CustomSettingsIcon size={14} />
+              </div>
+              {selectedSection.name}
+            </h3>
+            <div className="px-2 py-0.5 bg-gray-100 rounded text-[10px] font-mono text-gray-500 uppercase">
+              composition_section
+            </div>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-5">
+          <div className="rounded-2xl border border-blue-100 bg-blue-50/50 p-4 space-y-4">
+            <div className="space-y-1">
+              <p className="text-[11px] font-black uppercase tracking-wider text-blue-700">Preset de composición</p>
+              <p className="text-xs text-blue-700/70">
+                Elige una base premium. Aplicar un preset reemplaza la composición actual y conserva edición interna por elementos.
+              </p>
+            </div>
+
+            {renderSelect(
+              'Biblioteca',
+              selectedCompositionPresetId,
+              COMPOSITION_PRESETS.map((preset) => ({ label: preset.label, value: preset.id })),
+              (value) => {
+                setSelectedCompositionPresetId(value as CompositionPresetId);
+                setPendingCompositionPresetId(null);
+              }
+            )}
+
+            <div className="rounded-xl border border-blue-100 bg-white px-3 py-2">
+              <p className="text-[10px] font-black uppercase tracking-wider text-gray-500">Descripción</p>
+              <p className="mt-1 text-xs text-gray-600 leading-relaxed">{selectedPreset.description}</p>
+            </div>
+
+            <button
+              type="button"
+              onClick={applyCompositionPreset}
+              className={`w-full rounded-xl px-3 py-2 text-xs font-black text-white transition-colors ${
+                pendingCompositionPresetId === selectedCompositionPresetId
+                  ? 'bg-amber-500 hover:bg-amber-600'
+                  : 'bg-blue-600 hover:bg-blue-700'
+              }`}
+            >
+              {pendingCompositionPresetId === selectedCompositionPresetId ? 'Confirmar reemplazo' : 'Aplicar preset'}
+            </button>
+            {pendingCompositionPresetId === selectedCompositionPresetId && (
+              <p className="text-[10px] font-bold text-amber-700">
+                Este preset reemplazará la composición actual. Presiona confirmar para continuar.
+              </p>
+            )}
+          </div>
+
+          <div className="rounded-2xl border border-gray-100 bg-gray-50/70 p-4 space-y-3">
+            <p className="text-[11px] font-black uppercase tracking-wider text-gray-700">Gestión de elementos</p>
+            <p className="text-xs text-gray-500 leading-relaxed">
+              Selecciona un elemento desde el Canvas o desde Estructura para editar textos, botones, cards, visibilidad y orden.
+            </p>
+            <div className="grid grid-cols-3 gap-2">
+              {COMPOSITION_ADDABLE_TYPES.map((type) => (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => addCompositionElementFromEditor(type)}
+                  className="rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-[10px] font-bold text-gray-600 hover:border-blue-200 hover:text-blue-700 transition-colors"
+                >
+                  {humanizeCompositionType(type)}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-amber-100 bg-amber-50/50 p-4 space-y-3">
+            <p className="text-[11px] font-black uppercase tracking-wider text-amber-700">Avanzado · Schema JSON</p>
+            <textarea
+              rows={14}
               value={compositionJsonDraft}
               onChange={(event) => setCompositionJsonDraft(event.target.value)}
               className="w-full rounded-xl border border-amber-100 bg-white px-3 py-2 text-[11px] font-mono text-gray-700 outline-none focus:border-amber-300 focus:ring-2 focus:ring-amber-100"

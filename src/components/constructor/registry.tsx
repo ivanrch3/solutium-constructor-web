@@ -58,7 +58,7 @@ import {
   Columns2
 } from 'lucide-react';
 import { WebModule, SettingGroupType, SettingDefinition } from '../../types/constructor';
-import { createDefaultCompositionSchema } from '../../types/compositionSchema';
+import { createCompositionPresetSchema } from './modules/compositionPresets';
 
 const HIGHLIGHT_SETTINGS = (prefix: string = 'title'): SettingDefinition[] => [
   { id: `${prefix}_highlight_type`, label: 'Tipo de Resaltado (**texto**)', type: 'select', defaultValue: 'gradient', options: [
@@ -3468,7 +3468,7 @@ export const COMPOSITION_SECTION_MODULE: WebModule = {
     estilo: []
   },
   content: {
-    composition: createDefaultCompositionSchema()
+    composition: createCompositionPresetSchema('hero_visual_premium')
   },
   elements: [
     {
@@ -3483,7 +3483,7 @@ export const COMPOSITION_SECTION_MODULE: WebModule = {
             label: 'Schema JSON',
             type: 'textarea',
             rows: 18,
-            defaultValue: JSON.stringify(createDefaultCompositionSchema(), null, 2)
+            defaultValue: JSON.stringify(createCompositionPresetSchema('hero_visual_premium'), null, 2)
           }
         ]
       }

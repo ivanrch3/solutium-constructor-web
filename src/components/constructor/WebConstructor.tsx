@@ -1313,7 +1313,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         businessName: project?.name || siteName
       };
 
-      setAiPagePlan(await generateAIPagePlanFromReferenceAnalysis({
+      const generatedPlan = await generateAIPagePlanFromReferenceAnalysis({
         projectId,
         siteId: currentSiteId,
         referenceUrl: request.referenceUrl,
@@ -1323,7 +1323,20 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         tone: request.tone,
         cta: request.cta,
         instructions: request.instructions
-      }, brief));
+      }, brief);
+
+      const moduleTypeCounts = generatedPlan.sections.reduce<Record<string, number>>((counts, section) => {
+        counts[section.moduleType] = (counts[section.moduleType] || 0) + 1;
+        return counts;
+      }, {});
+      console.info('[MASTER_MODULE_FLOW_ACTIVE]', {
+        source: 'reference_url',
+        generationMode: generatedPlan.generationMode,
+        moduleTypeCounts
+      });
+
+      setAiPagePlan(generatedPlan);
+      applyAIPagePlanToEditor(generatedPlan);
     } catch (error: any) {
       setAiError(error.message || 'No se pudo generar la pagina desde la referencia.');
     } finally {
@@ -1331,14 +1344,14 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     }
   };
 
-  const handleApplyAIPagePlan = () => {
-    if (!aiPagePlan) return;
+  const applyAIPagePlanToEditor = (planToApply: AIPagePlan) => {
+    if (!planToApply) return;
 
     updateEditorState(prev => {
       const nextSettings = { ...prev.settingsValues };
       const nextModules: WebModule[] = [];
 
-      aiPagePlan.sections.forEach(section => {
+      planToApply.sections.forEach(section => {
         const baseModule = resolveAISectionModule(section);
         const { moduleId, newModule, initialValues } = createModuleInstanceFromTemplate(baseModule, section);
         Object.assign(nextSettings, initialValues);
@@ -1368,6 +1381,11 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     setOnboardingFinished(true);
     setAiPagePlan(null);
     markUnsavedChanges();
+  };
+
+  const handleApplyAIPagePlan = () => {
+    if (!aiPagePlan) return;
+    applyAIPagePlanToEditor(aiPagePlan);
   };
 
   const handleAISubmit = async (data: ProjectFormData) => {
@@ -2606,6 +2624,67 @@ const formatTimestampName = () => {
             content.logos = selectedCompanies;
             settings[selectKey] = selectedCompanies.map(company => company.company_id);
             settings[snapshotKey] = selectedCompanies;
+          }
+        }
+
+        if (module.type === 'gallery') {
+          const galleryItemsKey = `${module.id}_el_gallery_items_items`;
+          const galleryCategoriesKey = `${module.id}_el_gallery_filters_categories`;
+          const rawItems = currentState.settingsValues[galleryItemsKey] || currentState.settingsValues.el_gallery_items_items;
+
+          const normalizedGalleryItems = Array.isArray(rawItems)
+            ? rawItems
+                .map((item: any, idx: number) => {
+                  const url = String(
+                    item?.url ||
+                    item?.src ||
+                    item?.imageUrl ||
+                    item?.image_url ||
+                    item?.image ||
+                    item?.imagen ||
+                    item?.img ||
+                    item?.media?.url ||
+                    item?.asset?.url ||
+                    ''
+                  ).trim();
+
+                  if (!url) return null;
+
+                  return {
+                    ...item,
+                    id: String(item?.id || `gallery_${idx + 1}`),
+                    url,
+                    title: String(item?.title || item?.titulo || item?.name || `Imagen ${idx + 1}`),
+                    desc: String(item?.desc || item?.description || item?.descripcion || item?.caption || ''),
+                    category: String(item?.category || item?.categoria || 'General').trim() || 'General',
+                    alt: String(item?.alt || item?.alt_text || item?.title || item?.titulo || `Imagen ${idx + 1}`)
+                  };
+                })
+                .filter(Boolean)
+            : [];
+
+          if (normalizedGalleryItems.length > 0) {
+            content.items = normalizedGalleryItems;
+            content.images = normalizedGalleryItems;
+            content.gallery = normalizedGalleryItems;
+            settings[galleryItemsKey] = normalizedGalleryItems;
+
+            const existingCategories = String(currentState.settingsValues[galleryCategoriesKey] || '')
+              .split(',')
+              .map((category) => category.trim())
+              .filter(Boolean);
+            const categoryMap = new Map<string, string>();
+            [...existingCategories, 'Todos', ...normalizedGalleryItems.map((item: any) => item.category)].forEach((category) => {
+              const key = String(category || '')
+                .trim()
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .toLowerCase();
+              if (key && !categoryMap.has(key)) {
+                categoryMap.set(key, key === 'all' || key === 'todos' ? 'Todos' : String(category).trim());
+              }
+            });
+            settings[galleryCategoriesKey] = Array.from(categoryMap.values()).join(', ');
           }
         }
 

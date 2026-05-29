@@ -128,7 +128,7 @@ export const createDefaultCompositionSchema = (): CompositionSectionSchema => ({
     paddingX: 24,
     align: 'left',
     overflow: 'hidden',
-    ariaLabel: 'Composición visual'
+    ariaLabel: 'Módulo Maestro'
   },
   layout: {
     mode: 'grid',
@@ -153,7 +153,7 @@ export const createDefaultCompositionSchema = (): CompositionSectionSchema => ({
       name: 'Cejilla',
       parentId: null,
       order: 1,
-      content: { text: 'Composición Visual' },
+      content: { text: 'Módulo Maestro' },
       layout: {
         desktop: { gridColumn: '1 / span 5' },
         tablet: { gridColumn: '1 / span 5' },

@@ -1,6 +1,6 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { SiteContent, VisualStyle } from "../types";
-import { AIGenerationContext, AIPageGenerationBrief, AIPagePlan, ReferenceUrlAnalysis, ReferenceUrlAnalysisRequest } from "../types/ai";
+import { AIGenerationContext, AIPageGenerationBrief, AIPagePlan, AIPageTone, ReferenceUrlAnalysis, ReferenceUrlAnalysisRequest } from "../types/ai";
 import {
   AI_PAGE_PLAN_ESTIMATED_CREDITS,
   ALLOWED_AI_PAGE_MODULE_TYPES,
@@ -435,6 +435,116 @@ export const generatePagePlanLocal = (brief: AIPageGenerationBrief): AIPagePlan 
   };
 };
 
+const REFERENCE_ROLE_PRESETS: Record<string, AIPagePlan['sections'][number]['preset']> = {
+  hero: 'saas_split_hero_visual',
+  features: 'features_bento',
+  services: 'services_grid',
+  process: 'process_steps',
+  testimonials: 'trust_logos',
+  trust: 'trust_logos',
+  pricing: 'comparison',
+  faq: null,
+  contact: null,
+  cta: 'cta_premium',
+  gallery: null,
+  about: 'services_grid',
+  comparison: 'comparison',
+  unknown: 'features_bento'
+};
+
+const REFERENCE_LAYOUT_PRESETS: Record<string, AIPagePlan['sections'][number]['preset']> = {
+  split_hero: 'saas_split_hero_visual',
+  centered_hero: 'hero_visual_premium',
+  product_screenshot: 'product_screenshot_showcase',
+  card_grid: 'features_bento',
+  bento_grid: 'features_bento',
+  alternating_media_text: 'product_screenshot_showcase',
+  faq_split: 'faq_split_visual',
+  dark_cta: 'cta_premium',
+  logo_trust: 'trust_logos',
+  unknown: 'features_bento'
+};
+
+const REFERENCE_ROLE_TITLES: Record<string, string> = {
+  hero: 'Hero inspirado en la referencia',
+  features: 'Beneficios y diferenciales',
+  services: 'Servicios o propuesta',
+  process: 'Proceso o metodologia',
+  testimonials: 'Confianza y prueba social',
+  trust: 'Confianza',
+  pricing: 'Comparativa de valor',
+  faq: 'Preguntas frecuentes',
+  contact: 'Contacto',
+  cta: 'CTA final',
+  gallery: 'Galeria editable',
+  about: 'Sobre la propuesta',
+  comparison: 'Comparativa',
+  unknown: 'Seccion editable'
+};
+
+const createReferenceDrivenFallbackPlan = (
+  request: { analysis: ReferenceUrlAnalysis; businessType?: string; pageGoal?: string; tone?: string; cta?: string },
+  brief: AIPageGenerationBrief,
+  warnings: string[]
+): AIPagePlan => {
+  const base = generatePagePlanLocal({
+    ...brief,
+    businessType: request.businessType || brief.businessType || request.analysis.detectedBusinessCategory || 'servicios profesionales',
+    pageGoal: request.pageGoal || brief.pageGoal,
+    tone: (request.tone as AIPageTone) || brief.tone,
+    primaryCta: request.cta || brief.primaryCta,
+    instructions: brief.instructions || `Crear una pagina nueva inspirada en la estructura detectada: ${request.analysis.overallStructure}`
+  });
+  const sourceSections = request.analysis.sections.length ? request.analysis.sections : [];
+  const selectedSections = sourceSections.slice(0, 7);
+  const fallbackSections = base.sections.filter(section => section.moduleType === 'composition_section');
+  const sections = selectedSections.length >= 4
+    ? selectedSections.map((section, index) => {
+      const role = section.detectedRole || 'unknown';
+      const blueprintLayout = request.analysis.visualBlueprint?.layoutPatterns?.find(pattern => pattern.order === section.order || pattern.role === role)?.layout;
+      const preset = (blueprintLayout ? REFERENCE_LAYOUT_PRESETS[blueprintLayout] : null) || section.recommendedPreset || REFERENCE_ROLE_PRESETS[role] || 'features_bento';
+      const fallback = fallbackSections[index % fallbackSections.length];
+      const title = REFERENCE_ROLE_TITLES[role] || fallback.title;
+      return {
+        id: `reference-${role}-${index + 1}`,
+        moduleType: 'composition_section',
+        preset,
+        title,
+        purpose: section.purpose || fallback.purpose,
+        content: {
+          ...fallback.content,
+          businessType: request.businessType || brief.businessType,
+          sectionBlueprint: request.analysis.sectionBlueprints?.[index] || {
+            id: `${section.id}_blueprint`,
+            order: section.order,
+            role,
+            sourceVisualPattern: blueprintLayout || 'unknown',
+            recommendedMasterPreset: preset,
+            adaptationNotes: 'Modulo Maestro generado desde referencia sin copiar contenido.'
+          },
+          eyebrow: title,
+          title,
+          description: `${section.layoutPattern}. ${section.visualNotes || 'Estructura original y editable sin copiar contenido.'}`,
+          cta: request.cta || brief.primaryCta || fallback.content.cta,
+          items: [section.purpose, section.layoutPattern, section.visualNotes].filter(Boolean).slice(0, 4)
+        },
+        settings: {}
+      };
+    })
+    : base.sections;
+
+  return validateAIPagePlan({
+    ...base,
+    source: 'fallback',
+    generationMode: 'fallback',
+    warnings: [
+      ...warnings,
+      'Fallback inspirado en la estructura detectada; no copia textos, imagenes, logos ni codigo.'
+    ],
+    sections: sections.slice(0, 7)
+  }, brief, { source: 'fallback', generationMode: 'fallback' });
+};
+
 export const buildAIPagePlanPrompt = (brief: AIPageGenerationBrief) => {
   const modules = ALLOWED_AI_PAGE_MODULE_TYPES.join(', ');
   const presets = ALLOWED_COMPOSITION_PRESETS.join(', ');
@@ -753,7 +863,7 @@ export const generateAIPagePlanFromReferenceAnalysis = async (
     || `${(import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api').replace(/\/$/, '')}/ai/reference-url/generate-page-plan`;
 
   if (!brokerEnabled || !brokerUrl) {
-    return createLocalAIPagePlanFallback(brief, [
+    return createReferenceDrivenFallbackPlan(request, brief, [
       'Broker para generar desde URL no configurado; se uso fallback editable.'
     ]);
   }
@@ -762,7 +872,7 @@ export const generateAIPagePlanFromReferenceAnalysis = async (
   const token = authData.token || '';
 
   if (!token || token.split('.').length !== 3) {
-    return createLocalAIPagePlanFallback(brief, [
+    return createReferenceDrivenFallbackPlan(request, brief, [
       'No hay sesion valida para generar desde URL. Se uso fallback editable.'
     ]);
   }
@@ -815,7 +925,7 @@ export const generateAIPagePlanFromReferenceAnalysis = async (
               ? 'No hay permisos para generar desde URL en este proyecto. Se uso fallback editable.'
               : parsed?.error || parsed?.message || `HTTP ${response.status}`;
 
-      return createLocalAIPagePlanFallback(brief, [warning, ...safeWarnings]);
+      return createReferenceDrivenFallbackPlan(request, brief, [warning, ...safeWarnings]);
     }
 
     const plan = validateAIPagePlan(parsed.plan, brief, {
@@ -835,7 +945,7 @@ export const generateAIPagePlanFromReferenceAnalysis = async (
       ]
     };
   } catch (error: any) {
-    return createLocalAIPagePlanFallback(brief, [
+    return createReferenceDrivenFallbackPlan(request, brief, [
       error?.name === 'AbortError'
         ? 'La generacion desde URL supero el tiempo de espera. Se uso fallback editable.'
         : 'No se pudo contactar el broker para generar desde URL. Se uso fallback editable.'

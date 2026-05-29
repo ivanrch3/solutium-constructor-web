@@ -58,7 +58,10 @@ export type AIPagePlanGenerationMode = 'mock' | 'broker' | 'reference_url_broker
 
 export type AIPagePlanPreset =
   | 'hero_visual_premium'
+  | 'saas_split_hero_visual'
   | 'features_bento'
+  | 'product_screenshot_showcase'
+  | 'faq_split_visual'
   | 'services_grid'
   | 'process_steps'
   | 'cta_premium'
@@ -110,6 +113,7 @@ export interface ReferenceUrlAnalysisRequest {
 
 export type ReferenceSectionRole =
   | 'hero'
+  | 'product_showcase'
   | 'features'
   | 'services'
   | 'process'
@@ -136,6 +140,66 @@ export interface ReferenceSectionAnalysis {
   confidence: number;
 }
 
+export interface ReferenceStructureSignals {
+  approximateSectionCount: number;
+  hasNavigation: boolean;
+  hasFooter: boolean;
+  hasContactForm: boolean;
+  heroPattern: string;
+  ctaPattern: string;
+  textDensity: 'baja' | 'media' | 'alta';
+  styleCategory: string;
+  visualHierarchy: string;
+  detectedLayoutPatterns: string[];
+}
+
+export interface ReferenceVisualBlueprint {
+  globalStyle: {
+    styleFamily: 'saas' | 'corporate' | 'minimal' | 'ecommerce' | 'editorial' | 'playful';
+    backgroundRhythm: string;
+    colorMood: string;
+    sectionDensity: 'low' | 'medium' | 'high';
+    visualComplexity: 'simple' | 'medium' | 'rich';
+  };
+  layoutPatterns: Array<{
+    order: number;
+    role: string;
+    layout: 'split_hero' | 'centered_hero' | 'product_screenshot' | 'card_grid' | 'bento_grid' | 'alternating_media_text' | 'faq_split' | 'dark_cta' | 'logo_trust' | 'social_proof' | 'contact_split' | 'unknown';
+    hasMedia: boolean;
+    mediaKind?: 'illustration' | 'product_screenshot' | 'photo' | 'icons' | 'none';
+    backgroundStyle?: 'white' | 'soft_tint' | 'dark' | 'gradient' | 'cards';
+    cardStyle?: 'flat' | 'soft_shadow' | 'rounded_pastel' | 'bordered';
+    ctaPattern?: 'single' | 'double' | 'trial' | 'contact' | 'whatsapp';
+  }>;
+}
+
+export interface ReferenceSectionBlueprint {
+  id: string;
+  order: number;
+  role: ReferenceSectionRole | 'product_showcase';
+  sourceVisualPattern:
+    | 'split_hero_with_media'
+    | 'centered_hero'
+    | 'product_screenshot_showcase'
+    | 'card_grid'
+    | 'bento_grid'
+    | 'alternating_media_text'
+    | 'faq_split'
+    | 'dark_cta'
+    | 'logo_trust'
+    | 'social_proof'
+    | 'contact_split'
+    | 'unknown';
+  backgroundStyle: 'white' | 'soft_tint' | 'lavender' | 'dark' | 'gradient' | 'cards' | 'unknown';
+  visualDensity: 'low' | 'medium' | 'high';
+  hasMedia: boolean;
+  mediaKind?: 'illustration' | 'product_screenshot' | 'photo' | 'icons' | 'mockup' | 'none';
+  ctaPattern?: 'single' | 'double' | 'trial' | 'contact' | 'whatsapp' | 'none';
+  recommendedMasterPreset: string;
+  adaptationNotes: string;
+  confidence: number;
+}
+
 export interface ProposedReferencePageStructure {
   pageType: string;
   recommendedSections: Array<{
@@ -152,6 +216,9 @@ export interface ReferenceUrlAnalysis {
   detectedBusinessCategory?: string;
   overallStructure: string;
   visualStyleSummary: string;
+  structureSignals?: ReferenceStructureSignals;
+  visualBlueprint?: ReferenceVisualBlueprint;
+  sectionBlueprints?: ReferenceSectionBlueprint[];
   sections: ReferenceSectionAnalysis[];
   proposedStructure: ProposedReferencePageStructure;
   warnings: string[];

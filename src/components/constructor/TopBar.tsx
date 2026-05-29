@@ -237,12 +237,10 @@ export const TopBar: React.FC<TopBarProps> = ({
               <RotateCcw size={14} />
             </motion.div>
           ) : publishStatus === 'success' ? <Check size={14} /> : publishStatus === 'error' ? <X size={14} /> : <Send size={14} />}
-          {isMobile ? (currentStatus === 'published' ? 'Actualizar' : 'Publicar') : (
-            publishStatus === 'loading' ? 'Publicando...' : 
-            publishStatus === 'success' ? 'Publicado' : 
+          {publishStatus === 'loading' ? 'Publicando...' : 
+            publishStatus === 'success' ? (currentStatus === 'published' ? 'Actualizado' : 'Publicado') : 
             publishStatus === 'error' ? 'Error' : 
-            (currentStatus === 'published' || currentStatus === 'modified' ? 'Actualizar' : 'Publicar')
-          )}
+            (currentStatus === 'published' || currentStatus === 'modified' ? 'Actualizar' : 'Publicar')}
         </motion.button>
       </div>
     </div>

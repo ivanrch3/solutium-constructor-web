@@ -3453,7 +3453,7 @@ export const COMPOSITION_SECTION_MODULE: WebModule = {
   id: 'mod_composition_section_1',
   type: 'composition_section',
   iconKey: 'composition_section',
-  name: 'Composición Visual',
+  name: 'Módulo Maestro',
   globalGroups: ['estructura', 'estilo'],
   globalSettings: {
     estructura: [
@@ -3462,7 +3462,7 @@ export const COMPOSITION_SECTION_MODULE: WebModule = {
         label: 'Estado',
         type: 'textarea',
         rows: 3,
-        defaultValue: 'Base técnica inicial para secciones visuales composables. En esta fase se edita mediante schema JSON seguro; el editor visual interno llegará en una fase posterior.'
+        defaultValue: 'Base tecnica para Modulos Maestro editables. Cada seccion conserva un schema JSON seguro y puede editarse por elementos internos.'
       }
     ],
     estilo: []
@@ -3473,7 +3473,7 @@ export const COMPOSITION_SECTION_MODULE: WebModule = {
   elements: [
     {
       id: 'el_composition_tree',
-      name: 'Schema de Composición',
+      name: 'Schema de Módulo Maestro',
       type: 'single',
       groups: ['contenido'],
       settings: {
@@ -3550,7 +3550,7 @@ export const MODULE_INFO: Record<string, {
   },
   trusted_logos: { label: 'Logos de Empresas', icon: Handshake },
   bento: { label: 'Bento / Composición Libre', icon: Layout },
-  composition_section: { label: 'Composición Visual', icon: Layout }
+  composition_section: { label: 'Módulo Maestro', icon: Layout }
 };
 
 

@@ -236,6 +236,8 @@ const GOAL_OPTIONS = [
 ];
 
 const TONE_OPTIONS: AIPageTone[] = ['profesional', 'cercano', 'moderno', 'premium', 'juvenil', 'institucional'];
+const REFERENCE_ANALYSIS_CREDITS = 10;
+const REFERENCE_PAGE_PLAN_CREDITS = 20;
 
 const getAIPlanModeLabel = (plan: AIPagePlan) => {
   if (plan.generationMode === 'fallback' || plan.source === 'fallback') return 'Fallback seguro';
@@ -247,6 +249,34 @@ const getAIPlanModeLabel = (plan: AIPagePlan) => {
 const isAIPagePlanBrokerConfigured = () =>
   import.meta.env.VITE_ENABLE_AI_PAGE_PLAN_BROKER === 'true' &&
   Boolean(import.meta.env.VITE_AI_PAGE_PLAN_BROKER_URL);
+
+const StickyActionFooter: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = '' }) => (
+  <div className={`absolute bottom-0 left-0 right-0 z-30 border-t border-border bg-white px-6 py-4 shadow-[0_-16px_36px_rgba(15,23,42,0.12)] ${className}`}>
+    {children}
+  </div>
+);
+
+const ReferenceWorkingState: React.FC<{ title: string; description: string }> = ({ title, description }) => (
+  <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4">
+    <div className="flex items-start gap-3">
+      <div className="mt-0.5 h-5 w-5 shrink-0 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
+      <div>
+        <p className="text-sm font-black text-primary">{title}</p>
+        <p className="mt-1 text-xs leading-relaxed text-text/60">{description}</p>
+      </div>
+    </div>
+  </div>
+);
+
+const AIProcessOverlay: React.FC<{ title: string; description: string }> = ({ title, description }) => (
+  <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/35 px-6">
+    <div className="w-full max-w-sm rounded-3xl border border-border bg-surface p-7 text-center shadow-2xl">
+      <div className="mx-auto mb-5 h-12 w-12 rounded-full border-4 border-primary/15 border-t-primary animate-spin" />
+      <p className="text-sm font-black uppercase tracking-widest text-primary">{title}</p>
+      <p className="mt-3 text-sm leading-relaxed text-text/60">{description}</p>
+    </div>
+  </div>
+);
 
 export const AIPagePlanModal: React.FC<{
   plan: AIPagePlan | null,
@@ -281,6 +311,8 @@ export const AIPagePlanModal: React.FC<{
   const [referenceAnalysis, setReferenceAnalysis] = React.useState<ReferenceUrlAnalysis | null>(null);
   const [referenceInstructions, setReferenceInstructions] = React.useState('');
   const [referenceError, setReferenceError] = React.useState<string | null>(null);
+  const [referenceErrorStage, setReferenceErrorStage] = React.useState<'analysis' | 'generation' | null>(null);
+  const [referenceProcessMode, setReferenceProcessMode] = React.useState<'analysis' | 'generation' | 'retry_analysis' | 'retry_generation' | null>(null);
   const [isAnalyzingReference, setIsAnalyzingReference] = React.useState(false);
   const [isGeneratingReferencePlan, setIsGeneratingReferencePlan] = React.useState(false);
   const [brief, setBrief] = React.useState<AIPageGenerationBrief>({
@@ -298,13 +330,31 @@ export const AIPagePlanModal: React.FC<{
   };
 
   const canGenerate = brief.businessType.trim().length > 1 && brief.instructions.trim().length > 8 && brief.primaryCta.trim().length > 1;
-  const canAnalyzeReference = referenceUrl.trim().length > 8 && !isAnalyzingReference;
+  const isReferenceBusinessTypeValid = referenceBusinessType.trim().length > 1;
+  const canAnalyzeReference = referenceUrl.trim().length > 8 && isReferenceBusinessTypeValid && !isAnalyzingReference && !isGeneratingReferencePlan;
+  const canGenerateReferencePlan = Boolean(referenceAnalysis) && isReferenceBusinessTypeValid && !isGeneratingReferencePlan;
+  const activeReferenceProcess = isAnalyzingReference || isGeneratingReferencePlan;
+  const processOverlayCopy = referenceProcessMode === 'retry_analysis' || referenceProcessMode === 'retry_generation'
+    ? {
+      title: 'Intentando de nuevo',
+      description: 'Estamos repitiendo el proceso con la misma informacion.'
+    }
+    : isGeneratingReferencePlan
+      ? {
+        title: 'Generando pagina editable',
+        description: 'Estamos transformando la estructura detectada en secciones editables de Solutium.'
+      }
+      : {
+        title: 'Analizando referencia',
+        description: 'Estamos identificando la estructura, secciones y patrones visuales generales. No copiaremos textos, imagenes, logos ni codigo.'
+      };
 
-  const handleAnalyzeReference = async () => {
+  const handleAnalyzeReference = async (isRetry = false) => {
     if (!canAnalyzeReference) return;
     setIsAnalyzingReference(true);
+    setReferenceProcessMode(isRetry ? 'retry_analysis' : 'analysis');
     setReferenceError(null);
-    setReferenceAnalysis(null);
+    setReferenceErrorStage(null);
     try {
       const analysis = await onAnalyzeReferenceUrl({
         referenceUrl,
@@ -316,15 +366,19 @@ export const AIPagePlanModal: React.FC<{
       setReferenceAnalysis(analysis);
     } catch (error: any) {
       setReferenceError(error?.message || 'No se pudo analizar la URL de referencia.');
+      setReferenceErrorStage('analysis');
     } finally {
       setIsAnalyzingReference(false);
+      setReferenceProcessMode(null);
     }
   };
 
-  const handleGenerateFromReference = async () => {
-    if (!referenceAnalysis) return;
+  const handleGenerateFromReference = async (isRetry = false) => {
+    if (!canGenerateReferencePlan) return;
     setIsGeneratingReferencePlan(true);
+    setReferenceProcessMode(isRetry ? 'retry_generation' : 'generation');
     setReferenceError(null);
+    setReferenceErrorStage(null);
     try {
       await onGenerateFromReferenceAnalysis({
         referenceUrl: referenceAnalysis.referenceUrl || referenceUrl,
@@ -337,8 +391,10 @@ export const AIPagePlanModal: React.FC<{
       });
     } catch (error: any) {
       setReferenceError(error?.message || 'No se pudo generar la pagina desde esta estructura.');
+      setReferenceErrorStage('generation');
     } finally {
       setIsGeneratingReferencePlan(false);
+      setReferenceProcessMode(null);
     }
   };
 
@@ -348,7 +404,7 @@ export const AIPagePlanModal: React.FC<{
         initial={{ opacity: 0, scale: 0.96, y: 16 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.96, y: 16 }}
-        className="flex h-[min(92vh,900px)] w-full max-w-5xl flex-col overflow-hidden rounded-3xl bg-surface shadow-2xl border border-border"
+        className="relative flex h-[min(92vh,900px)] w-full max-w-5xl flex-col overflow-hidden rounded-3xl bg-surface shadow-2xl border border-border"
       >
         <div className="shrink-0 flex items-center justify-between border-b border-border/60 px-6 py-5">
           <div>
@@ -380,7 +436,7 @@ export const AIPagePlanModal: React.FC<{
         </div>
 
         <div className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden lg:grid-cols-[1fr_0.9fr]">
-          {creationMode === 'instructions' ? <div className="min-h-0 space-y-5 overflow-y-auto p-6">
+          {creationMode === 'instructions' ? <div className="min-h-0 space-y-5 overflow-y-auto p-6 pb-28">
             <div className="rounded-2xl border border-primary/15 bg-primary/5 p-4">
               <p className="text-xs font-bold text-primary">
                 {isAIPagePlanBrokerConfigured() ? 'AI Broker seguro activo' : 'Generacion simulada local'}
@@ -466,19 +522,24 @@ export const AIPagePlanModal: React.FC<{
               </label>
             </div>
 
-            <button
-              onClick={() => onGenerate(brief)}
-              disabled={!canGenerate || isGenerating}
-              className="sticky bottom-0 z-10 flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-6 py-4 text-sm font-black uppercase tracking-widest text-white shadow-lg shadow-primary/20 transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45"
-            >
-              {isGenerating ? <div className="h-5 w-5 rounded-full border-2 border-white/30 border-t-white animate-spin" /> : <Sparkles size={18} />}
-              {plan ? 'Regenerar pagina' : 'Generar pagina'}
-            </button>
-          </div> : <div className="min-h-0 space-y-5 overflow-y-auto p-6">
+            <StickyActionFooter>
+              <button
+                onClick={() => onGenerate(brief)}
+                disabled={!canGenerate || isGenerating}
+                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-6 py-4 text-sm font-black uppercase tracking-widest text-white shadow-lg shadow-primary/20 transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45"
+              >
+                {isGenerating ? <div className="h-5 w-5 rounded-full border-2 border-white/30 border-t-white animate-spin" /> : <Sparkles size={18} />}
+                {plan ? 'Regenerar pagina' : 'Generar pagina'}
+              </button>
+            </StickyActionFooter>
+          </div> : <div className="min-h-0 space-y-5 overflow-y-auto p-6 pb-28">
             <div className="rounded-2xl border border-amber-300/60 bg-amber-50 p-4">
               <p className="text-xs font-black uppercase tracking-widest text-amber-700">Inspiracion estructural segura</p>
               <p className="mt-1 text-xs leading-relaxed text-amber-800">
-                Solutium analizara la estructura general de la URL. No copiaremos textos, imagenes, logos, HTML, CSS ni identidad de terceros.
+                La URL se usara como guia estructural. Solutium creara una version nueva con Modulos Maestro editables, textos propios y recursos visuales adaptados a tu negocio.
+              </p>
+              <p className="mt-3 text-[11px] font-black uppercase tracking-widest text-amber-700">
+                Analizar URL: {REFERENCE_ANALYSIS_CREDITS} Creditos IA · Generar pagina: {REFERENCE_PAGE_PLAN_CREDITS} Creditos IA
               </p>
             </div>
 
@@ -494,13 +555,16 @@ export const AIPagePlanModal: React.FC<{
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <label className="space-y-2">
-                <span className="text-xs font-black uppercase tracking-widest text-text/45">Tipo de negocio opcional</span>
+                <span className="text-xs font-black uppercase tracking-widest text-text/45">Tipo de negocio requerido</span>
                 <input
                   value={referenceBusinessType}
                   onChange={(event) => setReferenceBusinessType(event.target.value)}
-                  placeholder="servicios profesionales"
+                  placeholder="restaurante, clinica dental, software CRM..."
                   className="w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text outline-none focus:border-primary"
                 />
+                {!isReferenceBusinessTypeValid && (
+                  <p className="text-[11px] font-bold text-amber-700">Indica el tipo de negocio para adaptar los textos e imagenes de la pagina generada.</p>
+                )}
               </label>
 
               <label className="space-y-2">
@@ -551,23 +615,44 @@ export const AIPagePlanModal: React.FC<{
               />
             </label>
 
-            <button
-              onClick={handleAnalyzeReference}
-              disabled={!canAnalyzeReference}
-              className="sticky bottom-0 z-10 flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-6 py-4 text-sm font-black uppercase tracking-widest text-white shadow-lg shadow-primary/20 transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45"
-            >
-              {isAnalyzingReference ? <div className="h-5 w-5 rounded-full border-2 border-white/30 border-t-white animate-spin" /> : <Sparkles size={18} />}
-              Analizar URL
-            </button>
+            {isAnalyzingReference && (
+              <ReferenceWorkingState
+                title="Analizando la estructura de la referencia..."
+                description="Esto puede tardar unos segundos. No copiaremos textos, imagenes, logos ni codigo."
+              />
+            )}
+
+            <StickyActionFooter>
+              <button
+                onClick={() => handleAnalyzeReference(false)}
+                disabled={!canAnalyzeReference}
+                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-6 py-4 text-sm font-black uppercase tracking-widest text-white shadow-lg shadow-primary/20 transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45"
+              >
+                {isAnalyzingReference ? <div className="h-5 w-5 rounded-full border-2 border-white/30 border-t-white animate-spin" /> : <Sparkles size={18} />}
+                {isAnalyzingReference ? 'Analizando referencia...' : `Analizar URL · ${REFERENCE_ANALYSIS_CREDITS} Creditos IA`}
+              </button>
+            </StickyActionFooter>
           </div>}
 
-          <div className="min-h-0 overflow-y-auto border-t border-border/60 bg-secondary/35 p-6 lg:border-l lg:border-t-0">
+          <div className="min-h-0 overflow-y-auto border-t border-border/60 bg-secondary/35 p-6 pb-28 lg:border-l lg:border-t-0">
             <h3 className="text-sm font-black uppercase tracking-widest text-text/45">
               {creationMode === 'reference_url' ? 'Analisis de referencia' : 'Resumen generado'}
             </h3>
             {creationMode === 'reference_url' ? (
               <div className="mt-5 space-y-4">
-                {!referenceAnalysis && !referenceError && !plan && (
+                {isAnalyzingReference && (
+                  <ReferenceWorkingState
+                    title="Analizando la estructura de la referencia..."
+                    description="Estamos detectando roles, orden de secciones, CTAs y patrones visuales generales."
+                  />
+                )}
+                {isGeneratingReferencePlan && (
+                  <ReferenceWorkingState
+                    title="Generando pagina editable desde la referencia..."
+                    description="Estamos transformando la estructura detectada en secciones editables de Solutium."
+                  />
+                )}
+                {!referenceAnalysis && !referenceError && !plan && !isAnalyzingReference && (
                   <div className="rounded-2xl border border-dashed border-border bg-surface/70 p-8 text-center">
                     <Sparkles className="mx-auto mb-4 text-text/25" size={30} />
                     <p className="text-sm font-bold text-text/50">Pega una URL publica para detectar estructura, secciones y presets sugeridos.</p>
@@ -575,8 +660,19 @@ export const AIPagePlanModal: React.FC<{
                 )}
                 {referenceError && (
                   <div className="rounded-2xl border border-red-200 bg-red-50 p-4">
-                    <p className="text-xs font-black uppercase tracking-widest text-red-700">No se pudo analizar</p>
+                    <p className="text-xs font-black uppercase tracking-widest text-red-700">
+                      {referenceErrorStage === 'generation' ? 'No se pudo generar' : 'No se pudo analizar'}
+                    </p>
                     <p className="mt-2 text-xs leading-relaxed text-red-800">{referenceError}</p>
+                    <button
+                      type="button"
+                      onClick={() => referenceErrorStage === 'generation' ? handleGenerateFromReference(true) : handleAnalyzeReference(true)}
+                      disabled={referenceErrorStage === 'generation' ? !canGenerateReferencePlan : !canAnalyzeReference}
+                      className="mt-3 inline-flex items-center gap-2 rounded-xl border border-red-200 bg-white px-3 py-2 text-[11px] font-black uppercase tracking-widest text-red-700 transition-all hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <RotateCcw size={13} />
+                      Intentar de nuevo
+                    </button>
                   </div>
                 )}
                 {referenceAnalysis && !plan && (
@@ -585,6 +681,13 @@ export const AIPagePlanModal: React.FC<{
                       <p className="text-base font-black text-text">{referenceAnalysis.detectedPageType}</p>
                       <p className="mt-1 text-xs text-text/55">{referenceAnalysis.overallStructure}</p>
                       <p className="mt-3 text-xs leading-relaxed text-text/55">{referenceAnalysis.visualStyleSummary}</p>
+                      {referenceAnalysis.structureSignals && (
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <span className="rounded-full bg-secondary px-2.5 py-1 text-[10px] font-bold text-text/50">{referenceAnalysis.structureSignals.heroPattern}</span>
+                          <span className="rounded-full bg-secondary px-2.5 py-1 text-[10px] font-bold text-text/50">Densidad {referenceAnalysis.structureSignals.textDensity}</span>
+                          <span className="rounded-full bg-secondary px-2.5 py-1 text-[10px] font-bold text-text/50">{referenceAnalysis.structureSignals.ctaPattern}</span>
+                        </div>
+                      )}
                       {typeof referenceAnalysis.estimatedCredits === 'number' && referenceAnalysis.estimatedCredits > 0 && (
                         <p className="mt-3 text-[11px] font-bold text-text/45">Creditos estimados: {referenceAnalysis.estimatedCredits}</p>
                       )}
@@ -610,6 +713,7 @@ export const AIPagePlanModal: React.FC<{
                                 {section.recommendedModuleType}{section.recommendedPreset ? ` · ${section.recommendedPreset}` : ''}
                               </p>
                               <p className="mt-2 text-xs leading-relaxed text-text/55">{section.purpose}</p>
+                              <p className="mt-2 inline-flex rounded-full bg-primary/10 px-2 py-1 text-[10px] font-black uppercase tracking-wider text-primary">Inspirada en estructura</p>
                               <p className="mt-2 text-[11px] text-text/40">{section.layoutPattern} · confianza {Math.round(section.confidence * 100)}%</p>
                             </div>
                           </div>
@@ -622,14 +726,16 @@ export const AIPagePlanModal: React.FC<{
                         La pagina sera una version nueva inspirada en la estructura de la referencia. No se copiaran textos, imagenes, logos ni codigo.
                       </p>
                     </div>
-                    <button
-                      onClick={handleGenerateFromReference}
-                      disabled={isGeneratingReferencePlan}
-                      className="sticky bottom-0 z-10 flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-3 text-xs font-black uppercase tracking-widest text-white shadow-lg shadow-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {isGeneratingReferencePlan ? <div className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" /> : <Sparkles size={15} />}
-                      {isGeneratingReferencePlan ? 'Generando pagina editable...' : 'Generar pagina desde esta estructura'}
-                    </button>
+                    <StickyActionFooter>
+                      <button
+                        onClick={() => handleGenerateFromReference(false)}
+                        disabled={!canGenerateReferencePlan}
+                        className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-3 text-xs font-black uppercase tracking-widest text-white shadow-lg shadow-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {isGeneratingReferencePlan ? <div className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" /> : <Sparkles size={15} />}
+                        {isGeneratingReferencePlan ? 'Generando pagina editable...' : `Generar pagina con Modulos Maestro · ${REFERENCE_PAGE_PLAN_CREDITS} Creditos IA`}
+                      </button>
+                    </StickyActionFooter>
                   </>
                 )}
                 {plan && (
@@ -643,6 +749,9 @@ export const AIPagePlanModal: React.FC<{
                       {typeof plan.estimatedCredits === 'number' && plan.estimatedCredits > 0 && (
                         <p className="mt-2 text-[11px] font-bold text-text/45">Creditos estimados: {plan.estimatedCredits}</p>
                       )}
+                      <p className="mt-3 text-[11px] font-black uppercase tracking-widest text-text/45">
+                        {plan.sections.filter(section => section.moduleType === 'composition_section').length} Modulos Maestro listos para editar
+                      </p>
                     </div>
                     {Array.isArray(plan.warnings) && plan.warnings.length > 0 && (
                       <div className="rounded-2xl border border-amber-300/60 bg-amber-50 p-4">
@@ -670,10 +779,10 @@ export const AIPagePlanModal: React.FC<{
                         </div>
                       ))}
                     </div>
-                    <div className="sticky bottom-0 z-10 flex gap-3 bg-secondary/95 pt-3 pb-1 backdrop-blur">
+                    <StickyActionFooter className="flex gap-3">
                       <button
-                        onClick={handleGenerateFromReference}
-                        disabled={isGeneratingReferencePlan}
+                        onClick={() => handleGenerateFromReference(false)}
+                        disabled={!canGenerateReferencePlan}
                         className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-border bg-surface px-4 py-3 text-xs font-black uppercase tracking-widest text-text/55 hover:text-text disabled:opacity-50"
                       >
                         <RotateCcw size={15} />
@@ -686,7 +795,7 @@ export const AIPagePlanModal: React.FC<{
                         <Check size={16} />
                         Aplicar al sitio
                       </button>
-                    </div>
+                    </StickyActionFooter>
                   </>
                 )}
               </div>
@@ -740,7 +849,7 @@ export const AIPagePlanModal: React.FC<{
                   ))}
                 </div>
 
-                <div className="flex gap-3 pt-2">
+                <StickyActionFooter className="flex gap-3">
                   <button
                     onClick={() => onGenerate(brief)}
                     disabled={isGenerating}
@@ -756,13 +865,14 @@ export const AIPagePlanModal: React.FC<{
                     <Check size={16} />
                     Aplicar al sitio
                   </button>
-                </div>
+                </StickyActionFooter>
               </div>
             )}
             </>
             )}
           </div>
         </div>
+        {activeReferenceProcess && <AIProcessOverlay title={processOverlayCopy.title} description={processOverlayCopy.description} />}
       </motion.div>
     </div>
   );

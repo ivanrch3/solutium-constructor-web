@@ -6,7 +6,10 @@ import { validateCompositionSchema } from '../../../utils/compositionSchemaValid
 
 export type CompositionPresetId =
   | 'hero_visual_premium'
+  | 'saas_split_hero_visual'
   | 'features_bento'
+  | 'product_screenshot_showcase'
+  | 'faq_split_visual'
   | 'services_grid'
   | 'process_steps'
   | 'cta_premium'
@@ -583,6 +586,251 @@ const trustLogos = (): CompositionSectionSchema => validateCompositionSchema({
   ]
 });
 
+const saasSplitHeroVisual = (): CompositionSectionSchema => validateCompositionSchema({
+  ...baseSection('SaaS split hero visual', 'Hero SaaS con bloque visual'),
+  background: {
+    type: 'solid',
+    color: 'var(--color-background)'
+  },
+  elements: [
+    {
+      id: 'saas_hero_badge',
+      type: 'badge',
+      name: 'Cejilla SaaS',
+      parentId: null,
+      order: 1,
+      content: { text: 'Solucion conectada' },
+      layout: root('1 / span 5'),
+      style: { color: 'var(--color-primary)', background: 'color-mix(in srgb, var(--color-primary) 10%, white)', radius: 999, fontWeight: 900, textTransform: 'uppercase' }
+    },
+    {
+      id: 'saas_hero_heading',
+      type: 'heading',
+      name: 'Titulo hero SaaS',
+      parentId: null,
+      order: 2,
+      content: { level: 1, text: 'Gestiona conversaciones y oportunidades desde un solo lugar' },
+      layout: root('1 / span 6'),
+      style: { color: 'var(--color-foreground)', fontSize: 62, fontWeight: 900, lineHeight: 1.02 }
+    },
+    {
+      id: 'saas_hero_text',
+      type: 'paragraph',
+      name: 'Texto hero SaaS',
+      parentId: null,
+      order: 3,
+      content: { text: 'Una pagina inspirada en estructuras SaaS: mensaje claro, CTA doble y una visualizacion editable del producto.' },
+      layout: root('1 / span 5'),
+      style: { color: 'var(--color-muted-foreground)', fontSize: 18, lineHeight: 1.72 }
+    },
+    {
+      id: 'saas_hero_primary',
+      type: 'button',
+      name: 'CTA principal',
+      parentId: null,
+      order: 4,
+      content: { label: 'Probar ahora', href: '#' },
+      layout: root('1 / span 2'),
+      style: { color: 'var(--color-primary-foreground)', background: 'var(--color-primary)', radius: 999, fontWeight: 900 },
+      actions: [{ type: 'link', target: '#', label: 'Probar ahora' }]
+    },
+    {
+      id: 'saas_hero_secondary',
+      type: 'button',
+      name: 'CTA secundario',
+      parentId: null,
+      order: 5,
+      content: { label: 'Ver demo', href: '#' },
+      layout: root('3 / span 2'),
+      style: { color: 'var(--color-foreground)', background: 'var(--color-card)', borderColor: 'color-mix(in srgb, var(--color-primary) 18%, transparent)', borderWidth: 1, radius: 999, fontWeight: 900 },
+      actions: [{ type: 'link', target: '#', label: 'Ver demo' }]
+    },
+    {
+      id: 'saas_hero_visual',
+      type: 'card',
+      name: 'Ilustracion producto',
+      parentId: null,
+      order: 6,
+      layout: {
+        desktop: { gridColumn: '7 / span 6', gridRow: '1 / span 6', minHeight: 460, padding: 24 },
+        tablet: { gridColumn: '1 / span 8', minHeight: 380, padding: 22 },
+        mobile: { gridColumn: '1', minHeight: 320, padding: 18 }
+      },
+      style: { color: 'var(--color-foreground)', background: 'linear-gradient(145deg, #f3efff, #ffffff 54%, #ede7ff)', borderColor: '#ded3ff', borderWidth: 1, radius: 36, shadow: 'xl' }
+    },
+    ...['Conversaciones', 'Pipeline', 'Automatizacion'].flatMap((title, index) => [
+      {
+        id: `saas_hero_panel_${index + 1}`,
+        type: 'card',
+        name: title,
+        parentId: 'saas_hero_visual',
+        order: index + 1,
+        style: { color: 'var(--color-foreground)', background: 'rgba(255,255,255,0.88)', borderColor: '#e7ddff', borderWidth: 1, radius: 22, shadow: 'md' }
+      },
+      {
+        id: `saas_hero_panel_${index + 1}_text`,
+        type: 'paragraph',
+        name: `Texto ${title}`,
+        parentId: `saas_hero_panel_${index + 1}`,
+        order: 1,
+        content: { text: title },
+        style: { color: 'var(--color-foreground)', fontSize: 15, fontWeight: 900, lineHeight: 1.4 }
+      }
+    ] as CompositionElement[])
+  ]
+});
+
+const productScreenshotShowcase = (): CompositionSectionSchema => validateCompositionSchema({
+  ...baseSection('Product screenshot showcase', 'Showcase de producto'),
+  background: { type: 'solid', color: 'color-mix(in srgb, var(--color-primary) 5%, var(--color-background))' },
+  elements: [
+    {
+      id: 'product_showcase_heading',
+      type: 'heading',
+      name: 'Titulo showcase',
+      parentId: null,
+      order: 1,
+      content: { level: 2, text: 'Visualiza el flujo completo antes de dar el siguiente paso' },
+      layout: root('1 / span 7'),
+      style: { color: 'var(--color-foreground)', fontSize: 48, fontWeight: 900, lineHeight: 1.08 }
+    },
+    {
+      id: 'product_showcase_text',
+      type: 'paragraph',
+      name: 'Texto showcase',
+      parentId: null,
+      order: 2,
+      content: { text: 'Usa esta seccion para representar capturas, tableros o estados de producto con placeholders editables.' },
+      layout: root('8 / span 5'),
+      style: { color: 'var(--color-muted-foreground)', fontSize: 17, lineHeight: 1.7 }
+    },
+    {
+      id: 'product_showcase_screen',
+      type: 'card',
+      name: 'Pantalla principal',
+      parentId: null,
+      order: 3,
+      layout: cardLayout('1 / span 8', 430, 24),
+      style: { color: 'var(--color-foreground)', background: 'var(--color-card)', borderColor: 'color-mix(in srgb, var(--color-primary) 18%, transparent)', borderWidth: 1, radius: 34, shadow: 'xl' }
+    },
+    {
+      id: 'product_showcase_header',
+      type: 'badge',
+      name: 'Barra superior',
+      parentId: 'product_showcase_screen',
+      order: 1,
+      content: { text: 'Dashboard editable' },
+      style: { color: 'var(--color-primary)', background: 'color-mix(in srgb, var(--color-primary) 10%, transparent)', radius: 999, fontWeight: 900 }
+    },
+    {
+      id: 'product_showcase_list',
+      type: 'list',
+      name: 'Datos dashboard',
+      parentId: 'product_showcase_screen',
+      order: 2,
+      content: { items: [
+        { id: 'product_showcase_item_1', text: 'Nuevo lead recibido' },
+        { id: 'product_showcase_item_2', text: 'Seguimiento automatizado' },
+        { id: 'product_showcase_item_3', text: 'Conversion lista para revisar' }
+      ] },
+      style: { color: 'var(--color-muted-foreground)', fontSize: 16, lineHeight: 1.9 }
+    },
+    ...['Vista de equipo', 'Metrica clave', 'Accion siguiente'].flatMap((title, index) => [
+      {
+        id: `product_showcase_side_${index + 1}`,
+        type: 'card',
+        name: title,
+        parentId: null,
+        order: 4 + index,
+        layout: cardLayout('9 / span 4', 130, 20),
+        style: { color: 'var(--color-foreground)', background: 'var(--color-card)', borderColor: 'color-mix(in srgb, var(--color-primary) 14%, transparent)', borderWidth: 1, radius: 24, shadow: 'md' }
+      },
+      {
+        id: `product_showcase_side_${index + 1}_text`,
+        type: 'paragraph',
+        name: `Texto ${title}`,
+        parentId: `product_showcase_side_${index + 1}`,
+        order: 1,
+        content: { text: title },
+        style: { color: 'var(--color-foreground)', fontSize: 15, fontWeight: 900, lineHeight: 1.5 }
+      }
+    ] as CompositionElement[])
+  ]
+});
+
+const faqSplitVisual = (): CompositionSectionSchema => validateCompositionSchema({
+  ...baseSection('FAQ split visual', 'Ayuda y preguntas frecuentes'),
+  elements: [
+    {
+      id: 'faq_visual_card',
+      type: 'card',
+      name: 'Bloque visual ayuda',
+      parentId: null,
+      order: 1,
+      layout: cardLayout('1 / span 5', 420, 28),
+      style: { color: 'var(--color-foreground)', background: 'linear-gradient(145deg, #f5f0ff, #ffffff)', borderColor: '#e5dcff', borderWidth: 1, radius: 34, shadow: 'lg' }
+    },
+    {
+      id: 'faq_visual_heading',
+      type: 'heading',
+      name: 'Titulo visual',
+      parentId: 'faq_visual_card',
+      order: 1,
+      content: { level: 3, text: 'Soporte para avanzar con claridad' },
+      style: { color: 'var(--color-foreground)', fontSize: 28, fontWeight: 900, lineHeight: 1.15 }
+    },
+    {
+      id: 'faq_visual_text',
+      type: 'paragraph',
+      name: 'Texto visual',
+      parentId: 'faq_visual_card',
+      order: 2,
+      content: { text: 'Un espacio editable para explicar ayuda, acompanamiento o siguientes pasos.' },
+      style: { color: 'var(--color-muted-foreground)', fontSize: 16, lineHeight: 1.7 }
+    },
+    {
+      id: 'faq_heading',
+      type: 'heading',
+      name: 'Titulo FAQ',
+      parentId: null,
+      order: 2,
+      content: { level: 2, text: 'Preguntas frecuentes antes de empezar' },
+      layout: root('7 / span 6'),
+      style: { color: 'var(--color-foreground)', fontSize: 46, fontWeight: 900, lineHeight: 1.08 }
+    },
+    {
+      id: 'faq_text',
+      type: 'paragraph',
+      name: 'Intro FAQ',
+      parentId: null,
+      order: 3,
+      content: { text: 'Responde dudas clave con bloques simples y editables, sin depender de contenido externo.' },
+      layout: root('7 / span 5'),
+      style: { color: 'var(--color-muted-foreground)', fontSize: 17, lineHeight: 1.7 }
+    },
+    ...['Como funciona', 'Que incluye', 'Como empiezo'].flatMap((title, index) => [
+      {
+        id: `faq_item_${index + 1}`,
+        type: 'card',
+        name: title,
+        parentId: null,
+        order: 4 + index,
+        layout: cardLayout('7 / span 6', 118, 20),
+        style: { color: 'var(--color-foreground)', background: 'var(--color-card)', borderColor: 'color-mix(in srgb, var(--color-primary) 12%, transparent)', borderWidth: 1, radius: 22, shadow: 'sm' }
+      },
+      {
+        id: `faq_item_${index + 1}_text`,
+        type: 'paragraph',
+        name: `Pregunta ${title}`,
+        parentId: `faq_item_${index + 1}`,
+        order: 1,
+        content: { text: `${title}: respuesta breve editable para orientar al visitante.` },
+        style: { color: 'var(--color-foreground)', fontSize: 15, fontWeight: 800, lineHeight: 1.55 }
+      }
+    ] as CompositionElement[])
+  ]
+});
+
 export const COMPOSITION_PRESETS: CompositionPresetDefinition[] = [
   {
     id: 'hero_visual_premium',
@@ -591,10 +839,28 @@ export const COMPOSITION_PRESETS: CompositionPresetDefinition[] = [
     schema: heroVisualPremium()
   },
   {
+    id: 'saas_split_hero_visual',
+    label: 'SaaS split hero visual',
+    description: 'Hero blanco con CTA doble y visual tipo producto/CRM.',
+    schema: saasSplitHeroVisual()
+  },
+  {
     id: 'features_bento',
     label: 'Features Bento',
     description: 'Grid irregular de características con una card destacada.',
     schema: featuresBento()
+  },
+  {
+    id: 'product_screenshot_showcase',
+    label: 'Showcase de producto',
+    description: 'Bloque visual tipo dashboard/captura con cards laterales.',
+    schema: productScreenshotShowcase()
+  },
+  {
+    id: 'faq_split_visual',
+    label: 'FAQ visual dividido',
+    description: 'Seccion de ayuda/FAQ con bloque visual y preguntas.',
+    schema: faqSplitVisual()
   },
   {
     id: 'services_grid',

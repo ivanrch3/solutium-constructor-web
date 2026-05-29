@@ -431,7 +431,7 @@ export const MainSidebar: React.FC<MainSidebarProps> = ({
                     />
                     <ModuleItem
                       icon={React.createElement(MODULE_INFO.composition_section.icon, { size: 18 })}
-                      label="Composición Visual"
+                      label="Módulo Maestro"
                       onClick={() => onAddModule(COMPOSITION_SECTION_MODULE)}
                     />
                   </div>

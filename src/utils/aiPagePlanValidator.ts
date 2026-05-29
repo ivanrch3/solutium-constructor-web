@@ -16,7 +16,10 @@ export const ALLOWED_AI_PAGE_MODULE_TYPES = [
 
 export const ALLOWED_COMPOSITION_PRESETS = [
   'hero_visual_premium',
+  'saas_split_hero_visual',
   'features_bento',
+  'product_screenshot_showcase',
+  'faq_split_visual',
   'services_grid',
   'process_steps',
   'trust_logos',
@@ -34,12 +37,12 @@ const PRESET_ALIASES: Record<string, NormalizedCompositionPreset> = {
 };
 
 const DEFAULT_SECTIONS: Array<{ preset: NormalizedCompositionPreset; title: string; purpose: string }> = [
-  { preset: 'hero_visual_premium', title: 'Hero principal', purpose: 'Presentar la propuesta y guiar al CTA.' },
+  { preset: 'saas_split_hero_visual', title: 'Hero principal', purpose: 'Presentar la propuesta y guiar al CTA.' },
   { preset: 'features_bento', title: 'Beneficios clave', purpose: 'Mostrar beneficios de forma escaneable.' },
+  { preset: 'product_screenshot_showcase', title: 'Showcase de producto', purpose: 'Representar el producto o flujo principal.' },
   { preset: 'services_grid', title: 'Servicios principales', purpose: 'Explicar la oferta editable.' },
-  { preset: 'process_steps', title: 'Proceso', purpose: 'Describir el camino de trabajo.' },
-  { preset: 'trust_logos', title: 'Confianza', purpose: 'Reservar espacio para señales de confianza.' },
-  { preset: 'cta_premium', title: 'CTA final', purpose: 'Cerrar con una acción clara.' }
+  { preset: 'faq_split_visual', title: 'Ayuda y preguntas', purpose: 'Resolver dudas clave con apoyo visual.' },
+  { preset: 'cta_premium', title: 'CTA final', purpose: 'Cerrar con una accion clara.' }
 ];
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -318,4 +321,3 @@ export const validateAIPagePlan = (
 
 export const createLocalAIPagePlanFallback = (brief: AIPageGenerationBrief, warnings: string[] = []) =>
   buildFallbackPlan(brief, warnings);
-

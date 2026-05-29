@@ -1142,6 +1142,23 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   };
 
   const hydrateCompositionSchemaFromAISection = (section: AIPagePlan['sections'][number]) => {
+    const rawProvidedSchema = (section.settings as any)?.compositionSchema || (section.content as any)?.compositionSchema;
+    const providedSchema = typeof rawProvidedSchema === 'string'
+      ? (() => {
+        try { return JSON.parse(rawProvidedSchema); } catch { return null; }
+      })()
+      : rawProvidedSchema;
+    if (providedSchema) {
+      return validateCompositionSchema({
+        ...providedSchema,
+        name: section.title || providedSchema.name,
+        section: {
+          ...providedSchema.section,
+          ariaLabel: section.title || providedSchema.section?.ariaLabel
+        }
+      });
+    }
+
     const schema = cloneCompositionPresetSchema(mapAICompositionPreset(section.preset));
     const textQueue = [
       section.content.eyebrow,
@@ -3527,7 +3544,7 @@ const formatTimestampName = () => {
   };
 
   const handlePublish = async () => {
-    if (!projectId || isPreviewMode || publishInProgressRef.current || publishStatus === 'loading') return;
+    if (!projectId || isPreviewMode || publishInProgressRef.current || publishStatus !== 'idle') return;
     
     if (isDefaultName(siteName)) {
       setShowPublishModal(true);
@@ -3712,8 +3729,6 @@ const formatTimestampName = () => {
           status: 'published',
           timestamp: new Date().toISOString()
         });
-
-        setTimeout(() => setPublishStatus('idle'), 3000);
 
         // --- BACKGROUND TASK: Generate Server-Side Preview automatically on publish ---
         (async () => {
@@ -4271,7 +4286,7 @@ const formatTimestampName = () => {
                                   { id: 'structure', label: 'Estructura', modules: [
                                     { icon: MODULE_INFO.spacer.icon, label: "Espaciadores", mod: SPACER_MODULE },
                                     { icon: MODULE_INFO.bento.icon, label: "Composición Libre", mod: BENTO_MODULE },
-                                    { icon: MODULE_INFO.composition_section.icon, label: "Composición Visual", mod: COMPOSITION_SECTION_MODULE }
+                                    { icon: MODULE_INFO.composition_section.icon, label: "Módulo Maestro", mod: COMPOSITION_SECTION_MODULE }
                                   ]}
                                 ].map((cat) => (
                                   <div key={cat.id} className="border-b border-sidebar-foreground/5 last:border-0 pb-4">
@@ -4384,7 +4399,7 @@ const formatTimestampName = () => {
                                     <div className="space-y-1">
                                       <ModuleItem icon={React.createElement(MODULE_INFO.spacer.icon, { size: 18 })} label="Espaciadores" onClick={() => addModule(SPACER_MODULE)} />
                                       <ModuleItem icon={React.createElement(MODULE_INFO.bento.icon, { size: 18 })} label="Composición Libre" onClick={() => addModule(BENTO_MODULE)} />
-                                      <ModuleItem icon={React.createElement(MODULE_INFO.composition_section.icon, { size: 18 })} label="Composición Visual" onClick={() => addModule(COMPOSITION_SECTION_MODULE)} />
+                                      <ModuleItem icon={React.createElement(MODULE_INFO.composition_section.icon, { size: 18 })} label="Módulo Maestro" onClick={() => addModule(COMPOSITION_SECTION_MODULE)} />
                                     </div>
                                   </div>
                                 </div>

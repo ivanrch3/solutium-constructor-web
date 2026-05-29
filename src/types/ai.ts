@@ -98,6 +98,67 @@ export interface AIPagePlan {
   sections: AIPagePlanSection[];
 }
 
+export interface ReferenceUrlAnalysisRequest {
+  projectId: string;
+  siteId?: string;
+  referenceUrl: string;
+  businessType?: string;
+  pageGoal?: string;
+  tone?: string;
+  cta?: string;
+}
+
+export type ReferenceSectionRole =
+  | 'hero'
+  | 'features'
+  | 'services'
+  | 'process'
+  | 'testimonials'
+  | 'trust'
+  | 'pricing'
+  | 'faq'
+  | 'contact'
+  | 'cta'
+  | 'gallery'
+  | 'about'
+  | 'comparison'
+  | 'unknown';
+
+export interface ReferenceSectionAnalysis {
+  id: string;
+  order: number;
+  detectedRole: ReferenceSectionRole;
+  layoutPattern: string;
+  purpose: string;
+  visualNotes: string;
+  recommendedModuleType: string;
+  recommendedPreset?: string | null;
+  confidence: number;
+}
+
+export interface ProposedReferencePageStructure {
+  pageType: string;
+  recommendedSections: Array<{
+    role: string;
+    moduleType: string;
+    preset?: string | null;
+    reason: string;
+  }>;
+}
+
+export interface ReferenceUrlAnalysis {
+  referenceUrl: string;
+  detectedPageType: string;
+  detectedBusinessCategory?: string;
+  overallStructure: string;
+  visualStyleSummary: string;
+  sections: ReferenceSectionAnalysis[];
+  proposedStructure: ProposedReferencePageStructure;
+  warnings: string[];
+  generationMode: 'broker' | 'fallback';
+  estimatedCredits?: number;
+}
+
 export interface PexelsImage {
   id: number;
   width: number;

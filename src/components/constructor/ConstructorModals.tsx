@@ -13,7 +13,7 @@ import {
   RotateCcw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { AIPageGenerationBrief, AIPagePlan, AIPageTone, AIPageType } from '../../types/ai';
+import { AIPageGenerationBrief, AIPagePlan, AIPageTone, AIPageType, ReferenceUrlAnalysis } from '../../types/ai';
 
 // MobileBottomNav Component
 export const MobileBottomNav = ({ 
@@ -243,14 +243,34 @@ const getAIPlanModeLabel = (plan: AIPagePlan) => {
   return 'Mock local';
 };
 
+const isAIPagePlanBrokerConfigured = () =>
+  import.meta.env.VITE_ENABLE_AI_PAGE_PLAN_BROKER === 'true' &&
+  Boolean(import.meta.env.VITE_AI_PAGE_PLAN_BROKER_URL);
+
 export const AIPagePlanModal: React.FC<{
   plan: AIPagePlan | null,
   isGenerating: boolean,
   projectName?: string,
   onGenerate: (brief: AIPageGenerationBrief) => void,
+  onAnalyzeReferenceUrl: (request: {
+    referenceUrl: string;
+    businessType?: string;
+    pageGoal?: string;
+    tone?: string;
+    cta?: string;
+  }) => Promise<ReferenceUrlAnalysis>,
   onApply: () => void,
   onCancel: () => void
-}> = ({ plan, isGenerating, projectName, onGenerate, onApply, onCancel }) => {
+}> = ({ plan, isGenerating, projectName, onGenerate, onAnalyzeReferenceUrl, onApply, onCancel }) => {
+  const [creationMode, setCreationMode] = React.useState<'instructions' | 'reference_url'>('instructions');
+  const [referenceUrl, setReferenceUrl] = React.useState('');
+  const [referenceBusinessType, setReferenceBusinessType] = React.useState('');
+  const [referenceGoal, setReferenceGoal] = React.useState(GOAL_OPTIONS[0]);
+  const [referenceTone, setReferenceTone] = React.useState<AIPageTone>('profesional');
+  const [referenceCta, setReferenceCta] = React.useState('');
+  const [referenceAnalysis, setReferenceAnalysis] = React.useState<ReferenceUrlAnalysis | null>(null);
+  const [referenceError, setReferenceError] = React.useState<string | null>(null);
+  const [isAnalyzingReference, setIsAnalyzingReference] = React.useState(false);
   const [brief, setBrief] = React.useState<AIPageGenerationBrief>({
     pageType: 'landing',
     businessType: '',
@@ -266,6 +286,28 @@ export const AIPagePlanModal: React.FC<{
   };
 
   const canGenerate = brief.businessType.trim().length > 1 && brief.instructions.trim().length > 8 && brief.primaryCta.trim().length > 1;
+  const canAnalyzeReference = referenceUrl.trim().length > 8 && !isAnalyzingReference;
+
+  const handleAnalyzeReference = async () => {
+    if (!canAnalyzeReference) return;
+    setIsAnalyzingReference(true);
+    setReferenceError(null);
+    setReferenceAnalysis(null);
+    try {
+      const analysis = await onAnalyzeReferenceUrl({
+        referenceUrl,
+        businessType: referenceBusinessType,
+        pageGoal: referenceGoal,
+        tone: referenceTone,
+        cta: referenceCta
+      });
+      setReferenceAnalysis(analysis);
+    } catch (error: any) {
+      setReferenceError(error?.message || 'No se pudo analizar la URL de referencia.');
+    } finally {
+      setIsAnalyzingReference(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-[2150] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
@@ -277,7 +319,7 @@ export const AIPagePlanModal: React.FC<{
       >
         <div className="flex items-center justify-between border-b border-border/60 px-6 py-5">
           <div>
-            <p className="text-[10px] font-black uppercase tracking-widest text-primary">Crear con IA - Fase 1</p>
+            <p className="text-[10px] font-black uppercase tracking-widest text-primary">Crear con IA</p>
             <h2 className="text-xl font-black text-text">Generar pagina editable</h2>
           </div>
           <button onClick={onCancel} className="rounded-xl p-2 text-text/40 hover:bg-secondary hover:text-text transition-all">
@@ -285,12 +327,35 @@ export const AIPagePlanModal: React.FC<{
           </button>
         </div>
 
+        <div className="border-b border-border/60 px-6 py-4">
+          <div className="grid grid-cols-1 gap-3 rounded-2xl bg-secondary/50 p-1 md:grid-cols-2">
+            <button
+              type="button"
+              onClick={() => setCreationMode('instructions')}
+              className={`rounded-xl px-4 py-3 text-xs font-black uppercase tracking-widest transition-all ${creationMode === 'instructions' ? 'bg-surface text-primary shadow-sm' : 'text-text/45 hover:text-text'}`}
+            >
+              Crear desde instrucciones
+            </button>
+            <button
+              type="button"
+              onClick={() => setCreationMode('reference_url')}
+              className={`rounded-xl px-4 py-3 text-xs font-black uppercase tracking-widest transition-all ${creationMode === 'reference_url' ? 'bg-surface text-primary shadow-sm' : 'text-text/45 hover:text-text'}`}
+            >
+              Crear desde URL de referencia
+            </button>
+          </div>
+        </div>
+
         <div className="grid max-h-[calc(92vh-82px)] grid-cols-1 overflow-y-auto lg:grid-cols-[1fr_0.9fr]">
-          <div className="space-y-5 p-6">
+          {creationMode === 'instructions' ? <div className="space-y-5 p-6">
             <div className="rounded-2xl border border-primary/15 bg-primary/5 p-4">
-              <p className="text-xs font-bold text-primary">Generacion simulada local</p>
+              <p className="text-xs font-bold text-primary">
+                {isAIPagePlanBrokerConfigured() ? 'AI Broker seguro activo' : 'Generacion simulada local'}
+              </p>
               <p className="mt-1 text-xs leading-relaxed text-text/60">
-                Esta fase crea un pagePlan compatible con el Constructor. No llama APIs externas ni genera HTML libre.
+                {isAIPagePlanBrokerConfigured()
+                  ? 'Esta generación usa App Madre, valida el AIPagePlan y puede consumir créditos IA reales.'
+                  : 'Esta fase crea un pagePlan compatible con el Constructor. No llama APIs externas ni genera HTML libre.'}
               </p>
             </div>
 
@@ -376,10 +441,148 @@ export const AIPagePlanModal: React.FC<{
               {isGenerating ? <div className="h-5 w-5 rounded-full border-2 border-white/30 border-t-white animate-spin" /> : <Sparkles size={18} />}
               {plan ? 'Regenerar pagina' : 'Generar pagina'}
             </button>
-          </div>
+          </div> : <div className="space-y-5 p-6">
+            <div className="rounded-2xl border border-amber-300/60 bg-amber-50 p-4">
+              <p className="text-xs font-black uppercase tracking-widest text-amber-700">Inspiracion estructural segura</p>
+              <p className="mt-1 text-xs leading-relaxed text-amber-800">
+                Solutium analizara la estructura general de la URL. No copiaremos textos, imagenes, logos, HTML, CSS ni identidad de terceros.
+              </p>
+            </div>
+
+            <label className="space-y-2 block">
+              <span className="text-xs font-black uppercase tracking-widest text-text/45">URL de referencia</span>
+              <input
+                value={referenceUrl}
+                onChange={(event) => setReferenceUrl(event.target.value)}
+                placeholder="https://example.com"
+                className="w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text outline-none focus:border-primary"
+              />
+            </label>
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <label className="space-y-2">
+                <span className="text-xs font-black uppercase tracking-widest text-text/45">Tipo de negocio opcional</span>
+                <input
+                  value={referenceBusinessType}
+                  onChange={(event) => setReferenceBusinessType(event.target.value)}
+                  placeholder="servicios profesionales"
+                  className="w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text outline-none focus:border-primary"
+                />
+              </label>
+
+              <label className="space-y-2">
+                <span className="text-xs font-black uppercase tracking-widest text-text/45">CTA opcional</span>
+                <input
+                  value={referenceCta}
+                  onChange={(event) => setReferenceCta(event.target.value)}
+                  placeholder="Solicitar informacion"
+                  className="w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text outline-none focus:border-primary"
+                />
+              </label>
+            </div>
+
+            <label className="space-y-2 block">
+              <span className="text-xs font-black uppercase tracking-widest text-text/45">Objetivo opcional</span>
+              <select
+                value={referenceGoal}
+                onChange={(event) => setReferenceGoal(event.target.value)}
+                className="w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text outline-none focus:border-primary"
+              >
+                {GOAL_OPTIONS.map(goal => (
+                  <option key={goal} value={goal}>{goal}</option>
+                ))}
+              </select>
+            </label>
+
+            <label className="space-y-2 block">
+              <span className="text-xs font-black uppercase tracking-widest text-text/45">Tono opcional</span>
+              <select
+                value={referenceTone}
+                onChange={(event) => setReferenceTone(event.target.value as AIPageTone)}
+                className="w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text outline-none focus:border-primary"
+              >
+                {TONE_OPTIONS.map(tone => (
+                  <option key={tone} value={tone}>{tone}</option>
+                ))}
+              </select>
+            </label>
+
+            <button
+              onClick={handleAnalyzeReference}
+              disabled={!canAnalyzeReference}
+              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-6 py-4 text-sm font-black uppercase tracking-widest text-white shadow-lg shadow-primary/20 transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45"
+            >
+              {isAnalyzingReference ? <div className="h-5 w-5 rounded-full border-2 border-white/30 border-t-white animate-spin" /> : <Sparkles size={18} />}
+              Analizar URL
+            </button>
+          </div>}
 
           <div className="border-t border-border/60 bg-secondary/35 p-6 lg:border-l lg:border-t-0">
-            <h3 className="text-sm font-black uppercase tracking-widest text-text/45">Resumen generado</h3>
+            <h3 className="text-sm font-black uppercase tracking-widest text-text/45">
+              {creationMode === 'reference_url' ? 'Analisis de referencia' : 'Resumen generado'}
+            </h3>
+            {creationMode === 'reference_url' ? (
+              <div className="mt-5 space-y-4">
+                {!referenceAnalysis && !referenceError && (
+                  <div className="rounded-2xl border border-dashed border-border bg-surface/70 p-8 text-center">
+                    <Sparkles className="mx-auto mb-4 text-text/25" size={30} />
+                    <p className="text-sm font-bold text-text/50">Pega una URL publica para detectar estructura, secciones y presets sugeridos.</p>
+                  </div>
+                )}
+                {referenceError && (
+                  <div className="rounded-2xl border border-red-200 bg-red-50 p-4">
+                    <p className="text-xs font-black uppercase tracking-widest text-red-700">No se pudo analizar</p>
+                    <p className="mt-2 text-xs leading-relaxed text-red-800">{referenceError}</p>
+                  </div>
+                )}
+                {referenceAnalysis && (
+                  <>
+                    <div className="rounded-2xl border border-border bg-surface p-4">
+                      <p className="text-base font-black text-text">{referenceAnalysis.detectedPageType}</p>
+                      <p className="mt-1 text-xs text-text/55">{referenceAnalysis.overallStructure}</p>
+                      <p className="mt-3 text-xs leading-relaxed text-text/55">{referenceAnalysis.visualStyleSummary}</p>
+                      {typeof referenceAnalysis.estimatedCredits === 'number' && referenceAnalysis.estimatedCredits > 0 && (
+                        <p className="mt-3 text-[11px] font-bold text-text/45">Creditos estimados: {referenceAnalysis.estimatedCredits}</p>
+                      )}
+                    </div>
+                    {referenceAnalysis.warnings.length > 0 && (
+                      <div className="rounded-2xl border border-amber-300/60 bg-amber-50 p-4">
+                        <p className="text-xs font-black uppercase tracking-widest text-amber-700">Advertencias</p>
+                        <ul className="mt-2 space-y-1 text-xs leading-relaxed text-amber-800">
+                          {referenceAnalysis.warnings.slice(0, 5).map((warning, index) => (
+                            <li key={`${warning}-${index}`}>• {warning}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    <div className="space-y-2">
+                      {referenceAnalysis.sections.map((section) => (
+                        <div key={section.id} className="rounded-2xl border border-border bg-surface p-4">
+                          <div className="flex items-start gap-3">
+                            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-xs font-black text-primary">{section.order}</span>
+                            <div className="min-w-0">
+                              <p className="text-sm font-black capitalize text-text">{section.detectedRole}</p>
+                              <p className="mt-1 text-[11px] font-bold uppercase tracking-wider text-text/40">
+                                {section.recommendedModuleType}{section.recommendedPreset ? ` · ${section.recommendedPreset}` : ''}
+                              </p>
+                              <p className="mt-2 text-xs leading-relaxed text-text/55">{section.purpose}</p>
+                              <p className="mt-2 text-[11px] text-text/40">{section.layoutPattern} · confianza {Math.round(section.confidence * 100)}%</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <button
+                      disabled
+                      className="flex w-full cursor-not-allowed items-center justify-center gap-2 rounded-2xl border border-border bg-surface px-4 py-3 text-xs font-black uppercase tracking-widest text-text/35"
+                    >
+                      Generar pagina desde esta estructura · Proximamente
+                    </button>
+                  </>
+                )}
+              </div>
+            ) : (
+            <>
             {!plan ? (
               <div className="mt-5 rounded-2xl border border-dashed border-border bg-surface/70 p-8 text-center">
                 <Sparkles className="mx-auto mb-4 text-text/25" size={30} />
@@ -446,6 +649,8 @@ export const AIPagePlanModal: React.FC<{
                   </button>
                 </div>
               </div>
+            )}
+            </>
             )}
           </div>
         </div>

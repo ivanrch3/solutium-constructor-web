@@ -1,8 +1,7 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { SiteContent, VisualStyle } from "../types";
-import { AIGenerationContext, AIPageGenerationBrief, AIPagePlan } from "../types/ai";
+import { AIGenerationContext, AIPageGenerationBrief, AIPagePlan, ReferenceUrlAnalysis, ReferenceUrlAnalysisRequest } from "../types/ai";
 import {
-  AI_PAGE_PLAN_ACTION_SLUG,
   AI_PAGE_PLAN_ESTIMATED_CREDITS,
   ALLOWED_AI_PAGE_MODULE_TYPES,
   ALLOWED_COMPOSITION_PRESETS,
@@ -509,6 +508,7 @@ export const generateAIPagePlan = async (
   brief: AIPageGenerationBrief,
   options: {
     projectId?: string | null;
+    siteId?: string | null;
     userId?: string | null;
     forceFallback?: boolean;
     brokerResponseOverride?: unknown;
@@ -520,7 +520,7 @@ export const generateAIPagePlan = async (
   });
 
   if (options.forceFallback) {
-    return createLocalAIPagePlanFallback(brief, ['Fallback forzado para validación.']);
+    return createLocalAIPagePlanFallback(brief, ['Fallback forzado para validacion.']);
   }
 
   if (options.brokerResponseOverride !== undefined) {
@@ -538,7 +538,7 @@ export const generateAIPagePlan = async (
       ...localPlan,
       warnings: [
         ...(localPlan.warnings || []),
-        'Broker IA seguro no configurado; se usó generación local editable.'
+        'Broker IA seguro no configurado; se uso generacion local editable.'
       ]
     };
   }
@@ -548,12 +548,12 @@ export const generateAIPagePlan = async (
 
   if (!token || token.split('.').length !== 3) {
     return createLocalAIPagePlanFallback(brief, [
-      'No hay sesión válida para llamar al broker IA. Se usó fallback editable.'
+      'No hay sesion valida para llamar al broker IA. Se uso fallback editable.'
     ]);
   }
 
   const controller = new AbortController();
-  const timeout = window.setTimeout(() => controller.abort(), 25000);
+  const timeout = window.setTimeout(() => controller.abort(), 45000);
 
   try {
     const response = await fetch(brokerUrl, {
@@ -565,47 +565,170 @@ export const generateAIPagePlan = async (
       signal: controller.signal,
       body: JSON.stringify({
         projectId: options.projectId,
-        userId: options.userId,
-        appSlug: 'constructor_web',
-        actionSlug: AI_PAGE_PLAN_ACTION_SLUG,
-        estimatedCredits: AI_PAGE_PLAN_ESTIMATED_CREDITS,
-        prompt: buildAIPagePlanPrompt(brief),
-        brief,
-        responseFormat: 'AIPagePlan'
+        siteId: options.siteId || null,
+        pageType: brief.pageType,
+        businessType: brief.businessType,
+        pageGoal: brief.pageGoal,
+        tone: brief.tone,
+        cta: brief.primaryCta,
+        instructions: brief.instructions,
+        idempotencyKey: `website_ai_generate_page:${options.projectId || 'unknown'}:${Date.now()}`
       })
     });
 
     const text = await response.text();
-
-    if (!response.ok) {
-      return createLocalAIPagePlanFallback(brief, [
-        `Broker IA respondió HTTP ${response.status}. Se usó fallback editable.`
-      ]);
-    }
-
     const parsed = (() => {
       try {
         return JSON.parse(text);
       } catch {
-        return text;
+        return null;
       }
     })();
 
-    const plan = validateAIPagePlan(parsed, brief, {
+    if (!response.ok) {
+      const safeError = parsed && typeof parsed === 'object'
+        ? parsed as { error?: string; message?: string; warnings?: string[]; reason?: string }
+        : null;
+      const reason = safeError?.reason || safeError?.error || safeError?.message || `HTTP ${response.status}`;
+      const warning =
+        response.status === 401
+          ? 'Sesion invalida o expirada para el broker IA. Se uso fallback editable.'
+          : response.status === 402
+            ? 'Creditos IA insuficientes para generar con broker real. Se uso fallback editable.'
+            : response.status === 403
+              ? 'No hay permisos para generar con IA en este proyecto. Se uso fallback editable.'
+              : `Broker IA respondio ${reason}. Se uso fallback editable.`;
+
+      return createLocalAIPagePlanFallback(brief, [
+        warning,
+        ...(Array.isArray(safeError?.warnings) ? safeError.warnings : [])
+      ]);
+    }
+
+    if (!parsed || typeof parsed !== 'object') {
+      return createLocalAIPagePlanFallback(brief, [
+        'El broker IA devolvio una respuesta no JSON. Se uso fallback editable.'
+      ]);
+    }
+
+    const responseBody = parsed as {
+      success?: boolean;
+      plan?: unknown;
+      warnings?: string[];
+      usage?: {
+        actionSlug?: string;
+        estimatedCredits?: number;
+        model?: string;
+        aiUsageLogId?: string;
+        totalConsumed?: number;
+      };
+    };
+
+    if (responseBody.success !== true || !responseBody.plan) {
+      return createLocalAIPagePlanFallback(brief, [
+        'El broker IA no devolvio un AIPagePlan valido. Se uso fallback editable.',
+        ...(Array.isArray(responseBody.warnings) ? responseBody.warnings : [])
+      ]);
+    }
+
+    const plan = validateAIPagePlan(responseBody.plan, brief, {
       source: 'ai_broker',
       generationMode: 'broker'
     });
 
     return {
       ...plan,
-      warnings: plan.warnings || []
+      estimatedCredits: responseBody.usage?.estimatedCredits ?? plan.estimatedCredits ?? AI_PAGE_PLAN_ESTIMATED_CREDITS,
+      warnings: [
+        ...(plan.warnings || []),
+        ...(Array.isArray(responseBody.warnings) ? responseBody.warnings : []),
+        ...(responseBody.usage?.aiUsageLogId ? [`AI Broker ref: ${responseBody.usage.aiUsageLogId}`] : []),
+        ...(responseBody.usage?.totalConsumed !== undefined ? [`Creditos consumidos: ${responseBody.usage.totalConsumed}`] : [])
+      ]
     };
   } catch (error: any) {
     return createLocalAIPagePlanFallback(brief, [
       error?.name === 'AbortError'
-        ? 'El broker IA superó el tiempo de espera. Se usó fallback editable.'
-        : 'No se pudo contactar el broker IA. Se usó fallback editable.'
+        ? 'El broker IA supero el tiempo de espera. Se uso fallback editable.'
+        : 'No se pudo contactar el broker IA. Se uso fallback editable.'
     ]);
+  } finally {
+    window.clearTimeout(timeout);
+  }
+};
+
+export const analyzeReferenceUrl = async (
+  request: ReferenceUrlAnalysisRequest
+): Promise<ReferenceUrlAnalysis> => {
+  const brokerUrl = import.meta.env.VITE_REFERENCE_URL_ANALYSIS_BROKER_URL
+    || `${(import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api').replace(/\/$/, '')}/ai/reference-url/analyze`;
+
+  const authData = await getUploadAuthToken();
+  const token = authData.token || '';
+
+  if (!token || token.split('.').length !== 3) {
+    throw new Error('No hay sesion valida para analizar URL de referencia.');
+  }
+
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 45000);
+
+  try {
+    const response = await fetch(brokerUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      signal: controller.signal,
+      body: JSON.stringify({
+        ...request,
+        idempotencyKey: `website_ai_analyze_reference_url:${request.projectId}:${Date.now()}`
+      })
+    });
+
+    const text = await response.text();
+    const parsed = (() => {
+      try {
+        return JSON.parse(text);
+      } catch {
+        return null;
+      }
+    })() as {
+      success?: boolean;
+      analysis?: ReferenceUrlAnalysis;
+      error?: string;
+      message?: string;
+      warnings?: string[];
+      usage?: {
+        estimatedCredits?: number;
+        totalConsumed?: number;
+        aiUsageLogId?: string;
+      };
+    } | null;
+
+    if (!response.ok || !parsed?.success || !parsed.analysis) {
+      const warningText = Array.isArray(parsed?.warnings) && parsed.warnings.length
+        ? ` ${parsed.warnings.join(' ')}`
+        : '';
+      throw new Error(`${parsed?.error || parsed?.message || `HTTP ${response.status}`}${warningText}`);
+    }
+
+    return {
+      ...parsed.analysis,
+      estimatedCredits: parsed.usage?.estimatedCredits ?? parsed.analysis.estimatedCredits,
+      warnings: [
+        ...(parsed.analysis.warnings || []),
+        ...(Array.isArray(parsed.warnings) ? parsed.warnings : []),
+        ...(parsed.usage?.aiUsageLogId ? [`AI Broker ref: ${parsed.usage.aiUsageLogId}`] : []),
+        ...(parsed.usage?.totalConsumed !== undefined ? [`Creditos consumidos: ${parsed.usage.totalConsumed}`] : [])
+      ]
+    };
+  } catch (error: any) {
+    if (error?.name === 'AbortError') {
+      throw new Error('El analisis de URL supero el tiempo de espera.');
+    }
+    throw error;
   } finally {
     window.clearTimeout(timeout);
   }

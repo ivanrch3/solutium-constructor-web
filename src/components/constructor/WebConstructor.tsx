@@ -62,7 +62,7 @@ import { BentoPromptGenerator } from './BentoPromptGenerator';
 import { BentoSchema } from '../../types/bentoSchema';
 
 const DEFAULT_PARALLAX_BG_IMAGE = '/parallax-default-centered.svg';
-import { generateSite, generateLandingWithMotherAI, generateLandingDryRunLocal, generateAIPagePlan, MotherAIPageResponse } from '../../services/aiService';
+import { generateSite, generateLandingWithMotherAI, generateLandingDryRunLocal, generateAIPagePlan, analyzeReferenceUrl, MotherAIPageResponse } from '../../services/aiService';
 import { AIGenerationContext, AIPageGenerationBrief, AIPagePlan } from '../../types/ai';
 import { ProjectForm, ProjectFormData } from '../ProjectForm';
 import { initialContent, useEditorStore } from '../../store/editorStore';
@@ -1250,6 +1250,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         businessName: brief.businessName || project?.name || siteName
       }, {
         projectId,
+        siteId: currentSiteId,
         userId: currentUserId
       }));
     } catch (error: any) {
@@ -1257,6 +1258,20 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     } finally {
       setIsGeneratingAI(false);
     }
+  };
+
+  const handleAnalyzeReferenceUrl = async (request: {
+    referenceUrl: string;
+    businessType?: string;
+    pageGoal?: string;
+    tone?: string;
+    cta?: string;
+  }) => {
+    return analyzeReferenceUrl({
+      projectId,
+      siteId: currentSiteId,
+      ...request
+    });
   };
 
   const handleApplyAIPagePlan = () => {
@@ -4618,6 +4633,7 @@ const formatTimestampName = () => {
             isGenerating={isGeneratingAI}
             projectName={project?.name || siteName}
             onGenerate={handleGenerateAIPagePlan}
+            onAnalyzeReferenceUrl={handleAnalyzeReferenceUrl}
             onApply={handleApplyAIPagePlan}
             onCancel={handleCloseOnboarding}
           />

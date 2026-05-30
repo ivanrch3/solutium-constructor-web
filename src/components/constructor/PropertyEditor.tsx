@@ -773,7 +773,11 @@ export const PropertyEditor: React.FC<PropertyEditorProps> = ({
       const newItems = [...currentItems];
       if (newItems[index]) {
         newItems[index] = { ...newItems[index], [settingId]: value };
-        updateSectionSettings(selectedSection.id, { [repeaterKey]: newItems });
+        if (onSettingChange) {
+          onSettingChange(`${realSectionId}_el_bento_items`, 'items', newItems);
+        } else {
+          updateSectionSettings(selectedSection.id, { [repeaterKey]: newItems });
+        }
       }
       return;
     }

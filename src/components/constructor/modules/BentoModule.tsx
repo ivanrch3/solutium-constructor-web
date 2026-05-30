@@ -14,6 +14,15 @@ import '/node_modules/react-resizable/css/styles.css';
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 const BENTO_AI_ACTIONS_ENABLED = false;
+const BENTO_BREAKPOINT_TO_LAYOUT: Record<string, 'desktop' | 'tablet' | 'mobile'> = {
+  lg: 'desktop',
+  md: 'desktop',
+  sm: 'tablet',
+  xs: 'mobile',
+  xxs: 'mobile'
+};
+
+const BENTO_BREAKPOINT_ORDER = ['lg', 'md', 'sm', 'xs', 'xxs'];
 
 const isBentoDebugEnabled = () => {
   if (typeof window === 'undefined') return false;
@@ -804,6 +813,27 @@ export const BentoModule: React.FC<{
 
   // --- LAYOUT HELPERS ---
 
+  const normalizeLayoutEntry = (layout: any) => ({
+    x: Number(layout?.x) || 0,
+    y: Number(layout?.y) || 0,
+    w: Number(layout?.w) || 1,
+    h: Number(layout?.h) || 1
+  });
+
+  const areLayoutsEqual = (a: any[] = [], b: any[] = []) => {
+    if (a.length !== b.length) return false;
+
+    return a.every((entry, index) => {
+      const candidate = b[index];
+      return candidate
+        && String(entry.i) === String(candidate.i)
+        && entry.x === candidate.x
+        && entry.y === candidate.y
+        && entry.w === candidate.w
+        && entry.h === candidate.h;
+    });
+  };
+
   const getBentoLayoutForBreakpoint = (items: any[], breakpoint: string, cols: number) => {
     return items.map((item: any, index: number) => {
       // 1. Try saved layouts object
@@ -812,7 +842,7 @@ export const BentoModule: React.FC<{
       }
 
       // 2. Try legacy / specific span fields
-      const w = breakpoint === 'mobile' ? (item.mobile_span || 1) : 
+      const w = breakpoint === 'mobile' ? (item.mobile_span || item.col_span || 4) : 
                 breakpoint === 'tablet' ? (item.tablet_span || 2) : 
                 (item.desktop_span || item.col_span || 4);
       
@@ -831,6 +861,7 @@ export const BentoModule: React.FC<{
   };
 
   const [currentBreakpoint, setCurrentBreakpoint] = useState('lg');
+  const currentBreakpointRef = useRef('lg');
   
   // Items Data - Robust Normalization
   const getItemsFromMultipleSources = () => {
@@ -855,9 +886,10 @@ export const BentoModule: React.FC<{
   const handleLayoutChange = (currentLayout: any, allLayouts: any) => {
     if (!onSettingChange || isPreviewMode) return;
 
-    // Map RGL keys to our semantic keys
-    const bpMap: Record<string, string> = { lg: 'desktop', md: 'desktop', sm: 'tablet', xs: 'mobile', xxs: 'mobile' };
-    const currentBP = bpMap[currentBreakpoint] || 'desktop';
+    const activeBreakpoint = areLayoutsEqual(currentLayout, allLayouts?.[currentBreakpointRef.current])
+      ? currentBreakpointRef.current
+      : BENTO_BREAKPOINT_ORDER.find((breakpoint) => areLayoutsEqual(currentLayout, allLayouts?.[breakpoint])) || currentBreakpointRef.current;
+    const currentBP = BENTO_BREAKPOINT_TO_LAYOUT[activeBreakpoint] || 'desktop';
 
     const newItems = [...rawItems];
     let changed = false;
@@ -865,7 +897,7 @@ export const BentoModule: React.FC<{
     currentLayout.forEach((l: any) => {
       const idx = parseInt(l.i);
       if (newItems[idx]) {
-        const entry = { x: l.x, y: l.y, w: l.w, h: l.h };
+        const entry = normalizeLayoutEntry(l);
         const existingLayouts = newItems[idx].layouts || {};
         
         if (JSON.stringify(existingLayouts[currentBP]) !== JSON.stringify(entry)) {
@@ -886,6 +918,7 @@ export const BentoModule: React.FC<{
   };
 
   const handleBreakpointChange = (newBreakpoint: string) => {
+    currentBreakpointRef.current = newBreakpoint;
     setCurrentBreakpoint(newBreakpoint);
     if (isBentoDebugEnabled()) console.log('[BENTO_BP_CHANGE]', newBreakpoint);
   };
@@ -899,6 +932,8 @@ export const BentoModule: React.FC<{
     if (!onSettingChange) return;
     
     const type = (window as any)._draggingBentoType || 'text';
+    const currentLayoutKey = BENTO_BREAKPOINT_TO_LAYOUT[currentBreakpointRef.current] || 'desktop';
+    const droppedLayout = normalizeLayoutEntry(item);
     
     const newItem = {
       id: createBentoCellId(),
@@ -909,6 +944,9 @@ export const BentoModule: React.FC<{
       row_span: item.h,
       x: item.x,
       y: item.y,
+      layouts: {
+        [currentLayoutKey]: droppedLayout
+      },
       card_style: 'solid',
       card_radius: 28,
       padding: 32,
@@ -926,6 +964,12 @@ export const BentoModule: React.FC<{
   const handleAddCell = () => {
     if (!onSettingChange) return;
     
+    const desktopY = rawItems.length > 0
+      ? Math.max(...rawItems.map((item: any) => {
+          const desktopLayout = item.layouts?.desktop;
+          return (desktopLayout?.y ?? item.y ?? 0) + (desktopLayout?.h ?? item.row_span ?? 2);
+        }))
+      : 0;
     const newItem = {
       id: createBentoCellId(),
       type: "icon_text",
@@ -935,7 +979,12 @@ export const BentoModule: React.FC<{
       col_span: 4,
       row_span: 2,
       x: 0,
-      y: rawItems.length > 0 ? Math.max(...rawItems.map((i: any) => i.y + i.row_span)) : 0,
+      y: desktopY,
+      layouts: {
+        desktop: { x: 0, y: desktopY, w: 4, h: 2 },
+        tablet: { x: 0, y: desktopY, w: 3, h: 2 },
+        mobile: { x: 0, y: desktopY, w: 4, h: 2 }
+      },
       card_style: "solid",
       card_radius: 28,
       padding: 32,
@@ -968,11 +1017,28 @@ export const BentoModule: React.FC<{
   const duplicateItem = (index: number) => {
     if (!onSettingChange) return;
     const itemToDuplicate = rawItems[index];
+    const offsetLayout = (layout: any, colsForLayout: number) => {
+      const entry = normalizeLayoutEntry(layout);
+      const nextX = Math.min(entry.x + 1, Math.max(0, colsForLayout - entry.w));
+      return { ...entry, x: nextX, y: entry.y + 1 };
+    };
+    const duplicatedLayouts = itemToDuplicate.layouts
+      ? {
+          ...itemToDuplicate.layouts,
+          ...(itemToDuplicate.layouts.desktop ? { desktop: offsetLayout(itemToDuplicate.layouts.desktop, columns) } : {}),
+          ...(itemToDuplicate.layouts.tablet ? { tablet: offsetLayout(itemToDuplicate.layouts.tablet, 6) } : {}),
+          ...(itemToDuplicate.layouts.mobile ? { mobile: offsetLayout(itemToDuplicate.layouts.mobile, 4) } : {})
+        }
+      : undefined;
+    const duplicatedDesktopLayout = duplicatedLayouts?.desktop;
     const newItem = { 
       ...itemToDuplicate,
       id: createBentoCellId(),
-      x: (itemToDuplicate.x + 1) % columns, // Simple shift to avoid complete overlap
-      y: itemToDuplicate.y + 1
+      ...(duplicatedLayouts ? { layouts: duplicatedLayouts } : {}),
+      x: duplicatedDesktopLayout?.x ?? ((itemToDuplicate.x + 1) % columns),
+      y: duplicatedDesktopLayout?.y ?? (itemToDuplicate.y + 1),
+      col_span: duplicatedDesktopLayout?.w ?? itemToDuplicate.col_span,
+      row_span: duplicatedDesktopLayout?.h ?? itemToDuplicate.row_span
     };
     onSettingChange(`${moduleId}_el_bento_items`, 'items', [...rawItems, newItem]);
     selectSection(moduleId);

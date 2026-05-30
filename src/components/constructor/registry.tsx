@@ -3292,7 +3292,6 @@ export const BENTO_MODULE: WebModule = {
             { label: 'Compacto', value: 'compact' },
             { label: 'Acción (CTA)', value: 'cta' },
             { label: 'Visual (Imagen)', value: 'visual' },
-            { label: 'Video', value: 'video' },
             { label: 'Paso (Step)', value: 'step' },
             { label: 'Tarjeta de App', value: 'app_card' },
             { label: 'Testimonio', value: 'testimonial' },
@@ -3364,7 +3363,7 @@ export const BENTO_MODULE: WebModule = {
           ]},
           { id: 'card_bg', label: 'Color de Fondo', type: 'color', defaultValue: '#FFFFFF', showIf: { settingId: 'card_style', value: 'solid' } },
           { id: 'card_gradient', label: 'Degradado Personalizado', type: 'gradient', defaultValue: 'linear-gradient(135deg, #F8FAFC 0%, #E2E8F0 100%)', showIf: { settingId: 'card_style', value: 'gradient' } },
-          { id: 'card_image', label: 'Imagen de Fondo', type: 'image', defaultValue: '' },
+          { id: 'card_image', label: 'Imagen de fondo de la tarjeta', type: 'image', defaultValue: '' },
           { id: 'card_overlay', label: 'Opacidad Overlay Image', type: 'range', defaultValue: 0, min: 0, max: 100 },
           { id: 'card_radius', label: 'Redondeo', type: 'range', defaultValue: 28, min: 0, max: 64, unit: 'px' },
           { id: 'card_shadow', label: 'Sombra', type: 'select', defaultValue: 'sm', options: [
@@ -3379,8 +3378,8 @@ export const BENTO_MODULE: WebModule = {
           ]},
 
           // Multimedia
-          { id: 'image', label: 'Imagen Principal', type: 'image', defaultValue: '', showIf: { settingId: 'type', value: ['visual', 'video'], operator: 'includes' } },
-          { id: 'image_fit', label: 'Ajuste de Imagen', type: 'select', defaultValue: 'cover', options: [
+          { id: 'image', label: 'Imagen principal / visual', type: 'image', defaultValue: '', showIf: { settingId: 'type', value: 'visual' } },
+          { id: 'image_fit', label: 'Ajuste de imagen principal', type: 'select', defaultValue: 'cover', showIf: { settingId: 'type', value: 'visual' }, options: [
             { label: 'Recortar (Cover)', value: 'cover' },
             { label: 'Contener (Contain)', value: 'contain' }
           ]}

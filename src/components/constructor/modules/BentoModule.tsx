@@ -79,6 +79,9 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave }: a
     button_text,
     btn_url,
     btn_target,
+    image,
+    card_image,
+    image_fit = 'cover',
     title_size,
     title_weight = 'extrabold',
     title_color,
@@ -565,41 +568,82 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave }: a
       );
 
     case 'visual':
+      const visualImage = image || card_image;
+
       return (
-        <div className="flex flex-col z-10 w-full h-full justify-end p-2 bg-gradient-to-t from-black/60 via-black/20 to-transparent">
-          <h3 
-            className="leading-tight mb-2 text-white"
-            style={{ 
-              fontSize: `${TYPOGRAPHY_SCALE[finalTitleSize as keyof typeof TYPOGRAPHY_SCALE]?.fontSize || 20}px`,
-              fontWeight: finalTitleWeight
-            }}
-          >
-            <InlineEditableText
-              moduleId={moduleId}
-              settingId="title"
-              value={title}
-              tagName="span"
-              isPreviewMode={isPreviewMode}
-              onSave={(val) => onSave('title', val)}
+        <div className="relative z-10 w-full h-full overflow-hidden">
+          {visualImage ? (
+            <img
+              src={visualImage}
+              className="absolute inset-0 w-full h-full"
+              style={{ objectFit: image_fit }}
+              referrerPolicy="no-referrer"
+              alt={title || 'Imagen principal'}
             />
-          </h3>
-          {description && (
-            <p className="text-white/80 text-xs mb-2 line-clamp-2">
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center bg-slate-100 text-slate-300">
+              <LucideIcons.Image size={56} strokeWidth={1.5} />
+            </div>
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+          <div className="absolute inset-x-0 bottom-0 flex flex-col justify-end p-6">
+            <h3
+              className="leading-tight mb-2 text-white"
+              style={{
+                fontSize: `${TYPOGRAPHY_SCALE[finalTitleSize as keyof typeof TYPOGRAPHY_SCALE]?.fontSize || 20}px`,
+                fontWeight: finalTitleWeight
+              }}
+            >
               <InlineEditableText
                 moduleId={moduleId}
-                settingId="description"
-                value={description}
+                settingId="title"
+                value={title}
                 tagName="span"
                 isPreviewMode={isPreviewMode}
-                onSave={(val) => onSave('description', val)}
+                onSave={(val) => onSave('title', val)}
               />
-            </p>
-          )}
+            </h3>
+            {description && (
+              <p className="text-white/80 text-xs mb-2 line-clamp-2">
+                <InlineEditableText
+                  moduleId={moduleId}
+                  settingId="description"
+                  value={description}
+                  tagName="span"
+                  isPreviewMode={isPreviewMode}
+                  onSave={(val) => onSave('description', val)}
+                />
+              </p>
+            )}
+          </div>
         </div>
       );
 
     case 'video':
-      return null;
+      return (
+        <div className="flex flex-col gap-3 z-10 w-full h-full justify-center items-center text-center">
+          <div className="w-14 h-14 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center">
+            <LucideIcons.PlayCircle size={28} />
+          </div>
+          <div>
+            {title && (
+              <h3
+                className="mb-2 leading-tight"
+                style={{
+                  fontSize: `${TYPOGRAPHY_SCALE[finalTitleSize as keyof typeof TYPOGRAPHY_SCALE]?.fontSize || 20}px`,
+                  fontWeight: finalTitleWeight,
+                  color: finalTitleColor
+                }}
+              >
+                {title}
+              </h3>
+            )}
+            <p className="text-xs font-semibold opacity-60" style={{ color: finalDescColor }}>
+              Tipo video heredado. La edición visual se habilitará en una fase posterior.
+            </p>
+          </div>
+        </div>
+      );
 
     default: // 'text'
       return (
@@ -1276,7 +1320,7 @@ export const BentoModule: React.FC<{
                     )}
 
                     {/* Background Image Logic */}
-                    {card_image && (
+                    {card_image && type !== 'visual' && (
                       <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
                         <img 
                           src={card_image} 

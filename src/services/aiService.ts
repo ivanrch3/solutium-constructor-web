@@ -1,6 +1,6 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { SiteContent, VisualStyle } from "../types";
-import { AIGenerationContext, AIPageGenerationBrief, AIPagePlan, AIPageTone, ReferenceUrlAnalysis, ReferenceUrlAnalysisRequest } from "../types/ai";
+import { AIGenerationContext, AIPageGenerationBrief, AIPagePlan, AIPageTone, ReferenceUrlAnalysis, ReferenceUrlAnalysisRequest, VisualReferenceScan } from "../types/ai";
 import {
   AI_PAGE_PLAN_ESTIMATED_CREDITS,
   ALLOWED_AI_PAGE_MODULE_TYPES,
@@ -294,7 +294,7 @@ export const generatePagePlanLocal = (brief: AIPageGenerationBrief): AIPagePlan 
   const businessName = normalizeBriefText(brief.businessName || '', titleCase(businessType));
   const goal = normalizeBriefText(brief.pageGoal, 'conseguir clientes potenciales');
   const instructions = normalizeBriefText(brief.instructions, `Presentar ${businessName} con una propuesta clara y editable.`);
-  const primaryCta = normalizeBriefText(brief.primaryCta, 'Solicitar informacion');
+  const primaryCta = normalizeBriefText(brief.primaryCta, 'Solicitar información');
   const tone = brief.tone || 'profesional';
   const isContactFocused = /contact|whatsapp|mensaje|cita|agenda/i.test(`${brief.pageType} ${goal} ${instructions}`);
   const isProductFocused = brief.pageType === 'product' || /producto|comprar|venta/i.test(`${goal} ${instructions}`);
@@ -305,7 +305,7 @@ export const generatePagePlanLocal = (brief: AIPageGenerationBrief): AIPagePlan 
       ? `Servicios de ${businessName}`
       : brief.pageType === 'product'
         ? `${businessName}: producto destacado`
-        : `${businessName}: pagina generada con IA`;
+        : `${businessName}: página generada con IA`;
 
   const valueWord = tone === 'premium' ? 'premium' : tone === 'cercano' ? 'simple y cercana' : 'profesional';
   const benefitItems = [
@@ -395,7 +395,7 @@ export const generatePagePlanLocal = (brief: AIPageGenerationBrief): AIPagePlan 
       moduleType: 'composition_section',
       preset: 'cta_premium',
       title: 'CTA principal',
-      purpose: 'Cerrar la pagina con una accion concreta.',
+      purpose: 'Cerrar la página con una accion concreta.',
       content: {
         eyebrow: 'Siguiente paso',
         title: isContactFocused ? 'Hablemos hoy mismo' : 'Convierte esta visita en una oportunidad',
@@ -412,9 +412,9 @@ export const generatePagePlanLocal = (brief: AIPageGenerationBrief): AIPagePlan 
       moduleType: 'contact',
       preset: null,
       title: 'Contacto',
-      purpose: 'Facilitar el contacto posterior a la revision.',
+      purpose: 'Facilitar el contacto posterior a la revisión.',
       content: {
-        title: 'Contacto rapido',
+        title: 'Contacto r?pido',
         description: 'Completa los datos de contacto reales antes de publicar.',
         cta: primaryCta
       },
@@ -432,6 +432,112 @@ export const generatePagePlanLocal = (brief: AIPageGenerationBrief): AIPagePlan 
     estimatedCredits: 0,
     warnings: [],
     sections: sections.slice(0, 7)
+  };
+};
+
+export const searchReferenceSectionImage = async ({
+  projectId,
+  businessType,
+  role,
+  mediaKind,
+  queryHint,
+  layout,
+  sectionIndex = 1,
+  usedImageUrls = [],
+  orientation = 'landscape'
+}: {
+  projectId?: string | null;
+  businessType: string;
+  role?: string | null;
+  mediaKind?: string | null;
+  queryHint?: string | null;
+  layout?: string | null;
+  sectionIndex?: number;
+  usedImageUrls?: string[];
+  orientation?: 'landscape' | 'portrait' | 'square';
+}) => {
+  const buildPexelsQueryForSection = () => {
+    const lowerBusiness = businessType.toLowerCase();
+    const normalizedRole = String(role || '').toLowerCase();
+    const normalizedLayout = String(layout || '').toLowerCase();
+    const normalizedMedia = String(mediaKind || '').toLowerCase();
+    const isHero = sectionIndex === 1 || normalizedRole === 'hero';
+    const isGrid = normalizedLayout.includes('grid') || normalizedRole.includes('feature');
+    const isShowcase = normalizedRole.includes('showcase') || normalizedMedia.includes('screenshot') || normalizedLayout.includes('split');
+    const isTrust = normalizedRole.includes('trust') || normalizedRole.includes('social') || normalizedRole.includes('testimonial');
+    const isFinal = normalizedRole === 'cta';
+
+    if (lowerBusiness.includes('batido') || lowerBusiness.includes('smoothie') || lowerBusiness.includes('jugo')) {
+      if (isHero) return 'fresh fruit smoothie colorful drink';
+      if (isShowcase) return 'healthy smoothie bar fresh juice';
+      if (isGrid) return 'tropical fruit drinks';
+      if (isTrust) return 'people drinking smoothies';
+      if (isFinal) return 'fresh juice close up';
+      return sectionIndex % 2 === 0 ? 'smoothie shop counter' : 'healthy drink ingredients';
+    }
+
+    if (lowerBusiness.includes('crm') || lowerBusiness.includes('software')) {
+      if (isHero) return 'business dashboard team workflow';
+      if (isShowcase) return 'crm software dashboard';
+      if (isGrid) return 'customer support dashboard';
+      if (isTrust) return 'business team meeting';
+      if (isFinal) return 'sales pipeline planning';
+      return 'business software workspace';
+    }
+
+    if (lowerBusiness.includes('dental')) {
+      if (isHero) return 'dental clinic smile care';
+      if (isShowcase) return 'dentist patient consultation';
+      if (isGrid) return 'modern dental clinic';
+      return 'smile dental care';
+    }
+
+    if (lowerBusiness.includes('restaurante')) {
+      if (isHero) return 'restaurant food dining table';
+      if (isShowcase) return 'chef plating restaurant';
+      if (isGrid) return 'restaurant dishes table';
+      return 'restaurant interior dining';
+    }
+
+    const cleanHint = String(queryHint || '').replace(/kommo|whatsapp crm|generic visual|unknown|cta/gi, '').trim();
+    return cleanHint ? `${businessType} ${cleanHint}` : `${businessType} business visual`;
+  };
+
+  const safeQuery = buildPexelsQueryForSection();
+  const usedUrls = new Set(usedImageUrls.filter(Boolean));
+
+  const response = await searchPexelsMedia({
+    projectId,
+    query: safeQuery,
+    per_page: 8,
+    orientation,
+    moduleType: 'composition_section',
+    fieldKey: String(mediaKind || role || 'reference_visual'),
+    industry: businessType
+  });
+
+  const photos = response.photos || [];
+  const selectedIndex = photos.findIndex((photo: any) => {
+    const url = photo?.src?.landscape || photo?.src?.large || photo?.src?.medium || '';
+    return url && !usedUrls.has(url);
+  });
+  const candidateIndex = selectedIndex >= 0 ? selectedIndex : 0;
+  const photo = photos[candidateIndex];
+  if (!photo) return null;
+  const url = photo.src?.landscape || photo.src?.large || photo.src?.medium || '';
+  if (!url || usedUrls.has(url)) return null;
+
+  return {
+    url,
+    alt: photo.alt || `${businessType} visual`,
+    source: 'pexels' as const,
+    photographer: photo.photographer,
+    pexelsUrl: photo.pexels_url || photo.url,
+    query: safeQuery,
+    queryUsed: safeQuery,
+    candidateIndex,
+    imageWasReused: false,
+    usedImageUrlsCount: usedUrls.size + 1
   };
 };
 
@@ -469,17 +575,17 @@ const REFERENCE_ROLE_TITLES: Record<string, string> = {
   hero: 'Hero inspirado en la referencia',
   features: 'Beneficios y diferenciales',
   services: 'Servicios o propuesta',
-  process: 'Proceso o metodologia',
+  process: 'Proceso o metodolog?a',
   testimonials: 'Confianza y prueba social',
   trust: 'Confianza',
   pricing: 'Comparativa de valor',
   faq: 'Preguntas frecuentes',
   contact: 'Contacto',
   cta: 'CTA final',
-  gallery: 'Galeria editable',
+  gallery: 'Galer?a editable',
   about: 'Sobre la propuesta',
   comparison: 'Comparativa',
-  unknown: 'Seccion editable'
+  unknown: 'Sección editable'
 };
 
 const createReferenceDrivenFallbackPlan = (
@@ -493,10 +599,10 @@ const createReferenceDrivenFallbackPlan = (
     pageGoal: request.pageGoal || brief.pageGoal,
     tone: (request.tone as AIPageTone) || brief.tone,
     primaryCta: request.cta || brief.primaryCta,
-    instructions: brief.instructions || `Crear una pagina nueva inspirada en la estructura detectada: ${request.analysis.overallStructure}`
+    instructions: brief.instructions || `Crear una página nueva inspirada en la estructura detectada: ${request.analysis.overallStructure}`
   });
   const sourceSections = request.analysis.sections.length ? request.analysis.sections : [];
-  const selectedSections = sourceSections.slice(0, 7);
+  const selectedSections = sourceSections.slice(0, 10);
   const fallbackSections = base.sections.filter(section => section.moduleType === 'composition_section');
   const sections = selectedSections.length >= 4
     ? selectedSections.map((section, index) => {
@@ -539,9 +645,9 @@ const createReferenceDrivenFallbackPlan = (
     generationMode: 'fallback',
     warnings: [
       ...warnings,
-      'Fallback inspirado en la estructura detectada; no copia textos, imagenes, logos ni codigo.'
+      'Fallback inspirado en la estructura detectada; no copia textos, imágenes, logos ni código.'
     ],
-    sections: sections.slice(0, 7)
+    sections: sections.slice(0, 10)
   }, brief, { source: 'fallback', generationMode: 'fallback' });
 };
 
@@ -658,7 +764,7 @@ export const generateAIPagePlan = async (
 
   if (!token || token.split('.').length !== 3) {
     return createLocalAIPagePlanFallback(brief, [
-      'No hay sesion valida para llamar al broker IA. Se uso fallback editable.'
+      'No hay sesion valida para llamar al broker IA. Se usó fallback editable.'
     ]);
   }
 
@@ -702,12 +808,12 @@ export const generateAIPagePlan = async (
       const reason = safeError?.reason || safeError?.error || safeError?.message || `HTTP ${response.status}`;
       const warning =
         response.status === 401
-          ? 'Sesion invalida o expirada para el broker IA. Se uso fallback editable.'
+          ? 'Sesion invalida o expirada para el broker IA. Se usó fallback editable.'
           : response.status === 402
-            ? 'Creditos IA insuficientes para generar con broker real. Se uso fallback editable.'
+            ? 'Créditos IA insuficientes para generar con broker real. Se usó fallback editable.'
             : response.status === 403
-              ? 'No hay permisos para generar con IA en este proyecto. Se uso fallback editable.'
-              : `Broker IA respondio ${reason}. Se uso fallback editable.`;
+              ? 'No hay permisos para generar con IA en este proyecto. Se usó fallback editable.'
+              : `Broker IA respondio ${reason}. Se usó fallback editable.`;
 
       return createLocalAIPagePlanFallback(brief, [
         warning,
@@ -717,7 +823,7 @@ export const generateAIPagePlan = async (
 
     if (!parsed || typeof parsed !== 'object') {
       return createLocalAIPagePlanFallback(brief, [
-        'El broker IA devolvio una respuesta no JSON. Se uso fallback editable.'
+        'El broker IA devolvio una respuesta no JSON. Se usó fallback editable.'
       ]);
     }
 
@@ -736,7 +842,7 @@ export const generateAIPagePlan = async (
 
     if (responseBody.success !== true || !responseBody.plan) {
       return createLocalAIPagePlanFallback(brief, [
-        'El broker IA no devolvio un AIPagePlan valido. Se uso fallback editable.',
+        'El broker IA no devolvio un AIPagePlan v?lido. Se usó fallback editable.',
         ...(Array.isArray(responseBody.warnings) ? responseBody.warnings : [])
       ]);
     }
@@ -753,14 +859,14 @@ export const generateAIPagePlan = async (
         ...(plan.warnings || []),
         ...(Array.isArray(responseBody.warnings) ? responseBody.warnings : []),
         ...(responseBody.usage?.aiUsageLogId ? [`AI Broker ref: ${responseBody.usage.aiUsageLogId}`] : []),
-        ...(responseBody.usage?.totalConsumed !== undefined ? [`Creditos consumidos: ${responseBody.usage.totalConsumed}`] : [])
+        ...(responseBody.usage?.totalConsumed !== undefined ? [`Créditos consumidos: ${responseBody.usage.totalConsumed}`] : [])
       ]
     };
   } catch (error: any) {
     return createLocalAIPagePlanFallback(brief, [
       error?.name === 'AbortError'
-        ? 'El broker IA supero el tiempo de espera. Se uso fallback editable.'
-        : 'No se pudo contactar el broker IA. Se uso fallback editable.'
+        ? 'El broker IA supero el tiempo de espera. Se usó fallback editable.'
+        : 'No se pudo contactar el broker IA. Se usó fallback editable.'
     ]);
   } finally {
     window.clearTimeout(timeout);
@@ -770,6 +876,9 @@ export const generateAIPagePlan = async (
 export const analyzeReferenceUrl = async (
   request: ReferenceUrlAnalysisRequest
 ): Promise<ReferenceUrlAnalysis> => {
+  const visualScanEnabled = import.meta.env.VITE_ENABLE_REFERENCE_URL_VISUAL_SCAN !== 'false';
+  const visualScanUrl = import.meta.env.VITE_REFERENCE_URL_VISUAL_SCAN_URL
+    || `${(import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api').replace(/\/$/, '')}/ai/reference-url/visual-scan`;
   const brokerUrl = import.meta.env.VITE_REFERENCE_URL_ANALYSIS_BROKER_URL
     || `${(import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api').replace(/\/$/, '')}/ai/reference-url/analyze`;
 
@@ -778,6 +887,91 @@ export const analyzeReferenceUrl = async (
 
   if (!token || token.split('.').length !== 3) {
     throw new Error('No hay sesion valida para analizar URL de referencia.');
+  }
+
+  if (visualScanEnabled && visualScanUrl && request.businessType?.trim()) {
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 52000);
+    try {
+      const response = await fetch(visualScanUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        signal: controller.signal,
+        body: JSON.stringify({
+          projectId: request.projectId,
+          siteId: request.siteId,
+          referenceUrl: request.referenceUrl,
+          businessType: request.businessType,
+          viewport: { width: 1440, height: 1200 }
+        })
+      });
+      const text = await response.text();
+      const parsed = (() => {
+        try {
+          return JSON.parse(text);
+        } catch {
+          return null;
+        }
+      })() as {
+        success?: boolean;
+        scan?: VisualReferenceScan;
+        analysis?: ReferenceUrlAnalysis;
+        warnings?: string[];
+        error?: string;
+        message?: string;
+      } | null;
+
+      if (response.ok && parsed?.success && parsed.analysis) {
+        const visualSections = parsed.scan?.sectionLayoutBlueprints?.map((blueprint, index) => ({
+          index: blueprint.sectionIndex || index + 1,
+          layout: blueprint.layout?.type || parsed.scan?.sections?.[index]?.layoutGuess || 'unknown',
+          roleHint: blueprint.roleHint || 'generic',
+          media: Boolean(blueprint.mediaIntent?.needsMedia || parsed.scan?.sections?.[index]?.elements?.some(element => element.type === 'image' || element.visualRole === 'media')),
+          confidence: blueprint.confidence,
+          queryHint: blueprint.mediaIntent?.queryHint,
+          columnsDetected: blueprint.elementSummary?.columnsDetected || blueprint.layout?.columns?.length || parsed.scan?.sections?.[index]?.columns?.length,
+          layoutReason: blueprint.layoutReason || parsed.scan?.sections?.[index]?.layoutReason,
+          elementSummary: blueprint.elementSummary || parsed.scan?.sections?.[index]?.elementSummary,
+          columns: blueprint.layout?.columns
+        })) || [];
+        return {
+          ...parsed.analysis,
+          warnings: [
+            ...(parsed.analysis.warnings || []),
+            ...(Array.isArray(parsed.warnings) ? parsed.warnings : []),
+            `Visual scan: ${parsed.scan?.sections?.length || parsed.analysis.sections.length} secciones detectadas`
+          ],
+          referenceDebug: {
+            visualScanUsed: true,
+            fallbackDomUsed: false,
+            screenshot: parsed.scan?.screenshot,
+            sections: visualSections,
+            warnings: [
+              ...(parsed.analysis.warnings || []),
+              ...(Array.isArray(parsed.warnings) ? parsed.warnings : [])
+            ]
+          },
+          generationMode: 'visual_scan'
+        };
+      }
+
+      const fallbackReason = parsed?.error || parsed?.message || `HTTP ${response.status}`;
+      console.warn('[REFERENCE_VISUAL_SCAN_FALLBACK_TO_DOM]', {
+        reason: fallbackReason
+      });
+      (request as any).__visualScanFallbackReason = fallbackReason;
+    } catch (error: any) {
+      const fallbackReason = error?.name === 'AbortError' ? 'VISUAL_SCAN_TIMEOUT' : error?.message || 'VISUAL_SCAN_ERROR';
+      console.warn('[REFERENCE_VISUAL_SCAN_FALLBACK_TO_DOM]', {
+        reason: fallbackReason
+      });
+      (request as any).__visualScanFallbackReason = fallbackReason;
+    } finally {
+      window.clearTimeout(timeout);
+    }
   }
 
   const controller = new AbortController();
@@ -824,16 +1018,40 @@ export const analyzeReferenceUrl = async (
       throw new Error(`${parsed?.error || parsed?.message || `HTTP ${response.status}`}${warningText}`);
     }
 
-    return {
+    const domAnalysis = {
       ...parsed.analysis,
       estimatedCredits: parsed.usage?.estimatedCredits ?? parsed.analysis.estimatedCredits,
       warnings: [
         ...(parsed.analysis.warnings || []),
         ...(Array.isArray(parsed.warnings) ? parsed.warnings : []),
         ...(parsed.usage?.aiUsageLogId ? [`AI Broker ref: ${parsed.usage.aiUsageLogId}`] : []),
-        ...(parsed.usage?.totalConsumed !== undefined ? [`Creditos consumidos: ${parsed.usage.totalConsumed}`] : [])
-      ]
+        ...(parsed.usage?.totalConsumed !== undefined ? [`Créditos consumidos: ${parsed.usage.totalConsumed}`] : []),
+        ...((request as any).__visualScanFallbackReason ? [`REFERENCE_VISUAL_SCAN_FALLBACK_TO_DOM: ${(request as any).__visualScanFallbackReason}`] : [])
+      ],
+      referenceDebug: {
+        visualScanUsed: false,
+        fallbackDomUsed: true,
+        fallbackReason: (request as any).__visualScanFallbackReason || 'VISUAL_SCAN_NOT_USED',
+        sections: (parsed.analysis.sectionLayoutBlueprints || []).map((blueprint, index) => ({
+          index: blueprint.sectionIndex || index + 1,
+          layout: blueprint.layout?.type || parsed.analysis.sections?.[index]?.layoutPattern || 'unknown',
+          roleHint: blueprint.roleHint || parsed.analysis.sections?.[index]?.detectedRole || 'generic',
+          media: Boolean(blueprint.mediaIntent?.needsMedia),
+          confidence: blueprint.confidence,
+          queryHint: blueprint.mediaIntent?.queryHint,
+          columnsDetected: blueprint.elementSummary?.columnsDetected || blueprint.layout?.columns?.length,
+          layoutReason: blueprint.layoutReason,
+          elementSummary: blueprint.elementSummary,
+          columns: blueprint.layout?.columns
+        })),
+        warnings: [
+          ...(parsed.analysis.warnings || []),
+          ...(Array.isArray(parsed.warnings) ? parsed.warnings : []),
+          ...((request as any).__visualScanFallbackReason ? [`REFERENCE_VISUAL_SCAN_FALLBACK_TO_DOM: ${(request as any).__visualScanFallbackReason}`] : [])
+        ]
+      }
     };
+    return domAnalysis;
   } catch (error: any) {
     if (error?.name === 'AbortError') {
       throw new Error('El analisis de URL supero el tiempo de espera.');
@@ -864,7 +1082,7 @@ export const generateAIPagePlanFromReferenceAnalysis = async (
 
   if (!brokerEnabled || !brokerUrl) {
     return createReferenceDrivenFallbackPlan(request, brief, [
-      'Broker para generar desde URL no configurado; se uso fallback editable.'
+      'Broker para generar desde URL no configurado; se usó fallback editable.'
     ]);
   }
 
@@ -873,7 +1091,7 @@ export const generateAIPagePlanFromReferenceAnalysis = async (
 
   if (!token || token.split('.').length !== 3) {
     return createReferenceDrivenFallbackPlan(request, brief, [
-      'No hay sesion valida para generar desde URL. Se uso fallback editable.'
+      'No hay sesion valida para generar desde URL. Se usó fallback editable.'
     ]);
   }
 
@@ -918,11 +1136,11 @@ export const generateAIPagePlanFromReferenceAnalysis = async (
       const safeWarnings = Array.isArray(parsed?.warnings) ? parsed.warnings : [];
       const warning =
         response.status === 401
-          ? 'Sesion invalida o expirada para generar desde URL. Se uso fallback editable.'
+          ? 'Sesion invalida o expirada para generar desde URL. Se usó fallback editable.'
           : response.status === 402
-            ? 'Creditos IA insuficientes para generar desde URL. Se uso fallback editable.'
+            ? 'Créditos IA insuficientes para generar desde URL. Se usó fallback editable.'
             : response.status === 403
-              ? 'No hay permisos para generar desde URL en este proyecto. Se uso fallback editable.'
+              ? 'No hay permisos para generar desde URL en este proyecto. Se usó fallback editable.'
               : parsed?.error || parsed?.message || `HTTP ${response.status}`;
 
       return createReferenceDrivenFallbackPlan(request, brief, [warning, ...safeWarnings]);
@@ -939,16 +1157,16 @@ export const generateAIPagePlanFromReferenceAnalysis = async (
       warnings: [
         ...(plan.warnings || []),
         ...(Array.isArray(parsed.warnings) ? parsed.warnings : []),
-        'Pagina original inspirada en la estructura de referencia; no se copiaron textos, imagenes, logos ni codigo.',
+        'Página original inspirada en la estructura de referencia; no se copiaron textos, imágenes, logos ni código.',
         ...(parsed.usage?.aiUsageLogId ? [`AI Broker ref: ${parsed.usage.aiUsageLogId}`] : []),
-        ...(parsed.usage?.totalConsumed !== undefined ? [`Creditos consumidos: ${parsed.usage.totalConsumed}`] : [])
+        ...(parsed.usage?.totalConsumed !== undefined ? [`Créditos consumidos: ${parsed.usage.totalConsumed}`] : [])
       ]
     };
   } catch (error: any) {
     return createReferenceDrivenFallbackPlan(request, brief, [
       error?.name === 'AbortError'
-        ? 'La generacion desde URL supero el tiempo de espera. Se uso fallback editable.'
-        : 'No se pudo contactar el broker para generar desde URL. Se uso fallback editable.'
+        ? 'La generacion desde URL supero el tiempo de espera. Se usó fallback editable.'
+        : 'No se pudo contactar el broker para generar desde URL. Se usó fallback editable.'
     ]);
   } finally {
     window.clearTimeout(timeout);

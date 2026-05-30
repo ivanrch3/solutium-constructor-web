@@ -13,7 +13,7 @@ import {
   RotateCcw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { AIPageGenerationBrief, AIPagePlan, AIPageTone, AIPageType, ReferenceUrlAnalysis } from '../../types/ai';
+import { AIPageGenerationBrief, AIPagePlan, AIPageTone, AIPageType, ReferenceDebugInfo, ReferenceUrlAnalysis } from '../../types/ai';
 
 // MobileBottomNav Component
 export const MobileBottomNav = ({ 
@@ -222,11 +222,11 @@ export const PublishModal: React.FC<{
 
 const PAGE_TYPE_OPTIONS: Array<{ value: AIPageType; label: string }> = [
   { value: 'landing', label: 'Landing page' },
-  { value: 'home', label: 'Pagina de inicio' },
-  { value: 'services', label: 'Pagina de servicios' },
-  { value: 'product', label: 'Pagina de producto' },
-  { value: 'contact', label: 'Pagina de contacto' },
-  { value: 'promo', label: 'Pagina promocional' }
+  { value: 'home', label: 'Página de inicio' },
+  { value: 'services', label: 'Página de servicios' },
+  { value: 'product', label: 'Página de producto' },
+  { value: 'contact', label: 'Página de contacto' },
+  { value: 'promo', label: 'Página promocional' }
 ];
 
 const GOAL_OPTIONS = [
@@ -271,27 +271,33 @@ const ReferenceWorkingState: React.FC<{ title: string; description: string }> = 
   </div>
 );
 
-const REFERENCE_ANALYSIS_MESSAGES = [
-  'Escaneando referencia...',
-  'Detectando secciones visuales...',
-  'Analizando estructura de la sección 1...',
-  'Identificando patrones de diseño...',
-  'Preparando resumen estructural...'
+type AIProcessStep = {
+  id: string;
+  label: string;
+};
+
+const REFERENCE_ANALYSIS_STEPS: AIProcessStep[] = [
+  { id: 'validate_url', label: 'Validando URL' },
+  { id: 'render_reference', label: 'Renderizando referencia' },
+  { id: 'capture_view', label: 'Capturando vista completa' },
+  { id: 'detect_sections', label: 'Detectando secciones visuales' },
+  { id: 'read_columns', label: 'Leyendo columnas y elementos' },
+  { id: 'prepare_structure', label: 'Preparando estructura editable' }
 ];
 
-const REFERENCE_CREATION_MESSAGES = [
-  'Creando página editable...',
-  'Construyendo sección 1...',
-  'Adaptando textos a tu tipo de negocio...',
-  'Generando bloques visuales propios...',
-  'Preparando la vista en el editor...'
+const REFERENCE_CREATION_STEPS: AIProcessStep[] = [
+  { id: 'transform_structure', label: 'Transformando estructura visual' },
+  { id: 'adapt_content', label: 'Adaptando contenido al tipo de negocio' },
+  { id: 'search_visuals', label: 'Buscando recursos visuales' },
+  { id: 'build_sections', label: 'Construyendo secciones editables' },
+  { id: 'insert_editor', label: 'Insertando página en el editor' }
 ];
 
-const REFERENCE_RETRY_MESSAGES = [
-  'Intentando de nuevo...',
-  'Revisando la referencia...',
-  'Reconectando con el broker...',
-  'Preparando una respuesta segura...'
+const REFERENCE_RETRY_STEPS: AIProcessStep[] = [
+  { id: 'retry_start', label: 'Intentando de nuevo' },
+  { id: 'review_reference', label: 'Revisando la referencia' },
+  { id: 'connect_broker', label: 'Reconectando con el broker' },
+  { id: 'safe_response', label: 'Preparando una respuesta segura' }
 ];
 
 const getSectionPatternLabel = (value?: string | null) => {
@@ -320,26 +326,172 @@ const getSectionIntentLabel = (role?: string | null) => {
   return labels[String(role || '').toLowerCase()] || 'Bloque estructural detectado';
 };
 
-const AIProcessOverlay: React.FC<{ title: string; description: string; messages: string[] }> = ({ title, description, messages }) => {
-  const [messageIndex, setMessageIndex] = React.useState(0);
+const AIProcessOverlay: React.FC<{ title: string; steps: AIProcessStep[] }> = ({ title, steps }) => {
+  const [activeIndex, setActiveIndex] = React.useState(0);
 
   React.useEffect(() => {
-    setMessageIndex(0);
+    setActiveIndex(0);
     const interval = window.setInterval(() => {
-      setMessageIndex(prev => (prev + 1) % messages.length);
-    }, 1800);
+      setActiveIndex(prev => Math.min(prev + 1, Math.max(steps.length - 1, 0)));
+    }, 1200);
     return () => window.clearInterval(interval);
-  }, [messages]);
+  }, [steps]);
+
+  const visibleSteps = steps.slice(0, Math.min(activeIndex + 2, steps.length));
 
   return (
     <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/35 px-6">
-      <div className="w-full max-w-sm rounded-3xl border border-border bg-surface p-7 text-center shadow-2xl">
+      <div className="w-full max-w-sm rounded-3xl border border-border bg-surface p-7 shadow-2xl">
         <div className="mx-auto mb-5 h-14 w-14 rounded-full border-4 border-primary/15 border-r-primary border-t-primary animate-spin shadow-lg shadow-primary/10" />
-        <p className="text-sm font-black uppercase tracking-widest text-primary">{title}</p>
-        <p className="mt-3 text-base font-black text-text">{messages[messageIndex] || title}</p>
-        <p className="mt-3 text-sm leading-relaxed text-text/60">{description}</p>
+        <p className="text-center text-sm font-black uppercase tracking-widest text-primary">{title}</p>
+        <div className="mt-5 space-y-3">
+          {visibleSteps.map((step, index) => {
+            const isCompleted = index < activeIndex;
+            const isActive = index === activeIndex;
+            return (
+              <div key={step.id} className={`flex items-center gap-3 text-sm transition-all ${isCompleted ? 'text-text/55' : isActive ? 'font-black text-text' : 'text-text/35'}`}>
+                <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${isCompleted ? 'border-primary bg-primary text-white' : isActive ? 'border-primary/30 bg-primary/10 text-primary' : 'border-border text-text/30'}`}>
+                  {isCompleted ? (
+                    <Check size={12} strokeWidth={3} />
+                  ) : isActive ? (
+                    <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+                  ) : (
+                    <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                  )}
+                </span>
+                <span>{step.label}</span>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
+  );
+};
+
+const ReferenceDebugPanel: React.FC<{ debug?: ReferenceDebugInfo | null; warnings?: string[] }> = ({ debug, warnings = [] }) => {
+  if (!debug) return null;
+  const debugWarnings = Array.from(new Set([...(debug.warnings || []), ...warnings].filter(Boolean)));
+
+  return (
+    <details className="rounded-2xl border border-blue-200 bg-blue-50/80 p-4 text-xs text-blue-950" open>
+      <summary className="cursor-pointer text-[11px] font-black uppercase tracking-widest text-blue-700">
+        Diagnóstico técnico
+      </summary>
+      <div className="mt-3 space-y-3">
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+          <div className="rounded-xl bg-white p-3">
+            <p className="font-black text-blue-700">visualScanUsed</p>
+            <p>{String(debug.visualScanUsed)}</p>
+          </div>
+          <div className="rounded-xl bg-white p-3">
+            <p className="font-black text-blue-700">fallbackDomUsed</p>
+            <p>{String(debug.fallbackDomUsed)}</p>
+          </div>
+          <div className="rounded-xl bg-white p-3">
+            <p className="font-black text-blue-700">fallbackReason</p>
+            <p className="break-words">{debug.fallbackReason || '—'}</p>
+          </div>
+          <div className="rounded-xl bg-white p-3">
+            <p className="font-black text-blue-700">secciones</p>
+            <p>{debug.sections?.length || 0}</p>
+          </div>
+        </div>
+
+        {debug.screenshot && (
+          <div className="rounded-xl bg-white p-3">
+            <p className="font-black text-blue-700">Screenshot</p>
+            <p>
+              {debug.screenshot.width || '—'}x{debug.screenshot.height || '—'} · captured {debug.screenshot.capturedHeight || '—'} · stored {String(Boolean(debug.screenshot.stored))}
+            </p>
+          </div>
+        )}
+
+        {debug.sections && debug.sections.length > 0 && (
+          <div className="overflow-x-auto rounded-xl bg-white p-3">
+            <p className="mb-2 font-black text-blue-700">Secciones visual scan</p>
+            <table className="min-w-full text-left text-[11px]">
+              <thead className="text-blue-700">
+                <tr>
+                  <th className="pr-3">Sección</th>
+                  <th className="pr-3">layout</th>
+                  <th className="pr-3">roleHint</th>
+                  <th className="pr-3">media</th>
+                  <th className="pr-3">confidence</th>
+                  <th className="pr-3">queryHint</th>
+                </tr>
+              </thead>
+              <tbody>
+                {debug.sections.slice(0, 10).map(section => (
+                  <tr key={`${section.index}-${section.layout}`}>
+                    <td className="pr-3 font-bold">{section.index}</td>
+                    <td className="pr-3">{section.layout}</td>
+                    <td className="pr-3">{section.roleHint}</td>
+                    <td className="pr-3">{String(section.media)}</td>
+                    <td className="pr-3">{typeof section.confidence === 'number' ? Math.round(section.confidence * 100) + '%' : '—'}</td>
+                    <td className="pr-3">{section.queryHint || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {debug.generation && (
+          <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+            {Object.entries(debug.generation).map(([key, value]) => (
+              <div key={key} className="rounded-xl bg-white p-3">
+                <p className="font-black text-blue-700">{key}</p>
+                <p>{String(value)}</p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {debug.pexels && debug.pexels.length > 0 && (
+          <div className="overflow-x-auto rounded-xl bg-white p-3">
+            <p className="mb-2 font-black text-blue-700">Pexels / placeholders</p>
+            <table className="min-w-full text-left text-[11px]">
+              <thead className="text-blue-700">
+                <tr>
+                  <th className="pr-3">Sección</th>
+                  <th className="pr-3">source</th>
+                  <th className="pr-3">found</th>
+                  <th className="pr-3">query</th>
+                  <th className="pr-3">candidate</th>
+                  <th className="pr-3">usedUrls</th>
+                  <th className="pr-3">photographer</th>
+                </tr>
+              </thead>
+              <tbody>
+                {debug.pexels.map(row => (
+                  <tr key={`${row.section}-${row.query || row.source}`}>
+                    <td className="pr-3 font-bold">{row.section}</td>
+                    <td className="pr-3">{row.source}</td>
+                    <td className="pr-3">{String(row.found)}</td>
+                    <td className="pr-3">{row.queryUsed || row.query || '—'}</td>
+                    <td className="pr-3">{typeof row.candidateIndex === 'number' ? row.candidateIndex + 1 : '—'}</td>
+                    <td className="pr-3">{row.usedImageUrlsCount || '—'}</td>
+                    <td className="pr-3">{row.photographer || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {debugWarnings.length > 0 && (
+          <div className="rounded-xl bg-white p-3">
+            <p className="font-black text-blue-700">Warnings</p>
+            <ul className="mt-1 list-disc pl-4">
+              {debugWarnings.slice(0, 12).map((warning, index) => (
+                <li key={`${warning}-${index}`} className="break-words">{warning}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    </details>
   );
 };
 
@@ -399,22 +551,23 @@ export const AIPagePlanModal: React.FC<{
   const canAnalyzeReference = referenceUrl.trim().length > 8 && isReferenceBusinessTypeValid && !isAnalyzingReference && !isGeneratingReferencePlan;
   const canGenerateReferencePlan = Boolean(referenceAnalysis) && isReferenceBusinessTypeValid && !isGeneratingReferencePlan;
   const activeReferenceProcess = isAnalyzingReference || isGeneratingReferencePlan;
+  const showReferenceDebug = import.meta.env.DEV || import.meta.env.VITE_SHOW_AI_REFERENCE_DEBUG === 'true';
+  const activeReferenceDebug = creationMode === 'reference_url'
+    ? (plan?.referenceDebug || referenceAnalysis?.referenceDebug)
+    : null;
   const processOverlayCopy = referenceProcessMode === 'retry_analysis' || referenceProcessMode === 'retry_generation'
     ? {
-      title: 'Intentando de nuevo',
-      description: 'Estamos repitiendo el proceso con la misma información.',
-      messages: REFERENCE_RETRY_MESSAGES
+      title: 'INTENTANDO DE NUEVO',
+      steps: REFERENCE_RETRY_STEPS
     }
     : isGeneratingReferencePlan
       ? {
-        title: 'Creando página editable',
-        description: 'Estamos transformando la estructura detectada en secciones editables de Solutium.',
-        messages: REFERENCE_CREATION_MESSAGES
+        title: 'CREANDO PÁGINA',
+        steps: REFERENCE_CREATION_STEPS
       }
       : {
-        title: 'Analizando referencia',
-        description: 'Estamos identificando estructura, secciones y patrones visuales generales. No copiaremos textos, imágenes, logos ni código.',
-        messages: REFERENCE_ANALYSIS_MESSAGES
+        title: 'ANALIZANDO REFERENCIA',
+        steps: REFERENCE_ANALYSIS_STEPS
       };
 
   const handleAnalyzeReference = async (isRetry = false) => {
@@ -458,7 +611,7 @@ export const AIPagePlanModal: React.FC<{
         instructions: referenceInstructions
       });
     } catch (error: any) {
-      setReferenceError(error?.message || 'No se pudo generar la pagina desde esta estructura.');
+      setReferenceError(error?.message || 'No se pudo generar la página desde esta estructura.');
       setReferenceErrorStage('generation');
     } finally {
       setIsGeneratingReferencePlan(false);
@@ -477,7 +630,7 @@ export const AIPagePlanModal: React.FC<{
         <div className="shrink-0 flex items-center justify-between border-b border-border/60 px-6 py-5">
           <div>
             <p className="text-[10px] font-black uppercase tracking-widest text-primary">Crear con IA</p>
-            <h2 className="text-xl font-black text-text">Generar pagina editable</h2>
+            <h2 className="text-xl font-black text-text">Generar página editable</h2>
           </div>
           <button
             onClick={onCancel}
@@ -522,7 +675,7 @@ export const AIPagePlanModal: React.FC<{
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <label className="space-y-2">
-                <span className="text-xs font-black uppercase tracking-widest text-text/45">Tipo de pagina</span>
+                <span className="text-xs font-black uppercase tracking-widest text-text/45">Tipo de página</span>
                 <select
                   value={brief.pageType}
                   onChange={(event) => updateBrief({ pageType: event.target.value as AIPageType })}
@@ -546,7 +699,7 @@ export const AIPagePlanModal: React.FC<{
             </div>
 
             <label className="space-y-2 block">
-              <span className="text-xs font-black uppercase tracking-widest text-text/45">Objetivo de la pagina</span>
+              <span className="text-xs font-black uppercase tracking-widest text-text/45">Objetivo de la página</span>
               <select
                 value={brief.pageGoal}
                 onChange={(event) => updateBrief({ pageGoal: event.target.value })}
@@ -563,7 +716,7 @@ export const AIPagePlanModal: React.FC<{
               <textarea
                 value={brief.instructions}
                 onChange={(event) => updateBrief({ instructions: event.target.value })}
-                placeholder="Describe que quieres que tenga la pagina..."
+                placeholder="Describe que quieres que tenga la página..."
                 rows={5}
                 className="w-full resize-none rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text outline-none focus:border-primary"
               />
@@ -588,7 +741,7 @@ export const AIPagePlanModal: React.FC<{
                 <input
                   value={brief.primaryCta}
                   onChange={(event) => updateBrief({ primaryCta: event.target.value })}
-                  placeholder="Solicitar informacion, Agendar cita..."
+                  placeholder="Solicitar información, Agendar cita..."
                   className="w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text outline-none focus:border-primary"
                 />
               </label>
@@ -601,7 +754,7 @@ export const AIPagePlanModal: React.FC<{
                 className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-6 py-4 text-sm font-black uppercase tracking-widest text-white shadow-lg shadow-primary/20 transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45"
               >
                 {isGenerating ? <div className="h-5 w-5 rounded-full border-2 border-white/30 border-t-white animate-spin" /> : <Sparkles size={18} />}
-                {plan ? 'Regenerar pagina' : 'Generar pagina'}
+                {plan ? 'Regenerar página' : 'Generar página'}
               </button>
             </StickyActionFooter>
           </div> : <div className="min-h-0 space-y-5 overflow-y-auto p-6 pb-28">
@@ -611,7 +764,7 @@ export const AIPagePlanModal: React.FC<{
                 La URL se usara como guia estructural. Solutium creara una version nueva con secciones editables, textos propios y recursos visuales adaptados a tu negocio.
               </p>
               <p className="mt-3 text-[11px] font-black uppercase tracking-widest text-amber-700">
-                Analizar referencia: {REFERENCE_ANALYSIS_CREDITS} Creditos IA · Crear pagina: {REFERENCE_PAGE_PLAN_CREDITS} Creditos IA
+                Analizar referencia: {REFERENCE_ANALYSIS_CREDITS} Créditos IA · Crear página: {REFERENCE_PAGE_PLAN_CREDITS} Créditos IA
               </p>
             </div>
 
@@ -635,7 +788,7 @@ export const AIPagePlanModal: React.FC<{
                   className="w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text outline-none focus:border-primary"
                 />
                 {!isReferenceBusinessTypeValid && (
-                  <p className="text-[11px] font-bold text-amber-700">Indica el tipo de negocio para adaptar los textos e imagenes de la pagina generada.</p>
+                  <p className="text-[11px] font-bold text-amber-700">Indica el tipo de negocio para adaptar los textos e imágenes de la página generada.</p>
                 )}
               </label>
 
@@ -644,7 +797,7 @@ export const AIPagePlanModal: React.FC<{
                 <input
                   value={referenceCta}
                   onChange={(event) => setReferenceCta(event.target.value)}
-                  placeholder="Solicitar informacion"
+                  placeholder="Solicitar información"
                   className="w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text outline-none focus:border-primary"
                 />
               </label>
@@ -677,7 +830,7 @@ export const AIPagePlanModal: React.FC<{
             </label>
 
             <label className="space-y-2 block">
-              <span className="text-xs font-black uppercase tracking-widest text-text/45">Instrucciones adicionales para la pagina</span>
+              <span className="text-xs font-black uppercase tracking-widest text-text/45">Instrucciones adicionales para la página</span>
               <textarea
                 value={referenceInstructions}
                 onChange={(event) => setReferenceInstructions(event.target.value)}
@@ -689,8 +842,8 @@ export const AIPagePlanModal: React.FC<{
 
             {isAnalyzingReference && (
               <ReferenceWorkingState
-                title="Analizando la estructura de la referencia..."
-                description="Esto puede tardar unos segundos. No copiaremos textos, imagenes, logos ni codigo."
+                title="Escaneando visualmente la referencia..."
+                description="Renderizamos la página para detectar estructura real sin copiar textos, imágenes, logos ni código."
               />
             )}
 
@@ -701,7 +854,7 @@ export const AIPagePlanModal: React.FC<{
                 className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-6 py-4 text-sm font-black uppercase tracking-widest text-white shadow-lg shadow-primary/20 transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45"
               >
                 {isAnalyzingReference ? <div className="h-5 w-5 rounded-full border-2 border-white/30 border-t-white animate-spin" /> : <Sparkles size={18} />}
-                {isAnalyzingReference ? 'Analizando referencia...' : `Analizar referencia · ${REFERENCE_ANALYSIS_CREDITS} Creditos IA`}
+                {isAnalyzingReference ? 'Analizando referencia...' : `Analizar referencia · ${REFERENCE_ANALYSIS_CREDITS} Créditos IA`}
               </button>
             </StickyActionFooter>
           </div>}
@@ -714,13 +867,13 @@ export const AIPagePlanModal: React.FC<{
               <div className="mt-5 space-y-4">
                 {isAnalyzingReference && (
                   <ReferenceWorkingState
-                    title="Analizando la estructura de la referencia..."
-                    description="Estamos detectando roles, orden de secciones, CTAs y patrones visuales generales."
+                    title="Detectando secciones visuales..."
+                    description="Estamos leyendo columnas, media, botones, fondos y jerarquia visual desde una vista renderizada."
                   />
                 )}
                 {isGeneratingReferencePlan && (
                   <ReferenceWorkingState
-                    title="Generando pagina editable desde la referencia..."
+                    title="Generando página editable desde la referencia..."
                     description="Estamos transformando la estructura detectada en secciones editables de Solutium."
                   />
                 )}
@@ -761,7 +914,7 @@ export const AIPagePlanModal: React.FC<{
                         </div>
                       )}
                       {typeof referenceAnalysis.estimatedCredits === 'number' && referenceAnalysis.estimatedCredits > 0 && (
-                        <p className="mt-3 text-[11px] font-bold text-text/45">Creditos estimados: {referenceAnalysis.estimatedCredits}</p>
+                        <p className="mt-3 text-[11px] font-bold text-text/45">Créditos estimados: {referenceAnalysis.estimatedCredits}</p>
                       )}
                     </div>
                     {referenceAnalysis.warnings.length > 0 && (
@@ -769,10 +922,16 @@ export const AIPagePlanModal: React.FC<{
                         <p className="text-xs font-black uppercase tracking-widest text-amber-700">Advertencias</p>
                         <ul className="mt-2 space-y-1 text-xs leading-relaxed text-amber-800">
                           {referenceAnalysis.warnings.slice(0, 5).map((warning, index) => (
-                            <li key={`${warning}-${index}`}>• {warning}</li>
+                            <li key={`${warning}-${index}`}>â€¢ {warning}</li>
                           ))}
                         </ul>
                       </div>
+                    )}
+                    {showReferenceDebug && (
+                      <ReferenceDebugPanel
+                        debug={activeReferenceDebug}
+                        warnings={[...(referenceAnalysis.warnings || []), ...(plan?.warnings || [])]}
+                      />
                     )}
                     <div className="space-y-2">
                       {referenceAnalysis.sections.map((section, index) => (
@@ -782,10 +941,20 @@ export const AIPagePlanModal: React.FC<{
                             <div className="min-w-0">
                               <p className="text-sm font-black text-text">Sección {index + 1}</p>
                               <p className="mt-1 text-[11px] font-bold uppercase tracking-wider text-text/40">
-                                Patrón detectado: {getSectionPatternLabel(section.layoutPattern)}
+                                Patrón detectado: {getSectionPatternLabel(referenceAnalysis.sectionLayoutBlueprints?.[index]?.layout?.type || section.layoutPattern)}
                               </p>
                               <p className="mt-1 text-[11px] font-bold uppercase tracking-wider text-text/40">
                                 Intención visual: {getSectionIntentLabel(section.detectedRole)}
+                              </p>
+                              <p className="mt-1 text-[11px] font-bold uppercase tracking-wider text-text/40">
+                                Elementos detectados: {(referenceAnalysis.sectionLayoutBlueprints?.[index]?.layout?.columns || [])
+                                  .flatMap(column => column.elements || [])
+                                  .map(element => element.semanticRole || element.type)
+                                  .slice(0, 5)
+                                  .join(', ') || 'estructura editable'}
+                              </p>
+                              <p className="mt-1 text-[11px] font-bold uppercase tracking-wider text-text/40">
+                                Imagen sugerida: {referenceAnalysis.sectionLayoutBlueprints?.[index]?.mediaIntent?.needsMedia ? 'Pexels o placeholder propio' : 'No requerida'}
                               </p>
                               <p className="mt-2 text-xs leading-relaxed text-text/55">{section.purpose}</p>
                               <p className="mt-2 inline-flex rounded-full bg-primary/10 px-2 py-1 text-[10px] font-black uppercase tracking-wider text-primary">Inspirada en estructura</p>
@@ -798,7 +967,7 @@ export const AIPagePlanModal: React.FC<{
                     <div className="rounded-2xl border border-primary/15 bg-primary/5 p-4">
                       <p className="text-xs font-black uppercase tracking-widest text-primary">Antes de generar</p>
                       <p className="mt-1 text-xs leading-relaxed text-text/60">
-                        La pagina sera una version nueva inspirada en la estructura de la referencia. No se copiaran textos, imagenes, logos ni codigo.
+                        La página sera una version nueva inspirada en la estructura de la referencia. No se copiaran textos, imágenes, logos ni código.
                       </p>
                     </div>
                     <StickyActionFooter>
@@ -808,7 +977,7 @@ export const AIPagePlanModal: React.FC<{
                         className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-3 text-xs font-black uppercase tracking-widest text-white shadow-lg shadow-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         {isGeneratingReferencePlan ? <div className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" /> : <Sparkles size={15} />}
-                        {isGeneratingReferencePlan ? 'Creando página editable...' : `Crear página desde esta referencia · ${REFERENCE_PAGE_PLAN_CREDITS} Creditos IA`}
+                        {isGeneratingReferencePlan ? 'Creando página editable...' : `Crear página desde esta referencia · ${REFERENCE_PAGE_PLAN_CREDITS} Créditos IA`}
                       </button>
                     </StickyActionFooter>
                   </>
@@ -819,7 +988,7 @@ export const AIPagePlanModal: React.FC<{
             {!plan ? (
               <div className="mt-5 rounded-2xl border border-dashed border-border bg-surface/70 p-8 text-center">
                 <Sparkles className="mx-auto mb-4 text-text/25" size={30} />
-                <p className="text-sm font-bold text-text/50">Completa el formulario para generar el plan de pagina.</p>
+                <p className="text-sm font-bold text-text/50">Completa el formulario para generar el plan de página.</p>
               </div>
             ) : (
               <div className="mt-5 space-y-4">
@@ -841,7 +1010,7 @@ export const AIPagePlanModal: React.FC<{
                     <p className="text-xs font-black uppercase tracking-widest text-amber-700">Advertencias</p>
                     <ul className="mt-2 space-y-1 text-xs leading-relaxed text-amber-800">
                       {plan.warnings.slice(0, 4).map((warning, index) => (
-                        <li key={`${warning}-${index}`}>• {warning}</li>
+                        <li key={`${warning}-${index}`}>â€¢ {warning}</li>
                       ))}
                     </ul>
                   </div>
@@ -890,8 +1059,7 @@ export const AIPagePlanModal: React.FC<{
         {activeReferenceProcess && (
           <AIProcessOverlay
             title={processOverlayCopy.title}
-            description={processOverlayCopy.description}
-            messages={processOverlayCopy.messages}
+            steps={processOverlayCopy.steps}
           />
         )}
       </motion.div>

@@ -1306,33 +1306,54 @@ export const BentoModule: React.FC<{
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 8, scale: 0.98 }}
           className={variant === 'empty'
-            ? 'mt-4 grid grid-cols-2 gap-2 text-left'
-            : 'absolute bottom-full left-1/2 mb-3 w-[520px] max-w-[calc(100vw-48px)] -translate-x-1/2 grid grid-cols-2 gap-2 rounded-3xl border border-gray-100 bg-white p-3 shadow-2xl'
+            ? 'pointer-events-auto fixed left-1/2 top-1/2 z-50 w-[680px] max-w-[calc(100vw-32px)] max-h-[70vh] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-[2rem] border border-gray-100 bg-white text-left shadow-2xl'
+            : 'absolute bottom-full left-1/2 z-50 mb-3 w-[680px] max-w-[calc(100vw-48px)] max-h-[70vh] -translate-x-1/2 overflow-hidden rounded-[2rem] border border-gray-100 bg-white text-left shadow-2xl'
           }
           onClick={(event) => event.stopPropagation()}
         >
-          {BENTO_ELEMENT_OPTIONS.map((option) => {
-            const PickerIcon = (LucideIcons as any)[option.icon] || Sparkles;
-            return (
-              <button
-                key={option.kind}
-                type="button"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  handleAddElement(option.kind);
-                }}
-                className="flex items-start gap-3 rounded-2xl border border-gray-100 bg-white p-3 text-left transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/5"
-              >
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                  <PickerIcon size={18} />
-                </span>
-                <span>
-                  <span className="block text-xs font-black text-gray-900">{option.label}</span>
-                  <span className="block text-[10px] font-medium leading-snug text-gray-400">{option.description}</span>
-                </span>
-              </button>
-            );
-          })}
+          <div className="flex items-start justify-between gap-4 border-b border-gray-100 p-4">
+            <div>
+              <h4 className="text-sm font-black text-slate-900">Elegir elemento</h4>
+              <p className="mt-1 text-xs font-medium text-slate-500">
+                Agrega piezas flexibles al Bento sin salir del lienzo.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                setIsElementPickerOpen(false);
+              }}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+              aria-label="Cerrar selector de elementos Bento"
+            >
+              <LucideIcons.X size={18} />
+            </button>
+          </div>
+          <div className="grid max-h-[calc(70vh-88px)] grid-cols-1 gap-2 overflow-y-auto p-3 sm:grid-cols-2">
+            {BENTO_ELEMENT_OPTIONS.map((option) => {
+              const PickerIcon = (LucideIcons as any)[option.icon] || Sparkles;
+              return (
+                <button
+                  key={option.kind}
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    handleAddElement(option.kind);
+                  }}
+                  className="flex min-h-[76px] items-start gap-3 rounded-2xl border border-gray-100 bg-white p-3 text-left transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/5"
+                >
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <PickerIcon size={18} />
+                  </span>
+                  <span>
+                    <span className="block text-xs font-black text-gray-900">{option.label}</span>
+                    <span className="block text-[10px] font-medium leading-snug text-gray-400">{option.description}</span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </motion.div>
       )}
     </AnimatePresence>
@@ -1393,7 +1414,7 @@ export const BentoModule: React.FC<{
           selectSection(moduleId);
           setSelectedIndex(null);
         }}
-        className={`w-full relative overflow-hidden transition-colors duration-500 bento-specialization-${bentoType} ${isDragging ? 'bento-dragging' : ''}`}
+        className={`w-full relative ${isElementPickerOpen ? 'overflow-visible' : 'overflow-hidden'} transition-colors duration-500 bento-specialization-${bentoType} ${isDragging ? 'bento-dragging' : ''}`}
         data-bento-type={bentoType}
         style={{ 
           backgroundColor: bgColor,
@@ -1763,7 +1784,6 @@ export const BentoModule: React.FC<{
                    <LucideIcons.Plus size={18} />
                    Agregar elemento
                  </button>
-                 {renderElementPicker('empty')}
                  {BENTO_AI_ACTIONS_ENABLED && (
                    <button 
                      onClick={(e) => { e.stopPropagation(); onOpenBentoGenerator?.(); }}
@@ -1775,6 +1795,7 @@ export const BentoModule: React.FC<{
                  )}
               </div>
             </motion.div>
+            {renderElementPicker('empty')}
           </div>
         )}
 

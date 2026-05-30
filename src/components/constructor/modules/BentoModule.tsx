@@ -14,8 +14,30 @@ import '/node_modules/react-resizable/css/styles.css';
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 const BENTO_AI_ACTIONS_ENABLED = false;
-const BENTO_DEBUG = typeof window !== 'undefined'
-  && new URLSearchParams(window.location.search).get('debug_bento') === 'true';
+
+const isBentoDebugEnabled = () => {
+  if (typeof window === 'undefined') return false;
+
+  const hasDebugParam = (search: string) => {
+    return new URLSearchParams(search).get('debug_bento') === 'true';
+  };
+
+  if (hasDebugParam(window.location.search)) return true;
+
+  try {
+    if (window.parent && window.parent !== window && hasDebugParam(window.parent.location.search)) {
+      return true;
+    }
+  } catch {
+    // Cross-origin parent frames are expected in embedded contexts.
+  }
+
+  try {
+    return window.localStorage.getItem('debug_bento') === 'true';
+  } catch {
+    return false;
+  }
+};
 
 const createBentoCellId = () => {
   const randomId = globalThis.crypto?.randomUUID?.() || Math.random().toString(36).slice(2);
@@ -714,7 +736,7 @@ export const BentoModule: React.FC<{
   onOpenBentoGenerator?: () => void;
 }> = ({ moduleId, settingsValues, content, onSettingChange, isPreviewMode, onOpenBentoGenerator }) => {
   useEffect(() => {
-    if (!BENTO_DEBUG) return;
+    if (!isBentoDebugEnabled()) return;
     console.log('[BENTO_MODULE_MOUNT_DEBUG]', {
       moduleId,
       runtime: "constructor_canvas",
@@ -865,7 +887,7 @@ export const BentoModule: React.FC<{
 
   const handleBreakpointChange = (newBreakpoint: string) => {
     setCurrentBreakpoint(newBreakpoint);
-    if (BENTO_DEBUG) console.log('[BENTO_BP_CHANGE]', newBreakpoint);
+    if (isBentoDebugEnabled()) console.log('[BENTO_BP_CHANGE]', newBreakpoint);
   };
 
   const itemVariants = globalAnimOverride || {
@@ -925,7 +947,7 @@ export const BentoModule: React.FC<{
     selectSection(moduleId);
     setSelectedIndex(newItems.length - 1);
 
-    if (BENTO_DEBUG) {
+    if (isBentoDebugEnabled()) {
       console.log('[BENTO_CELL_UPDATE_DEBUG]', {
         moduleId,
         action: "add",
@@ -992,7 +1014,7 @@ export const BentoModule: React.FC<{
   const isSelected = !isPreviewMode && settingsValues.isSelected; // Some canvases pass this
 
   useEffect(() => {
-    if (!isPreviewMode && BENTO_DEBUG) {
+    if (!isPreviewMode && isBentoDebugEnabled()) {
       console.log('[BENTO_RENDER_DEBUG]', {
         moduleId,
         itemsCount: rawItems.length,
@@ -1175,7 +1197,7 @@ export const BentoModule: React.FC<{
             className="layout w-full relative z-10"
             onBreakpointChange={handleBreakpointChange}
             onWidthChange={(w) => {
-              if (BENTO_DEBUG) console.log('[BENTO_WIDTH_CHANGE]', w);
+              if (isBentoDebugEnabled()) console.log('[BENTO_WIDTH_CHANGE]', w);
             }}
             layouts={layouts}
             breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}

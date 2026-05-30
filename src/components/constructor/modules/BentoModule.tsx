@@ -669,7 +669,7 @@ export const BentoModule: React.FC<{
     });
   }, []);
 
-  const { selectedBentoCellIndex, setSelectedBentoCellIndex } = useEditorStore();
+  const { selectedBentoCellIndex, setSelectedBentoCellIndex, selectSection } = useEditorStore();
   const [isDragging, setIsDragging] = useState(false);
   // Remove local selectedIndex, use store instead
   // const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
@@ -842,6 +842,7 @@ export const BentoModule: React.FC<{
 
     onSettingChange(`${moduleId}_el_bento_items`, 'items', [...rawItems, newItem]);
     (window as any)._draggingBentoType = null;
+    selectSection(moduleId);
     setSelectedIndex(rawItems.length);
   };
 
@@ -866,6 +867,7 @@ export const BentoModule: React.FC<{
 
     const newItems = [...rawItems, newItem];
     onSettingChange(`${moduleId}_el_bento_items`, 'items', newItems);
+    selectSection(moduleId);
     setSelectedIndex(newItems.length - 1);
 
     if (BENTO_DEBUG) {
@@ -896,6 +898,7 @@ export const BentoModule: React.FC<{
       y: itemToDuplicate.y + 1
     };
     onSettingChange(`${moduleId}_el_bento_items`, 'items', [...rawItems, newItem]);
+    selectSection(moduleId);
     setSelectedIndex(rawItems.length);
   };
 
@@ -942,7 +945,12 @@ export const BentoModule: React.FC<{
       <section 
         id={moduleId}
         ref={containerRef}
-        onClick={() => !isPreviewMode && setSelectedIndex(null)}
+        onClick={(e) => {
+          if (isPreviewMode) return;
+          e.stopPropagation();
+          selectSection(moduleId);
+          setSelectedIndex(null);
+        }}
         className={`w-full relative overflow-hidden transition-colors duration-500 bento-specialization-${bentoType} ${isDragging ? 'bento-dragging' : ''}`}
         data-bento-type={bentoType}
         style={{ 
@@ -1177,6 +1185,7 @@ export const BentoModule: React.FC<{
                     onClick={(e) => {
                       if (!isPreviewMode) {
                         e.stopPropagation();
+                        selectSection(moduleId);
                         setSelectedIndex(i);
                       }
                     }}

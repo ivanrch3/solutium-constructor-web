@@ -13,6 +13,14 @@ import '/node_modules/react-grid-layout/css/styles.css';
 import '/node_modules/react-resizable/css/styles.css';
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
+const BENTO_AI_ACTIONS_ENABLED = false;
+const BENTO_DEBUG = typeof window !== 'undefined'
+  && new URLSearchParams(window.location.search).get('debug_bento') === 'true';
+
+const createBentoCellId = () => {
+  const randomId = globalThis.crypto?.randomUUID?.() || Math.random().toString(36).slice(2);
+  return `bento_cell_${randomId}`;
+};
 
 // --- SUB-ELEMENT RENDERERS ---
 
@@ -651,6 +659,7 @@ export const BentoModule: React.FC<{
   onOpenBentoGenerator?: () => void;
 }> = ({ moduleId, settingsValues, content, onSettingChange, isPreviewMode, onOpenBentoGenerator }) => {
   useEffect(() => {
+    if (!BENTO_DEBUG) return;
     console.log('[BENTO_MODULE_MOUNT_DEBUG]', {
       moduleId,
       runtime: "constructor_canvas",
@@ -691,8 +700,8 @@ export const BentoModule: React.FC<{
   // Global Settings
   const columns = Math.max(1, parseInt(getVal(null, 'columns', 12)) || 12);
   const gap = parseNumSafe(getVal(null, 'gap', 20), 20);
-  const paddingY = parseNumSafe(getVal(null, 'padding_y', 100), 100);
-  const maxWidth = parseNumSafe(getVal(null, 'max_width', 1400), 1400);
+  const paddingY = parseNumSafe(getVal(null, 'padding_y', 40), 40);
+  const maxWidth = parseNumSafe(getVal(null, 'max_width', 1200), 1200);
   const darkMode = toBoolean(getVal(null, 'dark_mode', false));
   const rawBgColor = getVal(null, 'bg_color', '#FFFFFF');
   const bgColor = resolveThemeColor(rawBgColor, '#FFFFFF', '#0F172A', darkMode);
@@ -801,7 +810,7 @@ export const BentoModule: React.FC<{
 
   const handleBreakpointChange = (newBreakpoint: string) => {
     setCurrentBreakpoint(newBreakpoint);
-    console.log('[BENTO_BP_CHANGE]', newBreakpoint);
+    if (BENTO_DEBUG) console.log('[BENTO_BP_CHANGE]', newBreakpoint);
   };
 
   const itemVariants = globalAnimOverride || {
@@ -815,6 +824,7 @@ export const BentoModule: React.FC<{
     const type = (window as any)._draggingBentoType || 'text';
     
     const newItem = {
+      id: createBentoCellId(),
       type,
       title: type === 'stat' ? '99+' : (type === 'cta' ? '¡Únete ahora!' : 'Nuevo Bloque'),
       description: 'Personaliza este bloque desde el panel de ajustes.',
@@ -839,6 +849,7 @@ export const BentoModule: React.FC<{
     if (!onSettingChange) return;
     
     const newItem = {
+      id: createBentoCellId(),
       type: "icon_text",
       title: "Nueva celda",
       description: "Describe esta celda.",
@@ -857,12 +868,14 @@ export const BentoModule: React.FC<{
     onSettingChange(`${moduleId}_el_bento_items`, 'items', newItems);
     setSelectedIndex(newItems.length - 1);
 
-    console.log('[BENTO_CELL_UPDATE_DEBUG]', {
-      moduleId,
-      action: "add",
-      itemsCount: newItems.length,
-      updatedItem: newItem
-    });
+    if (BENTO_DEBUG) {
+      console.log('[BENTO_CELL_UPDATE_DEBUG]', {
+        moduleId,
+        action: "add",
+        itemsCount: newItems.length,
+        updatedItem: newItem
+      });
+    }
   };
 
   const removeItem = (index: number) => {
@@ -878,6 +891,7 @@ export const BentoModule: React.FC<{
     const itemToDuplicate = rawItems[index];
     const newItem = { 
       ...itemToDuplicate,
+      id: createBentoCellId(),
       x: (itemToDuplicate.x + 1) % columns, // Simple shift to avoid complete overlap
       y: itemToDuplicate.y + 1
     };
@@ -907,7 +921,7 @@ export const BentoModule: React.FC<{
   const isSelected = !isPreviewMode && settingsValues.isSelected; // Some canvases pass this
 
   useEffect(() => {
-    if (!isPreviewMode) {
+    if (!isPreviewMode && BENTO_DEBUG) {
       console.log('[BENTO_RENDER_DEBUG]', {
         moduleId,
         itemsCount: rawItems.length,
@@ -1068,7 +1082,9 @@ export const BentoModule: React.FC<{
           <ResponsiveGridLayout
             className="layout w-full relative z-10"
             onBreakpointChange={handleBreakpointChange}
-            onWidthChange={(w) => console.log('[BENTO_WIDTH_CHANGE]', w)}
+            onWidthChange={(w) => {
+              if (BENTO_DEBUG) console.log('[BENTO_WIDTH_CHANGE]', w);
+            }}
             layouts={layouts}
             breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
             cols={{ lg: columns, md: columns, sm: 6, xs: 4, xxs: 1 }}
@@ -1143,13 +1159,16 @@ export const BentoModule: React.FC<{
               }[hover_effect as string] || '' : '';
 
               const isSelected = selectedIndex === i;
+              const rglKey = i.toString();
+              const cellKey = item.id || rglKey;
 
               return (
                 <div 
-                  key={i.toString()} 
+                  key={rglKey} 
                   className={`relative ${!isPreviewMode ? 'group/rgl' : ''}`}
                 >
                   <motion.div 
+                    key={cellKey}
                     variants={entranceAnim !== 'none' ? itemVariants : {}}
                     initial={entranceAnim !== 'none' ? "hidden" : "visible"}
                     whileInView={entranceAnim !== 'none' ? "visible" : "visible"}
@@ -1271,13 +1290,15 @@ export const BentoModule: React.FC<{
                    <LucideIcons.Plus size={18} />
                    Agregar Celda Manual
                  </button>
-                 <button 
-                   onClick={(e) => { e.stopPropagation(); onOpenBentoGenerator?.(); }}
-                   className="w-full flex items-center justify-center gap-2 bg-blue-50 text-blue-600 py-4 rounded-2xl font-bold hover:bg-blue-100 active:scale-95 transition-all border border-blue-100"
-                 >
-                   <Sparkles size={18} />
-                   Generar con IA
-                 </button>
+                 {BENTO_AI_ACTIONS_ENABLED && (
+                   <button 
+                     onClick={(e) => { e.stopPropagation(); onOpenBentoGenerator?.(); }}
+                     className="w-full flex items-center justify-center gap-2 bg-blue-50 text-blue-600 py-4 rounded-2xl font-bold hover:bg-blue-100 active:scale-95 transition-all border border-blue-100"
+                   >
+                     <Sparkles size={18} />
+                     Generar con IA
+                   </button>
+                 )}
               </div>
             </motion.div>
           </div>
@@ -1293,14 +1314,18 @@ export const BentoModule: React.FC<{
               <LucideIcons.Plus size={16} />
               <span className="text-xs">Agregar Celda</span>
             </button>
-            <div className="w-px h-6 bg-gray-200" />
-            <button 
-               onClick={(e) => { e.stopPropagation(); onOpenBentoGenerator?.(); }}
-               className="flex items-center gap-2 px-6 py-2.5 bg-blue-50 text-blue-600 rounded-xl font-bold hover:bg-blue-100 transition-all active:scale-95"
-            >
-              <Sparkles size={16} />
-              <span className="text-xs">IA</span>
-            </button>
+            {BENTO_AI_ACTIONS_ENABLED && (
+              <>
+                <div className="w-px h-6 bg-gray-200" />
+                <button 
+                   onClick={(e) => { e.stopPropagation(); onOpenBentoGenerator?.(); }}
+                   className="flex items-center gap-2 px-6 py-2.5 bg-blue-50 text-blue-600 rounded-xl font-bold hover:bg-blue-100 transition-all active:scale-95"
+                >
+                  <Sparkles size={16} />
+                  <span className="text-xs">IA</span>
+                </button>
+              </>
+            )}
           </div>
         )}
       </div>

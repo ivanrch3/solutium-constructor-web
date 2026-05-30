@@ -635,10 +635,34 @@ export const PropertyEditor: React.FC<PropertyEditorProps> = ({
     );
   }
 
+  const getBentoItems = () => {
+    const sectionId = selectedSection.id;
+    const repeaterKey = `${sectionId}_el_bento_items_items`;
+    const sources = [
+      settingsValues?.[repeaterKey],
+      selectedSection.settings?.[repeaterKey],
+      selectedSection.content?.items,
+      selectedSection.content?.blocks,
+      selectedSection.content?.cells,
+      selectedSection.content?.data?.items,
+      selectedSection.content?.data?.blocks
+    ];
+
+    return sources.find(Array.isArray) || [];
+  };
+
+  const getSelectedBentoItem = () => {
+    if (selectedBentoCellIndex === null) return null;
+    const items = getBentoItems();
+    return items[selectedBentoCellIndex] || null;
+  };
+
   // Agrupar todos los settings por Pilar
   const settingsByPillar: Record<string, { label: string, setting: any, contextId: string }[]> = {};
 
-  const isBento = selectedSection.id.startsWith('mod_bento');
+  const isBento = selectedSection.type === 'bento'
+    || selectedSection.templateId === 'mod_bento_1'
+    || selectedSection.id.startsWith('mod_bento_1');
   const isCellSelected = isBento && selectedBentoCellIndex !== null;
 
   // 1. Settings Globales del Módulo (Hiding if a cell is selected in Bento)
@@ -666,10 +690,13 @@ export const PropertyEditor: React.FC<PropertyEditorProps> = ({
           if (!settingsByPillar[targetPillar]) settingsByPillar[targetPillar] = [];
           
           (settings as any[]).forEach(s => {
-            settingsByPillar[targetPillar].push({
-              label: s.label,
-              setting: s,
-              contextId: `${selectedSection.id}_${element.id}_${selectedBentoCellIndex}`
+            const cellSettings = s.type === 'repeater' && Array.isArray(s.fields) ? s.fields : [s];
+            cellSettings.forEach((field: any) => {
+              settingsByPillar[targetPillar].push({
+                label: field.label,
+                setting: field,
+                contextId: `${selectedSection.id}_${element.id}_${selectedBentoCellIndex}`
+              });
             });
           });
         });
@@ -737,12 +764,12 @@ export const PropertyEditor: React.FC<PropertyEditorProps> = ({
     console.log('[PROPERTY_EDITOR_CHANGE_DEBUG]', { contextId, settingId, value, extraUpdates });
     // Si estamos editando una celda de un repeater (ej: Bento), necesitamos actualizar el array de items
     if (contextId.includes('_el_bento_items_')) {
-      const [sectionId, elementId, indexStr] = contextId.split('_el_bento_items_');
-      const realSectionId = sectionId.startsWith('mod_bento') ? sectionId : selectedSection.id;
+      const [sectionId, , indexStr] = contextId.split('_el_bento_items_');
+      const realSectionId = sectionId || selectedSection.id;
       const index = parseInt(indexStr);
       
       const repeaterKey = `${realSectionId}_el_bento_items_items`;
-      const currentItems = selectedSection.settings[repeaterKey] || [];
+      const currentItems = getBentoItems();
       const newItems = [...currentItems];
       if (newItems[index]) {
         newItems[index] = { ...newItems[index], [settingId]: value };
@@ -834,11 +861,20 @@ export const PropertyEditor: React.FC<PropertyEditorProps> = ({
                         }, {} as Record<string, typeof fields>)
                       ).map(([subsection, subsectionFields]) => {
                         const renderField = ({ label, setting, contextId }: typeof subsectionFields[number]) => {
-                          const show = evaluateCondition(setting.showIf, selectedSection.settings, contextId);
+                          const bentoItem = isCellSelected && contextId.includes('_el_bento_items_') ? getSelectedBentoItem() : null;
+                          const conditionSettings = bentoItem
+                            ? {
+                              ...selectedSection.settings,
+                              ...Object.fromEntries(Object.entries(bentoItem).map(([key, itemValue]) => [`${contextId}_${key}`, itemValue]))
+                            }
+                            : selectedSection.settings;
+                          const show = evaluateCondition(setting.showIf, conditionSettings, contextId);
                           if (!show.result) return null;
 
                           const defaultValue = setting.defaultValue;
-                          const value = selectedSection.settings[`${contextId}_${setting.id}`] ?? defaultValue;
+                          const value = bentoItem
+                            ? bentoItem[setting.id] ?? defaultValue
+                            : selectedSection.settings[`${contextId}_${setting.id}`] ?? defaultValue;
 
                           if (setting.id === 'social_links' && selectedSection.type === 'footer') {
                             console.log('[FOOTER_PROPERTY_EDITOR_SOCIAL_STATE_DEBUG]', {

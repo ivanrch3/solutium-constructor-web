@@ -58,6 +58,14 @@ const resolveThemeColor = (
   return safeValue;
 };
 
+const getTypographyStyle = (token: string | undefined, fallback: keyof typeof TYPOGRAPHY_SCALE) => {
+  return TYPOGRAPHY_SCALE[(token as keyof typeof TYPOGRAPHY_SCALE) || fallback] || TYPOGRAPHY_SCALE[fallback];
+};
+
+const getFontWeightValue = (token: string | undefined, fallback: keyof typeof FONT_WEIGHTS) => {
+  return FONT_WEIGHTS[(token as keyof typeof FONT_WEIGHTS) || fallback]?.value || FONT_WEIGHTS[fallback].value;
+};
+
 const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave }: any) => {
   const {
     type,
@@ -86,6 +94,7 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave }: a
   const adaptive = getAdaptiveTypography(priority, col_span, row_span);
   const finalTitleSize = (title_size && title_size !== 'auto') ? title_size : adaptive.title;
   const finalDescSize = (desc_size && desc_size !== 'auto') ? desc_size : adaptive.desc;
+  const finalTitleWeight = getFontWeightValue(title_weight, 'extrabold');
 
   const IconComponent = (LucideIcons as any)[icon] || Sparkles;
   
@@ -115,7 +124,7 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave }: a
             className="leading-[1.1] mb-2"
             style={{ 
               fontSize: `${TYPOGRAPHY_SCALE[finalTitleSize as keyof typeof TYPOGRAPHY_SCALE]?.fontSize || 48}px`,
-              fontWeight: 900,
+              fontWeight: finalTitleWeight,
               color: finalTitleColor,
               letterSpacing: '-0.03em'
             }}
@@ -231,7 +240,7 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave }: a
         <div className="flex flex-col gap-4 z-10 w-full h-full justify-center text-left">
           <div className="flex items-center justify-between">
             <div 
-              className="w-12 h-12 rounded-2xl flex items-center justify-center text-white font-black text-xl shadow-lg"
+              className="w-12 h-12 rounded-2xl flex items-center justify-center text-white text-xl shadow-lg"
               style={{ backgroundColor: item.accent_color || 'var(--color-primary)' }}
             >
               {item.step_number || 1}
@@ -239,7 +248,7 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave }: a
             {item.icon && <IconComponent size={24} className="opacity-20" />}
           </div>
           <div>
-            <h3 className="font-extrabold text-lg leading-tight mb-2" style={{ color: finalTitleColor }}>
+            <h3 className="text-lg leading-tight mb-2" style={{ color: finalTitleColor, fontWeight: finalTitleWeight }}>
               <InlineEditableText
                 moduleId={moduleId}
                 settingId="title"
@@ -303,7 +312,7 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave }: a
              )}
              <div>
                {eyebrow && <span className="text-[9px] font-bold text-primary uppercase tracking-[0.2em] mb-1 block">{eyebrow}</span>}
-               <h3 className="font-black text-xl leading-none" style={{ color: finalTitleColor }}>
+               <h3 className="text-xl leading-none" style={{ color: finalTitleColor, fontWeight: finalTitleWeight }}>
                 <InlineEditableText
                   moduleId={moduleId}
                   settingId="title"
@@ -368,9 +377,10 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave }: a
              </div>
              <div>
                 <h3 
-                  className="font-black leading-tight"
+                  className="leading-tight"
                   style={{ 
                     fontSize: '16px',
+                    fontWeight: finalTitleWeight,
                     color: finalTitleColor
                   }}
                 >
@@ -414,7 +424,7 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave }: a
               className="mb-2 leading-tight"
               style={{ 
                 fontSize: `${TYPOGRAPHY_SCALE[finalTitleSize as keyof typeof TYPOGRAPHY_SCALE]?.fontSize || 24}px`,
-                fontWeight: isHero ? 900 : 800,
+                fontWeight: isHero ? Math.max(finalTitleWeight, 900) : finalTitleWeight,
                 color: finalTitleColor,
                 letterSpacing: isHero ? '-0.02em' : 'normal'
               }}
@@ -470,7 +480,7 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave }: a
                   className="leading-tight tracking-tight"
                   style={{ 
                     fontSize: `${TYPOGRAPHY_SCALE.t2.fontSize}px`,
-                    fontWeight: 900,
+                    fontWeight: finalTitleWeight,
                     color: finalTitleColor
                   }}
                 >
@@ -502,7 +512,7 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave }: a
                   className="mb-1 leading-tight"
                   style={{ 
                     fontSize: `${TYPOGRAPHY_SCALE.t3.fontSize}px`,
-                    fontWeight: 900,
+                    fontWeight: finalTitleWeight,
                     color: finalTitleColor
                   }}
                 >
@@ -558,9 +568,10 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave }: a
       return (
         <div className="flex flex-col z-10 w-full h-full justify-end p-2 bg-gradient-to-t from-black/60 via-black/20 to-transparent">
           <h3 
-            className="font-black leading-tight mb-2 text-white"
+            className="leading-tight mb-2 text-white"
             style={{ 
-              fontSize: `${TYPOGRAPHY_SCALE[finalTitleSize as keyof typeof TYPOGRAPHY_SCALE]?.fontSize || 20}px`
+              fontSize: `${TYPOGRAPHY_SCALE[finalTitleSize as keyof typeof TYPOGRAPHY_SCALE]?.fontSize || 20}px`,
+              fontWeight: finalTitleWeight
             }}
           >
             <InlineEditableText
@@ -606,7 +617,7 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave }: a
               className="mb-2 leading-tight"
               style={{ 
                 fontSize: `${TYPOGRAPHY_SCALE[finalTitleSize as keyof typeof TYPOGRAPHY_SCALE]?.fontSize || 24}px`,
-                fontWeight: 800,
+                fontWeight: finalTitleWeight,
                 color: finalTitleColor
               }}
             >
@@ -913,8 +924,21 @@ export const BentoModule: React.FC<{
   const headerEyebrow = getVal(`${moduleId}_el_bento_header`, 'eyebrow', '');
   const headerTitle = getVal(`${moduleId}_el_bento_header`, 'title', '');
   const headerSubtitle = getVal(`${moduleId}_el_bento_header`, 'subtitle', '');
-  const headerTitleColor = resolveThemeColor(undefined, '#0F172A', '#FFFFFF', darkMode);
-  const headerSubtitleColor = resolveThemeColor(undefined, '#64748B', '#94A3B8', darkMode);
+  const headerTitleSize = getTypographyStyle(getVal(`${moduleId}_el_bento_header`, 'title_size', 't2'), 't2');
+  const headerTitleWeight = getFontWeightValue(getVal(`${moduleId}_el_bento_header`, 'title_weight', 'extrabold'), 'extrabold');
+  const headerTitleColor = resolveThemeColor(getVal(`${moduleId}_el_bento_header`, 'title_color', undefined), '#0F172A', '#FFFFFF', darkMode);
+  const headerTitleHighlightType = getVal(`${moduleId}_el_bento_header`, 'title_highlight_type', 'gradient');
+  const headerTitleHighlightColor = getVal(`${moduleId}_el_bento_header`, 'title_highlight_color', '#3B82F6');
+  const headerTitleHighlightGradient = getVal(`${moduleId}_el_bento_header`, 'title_highlight_gradient', 'linear-gradient(90deg, #3B82F6 0%, #8B5CF6 100%)');
+  const headerTitleHighlightBold = toBoolean(getVal(`${moduleId}_el_bento_header`, 'title_highlight_bold', true));
+  const headerSubtitleSize = getTypographyStyle(getVal(`${moduleId}_el_bento_header`, 'subtitle_size', 'p'), 'p');
+  const headerSubtitleWeight = getFontWeightValue(getVal(`${moduleId}_el_bento_header`, 'subtitle_weight', 'normal'), 'normal');
+  const headerSubtitleColor = resolveThemeColor(getVal(`${moduleId}_el_bento_header`, 'subtitle_color', undefined), '#64748B', '#94A3B8', darkMode);
+  const headerSubtitleHighlightType = getVal(`${moduleId}_el_bento_header`, 'subtitle_highlight_type', 'gradient');
+  const headerSubtitleHighlightColor = getVal(`${moduleId}_el_bento_header`, 'subtitle_highlight_color', '#3B82F6');
+  const headerSubtitleHighlightGradient = getVal(`${moduleId}_el_bento_header`, 'subtitle_highlight_gradient', 'linear-gradient(90deg, #3B82F6 0%, #8B5CF6 100%)');
+  const headerSubtitleHighlightBold = toBoolean(getVal(`${moduleId}_el_bento_header`, 'subtitle_highlight_bold', true));
+  const headerEyebrowColor = resolveThemeColor(getVal(`${moduleId}_el_bento_header`, 'eyebrow_color', undefined), '#3B82F6', '#60A5FA', darkMode);
   const headerAlign = getVal(`${moduleId}_el_bento_header`, 'align', 'center');
   const headerMarginB = parseNumSafe(getVal(`${moduleId}_el_bento_header`, 'margin_b', 60), 60);
 
@@ -987,7 +1011,7 @@ export const BentoModule: React.FC<{
                 whileInView="visible"
                 viewport={{ once: true }}
                 className="text-xs font-bold tracking-[0.2em] uppercase mb-4 block"
-                style={{ color: darkMode ? '#3B82F6' : 'var(--color-primary)' }}
+                style={{ color: headerEyebrowColor }}
               >
                 <InlineEditableText
                   moduleId={moduleId}
@@ -1007,8 +1031,9 @@ export const BentoModule: React.FC<{
                 viewport={{ once: true }}
                 className="max-w-3xl leading-[1.1] mb-6"
                 style={{ 
-                  fontSize: `${TYPOGRAPHY_SCALE.t2.fontSize}px`,
-                  fontWeight: 900,
+                  fontSize: `${headerTitleSize.fontSize}px`,
+                  lineHeight: headerTitleSize.lineHeight,
+                  fontWeight: headerTitleWeight,
                   color: headerTitleColor
                 }}
               >
@@ -1020,7 +1045,13 @@ export const BentoModule: React.FC<{
                   isPreviewMode={isPreviewMode}
                   onSave={(val) => onSettingChange?.(`${moduleId}_el_bento_header`, 'title', val)}
                 >
-                  <TextRenderer text={headerTitle} />
+                  <TextRenderer
+                    text={headerTitle}
+                    highlightType={headerTitleHighlightType}
+                    highlightColor={headerTitleHighlightColor}
+                    highlightGradient={headerTitleHighlightGradient}
+                    highlightBold={headerTitleHighlightBold}
+                  />
                 </InlineEditableText>
               </motion.h2>
             )}
@@ -1032,9 +1063,10 @@ export const BentoModule: React.FC<{
                 viewport={{ once: true }}
                 className="max-w-2xl"
                 style={{ 
-                  fontSize: `${TYPOGRAPHY_SCALE.p.fontSize}px`,
+                  fontSize: `${headerSubtitleSize.fontSize}px`,
+                  fontWeight: headerSubtitleWeight,
                   color: headerSubtitleColor,
-                  lineHeight: 1.6
+                  lineHeight: headerSubtitleSize.lineHeight
                 }}
               >
                 <InlineEditableText
@@ -1044,7 +1076,15 @@ export const BentoModule: React.FC<{
                   tagName="span"
                   isPreviewMode={isPreviewMode}
                   onSave={(val) => onSettingChange?.(`${moduleId}_el_bento_header`, 'subtitle', val)}
-                />
+                >
+                  <TextRenderer
+                    text={headerSubtitle}
+                    highlightType={headerSubtitleHighlightType}
+                    highlightColor={headerSubtitleHighlightColor}
+                    highlightGradient={headerSubtitleHighlightGradient}
+                    highlightBold={headerSubtitleHighlightBold}
+                  />
+                </InlineEditableText>
               </motion.p>
             )}
           </div>
@@ -1121,6 +1161,7 @@ export const BentoModule: React.FC<{
                 card_bg = '#FFFFFF',
                 card_gradient = 'linear-gradient(135deg, #F8FAFC 0%, #E2E8F0 100%)',
                 card_image = '',
+                image_fit = 'cover',
                 card_overlay = 0,
                 card_border = 'rgba(0,0,0,0.05)',
                 card_radius = 28,
@@ -1137,10 +1178,13 @@ export const BentoModule: React.FC<{
               const resolvedCardBorder = resolveThemeColor(card_border, 'rgba(0,0,0,0.05)', 'rgba(255,255,255,0.1)', darkMode);
 
               const isSafeGradient = (val: any) => typeof val === 'string' && !val.includes('NaN');
-              const finalBg = card_style === 'solid' ? resolvedCardBg : 
+              const finalBg = (card_style === 'solid' || card_style === 'glow') ? resolvedCardBg : 
                               (card_style === 'gradient' && isSafeGradient(card_gradient)) ? card_gradient : 
                               card_style === 'glass' ? (darkMode ? 'rgba(30, 41, 59, 0.7)' : 'rgba(255, 255, 255, 0.7)') : 
                               'transparent';
+              const glowShadow = card_style === 'glow'
+                ? `0 20px 60px -24px ${resolvedCardBg}, 0 0 0 1px ${resolvedCardBorder}`
+                : undefined;
               
               // Hero styling is handled within BentoCellContent or specifically here for its container
               const isHeroType = type === 'hero' || priority === 'hero';
@@ -1198,6 +1242,7 @@ export const BentoModule: React.FC<{
                       borderRadius: `${card_radius}px`,
                       border: (card_style === 'transparent' || isHeroType) ? 'none' : `1px solid ${resolvedCardBorder}`,
                       padding: type === 'visual' ? 0 : `${padding}px`,
+                      boxShadow: glowShadow,
                       zIndex: isSelected ? 50 : z_index
                     }}
                   >
@@ -1238,6 +1283,7 @@ export const BentoModule: React.FC<{
                           className={`w-full h-full transition-transform duration-700 ${hover_effect === 'zoom' ? 'group-hover:scale-110' : ''} object-cover`}
                           referrerPolicy="no-referrer"
                           alt=""
+                          style={{ objectFit: image_fit }}
                         />
                         {card_overlay > 0 && (
                           <div 

@@ -62,8 +62,8 @@ import { BentoPromptGenerator } from './BentoPromptGenerator';
 import { BentoSchema } from '../../types/bentoSchema';
 
 const DEFAULT_PARALLAX_BG_IMAGE = '/parallax-default-centered.svg';
-import { generateSite, generateLandingWithMotherAI, generateLandingDryRunLocal, generateAIPagePlan, analyzeReferenceUrl, generateAIPagePlanFromReferenceAnalysis, MotherAIPageResponse } from '../../services/aiService';
-import { AIGenerationContext, AIPageGenerationBrief, AIPagePlan } from '../../types/ai';
+import { generateSite, generateLandingWithMotherAI, generateLandingDryRunLocal, generateAIPagePlan, analyzeReferenceUrl, generateAIPagePlanFromReferenceAnalysis, MotherAIPageResponse, searchReferenceSectionImage } from '../../services/aiService';
+import { AIGenerationContext, AIPageGenerationBrief, AIPagePlan, ReferenceDebugInfo } from '../../types/ai';
 import { ProjectForm, ProjectFormData } from '../ProjectForm';
 import { initialContent, useEditorStore } from '../../store/editorStore';
 import { PropertyEditor } from './PropertyEditor';
@@ -84,9 +84,115 @@ import {
   resolveMenuMode,
   resolveShowInMenuState
 } from '../../utils/menuNavigation';
+import { applySectionVariety, buildMasterModuleSchemaFromSectionBlueprint, normalizeVisualSectionIntent, NormalizedVisualSectionIntent } from '../../utils/masterModuleSchemaBuilder';
 import { bridgeModuleContent } from '../../utils/hydrationBridge';
 import { cloneCompositionPresetSchema, CompositionPresetId } from './modules/compositionPresets';
 import { validateCompositionSchema } from '../../utils/compositionSchemaValidator';
+
+const isReferenceDebugEnabled = () => import.meta.env.DEV || import.meta.env.VITE_SHOW_AI_REFERENCE_DEBUG === 'true';
+
+const isObsoleteReferenceSectionLimitWarning = (warning: unknown) => {
+  const normalized = String(warning || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+  return normalized.includes('mas de 7 secciones') || normalized.includes('truncaron las excedentes');
+};
+
+const buildSafeReferenceDebugJson = (debug: ReferenceDebugInfo | null) => {
+  if (!debug) return null;
+  return {
+    visualScanUsed: debug.visualScanUsed,
+    fallbackDomUsed: debug.fallbackDomUsed,
+    fallbackReason: debug.fallbackReason,
+    screenshot: debug.screenshot,
+    sections: debug.sections,
+    generation: debug.generation,
+    pexels: debug.pexels,
+    schemaSummary: debug.schemaSummary,
+    warnings: debug.warnings
+  };
+};
+
+const ReferenceDebugFloatingPanel: React.FC<{ debug: ReferenceDebugInfo; onClose: () => void }> = ({ debug, onClose }) => {
+  const [copied, setCopied] = useState(false);
+  const warnings = Array.from(new Set(debug.warnings || []));
+
+  const copyDebug = async () => {
+    const payload = JSON.stringify(buildSafeReferenceDebugJson(debug), null, 2);
+    try {
+      await navigator.clipboard.writeText(payload);
+    } catch {
+      const textArea = document.createElement('textarea');
+      textArea.value = payload;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+    }
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1800);
+  };
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 18 }} className="fixed bottom-6 right-6 z-[2400] max-h-[78vh] w-[min(760px,calc(100vw-2rem))] overflow-hidden rounded-3xl border border-blue-200 bg-white shadow-2xl">
+      <div className="flex items-center justify-between border-b border-blue-100 bg-blue-50 px-5 py-4">
+        <div>
+          <p className="text-[11px] font-black uppercase tracking-widest text-blue-700">Diagnóstico IA</p>
+          <p className="text-sm font-black text-slate-900">Último diagnóstico de generación IA</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button type="button" onClick={copyDebug} className="rounded-xl bg-blue-600 px-3 py-2 text-[11px] font-black uppercase tracking-widest text-white transition hover:bg-blue-700">{copied ? 'Copiado' : 'Copiar diagnóstico'}</button>
+          <button type="button" onClick={onClose} className="rounded-xl p-2 text-slate-400 transition hover:bg-white hover:text-slate-700"><LucideIcons.X size={18} /></button>
+        </div>
+      </div>
+      <div className="max-h-[calc(78vh-76px)] space-y-4 overflow-y-auto p-5 text-xs text-slate-700">
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+          <div className="rounded-2xl bg-slate-50 p-3"><p className="font-black text-blue-700">visualScanUsed</p><p>{String(debug.visualScanUsed)}</p></div>
+          <div className="rounded-2xl bg-slate-50 p-3"><p className="font-black text-blue-700">fallbackDomUsed</p><p>{String(debug.fallbackDomUsed)}</p></div>
+          <div className="rounded-2xl bg-slate-50 p-3"><p className="font-black text-blue-700">fallbackReason</p><p className="break-words">{debug.fallbackReason || '—'}</p></div>
+          <div className="rounded-2xl bg-slate-50 p-3"><p className="font-black text-blue-700">secciones</p><p>{debug.sections?.length || 0}</p></div>
+        </div>
+
+        {debug.screenshot && <div className="rounded-2xl bg-slate-50 p-3"><p className="font-black text-blue-700">Visual scan</p><p>{debug.screenshot.width || '—'}x{debug.screenshot.height || '—'} · captured {debug.screenshot.capturedHeight || '—'} · stored {String(Boolean(debug.screenshot.stored))}</p></div>}
+
+        {debug.generation && <div className="grid grid-cols-2 gap-2 md:grid-cols-4">{Object.entries(debug.generation).map(([key, value]) => <div key={key} className="rounded-2xl bg-slate-50 p-3"><p className="font-black text-blue-700">{key}</p><p>{String(value)}</p></div>)}</div>}
+
+        {debug.sections && debug.sections.length > 0 && (
+          <div className="overflow-x-auto rounded-2xl bg-slate-50 p-3">
+            <p className="mb-2 font-black text-blue-700">Secciones detectadas</p>
+            <table className="min-w-full text-left text-[11px]">
+              <thead><tr className="text-blue-700"><th className="pr-3">Sección</th><th className="pr-3">layout</th><th className="pr-3">roleHint</th><th className="pr-3">media</th><th className="pr-3">confidence</th><th className="pr-3">queryHint</th></tr></thead>
+              <tbody>{debug.sections.map(section => <tr key={`${section.index}-${section.layout}`}><td className="pr-3 font-bold">{section.index}</td><td className="pr-3">{section.layout}</td><td className="pr-3">{section.roleHint}</td><td className="pr-3">{String(section.media)}</td><td className="pr-3">{typeof section.confidence === 'number' ? Math.round(section.confidence * 100) + '%' : '—'}</td><td className="pr-3">{section.queryHint || '—'}</td></tr>)}</tbody>
+            </table>
+          </div>
+        )}
+
+        {debug.schemaSummary && debug.schemaSummary.length > 0 && (
+          <div className="overflow-x-auto rounded-2xl bg-slate-50 p-3">
+            <p className="mb-2 font-black text-blue-700">Schema summary</p>
+            <table className="min-w-full text-left text-[11px]">
+              <thead><tr className="text-blue-700"><th className="pr-3">Sección</th><th className="pr-3">module</th><th className="pr-3">layoutInput</th><th className="pr-3">layoutOutput</th><th className="pr-3">preserved</th><th className="pr-3">cols in/out</th><th className="pr-3">media in</th><th className="pr-3">media reason</th><th className="pr-3">intención</th><th className="pr-3">elements</th><th className="pr-3">types</th><th className="pr-3">img</th><th className="pr-3">cards</th><th className="pr-3">btn</th><th className="pr-3">source</th><th className="pr-3">query</th><th className="pr-3">warning</th></tr></thead>
+              <tbody>{debug.schemaSummary.map(row => <tr key={`${row.section}-${row.moduleType}`}><td className="pr-3 font-bold">{row.section}</td><td className="pr-3">{row.moduleType}</td><td className="pr-3">{row.layoutInput || row.layout || '?'}</td><td className="pr-3">{row.layoutOutput || '?'}</td><td className="pr-3">{typeof row.layoutPreserved === 'boolean' ? String(row.layoutPreserved) : '?'}</td><td className="pr-3">{row.columnsInputCount ?? '?'} / {row.columnsRenderedCount ?? '?'}</td><td className="pr-3">{row.mediaElementsInputCount ?? '?'}</td><td className="pr-3">{row.mediaRenderReason || '?'}</td><td className="pr-3">{row.normalizedIntent || '?'}</td><td className="pr-3">{row.elements}</td><td className="pr-3">{row.elementTypes.join(', ')}</td><td className="pr-3">{row.imageCount}</td><td className="pr-3">{row.cardCount}</td><td className="pr-3">{row.buttonCount}</td><td className="pr-3">{row.source}</td><td className="pr-3">{row.queryUsed || '?'}</td><td className="pr-3">{row.warning || '?'}</td></tr>)}</tbody>
+            </table>
+          </div>
+        )}
+
+        {debug.pexels && debug.pexels.length > 0 && (
+          <div className="overflow-x-auto rounded-2xl bg-slate-50 p-3">
+            <p className="mb-2 font-black text-blue-700">Pexels / placeholders</p>
+            <table className="min-w-full text-left text-[11px]">
+              <thead><tr className="text-blue-700"><th className="pr-3">Sección</th><th className="pr-3">source</th><th className="pr-3">found</th><th className="pr-3">query</th><th className="pr-3">candidate</th><th className="pr-3">usedUrls</th><th className="pr-3">photographer</th><th className="pr-3">reused</th></tr></thead>
+              <tbody>{debug.pexels.map(row => <tr key={`${row.section}-${row.query || row.source}`}><td className="pr-3 font-bold">{row.section}</td><td className="pr-3">{row.source}</td><td className="pr-3">{String(row.found)}</td><td className="pr-3">{row.queryUsed || row.query || '—'}</td><td className="pr-3">{typeof row.candidateIndex === 'number' ? row.candidateIndex + 1 : '—'}</td><td className="pr-3">{row.usedImageUrlsCount || '—'}</td><td className="pr-3">{row.photographer || '—'}</td><td className="pr-3">{row.reusedCount && row.reusedCount > 1 ? row.reusedCount : '—'}</td></tr>)}</tbody>
+            </table>
+          </div>
+        )}
+
+        {warnings.length > 0 && <div className="rounded-2xl bg-amber-50 p-3 text-amber-900"><p className="font-black text-amber-700">Warnings</p><ul className="mt-1 list-disc pl-4">{warnings.slice(0, 20).map((warning, index) => <li key={`${warning}-${index}`} className="break-words">{warning}</li>)}</ul></div>}
+      </div>
+    </motion.div>
+  );
+};
 
 // --- CONSTANTS ---
 const MASTER_DICTIONARY = {
@@ -750,6 +856,16 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [aiGenerationStep, setAiGenerationStep] = useState(0);
   const [aiPagePlan, setAiPagePlan] = useState<AIPagePlan | null>(null);
+  const [lastReferenceDebug, setLastReferenceDebug] = useState<ReferenceDebugInfo | null>(() => {
+    if (!isReferenceDebugEnabled()) return null;
+    try {
+      const stored = window.sessionStorage.getItem('solutium:lastReferenceDebug');
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [showReferenceDebugPanel, setShowReferenceDebugPanel] = useState(false);
   const aiSteps = [
     "Diseñando estructura por industria...",
     "Redactando contenido persuasivo...",
@@ -1291,6 +1407,370 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     });
   };
 
+  const buildReferenceDebugQuery = (businessType: string, intent?: string, sectionIndex = 1) => {
+    const lowerBusiness = businessType.toLowerCase();
+    if (lowerBusiness.includes('batido') || lowerBusiness.includes('smoothie') || lowerBusiness.includes('jugo')) {
+      if (intent === 'hero_visual') return 'fresh fruit smoothie colorful drink';
+      if (intent === 'product_showcase' || intent === 'media_showcase') return 'healthy smoothie bar fresh juice';
+      if (intent === 'feature_grid' || intent === 'benefits_grid') return 'ingredientes frescos para batidos';
+      if (intent === 'social_proof') return 'clientes satisfechos tomando batidos';
+      if (intent === 'final_cta') return 'promociones de bebidas naturales';
+      return sectionIndex % 2 === 0 ? 'menú de batidos naturales' : 'frutas frescas y bebidas saludables';
+    }
+    if (lowerBusiness.includes('crm') || lowerBusiness.includes('software')) {
+      if (intent === 'hero_visual') return 'business dashboard team workflow';
+      if (intent === 'product_showcase' || intent === 'media_showcase') return 'crm software dashboard';
+      if (intent === 'feature_grid' || intent === 'benefits_grid') return 'customer support dashboard';
+      if (intent === 'social_proof') return 'business team meeting';
+      if (intent === 'final_cta') return 'sales pipeline planning';
+      return 'business software workspace';
+    }
+    return `${businessType} ${intent || 'visual'}`.replace(/\b(cta|unknown|generic)\b/gi, 'visual').trim();
+  };
+
+  const enrichReferencePlanWithMasterSchemas = async (plan: AIPagePlan, businessType: string): Promise<AIPagePlan> => {
+    if (plan.generationMode !== 'reference_url_broker') return plan;
+
+    const visualBlueprints = plan.referenceDebug?.sections || [];
+    const detectedSectionsCount = visualBlueprints.length || plan.sections.length;
+    const sectionsByVisualIndex = new Map<number, AIPagePlan['sections'][number]>();
+    plan.sections.forEach((section, index) => {
+      const visualIndex = Number((section.content as any)?.sectionLayoutBlueprint?.sectionIndex || (section.content as any)?.sectionBlueprint?.order || index + 1);
+      sectionsByVisualIndex.set(visualIndex, section);
+    });
+
+    const getVisualDebugForSection = (section: AIPagePlan['sections'][number], fallbackIndex: number) => {
+      const visualIndex = Number((section.content as any)?.sectionLayoutBlueprint?.sectionIndex || (section.content as any)?.sectionBlueprint?.order || fallbackIndex + 1);
+      return visualBlueprints.find(visualSection => visualSection.index === visualIndex) || visualBlueprints[fallbackIndex];
+    };
+
+    const hydrateSectionWithVisualColumns = (section: AIPagePlan['sections'][number], fallbackIndex: number): AIPagePlan['sections'][number] => {
+      const visualSection = getVisualDebugForSection(section, fallbackIndex);
+      if (!visualSection?.columns?.length) return section;
+
+      const existingBlueprint = (section.content as any)?.sectionLayoutBlueprint || {};
+      const existingLayout = existingBlueprint.layout || {};
+      const hasDetailedColumns = Array.isArray(existingLayout.columns) && existingLayout.columns.length > 0;
+      if (hasDetailedColumns) return section;
+
+      return {
+        ...section,
+        content: {
+          ...section.content,
+          sectionLayoutBlueprint: {
+            id: existingBlueprint.id || `visual-${visualSection.index}`,
+            sectionIndex: existingBlueprint.sectionIndex || visualSection.index,
+            displayName: existingBlueprint.displayName || `Sección ${visualSection.index}`,
+            roleHint: existingBlueprint.roleHint || visualSection.roleHint || 'generic',
+            layout: {
+              ...existingLayout,
+              type: existingLayout.type || visualSection.layout || 'unknown',
+              columns: visualSection.columns
+            },
+            globalElements: existingBlueprint.globalElements,
+            background: existingBlueprint.background || { style: visualSection.index === detectedSectionsCount ? 'dark' : 'white' },
+            spacing: existingBlueprint.spacing || { top: 'medium', bottom: 'medium', gap: 'medium' },
+            elementSummary: existingBlueprint.elementSummary || visualSection.elementSummary,
+            layoutConfidence: existingBlueprint.layoutConfidence || visualSection.confidence,
+            layoutReason: existingBlueprint.layoutReason || visualSection.layoutReason,
+            mediaIntent: existingBlueprint.mediaIntent || {
+              needsMedia: Boolean(visualSection.media),
+              placement: visualSection.layout?.includes('split') || visualSection.layout === 'two_columns' ? 'right' : 'center',
+              mediaKind: visualSection.media ? 'photo' : 'none',
+              queryHint: visualSection.queryHint
+            },
+            confidence: existingBlueprint.confidence || visualSection.confidence || 0.6
+          }
+        }
+      };
+    };
+
+    const sourceSections: AIPagePlan['sections'] = visualBlueprints.length > plan.sections.length
+      ? visualBlueprints.slice(0, 10).map((visualSection, index) => {
+        const existing = sectionsByVisualIndex.get(visualSection.index);
+        if (existing) return hydrateSectionWithVisualColumns(existing, index);
+        return {
+          id: `reference-visual-${visualSection.index}`,
+          moduleType: 'composition_section',
+          preset: null,
+          title: `Sección ${visualSection.index}`,
+          purpose: `Sección visual detectada con layout ${visualSection.layout}.`,
+          content: {
+            businessType,
+            eyebrow: `Sección ${visualSection.index}`,
+            title: `Sección ${visualSection.index}`,
+            description: 'Bloque editable inspirado en la estructura visual detectada, con contenido propio del negocio.',
+            cta: String(plan.sections[0]?.content?.cta || 'Solicitar información'),
+            items: [
+              'Beneficio editable para el cliente',
+              'Detalle visual adaptado al negocio',
+              'Acción clara y fácil de entender',
+              'Elemento de confianza'
+            ],
+            sectionLayoutBlueprint: {
+              id: `visual-${visualSection.index}`,
+              sectionIndex: visualSection.index,
+              displayName: `Sección ${visualSection.index}`,
+              roleHint: visualSection.roleHint || 'generic',
+              layout: { type: visualSection.layout || 'unknown', columns: visualSection.columns },
+              background: { style: visualSection.index === detectedSectionsCount ? 'dark' : 'white' },
+              spacing: { top: 'medium', bottom: 'medium', gap: 'medium' },
+              elementSummary: visualSection.elementSummary,
+              layoutConfidence: visualSection.confidence,
+              layoutReason: visualSection.layoutReason,
+              mediaIntent: {
+                needsMedia: Boolean(visualSection.media),
+                placement: visualSection.layout?.includes('split') || visualSection.layout === 'two_columns' ? 'right' : 'center',
+                mediaKind: visualSection.media ? 'photo' : 'none',
+                queryHint: visualSection.queryHint
+              },
+              confidence: visualSection.confidence || 0.6
+            }
+          },
+          settings: {}
+        };
+      })
+      : plan.sections.map((section, index) => hydrateSectionWithVisualColumns(section, index));
+
+    const droppedSections = visualBlueprints
+      .filter(visualSection => !sourceSections.some(section => Number((section.content as any)?.sectionLayoutBlueprint?.sectionIndex || (section.content as any)?.sectionBlueprint?.order || 0) === visualSection.index))
+      .map(visualSection => ({ section: visualSection.index, dropReason: 'No se generó módulo ni sección sintética para este blueprint visual.' }));
+    const usedImageUrls = new Set<string>();
+    const enrichedSections: AIPagePlan['sections'] = [];
+    const previousIntents: NormalizedVisualSectionIntent[] = [];
+
+    for (let index = 0; index < sourceSections.length; index += 1) {
+      const section = hydrateSectionWithVisualColumns(sourceSections[index], index);
+      const layoutBlueprint = (section.content as any)?.sectionLayoutBlueprint;
+      const sectionBlueprint = (section.content as any)?.sectionBlueprint;
+      const normalizedIntentBeforeVariety = normalizeVisualSectionIntent(section, index, sourceSections);
+      const normalizedIntent = applySectionVariety(normalizedIntentBeforeVariety, index, previousIntents);
+      const previousIntent = previousIntents[previousIntents.length - 1];
+      previousIntents.push(normalizedIntent);
+      const layoutType = layoutBlueprint?.layout?.type || sectionBlueprint?.sourceVisualPattern;
+      const needsMedia = Boolean(
+        layoutBlueprint?.mediaIntent?.needsMedia ||
+        sectionBlueprint?.hasMedia ||
+        ['hero_visual', 'media_showcase', 'explainer_split'].includes(normalizedIntent)
+      );
+
+      let image = null;
+      let pexelsDebug: {
+        section: number;
+        query?: string;
+        queryUsed?: string;
+        found: boolean;
+        source: 'pexels' | 'placeholder';
+        photographer?: string;
+        url?: string;
+        candidateIndex?: number;
+        imageWasReused?: boolean;
+        usedImageUrlsCount?: number;
+        normalizedIntent?: string;
+      } = {
+        section: index + 1,
+        query: buildReferenceDebugQuery(businessType, normalizedIntent, index + 1),
+        found: false,
+        source: 'placeholder',
+        normalizedIntent
+      };
+      if (needsMedia) {
+        try {
+          image = await searchReferenceSectionImage({
+            projectId,
+            businessType,
+            role: normalizedIntent,
+            layout: layoutType,
+            mediaKind: layoutBlueprint?.mediaIntent?.mediaKind || sectionBlueprint?.mediaKind,
+            queryHint: layoutBlueprint?.mediaIntent?.queryHint,
+            sectionIndex: index + 1,
+            usedImageUrls: Array.from(usedImageUrls),
+            orientation: layoutBlueprint?.mediaIntent?.placement === 'cards' ? 'square' : 'landscape'
+          });
+          if (image?.url) usedImageUrls.add(image.url);
+          pexelsDebug = {
+            section: index + 1,
+            query: image?.queryUsed || image?.query || layoutBlueprint?.mediaIntent?.queryHint,
+            queryUsed: image?.queryUsed || image?.query,
+            found: Boolean(image),
+            source: image ? 'pexels' : 'placeholder',
+            photographer: image?.photographer,
+            url: image?.url,
+            candidateIndex: image?.candidateIndex,
+            imageWasReused: image?.imageWasReused,
+            usedImageUrlsCount: image?.usedImageUrlsCount || usedImageUrls.size,
+            normalizedIntent
+          };
+        } catch (error) {
+          pexelsDebug = {
+            section: index + 1,
+            query: buildReferenceDebugQuery(businessType, normalizedIntent, index + 1),
+            found: false,
+            source: 'placeholder',
+            normalizedIntent
+          };
+          console.warn('[REFERENCE_PEXELS_IMAGE_SKIPPED]', {
+            section: index + 1,
+            reason: error instanceof Error ? error.message : 'unknown'
+          });
+        }
+      }
+
+
+      const compositionSchema = buildMasterModuleSchemaFromSectionBlueprint({
+        section,
+        sectionIndex: index,
+        allSections: sourceSections,
+        forcedIntent: normalizedIntent,
+        image
+      });
+
+      enrichedSections.push({
+        ...section,
+        moduleType: 'composition_section',
+        title: `Sección ${index + 1}`,
+        content: {
+          ...section.content,
+          businessType,
+          normalizedVisualIntent: normalizedIntent,
+          normalizedVisualIntentBeforeVariety: normalizedIntentBeforeVariety,
+          previousVisualIntent: previousIntent,
+          pexelsImage: image || undefined
+        },
+        settings: {
+          ...(section.settings || {}),
+          compositionSchema
+        },
+        __referenceDebug: { pexels: pexelsDebug }
+      } as any);
+    }
+
+    const pexelsRows = enrichedSections.map((section: any) => section.__referenceDebug?.pexels).filter(Boolean);
+    const pexelsUrlCounts = pexelsRows.reduce<Record<string, number>>((counts, row) => {
+      if (row.url) counts[row.url] = (counts[row.url] || 0) + 1;
+      return counts;
+    }, {});
+    const pexelsRowsWithReuse = pexelsRows.map(row => ({
+      ...row,
+      reusedCount: row.url ? pexelsUrlCounts[row.url] || 0 : 0
+    }));
+    const reusedWarnings = Object.entries(pexelsUrlCounts)
+      .filter(([, count]) => count > 1)
+      .map(([, count]) => `PEXELS_IMAGE_REUSED: imagen usada ${count} veces`);
+    const schemaSummary = enrichedSections.map((section: any, index) => {
+      const schema = section.settings?.compositionSchema;
+      const elements = Array.isArray(schema?.elements) ? schema.elements : [];
+      const elementTypes = Array.from(new Set(elements.map((element: any) => String(element.type || 'unknown')))) as string[];
+      const pexelsRow = pexelsRowsWithReuse.find(row => row.section === index + 1);
+      const layoutBlueprint = (section.content as any)?.sectionLayoutBlueprint;
+      const detailedColumns = Array.isArray(layoutBlueprint?.layout?.columns) ? layoutBlueprint.layout.columns : [];
+      const mediaElementsInputCount = detailedColumns.reduce((count: number, column: any) => {
+        const elements = Array.isArray(column.elements) ? column.elements : [];
+        return count + elements.filter((element: any) =>
+          element?.type === 'image' ||
+          element?.semanticRole === 'media' ||
+          element?.visualTraits?.isImageLike
+        ).length;
+      }, 0) + (Array.isArray(layoutBlueprint?.globalElements)
+        ? layoutBlueprint.globalElements.filter((element: any) =>
+          element?.type === 'image' ||
+          element?.semanticRole === 'media' ||
+          element?.visualTraits?.isImageLike
+        ).length
+        : 0);
+      const imageCount = elements.filter((element: any) => element.type === 'image').length;
+      const columnsRenderedCount = elements.filter((element: any) =>
+        element.type === 'container' && String(element.id || '').startsWith(`detected_${index}_column_`)
+      ).length || (detailedColumns.length > 0 ? 1 : 0);
+      const visualDebugSection = getVisualDebugForSection(section, index);
+      const rawLayoutInput = layoutBlueprint?.layout?.type || visualDebugSection?.layout;
+      const layoutInput = detailedColumns.length >= 2 && (!rawLayoutInput || rawLayoutInput === 'one_column')
+        ? (visualDebugSection?.layout && visualDebugSection.layout !== 'one_column' ? visualDebugSection.layout : 'two_columns')
+        : rawLayoutInput;
+      const layoutOutput = columnsRenderedCount >= 2
+        ? (layoutInput === 'split_media_text' ? 'split_media_text' : 'two_columns')
+        : layoutInput === 'centered'
+          ? 'centered'
+          : 'one_column';
+      const columnTranslationWarnings = [
+        ...(mediaElementsInputCount > 0 && imageCount === 0 ? ['MEDIA_ELEMENT_DETECTED_BUT_NOT_RENDERED'] : []),
+        ...(detailedColumns.length >= 2 && columnsRenderedCount < 2 ? ['DETAILED_COLUMNS_COLLAPSED_TO_ONE_COLUMN'] : [])
+      ];
+      return {
+        section: index + 1,
+        moduleType: section.moduleType,
+        layout: layoutInput,
+        originalSectionIndex: layoutBlueprint?.sectionIndex || index + 1,
+        normalizedIntentBeforeVariety: (section.content as any)?.normalizedVisualIntentBeforeVariety,
+        normalizedIntent: (section.content as any)?.normalizedVisualIntent,
+        previousIntent: (section.content as any)?.previousVisualIntent,
+        elements: elements.length,
+        elementTypes,
+        imageCount,
+        cardCount: elements.filter((element: any) => element.type === 'card' || element.type === 'container').length,
+        buttonCount: elements.filter((element: any) => element.type === 'button').length,
+        source: pexelsRow?.source || (schema ? 'schema' : section.preset ? 'preset' : 'placeholder'),
+        queryUsed: pexelsRow?.queryUsed || pexelsRow?.query,
+        warning: columnTranslationWarnings[0] || (schema ? undefined : (section.preset ? 'COMPOSITION_SCHEMA_FALLBACK_TO_PRESET' : 'COMPOSITION_SCHEMA_MISSING')),
+        usedDetailedColumns: detailedColumns.length > 0,
+        columnsInputCount: detailedColumns.length,
+        columnsRenderedCount,
+        mediaElementsInputCount,
+        imageRendered: imageCount > 0,
+        mediaRenderReason: mediaElementsInputCount > 0
+          ? (imageCount > 0 ? (pexelsRow?.source === 'pexels' ? 'pexels_image_rendered' : 'placeholder_image_rendered') : 'media_detected_but_no_image_element')
+          : (pexelsRow?.source === 'pexels' && pexelsRow?.found ? 'pexels_available_but_not_needed_no_media_input' : 'no_media_input'),
+        layoutInput,
+        layoutOutput,
+        layoutPreserved: detailedColumns.length >= 2 ? columnsRenderedCount >= 2 : true,
+        columnTranslationWarnings
+      };
+    });
+    const generationDebug = {
+      totalModules: enrichedSections.length,
+      detectedSectionsCount,
+      generatedSectionsCount: enrichedSections.length,
+      compositionSections: enrichedSections.filter(section => section.moduleType === 'composition_section').length,
+      legacyModules: enrichedSections.filter(section => section.moduleType !== 'composition_section').length,
+      withCompositionSchema: enrichedSections.filter(section => Boolean((section.settings as any)?.compositionSchema)).length,
+      withPexels: pexelsRowsWithReuse.filter(row => row.found && row.source === 'pexels').length,
+      withPlaceholder: pexelsRowsWithReuse.filter(row => !row.found || row.source === 'placeholder').length,
+      fallbackPreset: enrichedSections.filter(section => !Boolean((section.settings as any)?.compositionSchema) && Boolean(section.preset)).length,
+      droppedSections,
+      mergedSections: []
+    };
+    const sectionGenerationMessage = detectedSectionsCount > 7 && enrichedSections.length === detectedSectionsCount && droppedSections.length === 0
+      ? `La referencia detect? ${detectedSectionsCount} secciones y se generaron ${enrichedSections.length} m?dulos editables.`
+      : null;
+    const cleanedPlanWarnings = (plan.warnings || []).filter(warning => !isObsoleteReferenceSectionLimitWarning(warning));
+    const cleanedReferenceWarnings = (plan.referenceDebug?.warnings || []).filter(warning => !isObsoleteReferenceSectionLimitWarning(warning));
+
+    return {
+      ...plan,
+      sections: enrichedSections.map((section: any) => {
+        const { __referenceDebug, ...cleanSection } = section;
+        return cleanSection;
+      }),
+      referenceDebug: {
+        ...(plan.referenceDebug || { visualScanUsed: false, fallbackDomUsed: false }),
+        generation: generationDebug,
+        pexels: pexelsRowsWithReuse,
+        schemaSummary,
+        warnings: [
+          ...cleanedReferenceWarnings,
+          ...cleanedPlanWarnings,
+          ...(sectionGenerationMessage ? [sectionGenerationMessage] : []),
+          ...reusedWarnings,
+          ...schemaSummary.map(row => row.warning).filter(Boolean)
+        ]
+      },
+      warnings: [
+        ...(plan.warnings || []),
+        'Se generaron schemas de Módulo Maestro por sección desde blueprints visuales; Pexels se usó solo para imágenes relacionadas al negocio cuando estuvo disponible.'
+      ]
+    };
+  };
+
   const handleGenerateFromReferenceAnalysis = async (request: {
     referenceUrl: string;
     analysis: any;
@@ -1324,19 +1804,47 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         cta: request.cta,
         instructions: request.instructions
       }, brief);
+      const enrichedPlan = await enrichReferencePlanWithMasterSchemas({
+        ...generatedPlan,
+        referenceDebug: {
+          ...(request.analysis?.referenceDebug || {
+            visualScanUsed: false,
+            fallbackDomUsed: true,
+            fallbackReason: 'REFERENCE_ANALYSIS_DEBUG_MISSING'
+          }),
+          ...(generatedPlan.referenceDebug || {})
+        }
+      }, brief.businessType);
 
-      const moduleTypeCounts = generatedPlan.sections.reduce<Record<string, number>>((counts, section) => {
+      const moduleTypeCounts = enrichedPlan.sections.reduce<Record<string, number>>((counts, section) => {
         counts[section.moduleType] = (counts[section.moduleType] || 0) + 1;
         return counts;
       }, {});
       console.info('[MASTER_MODULE_FLOW_ACTIVE]', {
         source: 'reference_url',
-        generationMode: generatedPlan.generationMode,
-        moduleTypeCounts
+        generationMode: enrichedPlan.generationMode,
+        moduleTypeCounts,
+        referenceDebug: enrichedPlan.referenceDebug,
+        sections: enrichedPlan.sections.map((section, index) => ({
+          index: index + 1,
+          moduleType: section.moduleType,
+          hasCompositionSchema: Boolean((section.settings as any)?.compositionSchema),
+          elements: ((section.settings as any)?.compositionSchema?.elements || []).length,
+          imageElements: (((section.settings as any)?.compositionSchema?.elements || []) as any[]).filter(element => element.type === 'image').length
+        }))
       });
 
-      setAiPagePlan(generatedPlan);
-      applyAIPagePlanToEditor(generatedPlan);
+      if (isReferenceDebugEnabled() && enrichedPlan.referenceDebug) {
+        setLastReferenceDebug(enrichedPlan.referenceDebug);
+        setShowReferenceDebugPanel(true);
+        try {
+          window.sessionStorage.setItem('solutium:lastReferenceDebug', JSON.stringify(buildSafeReferenceDebugJson(enrichedPlan.referenceDebug)));
+        } catch {
+          // Debug persistence is best-effort only.
+        }
+      }
+      setAiPagePlan(enrichedPlan);
+      applyAIPagePlanToEditor(enrichedPlan);
     } catch (error: any) {
       setAiError(error.message || 'No se pudo generar la pagina desde la referencia.');
     } finally {
@@ -4666,6 +5174,28 @@ const formatTimestampName = () => {
       </div>
 
       {/* AI Error Alert */}
+      {isReferenceDebugEnabled() && lastReferenceDebug && !showReferenceDebugPanel && (
+        <motion.button
+          type="button"
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          onClick={() => setShowReferenceDebugPanel(true)}
+          className="fixed bottom-6 right-6 z-[2300] flex items-center gap-2 rounded-2xl border border-blue-200 bg-white px-4 py-3 text-xs font-black uppercase tracking-widest text-blue-700 shadow-2xl transition hover:bg-blue-50"
+        >
+          <Sparkles size={16} />
+          Diagnóstico IA
+        </motion.button>
+      )}
+
+      <AnimatePresence>
+        {isReferenceDebugEnabled() && lastReferenceDebug && showReferenceDebugPanel && (
+          <ReferenceDebugFloatingPanel
+            debug={lastReferenceDebug}
+            onClose={() => setShowReferenceDebugPanel(false)}
+          />
+        )}
+      </AnimatePresence>
+
       {authNotice && (
         <motion.div
           initial={{ opacity: 0, y: 40 }}

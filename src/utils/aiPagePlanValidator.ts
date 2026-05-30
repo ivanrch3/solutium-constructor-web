@@ -276,8 +276,9 @@ export const validateAIPagePlan = (
   }
 
   const usedIds = new Set<string>();
+  const maxSections = options.generationMode === 'reference_url_broker' ? 10 : 7;
   const normalizedSections = rawSections
-    .slice(0, 7)
+    .slice(0, maxSections)
     .map((section, index) => normalizeSection(section, index, usedIds, warnings, brief))
     .filter(Boolean) as AIPagePlanSection[];
 

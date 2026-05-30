@@ -3284,14 +3284,22 @@ export const BENTO_MODULE: WebModule = {
     { id: 'el_bento_items', name: 'Bloques de Contenido (Celdas)', type: 'repeater', groups: ['contenido', 'estructura', 'estilo', 'tipografia', 'multimedia'], settings: {
       contenido: [
         { id: 'items', label: 'Lista de Celdas', type: 'repeater', defaultValue: [], fields: [
-          { id: 'type', label: 'Tipo de Celda', type: 'select', defaultValue: 'icon_text', options: [
+          { id: 'type', label: 'Tipo de Elemento', type: 'select', defaultValue: 'text', options: [
+            { label: 'Texto', value: 'text' },
+            { label: 'Imagen', value: 'visual' },
+            { label: 'Botón', value: 'button' },
+            { label: 'Ícono', value: 'icon' },
+            { label: 'Badge / Etiqueta', value: 'badge' },
+            { label: 'Lista', value: 'list' },
+            { label: 'Acordeón', value: 'accordion' },
+            { label: 'Cinta animada', value: 'marquee' },
+            { label: 'Tarjeta simple', value: 'card' },
             { label: 'Portada (Hero)', value: 'hero' },
             { label: 'Icono + Texto', value: 'icon_text' },
             { label: 'Característica (Feature)', value: 'feature' },
             { label: 'Métrica / Dato', value: 'metric' },
             { label: 'Compacto', value: 'compact' },
             { label: 'Acción (CTA)', value: 'cta' },
-            { label: 'Visual (Imagen)', value: 'visual' },
             { label: 'Paso (Step)', value: 'step' },
             { label: 'Tarjeta de App', value: 'app_card' },
             { label: 'Testimonio', value: 'testimonial' },
@@ -3332,7 +3340,8 @@ export const BENTO_MODULE: WebModule = {
           { id: 'trust_note', label: 'Nota de Confianza', type: 'text', defaultValue: '*No requiere tarjeta', showIf: { settingId: 'type', value: 'cta' } },
 
           // Icon/Text / Compact / Feature específicos
-          { id: 'icon', label: 'Icono', type: 'icon', defaultValue: 'Sparkles', showIf: { settingId: 'type', value: ['hero', 'icon_text', 'compact', 'metric', 'feature', 'app_card', 'step'], operator: 'includes' } },
+          { id: 'icon', label: 'Icono', type: 'icon', defaultValue: 'Sparkles', showIf: { settingId: 'type', value: ['hero', 'icon_text', 'compact', 'metric', 'feature', 'app_card', 'step', 'icon', 'badge', 'list'], operator: 'includes' } },
+          { id: 'list_items', label: 'Items de Lista', type: 'textarea', defaultValue: 'Primer punto\nSegundo punto\nTercer punto', showIf: { settingId: 'type', value: 'list' } },
           { id: 'show_description', label: 'Mostrar Descripción', type: 'boolean', defaultValue: true, showIf: { settingId: 'type', value: ['compact', 'icon_text'], operator: 'includes' } },
           
           // Botones simples (Hero / Feature / Visual / App)

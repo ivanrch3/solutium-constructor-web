@@ -24,6 +24,19 @@ const BENTO_BREAKPOINT_TO_LAYOUT: Record<string, 'desktop' | 'tablet' | 'mobile'
 
 const BENTO_BREAKPOINT_ORDER = ['lg', 'md', 'sm', 'xs', 'xxs'];
 
+const BENTO_ELEMENT_OPTIONS = [
+  { kind: 'text', label: 'Texto', icon: 'Type', description: 'Bloque de texto libre' },
+  { kind: 'visual', label: 'Imagen', icon: 'Image', description: 'Imagen principal' },
+  { kind: 'button', label: 'Botón', icon: 'MousePointerClick', description: 'Llamado a la acción' },
+  { kind: 'icon', label: 'Ícono', icon: 'Sparkles', description: 'Símbolo destacado' },
+  { kind: 'badge', label: 'Badge', icon: 'Badge', description: 'Etiqueta compacta' },
+  { kind: 'metric', label: 'Métrica', icon: 'BarChart3', description: 'Dato o indicador' },
+  { kind: 'list', label: 'Lista', icon: 'ListChecks', description: 'Puntos clave' },
+  { kind: 'accordion', label: 'Acordeón', icon: 'ChevronDownSquare', description: 'Texto desplegable' },
+  { kind: 'marquee', label: 'Cinta animada', icon: 'MoveRight', description: 'Texto en movimiento' },
+  { kind: 'card', label: 'Tarjeta simple', icon: 'PanelTop', description: 'Contenedor flexible' }
+];
+
 const isBentoDebugEnabled = () => {
   if (typeof window === 'undefined') return false;
 
@@ -266,6 +279,137 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave }: a
               />
             </p>
           )}
+        </div>
+      );
+
+    case 'button':
+      return (
+        <div className="flex z-10 w-full h-full items-center justify-center">
+          <a
+            href={btn_url || '#'}
+            target={btn_target === '_blank' ? '_blank' : undefined}
+            rel={btn_target === '_blank' ? 'noopener noreferrer' : undefined}
+            onClick={(event) => !isPreviewMode && event.preventDefault()}
+            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary px-6 py-3 text-sm font-black uppercase tracking-widest text-white shadow-lg transition-transform hover:scale-[1.03]"
+          >
+            <InlineEditableText
+              moduleId={moduleId}
+              settingId="button_text"
+              value={button_text || title || 'Haz clic aquí'}
+              tagName="span"
+              isPreviewMode={isPreviewMode}
+              onSave={(val) => onSave('button_text', val)}
+            />
+            <LucideIcons.ArrowRight size={16} />
+          </a>
+        </div>
+      );
+
+    case 'badge':
+      return (
+        <div className="flex z-10 w-full h-full items-center justify-center">
+          <span className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-5 py-2 text-xs font-black uppercase tracking-[0.2em] text-primary">
+            <LucideIcons.Tag size={14} />
+            <InlineEditableText
+              moduleId={moduleId}
+              settingId="title"
+              value={title || 'Nuevo'}
+              tagName="span"
+              isPreviewMode={isPreviewMode}
+              onSave={(val) => onSave('title', val)}
+            />
+          </span>
+        </div>
+      );
+
+    case 'icon':
+      return (
+        <div className="flex flex-col z-10 w-full h-full items-center justify-center gap-3 text-center">
+          <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-primary/10 text-primary">
+            <IconComponent size={32} />
+          </div>
+          {title && (
+            <h3 className="text-base leading-tight" style={{ color: finalTitleColor, fontWeight: finalTitleWeight }}>
+              <InlineEditableText
+                moduleId={moduleId}
+                settingId="title"
+                value={title}
+                tagName="span"
+                isPreviewMode={isPreviewMode}
+                onSave={(val) => onSave('title', val)}
+              />
+            </h3>
+          )}
+        </div>
+      );
+
+    case 'list':
+      const listItems = Array.isArray(item.list_items)
+        ? item.list_items
+        : String(item.list_items || 'Primer punto\nSegundo punto\nTercer punto').split('\n').filter(Boolean);
+
+      return (
+        <div className="flex flex-col z-10 w-full h-full gap-4">
+          <h3 className="text-lg leading-tight" style={{ color: finalTitleColor, fontWeight: finalTitleWeight }}>
+            <InlineEditableText
+              moduleId={moduleId}
+              settingId="title"
+              value={title || 'Lista clave'}
+              tagName="span"
+              isPreviewMode={isPreviewMode}
+              onSave={(val) => onSave('title', val)}
+            />
+          </h3>
+          <div className="space-y-2">
+            {listItems.map((listItem: string, index: number) => (
+              <div key={index} className="flex items-start gap-2 text-sm" style={{ color: finalDescColor }}>
+                <LucideIcons.CheckCircle2 size={16} className="mt-0.5 shrink-0 text-primary" />
+                <span>{listItem}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+
+    case 'accordion':
+      return (
+        <details className="group z-10 w-full" open={!isPreviewMode}>
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-base font-black" style={{ color: finalTitleColor }}>
+            <InlineEditableText
+              moduleId={moduleId}
+              settingId="title"
+              value={title || 'Ver más detalles'}
+              tagName="span"
+              isPreviewMode={isPreviewMode}
+              onSave={(val) => onSave('title', val)}
+            />
+            <LucideIcons.ChevronDown size={18} className="transition-transform group-open:rotate-180" />
+          </summary>
+          <p className="mt-3 text-sm leading-relaxed" style={{ color: finalDescColor }}>
+            <InlineEditableText
+              moduleId={moduleId}
+              settingId="description"
+              value={description || 'Contenido desplegable...'}
+              tagName="span"
+              isPreviewMode={isPreviewMode}
+              onSave={(val) => onSave('description', val)}
+            />
+          </p>
+        </details>
+      );
+
+    case 'marquee':
+      return (
+        <div className="relative z-10 flex h-full w-full items-center overflow-hidden">
+          <motion.div
+            className="flex min-w-full whitespace-nowrap text-lg font-black uppercase tracking-[0.25em]"
+            style={{ color: finalTitleColor }}
+            animate={{ x: ['0%', '-50%'] }}
+            transition={{ duration: 12, ease: 'linear', repeat: Infinity }}
+          >
+            <span className="px-4">{title || 'PROMO • NUEVO • 24/7'}</span>
+            <span className="px-4">{title || 'PROMO • NUEVO • 24/7'}</span>
+          </motion.div>
         </div>
       );
 
@@ -757,6 +901,7 @@ export const BentoModule: React.FC<{
 
   const { selectedBentoCellIndex, setSelectedBentoCellIndex, selectSection } = useEditorStore();
   const [isDragging, setIsDragging] = useState(false);
+  const [isElementPickerOpen, setIsElementPickerOpen] = useState(false);
   // Remove local selectedIndex, use store instead
   // const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const selectedIndex = selectedBentoCellIndex;
@@ -961,45 +1106,146 @@ export const BentoModule: React.FC<{
     setSelectedIndex(rawItems.length);
   };
 
-  const handleAddCell = () => {
-    if (!onSettingChange) return;
-    
-    const desktopY = rawItems.length > 0
+  const getNextDesktopY = () => {
+    return rawItems.length > 0
       ? Math.max(...rawItems.map((item: any) => {
           const desktopLayout = item.layouts?.desktop;
           return (desktopLayout?.y ?? item.y ?? 0) + (desktopLayout?.h ?? item.row_span ?? 2);
         }))
       : 0;
-    const newItem = {
+  };
+
+  const createResponsiveLayouts = (y: number, desktopW: number, desktopH: number, tabletW = Math.min(desktopW, 6), mobileW = 4) => ({
+    desktop: { x: 0, y, w: Math.min(desktopW, columns), h: desktopH },
+    tablet: { x: 0, y, w: Math.min(tabletW, 6), h: desktopH },
+    mobile: { x: 0, y, w: Math.min(mobileW, 4), h: desktopH }
+  });
+
+  const createBentoElementPreset = (kind: string) => {
+    const y = getNextDesktopY();
+    const base = {
       id: createBentoCellId(),
-      type: "icon_text",
-      title: "Nueva celda",
-      description: "Describe esta celda.",
-      icon: "Sparkles",
-      col_span: 4,
-      row_span: 2,
-      x: 0,
-      y: desktopY,
-      layouts: {
-        desktop: { x: 0, y: desktopY, w: 4, h: 2 },
-        tablet: { x: 0, y: desktopY, w: 3, h: 2 },
-        mobile: { x: 0, y: desktopY, w: 4, h: 2 }
-      },
       card_style: "solid",
       card_radius: 28,
+      card_shadow: 'sm',
       padding: 32,
-      content_align: 'center'
+      content_align: 'center',
+      x: 0,
+      y
     };
+
+    const withLayout = (item: any, desktopW: number, desktopH: number, tabletW?: number, mobileW?: number) => ({
+      ...base,
+      ...item,
+      col_span: desktopW,
+      row_span: desktopH,
+      desktop_span: desktopW,
+      desktop_rows: desktopH,
+      tablet_span: tabletW ?? Math.min(desktopW, 6),
+      mobile_span: mobileW ?? 4,
+      layouts: createResponsiveLayouts(y, desktopW, desktopH, tabletW, mobileW)
+    });
+
+    switch (kind) {
+      case 'visual':
+        return withLayout({
+          type: 'visual',
+          title: 'Imagen destacada',
+          description: '',
+          image: '',
+          card_style: 'transparent',
+          padding: 0
+        }, 4, 3, 3, 4);
+      case 'button':
+        return withLayout({
+          type: 'button',
+          title: 'Haz clic aquí',
+          button_text: 'Haz clic aquí',
+          btn_url: '#',
+          card_style: 'transparent',
+          padding: 16
+        }, 3, 1, 3, 4);
+      case 'icon':
+        return withLayout({
+          type: 'icon',
+          title: 'Ícono destacado',
+          icon: 'Sparkles',
+          description: ''
+        }, 2, 2, 2, 4);
+      case 'badge':
+        return withLayout({
+          type: 'badge',
+          title: 'Nuevo',
+          icon: 'Tag',
+          card_style: 'transparent',
+          padding: 12
+        }, 2, 1, 2, 4);
+      case 'metric':
+        return withLayout({
+          type: 'metric',
+          title: '99+',
+          description: 'Impacto medible',
+          metric_value: '99+',
+          metric_label: 'Impacto',
+          icon: 'BarChart3',
+          accent_color: '#3B82F6'
+        }, 3, 2, 3, 4);
+      case 'list':
+        return withLayout({
+          type: 'list',
+          title: 'Puntos clave',
+          description: '',
+          list_items: ['Primer punto', 'Segundo punto', 'Tercer punto'],
+          icon: 'ListChecks'
+        }, 4, 3, 4, 4);
+      case 'accordion':
+        return withLayout({
+          type: 'accordion',
+          title: 'Ver más detalles',
+          description: 'Contenido desplegable para ampliar esta idea.',
+          icon: 'ChevronDown'
+        }, 4, 2, 4, 4);
+      case 'marquee':
+        return withLayout({
+          type: 'marquee',
+          title: 'PROMO • NUEVO • 24/7',
+          card_style: 'transparent',
+          padding: 12
+        }, 8, 1, 6, 4);
+      case 'card':
+        return withLayout({
+          type: 'card',
+          title: 'Tarjeta simple',
+          description: 'Combina texto, estilo e imagen de fondo.',
+          icon: 'PanelTop'
+        }, 4, 2, 3, 4);
+      case 'text':
+      default:
+        return withLayout({
+          type: 'text',
+          title: 'Título del texto',
+          description: 'Escribe aquí tu contenido...',
+          icon: 'Type'
+        }, 4, 2, 3, 4);
+    }
+  };
+
+  const handleAddElement = (kind: string) => {
+    if (!onSettingChange) return;
+
+    const newItem = createBentoElementPreset(kind);
 
     const newItems = [...rawItems, newItem];
     onSettingChange(`${moduleId}_el_bento_items`, 'items', newItems);
     selectSection(moduleId);
     setSelectedIndex(newItems.length - 1);
+    setIsElementPickerOpen(false);
 
     if (isBentoDebugEnabled()) {
       console.log('[BENTO_CELL_UPDATE_DEBUG]', {
         moduleId,
-        action: "add",
+        action: "add_element",
+        kind,
         itemsCount: newItems.length,
         updatedItem: newItem
       });
@@ -1051,6 +1297,46 @@ export const BentoModule: React.FC<{
     newItems[index] = { ...newItems[index], admin_label: newName };
     onSettingChange(`${moduleId}_el_bento_items`, 'items', newItems);
   };
+
+  const renderElementPicker = (variant: 'empty' | 'floating') => (
+    <AnimatePresence>
+      {isElementPickerOpen && (
+        <motion.div
+          initial={{ opacity: 0, y: variant === 'empty' ? 8 : 12, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 8, scale: 0.98 }}
+          className={variant === 'empty'
+            ? 'mt-4 grid grid-cols-2 gap-2 text-left'
+            : 'absolute bottom-full left-1/2 mb-3 w-[520px] max-w-[calc(100vw-48px)] -translate-x-1/2 grid grid-cols-2 gap-2 rounded-3xl border border-gray-100 bg-white p-3 shadow-2xl'
+          }
+          onClick={(event) => event.stopPropagation()}
+        >
+          {BENTO_ELEMENT_OPTIONS.map((option) => {
+            const PickerIcon = (LucideIcons as any)[option.icon] || Sparkles;
+            return (
+              <button
+                key={option.kind}
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  handleAddElement(option.kind);
+                }}
+                className="flex items-start gap-3 rounded-2xl border border-gray-100 bg-white p-3 text-left transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/5"
+              >
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <PickerIcon size={18} />
+                </span>
+                <span>
+                  <span className="block text-xs font-black text-gray-900">{option.label}</span>
+                  <span className="block text-[10px] font-medium leading-snug text-gray-400">{option.description}</span>
+                </span>
+              </button>
+            );
+          })}
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
 
   // Header Values
   const headerEyebrow = getVal(`${moduleId}_el_bento_header`, 'eyebrow', '');
@@ -1471,12 +1757,13 @@ export const BentoModule: React.FC<{
               </p>
               <div className="flex flex-col gap-3">
                  <button 
-                   onClick={(e) => { e.stopPropagation(); handleAddCell(); }}
+                   onClick={(e) => { e.stopPropagation(); setIsElementPickerOpen((open) => !open); }}
                    className="w-full flex items-center justify-center gap-2 bg-primary text-white py-4 rounded-2xl font-bold hover:scale-[1.02] active:scale-95 transition-all shadow-lg"
                  >
                    <LucideIcons.Plus size={18} />
-                   Agregar Celda Manual
+                   Agregar elemento
                  </button>
+                 {renderElementPicker('empty')}
                  {BENTO_AI_ACTIONS_ENABLED && (
                    <button 
                      onClick={(e) => { e.stopPropagation(); onOpenBentoGenerator?.(); }}
@@ -1494,12 +1781,13 @@ export const BentoModule: React.FC<{
         {/* Floating Add Button (when items exist) */}
         {!isPreviewMode && rawItems.length > 0 && (
           <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex items-center gap-3 z-40 bg-white/80 backdrop-blur-md p-2 rounded-2xl border border-gray-100 shadow-2xl">
+            {renderElementPicker('floating')}
             <button 
-               onClick={(e) => { e.stopPropagation(); handleAddCell(); }}
+               onClick={(e) => { e.stopPropagation(); setIsElementPickerOpen((open) => !open); }}
                className="flex items-center gap-2 px-6 py-2.5 bg-primary text-white rounded-xl font-bold hover:shadow-xl hover:-translate-y-0.5 transition-all active:scale-95 whitespace-nowrap"
             >
               <LucideIcons.Plus size={16} />
-              <span className="text-xs">Agregar Celda</span>
+              <span className="text-xs">Agregar elemento</span>
             </button>
             {BENTO_AI_ACTIONS_ENABLED && (
               <>

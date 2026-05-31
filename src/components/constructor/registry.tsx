@@ -2368,6 +2368,11 @@ export const CONTACT_MODULE: WebModule = {
     }},
     { id: 'el_contact_form', name: 'Formulario', type: 'text', groups: ['contenido', 'estilo', 'estructura', 'interaccion', 'tipografia'], settings: {
       contenido: [
+        { id: 'contact_mode', label: 'Modo de Contacto', type: 'select', defaultValue: 'both', options: [
+          { label: 'WhatsApp', value: 'whatsapp' },
+          { label: 'Correo', value: 'email' },
+          { label: 'WhatsApp y Correo', value: 'both' }
+        ]},
         { id: 'button_text', label: 'Texto del Botón', type: 'text', defaultValue: 'Enviar por WhatsApp' },
         ...BUTTON_LINK_SETTINGS('btn'),
         { id: 'whatsapp_number', label: 'Número WhatsApp Principal', type: 'text', defaultValue: '' },

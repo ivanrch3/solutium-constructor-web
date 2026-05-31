@@ -88,7 +88,7 @@ const StepItem = ({
     
     if (isHorizontal) {
       return (
-        <div className="absolute top-6 left-1/2 w-full -z-0">
+        <div className="absolute top-6 left-1/2 w-full -z-0 hidden @5xl:block">
           <motion.div 
             initial={drawConnectors ? { scaleX: 0 } : { scaleX: 1 }}
             whileInView={{ scaleX: 1 }}
@@ -108,7 +108,7 @@ const StepItem = ({
     if (isVertical || isAlternating) {
       const leftPos = isAlternating ? (index % 2 === 0 ? 'left-6' : 'right-6') : 'left-6';
       return (
-        <div className={`absolute top-12 ${leftPos} h-full -z-0`}>
+        <div className={`absolute top-12 ${leftPos} h-full -z-0 hidden @5xl:block`}>
           <motion.div 
             initial={drawConnectors ? { scaleY: 0 } : { scaleY: 1 }}
             whileInView={{ scaleY: 1 }}
@@ -140,11 +140,11 @@ const StepItem = ({
   return (
     <motion.div
       variants={staggerAnim ? itemVariants : {}}
-      className={`relative flex flex-col items-center text-center group @md:flex-row @md:gap-8 @md:items-start ${isHorizontal ? '@md:flex-col @md:items-center @md:text-center' : isAlternating && index % 2 !== 0 ? '@md:flex-row-reverse @md:text-right' : '@md:text-left'}`}
+      className={`relative flex flex-col items-center text-center group @5xl:flex-row @5xl:gap-8 @5xl:items-start ${isHorizontal ? '@5xl:flex-col @5xl:items-center @5xl:text-center' : isAlternating && index % 2 !== 0 ? '@5xl:flex-row-reverse @5xl:text-right' : '@5xl:text-left'}`}
     >
       {renderConnector()}
       
-      <div className={`${isHorizontal ? 'mb-6 @md:mb-6' : 'mb-6 @md:mb-0 @md:mt-1'}`}>
+      <div className={`${isHorizontal ? 'mb-6 @5xl:mb-6' : 'mb-6 @5xl:mb-0 @5xl:mt-1'}`}>
         {renderIndicator()}
       </div>
 
@@ -338,11 +338,11 @@ export const ProcessModule: React.FC<{
     };
 
   const gridCols = {
-    2: '@md:grid-cols-2',
-    3: '@md:grid-cols-3',
-    4: '@md:grid-cols-4',
-    5: '@md:grid-cols-5'
-  }[columns as 2|3|4|5] || '@md:grid-cols-4';
+    2: '@5xl:grid-cols-2',
+    3: '@5xl:grid-cols-3',
+    4: '@5xl:grid-cols-4',
+    5: '@5xl:grid-cols-5'
+  }[columns as 2|3|4|5] || '@5xl:grid-cols-4';
 
   const getTypographyStyle = (sizeToken: string, weightToken: string, alignToken?: string) => {
     const size = TYPOGRAPHY_SCALE[sizeToken as keyof typeof TYPOGRAPHY_SCALE] || TYPOGRAPHY_SCALE.p;
@@ -367,7 +367,7 @@ export const ProcessModule: React.FC<{
         paddingBottom: `${paddingY}px`
       }}
     >
-      <div className="max-w-7xl mx-auto px-8">
+      <div className="max-w-7xl mx-auto px-8 @container">
         {/* Header */}
         <div 
           className={`flex flex-col w-full ${headerAlign === 'center' ? 'items-center text-center' : headerAlign === 'right' ? 'items-end text-right' : 'items-start text-left'}`}

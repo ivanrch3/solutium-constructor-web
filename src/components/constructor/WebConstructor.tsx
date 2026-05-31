@@ -3839,6 +3839,30 @@ const formatTimestampName = () => {
     window.setTimeout(() => restoreCanvasScroll(scrollTop), 150);
   };
 
+  const handleViewportChange = (nextViewport: 'desktop' | 'tablet' | 'mobile') => {
+    const container = getCanvasScrollContainer();
+    const savedCanvasScrollTop = container?.scrollTop ?? 0;
+    const savedMaxScrollTop = container
+      ? Math.max(0, container.scrollHeight - container.clientHeight)
+      : 0;
+    const savedScrollRatio = savedMaxScrollTop > 0 ? savedCanvasScrollTop / savedMaxScrollTop : 0;
+    const restoreViewportScroll = () => {
+      const nextContainer = getCanvasScrollContainer();
+      if (!nextContainer) return;
+      const nextMaxScrollTop = Math.max(0, nextContainer.scrollHeight - nextContainer.clientHeight);
+      nextContainer.scrollTop = Math.round(nextMaxScrollTop * savedScrollRatio);
+    };
+
+    setViewport(nextViewport);
+    restoreCanvasScroll(savedCanvasScrollTop);
+    window.requestAnimationFrame(() => window.requestAnimationFrame(restoreViewportScroll));
+    window.setTimeout(restoreViewportScroll, 50);
+    window.setTimeout(restoreViewportScroll, 150);
+    window.setTimeout(restoreViewportScroll, 300);
+    window.setTimeout(restoreViewportScroll, 700);
+    window.setTimeout(restoreViewportScroll, 1200);
+  };
+
   const waitForNextPaint = async () => {
     await new Promise<void>((resolve) => {
       window.requestAnimationFrame(() => resolve());
@@ -4140,7 +4164,7 @@ const formatTimestampName = () => {
                     logoUrl={logoUrl}
                     assetName={assetDisplayName}
                     viewport={viewport}
-                    setViewport={setViewport}
+                    setViewport={handleViewportChange}
                     isFullscreen={isFullscreen}
                     setIsFullscreen={setIsFullscreen}
                     onReloadPreview={handleReloadPreview}
@@ -4380,7 +4404,7 @@ const formatTimestampName = () => {
                         logoWhiteUrl={logoWhiteUrl}
                         project={project}
                         viewport={viewport}
-                        setViewport={setViewport}
+                        setViewport={handleViewportChange}
                         isFullscreen={false}
                         setIsFullscreen={() => {}}
                         isPreviewMode={isPreviewMode || isExternalRender}
@@ -4421,7 +4445,7 @@ const formatTimestampName = () => {
                     logoUrl={logoUrl}
                     assetName={assetDisplayName}
                     viewport={viewport}
-                    setViewport={setViewport}
+                    setViewport={handleViewportChange}
                     isFullscreen={isFullscreen}
                     setIsFullscreen={setIsFullscreen}
                     onReloadPreview={handleReloadPreview}
@@ -4454,7 +4478,7 @@ const formatTimestampName = () => {
                         logoWhiteUrl={logoWhiteUrl}
                         project={project}
                         viewport={viewport}
-                        setViewport={setViewport}
+                        setViewport={handleViewportChange}
                       isFullscreen={isFullscreen}
                       setIsFullscreen={setIsFullscreen}
                       isPreviewMode={isPreviewMode || isExternalRender}

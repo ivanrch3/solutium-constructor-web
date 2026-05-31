@@ -38,6 +38,7 @@ export const MenuModule: React.FC<{
 }> = ({ moduleId, settingsValues, logoUrl, logoWhiteUrl, isPreviewMode = false, isEditorCanvas = false, menuMode: menuModeProp, automaticMenuItems = [] }) => {
   const { updateSectionSettings, setShowMenuRecommendation } = useEditorStore();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [menuContainerWidth, setMenuContainerWidth] = useState(0);
   const navRef = useRef<HTMLElement | null>(null);
 
   const getVal = (elementId: string | null, settingId: string, defaultValue: any) => {
@@ -150,6 +151,14 @@ export const MenuModule: React.FC<{
   const isFloating = isSticky || isFixed;
   const fallbackMenuHeight = Math.max(56, paddingY * 2 + 40);
   const [menuHeight, setMenuHeight] = useState(fallbackMenuHeight);
+  const isMobileMenuViewport = menuContainerWidth > 0 && menuContainerWidth < 520;
+  const isTabletMenuViewport = menuContainerWidth >= 520 && menuContainerWidth < 1024;
+  const visibleLinkLimit = isMobileMenuViewport ? 0 : isTabletMenuViewport ? 3 : 7;
+  const forceHamburgerMenu = desktopHamburger || visibleLinkLimit === 0;
+  const visibleLinks = forceHamburgerMenu ? [] : links.slice(0, visibleLinkLimit);
+  const overflowLinks = forceHamburgerMenu ? links : links.slice(visibleLinkLimit);
+  const hasOverflowLinks = overflowLinks.length > 0;
+  const dropdownLinks = forceHamburgerMenu ? links : overflowLinks;
   const editorTopOffset = isEditorCanvas ? 60 : 0;
   const usesEditorFixedSimulation = isEditorCanvas && isFixed;
   const effectivePosition: React.CSSProperties['position'] = usesEditorFixedSimulation
@@ -179,13 +188,13 @@ export const MenuModule: React.FC<{
 
   // Overflow Detection Logic: Show recommendation if many modules are present (desktop/tablet horizontal)
   useEffect(() => {
-    if (!isPreviewMode && links.length > 6 && !desktopHamburger && layout === 'horizontal') {
+    if (!isPreviewMode && links.length > visibleLinkLimit && !desktopHamburger && layout === 'horizontal') {
       const timer = setTimeout(() => setShowMenuRecommendation(true), 1500);
       return () => clearTimeout(timer);
     } else {
       setShowMenuRecommendation(false);
     }
-  }, [links.length, desktopHamburger, isPreviewMode, layout, setShowMenuRecommendation]);
+  }, [links.length, visibleLinkLimit, desktopHamburger, isPreviewMode, layout, setShowMenuRecommendation]);
 
   // Helper to safely apply opacity to hex colors
   const getGlassColor = (color: string) => {
@@ -215,19 +224,21 @@ export const MenuModule: React.FC<{
     const nav = navRef.current;
     if (!nav) return;
 
-    const updateMenuHeight = () => {
+    const updateMenuMeasurements = () => {
       const measuredHeight = nav.getBoundingClientRect().height;
       if (measuredHeight > 0) setMenuHeight(measuredHeight);
+      const measuredWidth = nav.offsetWidth || nav.getBoundingClientRect().width;
+      if (measuredWidth > 0) setMenuContainerWidth(measuredWidth);
     };
 
-    updateMenuHeight();
+    updateMenuMeasurements();
 
     if (typeof ResizeObserver === 'undefined') {
-      window.addEventListener('resize', updateMenuHeight);
-      return () => window.removeEventListener('resize', updateMenuHeight);
+      window.addEventListener('resize', updateMenuMeasurements);
+      return () => window.removeEventListener('resize', updateMenuMeasurements);
     }
 
-    const observer = new ResizeObserver(updateMenuHeight);
+    const observer = new ResizeObserver(updateMenuMeasurements);
     observer.observe(nav);
     return () => observer.disconnect();
   }, [paddingY, layout, desktopHamburger, links.length, logoWidth, activeLogo, logoText]);
@@ -277,8 +288,8 @@ export const MenuModule: React.FC<{
     borderBottom: isFloating ? `1px solid ${borderColor}` : 'none'
   };
 
-  const renderLinks = (isMobile: boolean = false) => {
-    return links.map((link: any, idx: number) => {
+  const renderLinks = (isMobile: boolean = false, linkList: any[] = links) => {
+    return linkList.map((link: any, idx: number) => {
       const isTitle = link.is_title;
       const isActive = link.url === `#${activeSectionId}`;
       
@@ -419,7 +430,17 @@ export const MenuModule: React.FC<{
               /* Responsive Logic (Links on Desktop, Hamburger on Mobile) */
               <>
                 <div className="hidden @md:flex md:flex items-center gap-4">
-                  {renderLinks()}
+                  {renderLinks(false, visibleLinks)}
+                  {hasOverflowLinks && (
+                    <button 
+                      onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                      className="p-2 rounded-full hover:bg-black/5 transition-colors"
+                      style={{ color: textColor }}
+                      aria-label="Abrir menú de navegación"
+                    >
+                      {isMobileMenuOpen ? <CloseIcon size={24} /> : <HamburgerIcon size={24} />}
+                    </button>
+                  )}
                 </div>
                 
                 <div className="@md:hidden md:hidden flex items-center">
@@ -456,7 +477,7 @@ export const MenuModule: React.FC<{
                      <CloseIcon size={16} style={{ color: textColor }} />
                    </button>
                 </div>
-                {renderLinks(true)}
+                {renderLinks(true, dropdownLinks)}
               </div>
             </motion.div>
           )}

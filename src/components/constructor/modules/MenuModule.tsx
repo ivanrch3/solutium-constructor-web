@@ -41,7 +41,18 @@ export const MenuModule: React.FC<{
 
   const getVal = (elementId: string | null, settingId: string, defaultValue: any) => {
     const key = elementId ? `${elementId}_${settingId}` : `${moduleId}_global_${settingId}`;
-    return settingsValues[key] !== undefined ? settingsValues[key] : defaultValue;
+    const rawValue = settingsValues[key] !== undefined ? settingsValues[key] : defaultValue;
+    return rawValue && typeof rawValue === 'object' && 'value' in rawValue && !Array.isArray(rawValue)
+      ? rawValue.value
+      : rawValue;
+  };
+
+  const parseNumberSetting = (value: unknown, fallback: number, min?: number, max?: number) => {
+    const parsed = typeof value === 'number'
+      ? value
+      : parseFloat(String(value ?? '').replace(/[^\d.,-]/g, '').replace(',', '.'));
+    const safeValue = Number.isFinite(parsed) ? parsed : fallback;
+    return Math.min(max ?? safeValue, Math.max(min ?? safeValue, safeValue));
   };
 
   // Global Settings
@@ -50,8 +61,9 @@ export const MenuModule: React.FC<{
   const position = rawPosition === 'standard' || rawPosition === 'static' || rawPosition === 'normal'
     ? 'relative'
     : rawPosition;
-  const layout = getVal(null, 'layout', 'horizontal');
-  const desktopHamburger = getVal(null, 'desktop_hamburger', false);
+  const rawLayout = getVal(null, 'layout', 'horizontal');
+  const layout = rawLayout === 'vertical' ? 'vertical' : 'horizontal';
+  const desktopHamburger = toBoolean(getVal(null, 'desktop_hamburger', false));
 
   // Logo Resolution with Priority
   const logoType = getVal(`${moduleId}_el_menu_logo`, 'logo_type', 'image');
@@ -61,7 +73,7 @@ export const MenuModule: React.FC<{
   const logoImg = logoImgSetting || logoImgFallback || logoUrl || '';
   
   const logoImgAlt = getVal(`${moduleId}_el_menu_logo`, 'logo_img_alt', '');
-  const logoWidth = parseFloat(getVal(`${moduleId}_el_menu_logo`, 'logo_width', 120)) || 120;
+  const logoWidth = parseNumberSetting(getVal(`${moduleId}_el_menu_logo`, 'logo_width', 120), 120, 40, 240);
   const rawLogoColor = getVal(`${moduleId}_el_menu_logo`, 'text_color', '#0F172A');
   const logoFontSize = getVal(`${moduleId}_el_menu_logo`, 'font_size', 't3');
   const logoFontWeight = getVal(`${moduleId}_el_menu_logo`, 'font_weight', 'bold');
@@ -137,9 +149,10 @@ export const MenuModule: React.FC<{
   }, [isPreviewMode, links.length]);
 
   // Global Settings
-  const align = getVal(null, 'align', 'center');
-  const gap = parseFloat(getVal(null, 'gap', 24)) || 24;
-  const rawPaddingY = parseFloat(getVal(null, 'padding_y', 14));
+  const rawAlign = getVal(null, 'align', 'center');
+  const align = ['start', 'center', 'end', 'between'].includes(String(rawAlign)) ? String(rawAlign) : 'center';
+  const gap = parseNumberSetting(getVal(null, 'gap', 24), 24, 0, 64);
+  const rawPaddingY = parseNumberSetting(getVal(null, 'padding_y', 14), 14, 0, 100);
   const paddingY = Number.isFinite(rawPaddingY) ? rawPaddingY : 14;
   const darkMode = toBoolean(getVal(null, 'dark_mode', false));
   const rawBgColor = getVal(null, 'bg_color', 'transparent');
@@ -196,7 +209,7 @@ export const MenuModule: React.FC<{
   const fontWeight = getVal(`${moduleId}_el_menu_items`, 'font_weight', 'medium');
   const rawTextColor = getVal(`${moduleId}_el_menu_items`, 'text_color', '#0F172A');
   const textColor = resolveThemeColor(rawTextColor, '#0F172A', '#FFFFFF', darkMode);
-  const showIcons = getVal(`${moduleId}_el_menu_items`, 'show_icons', false);
+  const showIcons = toBoolean(getVal(`${moduleId}_el_menu_items`, 'show_icons', false));
   const iconSize = getVal(`${moduleId}_el_menu_items`, 'icon_size', 18);
   const logoColor = resolveThemeColor(rawLogoColor, '#0F172A', '#FFFFFF', darkMode);
 
@@ -248,8 +261,13 @@ export const MenuModule: React.FC<{
   const alignmentClasses = {
     start: layout === 'vertical' ? 'items-start' : 'justify-start',
     center: layout === 'vertical' ? 'items-center' : 'justify-center',
-    end: layout === 'vertical' ? 'items-end' : 'justify-end'
+    end: layout === 'vertical' ? 'items-end' : 'justify-end',
+    between: layout === 'vertical' ? 'items-stretch' : 'justify-between'
   };
+
+  const linkListAlignmentClass = align === 'between'
+    ? 'justify-between w-full'
+    : alignmentClasses[align as keyof typeof alignmentClasses];
 
   const animProps = entranceAnim ? {
     initial: { opacity: 0, y: 10 },
@@ -417,7 +435,7 @@ export const MenuModule: React.FC<{
             ) : (
               /* Responsive Logic (Links on Desktop, Hamburger on Mobile) */
               <>
-                <div className="hidden @md:flex md:flex items-center gap-4">
+                <div className={`hidden @md:flex md:flex items-center gap-4 ${linkListAlignmentClass}`}>
                   {renderLinks(false, visibleLinks)}
                   {hasOverflowLinks && (
                     <button 

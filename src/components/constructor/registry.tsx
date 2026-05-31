@@ -213,15 +213,16 @@ export const MENU_MODULE: WebModule = {
         { label: 'Fijo al scroll (Sticky)', value: 'sticky' },
         { label: 'Fijo al tope (Fixed)', value: 'fixed' }
       ]},
-      { id: 'layout', label: 'Diseño', type: 'select', defaultValue: 'alternating', options: [
+      { id: 'layout', label: 'Diseño', type: 'select', defaultValue: 'horizontal', options: [
         { label: 'Horizontal (Barra)', value: 'horizontal' },
         { label: 'Vertical (Lista)', value: 'vertical' }
       ]},
       { id: 'invert_order', label: 'Invertir Orden (Logo a la derecha)', type: 'boolean', defaultValue: false, showIf: { settingId: 'layout', value: 'horizontal' } },
       { id: 'align', label: 'Alineación', type: 'select', defaultValue: 'center', options: [
-        { label: 'Inicio', value: 'start' },
+        { label: 'Izquierda', value: 'start' },
         { label: 'Centro', value: 'center' },
-        { label: 'Fin', value: 'end' }
+        { label: 'Derecha', value: 'end' },
+        { label: 'Distribuido', value: 'between' }
       ]},
       { id: 'gap', label: 'Espaciado entre items', type: 'range', defaultValue: 24, min: 0, max: 64, unit: 'px' },
       { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 14, min: 0, max: 100, unit: 'px' },

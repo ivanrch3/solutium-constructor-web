@@ -101,6 +101,7 @@ const MASTER_DICTIONARY = {
   ]
 };
 
+const AUTOSAVE_DISABLED_VALUE = 'disabled';
 const AUTOSAVE_INTERVAL_OPTIONS = [60000, 120000, 180000, 300000, 600000] as const;
 const DEFAULT_AUTOSAVE_INTERVAL_MS = 180000;
 
@@ -267,13 +268,10 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     redo,
     setSiteContent,
     updateTheme,
-    updateSectionSettings,
     addSection,
     removeSection,
     setProject,
-    resetEditorStore,
-    showMenuRecommendation,
-    setShowMenuRecommendation
+    resetEditorStore
   } = useEditorStore();
 
   useEffect(() => {
@@ -806,12 +804,14 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   const editorStateRef = useRef(editorState);
   const siteNameRef = useRef(siteName);
   const currentStatusRef = useRef(currentStatus);
-  const autosaveEnabled = resolveBooleanSetting(
+  const autosaveIntervalSetting = editorState.settingsValues['global_theme_builder_autosave_interval_ms'];
+  const autosaveDisabledByInterval = String(autosaveIntervalSetting).trim().toLowerCase() === AUTOSAVE_DISABLED_VALUE;
+  const autosaveEnabled = !autosaveDisabledByInterval && resolveBooleanSetting(
     editorState.settingsValues['global_theme_builder_autosave_enabled'],
     true
   );
   const autosaveIntervalMs = resolveAutosaveInterval(
-    editorState.settingsValues['global_theme_builder_autosave_interval_ms']
+    autosaveIntervalSetting
   );
   const autosaveShowIndicator = resolveBooleanSetting(
     editorState.settingsValues['global_theme_builder_autosave_show_indicator'],
@@ -3767,29 +3767,6 @@ const formatTimestampName = () => {
     }
   };
 
-  const handleSwitchToHamburgerGlobal = () => {
-    const menuMod = editorState.addedModules.find(m => m.type === 'navegacion');
-    if (menuMod) {
-      const fullKey = `${menuMod.id}_global_desktop_hamburger`;
-      
-      // Update local editorState directly as it's the primary source of truth for the Canvas
-      handleSettingChange(menuMod.id, 'global_desktop_hamburger', true);
-      
-      // Also update store to prevent the synchronization useEffect from overwriting it
-      updateSectionSettings(menuMod.id, { [fullKey]: true });
-
-      // Scroll to menu immediately so user can see it
-      setTimeout(() => {
-        const element = document.getElementById(menuMod.id);
-        if (element) {
-          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-      }, 100);
-      
-      setShowMenuRecommendation(false);
-    }
-  };
-
   const handleReload = () => {
     window.location.reload();
   };
@@ -4176,10 +4153,10 @@ const formatTimestampName = () => {
                     hasUnsavedChanges={hasUnsavedChanges}
                     isSaving={isSaving}
                     isDraftOperationInProgress={isDraftOperationInProgress}
-                    autosaveStatus={autosaveStatus}
+                    autosaveStatus={autosaveEnabled ? autosaveStatus : 'disabled'}
                     autosaveError={autosaveError}
                     lastAutosavedAt={lastAutosavedAt}
-                    showAutosaveIndicator={autosaveEnabled && autosaveShowIndicator}
+                    showAutosaveIndicator={autosaveShowIndicator}
                     currentStatus={currentStatus}
                     isNewSite={!initialPage}
                   />
@@ -4457,10 +4434,10 @@ const formatTimestampName = () => {
                     hasUnsavedChanges={hasUnsavedChanges}
                       isSaving={isSaving}
                       isDraftOperationInProgress={isDraftOperationInProgress}
-                      autosaveStatus={autosaveStatus}
+                      autosaveStatus={autosaveEnabled ? autosaveStatus : 'disabled'}
                       autosaveError={autosaveError}
                       lastAutosavedAt={lastAutosavedAt}
-                      showAutosaveIndicator={autosaveEnabled && autosaveShowIndicator}
+                      showAutosaveIndicator={autosaveShowIndicator}
                       currentStatus={currentStatus}
                       isNewSite={!initialPage}
                     />
@@ -4686,94 +4663,6 @@ const formatTimestampName = () => {
           />
         )}
 
-        {showMenuRecommendation && (
-          <React.Fragment key="menu-recommendation-modal">
-            {/* Extremely high z-index backdrop and modal for the recommendation */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[999998]"
-              onClick={() => setShowMenuRecommendation(false)}
-            />
-            
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[999999] max-w-2xl w-[90%] bg-white border border-slate-200 shadow-[0_32px_128px_-12px_rgba(0,0,0,0.5)] rounded-[40px] p-8 md:p-12 flex flex-col md:flex-row items-center gap-12 overflow-hidden"
-            >
-              {/* Sparkles decoration */}
-              <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
-                <LucideIcons.Sparkles size={160} />
-              </div>
-
-              {/* Visual Guide Representation */}
-              <div className="w-40 h-40 shrink-0 bg-slate-50 rounded-[32px] border border-slate-200 flex flex-col items-center justify-center relative group p-2 shadow-inner">
-                <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-transparent" />
-                
-                {/* Simulated UI element representing the Structure Panel link button */}
-                <div className="w-full flex items-center justify-between gap-1 p-2 bg-white border border-slate-100 rounded-xl shadow-md mb-3 scale-90">
-                  <div className="w-12 h-2 bg-slate-100 rounded-full" />
-                  <div className="bg-blue-500/10 text-blue-600 p-1.5 rounded-md border border-blue-500/20 shadow-sm">
-                    <LucideIcons.Link size={12} />
-                  </div>
-                </div>
-
-                <div className="bg-blue-500/20 text-blue-600 p-5 rounded-2xl border border-blue-500/30 relative shadow-lg">
-                  <LucideIcons.Link size={40} />
-                  <motion.div 
-                    animate={{ scale: [1, 1.3, 1], opacity: [0.5, 1, 0.5] }}
-                    transition={{ repeat: Infinity, duration: 2 }}
-                    className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-blue-600 rounded-full border-4 border-white" 
-                  />
-                </div>
-                <p className="text-[10px] font-black text-blue-600 mt-4 uppercase tracking-[0.2em] text-center leading-none">
-                  Desactivar Link
-                </p>
-              </div>
-
-              {/* Text Content */}
-              <div className="flex-1 text-center md:text-left space-y-4">
-                <div className="flex items-center justify-center md:justify-start gap-2 text-blue-600 font-bold">
-                  <LucideIcons.Info size={20} />
-                  <span className="text-sm tracking-[0.2em] uppercase">Optimización UI</span>
-                </div>
-                <h4 className="text-3xl font-black text-slate-900 leading-tight">¡Tu menú ha crecido mucho!</h4>
-                <p className="text-lg text-slate-500 leading-relaxed">
-                  Detectamos demasiados enlaces en tu navegación. Para que tu sitio luzca impecable en todos los dispositivos:
-                </p>
-                
-                <div className="space-y-2 pb-4">
-                   <div className="flex items-center gap-3 text-slate-600">
-                      <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold">1</div>
-                      <p className="text-sm">Desactiva enlaces en algunos módulos</p>
-                   </div>
-                   <div className="flex items-center gap-3 text-slate-600">
-                      <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold">2</div>
-                      <p className="text-sm">O simplemente usa el menú hamburguesa estilo móvil</p>
-                   </div>
-                </div>
-                
-                <div className="flex flex-wrap items-center justify-center md:justify-start gap-4">
-                  <button 
-                    onClick={handleSwitchToHamburgerGlobal}
-                    className="px-8 py-4 bg-blue-600 text-white text-xs font-black uppercase tracking-widest rounded-full hover:scale-105 active:scale-95 shadow-2xl shadow-blue-500/30 transition-all flex items-center gap-3"
-                  >
-                    <LucideIcons.Menu size={16} />
-                    Activar Hamburguesa
-                  </button>
-                  <button 
-                    onClick={() => setShowMenuRecommendation(false)}
-                    className="px-8 py-4 bg-slate-100 text-slate-600 text-xs font-bold uppercase tracking-widest rounded-full hover:bg-slate-200 transition-all"
-                  >
-                    Entendido
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </React.Fragment>
-        )}
         {showBentoPrompt && (
           <BentoPromptGenerator 
             key="bento-prompt-modal"

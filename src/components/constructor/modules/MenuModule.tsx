@@ -4,7 +4,6 @@ import * as LucideIcons from 'lucide-react';
 import { Menu as HamburgerIcon, X as CloseIcon, Info, Sparkles, Link } from 'lucide-react';
 import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
 import { InlineEditableText } from '../InlineEditableText';
-import { useEditorStore } from '../../../store/editorStore';
 import { logDebug } from '../../../utils/debug';
 import { SectionAnimation } from '../animations/SectionAnimation';
 import { normalizeSectionAnimation } from '../../../constants/moduleAnimations';
@@ -36,7 +35,6 @@ export const MenuModule: React.FC<{
   menuMode?: MenuMode,
   automaticMenuItems?: any[]
 }> = ({ moduleId, settingsValues, logoUrl, logoWhiteUrl, isPreviewMode = false, isEditorCanvas = false, menuMode: menuModeProp, automaticMenuItems = [] }) => {
-  const { updateSectionSettings, setShowMenuRecommendation } = useEditorStore();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [menuContainerWidth, setMenuContainerWidth] = useState(0);
   const navRef = useRef<HTMLElement | null>(null);
@@ -185,16 +183,6 @@ export const MenuModule: React.FC<{
   const entranceAnim = false;
   const invertOrder = getVal(null, 'invert_order', false);
   const borderColor = resolveThemeColor(getVal(null, 'border_color', 'rgba(0,0,0,0.05)'), 'rgba(0,0,0,0.05)', 'rgba(255,255,255,0.1)', darkMode);
-
-  // Overflow Detection Logic: Show recommendation if many modules are present (desktop/tablet horizontal)
-  useEffect(() => {
-    if (!isPreviewMode && links.length > visibleLinkLimit && !desktopHamburger && layout === 'horizontal') {
-      const timer = setTimeout(() => setShowMenuRecommendation(true), 1500);
-      return () => clearTimeout(timer);
-    } else {
-      setShowMenuRecommendation(false);
-    }
-  }, [links.length, visibleLinkLimit, desktopHamburger, isPreviewMode, layout, setShowMenuRecommendation]);
 
   // Helper to safely apply opacity to hex colors
   const getGlassColor = (color: string) => {

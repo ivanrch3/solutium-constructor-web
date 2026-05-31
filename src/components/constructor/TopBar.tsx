@@ -34,7 +34,7 @@ interface TopBarProps {
   isNewSite?: boolean;
   onReloadPreview?: () => void;
   assetName?: string;
-  autosaveStatus?: 'idle' | 'saving' | 'saved' | 'error';
+  autosaveStatus?: 'idle' | 'saving' | 'saved' | 'error' | 'disabled';
   autosaveError?: string | null;
   lastAutosavedAt?: Date | null;
   showAutosaveIndicator?: boolean;
@@ -145,6 +145,13 @@ export const TopBar: React.FC<TopBarProps> = ({
           <div className="px-2 py-0.5 bg-red-500/10 rounded-full">
             <span className="text-[9px] font-bold text-red-600 uppercase tracking-tighter shrink-0" title={autosaveError || undefined}>
               No se pudo guardar automáticamente
+            </span>
+          </div>
+        )}
+        {saveStatus !== 'loading' && autosaveStatus === 'disabled' && (
+          <div className="px-2 py-0.5 bg-secondary rounded-full">
+            <span className="text-[9px] font-bold text-text/60 uppercase tracking-tighter shrink-0">
+              Autoguardado desactivado
             </span>
           </div>
         )}

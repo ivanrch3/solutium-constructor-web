@@ -645,6 +645,7 @@ export const GlobalSettingsPanel: React.FC<GlobalSettingsPanelProps> = ({
           type: 'select',
           defaultValue: 180000,
           options: [
+            { label: 'Desactivado', value: 'disabled' },
             { label: '1 minuto', value: 60000 },
             { label: '2 minutos', value: 120000 },
             { label: '3 minutos', value: 180000 },
@@ -678,7 +679,7 @@ export const GlobalSettingsPanel: React.FC<GlobalSettingsPanelProps> = ({
         if (setting.id === 'builder_autosave_interval_ms') {
           return {
             ...setting,
-            description: 'El guardado automático solo corre si detecta cambios sin guardar.'
+            description: 'Elige Desactivado para pausar el guardado automático sin afectar el guardado manual.'
           };
         }
 

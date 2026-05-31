@@ -1841,13 +1841,13 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     setMobileTab('structure');
   };
 
-  const handleRecentlyAddedModuleSettled = (moduleId: string) => {
+  const handleRecentlyAddedModuleSettled = useCallback((moduleId: string) => {
     updateEditorState(prev => (
       prev.recentlyAddedModuleId === moduleId
         ? { ...prev, recentlyAddedModuleId: null }
         : prev
     ));
-  };
+  }, []);
 
   const removeModule = (moduleId: string) => {
     const module = (editorState.addedModules || []).find(m => m.id === moduleId);

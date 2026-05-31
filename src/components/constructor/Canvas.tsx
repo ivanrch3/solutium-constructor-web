@@ -178,6 +178,8 @@ export const Canvas: React.FC<CanvasProps> = ({
       if (targetId) {
         let cancelled = false;
         let attempts = 0;
+        let stableFrames = 0;
+        let previousRect: { top: number; height: number } | null = null;
         const maxAttempts = 10;
 
         const scrollToInsertedModule = () => {
@@ -185,6 +187,25 @@ export const Canvas: React.FC<CanvasProps> = ({
           const targetElement = document.getElementById(targetId);
 
           if (targetElement) {
+            const rect = targetElement.getBoundingClientRect();
+            const currentRect = {
+              top: Math.round(rect.top),
+              height: Math.round(rect.height)
+            };
+            const isStable =
+              previousRect &&
+              Math.abs(previousRect.top - currentRect.top) <= 1 &&
+              Math.abs(previousRect.height - currentRect.height) <= 1;
+
+            stableFrames = isStable ? stableFrames + 1 : 0;
+            previousRect = currentRect;
+
+            if (stableFrames < 2 && attempts < maxAttempts) {
+              attempts += 1;
+              requestAnimationFrame(scrollToInsertedModule);
+              return;
+            }
+
             targetElement.scrollIntoView({
               behavior: 'smooth',
               block: 'start'
@@ -213,6 +234,7 @@ export const Canvas: React.FC<CanvasProps> = ({
   }, [editorState.addedModules?.length, editorState.recentlyAddedModuleId, editorState.expandedModuleId, onRecentlyAddedModuleSettled]);
 
   React.useEffect(() => {
+    if (editorState.recentlyAddedModuleId === editorState.expandedModuleId) return;
     if (editorState.expandedModuleId) {
       const element = document.getElementById(editorState.expandedModuleId);
       if (element) {
@@ -294,7 +316,7 @@ export const Canvas: React.FC<CanvasProps> = ({
         </div>
       )}
       <div
-        className={`flex min-h-full transition-all duration-500 ${useVirtualDesktopPreview ? 'relative justify-start overflow-hidden' : 'justify-center'} ${isFullscreen ? (isDesktopCanvas ? 'px-0 pb-0 pt-24' : 'p-6 pt-24') : isPreviewMode ? 'p-0' : isDesktopCanvas ? 'p-0' : 'p-6'}`}
+        className={`flex min-h-full ${useVirtualDesktopPreview ? 'relative justify-start overflow-hidden' : 'justify-center transition-all duration-500'} ${isFullscreen ? (isDesktopCanvas ? 'px-0 pb-0 pt-24' : 'p-6 pt-24') : isPreviewMode ? 'p-0' : isDesktopCanvas ? 'p-0' : 'p-6'}`}
         style={useVirtualDesktopPreview ? {
           width: '100%',
           minHeight: renderContentHeight ? `${Math.ceil(renderContentHeight * desktopPreviewScale)}px` : undefined
@@ -304,9 +326,9 @@ export const Canvas: React.FC<CanvasProps> = ({
           ref={renderRootRef}
           id="constructor-canvas-render"
           data-preview-root="true"
-          className={`bg-surface relative transition-all duration-500 ease-in-out @container ${
+          className={`bg-surface relative @container ${
             isPreviewMode ? 'w-full max-w-none border-none rounded-none shadow-none' : 
-            useFullBleedDesktopCanvas ? 'w-full max-w-none min-h-full rounded-none border-none shadow-none' : 'rounded-2xl border border-border/50 shadow-2xl'
+            useFullBleedDesktopCanvas ? 'w-full max-w-none min-h-full rounded-none border-none shadow-none' : 'transition-all duration-500 ease-in-out rounded-2xl border border-border/50 shadow-2xl'
           } ${viewport === 'mobile' && !isPreviewMode ? 'rounded-[3rem] border-[8px] border-slate-900 shadow-[0_0_0_2px_rgba(0,0,0,0.1)]' : ''} ${viewport === 'tablet' && !isPreviewMode ? 'rounded-[2rem] border-[12px] border-slate-900 shadow-[0_0_0_2px_rgba(0,0,0,0.1)]' : ''}`}
           style={{ 
             width: isPreviewMode ? '100%' : (useVirtualDesktopPreview ? `${desktopLogicalWidth}px` : (isFullscreen ? fullscreenViewportWidth : viewportWidths[viewport])),

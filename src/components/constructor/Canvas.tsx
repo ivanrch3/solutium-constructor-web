@@ -93,6 +93,12 @@ export const Canvas: React.FC<CanvasProps> = ({
   const prevModulesLength = React.useRef(editorState.addedModules?.length || 0);
   const canvasScrollContainerRef = React.useRef<HTMLDivElement>(null);
   const fullscreenRootRef = React.useRef<HTMLDivElement>(null);
+  const renderRootRef = React.useRef<HTMLDivElement>(null);
+  const [canvasViewportWidth, setCanvasViewportWidth] = React.useState(0);
+  const [renderContentHeight, setRenderContentHeight] = React.useState(0);
+  const [browserViewportWidth, setBrowserViewportWidth] = React.useState(
+    typeof window !== 'undefined' ? window.innerWidth : 1440
+  );
   const setCanvasRootRef = React.useCallback((node: HTMLDivElement | null) => {
     canvasScrollContainerRef.current = node;
     fullscreenRootRef.current = node;
@@ -117,6 +123,45 @@ export const Canvas: React.FC<CanvasProps> = ({
     : `min(${viewportWidths[viewport]}, calc(100vw - 48px))`;
   const isDesktopCanvas = viewport === 'desktop';
   const useFullBleedDesktopCanvas = !isPreviewMode && isDesktopCanvas;
+  const useVirtualDesktopPreview = useFullBleedDesktopCanvas && !isFullscreen;
+  const desktopLogicalWidth = Math.max(1200, browserViewportWidth);
+  const desktopPreviewScale = useVirtualDesktopPreview && canvasViewportWidth > 0
+    ? Math.min(1, canvasViewportWidth / desktopLogicalWidth)
+    : 1;
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const updateBrowserViewportWidth = () => setBrowserViewportWidth(window.innerWidth);
+    updateBrowserViewportWidth();
+    window.addEventListener('resize', updateBrowserViewportWidth);
+    return () => window.removeEventListener('resize', updateBrowserViewportWidth);
+  }, []);
+
+  React.useEffect(() => {
+    const scrollNode = canvasScrollContainerRef.current;
+    if (!scrollNode || typeof ResizeObserver === 'undefined') return;
+
+    const updateCanvasViewportWidth = () => {
+      setCanvasViewportWidth(scrollNode.clientWidth || scrollNode.getBoundingClientRect().width || 0);
+    };
+
+    updateCanvasViewportWidth();
+    const observer = new ResizeObserver(updateCanvasViewportWidth);
+    observer.observe(scrollNode);
+    return () => observer.disconnect();
+  }, [isFullscreen, isPreviewMode]);
+
+  React.useEffect(() => {
+    const renderNode = renderRootRef.current;
+    if (!renderNode || typeof ResizeObserver === 'undefined') return;
+
+    const updateRenderContentHeight = () => setRenderContentHeight(renderNode.offsetHeight || 0);
+    updateRenderContentHeight();
+    const observer = new ResizeObserver(updateRenderContentHeight);
+    observer.observe(renderNode);
+    return () => observer.disconnect();
+  }, [viewport, isFullscreen, isPreviewMode, reloadKey, editorState.addedModules?.length]);
 
   React.useEffect(() => {
     if ((editorState.addedModules?.length || 0) > prevModulesLength.current) {
@@ -213,8 +258,15 @@ export const Canvas: React.FC<CanvasProps> = ({
           </button>
         </div>
       )}
-      <div className={`flex justify-center min-h-full transition-all duration-500 ${isFullscreen ? (isDesktopCanvas ? 'px-0 pb-0 pt-24' : 'p-6 pt-24') : isPreviewMode ? 'p-0' : isDesktopCanvas ? 'p-0' : 'p-6'}`}>
+      <div
+        className={`flex min-h-full transition-all duration-500 ${useVirtualDesktopPreview ? 'relative justify-start overflow-hidden' : 'justify-center'} ${isFullscreen ? (isDesktopCanvas ? 'px-0 pb-0 pt-24' : 'p-6 pt-24') : isPreviewMode ? 'p-0' : isDesktopCanvas ? 'p-0' : 'p-6'}`}
+        style={useVirtualDesktopPreview ? {
+          width: '100%',
+          minHeight: renderContentHeight ? `${Math.ceil(renderContentHeight * desktopPreviewScale)}px` : undefined
+        } : undefined}
+      >
         <div 
+          ref={renderRootRef}
           id="constructor-canvas-render"
           data-preview-root="true"
           className={`bg-surface relative transition-all duration-500 ease-in-out @container ${
@@ -222,9 +274,14 @@ export const Canvas: React.FC<CanvasProps> = ({
             useFullBleedDesktopCanvas ? 'w-full max-w-none min-h-full rounded-none border-none shadow-none' : 'rounded-2xl border border-border/50 shadow-2xl'
           } ${viewport === 'mobile' && !isPreviewMode ? 'rounded-[3rem] border-[8px] border-slate-900 shadow-[0_0_0_2px_rgba(0,0,0,0.1)]' : ''} ${viewport === 'tablet' && !isPreviewMode ? 'rounded-[2rem] border-[12px] border-slate-900 shadow-[0_0_0_2px_rgba(0,0,0,0.1)]' : ''}`}
           style={{ 
-            width: isPreviewMode ? '100%' : (isFullscreen ? fullscreenViewportWidth : viewportWidths[viewport]), 
-            maxWidth: isPreviewMode ? 'none' : (isFullscreen ? (viewport === 'desktop' ? 'none' : viewportWidths[viewport]) : viewport === 'desktop' ? 'none' : viewportWidths[viewport]),
-            minHeight: isPreviewMode ? '100vh' : (isDesktopCanvas ? (isFullscreen ? '100vh' : '100%') : viewport === 'mobile' ? '667px' : '1024px')
+            width: isPreviewMode ? '100%' : (useVirtualDesktopPreview ? `${desktopLogicalWidth}px` : (isFullscreen ? fullscreenViewportWidth : viewportWidths[viewport])),
+            maxWidth: isPreviewMode ? 'none' : (useVirtualDesktopPreview ? `${desktopLogicalWidth}px` : (isFullscreen ? (viewport === 'desktop' ? 'none' : viewportWidths[viewport]) : viewport === 'desktop' ? 'none' : viewportWidths[viewport])),
+            minHeight: isPreviewMode ? '100vh' : (isDesktopCanvas ? (isFullscreen ? '100vh' : '100%') : viewport === 'mobile' ? '667px' : '1024px'),
+            transform: useVirtualDesktopPreview ? `scale(${desktopPreviewScale})` : undefined,
+            transformOrigin: useVirtualDesktopPreview ? 'top left' : undefined,
+            position: useVirtualDesktopPreview ? 'absolute' : 'relative',
+            top: useVirtualDesktopPreview ? 0 : undefined,
+            left: useVirtualDesktopPreview ? 0 : undefined
           }}
         >
           {viewport === 'mobile' && !isPreviewMode && (

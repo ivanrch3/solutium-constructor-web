@@ -67,7 +67,6 @@ import { AIGenerationContext, AIPageGenerationBrief, AIPagePlan } from '../../ty
 import { ProjectForm, ProjectFormData } from '../ProjectForm';
 import { initialContent, useEditorStore } from '../../store/editorStore';
 import { PropertyEditor } from './PropertyEditor';
-import { BentoCellEditor } from './BentoCellEditor';
 import { logDebug } from '../../utils/debug';
 import {
   PROJECT_THEME_FALLBACKS,
@@ -376,7 +375,6 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
   const [showBentoPrompt, setShowBentoPrompt] = useState(false);
-  const [dismissedBentoCellDrawerKey, setDismissedBentoCellDrawerKey] = useState<string | null>(null);
 
   const setPreviewWarningsFromResult = useCallback((
     warnings: string[] | undefined,
@@ -1079,8 +1077,6 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   // Synchronize store selection back to local editorState
   const storeSelectedSectionId = useEditorStore(state => state.selectedSectionId);
   const storeSelectedElementId = useEditorStore(state => state.selectedElementId);
-  const selectedBentoCellIndex = useEditorStore(state => state.selectedBentoCellIndex);
-  const setSelectedBentoCellIndex = useEditorStore(state => state.setSelectedBentoCellIndex);
 
   const handlePreviewClick = useCallback(() => {
     if (activeTab === 'design-style' || activeTab === 'design-animations') {
@@ -4113,29 +4109,13 @@ const formatTimestampName = () => {
     }, 400);
   };
 
-  const selectedBentoSection = siteContent.sections.find(section => section.id === selectedSectionId);
+  const selectedBentoSectionId = editorState.expandedModuleId || selectedSectionId;
+  const selectedBentoSection = siteContent.sections.find(section => section.id === selectedBentoSectionId)
+    || editorState.addedModules.find(section => section.id === selectedBentoSectionId);
   const isSelectedBentoSection = selectedBentoSection?.type === 'bento'
     || selectedBentoSection?.templateId === 'mod_bento_1'
     || selectedBentoSection?.id?.startsWith('mod_bento_1');
-  const selectedBentoCellKey = isSelectedBentoSection && selectedBentoSection && selectedBentoCellIndex !== null
-    ? `${selectedBentoSection.id}:${selectedBentoCellIndex}`
-    : null;
-  const showBentoCellDrawer = Boolean(
-    !isPreviewMode
-    && !isExternalRender
-    && isSelectedBentoSection
-    && selectedBentoCellIndex !== null
-    && selectedBentoCellKey !== dismissedBentoCellDrawerKey
-  );
-  const bentoProjectColors = Array.from(new Set([
-    projectThemeSeed.primary,
-    projectThemeSeed.secondary,
-    projectThemeSeed.accent
-  ].filter((color): color is string => typeof color === 'string' && color.trim().length > 0)));
-
-  useEffect(() => {
-    setDismissedBentoCellDrawerKey(null);
-  }, [selectedBentoCellKey]);
+  const useBentoSplitLayout = Boolean(!isMobile && !isPreviewMode && !isExternalRender && isSelectedBentoSection);
 
   return (
     <div className={`h-screen w-screen flex overflow-hidden bg-surface font-sans antialiased ${(isPreviewMode || isExternalRender) ? 'p-0' : ''}`}>
@@ -4437,9 +4417,10 @@ const formatTimestampName = () => {
                     customers={customers}
                     trustedCompanyLogos={trustedCompanyLogos}
                     activeTab={activeTab}
+                    isWideForBento={useBentoSplitLayout}
                   />
                 )}
-                <div className="flex-1 flex flex-col h-full">
+                <div className={`${useBentoSplitLayout ? 'w-1/2 flex-none' : 'flex-1'} flex flex-col h-full min-w-0`}>
                   {!isPreviewMode && !isExternalRender && (
                   <TopBar 
                     onSave={handleSaveDraft} 
@@ -4489,39 +4470,13 @@ const formatTimestampName = () => {
                         onOpenBentoGenerator={() => setShowBentoPrompt(true)}
                       />
                     </div>
-                    {!isPreviewMode && !isExternalRender && !showBentoCellDrawer && (
+                    {!isPreviewMode && !isExternalRender && !isSelectedBentoSection && (
                       <aside className="w-80 shrink-0 border-l border-border bg-surface overflow-hidden">
                         <PropertyEditor
                           settingsValues={editorState.settingsValues}
                           onSettingChange={handleSettingChange}
-                          suppressBentoCellEditor={Boolean(isSelectedBentoSection && selectedBentoCellIndex !== null)}
-                          bentoCellDrawerOpen={showBentoCellDrawer}
-                          onOpenBentoCellDrawer={
-                            isSelectedBentoSection && selectedBentoCellIndex !== null
-                              ? () => setDismissedBentoCellDrawerKey(null)
-                              : undefined
-                          }
                         />
                       </aside>
-                    )}
-                    {showBentoCellDrawer && selectedBentoSection && selectedBentoCellIndex !== null && (
-                      <div className="pointer-events-none fixed inset-y-0 right-0 z-[120] flex w-full justify-end">
-                        <div className="pointer-events-auto h-full w-full max-w-[430px] overflow-hidden border-l border-gray-200 bg-white shadow-2xl">
-                          <BentoCellEditor
-                            selectedSection={selectedBentoSection}
-                            moduleDef={BENTO_MODULE}
-                            selectedBentoCellIndex={selectedBentoCellIndex}
-                            setSelectedBentoCellIndex={setSelectedBentoCellIndex}
-                            settingsValues={editorState.settingsValues}
-                            onSettingChange={handleSettingChange}
-                            updateSectionSettings={updateSectionSettings}
-                            project={project}
-                            projectColors={bentoProjectColors}
-                            title="Editar elemento Bento"
-                            onClose={() => setDismissedBentoCellDrawerKey(selectedBentoCellKey)}
-                          />
-                        </div>
-                      </div>
                     )}
                   </div>
                 </div>

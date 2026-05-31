@@ -86,11 +86,13 @@ const COMPOSITION_ADDABLE_TYPES: CompositionElementType[] = [
 interface PropertyEditorProps {
   settingsValues?: Record<string, any>;
   onSettingChange?: (elementOrModuleId: string, settingId: string, value: any) => void;
+  suppressBentoCellEditor?: boolean;
 }
 
 export const PropertyEditor: React.FC<PropertyEditorProps> = ({
   settingsValues,
-  onSettingChange
+  onSettingChange,
+  suppressBentoCellEditor = false
 }) => {
   const { 
     siteContent, 
@@ -189,6 +191,32 @@ export const PropertyEditor: React.FC<PropertyEditorProps> = ({
     || selectedSection.id.startsWith('mod_bento_1');
 
   if (isBento && selectedBentoCellIndex !== null) {
+    if (suppressBentoCellEditor) {
+      return (
+        <div className="flex h-full flex-col bg-white">
+          <div className="border-b border-gray-100 bg-gray-50/70 p-4">
+            <h3 className="text-sm font-bold text-gray-900">Elemento Bento seleccionado</h3>
+            <p className="mt-1 text-xs leading-relaxed text-gray-500">
+              La edición de esta celda está abierta en el panel temporal del Canvas.
+            </p>
+          </div>
+          <div className="flex flex-1 flex-col items-center justify-center p-6 text-center">
+            <Layers className="mb-3 text-gray-200" size={48} />
+            <p className="text-xs text-gray-500">
+              Usa el drawer para editar el elemento sin duplicar controles.
+            </p>
+            <button
+              type="button"
+              onClick={() => setSelectedBentoCellIndex(null)}
+              className="mt-4 rounded-full bg-blue-50 px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-blue-600 transition-colors hover:bg-blue-100"
+            >
+              Volver a Configuración Global
+            </button>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <BentoCellEditor
         selectedSection={selectedSection}

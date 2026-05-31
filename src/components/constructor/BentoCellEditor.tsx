@@ -8,7 +8,8 @@ import {
   Layout,
   MousePointer2,
   Palette,
-  Type
+  Type,
+  X
 } from 'lucide-react';
 import { logDebug } from '../../utils/debug';
 import { SettingControl } from './SettingControl';
@@ -49,6 +50,8 @@ interface BentoCellEditorProps {
   updateSectionSettings: (sectionId: string, settingsUpdate: Record<string, any>) => void;
   project?: any;
   projectColors: string[];
+  title?: string;
+  onClose?: () => void;
 }
 
 export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
@@ -60,7 +63,9 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
   onSettingChange,
   updateSectionSettings,
   project,
-  projectColors
+  projectColors,
+  title = 'Editar Celda',
+  onClose
 }) => {
   const [expandedPillars, setExpandedPillars] = React.useState<Record<string, boolean>>({
     contenido: true,
@@ -183,10 +188,22 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
             <div className="w-6 h-6 bg-blue-600 rounded-md flex items-center justify-center text-white">
               <CustomSettingsIcon size={14} />
             </div>
-            Editar Celda
+            {title}
           </h3>
-          <div className="px-2 py-0.5 bg-gray-100 rounded text-[10px] font-mono text-gray-500 uppercase">
-            Item #{selectedBentoCellIndex + 1}
+          <div className="flex items-center gap-2">
+            <div className="px-2 py-0.5 bg-gray-100 rounded text-[10px] font-mono text-gray-500 uppercase">
+              Item #{selectedBentoCellIndex + 1}
+            </div>
+            {onClose && (
+              <button
+                type="button"
+                onClick={onClose}
+                className="p-1 rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                aria-label="Cerrar editor Bento"
+              >
+                <X size={14} />
+              </button>
+            )}
           </div>
         </div>
 

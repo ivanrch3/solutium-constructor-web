@@ -276,7 +276,13 @@ export const ProductsModule: React.FC<{
   // Element: Configuración de Selección
   const selectionMode = getVal(`${moduleId}_el_products_config`, 'selection_mode', 'auto');
   const layout = getVal(null, 'layout', 'grid');
-  const columns = Math.max(1, parseInt(getVal(null, 'columns', 4)) || 4);
+  const columns = Math.max(1, Math.min(5, parseInt(getVal(null, 'columns', 4)) || 4));
+  const productsGridClass =
+    columns >= 5 ? 'grid-cols-1 @sm:grid-cols-2 @md:grid-cols-3 @5xl:grid-cols-5' :
+    columns === 4 ? 'grid-cols-1 @sm:grid-cols-2 @md:grid-cols-3 @5xl:grid-cols-4' :
+    columns === 3 ? 'grid-cols-1 @sm:grid-cols-2 @md:grid-cols-3' :
+    columns === 2 ? 'grid-cols-1 @sm:grid-cols-2' :
+    'grid-cols-1';
   const gap = parseF(getVal(null, 'gap', 24), 24);
   const darkMode = toBoolean(getVal(null, 'dark_mode', false));
   const rawBgColor = getVal(null, 'bg_color', '#FFFFFF');
@@ -526,7 +532,7 @@ export const ProductsModule: React.FC<{
           backgroundImage: (sectionGradient && typeof bgGradient === 'string' && !bgGradient.includes('NaN')) ? bgGradient : 'none'
         }}
       >
-      <div className="max-w-7xl mx-auto relative z-10">
+        <div className="max-w-7xl mx-auto relative z-10 @container">
         {/* Header */}
         <div 
           className={`flex flex-col mb-12 w-full ${titleAlign === 'center' ? 'items-center text-center' : titleAlign === 'right' ? 'items-end text-right' : 'items-start text-left'}`}
@@ -609,10 +615,7 @@ export const ProductsModule: React.FC<{
                 className={`grid ${
                   layout === 'carousel' ? 'flex transition-none' :
                   layout === 'list' ? 'grid-cols-1' :
-                  columns === 6 ? 'grid-cols-1 @sm:grid-cols-2 @md:grid-cols-3 @lg:grid-cols-6' :
-                  columns === 4 ? 'grid-cols-1 @sm:grid-cols-2 @lg:grid-cols-4' :
-                  columns === 3 ? 'grid-cols-1 @sm:grid-cols-2 @lg:grid-cols-3' :
-                  columns === 2 ? 'grid-cols-1 @sm:grid-cols-2' : 'grid-cols-1'
+                  productsGridClass
                 }`}
                 style={{ 
                   gap: layout === 'carousel' ? '0' : `${gap || 0}px`,

@@ -120,7 +120,13 @@ export const ClientsModule: React.FC<{
   // Global Settings
   const layout = getVal(null, 'layout', 'grid');
   const alignment = getVal(null, 'alignment', 'center');
-  const columns = Math.max(1, parseInt(getVal(null, 'columns', 5)) || 5);
+  const columns = Math.max(1, Math.min(8, parseInt(getVal(null, 'columns', 5)) || 5));
+  const logoGridClass =
+    columns >= 5 ? 'grid-cols-1 @sm:grid-cols-2 @md:grid-cols-3 @5xl:grid-cols-5' :
+    columns === 4 ? 'grid-cols-1 @sm:grid-cols-2 @md:grid-cols-3 @5xl:grid-cols-4' :
+    columns === 3 ? 'grid-cols-1 @sm:grid-cols-2 @md:grid-cols-3' :
+    columns === 2 ? 'grid-cols-1 @sm:grid-cols-2' :
+    'grid-cols-1';
   const gap = parseF(getVal(null, 'gap', 40), 40);
   const paddingY = parseF(getVal(null, 'padding_y', 80), 80);
   const darkMode = getVal(null, 'dark_mode', false);
@@ -246,10 +252,7 @@ export const ClientsModule: React.FC<{
           whileInView="visible"
           viewport={{ once: true, amount: 0.1 }}
           className={`grid ${getJustifyClass(alignment)} ${
-            columns >= 5 ? 'grid-cols-2 @sm:grid-cols-3 @md:grid-cols-4 @lg:grid-cols-5' :
-            columns === 4 ? 'grid-cols-2 @sm:grid-cols-3 @md:grid-cols-4' :
-            columns === 3 ? 'grid-cols-2 @sm:grid-cols-3' :
-            columns === 2 ? 'grid-cols-2' : 'grid-cols-1'
+            logoGridClass
           }`}
           style={{ 
             gap: `${gap}px`
@@ -317,7 +320,7 @@ export const ClientsModule: React.FC<{
 
   return (
     <section 
-      className="w-full relative overflow-hidden"
+      className="w-full relative overflow-hidden @container"
       style={{ 
         backgroundColor: bgColor,
         backgroundImage: (sectionGradient && typeof bgGradient === 'string' && !bgGradient.includes('NaN')) ? bgGradient : 'none',

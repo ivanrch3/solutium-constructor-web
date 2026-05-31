@@ -543,7 +543,7 @@ export const PRODUCTS_MODULE: WebModule = {
         { label: 'Carrusel (Slider)', value: 'carousel' },
         { label: 'Lista Detallada', value: 'list' }
       ]},
-      { id: 'columns', label: 'Columnas (Desktop)', type: 'range', defaultValue: 4, min: 1, max: 6 },
+      { id: 'columns', label: 'Columnas (Desktop)', type: 'range', defaultValue: 4, min: 1, max: 5 },
       { id: 'gap', label: 'Espaciado entre productos', type: 'range', defaultValue: 24, min: 0, max: 80, unit: 'px' },
       { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 40, min: 40, max: 200, unit: 'px' }
     ],

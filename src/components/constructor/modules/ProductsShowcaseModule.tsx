@@ -180,7 +180,13 @@ export const ProductsShowcaseModule: React.FC<ProductsShowcaseModuleProps> = ({
   }, [moduleId, content, settingsValues, title, subtitle]);
   
   const layout = getVal(null, 'layout', 'grid');
-  const columns = parseInt(getVal(null, 'columns', '3'));
+  const columns = Math.max(1, Math.min(5, parseInt(getVal(null, 'columns', '3'), 10) || 3));
+  const productShowcaseGridClass =
+    columns >= 5 ? 'grid-cols-1 @sm:grid-cols-2 @md:grid-cols-3 @5xl:grid-cols-5' :
+    columns === 4 ? 'grid-cols-1 @sm:grid-cols-2 @md:grid-cols-3 @5xl:grid-cols-4' :
+    columns === 3 ? 'grid-cols-1 @sm:grid-cols-2 @md:grid-cols-3' :
+    columns === 2 ? 'grid-cols-1 @sm:grid-cols-2' :
+    'grid-cols-1';
   const cardStyle = getVal(null, 'card_style', 'elevated');
   const showTabs = getVal(null, 'show_tabs', true);
   
@@ -244,7 +250,7 @@ export const ProductsShowcaseModule: React.FC<ProductsShowcaseModuleProps> = ({
   }
 
   return (
-    <section className="py-16 px-4 md:px-8 max-w-7xl mx-auto w-full">
+    <section className="py-16 px-4 md:px-8 max-w-7xl mx-auto w-full @container">
       {/* Header */}
       <div className="text-center mb-12">
         <motion.h2 
@@ -301,11 +307,7 @@ export const ProductsShowcaseModule: React.FC<ProductsShowcaseModuleProps> = ({
           )}
 
           {/* Product Grid */}
-          <div className={`grid gap-6 md:gap-8 ${
-            columns === 4 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4' :
-            columns === 3 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' :
-            'grid-cols-1 sm:grid-cols-2'
-          }`}>
+          <div className={`grid gap-6 md:gap-8 ${productShowcaseGridClass}`}>
             <AnimatePresence mode="popLayout">
               {filteredProducts.map((product, idx) => (
                 <motion.div

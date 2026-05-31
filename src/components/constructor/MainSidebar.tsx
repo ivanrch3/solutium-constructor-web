@@ -105,13 +105,19 @@ export const MainSidebar: React.FC<MainSidebarProps> = ({
 }) => {
   const [expandedSection, setExpandedSection] = useState<string | null>('constructor');
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
+  const sidebarScrollRef = React.useRef<HTMLDivElement | null>(null);
 
   const toggleSection = (section: string) => {
     setExpandedSection(expandedSection === section ? null : section);
   };
 
   const toggleCategory = (category: string) => {
+    const scrollNode = sidebarScrollRef.current;
+    const currentScrollTop = scrollNode?.scrollTop ?? 0;
     setExpandedCategory(expandedCategory === category ? null : category);
+    requestAnimationFrame(() => {
+      if (scrollNode) scrollNode.scrollTop = currentScrollTop;
+    });
   };
 
   const displayLogo = logoWhiteUrl || logoUrl;
@@ -136,7 +142,7 @@ export const MainSidebar: React.FC<MainSidebarProps> = ({
       </div>
 
       {/* Navigation */}
-      <div className="flex-1 px-4 space-y-1 overflow-y-auto custom-scrollbar pb-10">
+      <div ref={sidebarScrollRef} className="flex-1 px-4 space-y-1 overflow-y-auto custom-scrollbar pb-10">
         <div className="space-y-1">
           <button 
             onClick={() => toggleSection('diseno')}

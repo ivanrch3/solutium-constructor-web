@@ -966,13 +966,26 @@ export const BentoModule: React.FC<{
     h: Number(layout?.h) || 1
   });
 
-  const areLayoutsEqual = (a: any[] = [], b: any[] = []) => {
-    if (a.length !== b.length) return false;
+  const normalizeLayoutEntryWithId = (layout: any) => ({
+    i: String(layout?.i ?? ''),
+    ...normalizeLayoutEntry(layout)
+  });
 
-    return a.every((entry, index) => {
-      const candidate = b[index];
+  const areLayoutsEqual = (a: any[] = [], b: any[] = []) => {
+    const normalizeLayout = (layout: any[] = []) =>
+      layout
+        .map(normalizeLayoutEntryWithId)
+        .sort((left, right) => left.i.localeCompare(right.i));
+
+    const normalizedA = normalizeLayout(a);
+    const normalizedB = normalizeLayout(b);
+
+    if (normalizedA.length !== normalizedB.length) return false;
+
+    return normalizedA.every((entry, index) => {
+      const candidate = normalizedB[index];
       return candidate
-        && String(entry.i) === String(candidate.i)
+        && entry.i === candidate.i
         && entry.x === candidate.x
         && entry.y === candidate.y
         && entry.w === candidate.w
@@ -1006,8 +1019,8 @@ export const BentoModule: React.FC<{
     });
   };
 
-  const [currentBreakpoint, setCurrentBreakpoint] = useState('lg');
   const currentBreakpointRef = useRef('lg');
+  const lastPersistedLayoutSignatureRef = useRef('');
   
   // Items Data - Robust Normalization
   const getItemsFromMultipleSources = () => {
@@ -1031,25 +1044,42 @@ export const BentoModule: React.FC<{
 
   const handleLayoutChange = (currentLayout: any, allLayouts: any) => {
     if (!onSettingChange || isPreviewMode) return;
+    if (!Array.isArray(currentLayout) || currentLayout.length === 0) return;
 
     const activeBreakpoint = areLayoutsEqual(currentLayout, allLayouts?.[currentBreakpointRef.current])
       ? currentBreakpointRef.current
       : BENTO_BREAKPOINT_ORDER.find((breakpoint) => areLayoutsEqual(currentLayout, allLayouts?.[breakpoint])) || currentBreakpointRef.current;
     const currentBP = BENTO_BREAKPOINT_TO_LAYOUT[activeBreakpoint] || 'desktop';
+    const normalizedCurrentLayout = currentLayout.map(normalizeLayoutEntryWithId);
+    const currentSignature = JSON.stringify({
+      breakpoint: currentBP,
+      layout: normalizedCurrentLayout
+        .map((entry) => ({ i: entry.i, x: entry.x, y: entry.y, w: entry.w, h: entry.h }))
+        .sort((left, right) => left.i.localeCompare(right.i))
+    });
+
+    if (lastPersistedLayoutSignatureRef.current === currentSignature) return;
 
     const newItems = [...rawItems];
     let changed = false;
 
-    currentLayout.forEach((l: any) => {
+    normalizedCurrentLayout.forEach((l: any) => {
       const idx = parseInt(l.i);
       if (newItems[idx]) {
         const entry = normalizeLayoutEntry(l);
         const existingLayouts = newItems[idx].layouts || {};
+        const existingEntry = existingLayouts[currentBP] ? normalizeLayoutEntry(existingLayouts[currentBP]) : null;
         
-        if (JSON.stringify(existingLayouts[currentBP]) !== JSON.stringify(entry)) {
+        if (
+          !existingEntry ||
+          existingEntry.x !== entry.x ||
+          existingEntry.y !== entry.y ||
+          existingEntry.w !== entry.w ||
+          existingEntry.h !== entry.h
+        ) {
           newItems[idx] = {
             ...newItems[idx],
-            layouts: { ...existingLayouts, [currentBP]: entry },
+            layouts: { ...existingLayouts, [currentBP]: { x: entry.x, y: entry.y, w: entry.w, h: entry.h } },
             // Keep legacy synced for desktop compatibility
             ...(currentBP === 'desktop' ? { x: l.x, y: l.y, col_span: l.w, row_span: l.h } : {})
           };
@@ -1059,13 +1089,14 @@ export const BentoModule: React.FC<{
     });
 
     if (changed) {
+      lastPersistedLayoutSignatureRef.current = currentSignature;
       onSettingChange(`${moduleId}_el_bento_items`, 'items', newItems);
     }
   };
 
   const handleBreakpointChange = (newBreakpoint: string) => {
+    if (currentBreakpointRef.current === newBreakpoint) return;
     currentBreakpointRef.current = newBreakpoint;
-    setCurrentBreakpoint(newBreakpoint);
     if (isBentoDebugEnabled()) logDebug('[BENTO_BP_CHANGE]', newBreakpoint);
   };
 

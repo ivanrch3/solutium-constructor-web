@@ -2851,6 +2851,11 @@ const formatTimestampName = () => {
     return contractResult;
   };
 
+  const liveCanvasSiteContent = React.useMemo(
+    () => generateRenderingContract(siteName, editorState) as any,
+    [editorState, siteName, project, products, customers, trustedCompanyLogos]
+  );
+
   const handleSaveDraft = async (forcedStatus?: 'draft' | 'published' | 'modified') => {
     if (!projectId || isPreviewMode) return;
     if (saveInProgressRef.current && activeSavePromiseRef.current) {
@@ -4386,6 +4391,7 @@ const formatTimestampName = () => {
                         setIsFullscreen={() => {}}
                         isPreviewMode={isPreviewMode || isExternalRender}
                         onSettingChange={handleSettingChange}
+                        siteContentOverride={liveCanvasSiteContent}
                         onOpenBentoGenerator={() => setShowBentoPrompt(true)}
                       />
                     </div>
@@ -4456,10 +4462,11 @@ const formatTimestampName = () => {
                         project={project}
                         viewport={viewport}
                         setViewport={handleViewportChange}
-                      isFullscreen={isFullscreen}
-                      setIsFullscreen={setIsFullscreen}
-                      isPreviewMode={isPreviewMode || isExternalRender}
-                      onSettingChange={handleSettingChange}
+                        isFullscreen={isFullscreen}
+                        setIsFullscreen={setIsFullscreen}
+                        isPreviewMode={isPreviewMode || isExternalRender}
+                        onSettingChange={handleSettingChange}
+                        siteContentOverride={liveCanvasSiteContent}
                         reloadKey={reloadKey}
                         onOpenBentoGenerator={() => setShowBentoPrompt(true)}
                       />

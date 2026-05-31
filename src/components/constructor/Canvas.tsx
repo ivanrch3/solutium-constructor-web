@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { EditorState, WebModule } from '../../types/constructor';
 import { Product, Customer, TrustedCompanyLogo } from '../../types/schema';
+import { SiteContent } from '../../types';
 import { useEditorStore } from '../../store/editorStore';
 import { isDarkColor } from './utils';
 import { logDebug } from '../../utils/debug';
@@ -60,6 +61,7 @@ interface CanvasProps {
   onSettingChange: (elementOrModuleId: string, settingId: string, value: any) => void;
   reloadKey?: number;
   onOpenBentoGenerator?: () => void;
+  siteContentOverride?: SiteContent;
 }
 
 export const Canvas: React.FC<CanvasProps> = ({ 
@@ -79,7 +81,8 @@ export const Canvas: React.FC<CanvasProps> = ({
   project,
   onSettingChange,
   reloadKey = 0,
-  onOpenBentoGenerator
+  onOpenBentoGenerator,
+  siteContentOverride
 }) => {
   const {
     selectSection,
@@ -88,6 +91,7 @@ export const Canvas: React.FC<CanvasProps> = ({
     selectedCompositionElementId,
     selectCompositionElement
   } = useEditorStore();
+  const renderSiteContent = siteContentOverride || siteContent;
 
   const lastModuleRef = React.useRef<HTMLDivElement>(null);
   const prevModulesLength = React.useRef(editorState.addedModules?.length || 0);
@@ -290,7 +294,7 @@ export const Canvas: React.FC<CanvasProps> = ({
             </div>
           )}
           <div className="w-full" key={reloadKey}>
-            {(!siteContent.sections || siteContent.sections.length === 0) && !isPreviewMode ? (
+            {(!renderSiteContent.sections || renderSiteContent.sections.length === 0) && !isPreviewMode ? (
               <div className="flex flex-col items-center justify-center py-32 px-6 text-center">
                 <div className="w-20 h-20 bg-secondary rounded-3xl flex items-center justify-center mb-6 text-text/20">
                   <PlusCircle size={40} />
@@ -301,8 +305,8 @@ export const Canvas: React.FC<CanvasProps> = ({
                 </p>
               </div>
             ) : (
-              (siteContent.sections || []).map((section, index) => {
-                const isLast = index === (siteContent.sections?.length || 0) - 1;
+              (renderSiteContent.sections || []).map((section, index) => {
+                const isLast = index === (renderSiteContent.sections?.length || 0) - 1;
                 
                 // Determine if this module wrapper should be sticky/fixed
                 const modulePos =
@@ -319,7 +323,7 @@ export const Canvas: React.FC<CanvasProps> = ({
                 let topOffset = 0;
                 if (isSticky || isFixed) {
                   for (let i = 0; i < index; i++) {
-                    const prev = siteContent.sections[i];
+                    const prev = renderSiteContent.sections[i];
                     const prevPos =
                       editorState.settingsValues?.[`${prev.id}_global_position`] ??
                       prev.settings[`${prev.id}_global_position`];
@@ -366,7 +370,7 @@ export const Canvas: React.FC<CanvasProps> = ({
                 // Higher z-index for earlier modules to ensure top bar is always on top
                 const stackingZIndex = 110 - index;
 
-                const theme = siteContent.theme;
+                const theme = renderSiteContent.theme;
                 
                 const invert = theme.invertedAlternatingMode || false;
                 const isDarkForced = theme.alternatingDarkMode 

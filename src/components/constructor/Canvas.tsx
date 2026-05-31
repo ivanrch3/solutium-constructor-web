@@ -62,6 +62,7 @@ interface CanvasProps {
   reloadKey?: number;
   onOpenBentoGenerator?: () => void;
   siteContentOverride?: SiteContent;
+  onRecentlyAddedModuleSettled?: (moduleId: string) => void;
 }
 
 export const Canvas: React.FC<CanvasProps> = ({ 
@@ -82,7 +83,8 @@ export const Canvas: React.FC<CanvasProps> = ({
   onSettingChange,
   reloadKey = 0,
   onOpenBentoGenerator,
-  siteContentOverride
+  siteContentOverride,
+  onRecentlyAddedModuleSettled
 }) => {
   const {
     selectSection,
@@ -169,20 +171,46 @@ export const Canvas: React.FC<CanvasProps> = ({
 
   React.useEffect(() => {
     const modulesLength = editorState.addedModules?.length || 0;
-    if (modulesLength > prevModulesLength.current) {
-      const targetId = editorState.recentlyAddedModuleId || editorState.expandedModuleId;
-      requestAnimationFrame(() => {
-        setTimeout(() => {
-          const targetElement = targetId ? document.getElementById(targetId) : null;
-          (targetElement || lastModuleRef.current)?.scrollIntoView({
-            behavior: 'smooth', 
-            block: 'start' 
-          });
-        }, 100);
-      });
-    }
+    const didAddModule = modulesLength > prevModulesLength.current;
     prevModulesLength.current = modulesLength;
-  }, [editorState.addedModules?.length, editorState.recentlyAddedModuleId, editorState.expandedModuleId]);
+    if (didAddModule) {
+      const targetId = editorState.recentlyAddedModuleId || editorState.expandedModuleId;
+      if (targetId) {
+        let cancelled = false;
+        let attempts = 0;
+        const maxAttempts = 10;
+
+        const scrollToInsertedModule = () => {
+          if (cancelled) return;
+          const targetElement = document.getElementById(targetId);
+
+          if (targetElement) {
+            targetElement.scrollIntoView({
+              behavior: 'smooth',
+              block: 'start'
+            });
+            onRecentlyAddedModuleSettled?.(targetId);
+            return;
+          }
+
+          attempts += 1;
+          if (attempts >= maxAttempts) {
+            onRecentlyAddedModuleSettled?.(targetId);
+            return;
+          }
+
+          window.setTimeout(() => {
+            requestAnimationFrame(scrollToInsertedModule);
+          }, 50);
+        };
+
+        requestAnimationFrame(scrollToInsertedModule);
+        return () => {
+          cancelled = true;
+        };
+      }
+    }
+  }, [editorState.addedModules?.length, editorState.recentlyAddedModuleId, editorState.expandedModuleId, onRecentlyAddedModuleSettled]);
 
   React.useEffect(() => {
     if (editorState.expandedModuleId) {

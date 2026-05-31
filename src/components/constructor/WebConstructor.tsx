@@ -1841,6 +1841,14 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     setMobileTab('structure');
   };
 
+  const handleRecentlyAddedModuleSettled = (moduleId: string) => {
+    updateEditorState(prev => (
+      prev.recentlyAddedModuleId === moduleId
+        ? { ...prev, recentlyAddedModuleId: null }
+        : prev
+    ));
+  };
+
   const removeModule = (moduleId: string) => {
     const module = (editorState.addedModules || []).find(m => m.id === moduleId);
     if (module) {
@@ -4447,6 +4455,7 @@ const formatTimestampName = () => {
                         onSettingChange={handleSettingChange}
                         siteContentOverride={liveCanvasSiteContent}
                         onOpenBentoGenerator={() => setShowBentoPrompt(true)}
+                        onRecentlyAddedModuleSettled={handleRecentlyAddedModuleSettled}
                       />
                     </div>
                   ) : null}
@@ -4523,6 +4532,7 @@ const formatTimestampName = () => {
                         siteContentOverride={liveCanvasSiteContent}
                         reloadKey={reloadKey}
                         onOpenBentoGenerator={() => setShowBentoPrompt(true)}
+                        onRecentlyAddedModuleSettled={handleRecentlyAddedModuleSettled}
                       />
                     </div>
                   </div>

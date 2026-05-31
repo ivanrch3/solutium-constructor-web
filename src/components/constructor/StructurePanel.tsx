@@ -410,7 +410,7 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
 
     const module = editorState.addedModules.find(m => m.id === moduleId);
     const isUtilityModule = module
-      ? ['navegacion', 'menu', 'espaciador', 'footer', 'trusted_logos'].includes(module.type) ||
+      ? ['navegacion', 'menu', 'espaciador', 'footer'].includes(module.type) ||
         module.id.startsWith('mod_header_1') ||
         module.id.startsWith('mod_menu_1') ||
         module.id.startsWith('mod_footer_1')
@@ -426,7 +426,7 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
     if (!module) return false;
 
     const isUtilityModule =
-      ['navegacion', 'menu', 'espaciador', 'footer', 'trusted_logos'].includes(module.type) ||
+      ['navegacion', 'menu', 'espaciador', 'footer'].includes(module.type) ||
       module.id.startsWith('mod_header_1') ||
       module.id.startsWith('mod_menu_1') ||
       module.id.startsWith('mod_footer_1');
@@ -509,7 +509,7 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
           const hasMultipleModules = (editorState.addedModules?.length || 0) > 1;
           const hasMenuModule = editorState.addedModules.some(m => m.type === 'navegacion' || m.type === 'menu');
           const isMenuEligible =
-            !['navegacion', 'menu', 'espaciador', 'footer', 'trusted_logos'].includes(module.type) &&
+            !['navegacion', 'menu', 'espaciador', 'footer'].includes(module.type) &&
             !module.id.startsWith('mod_header_1') &&
             !module.id.startsWith('mod_menu_1') &&
             !module.id.startsWith('mod_footer_1');

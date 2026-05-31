@@ -30,7 +30,7 @@ export const isUtilityMenuModule = (module: ModuleLike) =>
 
 export const isMenuEligibleModule = (module: ModuleLike) =>
   !isUtilityMenuModule(module) &&
-  !['trusted_logos', 'spacer', 'espaciador'].includes(module.type);
+  !['spacer', 'espaciador'].includes(module.type);
 
 export const resolveMenuMode = (menuId: string, settingsValues: Record<string, any>): MenuMode => {
   const raw = String(settingsValues[getMenuModeKey(menuId)] || '').trim().toLowerCase();

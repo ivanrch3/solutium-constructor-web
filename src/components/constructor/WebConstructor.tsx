@@ -967,10 +967,49 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     // For now, let's assume any change to editorState or siteName after mount makes it dirty
   }, [editorState, siteName]);
 
+  const normalizeEditorSyncValue = (value: any) => {
+    if (typeof value === 'string') {
+      const dimensionMatch = value.trim().match(/^(-?\d+(?:\.\d+)?)px$/);
+      if (dimensionMatch) return Number(dimensionMatch[1]);
+    }
+    return value;
+  };
+
+  const areEditorValuesEquivalent = (a: any, b: any) => {
+    if (Object.is(a, b)) return true;
+    if (Object.is(normalizeEditorSyncValue(a), normalizeEditorSyncValue(b))) return true;
+    if (a && b && typeof a === 'object' && typeof b === 'object') {
+      try {
+        return JSON.stringify(a) === JSON.stringify(b);
+      } catch {
+        return false;
+      }
+    }
+    return false;
+  };
+
+  const areSettingsEquivalent = (a: Record<string, any> = {}, b: Record<string, any> = {}) => {
+    const aKeys = Object.keys(a);
+    const bKeys = Object.keys(b);
+    if (aKeys.length !== bKeys.length) return false;
+    return aKeys.every((key) => Object.prototype.hasOwnProperty.call(b, key) && areEditorValuesEquivalent(a[key], b[key]));
+  };
+
+  const areEditorStatesEquivalent = (a: EditorState, b: EditorState) => (
+    a.addedModules === b.addedModules &&
+    a.expandedModuleId === b.expandedModuleId &&
+    a.selectedElementId === b.selectedElementId &&
+    a.recentlyAddedModuleId === b.recentlyAddedModuleId &&
+    a.totalModulesAdded === b.totalModulesAdded &&
+    a.expandedGroupsByElement === b.expandedGroupsByElement &&
+    areSettingsEquivalent(a.settingsValues, b.settingsValues)
+  );
+
   // We need to wrap setEditorState and setSiteName to set hasUnsavedChanges
   const updateEditorState = (updater: (prev: EditorState) => EditorState) => {
     setEditorState(prev => {
-      const next = updater(prev);
+      const proposedNext = updater(prev);
+      const next = proposedNext === prev || areEditorStatesEquivalent(proposedNext, prev) ? prev : proposedNext;
       if (next !== prev) {
         editorStateRef.current = next;
       }
@@ -1026,7 +1065,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
 
             if (
               Object.prototype.hasOwnProperty.call(newSettings, settingsKey) &&
-              newSettings[settingsKey] !== val
+              !areEditorValuesEquivalent(newSettings[settingsKey], val)
             ) {
               newSettings[settingsKey] = val;
               changed = true;
@@ -1795,6 +1834,8 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
 
       return finalState;
     });
+
+    selectSection(moduleId);
 
     // Mobile flow: jump to structure tab and show groups
     setMobileTab('structure');

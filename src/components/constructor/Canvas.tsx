@@ -168,18 +168,21 @@ export const Canvas: React.FC<CanvasProps> = ({
   }, [viewport, isFullscreen, isPreviewMode, reloadKey, editorState.addedModules?.length]);
 
   React.useEffect(() => {
-    if ((editorState.addedModules?.length || 0) > prevModulesLength.current) {
+    const modulesLength = editorState.addedModules?.length || 0;
+    if (modulesLength > prevModulesLength.current) {
+      const targetId = editorState.recentlyAddedModuleId || editorState.expandedModuleId;
       requestAnimationFrame(() => {
         setTimeout(() => {
-          lastModuleRef.current?.scrollIntoView({ 
+          const targetElement = targetId ? document.getElementById(targetId) : null;
+          (targetElement || lastModuleRef.current)?.scrollIntoView({
             behavior: 'smooth', 
             block: 'start' 
           });
         }, 100);
       });
     }
-    prevModulesLength.current = editorState.addedModules?.length || 0;
-  }, [editorState.addedModules?.length]);
+    prevModulesLength.current = modulesLength;
+  }, [editorState.addedModules?.length, editorState.recentlyAddedModuleId, editorState.expandedModuleId]);
 
   React.useEffect(() => {
     if (editorState.expandedModuleId) {

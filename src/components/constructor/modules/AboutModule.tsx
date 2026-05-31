@@ -382,22 +382,22 @@ export const AboutModule: React.FC<{
               </div>
             </div>
           ) : layout === 'overlapping' ? (
-            <div className="grid grid-cols-1 @lg:grid-cols-12 gap-12 items-center">
-              <div className="@lg:col-span-7 relative z-10">
+            <div className="grid grid-cols-1 @5xl:grid-cols-12 gap-12 items-center">
+              <div className="@5xl:col-span-7 relative z-10">
                 {renderVisual()}
               </div>
               <div 
-                className={`@lg:col-span-6 @lg:-ml-24 relative z-20 backdrop-blur-md p-8 @md:p-12 rounded-[40px] shadow-2xl shadow-black/5 ${darkMode ? 'bg-slate-800/80' : 'bg-white/80'}`}
+                className={`@5xl:col-span-6 @5xl:-ml-24 relative z-20 backdrop-blur-md p-8 @md:p-12 rounded-[40px] shadow-2xl shadow-black/5 ${darkMode ? 'bg-slate-800/80' : 'bg-white/80'}`}
               >
                 {renderNarrative()}
               </div>
             </div>
           ) : (
-            <div className={`grid grid-cols-1 @lg:grid-cols-2 gap-16 @md:gap-24 items-center`}>
-              <div className={layout === 'split_left' ? '@lg:order-2' : '@lg:order-1'}>
+            <div className={`grid grid-cols-1 @5xl:grid-cols-2 gap-16 @md:gap-24 items-center`}>
+              <div className={layout === 'split_left' ? '@5xl:order-2' : '@5xl:order-1'}>
                 {renderNarrative()}
               </div>
-              <div className={layout === 'split_left' ? '@lg:order-1' : '@lg:order-2'}>
+              <div className={layout === 'split_left' ? '@5xl:order-1' : '@5xl:order-2'}>
                 {renderVisual()}
               </div>
             </div>

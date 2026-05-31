@@ -564,7 +564,7 @@ export const ContactModule: React.FC<{
 
           {/* Layouts */}
           {layout === 'split' && (
-            <div className="grid @lg:grid-cols-2 gap-16 items-start">
+            <div className="grid @5xl:grid-cols-2 gap-16 items-start">
               <div className="space-y-8">
                 {renderInfo()}
                 {renderCalendly()}
@@ -584,7 +584,7 @@ export const ContactModule: React.FC<{
           )}
 
           {layout === 'map_side' && (
-            <div className="grid @lg:grid-cols-2 gap-12 items-stretch">
+            <div className="grid @5xl:grid-cols-2 gap-12 items-stretch">
               <div className="space-y-8">
                 {renderForm()}
                 {renderCalendly()}
@@ -596,7 +596,7 @@ export const ContactModule: React.FC<{
           {layout === 'map_top' && (
             <div className="space-y-12">
               {renderMap()}
-              <div className="grid @lg:grid-cols-2 gap-16 items-start">
+              <div className="grid @5xl:grid-cols-2 gap-16 items-start">
                 <div className="space-y-8">
                   {renderInfo()}
                   {renderCalendly()}

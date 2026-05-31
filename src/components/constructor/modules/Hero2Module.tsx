@@ -551,7 +551,7 @@ export const Hero2Module: React.FC<{
           paddingBottom: `${paddingBottom}px`
         }}
       >
-        <div className="grid grid-cols-1 items-center gap-10 @lg:grid-cols-2 @lg:gap-16">
+        <div className="grid grid-cols-1 items-center gap-10 @5xl:grid-cols-2 @5xl:gap-16">
           {usesImageLayout ? (
             <>
               {isImageFirst ? imageBlock : mainBlock}

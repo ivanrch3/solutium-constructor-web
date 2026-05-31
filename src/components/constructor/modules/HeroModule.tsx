@@ -866,18 +866,18 @@ export const HeroModule: React.FC<{
         }}
       >
         {layout === 'split' && (
-          <div className="grid grid-cols-1 @lg:grid-cols-2 gap-16 @lg:gap-24 items-center">
+          <div className="grid grid-cols-1 @5xl:grid-cols-2 gap-16 @5xl:gap-24 items-center">
             {renderContent('left')}
             {renderVisual()}
           </div>
         )}
 
         {layout === 'reverse' && (
-          <div className="grid grid-cols-1 @lg:grid-cols-2 gap-16 @lg:gap-24 items-center">
-            <div className="order-2 @lg:order-1">
+          <div className="grid grid-cols-1 @5xl:grid-cols-2 gap-16 @5xl:gap-24 items-center">
+            <div className="order-2 @5xl:order-1">
               {renderVisual()}
             </div>
-            <div className="order-1 @lg:order-2">
+            <div className="order-1 @5xl:order-2">
               {renderContent('left')}
             </div>
           </div>

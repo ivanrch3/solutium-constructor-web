@@ -406,7 +406,7 @@ export const VideoModule: React.FC<{
       >
         <div className="mx-auto px-8" style={{ maxWidth: layout === 'full' ? '100%' : `${maxWidth}px` }}>
           {layout === 'split' ? (
-            <div className="grid grid-cols-1 @lg:grid-cols-2 gap-12 @md:gap-16 items-center">
+            <div className="grid grid-cols-1 @5xl:grid-cols-2 gap-12 @md:gap-16 items-center">
               <motion.div
                 initial={(globalAnimOverride ? globalAnimOverride.hidden : (entranceAnim ? { opacity: 0, x: -30 } : {})) as any}
                 whileInView={(globalAnimOverride ? globalAnimOverride.visible : (entranceAnim ? { opacity: 1, x: 0 } : {})) as any}

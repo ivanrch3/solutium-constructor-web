@@ -72,7 +72,10 @@ export const ContactModule: React.FC<{
   const sanitizeWhatsappNumber = (value: unknown) => String(value ?? '').replace(/[^\d]/g, '');
 
   // Global Settings
-  const layout = getVal(null, 'layout', 'split');
+  const layout = getVal(null, 'layout', 'form_map');
+  const normalizedLayout = ['form_map', 'split', 'bento', 'map_side', 'map_top', 'centered'].includes(String(layout))
+    ? 'form_map'
+    : 'form_map';
   const maxWidth = parseF(getVal(null, 'max_width', 1200), 1200);
   const paddingY = parseF(getVal(null, 'padding_y', 100), 100);
   const darkMode = toBoolean(getVal(null, 'dark_mode', false));
@@ -113,8 +116,8 @@ export const ContactModule: React.FC<{
   const subtitleHighlightBold = getVal(`${moduleId}_el_contact_header`, 'subtitle_highlight_bold', true);
 
   // Element: Info
-  const email = getVal(`${moduleId}_el_contact_info`, 'email', CONTACT_DEFAULTS.email);
-  const phone = getVal(`${moduleId}_el_contact_info`, 'phone', CONTACT_DEFAULTS.phone);
+  const email = getVal(`${moduleId}_el_contact_form`, 'email', getVal(`${moduleId}_el_contact_info`, 'email', CONTACT_DEFAULTS.email));
+  const phone = getVal(`${moduleId}_el_contact_form`, 'phone', getVal(`${moduleId}_el_contact_info`, 'phone', CONTACT_DEFAULTS.phone));
   const address = getVal(`${moduleId}_el_contact_info`, 'address', CONTACT_DEFAULTS.address);
   const showAvailability = getVal(`${moduleId}_el_contact_info`, 'show_availability', true);
   const availabilityText = getVal(`${moduleId}_el_contact_info`, 'availability_text', 'Disponible ahora (9:00 - 18:00)');
@@ -450,7 +453,8 @@ export const ContactModule: React.FC<{
       <div 
         className={`w-full overflow-hidden shadow-xl border group ${isBento ? 'h-full' : ''} ${darkMode ? 'border-white/10' : 'border-slate-200'}`}
         style={{ 
-          height: isBento ? '100%' : `${mapHeight}px`, 
+          height: isBento ? '100%' : `${mapHeight}px`,
+          minHeight: isBento ? '320px' : undefined,
           borderRadius: `${mapRadius}px`,
           filter: mapGrayscale ? 'grayscale(1)' : 'none',
           borderWidth: '1px',
@@ -581,57 +585,15 @@ export const ContactModule: React.FC<{
           </div>
 
           {/* Layouts */}
-          {layout === 'split' && (
-            <div className="grid grid-cols-1 @5xl:grid-cols-2 gap-8 @5xl:gap-12 items-start">
-              {renderForm()}
-              <div className="space-y-6">
-                {renderMap()}
-                {renderCalendly()}
-              </div>
+          <div data-contact-layout={normalizedLayout} className="grid grid-cols-1 @5xl:grid-cols-2 gap-8 @5xl:gap-12 items-stretch">
+            <div className="h-full">
+              {renderForm(true)}
             </div>
-          )}
-
-          {layout === 'centered' && (
-            <div className="max-w-3xl mx-auto space-y-8">
-              {renderForm()}
-              {renderMap()}
+            <div className="h-full space-y-6">
+              {renderMap(true)}
               {renderCalendly()}
             </div>
-          )}
-
-          {layout === 'map_side' && (
-            <div className="grid grid-cols-1 @5xl:grid-cols-2 gap-8 @5xl:gap-12 items-stretch">
-              <div className="space-y-6">
-                {renderForm()}
-                {renderCalendly()}
-              </div>
-              {renderMap()}
-            </div>
-          )}
-
-          {layout === 'map_top' && (
-            <div className="space-y-8">
-              {renderMap()}
-              <div className="max-w-3xl mx-auto space-y-6">
-                {renderForm()}
-                {renderCalendly()}
-              </div>
-            </div>
-          )}
-
-          {layout === 'bento' && (
-            <div className="grid grid-cols-1 @5xl:grid-cols-2 gap-6 auto-rows-[minmax(200px,auto)]">
-              <div className="@5xl:row-span-2">
-                {renderForm(true)}
-              </div>
-              <div>
-                {renderMap(true)}
-              </div>
-              <div>
-                {renderCalendly(true)}
-              </div>
-            </div>
-          )}
+          </div>
         </motion.div>
       </div>
       <style>{`

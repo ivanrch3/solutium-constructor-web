@@ -2283,12 +2283,8 @@ export const CONTACT_MODULE: WebModule = {
   globalSettings: {
     contenido: [],
     estructura: [
-      { id: 'layout', label: 'Diseño', type: 'select', defaultValue: 'split', options: [
-        { label: 'Dividido (Info + Form)', value: 'split' },
-        { label: 'Mosaico (Bento)', value: 'bento' },
-        { label: 'Mapa Lateral', value: 'map_side' },
-        { label: 'Mapa Superior', value: 'map_top' },
-        { label: 'Centrado', value: 'centered' }
+      { id: 'layout', label: 'Diseno', type: 'select', defaultValue: 'form_map', options: [
+        { label: 'Formulario + mapa', value: 'form_map' }
       ]},
       { id: 'max_width', label: 'Ancho Máximo', type: 'range', defaultValue: 1200, min: 800, max: 1600, unit: 'px' },
       { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 40, min: 40, max: 200, unit: 'px' }
@@ -2328,46 +2324,10 @@ export const CONTACT_MODULE: WebModule = {
       ],
       contenido: [], estilo: [], tipografia: [], multimedia: [], interaccion: []
     }},
-    { id: 'el_contact_info', name: 'Información y Redes', type: 'text', groups: ['contenido', 'estilo', 'estructura'], settings: {
+    { id: 'el_contact_form', name: 'Formulario', type: 'text', groups: ['contenido', 'estilo', 'estructura', 'interaccion', 'tipografia'], settings: {
       contenido: [
         { id: 'email', label: 'Email de Contacto', type: 'text', defaultValue: 'hola@tuempresa.com' },
         { id: 'phone', label: 'WhatsApp Principal', type: 'text', defaultValue: '+34 900 000 000' },
-        { id: 'address', label: 'Dirección Física', type: 'text', defaultValue: 'Calle Innovación 123, Madrid, España' },
-        { id: 'availability_text', label: 'Texto Disponibilidad', type: 'text', defaultValue: 'Disponible ahora (9:00 - 18:00)' },
-        { 
-          id: 'social_links', 
-          label: 'Redes Sociales', 
-          type: 'repeater', 
-          defaultValue: [],
-          fields: [
-            { id: 'platform', label: 'Plataforma', type: 'select', defaultValue: 'linkedin', options: [
-              { label: 'LinkedIn', value: 'linkedin' },
-              { label: 'Twitter / X', value: 'twitter' },
-              { label: 'Instagram', value: 'instagram' },
-              { label: 'Facebook', value: 'facebook' },
-              { label: 'GitHub', value: 'github' }
-            ]},
-            { id: 'url', label: 'URL del Perfil', type: 'text', defaultValue: 'https://' }
-          ]
-        }
-      ],
-      estructura: [
-        { id: 'show_availability', label: 'Mostrar Disponibilidad', type: 'boolean', defaultValue: true },
-        { id: 'show_copy_buttons', label: 'Botones de Copiar', type: 'boolean', defaultValue: true }
-      ],
-      estilo: [
-        { id: 'card_bg', label: 'Fondo de Tarjeta', type: 'color', defaultValue: 'transparent' },
-        { id: 'icon_color', label: 'Color de Iconos', type: 'color', defaultValue: '#3B82F6' },
-        { id: 'info_color', label: 'Color de Texto', type: 'color', defaultValue: '#475569' }
-      ],
-      tipografia: [
-        { id: 'info_size', label: 'Tamaño de Texto', type: 'typography_size', defaultValue: 'p', allowedLevels: ['t3', 'p', 's'] },
-        { id: 'info_weight', label: 'Peso de Texto', type: 'font_weight', defaultValue: 'normal' }
-      ],
-      multimedia: [], interaccion: []
-    }},
-    { id: 'el_contact_form', name: 'Formulario', type: 'text', groups: ['contenido', 'estilo', 'estructura', 'interaccion', 'tipografia'], settings: {
-      contenido: [
         { id: 'button_text', label: 'Texto del Botón', type: 'text', defaultValue: 'Enviar por WhatsApp' },
         ...BUTTON_LINK_SETTINGS('btn'),
         { id: 'whatsapp_number', label: 'Número WhatsApp Principal', type: 'text', defaultValue: '' },

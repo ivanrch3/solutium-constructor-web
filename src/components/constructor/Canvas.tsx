@@ -115,6 +115,8 @@ export const Canvas: React.FC<CanvasProps> = ({
   const fullscreenViewportWidth = viewport === 'desktop'
     ? '100%'
     : `min(${viewportWidths[viewport]}, calc(100vw - 48px))`;
+  const isDesktopCanvas = viewport === 'desktop';
+  const useFullBleedDesktopCanvas = !isPreviewMode && isDesktopCanvas;
 
   React.useEffect(() => {
     if ((editorState.addedModules?.length || 0) > prevModulesLength.current) {
@@ -173,7 +175,7 @@ export const Canvas: React.FC<CanvasProps> = ({
         id="constructor-canvas-scroll-container"
         className={`flex-1 overflow-y-scroll custom-scrollbar preview-scrollbar transition-all duration-500 ${isFullscreen ? 'fixed inset-0 z-[100]' : ''} ${isPreviewMode ? 'p-0' : ''}`}
         style={{
-          scrollbarGutter: 'stable both-edges',
+          scrollbarGutter: 'stable',
           backgroundColor: isPreviewMode ? 'var(--builder-surface)' : 'var(--builder-surface-muted)'
         }}
       >
@@ -211,18 +213,18 @@ export const Canvas: React.FC<CanvasProps> = ({
           </button>
         </div>
       )}
-      <div className={`flex justify-center min-h-full transition-all duration-500 ${isFullscreen ? 'p-6 pt-24' : isPreviewMode ? 'p-0' : 'p-12'}`}>
+      <div className={`flex justify-center min-h-full transition-all duration-500 ${isFullscreen ? (isDesktopCanvas ? 'px-0 pb-0 pt-24' : 'p-6 pt-24') : isPreviewMode ? 'p-0' : isDesktopCanvas ? 'p-0' : 'p-6'}`}>
         <div 
           id="constructor-canvas-render"
           data-preview-root="true"
           className={`bg-surface relative transition-all duration-500 ease-in-out @container ${
             isPreviewMode ? 'w-full max-w-none border-none rounded-none shadow-none' : 
-            (isFullscreen && viewport === 'desktop') ? 'w-full max-w-none min-h-full rounded-none border-none shadow-none' : 'rounded-2xl border border-border/50 shadow-2xl'
+            useFullBleedDesktopCanvas ? 'w-full max-w-none min-h-full rounded-none border-none shadow-none' : 'rounded-2xl border border-border/50 shadow-2xl'
           } ${viewport === 'mobile' && !isPreviewMode ? 'rounded-[3rem] border-[8px] border-slate-900 shadow-[0_0_0_2px_rgba(0,0,0,0.1)]' : ''} ${viewport === 'tablet' && !isPreviewMode ? 'rounded-[2rem] border-[12px] border-slate-900 shadow-[0_0_0_2px_rgba(0,0,0,0.1)]' : ''}`}
           style={{ 
             width: isPreviewMode ? '100%' : (isFullscreen ? fullscreenViewportWidth : viewportWidths[viewport]), 
-            maxWidth: isPreviewMode ? 'none' : (isFullscreen ? (viewport === 'desktop' ? 'none' : viewportWidths[viewport]) : viewport === 'desktop' ? '1200px' : viewportWidths[viewport]),
-            minHeight: isPreviewMode ? '100vh' : (isFullscreen && viewport === 'desktop' ? '100vh' : viewport === 'mobile' ? '667px' : viewport === 'tablet' ? '1024px' : '800px')
+            maxWidth: isPreviewMode ? 'none' : (isFullscreen ? (viewport === 'desktop' ? 'none' : viewportWidths[viewport]) : viewport === 'desktop' ? 'none' : viewportWidths[viewport]),
+            minHeight: isPreviewMode ? '100vh' : (isDesktopCanvas ? (isFullscreen ? '100vh' : '100%') : viewport === 'mobile' ? '667px' : '1024px')
           }}
         >
           {viewport === 'mobile' && !isPreviewMode && (

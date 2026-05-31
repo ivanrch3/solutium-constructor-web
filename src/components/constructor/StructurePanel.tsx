@@ -76,7 +76,7 @@ interface StructurePanelProps {
   trustedCompanyLogos?: TrustedCompanyLogo[];
   isMobile?: boolean;
   activeTab?: string;
-  isWideForBento?: boolean;
+  useSplitLayout?: boolean;
 }
 
 export const StructurePanel: React.FC<StructurePanelProps> = ({ 
@@ -93,7 +93,7 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
   trustedCompanyLogos,
   isMobile,
   activeTab = 'constructor',
-  isWideForBento = false
+  useSplitLayout = false
 }) => {
   const {
     siteContent,
@@ -457,7 +457,7 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
   };
 
   return (
-    <div className={`h-full bg-surface border-r border-border flex flex-col z-30 shadow-xl shadow-text/10 overflow-hidden transition-all duration-300 shrink-0 ${isMobile ? 'w-full' : (isCollapsed ? 'w-[70px]' : (isWideForBento ? 'w-[calc(50vw-16rem)] min-w-[320px] max-w-[640px]' : 'w-80'))}`}>
+    <div className={`h-full bg-surface border-r border-border flex flex-col z-30 shadow-xl shadow-text/10 overflow-hidden transition-all duration-300 shrink-0 ${isMobile ? 'w-full' : (isCollapsed ? 'w-[70px]' : (useSplitLayout ? 'w-[calc(50vw-16rem)] min-w-[320px] max-w-[640px]' : 'w-80'))}`}>
       <div className={`p-4 flex items-center border-b border-border/60 ${isCollapsed && !isMobile ? 'justify-center' : 'justify-between'}`}>
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 bg-primary rounded-lg flex items-center justify-center">

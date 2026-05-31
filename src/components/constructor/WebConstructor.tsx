@@ -66,7 +66,6 @@ import { generateSite, generateLandingWithMotherAI, generateLandingDryRunLocal, 
 import { AIGenerationContext, AIPageGenerationBrief, AIPagePlan } from '../../types/ai';
 import { ProjectForm, ProjectFormData } from '../ProjectForm';
 import { initialContent, useEditorStore } from '../../store/editorStore';
-import { PropertyEditor } from './PropertyEditor';
 import { logDebug } from '../../utils/debug';
 import {
   PROJECT_THEME_FALLBACKS,
@@ -4109,13 +4108,7 @@ const formatTimestampName = () => {
     }, 400);
   };
 
-  const selectedBentoSectionId = editorState.expandedModuleId || selectedSectionId;
-  const selectedBentoSection = siteContent.sections.find(section => section.id === selectedBentoSectionId)
-    || editorState.addedModules.find(section => section.id === selectedBentoSectionId);
-  const isSelectedBentoSection = selectedBentoSection?.type === 'bento'
-    || selectedBentoSection?.templateId === 'mod_bento_1'
-    || selectedBentoSection?.id?.startsWith('mod_bento_1');
-  const useBentoSplitLayout = Boolean(!isMobile && !isPreviewMode && !isExternalRender && isSelectedBentoSection);
+  const useConstructorSplitLayout = Boolean(!isMobile && !isPreviewMode && !isExternalRender);
 
   return (
     <div className={`h-screen w-screen flex overflow-hidden bg-surface font-sans antialiased ${(isPreviewMode || isExternalRender) ? 'p-0' : ''}`}>
@@ -4417,10 +4410,10 @@ const formatTimestampName = () => {
                     customers={customers}
                     trustedCompanyLogos={trustedCompanyLogos}
                     activeTab={activeTab}
-                    isWideForBento={useBentoSplitLayout}
+                    useSplitLayout={useConstructorSplitLayout}
                   />
                 )}
-                <div className={`${useBentoSplitLayout ? 'w-1/2 flex-none' : 'flex-1'} flex flex-col h-full min-w-0`}>
+                <div className={`${useConstructorSplitLayout ? 'w-[50vw] flex-none' : 'flex-1'} flex flex-col h-full min-w-0`}>
                   {!isPreviewMode && !isExternalRender && (
                   <TopBar 
                     onSave={handleSaveDraft} 
@@ -4470,14 +4463,6 @@ const formatTimestampName = () => {
                         onOpenBentoGenerator={() => setShowBentoPrompt(true)}
                       />
                     </div>
-                    {!isPreviewMode && !isExternalRender && !isSelectedBentoSection && (
-                      <aside className="w-80 shrink-0 border-l border-border bg-surface overflow-hidden">
-                        <PropertyEditor
-                          settingsValues={editorState.settingsValues}
-                          onSettingChange={handleSettingChange}
-                        />
-                      </aside>
-                    )}
                   </div>
                 </div>
               </>

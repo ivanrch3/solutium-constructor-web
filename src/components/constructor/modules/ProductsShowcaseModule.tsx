@@ -79,18 +79,31 @@ export const ProductsShowcaseModule: React.FC<ProductsShowcaseModuleProps> = ({
 
     const catalog = products.length > 0 ? products : [];
     const selectedIds = settingsValues[`${moduleId}_el_products_showcase_config_select_products`] || [];
+    const rawSelectionMode =
+      settingsValues[`${moduleId}_el_products_showcase_config_selection_mode`] ||
+      settingsValues[`${moduleId}_el_products_config_selection_mode`] ||
+      content.selectionMode ||
+      content.selection_mode ||
+      'auto';
+    const selectionMode = String(rawSelectionMode || 'auto').toLowerCase();
+    const isManualSelectionMode = ['manual', 'selected', 'selection', 'featured', 'custom'].includes(selectionMode);
 
     if (isPublishedViewer) {
       if (catalog.length > 0) {
-        const snapshotIds = new Set(
-          (Array.isArray(content.products) ? content.products : [])
-            .map((product: any) => String(product?.id))
-            .filter(Boolean)
-        );
-        raw = snapshotIds.size > 0
-          ? catalog.filter((product) => snapshotIds.has(String(product.id)))
-          : catalog.slice(0, 8);
-        resSource = snapshotIds.size > 0 ? 'published_catalog_selected' : 'published_catalog_all';
+        const manualIdsSource = Array.isArray(selectedIds) && selectedIds.length > 0
+          ? selectedIds
+          : (Array.isArray(content.products) ? content.products.map((product: any) => product?.id).filter(Boolean) : []);
+        const manualIds = new Set(manualIdsSource.map((id: any) => String(id)).filter(Boolean));
+
+        if (isManualSelectionMode) {
+          raw = manualIds.size > 0
+            ? catalog.filter((product) => manualIds.has(String(product.id)))
+            : [];
+          resSource = manualIds.size > 0 ? 'published_catalog_manual_selected' : 'published_catalog_manual_empty';
+        } else {
+          raw = catalog;
+          resSource = 'published_catalog_auto_all';
+        }
       } else {
         raw = [];
         resSource = 'published_catalog_empty';
@@ -109,7 +122,7 @@ export const ProductsShowcaseModule: React.FC<ProductsShowcaseModuleProps> = ({
     // C. Editor / Preview: Resolución Dinámica
     else {
       if (!Array.isArray(selectedIds) || selectedIds.length === 0) {
-        raw = catalog.slice(0, 8);
+        raw = catalog;
         resSource = catalog.length > 0 ? 'catalog_default' : 'empty';
       } else {
         const stringIds = selectedIds.map(String);
@@ -129,7 +142,7 @@ export const ProductsShowcaseModule: React.FC<ProductsShowcaseModuleProps> = ({
     }
 
     return { displayProducts: normalized, source: resSource };
-  }, [content.products, settingsValues, moduleId, products, isPublishedViewer]);
+  }, [content.products, content.selectionMode, content.selection_mode, settingsValues, moduleId, products, isPublishedViewer]);
 
   // --- 2. HELPERS ---
   const getVal = (elementId: string | null, settingId: string, defaultValue: any) => {

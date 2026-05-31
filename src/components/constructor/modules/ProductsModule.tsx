@@ -26,6 +26,41 @@ const resolveThemeColor = (
   return safeValue;
 };
 
+const toProductArray = (value: unknown): Product[] =>
+  Array.isArray(value)
+    ? value.filter((item): item is Product => Boolean(item) && typeof item === 'object')
+    : [];
+
+const toFiniteNumber = (value: unknown, fallback = 0): number => {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string') {
+    const parsed = Number(value.replace(/[^\d.,-]/g, '').replace(',', '.'));
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return fallback;
+};
+
+const normalizeRenderableProduct = (product: Product, index: number): Product => {
+  const rawProduct = product as any;
+  return {
+    ...product,
+    id: String(rawProduct.id || `product-${index}`),
+    name: String(rawProduct.name || rawProduct.title || 'Producto'),
+    description: rawProduct.description || '',
+    price: toFiniteNumber(rawProduct.price, 0),
+    priceReference: rawProduct.priceReference !== undefined && rawProduct.priceReference !== null
+      ? toFiniteNumber(rawProduct.priceReference, 0)
+      : undefined,
+    category: String(rawProduct.category || rawProduct.categoria || 'Sin categoría'),
+    imageUrl: rawProduct.imageUrl || rawProduct.image_url || rawProduct.image || '',
+    image2Url: rawProduct.image2Url || rawProduct.image_2_url || '',
+    stock: toFiniteNumber(rawProduct.stock, 0),
+    ratingAverage: toFiniteNumber(rawProduct.ratingAverage, 0),
+    reviewCount: toFiniteNumber(rawProduct.reviewCount, 0),
+    badgeText: rawProduct.badgeText || rawProduct.badge_text || ''
+  };
+};
+
 export const ProductsModule: React.FC<{ 
   moduleId: string, 
   settingsValues: Record<string, any>,
@@ -88,7 +123,15 @@ export const ProductsModule: React.FC<{
 
     // [FASE 2] RESOLUCIÓN EN VIVO / PÁGINA PUBLICADA
     if (!isEditor || forceSnapshotRender) {
-      if (snapshotProducts.length > 0) {
+      if (forceSnapshotRender && injectedProducts.length > 0) {
+        results = injectedProducts;
+        sourceUsed = 'published_catalog_from_viewer';
+        reason = 'Viewer resolved real catalog products';
+      } else if (forceSnapshotRender) {
+        results = [];
+        sourceUsed = 'published_catalog_empty';
+        reason = 'Published viewer has no real catalog products';
+      } else if (snapshotProducts.length > 0) {
         results = snapshotProducts;
         sourceUsed = 'published_snapshot_settings';
         reason = 'Priority snapshot found in settings';
@@ -96,10 +139,6 @@ export const ProductsModule: React.FC<{
         results = injectedProducts;
         sourceUsed = 'published_prop_products';
         reason = 'Snapshot found in products prop';
-      } else if (forceSnapshotRender) {
-        results = [];
-        sourceUsed = 'force_snapshot_empty';
-        reason = 'Force snapshot requested but no data found';
       } else {
         results = [];
         sourceUsed = 'published_no_data';
@@ -235,7 +274,7 @@ export const ProductsModule: React.FC<{
   const showTabs = getVal(`${moduleId}_el_products_config`, 'show_tabs', true);
 
   // Element: Configuración de Selección
-  const selectionMode = getVal(`${moduleId}_el_products_config`, 'selection_mode', 'manual');
+  const selectionMode = getVal(`${moduleId}_el_products_config`, 'selection_mode', 'auto');
   const layout = getVal(null, 'layout', 'grid');
   const columns = Math.max(1, parseInt(getVal(null, 'columns', 4)) || 4);
   const gap = parseF(getVal(null, 'gap', 24), 24);
@@ -260,33 +299,36 @@ export const ProductsModule: React.FC<{
   const allDisplayProducts = useMemo(() => {
     const snapshotKey = `${moduleId}_el_products_items_products`;
     const snapshotFromSettings = settingsValues[snapshotKey];
-    const snapshotProducts = Array.isArray(snapshotFromSettings) ? snapshotFromSettings : [];
+    const snapshotProducts = toProductArray(snapshotFromSettings);
     
-    const catalog = (products && products.length > 0) ? products : (isDevMode ? MOCK_PRODUCTS : []);
+    const sourceProducts = toProductArray(products);
+    const catalog = sourceProducts.length > 0 ? sourceProducts : (isDevMode ? toProductArray(MOCK_PRODUCTS) : []);
     
     // USAR RESOLUTOR FORENSE UNIFICADO
     return resolveProductsForEditor({
       moduleId,
-      selectionMode,
+      selectionMode: String(selectionMode || 'auto').toLowerCase(),
       selectedProductIds,
       selectionTouched,
       catalogProducts: catalog,
       snapshotProducts,
-      injectedProducts: products || [],
+      injectedProducts: sourceProducts,
       isEditor: isActuallyEditor,
       forceSnapshotRender
-    });
+    })
+      .map(normalizeRenderableProduct)
+      .filter((product) => Boolean(product.id));
   }, [products, selectedProductIds, selectionTouched, selectionMode, isDevMode, isPreviewMode, isActuallyEditor, isPublishedViewer, moduleId, settingsValues]);
 
   const categories = useMemo(() => {
-    const cats = new Set(allDisplayProducts.map(p => p.category).filter(Boolean));
+    const cats = new Set(allDisplayProducts.map(p => p?.category).filter(Boolean));
     const sortedCats = Array.from(cats).sort();
     return ['Todos', ...sortedCats];
   }, [allDisplayProducts]);
 
   const filteredProducts = useMemo(() => {
     if (activeTab === 'Todos') return allDisplayProducts;
-    return allDisplayProducts.filter(p => p.category === activeTab);
+    return allDisplayProducts.filter(p => p?.category === activeTab);
   }, [allDisplayProducts, activeTab]);
 
   React.useEffect(() => {

@@ -604,6 +604,10 @@ export const PRODUCTS_MODULE: WebModule = {
       groups: ['contenido'],
       settings: {
         contenido: [
+          { id: 'selection_mode', label: 'Modo de Selección', type: 'select', defaultValue: 'auto', options: [
+            { label: 'Automático', value: 'auto' },
+            { label: 'Manual', value: 'manual' }
+          ]},
           { id: 'select_products', label: 'Selección de Productos', type: 'product_selection', defaultValue: null },
           { id: 'show_tabs', label: 'Mostrar Pestañas de Categoría', type: 'boolean', defaultValue: true }
         ],

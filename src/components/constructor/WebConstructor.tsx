@@ -936,7 +936,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
 
   React.useEffect(() => {
     if (projectId) {
-      getProducts(0, 12, projectId).then(data => {
+      getProducts(0, 100, projectId).then(data => {
         setProducts(data || []);
       });
       getCustomers(0, 50, projectId).then(data => {
@@ -1658,10 +1658,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
                 }
               }
               if (setting.id === 'select_products') {
-                const availableProducts = (products?.length || 0) > 0 ? products : (projectId === 'dev-project-id' ? MOCK_PRODUCTS : []);
-                if ((availableProducts?.length || 0) > 0) {
-                  val = availableProducts.slice(0, 8).map(p => p.id);
-                }
+                val = setting.defaultValue ?? null;
               }
             }
 
@@ -2323,8 +2320,11 @@ const formatTimestampName = () => {
         // Specific overrides for modules that have multiple items (like products/clients)
         if (module.type === 'products' || module.type === 'product_grid') {
           // [SIP v5.5 FIX] Correctly resolve product selection settings from el_products_config
-          const selectionMode = getVal(module.id, 'el_products_config', 'selection_mode', 'auto');
-          const selectedIds = getVal(module.id, 'el_products_config', 'select_products', []);
+          const selectionMode = String(getVal(module.id, 'el_products_config', 'selection_mode', 'auto') || 'auto').toLowerCase();
+          const rawSelectedIds = getVal(module.id, 'el_products_config', 'select_products', []);
+          const selectedIds = Array.isArray(rawSelectedIds) ? rawSelectedIds.map(String).filter(Boolean) : [];
+          const catalogProducts = Array.isArray(products) ? products.filter(Boolean) : [];
+          const isManualSelectionMode = ['manual', 'selected', 'selection', 'featured', 'custom'].includes(selectionMode);
           
           content.selectionMode = selectionMode;
           content.productIds = selectedIds;
@@ -2332,10 +2332,11 @@ const formatTimestampName = () => {
           // [PROTOCOL 12.1] ATOMIC SNAPSHOT: Resolve real products for the published contract
           let finalProducts: Product[] = [];
           
-          if (Array.isArray(products) && products.length > 0) {
-            if (selectionMode === 'manual') {
-              if (Array.isArray(selectedIds) && selectedIds.length > 0) {
-                finalProducts = products.filter(p => selectedIds.includes(p.id));
+          if (catalogProducts.length > 0) {
+            if (isManualSelectionMode) {
+              if (selectedIds.length > 0) {
+                const selectedIdSet = new Set(selectedIds);
+                finalProducts = catalogProducts.filter(p => selectedIdSet.has(String(p.id)));
                 logDebug(`[PRODUCTS_CONTRACT_DEBUG] Resolved ${finalProducts.length} manually selected products.`);
               } else {
                 // [SIP v5.6 FIX] If manual mode but empty selection, publish EMPTY list, do NOT fallback to latest products
@@ -2343,21 +2344,13 @@ const formatTimestampName = () => {
                 logDebug(`[PRODUCTS_CONTRACT_DEBUG] Manual selection is empty. Publishing empty product list.`);
               }
             } else {
-              // Default to auto (latest 8 products) for 'auto' mode
-              finalProducts = [...products]
-                .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
-                .slice(0, 8);
+              // Default to auto: publish the full real project catalog for 'auto' mode
+              finalProducts = [...catalogProducts]
+                .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
               logDebug(`[PRODUCTS_CONTRACT_DEBUG] Resolved ${finalProducts.length} automated products (Mode: ${selectionMode}).`);
             }
           }
 
-          // Fallback to existing injected products if database catalog is empty but injected source exists
-          if (finalProducts.length === 0) {
-            const currentInjected = getVal(module.id, 'el_products_items', 'products', []) as Product[];
-            if (Array.isArray(currentInjected) && currentInjected.length > 0) {
-              finalProducts = currentInjected;
-            }
-          }
 
           if (finalProducts.length > 0) {
             // [PROTOCOL 12.3] DATA NORMALIZATION
@@ -2396,8 +2389,8 @@ const formatTimestampName = () => {
               sectionType: module.type,
               selectionMode,
               selectedProductIds: selectedIds,
-              selectedProductIdsCount: Array.isArray(selectedIds) ? selectedIds.length : 0,
-              catalogProductsCount: products.length,
+              selectedProductIdsCount: selectedIds.length,
+              catalogProductsCount: catalogProducts.length,
               finalProductsCount: normalizedProducts.length,
               finalProductIds: normalizedProducts.map(p => p.id),
               finalProductNames: normalizedProducts.map(p => p.name),
@@ -2433,8 +2426,8 @@ const formatTimestampName = () => {
             console.warn('[PRODUCTS_PUBLISH_SNAPSHOT_EMPTY_WARNING]', {
               moduleId: module.id,
               selectionMode,
-              selectedIdsCount: selectedIds?.length,
-              availableProductsCount: products?.length
+              selectedIdsCount: selectedIds.length,
+              availableProductsCount: catalogProducts.length
             });
           }
         }
@@ -2456,8 +2449,8 @@ const formatTimestampName = () => {
 
           if (Array.isArray(products) && products.length > 0) {
             if (selectedIds === null || selectedIds === undefined) {
-              // Default selection if none is made
-              snapshot = products.slice(0, 8);
+              // Default selection if none is made: keep the full real project catalog
+              snapshot = products;
             } else if (Array.isArray(selectedIds)) {
               const stringIds = selectedIds.map(String);
               snapshot = products.filter(p => stringIds.includes(String(p.id)));

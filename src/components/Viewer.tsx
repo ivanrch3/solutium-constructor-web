@@ -409,6 +409,16 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
 
              // [FASE 1] Datos brutos de la sección
              const selectProductsRaw = section.settings?.[`${moduleId}_el_products_config_select_products`] || section.settings?.select_products;
+             const rawSelectionMode =
+               finalSettingsValues[`${moduleId}_el_products_config_selection_mode`] ||
+               section.settings?.[`${moduleId}_el_products_config_selection_mode`] ||
+               section.settings?.selection_mode ||
+               section.settings?.selectionMode ||
+               section.content?.selectionMode ||
+               section.content?.selection_mode ||
+               'auto';
+             const selectionMode = String(rawSelectionMode || 'auto').toLowerCase();
+             const isManualSelectionMode = ['manual', 'selected', 'selection', 'featured', 'custom'].includes(selectionMode);
             
             // [VIEWER_PUBLISHED_CONTRACT_PRODUCTS_FORENSIC]
             if (isPublishedViewer || window.location.search.includes('debug=products')) {
@@ -449,7 +459,7 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
               contentItemsCount: section.content?.items?.length || 0,
               settingsKeys: section.settings ? Object.keys(section.settings).length : 0,
               settingsValuesKeys: Object.keys(finalSettingsValues).length,
-              selectionMode: section.settings?.[`${moduleId}_el_products_config_selection_mode`] || section.settings?.selection_mode,
+              selectionMode,
               selectProductsRaw: Array.isArray(selectProductsRaw) ? selectProductsRaw.length : 0,
               productsPropCount: catalogProducts?.length || 0,
               firstContentProduct: section.content?.products?.[0] || section.content?.productos?.[0]
@@ -464,6 +474,14 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
               finalSettingsValues[`${moduleId}_el_products_items_products`] ||
               section.settings?.[`${moduleId}_el_products_items_products`] ||
               [];
+            const explicitSelectedProductIds =
+              finalSettingsValues[`${moduleId}_el_products_config_select_products`] ||
+              section.settings?.[`${moduleId}_el_products_config_select_products`] ||
+              section.settings?.select_products ||
+              section.settings?.selectedProductIds ||
+              section.content?.productIds ||
+              section.content?.selectedProductIds ||
+              [];
 
             let finalProducts: Product[] = [];
             let resolutionSource = "none";
@@ -471,15 +489,20 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
 
             if (isPublishedViewer) {
               if (catalogProducts.length > 0) {
-                const snapshotIds = new Set(
-                  Array.isArray(snapshotProducts)
-                    ? snapshotProducts.map((product: any) => String(product?.id)).filter(Boolean)
-                    : []
-                );
-                finalProducts = snapshotIds.size > 0
-                  ? catalogProducts.filter((product) => snapshotIds.has(String(product.id)))
-                  : catalogProducts;
-                resolutionSource = snapshotIds.size > 0 ? "published_catalog_selected" : "published_catalog_all";
+                const manualIdsSource = Array.isArray(explicitSelectedProductIds) && explicitSelectedProductIds.length > 0
+                  ? explicitSelectedProductIds
+                  : (Array.isArray(snapshotProducts) ? snapshotProducts.map((product: any) => product?.id).filter(Boolean) : []);
+                const manualIds = new Set(manualIdsSource.map((id: any) => String(id)).filter(Boolean));
+
+                if (isManualSelectionMode) {
+                  finalProducts = manualIds.size > 0
+                    ? catalogProducts.filter((product) => manualIds.has(String(product.id)))
+                    : [];
+                  resolutionSource = manualIds.size > 0 ? "published_catalog_manual_selected" : "published_catalog_manual_empty";
+                } else {
+                  finalProducts = catalogProducts;
+                  resolutionSource = "published_catalog_auto_all";
+                }
               } else {
                 finalProducts = [];
                 resolutionSource = "published_catalog_empty";
@@ -515,6 +538,7 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
               finalProductsCount: finalProducts.length,
               finalProductIds: finalProducts.map(p => p.id),
               source: resolutionSource,
+              selectionMode,
               skippedSupabaseFetch,
               ignoredManualSelectionFilter: isPublishedViewer && finalProducts.length > 0,
               forceSnapshotRender: isPublishedViewer && finalProducts.length > 0

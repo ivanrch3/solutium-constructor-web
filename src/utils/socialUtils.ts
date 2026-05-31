@@ -1,3 +1,4 @@
+import { logDebug } from './debug';
 
 export type SocialPlatform = 'facebook' | 'instagram' | 'tiktok' | 'x' | 'linkedin' | 'youtube' | 'whatsapp' | 'website';
 
@@ -118,7 +119,7 @@ export const resolveFooterSocialLinks = (
 
   if (realManualLinks.length > 0) {
     if (debug) {
-      console.log('[FOOTER_SOCIAL_RESOLUTION_DEBUG]', {
+      logDebug('[FOOTER_SOCIAL_RESOLUTION_DEBUG]', {
         moduleId,
         manualRealSocials: realManualLinks,
         source: "manual",
@@ -166,7 +167,7 @@ export const resolveFooterSocialLinks = (
 
   if (projectLinks.length > 0) {
     if (debug) {
-      console.log('[FOOTER_SOCIAL_RESOLUTION_DEBUG]', {
+      logDebug('[FOOTER_SOCIAL_RESOLUTION_DEBUG]', {
         moduleId,
         projectSocialsRaw: projectSocials,
         finalSocialLinks: projectLinks,
@@ -185,7 +186,7 @@ export const resolveFooterSocialLinks = (
   ];
 
   if (debug) {
-    console.log('[FOOTER_SOCIAL_RESOLUTION_DEBUG]', {
+    logDebug('[FOOTER_SOCIAL_RESOLUTION_DEBUG]', {
       moduleId,
       finalSocialLinks: placeholders,
       source: "defaults",

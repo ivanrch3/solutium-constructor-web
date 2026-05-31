@@ -95,14 +95,6 @@ export const startHandshake = (onConfig: (payload: HandshakePayload) => void) =>
   };
 
   const urlParams = new URLSearchParams(window.location.search);
-
-  console.log('[CONSTRUCTOR_BOOT_START] startHandshake iniciado', {
-    hasOpener: !!window.opener,
-    hasParent: window.parent !== window,
-    urlParams: Object.fromEntries(urlParams.entries()),
-    isStable,
-  });
-
   const configFromUrl = {
     supabase_url: urlParams.get('supabase_url'),
     supabase_anon_key: urlParams.get('supabase_anon_key'),
@@ -114,7 +106,7 @@ export const startHandshake = (onConfig: (payload: HandshakePayload) => void) =>
   };
 
   if (configFromUrl.supabase_url && configFromUrl.session_token) {
-    console.log('[SIP v5.2] Configuración recuperada desde URL.', configFromUrl);
+    logDebug('[SIP v5.2] Configuración recuperada desde URL.');
     processConfig(configFromUrl);
     setupMessageListener();
     return;

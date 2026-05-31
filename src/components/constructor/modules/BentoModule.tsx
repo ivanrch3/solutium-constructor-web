@@ -1,3 +1,4 @@
+import { logDebug } from '../../../utils/debug';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import * as LucideIcons from 'lucide-react';
@@ -890,7 +891,7 @@ export const BentoModule: React.FC<{
 }> = ({ moduleId, settingsValues, content, onSettingChange, isPreviewMode, onOpenBentoGenerator }) => {
   useEffect(() => {
     if (!isBentoDebugEnabled()) return;
-    console.log('[BENTO_MODULE_MOUNT_DEBUG]', {
+    logDebug('[BENTO_MODULE_MOUNT_DEBUG]', {
       moduleId,
       runtime: "constructor_canvas",
       isPreviewMode,
@@ -1065,7 +1066,7 @@ export const BentoModule: React.FC<{
   const handleBreakpointChange = (newBreakpoint: string) => {
     currentBreakpointRef.current = newBreakpoint;
     setCurrentBreakpoint(newBreakpoint);
-    if (isBentoDebugEnabled()) console.log('[BENTO_BP_CHANGE]', newBreakpoint);
+    if (isBentoDebugEnabled()) logDebug('[BENTO_BP_CHANGE]', newBreakpoint);
   };
 
   const itemVariants = globalAnimOverride || {
@@ -1308,7 +1309,7 @@ export const BentoModule: React.FC<{
     setIsElementPickerOpen(false);
 
     if (isBentoDebugEnabled()) {
-      console.log('[BENTO_CELL_UPDATE_DEBUG]', {
+      logDebug('[BENTO_CELL_UPDATE_DEBUG]', {
         moduleId,
         action: "add_element",
         kind,
@@ -1454,7 +1455,7 @@ export const BentoModule: React.FC<{
 
   useEffect(() => {
     if (!isPreviewMode && isBentoDebugEnabled()) {
-      console.log('[BENTO_RENDER_DEBUG]', {
+      logDebug('[BENTO_RENDER_DEBUG]', {
         moduleId,
         itemsCount: rawItems.length,
         columns,
@@ -1636,7 +1637,7 @@ export const BentoModule: React.FC<{
             className="layout w-full relative z-10"
             onBreakpointChange={handleBreakpointChange}
             onWidthChange={(w) => {
-              if (isBentoDebugEnabled()) console.log('[BENTO_WIDTH_CHANGE]', w);
+              if (isBentoDebugEnabled()) logDebug('[BENTO_WIDTH_CHANGE]', w);
             }}
             layouts={layouts}
             breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}

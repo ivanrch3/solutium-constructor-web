@@ -42,6 +42,7 @@ interface ViewerProps {
 export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
   const [catalogProducts, setCatalogProducts] = useState<Product[]>([]);
   const queryParams = new URLSearchParams(window.location.search);
+  const effectiveProjectId = site.projectId || (site as any).project_id || (site as any).satellite_id;
   
   // [SIP v12.5] Robust Editor Detection
   const isConstructorMode = (
@@ -71,7 +72,7 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
       const sections = extractSections(site.content);
       const prodSec = sections.find((s: any) => (s.type || s.tipo) === 'products');
 
-      console.log('[SATELLITE_PRODUCTS_PAYLOAD_RECEIVE_DEBUG]', {
+      logDebug('[SATELLITE_PRODUCTS_PAYLOAD_RECEIVE_DEBUG]', {
         messageType: 'HANDSHAKE_HYDRATION',
         origin: window.location.origin,
         sectionsCount: sections.length,
@@ -89,9 +90,9 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
 
     // [PUBLISHED_SITE_CONTRACT_LOAD_DEBUG] (FASE 3)
     if (window.location.search.includes('debug=products') || window.location.search.includes('debug_render=true')) {
-      console.log('[PUBLISHED_SITE_CONTRACT_LOAD_DEBUG]', {
+      logDebug('[PUBLISHED_SITE_CONTRACT_LOAD_DEBUG]', {
         siteId: site.siteId || (site as any).id,
-        projectId: site.projectId,
+        projectId: effectiveProjectId,
         hasContent: !!site.content,
         contentType: typeof site.content,
         contentKeys: site.content ? Object.keys(site.content) : [],
@@ -101,9 +102,9 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
     }
 
     // [PRODUCTS_LIVE_RUNTIME_DEBUG] (Fase 1)
-    console.log('[PRODUCTS_LIVE_RUNTIME_DEBUG]', {
+    logDebug('[PRODUCTS_LIVE_RUNTIME_DEBUG]', {
       siteId: site.siteId,
-      projectId: site.projectId,
+      projectId: effectiveProjectId,
       isConstructorMode,
       windowNamePreview: window.name ? window.name.substring(0, 50) : 'empty',
       hasContractContent: !!site.content,
@@ -111,18 +112,16 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
       timestamp: new Date().toISOString()
     });
 
-    if (site.projectId && isConstructorMode) {
-      logDebug('[VIEWER_DB_FETCH] Buscando productos del catálogo del proyecto:', site.projectId);
-      getProducts(0, 100, site.projectId).then(products => {
-        if (products && products.length > 0) {
-          logDebug(`[VIEWER_DB_FETCH] ${products.length} productos cargados desde la DB.`);
-          setCatalogProducts(products);
-        }
+    if (effectiveProjectId) {
+      logDebug('[VIEWER_DB_FETCH] Buscando productos del catálogo del proyecto:', effectiveProjectId);
+      getProducts(0, 100, effectiveProjectId).then(products => {
+        logDebug(`[VIEWER_DB_FETCH] ${products?.length || 0} productos cargados desde la DB.`);
+        setCatalogProducts(products || []);
       }).catch(err => {
         console.warn('[VIEWER_DB_FETCH] Error cargando catálogo:', err);
       });
     }
-  }, [site.projectId, isConstructorMode]);
+  }, [effectiveProjectId, isConstructorMode]);
 
   // SIP v5.0: Respect the Master Switch
   if (site.isActive === false) {
@@ -199,7 +198,7 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
 
   useEffect(() => {
     if (window.location.search.includes('debug=products') || window.location.search.includes('debug_render=true')) {
-      console.log('[PUBLISHED_SECTIONS_EXTRACTION_DEBUG]', {
+      logDebug('[PUBLISHED_SECTIONS_EXTRACTION_DEBUG]', {
         hasRootSections: Array.isArray(content?.sections),
         hasPagesSections: Array.isArray((content as any)?.pages?.[0]?.sections),
         hasNestedContentSections: Array.isArray((content as any)?.content?.sections),
@@ -287,7 +286,7 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
         ].includes(normalizedType);
 
         if (window.location.search.includes('debug_render=true') || window.location.search.includes('debug=products')) {
-          console.log('[VIEWER_SECTION_ROUTING_DEBUG]', {
+          logDebug('[VIEWER_SECTION_ROUTING_DEBUG]', {
             index,
             sectionId: moduleId,
             type: section.type,
@@ -400,7 +399,7 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
           case 'product_grid':
           case 'product':
              // [PRODUCTS_LEGACY_VIEWER_RESOLUTION_DEBUG]
-             console.log('[PRODUCTS_LEGACY_VIEWER_RESOLUTION_DEBUG]', {
+             logDebug('[PRODUCTS_LEGACY_VIEWER_RESOLUTION_DEBUG]', {
                runtime: isPublishedViewer ? "published_viewer" : "constructor",
                moduleId,
                hasContentProducts: !!(section.content?.products || section.content?.productos),
@@ -413,11 +412,11 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
             
             // [VIEWER_PUBLISHED_CONTRACT_PRODUCTS_FORENSIC]
             if (isPublishedViewer || window.location.search.includes('debug=products')) {
-              console.log('[VIEWER_PUBLISHED_CONTRACT_PRODUCTS_FORENSIC]', {
+              logDebug('[VIEWER_PUBLISHED_CONTRACT_PRODUCTS_FORENSIC]', {
                 currentView: isConstructorMode ? 'constructor' : 'viewer',
                 isPublishedViewer,
                 siteId: site.siteId,
-                projectId: site.projectId,
+                projectId: effectiveProjectId,
                 sectionsCount: site.content?.sections?.length || 0,
                 productSections: site.content?.sections?.filter((s: any) => s.type === 'products' || s.type === 'product_grid').map((s: any) => ({
                   sectionId: s.id,
@@ -432,7 +431,7 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
                 }))
               });
               
-              console.log('[VIEWER_PRODUCTS_PATCH_VERSION]', {
+              logDebug('[VIEWER_PRODUCTS_PATCH_VERSION]', {
                 version: "products-snapshot-v2",
                 timestamp: new Date().toISOString(),
                 currentView: isConstructorMode ? 'constructor' : 'viewer',
@@ -440,7 +439,7 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
               });
             }
 
-            console.log('[PRODUCTS_VIEWER_SECTION_RAW_DEBUG]', {
+            logDebug('[PRODUCTS_VIEWER_SECTION_RAW_DEBUG]', {
               runtime: isConstructorMode ? "constructor_preview" : "published_viewer",
               sectionId: section.id,
               moduleId,
@@ -470,9 +469,21 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
             let resolutionSource = "none";
             let skippedSupabaseFetch = false;
 
-            if (isPublishedViewer && Array.isArray(snapshotProducts) && snapshotProducts.length > 0) {
-              finalProducts = snapshotProducts;
-              resolutionSource = "published_snapshot_content";
+            if (isPublishedViewer) {
+              if (catalogProducts.length > 0) {
+                const snapshotIds = new Set(
+                  Array.isArray(snapshotProducts)
+                    ? snapshotProducts.map((product: any) => String(product?.id)).filter(Boolean)
+                    : []
+                );
+                finalProducts = snapshotIds.size > 0
+                  ? catalogProducts.filter((product) => snapshotIds.has(String(product.id)))
+                  : catalogProducts;
+                resolutionSource = snapshotIds.size > 0 ? "published_catalog_selected" : "published_catalog_all";
+              } else {
+                finalProducts = [];
+                resolutionSource = "published_catalog_empty";
+              }
               skippedSupabaseFetch = true;
             } else {
               // Comportamiento híbrido para constructor o si no hay snapshot en el content
@@ -495,7 +506,7 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
               if (resolutionSource === "none") resolutionSource = isConstructorMode ? "constructor_empty" : "viewer_fallback_empty";
             }
 
-            console.log('[PRODUCTS_LEGACY_VIEWER_RESOLUTION_DEBUG]', {
+            logDebug('[PRODUCTS_LEGACY_VIEWER_RESOLUTION_DEBUG]', {
               runtime: isPublishedViewer ? "published_viewer" : "constructor_preview",
               moduleId,
               sectionType: type,
@@ -510,7 +521,7 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
             });
 
             if (isPublishedViewer || window.location.search.includes('debug=products')) {
-              console.log('[PRODUCTS_LEGACY_LIVE_COMPONENT_MOUNT_DEBUG]', {
+              logDebug('[PRODUCTS_LEGACY_LIVE_COMPONENT_MOUNT_DEBUG]', {
                 runtime: isPublishedViewer ? "published_viewer" : "constructor",
                 moduleId,
                 componentMounted: true,
@@ -600,7 +611,7 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
           case 'footer':
             const isDebug = window.location.search.includes('debug_render=true');
             if (isDebug) {
-              console.log('[FOOTER_RENDER_DEBUG]', {
+              logDebug('[FOOTER_RENDER_DEBUG]', {
                 moduleId,
                 moduleType: type,
                 receivedContentKeys: content ? Object.keys(content) : [],

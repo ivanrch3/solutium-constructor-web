@@ -461,7 +461,7 @@ export const Canvas: React.FC<CanvasProps> = ({
                 };
 
                 if (!isPreviewMode) {
-                   console.log('[CANVAS_SECTION_RENDER_DEBUG]', {
+                   logDebug('[CANVAS_SECTION_RENDER_DEBUG]', {
                       moduleId: section.id,
                       type: section.type,
                       templateId: section.templateId,

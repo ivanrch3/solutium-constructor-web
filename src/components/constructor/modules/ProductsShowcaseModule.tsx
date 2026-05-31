@@ -1,3 +1,4 @@
+import { logDebug } from '../../../utils/debug';
 import React, { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ShoppingCart, Star, Package, Eye, ArrowRight, Filter } from 'lucide-react';
@@ -76,8 +77,27 @@ export const ProductsShowcaseModule: React.FC<ProductsShowcaseModuleProps> = ({
     let raw: any[] = [];
     let resSource = 'empty';
 
+    const catalog = products.length > 0 ? products : [];
+    const selectedIds = settingsValues[`${moduleId}_el_products_showcase_config_select_products`] || [];
+
+    if (isPublishedViewer) {
+      if (catalog.length > 0) {
+        const snapshotIds = new Set(
+          (Array.isArray(content.products) ? content.products : [])
+            .map((product: any) => String(product?.id))
+            .filter(Boolean)
+        );
+        raw = snapshotIds.size > 0
+          ? catalog.filter((product) => snapshotIds.has(String(product.id)))
+          : catalog.slice(0, 8);
+        resSource = snapshotIds.size > 0 ? 'published_catalog_selected' : 'published_catalog_all';
+      } else {
+        raw = [];
+        resSource = 'published_catalog_empty';
+      }
+    }
     // A. Prioridad Global: Snapshot en Content (Publicado)
-    if (Array.isArray(content.products) && content.products.length > 0) {
+    else if (Array.isArray(content.products) && content.products.length > 0) {
       raw = content.products;
       resSource = 'published_snapshot_content';
     } 
@@ -88,9 +108,6 @@ export const ProductsShowcaseModule: React.FC<ProductsShowcaseModuleProps> = ({
     }
     // C. Editor / Preview: Resolución Dinámica
     else {
-      const catalog = products.length > 0 ? products : [];
-      const selectedIds = settingsValues[`${moduleId}_el_products_showcase_config_select_products`] || [];
-      
       if (!Array.isArray(selectedIds) || selectedIds.length === 0) {
         raw = catalog.slice(0, 8);
         resSource = catalog.length > 0 ? 'catalog_default' : 'empty';
@@ -104,7 +121,7 @@ export const ProductsShowcaseModule: React.FC<ProductsShowcaseModuleProps> = ({
     const normalized = raw.map((p, idx) => normalizeProduct(p, idx)).filter(Boolean);
     
     if (window.location.search.includes('debug=products')) {
-      console.log('[PRODUCTS_SHOWCASE_V2_NORMALIZE_DEBUG]', {
+      logDebug('[PRODUCTS_SHOWCASE_V2_NORMALIZE_DEBUG]', {
         inputCount: raw.length,
         outputCount: normalized.length,
         resSource
@@ -112,7 +129,7 @@ export const ProductsShowcaseModule: React.FC<ProductsShowcaseModuleProps> = ({
     }
 
     return { displayProducts: normalized, source: resSource };
-  }, [content.products, settingsValues, moduleId, products]);
+  }, [content.products, settingsValues, moduleId, products, isPublishedViewer]);
 
   // --- 2. HELPERS ---
   const getVal = (elementId: string | null, settingId: string, defaultValue: any) => {
@@ -133,7 +150,7 @@ export const ProductsShowcaseModule: React.FC<ProductsShowcaseModuleProps> = ({
   // [PRODUCTS_SHOWCASE_HEADER_RESOLUTION_DEBUG] (FASE 6)
   React.useEffect(() => {
     if (window.location.search.includes('debug=products') || window.location.search.includes('debug_render=true')) {
-      console.log('[PRODUCTS_SHOWCASE_HEADER_RESOLUTION_DEBUG]', {
+      logDebug('[PRODUCTS_SHOWCASE_HEADER_RESOLUTION_DEBUG]', {
         moduleId,
         candidates: {
           contentTitle: content.title,
@@ -161,7 +178,7 @@ export const ProductsShowcaseModule: React.FC<ProductsShowcaseModuleProps> = ({
 
   // --- 4. LOGS DE AUDITORÍA (AUDIT POINT 10) ---
   React.useEffect(() => {
-    console.log('[PRODUCTS_SHOWCASE_V2_VIEWER_DEBUG]', {
+    logDebug('[PRODUCTS_SHOWCASE_V2_VIEWER_DEBUG]', {
       currentView: isActuallyEditor ? 'editor' : (isPublishedViewer ? 'published' : 'preview'),
       isPublishedViewer,
       sectionId: moduleId,
@@ -192,7 +209,7 @@ export const ProductsShowcaseModule: React.FC<ProductsShowcaseModuleProps> = ({
   // [PRODUCTS_SHOWCASE_MODULE_MOUNT_DEBUG] (FASE 4 & 5)
   React.useEffect(() => {
     if (window.location.search.includes('debug=products') || window.location.search.includes('debug_render=true')) {
-      console.log('[PRODUCTS_SHOWCASE_MODULE_MOUNT_DEBUG]', {
+      logDebug('[PRODUCTS_SHOWCASE_MODULE_MOUNT_DEBUG]', {
         moduleId,
         runtime: isPublishedViewer ? "published_viewer" : "preview_canvas",
         isEditor: isActuallyEditor,

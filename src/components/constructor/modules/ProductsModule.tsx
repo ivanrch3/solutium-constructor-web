@@ -1,3 +1,4 @@
+import { logDebug } from '../../../utils/debug';
 import React, { useState, useMemo } from 'react';
 import { SectionAnimation } from '../animations/SectionAnimation';
 import { normalizeSectionAnimation } from '../../../constants/moduleAnimations';
@@ -105,7 +106,7 @@ export const ProductsModule: React.FC<{
         reason = 'No snapshot found in live view';
       }
 
-      console.log('[PRODUCTS_LEGACY_VIEWER_RESOLUTION_FORENSIC_DEBUG]', {
+      logDebug('[PRODUCTS_LEGACY_VIEWER_RESOLUTION_FORENSIC_DEBUG]', {
         moduleId,
         runtime: "published_viewer",
         snapshotProductsCount: snapshotProducts.length,
@@ -148,7 +149,7 @@ export const ProductsModule: React.FC<{
       }
     }
 
-    console.log('[PRODUCTS_EDITOR_EMPTY_SELECTION_RULE_DEBUG]', {
+    logDebug('[PRODUCTS_EDITOR_EMPTY_SELECTION_RULE_DEBUG]', {
       moduleId,
       isEditorRuntime: isEditor,
       selectionMode,
@@ -162,7 +163,7 @@ export const ProductsModule: React.FC<{
       timestamp: Date.now()
     });
 
-    console.log('[PRODUCTS_EDITOR_RESOLUTION_FORENSIC_DEBUG]', {
+    logDebug('[PRODUCTS_EDITOR_RESOLUTION_FORENSIC_DEBUG]', {
       moduleId,
       runtime: isEditor ? "constructor_canvas" : "viewer",
       selectionMode,
@@ -185,7 +186,7 @@ export const ProductsModule: React.FC<{
 
   // [PRODUCTS_MODE_DETECTION_DEBUG] Diagnóstico de Modo
   if (isActuallyEditor || isPublishedViewer) {
-    console.log('[PRODUCTS_MODE_DETECTION_DEBUG]', {
+    logDebug('[PRODUCTS_MODE_DETECTION_DEBUG]', {
       moduleId,
       isPreviewMode,
       isActuallyEditor,
@@ -304,7 +305,7 @@ export const ProductsModule: React.FC<{
     if ((isPublishedViewer || window.location.search.includes('debug=products')) && gridRef.current) {
       const el = gridRef.current;
       const computedStyle = window.getComputedStyle(el);
-      console.log('[PRODUCTS_GRID_LAYOUT_DEBUG]', {
+      logDebug('[PRODUCTS_GRID_LAYOUT_DEBUG]', {
         moduleId,
         cardsCount: filteredProducts.length,
         gridOffsetWidth: el.offsetWidth,
@@ -365,7 +366,7 @@ export const ProductsModule: React.FC<{
   const ctaRadius = parseF(getVal(`${moduleId}_el_cta`, 'cta_radius', 12), 12);
   const ctaHoverBg = getVal(`${moduleId}_el_cta`, 'cta_hover_bg', '#2563EB');
 
-  console.log('[PRODUCTS_MODULE_RENDER_INPUT_DEBUG]', {
+  logDebug('[PRODUCTS_MODULE_RENDER_INPUT_DEBUG]', {
     runtime: isPublishedViewer ? "published_viewer" : "constructor_canvas",
     moduleId,
     selectionMode,
@@ -383,7 +384,7 @@ export const ProductsModule: React.FC<{
 
   // [PRODUCTS_LEGACY_VIEWER_FINAL_RENDER_DEBUG] (FASE 6)
   if (isPublishedViewer || window.location.search.includes('debug=products')) {
-    console.log('[PRODUCTS_LEGACY_VIEWER_FINAL_RENDER_DEBUG]', {
+    logDebug('[PRODUCTS_LEGACY_VIEWER_FINAL_RENDER_DEBUG]', {
       runtime: isPublishedViewer ? "published_viewer" : "constructor_editor",
       moduleId,
       isActuallyEditor,
@@ -397,7 +398,7 @@ export const ProductsModule: React.FC<{
     });
 
     // [PRODUCTS_CARD_RENDER_DATA_DEBUG] (FASE 1)
-    console.log('[PRODUCTS_CARD_RENDER_DATA_DEBUG]', {
+    logDebug('[PRODUCTS_CARD_RENDER_DATA_DEBUG]', {
       moduleId,
       finalRenderedProductsCount: filteredProducts.length,
       products: filteredProducts.map(p => ({
@@ -410,7 +411,7 @@ export const ProductsModule: React.FC<{
     });
 
     // [PRODUCTS_JSX_SOURCE_DEBUG] (FASE 3)
-    console.log('[PRODUCTS_JSX_SOURCE_DEBUG]', {
+    logDebug('[PRODUCTS_JSX_SOURCE_DEBUG]', {
       moduleId,
       finalRenderedProductsCount: filteredProducts.length,
       jsxProductsVariableName: 'filteredProducts',
@@ -583,7 +584,7 @@ export const ProductsModule: React.FC<{
                     const isAdding = addingToCart === product.id;
 
                     if (isPublishedViewer || window.location.search.includes('debug=products')) {
-                      console.log('[PRODUCTS_CARD_RENDER_ITEM_DEBUG]', {
+                      logDebug('[PRODUCTS_CARD_RENDER_ITEM_DEBUG]', {
                         index: idx,
                         id: product.id,
                         name: product.name,

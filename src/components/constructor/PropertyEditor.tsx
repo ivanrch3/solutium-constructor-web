@@ -1,3 +1,4 @@
+import { logDebug } from '../../utils/debug';
 import React from 'react';
 import * as LucideIcons from 'lucide-react';
 import { useEditorStore } from '../../store/editorStore';
@@ -761,7 +762,7 @@ export const PropertyEditor: React.FC<PropertyEditorProps> = ({
   };
 
   const handleFieldChange = (contextId: string, settingId: string, value: any, extraUpdates?: Record<string, any>) => {
-    console.log('[PROPERTY_EDITOR_CHANGE_DEBUG]', { contextId, settingId, value, extraUpdates });
+    logDebug('[PROPERTY_EDITOR_CHANGE_DEBUG]', { contextId, settingId, value, extraUpdates });
     // Si estamos editando una celda de un repeater (ej: Bento), necesitamos actualizar el array de items
     if (contextId.includes('_el_bento_items_')) {
       const [sectionId, , indexStr] = contextId.split('_el_bento_items_');
@@ -881,7 +882,7 @@ export const PropertyEditor: React.FC<PropertyEditorProps> = ({
                             : selectedSection.settings[`${contextId}_${setting.id}`] ?? defaultValue;
 
                           if (setting.id === 'social_links' && selectedSection.type === 'footer') {
-                            console.log('[FOOTER_PROPERTY_EDITOR_SOCIAL_STATE_DEBUG]', {
+                            logDebug('[FOOTER_PROPERTY_EDITOR_SOCIAL_STATE_DEBUG]', {
                               moduleId: selectedSection.id,
                               fieldKey: `${contextId}_${setting.id}`,
                               rawEditorValue: selectedSection.settings[`${contextId}_${setting.id}`],

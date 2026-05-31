@@ -1,3 +1,4 @@
+import { logDebug } from '../../utils/debug';
 import React, { useMemo, useState } from 'react';
 import * as LucideIcons from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -467,7 +468,7 @@ export const SettingControl: React.FC<SettingControlProps> = ({
                         : [...normalizedValue, itemId];
                     }
 
-                    console.log('[PRODUCTS_SELECTION_CLICK_FORENSIC_DEBUG]', {
+                    logDebug('[PRODUCTS_SELECTION_CLICK_FORENSIC_DEBUG]', {
                       moduleId: (setting as any).moduleId || 'unknown',
                       productIdClicked: itemId,
                       productName: item.name,
@@ -486,7 +487,7 @@ export const SettingControl: React.FC<SettingControlProps> = ({
                       : `${(setting as any).moduleId}_el_client_logos_data_selection_touched`;
                     const selectedProductsKey = (setting as any).id || setting.id;
 
-                    console.log('[PRODUCTS_SELECTION_WRITE_VERIFY_DEBUG]', {
+                    logDebug('[PRODUCTS_SELECTION_WRITE_VERIFY_DEBUG]', {
                       moduleId: (setting as any).moduleId || 'unknown',
                       expectedSelectedIds: newValue,
                       actualSelectedIdsCount: newValue.length,

@@ -278,7 +278,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   } = useEditorStore();
 
   useEffect(() => {
-    console.log('[CONSTRUCTOR_RUNTIME_VERSION]', {
+    logDebug('[CONSTRUCTOR_RUNTIME_VERSION]', {
       version: "bento-editor-ux-v1",
       hasBentoEmptyState: true,
       hasBentoEditorWrapper: true,
@@ -341,7 +341,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     (window as any).webBuilderSite = { id: initialPage?.id };
     
     // [CONSTRUCTOR_RUNTIME_VERSION]
-    console.log('[CONSTRUCTOR_RUNTIME_VERSION]', {
+    logDebug('[CONSTRUCTOR_RUNTIME_VERSION]', {
       version: "footer-social-resolution-v3",
       buildTime: new Date().toISOString(),
       hasFooterSocialResolver: true,
@@ -351,7 +351,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
 
     // [PROJECT_SOCIALS_RUNTIME_DEBUG]
     if (project) {
-      console.log('[PROJECT_SOCIALS_RUNTIME_DEBUG]', {
+      logDebug('[PROJECT_SOCIALS_RUNTIME_DEBUG]', {
         projectId: project.id,
         projectSocialsRaw: project.socials,
         projectSocialsKeys: project.socials ? Object.keys(project.socials) : [],
@@ -910,7 +910,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         const contentProducts = section.content?.products || (section.content as any)?.productos;
         const snapshotKey = `${moduleId}_el_products_items_products`;
         
-        console.log('[PRODUCTS_SELECTION_STATE_AFTER_UPDATE_DEBUG]', {
+        logDebug('[PRODUCTS_SELECTION_STATE_AFTER_UPDATE_DEBUG]', {
           moduleId,
           sectionId: section.id,
           sectionType: section.type,
@@ -1062,7 +1062,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         const hasRealSocials = resolved.some(s => s.url && s.url !== '');
         
         if (hasRealSocials) {
-          console.log(`[SIP v12.0] Sincronizando redes de perfil para módulo ${module.id}`);
+          logDebug(`[SIP v12.0] Sincronizando redes de perfil para módulo ${module.id}`);
           newSettings[socialKey] = resolved;
           totalChanged = true;
         }
@@ -1316,14 +1316,14 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
 
     // Bloquear dobles clics
     if (isRunningRef.current) {
-      console.log('[CONSTRUCTOR_GENERATE_LANDING_DUPLICATE_BLOCKED]', {
+      logDebug('[CONSTRUCTOR_GENERATE_LANDING_DUPLICATE_BLOCKED]', {
         idempotencyKey: activeIdempotencyKey,
         actionSlug: 'web_ai_generate_landing'
       });
       return;
     }
 
-    console.log(isDryRun ? '[CONSTRUCTOR_LANDING_DRY_RUN_LOCAL]' : '[CONSTRUCTOR_LANDING_REAL_EXECUTION_START]', {
+    logDebug(isDryRun ? '[CONSTRUCTOR_LANDING_DRY_RUN_LOCAL]' : '[CONSTRUCTOR_LANDING_REAL_EXECUTION_START]', {
       mode: isDryRun ? "dry-run" : "real",
       willCallBackend: !isDryRun,
       estimatedCostCredits: 15,
@@ -1346,7 +1346,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       let response: MotherAIPageResponse;
 
       if (isDryRun) {
-        console.log('[CONSTRUCTOR_LANDING_DRY_RUN_GUARD_BLOCKED_FETCH]', {
+        logDebug('[CONSTRUCTOR_LANDING_DRY_RUN_GUARD_BLOCKED_FETCH]', {
           reason: "dry-run must be 100% local",
           actionSlug: 'web_ai_generate_landing'
         });
@@ -1390,7 +1390,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
           aiUsageLogId: "dry_run_simulated",
           isDryRun: true
         });
-        console.log('[CONSTRUCTOR_LANDING_DRY_RUN_RESULT_LOCAL]', response);
+        logDebug('[CONSTRUCTOR_LANDING_DRY_RUN_RESULT_LOCAL]', response);
         isRunningRef.current = false;
         return;
       }
@@ -1464,7 +1464,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         aiUsageLogId: response.usage?.aiUsageLogId || 'unknown'
       });
 
-      console.log('[CONSTRUCTOR_GENERATE_LANDING_REAL_SUCCESS]', {
+      logDebug('[CONSTRUCTOR_GENERATE_LANDING_REAL_SUCCESS]', {
         idempotencyKey: activeIdempotencyKey,
         costCredits: cost
       });
@@ -2336,18 +2336,18 @@ const formatTimestampName = () => {
             if (selectionMode === 'manual') {
               if (Array.isArray(selectedIds) && selectedIds.length > 0) {
                 finalProducts = products.filter(p => selectedIds.includes(p.id));
-                console.log(`[PRODUCTS_CONTRACT_DEBUG] Resolved ${finalProducts.length} manually selected products.`);
+                logDebug(`[PRODUCTS_CONTRACT_DEBUG] Resolved ${finalProducts.length} manually selected products.`);
               } else {
                 // [SIP v5.6 FIX] If manual mode but empty selection, publish EMPTY list, do NOT fallback to latest products
                 finalProducts = [];
-                console.log(`[PRODUCTS_CONTRACT_DEBUG] Manual selection is empty. Publishing empty product list.`);
+                logDebug(`[PRODUCTS_CONTRACT_DEBUG] Manual selection is empty. Publishing empty product list.`);
               }
             } else {
               // Default to auto (latest 8 products) for 'auto' mode
               finalProducts = [...products]
                 .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
                 .slice(0, 8);
-              console.log(`[PRODUCTS_CONTRACT_DEBUG] Resolved ${finalProducts.length} automated products (Mode: ${selectionMode}).`);
+              logDebug(`[PRODUCTS_CONTRACT_DEBUG] Resolved ${finalProducts.length} automated products (Mode: ${selectionMode}).`);
             }
           }
 
@@ -2390,7 +2390,7 @@ const formatTimestampName = () => {
             const snapshotKey = `${module.id}_el_products_items_products`;
             settings[snapshotKey] = normalizedProducts;
             
-            console.log('[PRODUCTS_LEGACY_PUBLISH_SNAPSHOT_DEBUG]', {
+            logDebug('[PRODUCTS_LEGACY_PUBLISH_SNAPSHOT_DEBUG]', {
               sectionId: module.id,
               moduleId: module.id,
               sectionType: module.type,
@@ -2407,7 +2407,7 @@ const formatTimestampName = () => {
               hasSettingsSnapshot: !!settings[snapshotKey]
             });
             
-            console.log('[PRODUCTS_PUBLISH_SNAPSHOT_FINAL_CONTRACT_DEBUG]', {
+            logDebug('[PRODUCTS_PUBLISH_SNAPSHOT_FINAL_CONTRACT_DEBUG]', {
               sectionId: module.id,
               moduleId: module.id,
               selectionMode,
@@ -2419,7 +2419,7 @@ const formatTimestampName = () => {
               productsPreview: normalizedProducts.slice(0, 2).map(p => p.name)
             });
             
-            console.log('[PRODUCTS_PUBLISH_SNAPSHOT_FINAL_CONTRACT_DEBUG_V2]', {
+            logDebug('[PRODUCTS_PUBLISH_SNAPSHOT_FINAL_CONTRACT_DEBUG_V2]', {
               sectionId: module.id,
               moduleId: module.id,
               finalProductsCount: normalizedProducts.length,
@@ -2447,7 +2447,7 @@ const formatTimestampName = () => {
           let snapshot: Product[] = [];
           
           // Debug logs for selection state
-          console.log('[PRODUCTS_SHOWCASE_V2_SELECTION_DEBUG]', {
+          logDebug('[PRODUCTS_SHOWCASE_V2_SELECTION_DEBUG]', {
             moduleId: module.id,
             selectKey,
             selectedIdsRaw: selectedIds,
@@ -2495,7 +2495,7 @@ const formatTimestampName = () => {
             // Preserve selection key in settings
             settings[selectKey] = normalizedSnapshot.map(p => p.id);
 
-            console.log('[PRODUCTS_SHOWCASE_V2_PUBLISH_SNAPSHOT_DEBUG]', {
+            logDebug('[PRODUCTS_SHOWCASE_V2_PUBLISH_SNAPSHOT_DEBUG]', {
               moduleId: module.id,
               selectedCount: Array.isArray(selectedIds) ? selectedIds.length : 'all',
               snapshotCount: normalizedSnapshot.length,
@@ -2607,7 +2607,7 @@ const formatTimestampName = () => {
 
           // Debug logs for social and logo resolution
           if (true || window.location.search.includes('debug_render=true')) {
-            console.log('[FOOTER_SOCIAL_RESOLUTION_DEBUG]', {
+            logDebug('[FOOTER_SOCIAL_RESOLUTION_DEBUG]', {
               moduleId: module.id,
               currentSocialsFromSettings: currentSocials,
               projectSocialsRaw: project?.socials,
@@ -2615,7 +2615,7 @@ const formatTimestampName = () => {
               source: (currentSocials && currentSocials.length > 0 && currentSocials.some((s: any) => s.url && s.url !== '#')) ? 'manual' : (project?.socials ? 'project_profile' : 'placeholder')
             });
 
-            console.log('[FOOTER_LOGO_RESOLUTION_DEBUG]', {
+            logDebug('[FOOTER_LOGO_RESOLUTION_DEBUG]', {
               moduleId: module.id,
               manualLogo: currentLogo,
               projectLogo: project?.logoUrl,
@@ -2839,7 +2839,7 @@ const formatTimestampName = () => {
       sections
     };
 
-    console.log('[PRODUCTS_PUBLISH_CONTRACT_FINAL_AUDIT]', {
+    logDebug('[PRODUCTS_PUBLISH_CONTRACT_FINAL_AUDIT]', {
       siteName: finalSiteName,
       sectionsCount: sections.length,
       productsSections: sections
@@ -3054,13 +3054,13 @@ const formatTimestampName = () => {
                 });
                 setPreviewStatus('idle');
               } else {
-                console.warn('[PREVIEW_CAPTURE_DEBUG] Draft saved, but preview generation failed.', previewResult.error);
+                console.warn('[PREVIEW_CAPTURE_WARNING] Draft saved, but preview generation failed.', previewResult.error);
                 setPreviewWarning('Borrador guardado, pero no se pudo actualizar la vista previa.');
                 setPreviewStatus('error');
               }
             }
           } catch (pError) {
-            console.warn('[PREVIEW_CAPTURE_DEBUG] Preview failed after saving draft. Draft remains saved.', pError);
+            console.warn('[PREVIEW_CAPTURE_WARNING] Preview failed after saving draft. Draft remains saved.', pError);
             setPreviewWarning('Borrador guardado, pero no se pudo actualizar la vista previa.');
             setPreviewStatus('error');
           } finally {
@@ -3317,13 +3317,13 @@ const formatTimestampName = () => {
                   });
                   setPreviewStatus('idle');
                 } else {
-                  console.warn('[PREVIEW_CAPTURE_DEBUG] Draft saved, but preview generation failed.', previewResult.error);
+                  console.warn('[PREVIEW_CAPTURE_WARNING] Draft saved, but preview generation failed.', previewResult.error);
                   setPreviewWarning('Borrador guardado, pero no se pudo actualizar la vista previa.');
                   setPreviewStatus('error');
                 }
               }
             } catch (pError) {
-              console.warn('[PREVIEW_CAPTURE_DEBUG] Preview failed after saving draft. Draft remains saved.', pError);
+              console.warn('[PREVIEW_CAPTURE_WARNING] Preview failed after saving draft. Draft remains saved.', pError);
               setPreviewWarning('Borrador guardado, pero no se pudo actualizar la vista previa.');
               setPreviewStatus('error');
             } finally {
@@ -3550,7 +3550,7 @@ const formatTimestampName = () => {
       const draftHasProductsShowcase = (activeState.addedModules || []).some((m: any) => m.type === 'products_showcase');
       const contractHasProductsShowcase = (contract.sections || []).some((s: any) => s.type === 'products_showcase' || s.tipo === 'products_showcase');
 
-      console.log('[PRODUCTS_SHOWCASE_PUBLISH_PRESENCE_DEBUG]', {
+      logDebug('[PRODUCTS_SHOWCASE_PUBLISH_PRESENCE_DEBUG]', {
         draftHasProductsShowcase,
         contractHasProductsShowcase,
         sectionsCount: contract.sections?.length || 0,
@@ -3575,7 +3575,7 @@ const formatTimestampName = () => {
         }
       };
 
-      console.log('[PUBLISH_CONTRACT_INTEGRITY_CHECK]', {
+      logDebug('[PUBLISH_CONTRACT_INTEGRITY_CHECK]', {
         siteId,
         sectionsCount: contract.sections.length,
         productSnapshots: contract.sections
@@ -3592,7 +3592,7 @@ const formatTimestampName = () => {
       contract.sections
         .filter((s: any) => s.tipo === 'products' || s.tipo === 'product_grid')
         .forEach((s: any) => {
-          console.log('[PRODUCTS_LEGACY_FINAL_PUBLISHED_CONTRACT_DEBUG]', {
+          logDebug('[PRODUCTS_LEGACY_FINAL_PUBLISHED_CONTRACT_DEBUG]', {
             sectionId: s.id,
             moduleId: s.id,
             contentProductsCount: s.content?.products?.length || 0,
@@ -3677,7 +3677,7 @@ const formatTimestampName = () => {
             setPreviewStatus('loading');
             
             // [AUTO_PREVIEW_ON_PUBLISH_REQUEST_DEBUG]
-            console.log('[AUTO_PREVIEW_ON_PUBLISH_REQUEST_DEBUG]', {
+            logDebug('[AUTO_PREVIEW_ON_PUBLISH_REQUEST_DEBUG]', {
               trigger: "publish",
               project_id: projectId,
               site_id: siteId,
@@ -4003,7 +4003,7 @@ const formatTimestampName = () => {
     const sectionId = `section_${rawId}`;
     const moduleId = sectionId; 
     
-    console.log('[BENTO_GENERATED_SCHEMA_DEBUG]', {
+    logDebug('[BENTO_GENERATED_SCHEMA_DEBUG]', {
       originalTitle: rawSchema.header.title,
       cleanTitle: schema.header.title,
       itemsCount: schema.items.length,
@@ -4074,7 +4074,7 @@ const formatTimestampName = () => {
       }
     };
 
-    console.log('[BENTO_FINAL_SECTION_PAYLOAD_DEBUG]', {
+    logDebug('[BENTO_FINAL_SECTION_PAYLOAD_DEBUG]', {
       sectionId,
       moduleId,
       title: newModule.content.title,
@@ -4109,7 +4109,7 @@ const formatTimestampName = () => {
         el.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
       
-      console.log('[BENTO_INSERT_RESULT_DEBUG]', {
+      logDebug('[BENTO_INSERT_RESULT_DEBUG]', {
         sectionId,
         itemsRendered: document.querySelectorAll(`[id^="${sectionId}"]`).length > 0
       });

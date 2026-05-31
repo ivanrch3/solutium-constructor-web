@@ -85,6 +85,7 @@ export const ProductsModule: React.FC<{
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [carouselIndex, setCarouselIndex] = useState(0);
   const [addingToCart, setAddingToCart] = useState<string | null>(null);
+  const [productsViewportWidth, setProductsViewportWidth] = useState<number | null>(null);
 
   const gridRef = React.useRef<HTMLDivElement>(null);
 
@@ -277,12 +278,27 @@ export const ProductsModule: React.FC<{
   const selectionMode = getVal(`${moduleId}_el_products_config`, 'selection_mode', 'auto');
   const layout = getVal(null, 'layout', 'grid');
   const columns = Math.max(1, Math.min(5, parseInt(getVal(null, 'columns', 3)) || 3));
+  const responsiveColumns = productsViewportWidth === null
+    ? columns
+    : productsViewportWidth >= 1024
+      ? columns
+      : productsViewportWidth >= 640
+        ? Math.min(columns, 3)
+        : Math.min(columns, 2);
+  const isMobileProductsViewport = productsViewportWidth !== null && productsViewportWidth < 640;
+  const effectiveLayout = layout === 'list' && isMobileProductsViewport ? 'grid' : layout;
   const productsGridClass =
     columns >= 5 ? 'grid-cols-1 @sm:grid-cols-2 @md:grid-cols-3 @5xl:grid-cols-5' :
     columns === 4 ? 'grid-cols-1 @sm:grid-cols-2 @md:grid-cols-3 @5xl:grid-cols-4' :
     columns === 3 ? 'grid-cols-1 @sm:grid-cols-2 @md:grid-cols-3' :
     columns === 2 ? 'grid-cols-1 @sm:grid-cols-2' :
     'grid-cols-1';
+  const carouselItemClass =
+    responsiveColumns >= 5 ? 'w-1/5' :
+    responsiveColumns === 4 ? 'w-1/4' :
+    responsiveColumns === 3 ? 'w-1/3' :
+    responsiveColumns === 2 ? 'w-1/2' :
+    'w-full';
   const gap = parseF(getVal(null, 'gap', 24), 24);
   const darkMode = toBoolean(getVal(null, 'dark_mode', false));
   const rawBgColor = getVal(null, 'bg_color', '#FFFFFF');
@@ -348,6 +364,25 @@ export const ProductsModule: React.FC<{
       setActiveTab('Todos');
     }
   }, [selectedProductIds, selectionMode]);
+
+  React.useEffect(() => {
+    const element = gridRef.current?.parentElement;
+    if (!element || typeof ResizeObserver === 'undefined') return;
+
+    const observer = new ResizeObserver(([entry]) => {
+      setProductsViewportWidth(entry.contentRect.width);
+    });
+
+    observer.observe(element);
+    setProductsViewportWidth(element.getBoundingClientRect().width);
+
+    return () => observer.disconnect();
+  }, []);
+
+  React.useEffect(() => {
+    const maxIndex = Math.max(0, Math.ceil(filteredProducts.length / responsiveColumns) - 1);
+    setCarouselIndex((currentIndex) => Math.min(currentIndex, maxIndex));
+  }, [filteredProducts.length, responsiveColumns]);
 
   React.useEffect(() => {
     if ((isPublishedViewer || window.location.search.includes('debug=products')) && gridRef.current) {
@@ -469,7 +504,7 @@ export const ProductsModule: React.FC<{
   }
 
 
-  const totalPages = columns > 0 ? Math.ceil(filteredProducts.length / columns) : 1;
+  const totalPages = responsiveColumns > 0 ? Math.ceil(filteredProducts.length / responsiveColumns) : 1;
 
   const handleAddToCart = (productId: string) => {
     setAddingToCart(productId);
@@ -610,16 +645,16 @@ export const ProductsModule: React.FC<{
             <div className="overflow-hidden">
               <motion.div 
                 ref={gridRef}
-                animate={{ x: layout === 'carousel' ? `-${(parseFloat(carouselIndex as any) || 0) * 100}%` : 0 }}
+                animate={{ x: effectiveLayout === 'carousel' ? `-${(parseFloat(carouselIndex as any) || 0) * 100}%` : 0 }}
                 transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                 className={`grid ${
-                  layout === 'carousel' ? 'flex transition-none' :
-                  layout === 'list' ? 'grid-cols-1' :
+                  effectiveLayout === 'carousel' ? 'flex transition-none' :
+                  effectiveLayout === 'list' ? 'grid-cols-1' :
                   productsGridClass
                 }`}
                 style={{ 
-                  gap: layout === 'carousel' ? '0' : `${gap || 0}px`,
-                  display: layout === 'carousel' ? 'flex' : 'grid'
+                  gap: effectiveLayout === 'carousel' ? '0' : `${gap || 0}px`,
+                  display: effectiveLayout === 'carousel' ? 'flex' : 'grid'
                 }}
               >
                 <AnimatePresence mode="popLayout">
@@ -648,24 +683,24 @@ export const ProductsModule: React.FC<{
                         animate={(globalAnimOverride ? globalAnimOverride.visible : (entranceAnim !== 'none' ? { opacity: 1, y: 0 } : false)) as any}
                         exit={{ opacity: 0, scale: 0.9 }}
                         className={`group flex flex-col transition-all duration-500 min-h-[400px] ${
-                          layout === 'list' ? 'flex-row gap-8 items-center' : 
-                          layout === 'carousel' ? `w-full shrink-0` : ''
+                          effectiveLayout === 'list' ? 'flex-row gap-8 items-center' :
+                          effectiveLayout === 'carousel' ? `${carouselItemClass} shrink-0` : ''
                         } ${cardHoverLift ? 'hover:-translate-y-2' : ''}`}
                         style={{
                           backgroundColor: cardStyle === 'glass' ? 'rgba(255,255,255,0.05)' : cardStyle === 'minimal' ? 'transparent' : cardBg,
                           backdropFilter: cardStyle === 'glass' ? 'blur(12px)' : 'none',
                           borderRadius: `${parseFloat(imgBorderRadius as any) || 0}px`,
                           padding: cardStyle === 'minimal' ? '0' : '16px',
-                          margin: layout === 'carousel' ? `0 ${gap/2}px` : '0',
+                          margin: effectiveLayout === 'carousel' ? `0 ${gap/2}px` : '0',
                           boxShadow: cardStyle === 'minimal' ? 'none' : getShadow(cardShadow),
                           borderWidth: cardStyle === 'bordered' ? '1px' : '0px',
                           borderStyle: 'solid',
                           borderColor: cardBorderColor,
-                          width: layout === 'carousel' ? `${100 / columns}%` : 'auto'
+                          width: effectiveLayout === 'carousel' ? `${100 / responsiveColumns}%` : 'auto'
                         }}
                       >
                         {/* Image */}
-                        <div className={`relative overflow-hidden bg-slate-50 ${getAspectRatioClass(imgAspectRatio)} ${layout === 'list' ? 'w-48 shrink-0' : 'w-full'}`} style={{ borderRadius: `${imgBorderRadius}px` }}>
+                        <div className={`relative overflow-hidden bg-slate-50 ${getAspectRatioClass(imgAspectRatio)} ${effectiveLayout === 'list' ? 'w-48 shrink-0' : 'w-full'}`} style={{ borderRadius: `${imgBorderRadius}px` }}>
                           <img 
                             src={product.imageUrl || 'https://picsum.photos/seed/prod/800/800'} 
                             alt={product.name} 
@@ -712,7 +747,7 @@ export const ProductsModule: React.FC<{
                         </div>
 
                         {/* Info */}
-                        <div className={`pt-4 flex flex-col flex-1 ${layout === 'list' ? 'text-left' : 'text-center'}`}>
+                        <div className={`pt-4 flex flex-col flex-1 ${effectiveLayout === 'list' ? 'text-left' : 'text-center'}`}>
                           <span className="text-[10px] font-bold text-primary uppercase tracking-widest mb-1">
                             {product.category}
                           </span>
@@ -748,7 +783,7 @@ export const ProductsModule: React.FC<{
                           )}
 
                           {/* Rating */}
-                          <div className={`flex items-center gap-1 mb-4 ${layout === 'list' ? 'justify-start' : 'justify-center'}`}>
+                          <div className={`flex items-center gap-1 mb-4 ${effectiveLayout === 'list' ? 'justify-start' : 'justify-center'}`}>
                             {[...Array(5)].map((_, i) => (
                               <Star 
                                 key={i} 
@@ -810,7 +845,7 @@ export const ProductsModule: React.FC<{
               </motion.div>
             </div>
 
-            {layout === 'carousel' && filteredProducts.length > columns && (
+            {effectiveLayout === 'carousel' && filteredProducts.length > responsiveColumns && (
               <>
                 <button 
                   onClick={() => setCarouselIndex(prev => Math.max(0, prev - 1))}

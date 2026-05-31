@@ -1,7 +1,7 @@
 import { logDebug } from '../../../utils/debug';
 import React, { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ShoppingCart, Star, Package, Eye, ArrowRight, Filter } from 'lucide-react';
+import { ShoppingCart, Star, Package, Eye, ArrowRight, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Product } from '../../../types/schema';
 
 interface ProductsShowcaseModuleProps {
@@ -22,6 +22,9 @@ export const ProductsShowcaseModule: React.FC<ProductsShowcaseModuleProps> = ({
   products = []
 }) => {
   const [activeTab, setActiveTab] = useState('Todos');
+  const [carouselIndex, setCarouselIndex] = useState(0);
+  const [productsViewportWidth, setProductsViewportWidth] = useState<number | null>(null);
+  const gridRef = React.useRef<HTMLDivElement>(null);
 
   // --- 1. NORMALIZACIÓN DE PRODUCTOS (AUDIT POINT 3/8) ---
   const normalizeProduct = (p: any, index: number): any => {
@@ -181,6 +184,19 @@ export const ProductsShowcaseModule: React.FC<ProductsShowcaseModuleProps> = ({
   
   const layout = getVal(null, 'layout', 'grid');
   const columns = Math.max(1, Math.min(5, parseInt(getVal(null, 'columns', '3'), 10) || 3));
+  const responsiveColumns = productsViewportWidth === null
+    ? columns
+    : productsViewportWidth >= 1024
+      ? columns
+      : productsViewportWidth >= 640
+        ? Math.min(columns, 3)
+        : Math.min(columns, 2);
+  const carouselItemClass =
+    responsiveColumns >= 5 ? 'w-1/5' :
+    responsiveColumns === 4 ? 'w-1/4' :
+    responsiveColumns === 3 ? 'w-1/3' :
+    responsiveColumns === 2 ? 'w-1/2' :
+    'w-full';
   const productShowcaseGridClass =
     columns >= 5 ? 'grid-cols-1 @sm:grid-cols-2 @md:grid-cols-3 @5xl:grid-cols-5' :
     columns === 4 ? 'grid-cols-1 @sm:grid-cols-2 @md:grid-cols-3 @5xl:grid-cols-4' :
@@ -220,6 +236,25 @@ export const ProductsShowcaseModule: React.FC<ProductsShowcaseModuleProps> = ({
     if (!showTabs || activeTab === 'Todos') return displayProducts;
     return displayProducts.filter(p => p.category === activeTab);
   }, [displayProducts, activeTab, showTabs]);
+
+  React.useEffect(() => {
+    const element = gridRef.current?.parentElement;
+    if (!element || typeof ResizeObserver === 'undefined') return;
+
+    const observer = new ResizeObserver(([entry]) => {
+      setProductsViewportWidth(entry.contentRect.width);
+    });
+
+    observer.observe(element);
+    setProductsViewportWidth(element.getBoundingClientRect().width);
+
+    return () => observer.disconnect();
+  }, []);
+
+  React.useEffect(() => {
+    const maxIndex = Math.max(0, Math.ceil(filteredProducts.length / responsiveColumns) - 1);
+    setCarouselIndex((currentIndex) => Math.min(currentIndex, maxIndex));
+  }, [filteredProducts.length, responsiveColumns]);
 
   // --- 5. RENDER LOGIC ---
   const hasHeader = Boolean(title || subtitle);
@@ -293,7 +328,10 @@ export const ProductsShowcaseModule: React.FC<ProductsShowcaseModuleProps> = ({
               {categories.map((cat: string) => (
                 <button
                   key={cat}
-                  onClick={() => setActiveTab(cat)}
+                  onClick={() => {
+                    setActiveTab(cat);
+                    setCarouselIndex(0);
+                  }}
                   className={`px-6 py-2.5 rounded-full font-medium transition-all duration-300 ${
                     activeTab === cat 
                       ? 'bg-blue-600 text-white shadow-lg shadow-blue-200 scale-105' 
@@ -307,7 +345,14 @@ export const ProductsShowcaseModule: React.FC<ProductsShowcaseModuleProps> = ({
           )}
 
           {/* Product Grid */}
-          <div className={`grid gap-6 md:gap-8 ${productShowcaseGridClass}`}>
+          <div className="relative overflow-hidden">
+            <motion.div
+              ref={gridRef}
+              animate={{ x: layout === 'carousel' ? `-${carouselIndex * 100}%` : 0 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+              className={layout === 'carousel' ? 'flex' : `grid gap-6 md:gap-8 ${productShowcaseGridClass}`}
+              style={{ gap: layout === 'carousel' ? 0 : undefined }}
+            >
             <AnimatePresence mode="popLayout">
               {filteredProducts.map((product, idx) => (
                 <motion.div
@@ -318,11 +363,14 @@ export const ProductsShowcaseModule: React.FC<ProductsShowcaseModuleProps> = ({
                   exit={{ opacity: 0, scale: 0.9 }}
                   transition={{ duration: 0.3, delay: idx * 0.05 }}
                   className={`group flex flex-col h-full overflow-hidden transition-all duration-500 ${
+                    layout === 'carousel' ? `${carouselItemClass} shrink-0` : ''
+                  } ${
                     cardStyle === 'elevated' ? 'bg-white rounded-[32px] shadow-sm hover:shadow-2xl hover:-translate-y-2' :
                     cardStyle === 'bordered' ? 'bg-white rounded-[32px] border border-slate-100 hover:border-blue-200' :
                     cardStyle === 'glass' ? 'bg-white/40 backdrop-blur-md rounded-[32px] border border-white/20' :
                     'bg-transparent'
                   }`}
+                  style={{ width: layout === 'carousel' ? `${100 / responsiveColumns}%` : undefined }}
                 >
                   {/* Image Container */}
                   <div className="relative aspect-square overflow-hidden m-3 rounded-[24px]">
@@ -400,6 +448,24 @@ export const ProductsShowcaseModule: React.FC<ProductsShowcaseModuleProps> = ({
                 </motion.div>
               ))}
             </AnimatePresence>
+            </motion.div>
+
+            {layout === 'carousel' && filteredProducts.length > responsiveColumns && (
+              <>
+                <button
+                  onClick={() => setCarouselIndex((currentIndex) => Math.max(0, currentIndex - 1))}
+                  className={`absolute left-0 top-1/2 -translate-y-1/2 w-11 h-11 bg-white rounded-full shadow-xl flex items-center justify-center text-blue-600 hover:bg-blue-600 hover:text-white transition-all z-10 ${carouselIndex === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  <ChevronLeft size={22} />
+                </button>
+                <button
+                  onClick={() => setCarouselIndex((currentIndex) => Math.min(Math.ceil(filteredProducts.length / responsiveColumns) - 1, currentIndex + 1))}
+                  className={`absolute right-0 top-1/2 -translate-y-1/2 w-11 h-11 bg-white rounded-full shadow-xl flex items-center justify-center text-blue-600 hover:bg-blue-600 hover:text-white transition-all z-10 ${carouselIndex >= Math.ceil(filteredProducts.length / responsiveColumns) - 1 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  <ChevronRight size={22} />
+                </button>
+              </>
+            )}
           </div>
         </>
       )}

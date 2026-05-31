@@ -744,7 +744,8 @@ export const PRODUCTS_SHOWCASE_MODULE: WebModule = {
       { id: 'columns', label: 'Columnas (Desktop)', type: 'select', defaultValue: '3', options: [
         { label: '2 Columnas', value: '2' },
         { label: '3 Columnas', value: '3' },
-        { label: '4 Columnas', value: '4' }
+        { label: '4 Columnas', value: '4' },
+        { label: '5 Columnas', value: '5' }
       ]},
       { id: 'show_tabs', label: 'Mostrar Filtros Categoría', type: 'boolean', defaultValue: true }
     ],

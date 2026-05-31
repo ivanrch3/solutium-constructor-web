@@ -376,6 +376,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
   const [showBentoPrompt, setShowBentoPrompt] = useState(false);
+  const [dismissedBentoCellDrawerKey, setDismissedBentoCellDrawerKey] = useState<string | null>(null);
 
   const setPreviewWarningsFromResult = useCallback((
     warnings: string[] | undefined,
@@ -4116,17 +4117,25 @@ const formatTimestampName = () => {
   const isSelectedBentoSection = selectedBentoSection?.type === 'bento'
     || selectedBentoSection?.templateId === 'mod_bento_1'
     || selectedBentoSection?.id?.startsWith('mod_bento_1');
+  const selectedBentoCellKey = isSelectedBentoSection && selectedBentoSection && selectedBentoCellIndex !== null
+    ? `${selectedBentoSection.id}:${selectedBentoCellIndex}`
+    : null;
   const showBentoCellDrawer = Boolean(
     !isPreviewMode
     && !isExternalRender
     && isSelectedBentoSection
     && selectedBentoCellIndex !== null
+    && selectedBentoCellKey !== dismissedBentoCellDrawerKey
   );
   const bentoProjectColors = Array.from(new Set([
     projectThemeSeed.primary,
     projectThemeSeed.secondary,
     projectThemeSeed.accent
   ].filter((color): color is string => typeof color === 'string' && color.trim().length > 0)));
+
+  useEffect(() => {
+    setDismissedBentoCellDrawerKey(null);
+  }, [selectedBentoCellKey]);
 
   return (
     <div className={`h-screen w-screen flex overflow-hidden bg-surface font-sans antialiased ${(isPreviewMode || isExternalRender) ? 'p-0' : ''}`}>
@@ -4480,12 +4489,18 @@ const formatTimestampName = () => {
                         onOpenBentoGenerator={() => setShowBentoPrompt(true)}
                       />
                     </div>
-                    {!isPreviewMode && !isExternalRender && (
+                    {!isPreviewMode && !isExternalRender && !showBentoCellDrawer && (
                       <aside className="w-80 shrink-0 border-l border-border bg-surface overflow-hidden">
                         <PropertyEditor
                           settingsValues={editorState.settingsValues}
                           onSettingChange={handleSettingChange}
-                          suppressBentoCellEditor={showBentoCellDrawer}
+                          suppressBentoCellEditor={Boolean(isSelectedBentoSection && selectedBentoCellIndex !== null)}
+                          bentoCellDrawerOpen={showBentoCellDrawer}
+                          onOpenBentoCellDrawer={
+                            isSelectedBentoSection && selectedBentoCellIndex !== null
+                              ? () => setDismissedBentoCellDrawerKey(null)
+                              : undefined
+                          }
                         />
                       </aside>
                     )}
@@ -4503,7 +4518,7 @@ const formatTimestampName = () => {
                             project={project}
                             projectColors={bentoProjectColors}
                             title="Editar elemento Bento"
-                            onClose={() => setSelectedBentoCellIndex(null)}
+                            onClose={() => setDismissedBentoCellDrawerKey(selectedBentoCellKey)}
                           />
                         </div>
                       </div>

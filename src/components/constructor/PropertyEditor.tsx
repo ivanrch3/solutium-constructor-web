@@ -87,12 +87,16 @@ interface PropertyEditorProps {
   settingsValues?: Record<string, any>;
   onSettingChange?: (elementOrModuleId: string, settingId: string, value: any) => void;
   suppressBentoCellEditor?: boolean;
+  bentoCellDrawerOpen?: boolean;
+  onOpenBentoCellDrawer?: () => void;
 }
 
 export const PropertyEditor: React.FC<PropertyEditorProps> = ({
   settingsValues,
   onSettingChange,
-  suppressBentoCellEditor = false
+  suppressBentoCellEditor = false,
+  bentoCellDrawerOpen = false,
+  onOpenBentoCellDrawer
 }) => {
   const { 
     siteContent, 
@@ -191,26 +195,37 @@ export const PropertyEditor: React.FC<PropertyEditorProps> = ({
     || selectedSection.id.startsWith('mod_bento_1');
 
   if (isBento && selectedBentoCellIndex !== null) {
-    if (suppressBentoCellEditor) {
+    if (suppressBentoCellEditor || onOpenBentoCellDrawer) {
       return (
         <div className="flex h-full flex-col bg-white">
           <div className="border-b border-gray-100 bg-gray-50/70 p-4">
             <h3 className="text-sm font-bold text-gray-900">Elemento Bento seleccionado</h3>
             <p className="mt-1 text-xs leading-relaxed text-gray-500">
-              La edición de esta celda está abierta en el panel temporal del Canvas.
+              {bentoCellDrawerOpen
+                ? 'La edicion de esta celda esta abierta en el drawer Bento.'
+                : 'El drawer Bento esta cerrado. Puedes reabrirlo o volver a la configuracion global.'}
             </p>
           </div>
           <div className="flex flex-1 flex-col items-center justify-center p-6 text-center">
             <Layers className="mb-3 text-gray-200" size={48} />
             <p className="text-xs text-gray-500">
-              Usa el drawer para editar el elemento sin duplicar controles.
+              La edicion profunda vive en un solo lugar para evitar controles duplicados.
             </p>
+            {!bentoCellDrawerOpen && onOpenBentoCellDrawer && (
+              <button
+                type="button"
+                onClick={onOpenBentoCellDrawer}
+                className="mt-4 rounded-full bg-blue-600 px-4 py-2 text-[11px] font-bold uppercase tracking-wide text-white transition-colors hover:bg-blue-700"
+              >
+                Abrir editor
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setSelectedBentoCellIndex(null)}
-              className="mt-4 rounded-full bg-blue-50 px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-blue-600 transition-colors hover:bg-blue-100"
+              className="mt-3 rounded-full bg-blue-50 px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-blue-600 transition-colors hover:bg-blue-100"
             >
-              Volver a Configuración Global
+              Volver a Configuracion Global
             </button>
           </div>
         </div>

@@ -68,7 +68,14 @@ export const TrustedLogosModule: React.FC<TrustedLogosModuleProps> = ({
     return companies.slice(0, 8);
   }, [companies, selectedIds, settingsSnapshotCompanies, snapshotCompaniesOverride]);
 
-  const columns = Math.max(2, parseInt(String(getVal(null, 'columns', 4)), 10) || 4);
+  const configuredColumns = Math.max(1, Math.min(6, parseInt(String(getVal(null, 'columns', 4)), 10) || 4));
+  const columns = Math.max(1, Math.min(configuredColumns, displayCompanies.length || configuredColumns));
+  const trustedLogoGridClass =
+    columns >= 5 ? 'grid-cols-1 @sm:grid-cols-2 @md:grid-cols-3 @5xl:grid-cols-5' :
+    columns === 4 ? 'grid-cols-1 @sm:grid-cols-2 @md:grid-cols-3 @5xl:grid-cols-4' :
+    columns === 3 ? 'grid-cols-1 @sm:grid-cols-2 @md:grid-cols-3' :
+    columns === 2 ? 'grid-cols-1 @sm:grid-cols-2' :
+    'grid-cols-1';
   const gap = parseNum(getVal(null, 'gap', 32), 32);
   const paddingY = parseNum(getVal(null, 'padding_y', 80), 80);
   const globalThemeSectionAnimation = settingsValues['global_theme_section_animation'];
@@ -119,7 +126,7 @@ export const TrustedLogosModule: React.FC<TrustedLogosModuleProps> = ({
   return (
     <SectionAnimation animation={sectionAnimation} speed={globalThemeSectionAnimationSpeed}>
       <section
-        className="w-full"
+        className="w-full @container"
         style={{
           backgroundColor: bgColor,
           paddingTop: `${paddingY}px`,
@@ -171,12 +178,7 @@ export const TrustedLogosModule: React.FC<TrustedLogosModuleProps> = ({
 
         {displayCompanies.length > 0 ? (
           <div
-            className={`grid ${
-              columns >= 5 ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-5' :
-              columns === 4 ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4' :
-              columns === 3 ? 'grid-cols-2 lg:grid-cols-3' :
-              'grid-cols-2'
-            } items-center`}
+            className={`grid ${trustedLogoGridClass} items-center`}
             style={{ gap: `${gap}px` }}
           >
             {displayCompanies.map((company) => {

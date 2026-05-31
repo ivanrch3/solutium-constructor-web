@@ -295,11 +295,11 @@ export const NewsletterModule: React.FC<{
         {renderPattern()}
         {renderConfetti()}
 
-        <div className={`flex flex-col ${layout === 'horizontal' || layout === 'lead_magnet' ? '@lg:flex-row @lg:items-center @lg:gap-16' : 'items-center text-center'}`}>
+        <div className={`flex flex-col ${layout === 'horizontal' || layout === 'lead_magnet' ? '@5xl:flex-row @5xl:items-center @5xl:gap-16' : 'items-center text-center'}`}>
           
           {/* Lead Magnet Image */}
           {layout === 'lead_magnet' && (
-            <div className="w-full @lg:w-1/3 mb-12 @lg:mb-0 relative group">
+            <div className="w-full @5xl:w-1/3 mb-12 @5xl:mb-0 relative group">
               <div className="absolute -top-4 -left-4 z-10 bg-primary text-white text-[10px] font-black px-3 py-1.5 rounded-lg shadow-xl rotate-[-12deg] group-hover:rotate-0 transition-transform">
                 {magnetBadge}
               </div>

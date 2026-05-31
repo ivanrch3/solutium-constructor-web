@@ -1,3 +1,4 @@
+import { logDebug } from '../../../utils/debug';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import * as LucideIcons from 'lucide-react';
@@ -13,6 +14,58 @@ import '/node_modules/react-grid-layout/css/styles.css';
 import '/node_modules/react-resizable/css/styles.css';
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
+const BENTO_AI_ACTIONS_ENABLED = false;
+const BENTO_BREAKPOINT_TO_LAYOUT: Record<string, 'desktop' | 'tablet' | 'mobile'> = {
+  lg: 'desktop',
+  md: 'desktop',
+  sm: 'tablet',
+  xs: 'mobile',
+  xxs: 'mobile'
+};
+
+const BENTO_BREAKPOINT_ORDER = ['lg', 'md', 'sm', 'xs', 'xxs'];
+
+const BENTO_ELEMENT_OPTIONS = [
+  { kind: 'text', label: 'Texto', icon: 'Type', description: 'Bloque de texto libre' },
+  { kind: 'visual', label: 'Imagen', icon: 'Image', description: 'Imagen principal' },
+  { kind: 'button', label: 'Botón', icon: 'MousePointerClick', description: 'Llamado a la acción' },
+  { kind: 'icon', label: 'Ícono', icon: 'Sparkles', description: 'Símbolo destacado' },
+  { kind: 'badge', label: 'Badge', icon: 'Badge', description: 'Etiqueta compacta' },
+  { kind: 'metric', label: 'Métrica', icon: 'BarChart3', description: 'Dato o indicador' },
+  { kind: 'list', label: 'Lista', icon: 'ListChecks', description: 'Puntos clave' },
+  { kind: 'accordion', label: 'Acordeón', icon: 'ChevronDownSquare', description: 'Texto desplegable' },
+  { kind: 'marquee', label: 'Cinta animada', icon: 'MoveRight', description: 'Texto en movimiento' },
+  { kind: 'card', label: 'Tarjeta simple', icon: 'PanelTop', description: 'Contenedor flexible' }
+];
+
+const isBentoDebugEnabled = () => {
+  if (typeof window === 'undefined') return false;
+
+  const hasDebugParam = (search: string) => {
+    return new URLSearchParams(search).get('debug_bento') === 'true';
+  };
+
+  if (hasDebugParam(window.location.search)) return true;
+
+  try {
+    if (window.parent && window.parent !== window && hasDebugParam(window.parent.location.search)) {
+      return true;
+    }
+  } catch {
+    // Cross-origin parent frames are expected in embedded contexts.
+  }
+
+  try {
+    return window.localStorage.getItem('debug_bento') === 'true';
+  } catch {
+    return false;
+  }
+};
+
+const createBentoCellId = () => {
+  const randomId = globalThis.crypto?.randomUUID?.() || Math.random().toString(36).slice(2);
+  return `bento_cell_${randomId}`;
+};
 
 // --- SUB-ELEMENT RENDERERS ---
 
@@ -50,6 +103,14 @@ const resolveThemeColor = (
   return safeValue;
 };
 
+const getTypographyStyle = (token: string | undefined, fallback: keyof typeof TYPOGRAPHY_SCALE) => {
+  return TYPOGRAPHY_SCALE[(token as keyof typeof TYPOGRAPHY_SCALE) || fallback] || TYPOGRAPHY_SCALE[fallback];
+};
+
+const getFontWeightValue = (token: string | undefined, fallback: keyof typeof FONT_WEIGHTS) => {
+  return FONT_WEIGHTS[(token as keyof typeof FONT_WEIGHTS) || fallback]?.value || FONT_WEIGHTS[fallback].value;
+};
+
 const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave }: any) => {
   const {
     type,
@@ -63,6 +124,9 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave }: a
     button_text,
     btn_url,
     btn_target,
+    image,
+    card_image,
+    image_fit = 'cover',
     title_size,
     title_weight = 'extrabold',
     title_color,
@@ -78,6 +142,7 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave }: a
   const adaptive = getAdaptiveTypography(priority, col_span, row_span);
   const finalTitleSize = (title_size && title_size !== 'auto') ? title_size : adaptive.title;
   const finalDescSize = (desc_size && desc_size !== 'auto') ? desc_size : adaptive.desc;
+  const finalTitleWeight = getFontWeightValue(title_weight, 'extrabold');
 
   const IconComponent = (LucideIcons as any)[icon] || Sparkles;
   
@@ -107,7 +172,7 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave }: a
             className="leading-[1.1] mb-2"
             style={{ 
               fontSize: `${TYPOGRAPHY_SCALE[finalTitleSize as keyof typeof TYPOGRAPHY_SCALE]?.fontSize || 48}px`,
-              fontWeight: 900,
+              fontWeight: finalTitleWeight,
               color: finalTitleColor,
               letterSpacing: '-0.03em'
             }}
@@ -218,12 +283,143 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave }: a
         </div>
       );
 
+    case 'button':
+      return (
+        <div className="flex z-10 w-full h-full items-center justify-center">
+          <a
+            href={btn_url || '#'}
+            target={btn_target === '_blank' ? '_blank' : undefined}
+            rel={btn_target === '_blank' ? 'noopener noreferrer' : undefined}
+            onClick={(event) => !isPreviewMode && event.preventDefault()}
+            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary px-6 py-3 text-sm font-black uppercase tracking-widest text-white shadow-lg transition-transform hover:scale-[1.03]"
+          >
+            <InlineEditableText
+              moduleId={moduleId}
+              settingId="button_text"
+              value={button_text || title || 'Haz clic aquí'}
+              tagName="span"
+              isPreviewMode={isPreviewMode}
+              onSave={(val) => onSave('button_text', val)}
+            />
+            <LucideIcons.ArrowRight size={16} />
+          </a>
+        </div>
+      );
+
+    case 'badge':
+      return (
+        <div className="flex z-10 w-full h-full items-center justify-center">
+          <span className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-5 py-2 text-xs font-black uppercase tracking-[0.2em] text-primary">
+            <LucideIcons.Tag size={14} />
+            <InlineEditableText
+              moduleId={moduleId}
+              settingId="title"
+              value={title || 'Nuevo'}
+              tagName="span"
+              isPreviewMode={isPreviewMode}
+              onSave={(val) => onSave('title', val)}
+            />
+          </span>
+        </div>
+      );
+
+    case 'icon':
+      return (
+        <div className="flex flex-col z-10 w-full h-full items-center justify-center gap-3 text-center">
+          <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-primary/10 text-primary">
+            <IconComponent size={32} />
+          </div>
+          {title && (
+            <h3 className="text-base leading-tight" style={{ color: finalTitleColor, fontWeight: finalTitleWeight }}>
+              <InlineEditableText
+                moduleId={moduleId}
+                settingId="title"
+                value={title}
+                tagName="span"
+                isPreviewMode={isPreviewMode}
+                onSave={(val) => onSave('title', val)}
+              />
+            </h3>
+          )}
+        </div>
+      );
+
+    case 'list':
+      const listItems = Array.isArray(item.list_items)
+        ? item.list_items
+        : String(item.list_items || 'Primer punto\nSegundo punto\nTercer punto').split('\n').filter(Boolean);
+
+      return (
+        <div className="flex flex-col z-10 w-full h-full gap-4">
+          <h3 className="text-lg leading-tight" style={{ color: finalTitleColor, fontWeight: finalTitleWeight }}>
+            <InlineEditableText
+              moduleId={moduleId}
+              settingId="title"
+              value={title || 'Lista clave'}
+              tagName="span"
+              isPreviewMode={isPreviewMode}
+              onSave={(val) => onSave('title', val)}
+            />
+          </h3>
+          <div className="space-y-2">
+            {listItems.map((listItem: string, index: number) => (
+              <div key={index} className="flex items-start gap-2 text-sm" style={{ color: finalDescColor }}>
+                <LucideIcons.CheckCircle2 size={16} className="mt-0.5 shrink-0 text-primary" />
+                <span>{listItem}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+
+    case 'accordion':
+      return (
+        <details className="group z-10 w-full" open={!isPreviewMode}>
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-base font-black" style={{ color: finalTitleColor }}>
+            <InlineEditableText
+              moduleId={moduleId}
+              settingId="title"
+              value={title || 'Ver más detalles'}
+              tagName="span"
+              isPreviewMode={isPreviewMode}
+              onSave={(val) => onSave('title', val)}
+            />
+            <LucideIcons.ChevronDown size={18} className="transition-transform group-open:rotate-180" />
+          </summary>
+          <p className="mt-3 text-sm leading-relaxed" style={{ color: finalDescColor }}>
+            <InlineEditableText
+              moduleId={moduleId}
+              settingId="description"
+              value={description || 'Contenido desplegable...'}
+              tagName="span"
+              isPreviewMode={isPreviewMode}
+              onSave={(val) => onSave('description', val)}
+            />
+          </p>
+        </details>
+      );
+
+    case 'marquee':
+      return (
+        <div className="relative z-10 flex h-full w-full items-center overflow-hidden">
+          <motion.div
+            className="flex min-w-full whitespace-nowrap text-lg font-black uppercase tracking-[0.25em]"
+            style={{ color: finalTitleColor }}
+            animate={{ x: ['0%', '-50%'] }}
+            transition={{ duration: 12, ease: 'linear', repeat: Infinity }}
+          >
+            <span className="px-4">{title || 'PROMO • NUEVO • 24/7'}</span>
+            <span className="px-4">{title || 'PROMO • NUEVO • 24/7'}</span>
+          </motion.div>
+        </div>
+      );
+
     case 'step':
       return (
         <div className="flex flex-col gap-4 z-10 w-full h-full justify-center text-left">
           <div className="flex items-center justify-between">
             <div 
-              className="w-12 h-12 rounded-2xl flex items-center justify-center text-white font-black text-xl shadow-lg"
+              className="w-12 h-12 rounded-2xl flex items-center justify-center text-white text-xl shadow-lg"
               style={{ backgroundColor: item.accent_color || 'var(--color-primary)' }}
             >
               {item.step_number || 1}
@@ -231,7 +427,7 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave }: a
             {item.icon && <IconComponent size={24} className="opacity-20" />}
           </div>
           <div>
-            <h3 className="font-extrabold text-lg leading-tight mb-2" style={{ color: finalTitleColor }}>
+            <h3 className="text-lg leading-tight mb-2" style={{ color: finalTitleColor, fontWeight: finalTitleWeight }}>
               <InlineEditableText
                 moduleId={moduleId}
                 settingId="title"
@@ -295,7 +491,7 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave }: a
              )}
              <div>
                {eyebrow && <span className="text-[9px] font-bold text-primary uppercase tracking-[0.2em] mb-1 block">{eyebrow}</span>}
-               <h3 className="font-black text-xl leading-none" style={{ color: finalTitleColor }}>
+               <h3 className="text-xl leading-none" style={{ color: finalTitleColor, fontWeight: finalTitleWeight }}>
                 <InlineEditableText
                   moduleId={moduleId}
                   settingId="title"
@@ -360,9 +556,10 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave }: a
              </div>
              <div>
                 <h3 
-                  className="font-black leading-tight"
+                  className="leading-tight"
                   style={{ 
                     fontSize: '16px',
+                    fontWeight: finalTitleWeight,
                     color: finalTitleColor
                   }}
                 >
@@ -406,7 +603,7 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave }: a
               className="mb-2 leading-tight"
               style={{ 
                 fontSize: `${TYPOGRAPHY_SCALE[finalTitleSize as keyof typeof TYPOGRAPHY_SCALE]?.fontSize || 24}px`,
-                fontWeight: isHero ? 900 : 800,
+                fontWeight: isHero ? Math.max(finalTitleWeight, 900) : finalTitleWeight,
                 color: finalTitleColor,
                 letterSpacing: isHero ? '-0.02em' : 'normal'
               }}
@@ -462,7 +659,7 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave }: a
                   className="leading-tight tracking-tight"
                   style={{ 
                     fontSize: `${TYPOGRAPHY_SCALE.t2.fontSize}px`,
-                    fontWeight: 900,
+                    fontWeight: finalTitleWeight,
                     color: finalTitleColor
                   }}
                 >
@@ -494,7 +691,7 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave }: a
                   className="mb-1 leading-tight"
                   style={{ 
                     fontSize: `${TYPOGRAPHY_SCALE.t3.fontSize}px`,
-                    fontWeight: 900,
+                    fontWeight: finalTitleWeight,
                     color: finalTitleColor
                   }}
                 >
@@ -547,40 +744,82 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave }: a
       );
 
     case 'visual':
+      const visualImage = image || card_image;
+
       return (
-        <div className="flex flex-col z-10 w-full h-full justify-end p-2 bg-gradient-to-t from-black/60 via-black/20 to-transparent">
-          <h3 
-            className="font-black leading-tight mb-2 text-white"
-            style={{ 
-              fontSize: `${TYPOGRAPHY_SCALE[finalTitleSize as keyof typeof TYPOGRAPHY_SCALE]?.fontSize || 20}px`
-            }}
-          >
-            <InlineEditableText
-              moduleId={moduleId}
-              settingId="title"
-              value={title}
-              tagName="span"
-              isPreviewMode={isPreviewMode}
-              onSave={(val) => onSave('title', val)}
+        <div className="relative z-10 w-full h-full overflow-hidden">
+          {visualImage ? (
+            <img
+              src={visualImage}
+              className="absolute inset-0 w-full h-full"
+              style={{ objectFit: image_fit }}
+              referrerPolicy="no-referrer"
+              alt={title || 'Imagen principal'}
             />
-          </h3>
-          {description && (
-            <p className="text-white/80 text-xs mb-2 line-clamp-2">
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center bg-slate-100 text-slate-300">
+              <LucideIcons.Image size={56} strokeWidth={1.5} />
+            </div>
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+          <div className="absolute inset-x-0 bottom-0 flex flex-col justify-end p-6">
+            <h3
+              className="leading-tight mb-2 text-white"
+              style={{
+                fontSize: `${TYPOGRAPHY_SCALE[finalTitleSize as keyof typeof TYPOGRAPHY_SCALE]?.fontSize || 20}px`,
+                fontWeight: finalTitleWeight
+              }}
+            >
               <InlineEditableText
                 moduleId={moduleId}
-                settingId="description"
-                value={description}
+                settingId="title"
+                value={title}
                 tagName="span"
                 isPreviewMode={isPreviewMode}
-                onSave={(val) => onSave('description', val)}
+                onSave={(val) => onSave('title', val)}
               />
-            </p>
-          )}
+            </h3>
+            {description && (
+              <p className="text-white/80 text-xs mb-2 line-clamp-2">
+                <InlineEditableText
+                  moduleId={moduleId}
+                  settingId="description"
+                  value={description}
+                  tagName="span"
+                  isPreviewMode={isPreviewMode}
+                  onSave={(val) => onSave('description', val)}
+                />
+              </p>
+            )}
+          </div>
         </div>
       );
 
     case 'video':
-      return null;
+      return (
+        <div className="flex flex-col gap-3 z-10 w-full h-full justify-center items-center text-center">
+          <div className="w-14 h-14 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center">
+            <LucideIcons.PlayCircle size={28} />
+          </div>
+          <div>
+            {title && (
+              <h3
+                className="mb-2 leading-tight"
+                style={{
+                  fontSize: `${TYPOGRAPHY_SCALE[finalTitleSize as keyof typeof TYPOGRAPHY_SCALE]?.fontSize || 20}px`,
+                  fontWeight: finalTitleWeight,
+                  color: finalTitleColor
+                }}
+              >
+                {title}
+              </h3>
+            )}
+            <p className="text-xs font-semibold opacity-60" style={{ color: finalDescColor }}>
+              Tipo video heredado. La edición visual se habilitará en una fase posterior.
+            </p>
+          </div>
+        </div>
+      );
 
     default: // 'text'
       return (
@@ -598,7 +837,7 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave }: a
               className="mb-2 leading-tight"
               style={{ 
                 fontSize: `${TYPOGRAPHY_SCALE[finalTitleSize as keyof typeof TYPOGRAPHY_SCALE]?.fontSize || 24}px`,
-                fontWeight: 800,
+                fontWeight: finalTitleWeight,
                 color: finalTitleColor
               }}
             >
@@ -651,7 +890,8 @@ export const BentoModule: React.FC<{
   onOpenBentoGenerator?: () => void;
 }> = ({ moduleId, settingsValues, content, onSettingChange, isPreviewMode, onOpenBentoGenerator }) => {
   useEffect(() => {
-    console.log('[BENTO_MODULE_MOUNT_DEBUG]', {
+    if (!isBentoDebugEnabled()) return;
+    logDebug('[BENTO_MODULE_MOUNT_DEBUG]', {
       moduleId,
       runtime: "constructor_canvas",
       isPreviewMode,
@@ -660,8 +900,9 @@ export const BentoModule: React.FC<{
     });
   }, []);
 
-  const { selectedBentoCellIndex, setSelectedBentoCellIndex } = useEditorStore();
+  const { selectedBentoCellIndex, setSelectedBentoCellIndex, selectSection } = useEditorStore();
   const [isDragging, setIsDragging] = useState(false);
+  const [isElementPickerOpen, setIsElementPickerOpen] = useState(false);
   // Remove local selectedIndex, use store instead
   // const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const selectedIndex = selectedBentoCellIndex;
@@ -691,8 +932,8 @@ export const BentoModule: React.FC<{
   // Global Settings
   const columns = Math.max(1, parseInt(getVal(null, 'columns', 12)) || 12);
   const gap = parseNumSafe(getVal(null, 'gap', 20), 20);
-  const paddingY = parseNumSafe(getVal(null, 'padding_y', 100), 100);
-  const maxWidth = parseNumSafe(getVal(null, 'max_width', 1400), 1400);
+  const paddingY = parseNumSafe(getVal(null, 'padding_y', 40), 40);
+  const maxWidth = parseNumSafe(getVal(null, 'max_width', 1200), 1200);
   const darkMode = toBoolean(getVal(null, 'dark_mode', false));
   const rawBgColor = getVal(null, 'bg_color', '#FFFFFF');
   const bgColor = resolveThemeColor(rawBgColor, '#FFFFFF', '#0F172A', darkMode);
@@ -718,6 +959,40 @@ export const BentoModule: React.FC<{
 
   // --- LAYOUT HELPERS ---
 
+  const normalizeLayoutEntry = (layout: any) => ({
+    x: Number(layout?.x) || 0,
+    y: Number(layout?.y) || 0,
+    w: Number(layout?.w) || 1,
+    h: Number(layout?.h) || 1
+  });
+
+  const normalizeLayoutEntryWithId = (layout: any) => ({
+    i: String(layout?.i ?? ''),
+    ...normalizeLayoutEntry(layout)
+  });
+
+  const areLayoutsEqual = (a: any[] = [], b: any[] = []) => {
+    const normalizeLayout = (layout: any[] = []) =>
+      layout
+        .map(normalizeLayoutEntryWithId)
+        .sort((left, right) => left.i.localeCompare(right.i));
+
+    const normalizedA = normalizeLayout(a);
+    const normalizedB = normalizeLayout(b);
+
+    if (normalizedA.length !== normalizedB.length) return false;
+
+    return normalizedA.every((entry, index) => {
+      const candidate = normalizedB[index];
+      return candidate
+        && entry.i === candidate.i
+        && entry.x === candidate.x
+        && entry.y === candidate.y
+        && entry.w === candidate.w
+        && entry.h === candidate.h;
+    });
+  };
+
   const getBentoLayoutForBreakpoint = (items: any[], breakpoint: string, cols: number) => {
     return items.map((item: any, index: number) => {
       // 1. Try saved layouts object
@@ -726,7 +1001,7 @@ export const BentoModule: React.FC<{
       }
 
       // 2. Try legacy / specific span fields
-      const w = breakpoint === 'mobile' ? (item.mobile_span || 1) : 
+      const w = breakpoint === 'mobile' ? (item.mobile_span || item.col_span || 4) : 
                 breakpoint === 'tablet' ? (item.tablet_span || 2) : 
                 (item.desktop_span || item.col_span || 4);
       
@@ -744,7 +1019,8 @@ export const BentoModule: React.FC<{
     });
   };
 
-  const [currentBreakpoint, setCurrentBreakpoint] = useState('lg');
+  const currentBreakpointRef = useRef('lg');
+  const lastPersistedLayoutSignatureRef = useRef('');
   
   // Items Data - Robust Normalization
   const getItemsFromMultipleSources = () => {
@@ -768,24 +1044,42 @@ export const BentoModule: React.FC<{
 
   const handleLayoutChange = (currentLayout: any, allLayouts: any) => {
     if (!onSettingChange || isPreviewMode) return;
+    if (!Array.isArray(currentLayout) || currentLayout.length === 0) return;
 
-    // Map RGL keys to our semantic keys
-    const bpMap: Record<string, string> = { lg: 'desktop', md: 'desktop', sm: 'tablet', xs: 'mobile', xxs: 'mobile' };
-    const currentBP = bpMap[currentBreakpoint] || 'desktop';
+    const activeBreakpoint = areLayoutsEqual(currentLayout, allLayouts?.[currentBreakpointRef.current])
+      ? currentBreakpointRef.current
+      : BENTO_BREAKPOINT_ORDER.find((breakpoint) => areLayoutsEqual(currentLayout, allLayouts?.[breakpoint])) || currentBreakpointRef.current;
+    const currentBP = BENTO_BREAKPOINT_TO_LAYOUT[activeBreakpoint] || 'desktop';
+    const normalizedCurrentLayout = currentLayout.map(normalizeLayoutEntryWithId);
+    const currentSignature = JSON.stringify({
+      breakpoint: currentBP,
+      layout: normalizedCurrentLayout
+        .map((entry) => ({ i: entry.i, x: entry.x, y: entry.y, w: entry.w, h: entry.h }))
+        .sort((left, right) => left.i.localeCompare(right.i))
+    });
+
+    if (lastPersistedLayoutSignatureRef.current === currentSignature) return;
 
     const newItems = [...rawItems];
     let changed = false;
 
-    currentLayout.forEach((l: any) => {
+    normalizedCurrentLayout.forEach((l: any) => {
       const idx = parseInt(l.i);
       if (newItems[idx]) {
-        const entry = { x: l.x, y: l.y, w: l.w, h: l.h };
+        const entry = normalizeLayoutEntry(l);
         const existingLayouts = newItems[idx].layouts || {};
+        const existingEntry = existingLayouts[currentBP] ? normalizeLayoutEntry(existingLayouts[currentBP]) : null;
         
-        if (JSON.stringify(existingLayouts[currentBP]) !== JSON.stringify(entry)) {
+        if (
+          !existingEntry ||
+          existingEntry.x !== entry.x ||
+          existingEntry.y !== entry.y ||
+          existingEntry.w !== entry.w ||
+          existingEntry.h !== entry.h
+        ) {
           newItems[idx] = {
             ...newItems[idx],
-            layouts: { ...existingLayouts, [currentBP]: entry },
+            layouts: { ...existingLayouts, [currentBP]: { x: entry.x, y: entry.y, w: entry.w, h: entry.h } },
             // Keep legacy synced for desktop compatibility
             ...(currentBP === 'desktop' ? { x: l.x, y: l.y, col_span: l.w, row_span: l.h } : {})
           };
@@ -795,13 +1089,15 @@ export const BentoModule: React.FC<{
     });
 
     if (changed) {
+      lastPersistedLayoutSignatureRef.current = currentSignature;
       onSettingChange(`${moduleId}_el_bento_items`, 'items', newItems);
     }
   };
 
   const handleBreakpointChange = (newBreakpoint: string) => {
-    setCurrentBreakpoint(newBreakpoint);
-    console.log('[BENTO_BP_CHANGE]', newBreakpoint);
+    if (currentBreakpointRef.current === newBreakpoint) return;
+    currentBreakpointRef.current = newBreakpoint;
+    if (isBentoDebugEnabled()) logDebug('[BENTO_BP_CHANGE]', newBreakpoint);
   };
 
   const itemVariants = globalAnimOverride || {
@@ -813,8 +1109,11 @@ export const BentoModule: React.FC<{
     if (!onSettingChange) return;
     
     const type = (window as any)._draggingBentoType || 'text';
+    const currentLayoutKey = BENTO_BREAKPOINT_TO_LAYOUT[currentBreakpointRef.current] || 'desktop';
+    const droppedLayout = normalizeLayoutEntry(item);
     
     const newItem = {
+      id: createBentoCellId(),
       type,
       title: type === 'stat' ? '99+' : (type === 'cta' ? '¡Únete ahora!' : 'Nuevo Bloque'),
       description: 'Personaliza este bloque desde el panel de ajustes.',
@@ -822,6 +1121,9 @@ export const BentoModule: React.FC<{
       row_span: item.h,
       x: item.x,
       y: item.y,
+      layouts: {
+        [currentLayoutKey]: droppedLayout
+      },
       card_style: 'solid',
       card_radius: 28,
       padding: 32,
@@ -832,37 +1134,220 @@ export const BentoModule: React.FC<{
 
     onSettingChange(`${moduleId}_el_bento_items`, 'items', [...rawItems, newItem]);
     (window as any)._draggingBentoType = null;
+    selectSection(moduleId);
     setSelectedIndex(rawItems.length);
   };
 
-  const handleAddCell = () => {
-    if (!onSettingChange) return;
-    
-    const newItem = {
-      type: "icon_text",
-      title: "Nueva celda",
-      description: "Describe esta celda.",
-      icon: "Sparkles",
-      col_span: 4,
-      row_span: 2,
-      x: 0,
-      y: rawItems.length > 0 ? Math.max(...rawItems.map((i: any) => i.y + i.row_span)) : 0,
+  const getLayoutEntryForBreakpoint = (item: any, breakpoint: 'desktop' | 'tablet' | 'mobile', colsForBreakpoint: number) => {
+    if (item.layouts?.[breakpoint]) {
+      return normalizeLayoutEntry({
+        ...item.layouts[breakpoint],
+        w: Math.min(item.layouts[breakpoint].w || 1, colsForBreakpoint)
+      });
+    }
+
+    const w = breakpoint === 'mobile' ? (item.mobile_span || item.col_span || 4) :
+              breakpoint === 'tablet' ? (item.tablet_span || 2) :
+              (item.desktop_span || item.col_span || 4);
+    const h = breakpoint === 'mobile' ? (item.mobile_rows || item.row_span || 2) :
+              (item.desktop_rows || item.row_span || 2);
+
+    return {
+      x: Math.min(item.x || 0, Math.max(colsForBreakpoint - Math.min(w, colsForBreakpoint), 0)),
+      y: item.y || 0,
+      w: Math.min(w, colsForBreakpoint),
+      h
+    };
+  };
+
+  const doLayoutsOverlap = (a: any, b: any) => (
+    a.x < b.x + b.w &&
+    a.x + a.w > b.x &&
+    a.y < b.y + b.h &&
+    a.y + a.h > b.y
+  );
+
+  const getNextFreeLayout = (
+    breakpoint: 'desktop' | 'tablet' | 'mobile',
+    colsForBreakpoint: number,
+    width: number,
+    height: number
+  ) => {
+    const safeWidth = Math.min(width, colsForBreakpoint);
+    const existingLayouts = rawItems.map((item: any) => getLayoutEntryForBreakpoint(item, breakpoint, colsForBreakpoint));
+    const maxY = existingLayouts.length > 0
+      ? Math.max(...existingLayouts.map((layout: any) => layout.y + layout.h))
+      : 0;
+
+    for (let y = 0; y <= maxY + height; y += 1) {
+      for (let x = 0; x <= colsForBreakpoint - safeWidth; x += 1) {
+        const candidate = { x, y, w: safeWidth, h: height };
+        if (!existingLayouts.some((layout: any) => doLayoutsOverlap(candidate, layout))) {
+          return candidate;
+        }
+      }
+    }
+
+    return { x: 0, y: maxY, w: safeWidth, h: height };
+  };
+
+  const getNextStackedLayout = (
+    breakpoint: 'tablet' | 'mobile',
+    colsForBreakpoint: number,
+    width: number,
+    height: number
+  ) => {
+    const safeWidth = Math.min(width, colsForBreakpoint);
+    const y = rawItems.length > 0
+      ? Math.max(...rawItems.map((item: any) => {
+          const layout = getLayoutEntryForBreakpoint(item, breakpoint, colsForBreakpoint);
+          return layout.y + layout.h;
+        }))
+      : 0;
+
+    return { x: 0, y, w: safeWidth, h: height };
+  };
+
+  const createResponsiveLayouts = (desktopW: number, desktopH: number, tabletW = Math.min(desktopW, 6), mobileW = 4) => ({
+    desktop: getNextFreeLayout('desktop', columns, desktopW, desktopH),
+    tablet: getNextFreeLayout('tablet', 6, tabletW, desktopH),
+    mobile: getNextStackedLayout('mobile', 4, mobileW, desktopH)
+  });
+
+  const createBentoElementPreset = (kind: string) => {
+    const base = {
+      id: createBentoCellId(),
       card_style: "solid",
       card_radius: 28,
+      card_shadow: 'sm',
       padding: 32,
-      content_align: 'center'
+      content_align: 'center',
+      x: 0,
+      y: 0
     };
+
+    const withLayout = (item: any, desktopW: number, desktopH: number, tabletW?: number, mobileW?: number) => {
+      const itemLayouts = createResponsiveLayouts(desktopW, desktopH, tabletW, mobileW);
+
+      return {
+        ...base,
+        ...item,
+        col_span: desktopW,
+        row_span: desktopH,
+        desktop_span: desktopW,
+        desktop_rows: desktopH,
+        tablet_span: tabletW ?? Math.min(desktopW, 6),
+        mobile_span: mobileW ?? 4,
+        x: itemLayouts.desktop.x,
+        y: itemLayouts.desktop.y,
+        layouts: itemLayouts
+      };
+    };
+
+    switch (kind) {
+      case 'visual':
+        return withLayout({
+          type: 'visual',
+          title: 'Imagen destacada',
+          description: '',
+          image: '',
+          card_style: 'transparent',
+          padding: 0
+        }, 3, 2, 3, 4);
+      case 'button':
+        return withLayout({
+          type: 'button',
+          title: 'Haz clic aquí',
+          button_text: 'Haz clic aquí',
+          btn_url: '#',
+          card_style: 'transparent',
+          padding: 16
+        }, 3, 1, 3, 4);
+      case 'icon':
+        return withLayout({
+          type: 'icon',
+          title: 'Ícono destacado',
+          icon: 'Sparkles',
+          description: ''
+        }, 2, 2, 2, 4);
+      case 'badge':
+        return withLayout({
+          type: 'badge',
+          title: 'Nuevo',
+          icon: 'Tag',
+          card_style: 'transparent',
+          padding: 12
+        }, 2, 1, 2, 4);
+      case 'metric':
+        return withLayout({
+          type: 'metric',
+          title: '99+',
+          description: 'Impacto medible',
+          metric_value: '99+',
+          metric_label: 'Impacto',
+          icon: 'BarChart3',
+          accent_color: '#3B82F6'
+        }, 3, 2, 3, 4);
+      case 'list':
+        return withLayout({
+          type: 'list',
+          title: 'Puntos clave',
+          description: '',
+          list_items: ['Primer punto', 'Segundo punto', 'Tercer punto'],
+          icon: 'ListChecks'
+        }, 4, 3, 4, 4);
+      case 'accordion':
+        return withLayout({
+          type: 'accordion',
+          title: 'Ver más detalles',
+          description: 'Contenido desplegable para ampliar esta idea.',
+          icon: 'ChevronDown'
+        }, 4, 2, 4, 4);
+      case 'marquee':
+        return withLayout({
+          type: 'marquee',
+          title: 'PROMO • NUEVO • 24/7',
+          card_style: 'transparent',
+          padding: 12
+        }, 8, 1, 6, 4);
+      case 'card':
+        return withLayout({
+          type: 'card',
+          title: 'Tarjeta simple',
+          description: 'Combina texto, estilo e imagen de fondo.',
+          icon: 'PanelTop'
+        }, 4, 2, 3, 4);
+      case 'text':
+      default:
+        return withLayout({
+          type: 'text',
+          title: 'Título del texto',
+          description: 'Escribe aquí tu contenido...',
+          icon: 'Type'
+        }, 4, 2, 3, 4);
+    }
+  };
+
+  const handleAddElement = (kind: string) => {
+    if (!onSettingChange) return;
+
+    const newItem = createBentoElementPreset(kind);
 
     const newItems = [...rawItems, newItem];
     onSettingChange(`${moduleId}_el_bento_items`, 'items', newItems);
+    selectSection(moduleId);
     setSelectedIndex(newItems.length - 1);
+    setIsElementPickerOpen(false);
 
-    console.log('[BENTO_CELL_UPDATE_DEBUG]', {
-      moduleId,
-      action: "add",
-      itemsCount: newItems.length,
-      updatedItem: newItem
-    });
+    if (isBentoDebugEnabled()) {
+      logDebug('[BENTO_CELL_UPDATE_DEBUG]', {
+        moduleId,
+        action: "add_element",
+        kind,
+        itemsCount: newItems.length,
+        updatedItem: newItem
+      });
+    }
   };
 
   const removeItem = (index: number) => {
@@ -876,12 +1361,31 @@ export const BentoModule: React.FC<{
   const duplicateItem = (index: number) => {
     if (!onSettingChange) return;
     const itemToDuplicate = rawItems[index];
+    const offsetLayout = (layout: any, colsForLayout: number) => {
+      const entry = normalizeLayoutEntry(layout);
+      const nextX = Math.min(entry.x + 1, Math.max(0, colsForLayout - entry.w));
+      return { ...entry, x: nextX, y: entry.y + 1 };
+    };
+    const duplicatedLayouts = itemToDuplicate.layouts
+      ? {
+          ...itemToDuplicate.layouts,
+          ...(itemToDuplicate.layouts.desktop ? { desktop: offsetLayout(itemToDuplicate.layouts.desktop, columns) } : {}),
+          ...(itemToDuplicate.layouts.tablet ? { tablet: offsetLayout(itemToDuplicate.layouts.tablet, 6) } : {}),
+          ...(itemToDuplicate.layouts.mobile ? { mobile: offsetLayout(itemToDuplicate.layouts.mobile, 4) } : {})
+        }
+      : undefined;
+    const duplicatedDesktopLayout = duplicatedLayouts?.desktop;
     const newItem = { 
       ...itemToDuplicate,
-      x: (itemToDuplicate.x + 1) % columns, // Simple shift to avoid complete overlap
-      y: itemToDuplicate.y + 1
+      id: createBentoCellId(),
+      ...(duplicatedLayouts ? { layouts: duplicatedLayouts } : {}),
+      x: duplicatedDesktopLayout?.x ?? ((itemToDuplicate.x + 1) % columns),
+      y: duplicatedDesktopLayout?.y ?? (itemToDuplicate.y + 1),
+      col_span: duplicatedDesktopLayout?.w ?? itemToDuplicate.col_span,
+      row_span: duplicatedDesktopLayout?.h ?? itemToDuplicate.row_span
     };
     onSettingChange(`${moduleId}_el_bento_items`, 'items', [...rawItems, newItem]);
+    selectSection(moduleId);
     setSelectedIndex(rawItems.length);
   };
 
@@ -892,12 +1396,86 @@ export const BentoModule: React.FC<{
     onSettingChange(`${moduleId}_el_bento_items`, 'items', newItems);
   };
 
+  const renderElementPicker = (variant: 'empty' | 'floating') => (
+    <AnimatePresence>
+      {isElementPickerOpen && (
+        <motion.div
+          initial={{ opacity: 0, y: variant === 'empty' ? 8 : 12, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 8, scale: 0.98 }}
+          className={variant === 'empty'
+            ? 'pointer-events-auto fixed left-1/2 top-1/2 z-50 w-[680px] max-w-[calc(100vw-32px)] max-h-[70vh] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-[2rem] border border-gray-100 bg-white text-left shadow-2xl'
+            : 'absolute bottom-full left-1/2 z-50 mb-3 w-[680px] max-w-[calc(100vw-48px)] max-h-[70vh] -translate-x-1/2 overflow-hidden rounded-[2rem] border border-gray-100 bg-white text-left shadow-2xl'
+          }
+          onClick={(event) => event.stopPropagation()}
+        >
+          <div className="flex items-start justify-between gap-4 border-b border-gray-100 p-4">
+            <div>
+              <h4 className="text-sm font-black text-slate-900">Elegir elemento</h4>
+              <p className="mt-1 text-xs font-medium text-slate-500">
+                Agrega piezas flexibles al Bento sin salir del lienzo.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                setIsElementPickerOpen(false);
+              }}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+              aria-label="Cerrar selector de elementos Bento"
+            >
+              <LucideIcons.X size={18} />
+            </button>
+          </div>
+          <div className="grid max-h-[calc(70vh-88px)] grid-cols-1 gap-2 overflow-y-auto p-3 sm:grid-cols-2">
+            {BENTO_ELEMENT_OPTIONS.map((option) => {
+              const PickerIcon = (LucideIcons as any)[option.icon] || Sparkles;
+              return (
+                <button
+                  key={option.kind}
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    handleAddElement(option.kind);
+                  }}
+                  className="flex min-h-[76px] items-start gap-3 rounded-2xl border border-gray-100 bg-white p-3 text-left transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/5"
+                >
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <PickerIcon size={18} />
+                  </span>
+                  <span>
+                    <span className="block text-xs font-black text-gray-900">{option.label}</span>
+                    <span className="block text-[10px] font-medium leading-snug text-gray-400">{option.description}</span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+
   // Header Values
   const headerEyebrow = getVal(`${moduleId}_el_bento_header`, 'eyebrow', '');
   const headerTitle = getVal(`${moduleId}_el_bento_header`, 'title', '');
   const headerSubtitle = getVal(`${moduleId}_el_bento_header`, 'subtitle', '');
-  const headerTitleColor = resolveThemeColor(undefined, '#0F172A', '#FFFFFF', darkMode);
-  const headerSubtitleColor = resolveThemeColor(undefined, '#64748B', '#94A3B8', darkMode);
+  const headerTitleSize = getTypographyStyle(getVal(`${moduleId}_el_bento_header`, 'title_size', 't2'), 't2');
+  const headerTitleWeight = getFontWeightValue(getVal(`${moduleId}_el_bento_header`, 'title_weight', 'extrabold'), 'extrabold');
+  const headerTitleColor = resolveThemeColor(getVal(`${moduleId}_el_bento_header`, 'title_color', undefined), '#0F172A', '#FFFFFF', darkMode);
+  const headerTitleHighlightType = getVal(`${moduleId}_el_bento_header`, 'title_highlight_type', 'gradient');
+  const headerTitleHighlightColor = getVal(`${moduleId}_el_bento_header`, 'title_highlight_color', '#3B82F6');
+  const headerTitleHighlightGradient = getVal(`${moduleId}_el_bento_header`, 'title_highlight_gradient', 'linear-gradient(90deg, #3B82F6 0%, #8B5CF6 100%)');
+  const headerTitleHighlightBold = toBoolean(getVal(`${moduleId}_el_bento_header`, 'title_highlight_bold', true));
+  const headerSubtitleSize = getTypographyStyle(getVal(`${moduleId}_el_bento_header`, 'subtitle_size', 'p'), 'p');
+  const headerSubtitleWeight = getFontWeightValue(getVal(`${moduleId}_el_bento_header`, 'subtitle_weight', 'normal'), 'normal');
+  const headerSubtitleColor = resolveThemeColor(getVal(`${moduleId}_el_bento_header`, 'subtitle_color', undefined), '#64748B', '#94A3B8', darkMode);
+  const headerSubtitleHighlightType = getVal(`${moduleId}_el_bento_header`, 'subtitle_highlight_type', 'gradient');
+  const headerSubtitleHighlightColor = getVal(`${moduleId}_el_bento_header`, 'subtitle_highlight_color', '#3B82F6');
+  const headerSubtitleHighlightGradient = getVal(`${moduleId}_el_bento_header`, 'subtitle_highlight_gradient', 'linear-gradient(90deg, #3B82F6 0%, #8B5CF6 100%)');
+  const headerSubtitleHighlightBold = toBoolean(getVal(`${moduleId}_el_bento_header`, 'subtitle_highlight_bold', true));
+  const headerEyebrowColor = resolveThemeColor(getVal(`${moduleId}_el_bento_header`, 'eyebrow_color', undefined), '#3B82F6', '#60A5FA', darkMode);
   const headerAlign = getVal(`${moduleId}_el_bento_header`, 'align', 'center');
   const headerMarginB = parseNumSafe(getVal(`${moduleId}_el_bento_header`, 'margin_b', 60), 60);
 
@@ -907,8 +1485,8 @@ export const BentoModule: React.FC<{
   const isSelected = !isPreviewMode && settingsValues.isSelected; // Some canvases pass this
 
   useEffect(() => {
-    if (!isPreviewMode) {
-      console.log('[BENTO_RENDER_DEBUG]', {
+    if (!isPreviewMode && isBentoDebugEnabled()) {
+      logDebug('[BENTO_RENDER_DEBUG]', {
         moduleId,
         itemsCount: rawItems.length,
         columns,
@@ -928,8 +1506,13 @@ export const BentoModule: React.FC<{
       <section 
         id={moduleId}
         ref={containerRef}
-        onClick={() => !isPreviewMode && setSelectedIndex(null)}
-        className={`w-full relative overflow-hidden transition-colors duration-500 bento-specialization-${bentoType} ${isDragging ? 'bento-dragging' : ''}`}
+        onClick={(e) => {
+          if (isPreviewMode) return;
+          e.stopPropagation();
+          selectSection(moduleId);
+          setSelectedIndex(null);
+        }}
+        className={`w-full relative ${isElementPickerOpen ? 'overflow-visible' : 'overflow-hidden'} transition-colors duration-500 bento-specialization-${bentoType} ${isDragging ? 'bento-dragging' : ''}`}
         data-bento-type={bentoType}
         style={{ 
           backgroundColor: bgColor,
@@ -965,7 +1548,7 @@ export const BentoModule: React.FC<{
                 whileInView="visible"
                 viewport={{ once: true }}
                 className="text-xs font-bold tracking-[0.2em] uppercase mb-4 block"
-                style={{ color: darkMode ? '#3B82F6' : 'var(--color-primary)' }}
+                style={{ color: headerEyebrowColor }}
               >
                 <InlineEditableText
                   moduleId={moduleId}
@@ -985,8 +1568,9 @@ export const BentoModule: React.FC<{
                 viewport={{ once: true }}
                 className="max-w-3xl leading-[1.1] mb-6"
                 style={{ 
-                  fontSize: `${TYPOGRAPHY_SCALE.t2.fontSize}px`,
-                  fontWeight: 900,
+                  fontSize: `${headerTitleSize.fontSize}px`,
+                  lineHeight: headerTitleSize.lineHeight,
+                  fontWeight: headerTitleWeight,
                   color: headerTitleColor
                 }}
               >
@@ -998,7 +1582,13 @@ export const BentoModule: React.FC<{
                   isPreviewMode={isPreviewMode}
                   onSave={(val) => onSettingChange?.(`${moduleId}_el_bento_header`, 'title', val)}
                 >
-                  <TextRenderer text={headerTitle} />
+                  <TextRenderer
+                    text={headerTitle}
+                    highlightType={headerTitleHighlightType}
+                    highlightColor={headerTitleHighlightColor}
+                    highlightGradient={headerTitleHighlightGradient}
+                    highlightBold={headerTitleHighlightBold}
+                  />
                 </InlineEditableText>
               </motion.h2>
             )}
@@ -1010,9 +1600,10 @@ export const BentoModule: React.FC<{
                 viewport={{ once: true }}
                 className="max-w-2xl"
                 style={{ 
-                  fontSize: `${TYPOGRAPHY_SCALE.p.fontSize}px`,
+                  fontSize: `${headerSubtitleSize.fontSize}px`,
+                  fontWeight: headerSubtitleWeight,
                   color: headerSubtitleColor,
-                  lineHeight: 1.6
+                  lineHeight: headerSubtitleSize.lineHeight
                 }}
               >
                 <InlineEditableText
@@ -1022,7 +1613,15 @@ export const BentoModule: React.FC<{
                   tagName="span"
                   isPreviewMode={isPreviewMode}
                   onSave={(val) => onSettingChange?.(`${moduleId}_el_bento_header`, 'subtitle', val)}
-                />
+                >
+                  <TextRenderer
+                    text={headerSubtitle}
+                    highlightType={headerSubtitleHighlightType}
+                    highlightColor={headerSubtitleHighlightColor}
+                    highlightGradient={headerSubtitleHighlightGradient}
+                    highlightBold={headerSubtitleHighlightBold}
+                  />
+                </InlineEditableText>
               </motion.p>
             )}
           </div>
@@ -1068,7 +1667,9 @@ export const BentoModule: React.FC<{
           <ResponsiveGridLayout
             className="layout w-full relative z-10"
             onBreakpointChange={handleBreakpointChange}
-            onWidthChange={(w) => console.log('[BENTO_WIDTH_CHANGE]', w)}
+            onWidthChange={(w) => {
+              if (isBentoDebugEnabled()) logDebug('[BENTO_WIDTH_CHANGE]', w);
+            }}
             layouts={layouts}
             breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
             cols={{ lg: columns, md: columns, sm: 6, xs: 4, xxs: 1 }}
@@ -1097,6 +1698,7 @@ export const BentoModule: React.FC<{
                 card_bg = '#FFFFFF',
                 card_gradient = 'linear-gradient(135deg, #F8FAFC 0%, #E2E8F0 100%)',
                 card_image = '',
+                image_fit = 'cover',
                 card_overlay = 0,
                 card_border = 'rgba(0,0,0,0.05)',
                 card_radius = 28,
@@ -1113,10 +1715,13 @@ export const BentoModule: React.FC<{
               const resolvedCardBorder = resolveThemeColor(card_border, 'rgba(0,0,0,0.05)', 'rgba(255,255,255,0.1)', darkMode);
 
               const isSafeGradient = (val: any) => typeof val === 'string' && !val.includes('NaN');
-              const finalBg = card_style === 'solid' ? resolvedCardBg : 
+              const finalBg = (card_style === 'solid' || card_style === 'glow') ? resolvedCardBg : 
                               (card_style === 'gradient' && isSafeGradient(card_gradient)) ? card_gradient : 
                               card_style === 'glass' ? (darkMode ? 'rgba(30, 41, 59, 0.7)' : 'rgba(255, 255, 255, 0.7)') : 
                               'transparent';
+              const glowShadow = card_style === 'glow'
+                ? `0 20px 60px -24px ${resolvedCardBg}, 0 0 0 1px ${resolvedCardBorder}`
+                : undefined;
               
               // Hero styling is handled within BentoCellContent or specifically here for its container
               const isHeroType = type === 'hero' || priority === 'hero';
@@ -1143,13 +1748,16 @@ export const BentoModule: React.FC<{
               }[hover_effect as string] || '' : '';
 
               const isSelected = selectedIndex === i;
+              const rglKey = i.toString();
+              const cellKey = item.id || rglKey;
 
               return (
                 <div 
-                  key={i.toString()} 
+                  key={rglKey} 
                   className={`relative ${!isPreviewMode ? 'group/rgl' : ''}`}
                 >
                   <motion.div 
+                    key={cellKey}
                     variants={entranceAnim !== 'none' ? itemVariants : {}}
                     initial={entranceAnim !== 'none' ? "hidden" : "visible"}
                     whileInView={entranceAnim !== 'none' ? "visible" : "visible"}
@@ -1158,6 +1766,7 @@ export const BentoModule: React.FC<{
                     onClick={(e) => {
                       if (!isPreviewMode) {
                         e.stopPropagation();
+                        selectSection(moduleId);
                         setSelectedIndex(i);
                       }
                     }}
@@ -1170,6 +1779,7 @@ export const BentoModule: React.FC<{
                       borderRadius: `${card_radius}px`,
                       border: (card_style === 'transparent' || isHeroType) ? 'none' : `1px solid ${resolvedCardBorder}`,
                       padding: type === 'visual' ? 0 : `${padding}px`,
+                      boxShadow: glowShadow,
                       zIndex: isSelected ? 50 : z_index
                     }}
                   >
@@ -1203,13 +1813,14 @@ export const BentoModule: React.FC<{
                     )}
 
                     {/* Background Image Logic */}
-                    {card_image && (
+                    {card_image && type !== 'visual' && (
                       <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
                         <img 
                           src={card_image} 
                           className={`w-full h-full transition-transform duration-700 ${hover_effect === 'zoom' ? 'group-hover:scale-110' : ''} object-cover`}
                           referrerPolicy="no-referrer"
                           alt=""
+                          style={{ objectFit: image_fit }}
                         />
                         {card_overlay > 0 && (
                           <div 
@@ -1265,42 +1876,50 @@ export const BentoModule: React.FC<{
               </p>
               <div className="flex flex-col gap-3">
                  <button 
-                   onClick={(e) => { e.stopPropagation(); handleAddCell(); }}
+                   onClick={(e) => { e.stopPropagation(); setIsElementPickerOpen((open) => !open); }}
                    className="w-full flex items-center justify-center gap-2 bg-primary text-white py-4 rounded-2xl font-bold hover:scale-[1.02] active:scale-95 transition-all shadow-lg"
                  >
                    <LucideIcons.Plus size={18} />
-                   Agregar Celda Manual
+                   Agregar elemento
                  </button>
-                 <button 
-                   onClick={(e) => { e.stopPropagation(); onOpenBentoGenerator?.(); }}
-                   className="w-full flex items-center justify-center gap-2 bg-blue-50 text-blue-600 py-4 rounded-2xl font-bold hover:bg-blue-100 active:scale-95 transition-all border border-blue-100"
-                 >
-                   <Sparkles size={18} />
-                   Generar con IA
-                 </button>
+                 {BENTO_AI_ACTIONS_ENABLED && (
+                   <button 
+                     onClick={(e) => { e.stopPropagation(); onOpenBentoGenerator?.(); }}
+                     className="w-full flex items-center justify-center gap-2 bg-blue-50 text-blue-600 py-4 rounded-2xl font-bold hover:bg-blue-100 active:scale-95 transition-all border border-blue-100"
+                   >
+                     <Sparkles size={18} />
+                     Generar con IA
+                   </button>
+                 )}
               </div>
             </motion.div>
+            {renderElementPicker('empty')}
           </div>
         )}
 
         {/* Floating Add Button (when items exist) */}
         {!isPreviewMode && rawItems.length > 0 && (
-          <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex items-center gap-3 z-40 bg-white/80 backdrop-blur-md p-2 rounded-2xl border border-gray-100 shadow-2xl">
+          <div className="relative z-40 mx-auto mt-6 flex w-fit items-center gap-3 rounded-2xl border border-gray-100 bg-white/80 p-2 shadow-2xl backdrop-blur-md">
+            {renderElementPicker('floating')}
             <button 
-               onClick={(e) => { e.stopPropagation(); handleAddCell(); }}
+               onClick={(e) => { e.stopPropagation(); setIsElementPickerOpen((open) => !open); }}
                className="flex items-center gap-2 px-6 py-2.5 bg-primary text-white rounded-xl font-bold hover:shadow-xl hover:-translate-y-0.5 transition-all active:scale-95 whitespace-nowrap"
             >
               <LucideIcons.Plus size={16} />
-              <span className="text-xs">Agregar Celda</span>
+              <span className="text-xs">Agregar elemento</span>
             </button>
-            <div className="w-px h-6 bg-gray-200" />
-            <button 
-               onClick={(e) => { e.stopPropagation(); onOpenBentoGenerator?.(); }}
-               className="flex items-center gap-2 px-6 py-2.5 bg-blue-50 text-blue-600 rounded-xl font-bold hover:bg-blue-100 transition-all active:scale-95"
-            >
-              <Sparkles size={16} />
-              <span className="text-xs">IA</span>
-            </button>
+            {BENTO_AI_ACTIONS_ENABLED && (
+              <>
+                <div className="w-px h-6 bg-gray-200" />
+                <button 
+                   onClick={(e) => { e.stopPropagation(); onOpenBentoGenerator?.(); }}
+                   className="flex items-center gap-2 px-6 py-2.5 bg-blue-50 text-blue-600 rounded-xl font-bold hover:bg-blue-100 transition-all active:scale-95"
+                >
+                  <Sparkles size={16} />
+                  <span className="text-xs">IA</span>
+                </button>
+              </>
+            )}
           </div>
         )}
       </div>

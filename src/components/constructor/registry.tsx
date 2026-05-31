@@ -213,15 +213,16 @@ export const MENU_MODULE: WebModule = {
         { label: 'Fijo al scroll (Sticky)', value: 'sticky' },
         { label: 'Fijo al tope (Fixed)', value: 'fixed' }
       ]},
-      { id: 'layout', label: 'Diseño', type: 'select', defaultValue: 'alternating', options: [
+      { id: 'layout', label: 'Diseño', type: 'select', defaultValue: 'horizontal', options: [
         { label: 'Horizontal (Barra)', value: 'horizontal' },
         { label: 'Vertical (Lista)', value: 'vertical' }
       ]},
       { id: 'invert_order', label: 'Invertir Orden (Logo a la derecha)', type: 'boolean', defaultValue: false, showIf: { settingId: 'layout', value: 'horizontal' } },
       { id: 'align', label: 'Alineación', type: 'select', defaultValue: 'center', options: [
-        { label: 'Inicio', value: 'start' },
+        { label: 'Izquierda', value: 'start' },
         { label: 'Centro', value: 'center' },
-        { label: 'Fin', value: 'end' }
+        { label: 'Derecha', value: 'end' },
+        { label: 'Distribuido', value: 'between' }
       ]},
       { id: 'gap', label: 'Espaciado entre items', type: 'range', defaultValue: 24, min: 0, max: 64, unit: 'px' },
       { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 14, min: 0, max: 100, unit: 'px' },
@@ -282,7 +283,7 @@ export const MENU_MODULE: WebModule = {
         { id: 'text_decoration', label: 'Decoración', type: 'text_decoration', defaultValue: [] }
       ],
       multimedia: [
-        { id: 'show_icons', label: 'Mostrar Iconos', type: 'boolean', defaultValue: true },
+        { id: 'show_icons', label: 'Mostrar Iconos', type: 'boolean', defaultValue: false },
         { id: 'icon_size', label: 'Tamaño Iconos', type: 'range', defaultValue: 18, min: 14, max: 24 }
       ],
       estilo: [], estructura: [], interaccion: []
@@ -543,7 +544,7 @@ export const PRODUCTS_MODULE: WebModule = {
         { label: 'Carrusel (Slider)', value: 'carousel' },
         { label: 'Lista Detallada', value: 'list' }
       ]},
-      { id: 'columns', label: 'Columnas (Desktop)', type: 'range', defaultValue: 4, min: 1, max: 6 },
+      { id: 'columns', label: 'Columnas (Desktop)', type: 'range', defaultValue: 3, min: 1, max: 5 },
       { id: 'gap', label: 'Espaciado entre productos', type: 'range', defaultValue: 24, min: 0, max: 80, unit: 'px' },
       { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 40, min: 40, max: 200, unit: 'px' }
     ],
@@ -604,6 +605,10 @@ export const PRODUCTS_MODULE: WebModule = {
       groups: ['contenido'],
       settings: {
         contenido: [
+          { id: 'selection_mode', label: 'Modo de Selección', type: 'select', defaultValue: 'auto', options: [
+            { label: 'Automático', value: 'auto' },
+            { label: 'Manual', value: 'manual' }
+          ]},
           { id: 'select_products', label: 'Selección de Productos', type: 'product_selection', defaultValue: null },
           { id: 'show_tabs', label: 'Mostrar Pestañas de Categoría', type: 'boolean', defaultValue: true }
         ],
@@ -740,7 +745,8 @@ export const PRODUCTS_SHOWCASE_MODULE: WebModule = {
       { id: 'columns', label: 'Columnas (Desktop)', type: 'select', defaultValue: '3', options: [
         { label: '2 Columnas', value: '2' },
         { label: '3 Columnas', value: '3' },
-        { label: '4 Columnas', value: '4' }
+        { label: '4 Columnas', value: '4' },
+        { label: '5 Columnas', value: '5' }
       ]},
       { id: 'show_tabs', label: 'Mostrar Filtros Categoría', type: 'boolean', defaultValue: true }
     ],
@@ -2279,12 +2285,12 @@ export const CONTACT_MODULE: WebModule = {
   globalSettings: {
     contenido: [],
     estructura: [
-      { id: 'layout', label: 'Diseño', type: 'select', defaultValue: 'split', options: [
-        { label: 'Dividido (Info + Form)', value: 'split' },
-        { label: 'Mosaico (Bento)', value: 'bento' },
-        { label: 'Mapa Lateral', value: 'map_side' },
-        { label: 'Mapa Superior', value: 'map_top' },
-        { label: 'Centrado', value: 'centered' }
+      { id: 'layout', label: 'Diseno', type: 'select', defaultValue: 'form_map_side', options: [
+        { label: 'Formulario + mapa lateral', value: 'form_map_side' },
+        { label: 'Mapa + formulario lateral', value: 'map_form_side' },
+        { label: 'Formulario arriba + mapa ancho completo', value: 'form_map_full' },
+        { label: 'Formulario arriba + mapa centrado', value: 'form_map_centered' },
+        { label: 'Mapa arriba + formulario abajo', value: 'map_form_stack' }
       ]},
       { id: 'max_width', label: 'Ancho Máximo', type: 'range', defaultValue: 1200, min: 800, max: 1600, unit: 'px' },
       { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 40, min: 40, max: 200, unit: 'px' }
@@ -2324,46 +2330,10 @@ export const CONTACT_MODULE: WebModule = {
       ],
       contenido: [], estilo: [], tipografia: [], multimedia: [], interaccion: []
     }},
-    { id: 'el_contact_info', name: 'Información y Redes', type: 'text', groups: ['contenido', 'estilo', 'estructura'], settings: {
+    { id: 'el_contact_form', name: 'Formulario', type: 'text', groups: ['contenido', 'estilo', 'estructura', 'interaccion', 'tipografia'], settings: {
       contenido: [
         { id: 'email', label: 'Email de Contacto', type: 'text', defaultValue: 'hola@tuempresa.com' },
         { id: 'phone', label: 'WhatsApp Principal', type: 'text', defaultValue: '+34 900 000 000' },
-        { id: 'address', label: 'Dirección Física', type: 'text', defaultValue: 'Calle Innovación 123, Madrid, España' },
-        { id: 'availability_text', label: 'Texto Disponibilidad', type: 'text', defaultValue: 'Disponible ahora (9:00 - 18:00)' },
-        { 
-          id: 'social_links', 
-          label: 'Redes Sociales', 
-          type: 'repeater', 
-          defaultValue: [],
-          fields: [
-            { id: 'platform', label: 'Plataforma', type: 'select', defaultValue: 'linkedin', options: [
-              { label: 'LinkedIn', value: 'linkedin' },
-              { label: 'Twitter / X', value: 'twitter' },
-              { label: 'Instagram', value: 'instagram' },
-              { label: 'Facebook', value: 'facebook' },
-              { label: 'GitHub', value: 'github' }
-            ]},
-            { id: 'url', label: 'URL del Perfil', type: 'text', defaultValue: 'https://' }
-          ]
-        }
-      ],
-      estructura: [
-        { id: 'show_availability', label: 'Mostrar Disponibilidad', type: 'boolean', defaultValue: true },
-        { id: 'show_copy_buttons', label: 'Botones de Copiar', type: 'boolean', defaultValue: true }
-      ],
-      estilo: [
-        { id: 'card_bg', label: 'Fondo de Tarjeta', type: 'color', defaultValue: 'transparent' },
-        { id: 'icon_color', label: 'Color de Iconos', type: 'color', defaultValue: '#3B82F6' },
-        { id: 'info_color', label: 'Color de Texto', type: 'color', defaultValue: '#475569' }
-      ],
-      tipografia: [
-        { id: 'info_size', label: 'Tamaño de Texto', type: 'typography_size', defaultValue: 'p', allowedLevels: ['t3', 'p', 's'] },
-        { id: 'info_weight', label: 'Peso de Texto', type: 'font_weight', defaultValue: 'normal' }
-      ],
-      multimedia: [], interaccion: []
-    }},
-    { id: 'el_contact_form', name: 'Formulario', type: 'text', groups: ['contenido', 'estilo', 'estructura', 'interaccion', 'tipografia'], settings: {
-      contenido: [
         { id: 'button_text', label: 'Texto del Botón', type: 'text', defaultValue: 'Enviar por WhatsApp' },
         ...BUTTON_LINK_SETTINGS('btn'),
         { id: 'whatsapp_number', label: 'Número WhatsApp Principal', type: 'text', defaultValue: '' },
@@ -3055,7 +3025,7 @@ export const CLIENTS_MODULE: WebModule = {
         { label: 'Marquesina (Scroll Infinito)', value: 'marquee' },
         { label: 'Carrusel Horizontal', value: 'carousel' }
       ]},
-      { id: 'columns', label: 'Columnas (Grilla)', type: 'range', defaultValue: 5, min: 2, max: 8 },
+      { id: 'columns', label: 'Columnas (Grilla)', type: 'range', defaultValue: 5, min: 1, max: 6 },
       { id: 'alignment', label: 'Alineación Horizontal', type: 'text_align', defaultValue: 'center' },
       { id: 'gap', label: 'Espaciado entre Logos', type: 'range', defaultValue: 40, min: 10, max: 100, unit: 'px' },
       { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 40, min: 20, max: 200, unit: 'px' }
@@ -3157,7 +3127,7 @@ export const TRUSTED_LOGOS_MODULE: WebModule = {
   globalSettings: {
     contenido: [],
     estructura: [
-      { id: 'columns', label: 'Columnas', type: 'range', defaultValue: 4, min: 2, max: 6 },
+      { id: 'columns', label: 'Columnas', type: 'range', defaultValue: 4, min: 1, max: 6 },
       { id: 'gap', label: 'Espaciado entre logos', type: 'range', defaultValue: 32, min: 12, max: 80, unit: 'px' },
       { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 40, min: 20, max: 200, unit: 'px' }
     ],
@@ -3284,15 +3254,22 @@ export const BENTO_MODULE: WebModule = {
     { id: 'el_bento_items', name: 'Bloques de Contenido (Celdas)', type: 'repeater', groups: ['contenido', 'estructura', 'estilo', 'tipografia', 'multimedia'], settings: {
       contenido: [
         { id: 'items', label: 'Lista de Celdas', type: 'repeater', defaultValue: [], fields: [
-          { id: 'type', label: 'Tipo de Celda', type: 'select', defaultValue: 'icon_text', options: [
+          { id: 'type', label: 'Tipo de Elemento', type: 'select', defaultValue: 'text', options: [
+            { label: 'Texto', value: 'text' },
+            { label: 'Imagen', value: 'visual' },
+            { label: 'Botón', value: 'button' },
+            { label: 'Ícono', value: 'icon' },
+            { label: 'Badge / Etiqueta', value: 'badge' },
+            { label: 'Lista', value: 'list' },
+            { label: 'Acordeón', value: 'accordion' },
+            { label: 'Cinta animada', value: 'marquee' },
+            { label: 'Tarjeta simple', value: 'card' },
             { label: 'Portada (Hero)', value: 'hero' },
             { label: 'Icono + Texto', value: 'icon_text' },
             { label: 'Característica (Feature)', value: 'feature' },
             { label: 'Métrica / Dato', value: 'metric' },
             { label: 'Compacto', value: 'compact' },
             { label: 'Acción (CTA)', value: 'cta' },
-            { label: 'Visual (Imagen)', value: 'visual' },
-            { label: 'Video', value: 'video' },
             { label: 'Paso (Step)', value: 'step' },
             { label: 'Tarjeta de App', value: 'app_card' },
             { label: 'Testimonio', value: 'testimonial' },
@@ -3333,7 +3310,8 @@ export const BENTO_MODULE: WebModule = {
           { id: 'trust_note', label: 'Nota de Confianza', type: 'text', defaultValue: '*No requiere tarjeta', showIf: { settingId: 'type', value: 'cta' } },
 
           // Icon/Text / Compact / Feature específicos
-          { id: 'icon', label: 'Icono', type: 'icon', defaultValue: 'Sparkles', showIf: { settingId: 'type', value: ['hero', 'icon_text', 'compact', 'metric', 'feature', 'app_card', 'step'], operator: 'includes' } },
+          { id: 'icon', label: 'Icono', type: 'icon', defaultValue: 'Sparkles', showIf: { settingId: 'type', value: ['hero', 'icon_text', 'compact', 'metric', 'feature', 'app_card', 'step', 'icon', 'badge', 'list'], operator: 'includes' } },
+          { id: 'list_items', label: 'Items de Lista', type: 'textarea', defaultValue: 'Primer punto\nSegundo punto\nTercer punto', showIf: { settingId: 'type', value: 'list' } },
           { id: 'show_description', label: 'Mostrar Descripción', type: 'boolean', defaultValue: true, showIf: { settingId: 'type', value: ['compact', 'icon_text'], operator: 'includes' } },
           
           // Botones simples (Hero / Feature / Visual / App)
@@ -3364,7 +3342,7 @@ export const BENTO_MODULE: WebModule = {
           ]},
           { id: 'card_bg', label: 'Color de Fondo', type: 'color', defaultValue: '#FFFFFF', showIf: { settingId: 'card_style', value: 'solid' } },
           { id: 'card_gradient', label: 'Degradado Personalizado', type: 'gradient', defaultValue: 'linear-gradient(135deg, #F8FAFC 0%, #E2E8F0 100%)', showIf: { settingId: 'card_style', value: 'gradient' } },
-          { id: 'card_image', label: 'Imagen de Fondo', type: 'image', defaultValue: '' },
+          { id: 'card_image', label: 'Imagen de fondo de la tarjeta', type: 'image', defaultValue: '' },
           { id: 'card_overlay', label: 'Opacidad Overlay Image', type: 'range', defaultValue: 0, min: 0, max: 100 },
           { id: 'card_radius', label: 'Redondeo', type: 'range', defaultValue: 28, min: 0, max: 64, unit: 'px' },
           { id: 'card_shadow', label: 'Sombra', type: 'select', defaultValue: 'sm', options: [
@@ -3379,8 +3357,8 @@ export const BENTO_MODULE: WebModule = {
           ]},
 
           // Multimedia
-          { id: 'image', label: 'Imagen Principal', type: 'image', defaultValue: '', showIf: { settingId: 'type', value: ['visual', 'video'], operator: 'includes' } },
-          { id: 'image_fit', label: 'Ajuste de Imagen', type: 'select', defaultValue: 'cover', options: [
+          { id: 'image', label: 'Imagen principal / visual', type: 'image', defaultValue: '', showIf: { settingId: 'type', value: 'visual' } },
+          { id: 'image_fit', label: 'Ajuste de imagen principal', type: 'select', defaultValue: 'cover', showIf: { settingId: 'type', value: 'visual' }, options: [
             { label: 'Recortar (Cover)', value: 'cover' },
             { label: 'Contener (Contain)', value: 'contain' }
           ]}

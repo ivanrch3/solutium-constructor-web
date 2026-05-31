@@ -1,3 +1,4 @@
+import { logDebug } from '../../../utils/debug';
 import React, { useState, useMemo } from 'react';
 import { SectionAnimation } from '../animations/SectionAnimation';
 import { normalizeSectionAnimation } from '../../../constants/moduleAnimations';
@@ -25,6 +26,41 @@ const resolveThemeColor = (
   return safeValue;
 };
 
+const toProductArray = (value: unknown): Product[] =>
+  Array.isArray(value)
+    ? value.filter((item): item is Product => Boolean(item) && typeof item === 'object')
+    : [];
+
+const toFiniteNumber = (value: unknown, fallback = 0): number => {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string') {
+    const parsed = Number(value.replace(/[^\d.,-]/g, '').replace(',', '.'));
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return fallback;
+};
+
+const normalizeRenderableProduct = (product: Product, index: number): Product => {
+  const rawProduct = product as any;
+  return {
+    ...product,
+    id: String(rawProduct.id || `product-${index}`),
+    name: String(rawProduct.name || rawProduct.title || 'Producto'),
+    description: rawProduct.description || '',
+    price: toFiniteNumber(rawProduct.price, 0),
+    priceReference: rawProduct.priceReference !== undefined && rawProduct.priceReference !== null
+      ? toFiniteNumber(rawProduct.priceReference, 0)
+      : undefined,
+    category: String(rawProduct.category || rawProduct.categoria || 'Sin categoría'),
+    imageUrl: rawProduct.imageUrl || rawProduct.image_url || rawProduct.image || '',
+    image2Url: rawProduct.image2Url || rawProduct.image_2_url || '',
+    stock: toFiniteNumber(rawProduct.stock, 0),
+    ratingAverage: toFiniteNumber(rawProduct.ratingAverage, 0),
+    reviewCount: toFiniteNumber(rawProduct.reviewCount, 0),
+    badgeText: rawProduct.badgeText || rawProduct.badge_text || ''
+  };
+};
+
 export const ProductsModule: React.FC<{ 
   moduleId: string, 
   settingsValues: Record<string, any>,
@@ -49,6 +85,7 @@ export const ProductsModule: React.FC<{
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [carouselIndex, setCarouselIndex] = useState(0);
   const [addingToCart, setAddingToCart] = useState<string | null>(null);
+  const [productsViewportWidth, setProductsViewportWidth] = useState<number | null>(null);
 
   const gridRef = React.useRef<HTMLDivElement>(null);
 
@@ -87,7 +124,15 @@ export const ProductsModule: React.FC<{
 
     // [FASE 2] RESOLUCIÓN EN VIVO / PÁGINA PUBLICADA
     if (!isEditor || forceSnapshotRender) {
-      if (snapshotProducts.length > 0) {
+      if (forceSnapshotRender && injectedProducts.length > 0) {
+        results = injectedProducts;
+        sourceUsed = 'published_catalog_from_viewer';
+        reason = 'Viewer resolved real catalog products';
+      } else if (forceSnapshotRender) {
+        results = [];
+        sourceUsed = 'published_catalog_empty';
+        reason = 'Published viewer has no real catalog products';
+      } else if (snapshotProducts.length > 0) {
         results = snapshotProducts;
         sourceUsed = 'published_snapshot_settings';
         reason = 'Priority snapshot found in settings';
@@ -95,17 +140,13 @@ export const ProductsModule: React.FC<{
         results = injectedProducts;
         sourceUsed = 'published_prop_products';
         reason = 'Snapshot found in products prop';
-      } else if (forceSnapshotRender) {
-        results = [];
-        sourceUsed = 'force_snapshot_empty';
-        reason = 'Force snapshot requested but no data found';
       } else {
         results = [];
         sourceUsed = 'published_no_data';
         reason = 'No snapshot found in live view';
       }
 
-      console.log('[PRODUCTS_LEGACY_VIEWER_RESOLUTION_FORENSIC_DEBUG]', {
+      logDebug('[PRODUCTS_LEGACY_VIEWER_RESOLUTION_FORENSIC_DEBUG]', {
         moduleId,
         runtime: "published_viewer",
         snapshotProductsCount: snapshotProducts.length,
@@ -148,7 +189,7 @@ export const ProductsModule: React.FC<{
       }
     }
 
-    console.log('[PRODUCTS_EDITOR_EMPTY_SELECTION_RULE_DEBUG]', {
+    logDebug('[PRODUCTS_EDITOR_EMPTY_SELECTION_RULE_DEBUG]', {
       moduleId,
       isEditorRuntime: isEditor,
       selectionMode,
@@ -162,7 +203,7 @@ export const ProductsModule: React.FC<{
       timestamp: Date.now()
     });
 
-    console.log('[PRODUCTS_EDITOR_RESOLUTION_FORENSIC_DEBUG]', {
+    logDebug('[PRODUCTS_EDITOR_RESOLUTION_FORENSIC_DEBUG]', {
       moduleId,
       runtime: isEditor ? "constructor_canvas" : "viewer",
       selectionMode,
@@ -185,7 +226,7 @@ export const ProductsModule: React.FC<{
 
   // [PRODUCTS_MODE_DETECTION_DEBUG] Diagnóstico de Modo
   if (isActuallyEditor || isPublishedViewer) {
-    console.log('[PRODUCTS_MODE_DETECTION_DEBUG]', {
+    logDebug('[PRODUCTS_MODE_DETECTION_DEBUG]', {
       moduleId,
       isPreviewMode,
       isActuallyEditor,
@@ -234,9 +275,30 @@ export const ProductsModule: React.FC<{
   const showTabs = getVal(`${moduleId}_el_products_config`, 'show_tabs', true);
 
   // Element: Configuración de Selección
-  const selectionMode = getVal(`${moduleId}_el_products_config`, 'selection_mode', 'manual');
+  const selectionMode = getVal(`${moduleId}_el_products_config`, 'selection_mode', 'auto');
   const layout = getVal(null, 'layout', 'grid');
-  const columns = Math.max(1, parseInt(getVal(null, 'columns', 4)) || 4);
+  const columns = Math.max(1, Math.min(5, parseInt(getVal(null, 'columns', 3)) || 3));
+  const responsiveColumns = productsViewportWidth === null
+    ? columns
+    : productsViewportWidth >= 1024
+      ? columns
+      : productsViewportWidth >= 640
+        ? Math.min(columns, 3)
+        : Math.min(columns, 2);
+  const isMobileProductsViewport = productsViewportWidth !== null && productsViewportWidth < 640;
+  const effectiveLayout = layout === 'list' && isMobileProductsViewport ? 'grid' : layout;
+  const productsGridClass =
+    columns >= 5 ? 'grid-cols-1 @sm:grid-cols-2 @md:grid-cols-3 @5xl:grid-cols-5' :
+    columns === 4 ? 'grid-cols-1 @sm:grid-cols-2 @md:grid-cols-3 @5xl:grid-cols-4' :
+    columns === 3 ? 'grid-cols-1 @sm:grid-cols-2 @md:grid-cols-3' :
+    columns === 2 ? 'grid-cols-1 @sm:grid-cols-2' :
+    'grid-cols-1';
+  const carouselItemClass =
+    responsiveColumns >= 5 ? 'w-1/5' :
+    responsiveColumns === 4 ? 'w-1/4' :
+    responsiveColumns === 3 ? 'w-1/3' :
+    responsiveColumns === 2 ? 'w-1/2' :
+    'w-full';
   const gap = parseF(getVal(null, 'gap', 24), 24);
   const darkMode = toBoolean(getVal(null, 'dark_mode', false));
   const rawBgColor = getVal(null, 'bg_color', '#FFFFFF');
@@ -259,33 +321,36 @@ export const ProductsModule: React.FC<{
   const allDisplayProducts = useMemo(() => {
     const snapshotKey = `${moduleId}_el_products_items_products`;
     const snapshotFromSettings = settingsValues[snapshotKey];
-    const snapshotProducts = Array.isArray(snapshotFromSettings) ? snapshotFromSettings : [];
+    const snapshotProducts = toProductArray(snapshotFromSettings);
     
-    const catalog = (products && products.length > 0) ? products : (isDevMode ? MOCK_PRODUCTS : []);
+    const sourceProducts = toProductArray(products);
+    const catalog = sourceProducts.length > 0 ? sourceProducts : (isDevMode ? toProductArray(MOCK_PRODUCTS) : []);
     
     // USAR RESOLUTOR FORENSE UNIFICADO
     return resolveProductsForEditor({
       moduleId,
-      selectionMode,
+      selectionMode: String(selectionMode || 'auto').toLowerCase(),
       selectedProductIds,
       selectionTouched,
       catalogProducts: catalog,
       snapshotProducts,
-      injectedProducts: products || [],
+      injectedProducts: sourceProducts,
       isEditor: isActuallyEditor,
       forceSnapshotRender
-    });
+    })
+      .map(normalizeRenderableProduct)
+      .filter((product) => Boolean(product.id));
   }, [products, selectedProductIds, selectionTouched, selectionMode, isDevMode, isPreviewMode, isActuallyEditor, isPublishedViewer, moduleId, settingsValues]);
 
   const categories = useMemo(() => {
-    const cats = new Set(allDisplayProducts.map(p => p.category).filter(Boolean));
+    const cats = new Set(allDisplayProducts.map(p => p?.category).filter(Boolean));
     const sortedCats = Array.from(cats).sort();
     return ['Todos', ...sortedCats];
   }, [allDisplayProducts]);
 
   const filteredProducts = useMemo(() => {
     if (activeTab === 'Todos') return allDisplayProducts;
-    return allDisplayProducts.filter(p => p.category === activeTab);
+    return allDisplayProducts.filter(p => p?.category === activeTab);
   }, [allDisplayProducts, activeTab]);
 
   React.useEffect(() => {
@@ -301,10 +366,29 @@ export const ProductsModule: React.FC<{
   }, [selectedProductIds, selectionMode]);
 
   React.useEffect(() => {
+    const element = gridRef.current?.parentElement;
+    if (!element || typeof ResizeObserver === 'undefined') return;
+
+    const observer = new ResizeObserver(([entry]) => {
+      setProductsViewportWidth(entry.contentRect.width);
+    });
+
+    observer.observe(element);
+    setProductsViewportWidth(element.getBoundingClientRect().width);
+
+    return () => observer.disconnect();
+  }, []);
+
+  React.useEffect(() => {
+    const maxIndex = Math.max(0, Math.ceil(filteredProducts.length / responsiveColumns) - 1);
+    setCarouselIndex((currentIndex) => Math.min(currentIndex, maxIndex));
+  }, [filteredProducts.length, responsiveColumns]);
+
+  React.useEffect(() => {
     if ((isPublishedViewer || window.location.search.includes('debug=products')) && gridRef.current) {
       const el = gridRef.current;
       const computedStyle = window.getComputedStyle(el);
-      console.log('[PRODUCTS_GRID_LAYOUT_DEBUG]', {
+      logDebug('[PRODUCTS_GRID_LAYOUT_DEBUG]', {
         moduleId,
         cardsCount: filteredProducts.length,
         gridOffsetWidth: el.offsetWidth,
@@ -365,7 +449,7 @@ export const ProductsModule: React.FC<{
   const ctaRadius = parseF(getVal(`${moduleId}_el_cta`, 'cta_radius', 12), 12);
   const ctaHoverBg = getVal(`${moduleId}_el_cta`, 'cta_hover_bg', '#2563EB');
 
-  console.log('[PRODUCTS_MODULE_RENDER_INPUT_DEBUG]', {
+  logDebug('[PRODUCTS_MODULE_RENDER_INPUT_DEBUG]', {
     runtime: isPublishedViewer ? "published_viewer" : "constructor_canvas",
     moduleId,
     selectionMode,
@@ -383,7 +467,7 @@ export const ProductsModule: React.FC<{
 
   // [PRODUCTS_LEGACY_VIEWER_FINAL_RENDER_DEBUG] (FASE 6)
   if (isPublishedViewer || window.location.search.includes('debug=products')) {
-    console.log('[PRODUCTS_LEGACY_VIEWER_FINAL_RENDER_DEBUG]', {
+    logDebug('[PRODUCTS_LEGACY_VIEWER_FINAL_RENDER_DEBUG]', {
       runtime: isPublishedViewer ? "published_viewer" : "constructor_editor",
       moduleId,
       isActuallyEditor,
@@ -397,7 +481,7 @@ export const ProductsModule: React.FC<{
     });
 
     // [PRODUCTS_CARD_RENDER_DATA_DEBUG] (FASE 1)
-    console.log('[PRODUCTS_CARD_RENDER_DATA_DEBUG]', {
+    logDebug('[PRODUCTS_CARD_RENDER_DATA_DEBUG]', {
       moduleId,
       finalRenderedProductsCount: filteredProducts.length,
       products: filteredProducts.map(p => ({
@@ -410,7 +494,7 @@ export const ProductsModule: React.FC<{
     });
 
     // [PRODUCTS_JSX_SOURCE_DEBUG] (FASE 3)
-    console.log('[PRODUCTS_JSX_SOURCE_DEBUG]', {
+    logDebug('[PRODUCTS_JSX_SOURCE_DEBUG]', {
       moduleId,
       finalRenderedProductsCount: filteredProducts.length,
       jsxProductsVariableName: 'filteredProducts',
@@ -420,7 +504,7 @@ export const ProductsModule: React.FC<{
   }
 
 
-  const totalPages = columns > 0 ? Math.ceil(filteredProducts.length / columns) : 1;
+  const totalPages = responsiveColumns > 0 ? Math.ceil(filteredProducts.length / responsiveColumns) : 1;
 
   const handleAddToCart = (productId: string) => {
     setAddingToCart(productId);
@@ -483,7 +567,7 @@ export const ProductsModule: React.FC<{
           backgroundImage: (sectionGradient && typeof bgGradient === 'string' && !bgGradient.includes('NaN')) ? bgGradient : 'none'
         }}
       >
-      <div className="max-w-7xl mx-auto relative z-10">
+        <div className="max-w-7xl mx-auto relative z-10 @container">
         {/* Header */}
         <div 
           className={`flex flex-col mb-12 w-full ${titleAlign === 'center' ? 'items-center text-center' : titleAlign === 'right' ? 'items-end text-right' : 'items-start text-left'}`}
@@ -561,19 +645,16 @@ export const ProductsModule: React.FC<{
             <div className="overflow-hidden">
               <motion.div 
                 ref={gridRef}
-                animate={{ x: layout === 'carousel' ? `-${(parseFloat(carouselIndex as any) || 0) * 100}%` : 0 }}
+                animate={{ x: effectiveLayout === 'carousel' ? `-${(parseFloat(carouselIndex as any) || 0) * 100}%` : 0 }}
                 transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                 className={`grid ${
-                  layout === 'carousel' ? 'flex transition-none' :
-                  layout === 'list' ? 'grid-cols-1' :
-                  columns === 6 ? 'grid-cols-1 @sm:grid-cols-2 @md:grid-cols-3 @lg:grid-cols-6' :
-                  columns === 4 ? 'grid-cols-1 @sm:grid-cols-2 @lg:grid-cols-4' :
-                  columns === 3 ? 'grid-cols-1 @sm:grid-cols-2 @lg:grid-cols-3' :
-                  columns === 2 ? 'grid-cols-1 @sm:grid-cols-2' : 'grid-cols-1'
+                  effectiveLayout === 'carousel' ? 'flex transition-none' :
+                  effectiveLayout === 'list' ? 'grid-cols-1' :
+                  productsGridClass
                 }`}
                 style={{ 
-                  gap: layout === 'carousel' ? '0' : `${gap || 0}px`,
-                  display: layout === 'carousel' ? 'flex' : 'grid'
+                  gap: effectiveLayout === 'carousel' ? '0' : `${gap || 0}px`,
+                  display: effectiveLayout === 'carousel' ? 'flex' : 'grid'
                 }}
               >
                 <AnimatePresence mode="popLayout">
@@ -583,7 +664,7 @@ export const ProductsModule: React.FC<{
                     const isAdding = addingToCart === product.id;
 
                     if (isPublishedViewer || window.location.search.includes('debug=products')) {
-                      console.log('[PRODUCTS_CARD_RENDER_ITEM_DEBUG]', {
+                      logDebug('[PRODUCTS_CARD_RENDER_ITEM_DEBUG]', {
                         index: idx,
                         id: product.id,
                         name: product.name,
@@ -602,24 +683,24 @@ export const ProductsModule: React.FC<{
                         animate={(globalAnimOverride ? globalAnimOverride.visible : (entranceAnim !== 'none' ? { opacity: 1, y: 0 } : false)) as any}
                         exit={{ opacity: 0, scale: 0.9 }}
                         className={`group flex flex-col transition-all duration-500 min-h-[400px] ${
-                          layout === 'list' ? 'flex-row gap-8 items-center' : 
-                          layout === 'carousel' ? `w-full shrink-0` : ''
+                          effectiveLayout === 'list' ? 'flex-row gap-8 items-center' :
+                          effectiveLayout === 'carousel' ? `${carouselItemClass} shrink-0` : ''
                         } ${cardHoverLift ? 'hover:-translate-y-2' : ''}`}
                         style={{
                           backgroundColor: cardStyle === 'glass' ? 'rgba(255,255,255,0.05)' : cardStyle === 'minimal' ? 'transparent' : cardBg,
                           backdropFilter: cardStyle === 'glass' ? 'blur(12px)' : 'none',
                           borderRadius: `${parseFloat(imgBorderRadius as any) || 0}px`,
                           padding: cardStyle === 'minimal' ? '0' : '16px',
-                          margin: layout === 'carousel' ? `0 ${gap/2}px` : '0',
+                          margin: effectiveLayout === 'carousel' ? `0 ${gap/2}px` : '0',
                           boxShadow: cardStyle === 'minimal' ? 'none' : getShadow(cardShadow),
                           borderWidth: cardStyle === 'bordered' ? '1px' : '0px',
                           borderStyle: 'solid',
                           borderColor: cardBorderColor,
-                          width: layout === 'carousel' ? `${100 / columns}%` : 'auto'
+                          width: effectiveLayout === 'carousel' ? `${100 / responsiveColumns}%` : 'auto'
                         }}
                       >
                         {/* Image */}
-                        <div className={`relative overflow-hidden bg-slate-50 ${getAspectRatioClass(imgAspectRatio)} ${layout === 'list' ? 'w-48 shrink-0' : 'w-full'}`} style={{ borderRadius: `${imgBorderRadius}px` }}>
+                        <div className={`relative overflow-hidden bg-slate-50 ${getAspectRatioClass(imgAspectRatio)} ${effectiveLayout === 'list' ? 'w-48 shrink-0' : 'w-full'}`} style={{ borderRadius: `${imgBorderRadius}px` }}>
                           <img 
                             src={product.imageUrl || 'https://picsum.photos/seed/prod/800/800'} 
                             alt={product.name} 
@@ -666,7 +747,7 @@ export const ProductsModule: React.FC<{
                         </div>
 
                         {/* Info */}
-                        <div className={`pt-4 flex flex-col flex-1 ${layout === 'list' ? 'text-left' : 'text-center'}`}>
+                        <div className={`pt-4 flex flex-col flex-1 ${effectiveLayout === 'list' ? 'text-left' : 'text-center'}`}>
                           <span className="text-[10px] font-bold text-primary uppercase tracking-widest mb-1">
                             {product.category}
                           </span>
@@ -702,7 +783,7 @@ export const ProductsModule: React.FC<{
                           )}
 
                           {/* Rating */}
-                          <div className={`flex items-center gap-1 mb-4 ${layout === 'list' ? 'justify-start' : 'justify-center'}`}>
+                          <div className={`flex items-center gap-1 mb-4 ${effectiveLayout === 'list' ? 'justify-start' : 'justify-center'}`}>
                             {[...Array(5)].map((_, i) => (
                               <Star 
                                 key={i} 
@@ -764,7 +845,7 @@ export const ProductsModule: React.FC<{
               </motion.div>
             </div>
 
-            {layout === 'carousel' && filteredProducts.length > columns && (
+            {effectiveLayout === 'carousel' && filteredProducts.length > responsiveColumns && (
               <>
                 <button 
                   onClick={() => setCarouselIndex(prev => Math.max(0, prev - 1))}

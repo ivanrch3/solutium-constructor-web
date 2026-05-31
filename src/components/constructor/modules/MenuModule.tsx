@@ -4,7 +4,6 @@ import * as LucideIcons from 'lucide-react';
 import { Menu as HamburgerIcon, X as CloseIcon, Info, Sparkles, Link } from 'lucide-react';
 import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
 import { InlineEditableText } from '../InlineEditableText';
-import { useEditorStore } from '../../../store/editorStore';
 import { logDebug } from '../../../utils/debug';
 import { SectionAnimation } from '../animations/SectionAnimation';
 import { normalizeSectionAnimation } from '../../../constants/moduleAnimations';
@@ -36,13 +35,24 @@ export const MenuModule: React.FC<{
   menuMode?: MenuMode,
   automaticMenuItems?: any[]
 }> = ({ moduleId, settingsValues, logoUrl, logoWhiteUrl, isPreviewMode = false, isEditorCanvas = false, menuMode: menuModeProp, automaticMenuItems = [] }) => {
-  const { updateSectionSettings, setShowMenuRecommendation } = useEditorStore();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [menuContainerWidth, setMenuContainerWidth] = useState(0);
   const navRef = useRef<HTMLElement | null>(null);
 
   const getVal = (elementId: string | null, settingId: string, defaultValue: any) => {
     const key = elementId ? `${elementId}_${settingId}` : `${moduleId}_global_${settingId}`;
-    return settingsValues[key] !== undefined ? settingsValues[key] : defaultValue;
+    const rawValue = settingsValues[key] !== undefined ? settingsValues[key] : defaultValue;
+    return rawValue && typeof rawValue === 'object' && 'value' in rawValue && !Array.isArray(rawValue)
+      ? rawValue.value
+      : rawValue;
+  };
+
+  const parseNumberSetting = (value: unknown, fallback: number, min?: number, max?: number) => {
+    const parsed = typeof value === 'number'
+      ? value
+      : parseFloat(String(value ?? '').replace(/[^\d.,-]/g, '').replace(',', '.'));
+    const safeValue = Number.isFinite(parsed) ? parsed : fallback;
+    return Math.min(max ?? safeValue, Math.max(min ?? safeValue, safeValue));
   };
 
   // Global Settings
@@ -51,8 +61,9 @@ export const MenuModule: React.FC<{
   const position = rawPosition === 'standard' || rawPosition === 'static' || rawPosition === 'normal'
     ? 'relative'
     : rawPosition;
-  const layout = getVal(null, 'layout', 'horizontal');
-  const desktopHamburger = getVal(null, 'desktop_hamburger', false);
+  const rawLayout = getVal(null, 'layout', 'horizontal');
+  const layout = rawLayout === 'vertical' ? 'vertical' : 'horizontal';
+  const desktopHamburger = toBoolean(getVal(null, 'desktop_hamburger', false));
 
   // Logo Resolution with Priority
   const logoType = getVal(`${moduleId}_el_menu_logo`, 'logo_type', 'image');
@@ -62,7 +73,7 @@ export const MenuModule: React.FC<{
   const logoImg = logoImgSetting || logoImgFallback || logoUrl || '';
   
   const logoImgAlt = getVal(`${moduleId}_el_menu_logo`, 'logo_img_alt', '');
-  const logoWidth = parseFloat(getVal(`${moduleId}_el_menu_logo`, 'logo_width', 120)) || 120;
+  const logoWidth = parseNumberSetting(getVal(`${moduleId}_el_menu_logo`, 'logo_width', 120), 120, 40, 240);
   const rawLogoColor = getVal(`${moduleId}_el_menu_logo`, 'text_color', '#0F172A');
   const logoFontSize = getVal(`${moduleId}_el_menu_logo`, 'font_size', 't3');
   const logoFontWeight = getVal(`${moduleId}_el_menu_logo`, 'font_weight', 'bold');
@@ -138,9 +149,10 @@ export const MenuModule: React.FC<{
   }, [isPreviewMode, links.length]);
 
   // Global Settings
-  const align = getVal(null, 'align', 'center');
-  const gap = parseFloat(getVal(null, 'gap', 24)) || 24;
-  const rawPaddingY = parseFloat(getVal(null, 'padding_y', 14));
+  const rawAlign = getVal(null, 'align', 'center');
+  const align = ['start', 'center', 'end', 'between'].includes(String(rawAlign)) ? String(rawAlign) : 'center';
+  const gap = parseNumberSetting(getVal(null, 'gap', 24), 24, 0, 64);
+  const rawPaddingY = parseNumberSetting(getVal(null, 'padding_y', 14), 14, 0, 100);
   const paddingY = Number.isFinite(rawPaddingY) ? rawPaddingY : 14;
   const darkMode = toBoolean(getVal(null, 'dark_mode', false));
   const rawBgColor = getVal(null, 'bg_color', 'transparent');
@@ -150,6 +162,14 @@ export const MenuModule: React.FC<{
   const isFloating = isSticky || isFixed;
   const fallbackMenuHeight = Math.max(56, paddingY * 2 + 40);
   const [menuHeight, setMenuHeight] = useState(fallbackMenuHeight);
+  const isMobileMenuViewport = menuContainerWidth > 0 && menuContainerWidth < 520;
+  const isTabletMenuViewport = menuContainerWidth >= 520 && menuContainerWidth < 1024;
+  const visibleLinkLimit = isMobileMenuViewport ? 0 : isTabletMenuViewport ? 3 : 7;
+  const forceHamburgerMenu = desktopHamburger || visibleLinkLimit === 0;
+  const visibleLinks = forceHamburgerMenu ? [] : links.slice(0, visibleLinkLimit);
+  const overflowLinks = forceHamburgerMenu ? links : links.slice(visibleLinkLimit);
+  const hasOverflowLinks = overflowLinks.length > 0;
+  const dropdownLinks = forceHamburgerMenu ? links : overflowLinks;
   const editorTopOffset = isEditorCanvas ? 60 : 0;
   const usesEditorFixedSimulation = isEditorCanvas && isFixed;
   const effectivePosition: React.CSSProperties['position'] = usesEditorFixedSimulation
@@ -177,16 +197,6 @@ export const MenuModule: React.FC<{
   const invertOrder = getVal(null, 'invert_order', false);
   const borderColor = resolveThemeColor(getVal(null, 'border_color', 'rgba(0,0,0,0.05)'), 'rgba(0,0,0,0.05)', 'rgba(255,255,255,0.1)', darkMode);
 
-  // Overflow Detection Logic: Show recommendation if many modules are present (desktop/tablet horizontal)
-  useEffect(() => {
-    if (!isPreviewMode && links.length > 6 && !desktopHamburger && layout === 'horizontal') {
-      const timer = setTimeout(() => setShowMenuRecommendation(true), 1500);
-      return () => clearTimeout(timer);
-    } else {
-      setShowMenuRecommendation(false);
-    }
-  }, [links.length, desktopHamburger, isPreviewMode, layout, setShowMenuRecommendation]);
-
   // Helper to safely apply opacity to hex colors
   const getGlassColor = (color: string) => {
     if (!glassEffect) return color;
@@ -199,7 +209,7 @@ export const MenuModule: React.FC<{
   const fontWeight = getVal(`${moduleId}_el_menu_items`, 'font_weight', 'medium');
   const rawTextColor = getVal(`${moduleId}_el_menu_items`, 'text_color', '#0F172A');
   const textColor = resolveThemeColor(rawTextColor, '#0F172A', '#FFFFFF', darkMode);
-  const showIcons = getVal(`${moduleId}_el_menu_items`, 'show_icons', true);
+  const showIcons = toBoolean(getVal(`${moduleId}_el_menu_items`, 'show_icons', false));
   const iconSize = getVal(`${moduleId}_el_menu_items`, 'icon_size', 18);
   const logoColor = resolveThemeColor(rawLogoColor, '#0F172A', '#FFFFFF', darkMode);
 
@@ -215,19 +225,21 @@ export const MenuModule: React.FC<{
     const nav = navRef.current;
     if (!nav) return;
 
-    const updateMenuHeight = () => {
+    const updateMenuMeasurements = () => {
       const measuredHeight = nav.getBoundingClientRect().height;
       if (measuredHeight > 0) setMenuHeight(measuredHeight);
+      const measuredWidth = nav.offsetWidth || nav.getBoundingClientRect().width;
+      if (measuredWidth > 0) setMenuContainerWidth(measuredWidth);
     };
 
-    updateMenuHeight();
+    updateMenuMeasurements();
 
     if (typeof ResizeObserver === 'undefined') {
-      window.addEventListener('resize', updateMenuHeight);
-      return () => window.removeEventListener('resize', updateMenuHeight);
+      window.addEventListener('resize', updateMenuMeasurements);
+      return () => window.removeEventListener('resize', updateMenuMeasurements);
     }
 
-    const observer = new ResizeObserver(updateMenuHeight);
+    const observer = new ResizeObserver(updateMenuMeasurements);
     observer.observe(nav);
     return () => observer.disconnect();
   }, [paddingY, layout, desktopHamburger, links.length, logoWidth, activeLogo, logoText]);
@@ -249,8 +261,13 @@ export const MenuModule: React.FC<{
   const alignmentClasses = {
     start: layout === 'vertical' ? 'items-start' : 'justify-start',
     center: layout === 'vertical' ? 'items-center' : 'justify-center',
-    end: layout === 'vertical' ? 'items-end' : 'justify-end'
+    end: layout === 'vertical' ? 'items-end' : 'justify-end',
+    between: layout === 'vertical' ? 'items-stretch' : 'justify-between'
   };
+
+  const linkListAlignmentClass = align === 'between'
+    ? 'justify-between w-full'
+    : alignmentClasses[align as keyof typeof alignmentClasses];
 
   const animProps = entranceAnim ? {
     initial: { opacity: 0, y: 10 },
@@ -277,8 +294,8 @@ export const MenuModule: React.FC<{
     borderBottom: isFloating ? `1px solid ${borderColor}` : 'none'
   };
 
-  const renderLinks = (isMobile: boolean = false) => {
-    return links.map((link: any, idx: number) => {
+  const renderLinks = (isMobile: boolean = false, linkList: any[] = links) => {
+    return linkList.map((link: any, idx: number) => {
       const isTitle = link.is_title;
       const isActive = link.url === `#${activeSectionId}`;
       
@@ -418,8 +435,18 @@ export const MenuModule: React.FC<{
             ) : (
               /* Responsive Logic (Links on Desktop, Hamburger on Mobile) */
               <>
-                <div className="hidden @md:flex md:flex items-center gap-4">
-                  {renderLinks()}
+                <div className={`hidden @md:flex md:flex items-center gap-4 ${linkListAlignmentClass}`}>
+                  {renderLinks(false, visibleLinks)}
+                  {hasOverflowLinks && (
+                    <button 
+                      onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                      className="p-2 rounded-full hover:bg-black/5 transition-colors"
+                      style={{ color: textColor }}
+                      aria-label="Abrir menú de navegación"
+                    >
+                      {isMobileMenuOpen ? <CloseIcon size={24} /> : <HamburgerIcon size={24} />}
+                    </button>
+                  )}
                 </div>
                 
                 <div className="@md:hidden md:hidden flex items-center">
@@ -456,7 +483,7 @@ export const MenuModule: React.FC<{
                      <CloseIcon size={16} style={{ color: textColor }} />
                    </button>
                 </div>
-                {renderLinks(true)}
+                {renderLinks(true, dropdownLinks)}
               </div>
             </motion.div>
           )}

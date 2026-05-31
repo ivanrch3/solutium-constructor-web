@@ -210,7 +210,7 @@ const AppContent: React.FC = () => {
 
   useEffect(() => {
     if (debugEnabled) {
-      console.log('[DEBUG_FLAGS_RESOLUTION_DEBUG]', {
+      logDebug('[DEBUG_FLAGS_RESOLUTION_DEBUG]', {
         debugParam,
         debugRenderParam,
         debugProductsParam,
@@ -308,16 +308,9 @@ const AppContent: React.FC = () => {
 
   // Sync state to local storage
   useEffect(() => {
-    console.log('[CONSTRUCTOR_BOOT_START] 🧩 AppContent montado', {
-      timestamp: new Date().toISOString(),
-      currentView,
-      projectId,
-      isHandshakeComplete
-    });
-    
     // [APP_CONTENT_RENDER_DECISION_DEBUG] (FASE 6)
     if (debugEnabled) {
-      console.log('[APP_CONTENT_RENDER_DECISION_DEBUG]', {
+      logDebug('[APP_CONTENT_RENDER_DECISION_DEBUG]', {
         currentView,
         projectId,
         siteId: (selectedPage as any)?.siteId || (selectedPage as any)?.id,
@@ -344,7 +337,7 @@ const AppContent: React.FC = () => {
 
     if ((siteIdParam && isPublishedMode) || (window.location.search.includes('debug=products'))) {
       if (!isHandshakeComplete) {
-        console.log('[VIEWER_HANDSHAKE_BYPASS_DEBUG]', {
+        logDebug('[VIEWER_HANDSHAKE_BYPASS_DEBUG]', {
           currentView,
           isPublishedViewer: true,
           shouldWaitForHandshake: false,
@@ -354,7 +347,7 @@ const AppContent: React.FC = () => {
         // Auto-complete handshake after a short delay if it hasn't finished
         const timer = setTimeout(() => {
           if (!isHandshakeComplete) {
-            console.warn('[VIEWER_HANDSHAKE_BYPASS] Forzando isHandshakeComplete=true por timeout (V101).');
+            logDebug('[VIEWER_HANDSHAKE_BYPASS] Forzando isHandshakeComplete=true por timeout (V101).');
             setIsHandshakeComplete(true);
             // Only force view if not already in viewer
             if (currentView !== 'viewer') {
@@ -462,7 +455,7 @@ const AppContent: React.FC = () => {
       const productsSection = sections.find((s: any) => s.type === 'products' || s.tipo === 'products');
       
       if (productsDebugEnabled) {
-        console.log('[APP_MADRE_PRODUCTS_PAYLOAD_FINAL_DEBUG]', {
+        logDebug('[APP_MADRE_PRODUCTS_PAYLOAD_FINAL_DEBUG]', {
           siteId: payload.site_id,
           projectId: payload.projectId || payload.satellite_id,
           sectionsCount: sections.length,
@@ -760,7 +753,7 @@ const AppContent: React.FC = () => {
 
     // Expose test function to console for validation
     (window as any).SOLUTIUM_TEST_UPLOAD_ASSET = async () => {
-      console.log("%c[SOLUTIUM] Iniciando validación de upload centralizado...", "color: #3b82f6; font-weight: bold;");
+      logDebug("[SOLUTIUM] Iniciando validación de upload centralizado...");
       const { uploadAsset } = await import('./services/assetsClient');
       
       try {
@@ -786,7 +779,7 @@ const AppContent: React.FC = () => {
           fileName: `console-test-${Date.now()}.png`
         });
 
-        console.log("%c[SOLUTIUM] ¡Subida exitosa!", "color: #10b981; font-weight: bold;");
+        logDebug("[SOLUTIUM] ¡Subida exitosa!");
         console.table(result);
         return result;
       } catch (err: any) {

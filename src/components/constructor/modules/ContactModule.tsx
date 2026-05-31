@@ -16,6 +16,38 @@ const CONTACT_DEFAULTS = {
   whatsappNumber: ''
 };
 
+type NormalizedContactLayout =
+  | 'form_map_side'
+  | 'map_form_side'
+  | 'form_map_full'
+  | 'form_map_centered'
+  | 'map_form_stack';
+
+const normalizeContactLayout = (value: unknown): NormalizedContactLayout => {
+  const rawLayout = String(value || '').trim().toLowerCase();
+
+  switch (rawLayout) {
+    case 'map_form_side':
+    case 'map_left':
+      return 'map_form_side';
+    case 'form_map_full':
+    case 'centered':
+      return 'form_map_full';
+    case 'form_map_centered':
+      return 'form_map_centered';
+    case 'map_form_stack':
+    case 'map_top':
+      return 'map_form_stack';
+    case 'form_map_side':
+    case 'form_map':
+    case 'split':
+    case 'bento':
+    case 'map_side':
+    default:
+      return 'form_map_side';
+  }
+};
+
 export const ContactModule: React.FC<{ 
   moduleId: string, 
   settingsValues: Record<string, any>,
@@ -24,6 +56,7 @@ export const ContactModule: React.FC<{
   const { selectSection, selectElement } = useEditorStore();
   const [formState, setFormState] = useState<Record<string, string>>({});
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [submittedAction, setSubmittedAction] = useState<'whatsapp' | 'email' | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
   const getVal = (elementId: string | null, settingId: string, defaultValue: any) => {
@@ -71,7 +104,8 @@ export const ContactModule: React.FC<{
   const sanitizeWhatsappNumber = (value: unknown) => String(value ?? '').replace(/[^\d]/g, '');
 
   // Global Settings
-  const layout = getVal(null, 'layout', 'split');
+  const layout = getVal(null, 'layout', 'form_map_side');
+  const normalizedLayout = normalizeContactLayout(layout);
   const maxWidth = parseF(getVal(null, 'max_width', 1200), 1200);
   const paddingY = parseF(getVal(null, 'padding_y', 100), 100);
   const darkMode = toBoolean(getVal(null, 'dark_mode', false));
@@ -112,8 +146,8 @@ export const ContactModule: React.FC<{
   const subtitleHighlightBold = getVal(`${moduleId}_el_contact_header`, 'subtitle_highlight_bold', true);
 
   // Element: Info
-  const email = getVal(`${moduleId}_el_contact_info`, 'email', CONTACT_DEFAULTS.email);
-  const phone = getVal(`${moduleId}_el_contact_info`, 'phone', CONTACT_DEFAULTS.phone);
+  const email = getVal(`${moduleId}_el_contact_form`, 'email', getVal(`${moduleId}_el_contact_info`, 'email', CONTACT_DEFAULTS.email));
+  const phone = getVal(`${moduleId}_el_contact_form`, 'phone', getVal(`${moduleId}_el_contact_info`, 'phone', CONTACT_DEFAULTS.phone));
   const address = getVal(`${moduleId}_el_contact_info`, 'address', CONTACT_DEFAULTS.address);
   const showAvailability = getVal(`${moduleId}_el_contact_info`, 'show_availability', true);
   const availabilityText = getVal(`${moduleId}_el_contact_info`, 'availability_text', 'Disponible ahora (9:00 - 18:00)');
@@ -140,8 +174,6 @@ export const ContactModule: React.FC<{
   const rawInputBg = getVal(`${moduleId}_el_contact_form`, 'input_bg', '#FFFFFF');
   const inputBg = resolveThemeColor(rawInputBg, '#FFFFFF', '#334155', darkMode);
   const inputRadius = parseF(getVal(`${moduleId}_el_contact_form`, 'input_radius', 12), 12);
-  const btnBg = getVal(`${moduleId}_el_contact_form`, 'btn_bg', 'var(--primary-color)');
-  const btnColor = getVal(`${moduleId}_el_contact_form`, 'btn_color', '#FFFFFF');
   const labelSizeToken = getVal(`${moduleId}_el_contact_form`, 'label_size', 's');
   const labelWeightToken = getVal(`${moduleId}_el_contact_form`, 'label_weight', 'bold');
   const shimmer = getVal(`${moduleId}_el_contact_form`, 'shimmer', false);
@@ -163,11 +195,12 @@ export const ContactModule: React.FC<{
   const resolvedEmail = email;
   const resolvedWhatsapp = sanitizeWhatsappNumber(whatsappNumber || phone);
   const resolvedAddress = address;
-  const primaryContactLabel = resolvedWhatsapp ? 'WhatsApp' : 'Correo electrónico';
-  const primaryButtonText = isDefaultText(buttonText, 'Enviar Mensaje')
-    ? (resolvedWhatsapp ? 'Enviar por WhatsApp' : 'Enviar por correo')
+  const showWhatsappContact = Boolean(resolvedWhatsapp);
+  const showEmailContact = Boolean(resolvedEmail);
+  const hasConfiguredContactChannel = showWhatsappContact || showEmailContact;
+  const primaryButtonText = isDefaultText(buttonText, ['Enviar Mensaje', 'Enviar por WhatsApp'])
+    ? 'Enviar por WhatsApp'
     : buttonText;
-
   const getTypographyStyle = (sizeToken: string, weightToken: string, alignToken?: string) => {
     const size = TYPOGRAPHY_SCALE[sizeToken as keyof typeof TYPOGRAPHY_SCALE] || TYPOGRAPHY_SCALE.p;
     const weight = FONT_WEIGHTS[weightToken as keyof typeof FONT_WEIGHTS] || FONT_WEIGHTS.normal;
@@ -191,26 +224,36 @@ export const ContactModule: React.FC<{
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const summary = buildSubmissionSummary() || 'Hola, me gustaría recibir más información.';
+    const summary = buildSubmissionSummary() || 'Hola, me gustaria recibir mas informacion.';
+    const submitter = (e.nativeEvent as SubmitEvent & { submitter?: HTMLElement }).submitter;
+    const requestedAction = submitter instanceof HTMLButtonElement ? submitter.value : 'whatsapp';
 
-    if (resolvedWhatsapp) {
+    if (requestedAction === 'whatsapp' && showWhatsappContact) {
       const target = `https://wa.me/${resolvedWhatsapp}?text=${encodeURIComponent(summary)}`;
       window.open(target, '_blank', 'noopener,noreferrer');
+      setSubmittedAction('whatsapp');
       setIsSubmitted(true);
       setTimeout(() => setIsSubmitted(false), 5000);
       return;
     }
 
-    if (resolvedEmail) {
+    if (requestedAction === 'email' && showEmailContact) {
       const subject = encodeURIComponent('Nueva solicitud de contacto');
       const body = encodeURIComponent(summary);
       window.location.href = `mailto:${resolvedEmail}?subject=${subject}&body=${body}`;
+      setSubmittedAction('email');
+      setIsSubmitted(true);
+      setTimeout(() => setIsSubmitted(false), 5000);
+      return;
     }
 
+    if (btnUrl && btnUrl !== '#') {
+      window.open(btnUrl, btnTarget === '_blank' ? '_blank' : '_self');
+    }
+    setSubmittedAction(null);
     setIsSubmitted(true);
     setTimeout(() => setIsSubmitted(false), 5000);
   };
-
   const handleCopy = (text: string, field: string) => {
     navigator.clipboard.writeText(text);
     setCopiedField(field);
@@ -247,10 +290,10 @@ export const ContactModule: React.FC<{
         )}
 
         {[
-          ...(resolvedWhatsapp
+          ...(showWhatsappContact
             ? [{ icon: MessageCircle, label: 'WhatsApp', value: phone, id: 'phone' }]
             : (phone ? [{ icon: Phone, label: 'Teléfono', value: phone, id: 'phone' }] : [])),
-          { icon: Mail, label: 'Email', value: resolvedEmail, id: 'email' },
+          ...(showEmailContact ? [{ icon: Mail, label: 'Email', value: resolvedEmail, id: 'email' }] : []),
           { icon: MapPin, label: 'Dirección', value: resolvedAddress, id: 'address' }
         ].map((item) => (
           <div key={item.id} className="flex items-start gap-4 group">
@@ -310,7 +353,7 @@ export const ContactModule: React.FC<{
         )}
       </div>
 
-      {resolvedWhatsapp && (
+      {showWhatsappContact && (
         <a 
           href={`https://wa.me/${resolvedWhatsapp}`}
           target="_blank"
@@ -327,7 +370,7 @@ export const ContactModule: React.FC<{
 
   const renderForm = (isBento: boolean = false) => (
     <div 
-      className={`p-6 @md:p-10 rounded-[32px] shadow-2xl border ${isBento ? 'h-full' : ''} ${darkMode ? 'bg-slate-800 border-white/10 shadow-none' : 'bg-white border-slate-100 shadow-slate-200/50'}`}
+      className={`w-full max-w-full min-w-0 overflow-hidden p-5 @md:p-10 rounded-[28px] @md:rounded-[32px] shadow-2xl border ${isBento ? 'h-full' : ''} ${darkMode ? 'bg-slate-800 border-white/10 shadow-none' : 'bg-white border-slate-100 shadow-slate-200/50'}`}
       style={{
         borderWidth: '1px',
         borderStyle: 'solid',
@@ -350,7 +393,7 @@ export const ContactModule: React.FC<{
             ¡Solicitud lista!
           </h3>
           <p style={{ color: darkMode ? '#94A3B8' : '#64748B' }}>
-            {resolvedWhatsapp
+            {submittedAction === 'whatsapp'
               ? 'Abrimos WhatsApp con tu mensaje para que puedas enviarlo de inmediato.'
               : 'Abrimos tu correo para que puedas enviar la solicitud de contacto.'}
           </p>
@@ -391,36 +434,44 @@ export const ContactModule: React.FC<{
               )}
             </div>
           ))}
+          <div className="grid grid-cols-1 @md:grid-cols-2 gap-3">
             <motion.button
-              whileHover={hoverEffect === 'lift' ? { y: -5 } : hoverEffect === 'magnetic' ? { scale: 1.02 } : {}}
-              whileTap={{ scale: 0.98 }}
+              whileHover={hoverEffect === 'lift' && showWhatsappContact ? { y: -5 } : hoverEffect === 'magnetic' && showWhatsappContact ? { scale: 1.02 } : {}}
+              whileTap={showWhatsappContact ? { scale: 0.98 } : {}}
               type="submit"
-            onClick={() => {
-              if (btnUrl && btnUrl !== '#' && !resolvedWhatsapp) window.open(btnUrl, btnTarget === '_blank' ? '_blank' : '_self');
-            }}
-            className={`w-full py-5 font-black text-sm transition-all flex items-center justify-center gap-2 relative overflow-hidden group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2`}
-            style={{ backgroundColor: btnBg, color: btnColor, borderRadius: `${inputRadius}px`, boxShadow: 'none' }}
-          >
-            {shimmer && (
-              <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]" />
-            )}
-            <span className="relative z-10">{primaryButtonText}</span>
-            {resolvedWhatsapp ? <MessageCircle size={18} className="relative z-10" /> : <Send size={18} className="relative z-10" />}
-          </motion.button>
-          {resolvedEmail && (
-            <a
-              href={`mailto:${resolvedEmail}?subject=${encodeURIComponent('Nueva solicitud de contacto')}`}
-              className={`w-full inline-flex items-center justify-center gap-2 py-4 text-sm font-bold rounded-2xl border transition-colors ${
-                darkMode ? 'border-white/10 text-white hover:bg-white/5' : 'border-slate-200 text-slate-700 hover:bg-slate-50'
-              }`}
+              value="whatsapp"
+              disabled={!showWhatsappContact}
+              className={`w-full min-w-0 px-4 py-4 @md:py-5 font-black text-sm transition-all flex items-center justify-center gap-2 relative overflow-hidden group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${!showWhatsappContact ? 'opacity-45 cursor-not-allowed' : 'hover:-translate-y-0.5'}`}
+              style={{ backgroundColor: '#25D366', color: '#FFFFFF', borderRadius: `${inputRadius}px`, boxShadow: 'none' }}
             >
-              <Mail size={16} />
-              Contactar por correo
-            </a>
+              {shimmer && showWhatsappContact && (
+                <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]" />
+              )}
+              <span className="relative z-10">{primaryButtonText}</span>
+              <MessageCircle size={18} className="relative z-10" />
+            </motion.button>
+            <motion.button
+              whileHover={hoverEffect === 'lift' && showEmailContact ? { y: -5 } : hoverEffect === 'magnetic' && showEmailContact ? { scale: 1.02 } : {}}
+              whileTap={showEmailContact ? { scale: 0.98 } : {}}
+              type="submit"
+              value="email"
+              disabled={!showEmailContact}
+              className={`w-full min-w-0 inline-flex items-center justify-center gap-2 px-4 py-4 @md:py-5 text-sm font-black rounded-2xl border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
+                !showEmailContact
+                  ? 'opacity-45 cursor-not-allowed'
+                  : 'border-slate-200 text-slate-800 bg-white hover:bg-slate-50'
+              }`}
+              style={{ borderRadius: `${inputRadius}px`, boxShadow: 'none' }}
+            >
+              <Mail size={18} />
+              Enviar por correo
+            </motion.button>
+          </div>
+          {!hasConfiguredContactChannel && (
+            <p className={`text-xs leading-relaxed ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+              Configura un WhatsApp o correo para activar los canales de contacto.
+            </p>
           )}
-          <p className={`text-xs leading-relaxed ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-            Canal principal: {primaryContactLabel}. El correo queda disponible como contacto secundario.
-          </p>
         </form>
       )}
     </div>
@@ -432,7 +483,8 @@ export const ContactModule: React.FC<{
       <div 
         className={`w-full overflow-hidden shadow-xl border group ${isBento ? 'h-full' : ''} ${darkMode ? 'border-white/10' : 'border-slate-200'}`}
         style={{ 
-          height: isBento ? '100%' : `${mapHeight}px`, 
+          height: isBento ? '100%' : `${mapHeight}px`,
+          minHeight: isBento ? '320px' : undefined,
           borderRadius: `${mapRadius}px`,
           filter: mapGrayscale ? 'grayscale(1)' : 'none',
           borderWidth: '1px',
@@ -563,63 +615,59 @@ export const ContactModule: React.FC<{
           </div>
 
           {/* Layouts */}
-          {layout === 'split' && (
-            <div className="grid @lg:grid-cols-2 gap-16 items-start">
-              <div className="space-y-8">
-                {renderInfo()}
-                {renderCalendly()}
-              </div>
-              {renderForm()}
-            </div>
-          )}
-
-          {layout === 'centered' && (
-            <div className="max-w-3xl mx-auto">
-              {renderForm()}
-              <div className="mt-16 grid @md:grid-cols-2 gap-8">
-                {renderInfo()}
-                {renderCalendly()}
-              </div>
-            </div>
-          )}
-
-          {layout === 'map_side' && (
-            <div className="grid @lg:grid-cols-2 gap-12 items-stretch">
-              <div className="space-y-8">
-                {renderForm()}
-                {renderCalendly()}
-              </div>
-              {renderMap()}
-            </div>
-          )}
-
-          {layout === 'map_top' && (
-            <div className="space-y-12">
-              {renderMap()}
-              <div className="grid @lg:grid-cols-2 gap-16 items-start">
-                <div className="space-y-8">
-                  {renderInfo()}
-                  {renderCalendly()}
-                </div>
-                {renderForm()}
-              </div>
-            </div>
-          )}
-
-          {layout === 'bento' && (
-            <div className="grid grid-cols-1 @md:grid-cols-2 @lg:grid-cols-3 gap-6 auto-rows-[minmax(200px,auto)]">
-              <div className="@md:col-span-2 @lg:col-span-1 @lg:row-span-2">
+          {normalizedLayout === 'form_map_side' && (
+            <div data-contact-layout={normalizedLayout} className="grid grid-cols-1 @5xl:grid-cols-2 gap-8 @5xl:gap-12 items-stretch">
+              <div className="h-full">
                 {renderForm(true)}
               </div>
-              <div className="@lg:col-span-1">
-                {renderInfo(true)}
+              <div className="h-full space-y-6">
+                {renderMap(true)}
+                {renderCalendly()}
               </div>
-              <div className="@lg:col-span-1">
-                {renderCalendly(true)}
-              </div>
-              <div className="@md:col-span-2">
+            </div>
+          )}
+
+          {normalizedLayout === 'map_form_side' && (
+            <div data-contact-layout={normalizedLayout} className="grid grid-cols-1 @5xl:grid-cols-2 gap-8 @5xl:gap-12 items-stretch">
+              <div className="h-full">
                 {renderMap(true)}
               </div>
+              <div className="h-full space-y-6">
+                {renderForm(true)}
+                {renderCalendly()}
+              </div>
+            </div>
+          )}
+
+          {normalizedLayout === 'form_map_full' && (
+            <div data-contact-layout={normalizedLayout} className="space-y-8">
+              <div className="max-w-3xl mx-auto">
+                {renderForm()}
+              </div>
+              {renderMap()}
+              {renderCalendly()}
+            </div>
+          )}
+
+          {normalizedLayout === 'form_map_centered' && (
+            <div data-contact-layout={normalizedLayout} className="space-y-8">
+              <div className="max-w-3xl mx-auto">
+                {renderForm()}
+              </div>
+              <div className="max-w-4xl mx-auto">
+                {renderMap()}
+              </div>
+              {renderCalendly()}
+            </div>
+          )}
+
+          {normalizedLayout === 'map_form_stack' && (
+            <div data-contact-layout={normalizedLayout} className="space-y-8">
+              {renderMap()}
+              <div className="max-w-3xl mx-auto">
+                {renderForm()}
+              </div>
+              {renderCalendly()}
             </div>
           )}
         </motion.div>

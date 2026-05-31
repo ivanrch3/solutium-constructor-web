@@ -88,6 +88,12 @@ export const PricingModule: React.FC<{
 
   // Global Settings
   const columns = parseNumSafe(getVal(null, 'columns', 3), 3);
+  const desktopColumns = Math.max(1, Math.min(4, columns));
+  const pricingGridClass =
+    desktopColumns >= 4 ? 'grid-cols-1 @md:grid-cols-2 @5xl:grid-cols-4' :
+    desktopColumns === 3 ? 'grid-cols-1 @md:grid-cols-2 @5xl:grid-cols-3' :
+    desktopColumns === 2 ? 'grid-cols-1 @md:grid-cols-2' :
+    'grid-cols-1';
   const gap = parseNumSafe(getVal(null, 'gap', 32), 32);
   const darkMode = toBoolean(getVal(null, 'dark_mode', false));
   const rawBgColor = getVal(null, 'bg_color', '#F8FAFC');
@@ -406,7 +412,7 @@ export const PricingModule: React.FC<{
           initial={entranceAnim ? "hidden" : false}
           whileInView="visible"
           viewport={{ once: true, margin: "-100px" }}
-          className={`grid gap-8 grid-cols-1 @md:grid-cols-2 @lg:grid-cols-${columns} items-stretch`}
+          className={`grid gap-8 ${pricingGridClass} items-stretch`}
           style={{ gap: `${gap}px` }}
         >
           {plans.map((plan: any, i: number) => {

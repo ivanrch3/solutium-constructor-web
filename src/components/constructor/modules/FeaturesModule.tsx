@@ -120,7 +120,7 @@ const FeatureCard = ({
     return (
       <motion.div
         variants={staggerAnim ? itemVariants : {}}
-        className={`flex flex-col @lg:flex-row items-center gap-12 @lg:gap-24 py-12 ${zigzagReverse ? '@lg:flex-row-reverse' : ''}`}
+        className={`flex flex-col @5xl:flex-row items-center gap-12 @5xl:gap-24 py-12 ${zigzagReverse ? '@5xl:flex-row-reverse' : ''}`}
       >
         <div className="flex-1 w-full">
           <div 

@@ -105,13 +105,19 @@ export const MainSidebar: React.FC<MainSidebarProps> = ({
 }) => {
   const [expandedSection, setExpandedSection] = useState<string | null>('constructor');
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
+  const sidebarScrollRef = React.useRef<HTMLDivElement | null>(null);
 
   const toggleSection = (section: string) => {
     setExpandedSection(expandedSection === section ? null : section);
   };
 
   const toggleCategory = (category: string) => {
+    const scrollNode = sidebarScrollRef.current;
+    const currentScrollTop = scrollNode?.scrollTop ?? 0;
     setExpandedCategory(expandedCategory === category ? null : category);
+    requestAnimationFrame(() => {
+      if (scrollNode) scrollNode.scrollTop = currentScrollTop;
+    });
   };
 
   const displayLogo = logoWhiteUrl || logoUrl;
@@ -136,7 +142,7 @@ export const MainSidebar: React.FC<MainSidebarProps> = ({
       </div>
 
       {/* Navigation */}
-      <div className="flex-1 px-4 space-y-1 overflow-y-auto custom-scrollbar pb-10">
+      <div ref={sidebarScrollRef} className="flex-1 px-4 space-y-1 overflow-y-auto custom-scrollbar pb-10">
         <div className="space-y-1">
           <button 
             onClick={() => toggleSection('diseno')}
@@ -266,19 +272,9 @@ export const MainSidebar: React.FC<MainSidebarProps> = ({
                     />
                     <ModuleItem 
                       icon={React.createElement(MODULE_INFO.bento.icon, { size: 18 })} 
-                      label="Composición Libre" 
+                      label="Bento / Composición Libre" 
                       onClick={() => onAddModule(BENTO_MODULE)}
                     />
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onOpenBentoGenerator?.();
-                      }}
-                      className="w-full flex items-center gap-2 px-4 py-2 mt-1 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 transition-all border border-blue-100 group"
-                    >
-                      <Sparkles size={14} className="group-hover:rotate-12 transition-transform" />
-                      <span className="text-[10px] font-black uppercase tracking-widest">Generar con IA</span>
-                    </button>
                     <ModuleItem 
                       icon={React.createElement(MODULE_INFO.comparative.icon, { size: 18 })} 
                       label="Comparativo" 
@@ -428,6 +424,11 @@ export const MainSidebar: React.FC<MainSidebarProps> = ({
                       icon={React.createElement(MODULE_INFO.spacer.icon, { size: 18 })} 
                       label="Espaciadores" 
                       onClick={() => onAddModule(SPACER_MODULE)}
+                    />
+                    <ModuleItem
+                      icon={React.createElement(MODULE_INFO.bento.icon, { size: 18 })}
+                      label="Bento / Composición Libre"
+                      onClick={() => onAddModule(BENTO_MODULE)}
                     />
                     <ModuleItem
                       icon={React.createElement(MODULE_INFO.composition_section.icon, { size: 18 })}

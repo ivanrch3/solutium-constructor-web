@@ -1268,7 +1268,7 @@ export const bridgeModuleContent = ({
 
       if (isDebug) {
         const currentEmail = result[`${moduleId}_el_footer_contact_email`];
-        console.log('[FOOTER_PROJECT_PROFILE_DEBUG]', {
+        logDebug('[FOOTER_PROJECT_PROFILE_DEBUG]', {
           runtime: typeof window !== 'undefined' && (window as any).WEB_BUILDER_ID ? 'constructor' : 'published_viewer',
           moduleId,
           footerCurrentEmail: currentEmail,

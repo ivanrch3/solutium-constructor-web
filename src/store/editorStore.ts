@@ -12,7 +12,6 @@ interface EditorStoreState {
   generationStep: number;
   generationSteps: string[];
   inlineEditingId: string | null;
-  showMenuRecommendation: boolean;
   selectedBentoCellIndex: number | null;
   selectedCompositionElementId: string | null;
   
@@ -20,7 +19,6 @@ interface EditorStoreState {
   setProject: (project: any) => void;
   resetEditorStore: () => void;
   setInlineEditingId: (id: string | null) => void;
-  setShowMenuRecommendation: (show: boolean) => void;
   setSelectedBentoCellIndex: (index: number | null) => void;
   setSelectedCompositionElementId: (id: string | null) => void;
   selectCompositionElement: (sectionId: string, elementId: string | null) => void;
@@ -74,7 +72,6 @@ export const useEditorStore = create<EditorStoreState>((set, get) => ({
     'Finalizando sitio...'
   ],
   inlineEditingId: null,
-  showMenuRecommendation: false,
   selectedBentoCellIndex: null,
   selectedCompositionElementId: null,
   
@@ -87,7 +84,6 @@ export const useEditorStore = create<EditorStoreState>((set, get) => ({
     history: [initialContent],
     historyIndex: 0,
     inlineEditingId: null,
-    showMenuRecommendation: false,
     selectedBentoCellIndex: null,
     selectedCompositionElementId: null,
     isGenerating: false,
@@ -97,7 +93,6 @@ export const useEditorStore = create<EditorStoreState>((set, get) => ({
 
   setInlineEditingId: (id) => set({ inlineEditingId: id }),
 
-  setShowMenuRecommendation: (show) => set({ showMenuRecommendation: show }),
   setSelectedBentoCellIndex: (index) => set({ selectedBentoCellIndex: index }),
   setSelectedCompositionElementId: (id) => set({ selectedCompositionElementId: id }),
   selectCompositionElement: (sectionId, elementId) => set({

@@ -512,7 +512,7 @@ export const saveWebBuilderSiteDraft = async (site: Partial<WebBuilderSite>): Pr
       };
 
       if (site.previewImageUrl !== undefined || site.previewThumbnailUrl !== undefined || site.previewImagePath !== undefined || site.previewImageHash !== undefined) {
-        console.log('[PREVIEW_OVERWRITE_AUDIT]', {
+        logDebug('[PREVIEW_OVERWRITE_AUDIT]', {
           source: 'constructor',
           table: 'web_builder_sites',
           operation: 'saveDraft',
@@ -594,7 +594,7 @@ export const publishWebBuilderSite = async (site: Partial<PublishedSite>): Promi
     };
 
     if (site.previewImageUrl !== undefined || site.previewThumbnailUrl !== undefined || site.previewImagePath !== undefined || site.previewImageHash !== undefined) {
-      console.log('[PREVIEW_OVERWRITE_AUDIT]', {
+      logDebug('[PREVIEW_OVERWRITE_AUDIT]', {
         source: 'constructor',
         table: 'web_builder_sites',
         operation: 'publish',
@@ -998,7 +998,7 @@ export async function logEvolutionRequest(feature: string, context: any): Promis
     const web_builder_site_id = context?.web_builder_site_id || (window as any).WEB_BUILDER_SITE_ID || (window as any).currentSite?.id || (window as any).webBuilderSite?.id;
     const site_id = context?.site_id || (window as any).SITE_ID || (window as any).currentSite?.site_id;
 
-    console.log('[EVOLUTION_BACKEND_PAYLOAD_DEBUG]', { 
+    logDebug('[EVOLUTION_BACKEND_PAYLOAD_DEBUG]', {
       project_id, 
       web_builder_site_id, 
       site_id,
@@ -1007,7 +1007,7 @@ export async function logEvolutionRequest(feature: string, context: any): Promis
     });
 
     if (!project_id || !web_builder_site_id) {
-      console.log('[EVOLUTION_BACKEND_SKIPPED] Missing IDs');
+      logDebug('[EVOLUTION_BACKEND_SKIPPED] Missing IDs');
       return;
     }
 
@@ -1061,7 +1061,7 @@ export const updateSitePreview = async (
     if (!supabase) return false;
 
     // [PREVIEW_OVERWRITE_AUDIT]
-    console.log('[PREVIEW_OVERWRITE_AUDIT]', {
+    logDebug('[PREVIEW_OVERWRITE_AUDIT]', {
       source: 'constructor',
       table: 'web_builder_sites/published_sites',
       siteId,

@@ -1,3 +1,4 @@
+import { logDebug } from '../../utils/debug';
 import React from 'react';
 import * as LucideIcons from 'lucide-react';
 import { useEditorStore } from '../../store/editorStore';
@@ -18,6 +19,7 @@ import {
 } from 'lucide-react';
 import * as registryModules from './registry';
 import { SettingControl } from './SettingControl';
+import { BentoCellEditor } from './BentoCellEditor';
 import {
   CompositionElement,
   COMPOSITION_SCHEMA_DEEP_KEY,
@@ -84,11 +86,17 @@ const COMPOSITION_ADDABLE_TYPES: CompositionElementType[] = [
 interface PropertyEditorProps {
   settingsValues?: Record<string, any>;
   onSettingChange?: (elementOrModuleId: string, settingId: string, value: any) => void;
+  suppressBentoCellEditor?: boolean;
+  bentoCellDrawerOpen?: boolean;
+  onOpenBentoCellDrawer?: () => void;
 }
 
 export const PropertyEditor: React.FC<PropertyEditorProps> = ({
   settingsValues,
-  onSettingChange
+  onSettingChange,
+  suppressBentoCellEditor = false,
+  bentoCellDrawerOpen = false,
+  onOpenBentoCellDrawer
 }) => {
   const { 
     siteContent, 
@@ -180,6 +188,63 @@ export const PropertyEditor: React.FC<PropertyEditorProps> = ({
 
   if (!moduleDef) {
     return <div className="p-4 text-xs text-amber-600 bg-amber-50">Definición de módulo no encontrada</div>;
+  }
+
+  const isBento = selectedSection.type === 'bento'
+    || selectedSection.templateId === 'mod_bento_1'
+    || selectedSection.id.startsWith('mod_bento_1');
+
+  if (isBento && selectedBentoCellIndex !== null) {
+    if (suppressBentoCellEditor || onOpenBentoCellDrawer) {
+      return (
+        <div className="flex h-full flex-col bg-white">
+          <div className="border-b border-gray-100 bg-gray-50/70 p-4">
+            <h3 className="text-sm font-bold text-gray-900">Elemento Bento seleccionado</h3>
+            <p className="mt-1 text-xs leading-relaxed text-gray-500">
+              {bentoCellDrawerOpen
+                ? 'La edicion de esta celda esta abierta en el drawer Bento.'
+                : 'El drawer Bento esta cerrado. Puedes reabrirlo o volver a la configuracion global.'}
+            </p>
+          </div>
+          <div className="flex flex-1 flex-col items-center justify-center p-6 text-center">
+            <Layers className="mb-3 text-gray-200" size={48} />
+            <p className="text-xs text-gray-500">
+              La edicion profunda vive en un solo lugar para evitar controles duplicados.
+            </p>
+            {!bentoCellDrawerOpen && onOpenBentoCellDrawer && (
+              <button
+                type="button"
+                onClick={onOpenBentoCellDrawer}
+                className="mt-4 rounded-full bg-blue-600 px-4 py-2 text-[11px] font-bold uppercase tracking-wide text-white transition-colors hover:bg-blue-700"
+              >
+                Abrir editor
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setSelectedBentoCellIndex(null)}
+              className="mt-3 rounded-full bg-blue-50 px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-blue-600 transition-colors hover:bg-blue-100"
+            >
+              Volver a Configuracion Global
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <BentoCellEditor
+        selectedSection={selectedSection}
+        moduleDef={moduleDef}
+        selectedBentoCellIndex={selectedBentoCellIndex}
+        setSelectedBentoCellIndex={setSelectedBentoCellIndex}
+        settingsValues={settingsValues}
+        onSettingChange={onSettingChange}
+        updateSectionSettings={updateSectionSettings}
+        project={project}
+        projectColors={projectColors}
+      />
+    );
   }
 
   const updateCompositionSchema = (schema: CompositionSectionSchema) => {
@@ -637,11 +702,8 @@ export const PropertyEditor: React.FC<PropertyEditorProps> = ({
   // Agrupar todos los settings por Pilar
   const settingsByPillar: Record<string, { label: string, setting: any, contextId: string }[]> = {};
 
-  const isBento = selectedSection.id.startsWith('mod_bento');
-  const isCellSelected = isBento && selectedBentoCellIndex !== null;
-
-  // 1. Settings Globales del Módulo (Hiding if a cell is selected in Bento)
-  if (moduleDef.globalSettings && (!isBento || !isCellSelected)) {
+  // 1. Settings Globales del Módulo
+  if (moduleDef.globalSettings) {
     Object.entries(moduleDef.globalSettings).forEach(([pillar, settings]) => {
       if (!settingsByPillar[pillar]) settingsByPillar[pillar] = [];
       (settings as any[]).forEach(s => {
@@ -656,26 +718,6 @@ export const PropertyEditor: React.FC<PropertyEditorProps> = ({
 
   // 2. Settings de los Elementos del Módulo
   moduleDef.elements.forEach((element: any) => {
-    // Si es Bento y hay una celda seleccionada, solo mostramos los settings de 'el_bento_items' para esa celda
-    if (isBento && isCellSelected) {
-      if (element.id === 'el_bento_items' && element.settings) {
-        Object.entries(element.settings).forEach(([pillar, settings]) => {
-          let targetPillar = pillar;
-          if (pillar === 'title' || pillar === 'subtitle' || pillar === 'eyebrow') targetPillar = 'contenido';
-          if (!settingsByPillar[targetPillar]) settingsByPillar[targetPillar] = [];
-          
-          (settings as any[]).forEach(s => {
-            settingsByPillar[targetPillar].push({
-              label: s.label,
-              setting: s,
-              contextId: `${selectedSection.id}_${element.id}_${selectedBentoCellIndex}`
-            });
-          });
-        });
-      }
-      return; // Skip other elements if cell is selected
-    }
-
     if (element.settings) {
       Object.entries(element.settings).forEach(([pillar, settings]) => {
         // Mapeo de nombres de pilares extendidos (ej: title, subtitle) a los 6 pilares base
@@ -733,23 +775,7 @@ export const PropertyEditor: React.FC<PropertyEditorProps> = ({
   };
 
   const handleFieldChange = (contextId: string, settingId: string, value: any, extraUpdates?: Record<string, any>) => {
-    console.log('[PROPERTY_EDITOR_CHANGE_DEBUG]', { contextId, settingId, value, extraUpdates });
-    // Si estamos editando una celda de un repeater (ej: Bento), necesitamos actualizar el array de items
-    if (contextId.includes('_el_bento_items_')) {
-      const [sectionId, elementId, indexStr] = contextId.split('_el_bento_items_');
-      const realSectionId = sectionId.startsWith('mod_bento') ? sectionId : selectedSection.id;
-      const index = parseInt(indexStr);
-      
-      const repeaterKey = `${realSectionId}_el_bento_items_items`;
-      const currentItems = selectedSection.settings[repeaterKey] || [];
-      const newItems = [...currentItems];
-      if (newItems[index]) {
-        newItems[index] = { ...newItems[index], [settingId]: value };
-        updateSectionSettings(selectedSection.id, { [repeaterKey]: newItems });
-      }
-      return;
-    }
-
+    logDebug('[PROPERTY_EDITOR_CHANGE_DEBUG]', { contextId, settingId, value, extraUpdates });
     // El store maneja settings planos. La clave completa es={`${contextId}_${settingId}`}
     let updates: Record<string, any> = { [`${contextId}_${settingId}`]: value };
     
@@ -769,22 +795,12 @@ export const PropertyEditor: React.FC<PropertyEditorProps> = ({
             <div className="w-6 h-6 bg-blue-600 rounded-md flex items-center justify-center text-white">
               <CustomSettingsIcon size={14} />
             </div>
-            {isCellSelected ? 'Editar Celda' : selectedSection.name}
+            {selectedSection.name}
           </h3>
           <div className="px-2 py-0.5 bg-gray-100 rounded text-[10px] font-mono text-gray-500 uppercase">
-            {isCellSelected ? `Item #${selectedBentoCellIndex + 1}` : moduleDef.type}
+            {moduleDef.type}
           </div>
         </div>
-        
-        {isCellSelected && (
-          <button 
-            onClick={() => setSelectedBentoCellIndex(null)}
-            className="flex items-center gap-1.5 text-[10px] font-bold text-blue-600 hover:text-blue-700 transition-colors bg-blue-50 px-2 py-1 rounded w-fit"
-          >
-            <LucideIcons.ArrowLeft size={10} />
-            Volver a Configuración Global
-          </button>
-        )}
       </div>
 
       <div className="flex-1 overflow-y-auto custom-scrollbar">
@@ -833,14 +849,15 @@ export const PropertyEditor: React.FC<PropertyEditorProps> = ({
                         }, {} as Record<string, typeof fields>)
                       ).map(([subsection, subsectionFields]) => {
                         const renderField = ({ label, setting, contextId }: typeof subsectionFields[number]) => {
-                          const show = evaluateCondition(setting.showIf, selectedSection.settings, contextId);
+                          const conditionSettings = selectedSection.settings;
+                          const show = evaluateCondition(setting.showIf, conditionSettings, contextId);
                           if (!show.result) return null;
 
                           const defaultValue = setting.defaultValue;
                           const value = selectedSection.settings[`${contextId}_${setting.id}`] ?? defaultValue;
 
                           if (setting.id === 'social_links' && selectedSection.type === 'footer') {
-                            console.log('[FOOTER_PROPERTY_EDITOR_SOCIAL_STATE_DEBUG]', {
+                            logDebug('[FOOTER_PROPERTY_EDITOR_SOCIAL_STATE_DEBUG]', {
                               moduleId: selectedSection.id,
                               fieldKey: `${contextId}_${setting.id}`,
                               rawEditorValue: selectedSection.settings[`${contextId}_${setting.id}`],

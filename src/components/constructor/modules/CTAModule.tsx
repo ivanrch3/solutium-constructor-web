@@ -636,7 +636,7 @@ export const CTAModule: React.FC<{
               </div>
             </div>
           ) : layout === 'split' ? (
-            <div className="grid grid-cols-1 @md:grid-cols-2 gap-12 items-center">
+            <div className="grid grid-cols-1 @5xl:grid-cols-2 gap-12 items-center">
               <div>
                 <div 
                   className={`flex flex-col ${textAlign === 'center' ? 'items-center text-center' : textAlign === 'right' ? 'items-end text-right' : 'items-start text-left'}`}
@@ -696,7 +696,7 @@ export const CTAModule: React.FC<{
                 {renderTrust()}
               </div>
               <div className="relative">
-                <div className="aspect-video rounded-3xl overflow-hidden shadow-2xl @md:rotate-2 hover:rotate-0 transition-transform duration-500">
+                <div className="aspect-video rounded-3xl overflow-hidden shadow-2xl @5xl:rotate-2 hover:rotate-0 transition-transform duration-500">
                   <img 
                     src="https://picsum.photos/seed/cta-side/800/600" 
                     alt="CTA Visual" 

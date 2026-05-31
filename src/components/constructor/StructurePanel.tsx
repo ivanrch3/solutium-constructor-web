@@ -30,6 +30,7 @@ import { useEditorStore } from '../../store/editorStore';
 import { MODULE_INFO, GROUP_LABELS, BENTO_MODULE } from './registry';
 import { SettingControl } from './SettingControl';
 import { GlobalSettingsPanel } from './GlobalSettingsPanel';
+import { BentoCellEditor } from './BentoCellEditor';
 import { resolveModuleDisplayLabel } from '../../utils/menuNavigation';
 import {
   addCompositionElement,
@@ -75,6 +76,7 @@ interface StructurePanelProps {
   trustedCompanyLogos?: TrustedCompanyLogo[];
   isMobile?: boolean;
   activeTab?: string;
+  useSplitLayout?: boolean;
 }
 
 export const StructurePanel: React.FC<StructurePanelProps> = ({ 
@@ -90,11 +92,16 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
   customers,
   trustedCompanyLogos,
   isMobile,
-  activeTab = 'constructor'
+  activeTab = 'constructor',
+  useSplitLayout = false
 }) => {
   const {
     siteContent,
     project,
+    selectedBentoCellIndex,
+    setSelectedBentoCellIndex,
+    selectSection,
+    updateSectionSettings,
     selectedCompositionElementId,
     setSelectedCompositionElementId,
     selectCompositionElement
@@ -403,7 +410,7 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
 
     const module = editorState.addedModules.find(m => m.id === moduleId);
     const isUtilityModule = module
-      ? ['navegacion', 'menu', 'espaciador', 'footer', 'trusted_logos'].includes(module.type) ||
+      ? ['navegacion', 'menu', 'espaciador', 'footer'].includes(module.type) ||
         module.id.startsWith('mod_header_1') ||
         module.id.startsWith('mod_menu_1') ||
         module.id.startsWith('mod_footer_1')
@@ -419,7 +426,7 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
     if (!module) return false;
 
     const isUtilityModule =
-      ['navegacion', 'menu', 'espaciador', 'footer', 'trusted_logos'].includes(module.type) ||
+      ['navegacion', 'menu', 'espaciador', 'footer'].includes(module.type) ||
       module.id.startsWith('mod_header_1') ||
       module.id.startsWith('mod_menu_1') ||
       module.id.startsWith('mod_footer_1');
@@ -450,7 +457,7 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
   };
 
   return (
-    <div className={`h-full bg-surface border-r border-border flex flex-col z-30 shadow-xl shadow-text/10 overflow-hidden transition-all duration-300 ${isMobile ? 'w-full' : (isCollapsed ? 'w-[70px]' : 'w-80')}`}>
+    <div className={`h-full bg-surface border-r border-border flex flex-col z-30 shadow-xl shadow-text/10 overflow-hidden transition-all duration-300 shrink-0 ${isMobile ? 'w-full' : (isCollapsed ? 'w-[70px]' : (useSplitLayout ? 'w-[calc(50vw-16rem)] min-w-[320px] max-w-[640px]' : 'w-80'))}`}>
       <div className={`p-4 flex items-center border-b border-border/60 ${isCollapsed && !isMobile ? 'justify-center' : 'justify-between'}`}>
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 bg-primary rounded-lg flex items-center justify-center">
@@ -502,7 +509,7 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
           const hasMultipleModules = (editorState.addedModules?.length || 0) > 1;
           const hasMenuModule = editorState.addedModules.some(m => m.type === 'navegacion' || m.type === 'menu');
           const isMenuEligible =
-            !['navegacion', 'menu', 'espaciador', 'footer', 'trusted_logos'].includes(module.type) &&
+            !['navegacion', 'menu', 'espaciador', 'footer'].includes(module.type) &&
             !module.id.startsWith('mod_header_1') &&
             !module.id.startsWith('mod_menu_1') &&
             !module.id.startsWith('mod_footer_1');
@@ -518,7 +525,9 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
           };
 
           const allElements = [globalElement, ...module.elements];
-          const isBento = module.id.startsWith('mod_bento_1');
+          const isBento = module.type === 'bento'
+            || (module as any).templateId === 'mod_bento_1'
+            || module.id.startsWith('mod_bento_1');
           const isCompositionSection = module.type === 'composition_section';
 
           return (
@@ -629,11 +638,10 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                     <div className="grid grid-cols-2 gap-2">
                       {[
                         { type: 'text', label: 'Texto', icon: <Type size={14} /> },
-                        { type: 'image', label: 'Imagen', icon: <ImageIcon size={14} /> },
-                        { type: 'icon_text', label: 'Feature', icon: <Sparkles size={14} /> },
-                        { type: 'stat', label: 'Dato', icon: <Database size={14} /> },
-                        { type: 'cta', label: 'Botón', icon: <MousePointer2 size={14} /> },
-                        { type: 'video', label: 'Video', icon: <Play size={14} /> }
+                        { type: 'visual', label: 'Imagen', icon: <ImageIcon size={14} /> },
+                        { type: 'button', label: 'Boton', icon: <MousePointer2 size={14} /> },
+                        { type: 'badge', label: 'Badge', icon: <Star size={14} /> },
+                        { type: 'metric', label: 'Metrica', icon: <Database size={14} /> }
                       ].map((item) => (
                         <div
                           key={item.type}
@@ -647,24 +655,36 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                           onClick={() => {
                             const bentoItems = editorState.settingsValues[`${module.id}_el_bento_items_items`] || [];
                             const newItem = {
+                              id: `bento_cell_${crypto.randomUUID()}`,
                               type: item.type,
-                              title: item.type === 'stat' ? '99+' : (item.type === 'cta' ? '¡Únete ahora!' : 'Nuevo Bloque'),
-                              description: 'Personaliza este bloque desde el panel de ajustes.',
-                              col_span: item.type === 'image' || item.type === 'video' ? 6 : 4,
-                              row_span: item.type === 'image' || item.type === 'video' ? 4 : 2,
+                              title: item.type === 'metric' ? '99+' : (item.type === 'button' ? 'Haz clic aqui' : item.type === 'badge' ? 'Nuevo' : item.type === 'visual' ? 'Imagen destacada' : 'Nuevo Bloque'),
+                              description: item.type === 'button' || item.type === 'badge' || item.type === 'visual' ? '' : 'Personaliza este bloque desde el panel de ajustes.',
+                              col_span: item.type === 'visual' ? 6 : item.type === 'badge' ? 2 : 4,
+                              row_span: item.type === 'visual' ? 4 : item.type === 'button' || item.type === 'badge' ? 1 : 2,
                               x: (bentoItems.length * 4) % 12, // Simple placement logic
                               y: Infinity, // Add to bottom
-                              card_style: 'solid',
+                              card_style: item.type === 'button' || item.type === 'badge' || item.type === 'visual' ? 'transparent' : 'solid',
                               card_radius: 28,
-                              padding: 32,
+                              padding: item.type === 'button' || item.type === 'badge' ? 16 : 32,
                               content_align: 'center',
-                              icon: item.type === 'stat' ? 'Zap' : 'Sparkles',
-                              button_text: 'Explorar'
+                              icon: item.type === 'metric' ? 'BarChart3' : item.type === 'badge' ? 'Tag' : 'Sparkles',
+                              button_text: item.type === 'button' ? 'Haz clic aqui' : 'Explorar',
+                              metric_value: item.type === 'metric' ? '99+' : undefined,
+                              metric_label: item.type === 'metric' ? 'Impacto' : undefined,
+                              image: item.type === 'visual' ? '' : undefined
                             };
                             
                             const newItems = [...bentoItems, newItem];
                             onSettingChange(`${module.id}_el_bento_items`, 'items', newItems);
                             
+                            selectSection(module.id);
+                            setSelectedBentoCellIndex(newItems.length - 1);
+                            setEditorState(prev => ({
+                              ...prev,
+                              expandedModuleId: module.id,
+                              selectedElementId: `${module.id}_el_bento_items`
+                            }));
+
                             // Auto-expand the newly added layer
                             setTimeout(() => {
                               setExpandedBentoItem(newItems.length - 1);
@@ -751,7 +771,17 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                                return (
                                  <div key={itemIndex} className="space-y-1">
                                     <div 
-                                      onClick={() => setExpandedBentoItem(isItemExpanded ? null : itemIndex)}
+                                      onClick={() => {
+                                        const nextIndex = isItemExpanded && selectedBentoCellIndex === itemIndex ? null : itemIndex;
+                                        selectSection(module.id);
+                                        setSelectedBentoCellIndex(nextIndex);
+                                        setExpandedBentoItem(nextIndex);
+                                        setEditorState(prev => ({
+                                          ...prev,
+                                          expandedModuleId: module.id,
+                                          selectedElementId: nextIndex === null ? `${module.id}_global` : `${module.id}_el_bento_items`
+                                        }));
+                                      }}
                                       className={`flex items-center gap-2.5 p-2 rounded-xl border transition-all cursor-pointer ${
                                         isItemExpanded ? 'bg-primary/5 border-primary/20' : 'bg-surface border-border/30 hover:border-border'
                                       }`}
@@ -778,7 +808,13 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                                           exit={{ height: 0, opacity: 0 }}
                                           className="ml-3 border-l-2 border-primary/20 pl-3 py-2 space-y-1.5 overflow-hidden"
                                         >
-                                           {itemGroups.map(group => {
+                                           {selectedBentoCellIndex === itemIndex && (
+                                             <div className="rounded-xl border border-primary/10 bg-primary/5 p-3 text-[10px] leading-relaxed text-text/60">
+                                               Editando esta capa en Bloques de Contenido (Celdas).
+                                             </div>
+                                           )}
+
+                                           {selectedBentoCellIndex !== itemIndex && itemGroups.map(group => {
                                              const isGroupExpanded = expandedBentoGroup === `${itemIndex}_${group}`;
                                              // Robust lookup in BENTO_MODULE registry
                                              const bentoSettings = (BENTO_MODULE.elements.find(e => e.id === 'el_bento_items')?.settings as any) || {};
@@ -836,6 +872,9 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                                               onClick={() => {
                                                 const newItems = bentoItems.filter((_: any, idx: number) => idx !== itemIndex);
                                                 onSettingChange(`${module.id}_el_bento_items`, 'items', newItems);
+                                                if (selectedBentoCellIndex === itemIndex) {
+                                                  setSelectedBentoCellIndex(null);
+                                                }
                                                 setExpandedBentoItem(null);
                                               }}
                                               className="w-full flex items-center justify-center gap-2 p-2 mt-2 text-[10px] font-bold text-rose-500 hover:bg-rose-50 rounded-lg transition-colors border border-transparent hover:border-rose-100"
@@ -930,7 +969,9 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                     className="mt-2 ml-4 border-l-2 border-border/30 pl-3 space-y-1.5 overflow-hidden"
                   >
                     {allElements.map(element => {
-                      const isElementSelected = editorState.selectedElementId === element.id;
+                      const isBentoItemsElement = isBento && element.id === `${module.id}_el_bento_items`;
+                      const isElementSelected = editorState.selectedElementId === element.id
+                        || (isBentoItemsElement && selectedBentoCellIndex !== null);
                       
                       return (
                         <div 
@@ -939,7 +980,10 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                           className="space-y-1"
                         >
                           <div 
-                            onClick={() => toggleElement(element.id)}
+                            onClick={() => {
+                              if (isBento) setSelectedBentoCellIndex(null);
+                              toggleElement(element.id);
+                            }}
                             className={`flex items-center gap-2.5 p-2 rounded-lg border transition-all cursor-pointer ${
                               isElementSelected 
                                 ? 'bg-primary/5 border-primary/20' 
@@ -968,7 +1012,32 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                                 exit={{ height: 0, opacity: 0 }}
                                 className="ml-2 space-y-1 overflow-hidden pb-2"
                               >
-                                {(Object.keys(GROUP_LABELS) as SettingGroupType[]).map(group => {
+                                {isBentoItemsElement && selectedBentoCellIndex !== null && (
+                                  <div className="mb-3 overflow-hidden rounded-2xl border border-primary/15 bg-white shadow-sm">
+                                    <BentoCellEditor
+                                      selectedSection={module}
+                                      moduleDef={BENTO_MODULE}
+                                      selectedBentoCellIndex={selectedBentoCellIndex}
+                                      setSelectedBentoCellIndex={(index) => {
+                                        setSelectedBentoCellIndex(index);
+                                        setExpandedBentoItem(index);
+                                        setEditorState(prev => ({
+                                          ...prev,
+                                          expandedModuleId: module.id,
+                                          selectedElementId: index === null ? `${module.id}_global` : `${module.id}_el_bento_items`
+                                        }));
+                                      }}
+                                      settingsValues={editorState.settingsValues}
+                                      onSettingChange={onSettingChange}
+                                      updateSectionSettings={updateSectionSettings}
+                                      project={project}
+                                      projectColors={projectColors}
+                                      title="Editar elemento Bento"
+                                    />
+                                  </div>
+                                )}
+
+                                {!(isBentoItemsElement && selectedBentoCellIndex !== null) && (Object.keys(GROUP_LABELS) as SettingGroupType[]).map(group => {
                                   const isAvailable = element.groups.includes(group);
                                   const hasSettings = element.type === 'global' 
                                     ? !!module.globalSettings?.[group]?.length 

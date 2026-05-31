@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { EditorState, WebModule } from '../../types/constructor';
 import { Product, Customer, TrustedCompanyLogo } from '../../types/schema';
+import { SiteContent } from '../../types';
 import { useEditorStore } from '../../store/editorStore';
 import { isDarkColor } from './utils';
 import { logDebug } from '../../utils/debug';
@@ -60,6 +61,8 @@ interface CanvasProps {
   onSettingChange: (elementOrModuleId: string, settingId: string, value: any) => void;
   reloadKey?: number;
   onOpenBentoGenerator?: () => void;
+  siteContentOverride?: SiteContent;
+  onRecentlyAddedModuleSettled?: (moduleId: string) => void;
 }
 
 export const Canvas: React.FC<CanvasProps> = ({ 
@@ -79,7 +82,9 @@ export const Canvas: React.FC<CanvasProps> = ({
   project,
   onSettingChange,
   reloadKey = 0,
-  onOpenBentoGenerator
+  onOpenBentoGenerator,
+  siteContentOverride,
+  onRecentlyAddedModuleSettled
 }) => {
   const {
     selectSection,
@@ -88,11 +93,18 @@ export const Canvas: React.FC<CanvasProps> = ({
     selectedCompositionElementId,
     selectCompositionElement
   } = useEditorStore();
+  const renderSiteContent = siteContentOverride || siteContent;
 
   const lastModuleRef = React.useRef<HTMLDivElement>(null);
   const prevModulesLength = React.useRef(editorState.addedModules?.length || 0);
   const canvasScrollContainerRef = React.useRef<HTMLDivElement>(null);
   const fullscreenRootRef = React.useRef<HTMLDivElement>(null);
+  const renderRootRef = React.useRef<HTMLDivElement>(null);
+  const [canvasViewportWidth, setCanvasViewportWidth] = React.useState(0);
+  const [renderContentHeight, setRenderContentHeight] = React.useState(0);
+  const [browserViewportWidth, setBrowserViewportWidth] = React.useState(
+    typeof window !== 'undefined' ? window.innerWidth : 1440
+  );
   const setCanvasRootRef = React.useCallback((node: HTMLDivElement | null) => {
     canvasScrollContainerRef.current = node;
     fullscreenRootRef.current = node;
@@ -115,22 +127,114 @@ export const Canvas: React.FC<CanvasProps> = ({
   const fullscreenViewportWidth = viewport === 'desktop'
     ? '100%'
     : `min(${viewportWidths[viewport]}, calc(100vw - 48px))`;
+  const isDesktopCanvas = viewport === 'desktop';
+  const useFullBleedDesktopCanvas = !isPreviewMode && isDesktopCanvas;
+  const useVirtualDesktopPreview = useFullBleedDesktopCanvas && !isFullscreen;
+  const desktopLogicalWidth = Math.max(1200, browserViewportWidth);
+  const desktopPreviewScale = useVirtualDesktopPreview && canvasViewportWidth > 0
+    ? Math.min(1, canvasViewportWidth / desktopLogicalWidth)
+    : 1;
 
   React.useEffect(() => {
-    if ((editorState.addedModules?.length || 0) > prevModulesLength.current) {
-      requestAnimationFrame(() => {
-        setTimeout(() => {
-          lastModuleRef.current?.scrollIntoView({ 
-            behavior: 'smooth', 
-            block: 'start' 
-          });
-        }, 100);
-      });
+    if (typeof window === 'undefined') return;
+
+    const updateBrowserViewportWidth = () => setBrowserViewportWidth(window.innerWidth);
+    updateBrowserViewportWidth();
+    window.addEventListener('resize', updateBrowserViewportWidth);
+    return () => window.removeEventListener('resize', updateBrowserViewportWidth);
+  }, []);
+
+  React.useEffect(() => {
+    const scrollNode = canvasScrollContainerRef.current;
+    if (!scrollNode || typeof ResizeObserver === 'undefined') return;
+
+    const updateCanvasViewportWidth = () => {
+      setCanvasViewportWidth(scrollNode.clientWidth || scrollNode.getBoundingClientRect().width || 0);
+    };
+
+    updateCanvasViewportWidth();
+    const observer = new ResizeObserver(updateCanvasViewportWidth);
+    observer.observe(scrollNode);
+    return () => observer.disconnect();
+  }, [isFullscreen, isPreviewMode]);
+
+  React.useEffect(() => {
+    const renderNode = renderRootRef.current;
+    if (!renderNode || typeof ResizeObserver === 'undefined') return;
+
+    const updateRenderContentHeight = () => setRenderContentHeight(renderNode.offsetHeight || 0);
+    updateRenderContentHeight();
+    const observer = new ResizeObserver(updateRenderContentHeight);
+    observer.observe(renderNode);
+    return () => observer.disconnect();
+  }, [viewport, isFullscreen, isPreviewMode, reloadKey, editorState.addedModules?.length]);
+
+  React.useEffect(() => {
+    const modulesLength = editorState.addedModules?.length || 0;
+    const didAddModule = modulesLength > prevModulesLength.current;
+    prevModulesLength.current = modulesLength;
+    if (didAddModule) {
+      const targetId = editorState.recentlyAddedModuleId || editorState.expandedModuleId;
+      if (targetId) {
+        let cancelled = false;
+        let attempts = 0;
+        let stableFrames = 0;
+        let previousRect: { top: number; height: number } | null = null;
+        const maxAttempts = 10;
+
+        const scrollToInsertedModule = () => {
+          if (cancelled) return;
+          const targetElement = document.getElementById(targetId);
+
+          if (targetElement) {
+            const rect = targetElement.getBoundingClientRect();
+            const currentRect = {
+              top: Math.round(rect.top),
+              height: Math.round(rect.height)
+            };
+            const isStable =
+              previousRect &&
+              Math.abs(previousRect.top - currentRect.top) <= 1 &&
+              Math.abs(previousRect.height - currentRect.height) <= 1;
+
+            stableFrames = isStable ? stableFrames + 1 : 0;
+            previousRect = currentRect;
+
+            if (stableFrames < 2 && attempts < maxAttempts) {
+              attempts += 1;
+              requestAnimationFrame(scrollToInsertedModule);
+              return;
+            }
+
+            targetElement.scrollIntoView({
+              behavior: 'smooth',
+              block: 'start'
+            });
+            onRecentlyAddedModuleSettled?.(targetId);
+            return;
+          }
+
+          attempts += 1;
+          if (attempts >= maxAttempts) {
+            onRecentlyAddedModuleSettled?.(targetId);
+            return;
+          }
+
+          window.setTimeout(() => {
+            requestAnimationFrame(scrollToInsertedModule);
+          }, 50);
+        };
+
+        requestAnimationFrame(scrollToInsertedModule);
+        return () => {
+          cancelled = true;
+        };
+      }
     }
-    prevModulesLength.current = editorState.addedModules?.length || 0;
-  }, [editorState.addedModules?.length]);
+  }, [editorState.addedModules?.length, editorState.recentlyAddedModuleId, editorState.expandedModuleId, onRecentlyAddedModuleSettled]);
 
   React.useEffect(() => {
+    if (editorState.recentlyAddedModuleId === editorState.expandedModuleId) return;
     if (editorState.expandedModuleId) {
       const element = document.getElementById(editorState.expandedModuleId);
       if (element) {
@@ -173,7 +277,7 @@ export const Canvas: React.FC<CanvasProps> = ({
         id="constructor-canvas-scroll-container"
         className={`flex-1 overflow-y-scroll custom-scrollbar preview-scrollbar transition-all duration-500 ${isFullscreen ? 'fixed inset-0 z-[100]' : ''} ${isPreviewMode ? 'p-0' : ''}`}
         style={{
-          scrollbarGutter: 'stable both-edges',
+          scrollbarGutter: 'stable',
           backgroundColor: isPreviewMode ? 'var(--builder-surface)' : 'var(--builder-surface-muted)'
         }}
       >
@@ -211,18 +315,30 @@ export const Canvas: React.FC<CanvasProps> = ({
           </button>
         </div>
       )}
-      <div className={`flex justify-center min-h-full transition-all duration-500 ${isFullscreen ? 'p-6 pt-24' : isPreviewMode ? 'p-0' : 'p-12'}`}>
+      <div
+        className={`flex min-h-full ${useVirtualDesktopPreview ? 'relative justify-start overflow-hidden' : 'justify-center transition-all duration-500'} ${isFullscreen ? (isDesktopCanvas ? 'px-0 pb-0 pt-24' : 'p-6 pt-24') : isPreviewMode ? 'p-0' : isDesktopCanvas ? 'p-0' : 'p-6'}`}
+        style={useVirtualDesktopPreview ? {
+          width: '100%',
+          minHeight: renderContentHeight ? `${Math.ceil(renderContentHeight * desktopPreviewScale)}px` : undefined
+        } : undefined}
+      >
         <div 
+          ref={renderRootRef}
           id="constructor-canvas-render"
           data-preview-root="true"
-          className={`bg-surface relative transition-all duration-500 ease-in-out @container ${
+          className={`bg-surface relative @container ${
             isPreviewMode ? 'w-full max-w-none border-none rounded-none shadow-none' : 
-            (isFullscreen && viewport === 'desktop') ? 'w-full max-w-none min-h-full rounded-none border-none shadow-none' : 'rounded-2xl border border-border/50 shadow-2xl'
+            useFullBleedDesktopCanvas ? 'w-full max-w-none min-h-full rounded-none border-none shadow-none' : 'transition-all duration-500 ease-in-out rounded-2xl border border-border/50 shadow-2xl'
           } ${viewport === 'mobile' && !isPreviewMode ? 'rounded-[3rem] border-[8px] border-slate-900 shadow-[0_0_0_2px_rgba(0,0,0,0.1)]' : ''} ${viewport === 'tablet' && !isPreviewMode ? 'rounded-[2rem] border-[12px] border-slate-900 shadow-[0_0_0_2px_rgba(0,0,0,0.1)]' : ''}`}
           style={{ 
-            width: isPreviewMode ? '100%' : (isFullscreen ? fullscreenViewportWidth : viewportWidths[viewport]), 
-            maxWidth: isPreviewMode ? 'none' : (isFullscreen ? (viewport === 'desktop' ? 'none' : viewportWidths[viewport]) : viewport === 'desktop' ? '1200px' : viewportWidths[viewport]),
-            minHeight: isPreviewMode ? '100vh' : (isFullscreen && viewport === 'desktop' ? '100vh' : viewport === 'mobile' ? '667px' : viewport === 'tablet' ? '1024px' : '800px')
+            width: isPreviewMode ? '100%' : (useVirtualDesktopPreview ? `${desktopLogicalWidth}px` : (isFullscreen ? fullscreenViewportWidth : viewportWidths[viewport])),
+            maxWidth: isPreviewMode ? 'none' : (useVirtualDesktopPreview ? `${desktopLogicalWidth}px` : (isFullscreen ? (viewport === 'desktop' ? 'none' : viewportWidths[viewport]) : viewport === 'desktop' ? 'none' : viewportWidths[viewport])),
+            minHeight: isPreviewMode ? '100vh' : (isDesktopCanvas ? (isFullscreen ? '100vh' : '100%') : viewport === 'mobile' ? '667px' : '1024px'),
+            transform: useVirtualDesktopPreview ? `scale(${desktopPreviewScale})` : undefined,
+            transformOrigin: useVirtualDesktopPreview ? 'top left' : undefined,
+            position: useVirtualDesktopPreview ? 'absolute' : 'relative',
+            top: useVirtualDesktopPreview ? 0 : undefined,
+            left: useVirtualDesktopPreview ? 0 : undefined
           }}
         >
           {viewport === 'mobile' && !isPreviewMode && (
@@ -231,7 +347,7 @@ export const Canvas: React.FC<CanvasProps> = ({
             </div>
           )}
           <div className="w-full" key={reloadKey}>
-            {(!siteContent.sections || siteContent.sections.length === 0) && !isPreviewMode ? (
+            {(!renderSiteContent.sections || renderSiteContent.sections.length === 0) && !isPreviewMode ? (
               <div className="flex flex-col items-center justify-center py-32 px-6 text-center">
                 <div className="w-20 h-20 bg-secondary rounded-3xl flex items-center justify-center mb-6 text-text/20">
                   <PlusCircle size={40} />
@@ -242,8 +358,8 @@ export const Canvas: React.FC<CanvasProps> = ({
                 </p>
               </div>
             ) : (
-              (siteContent.sections || []).map((section, index) => {
-                const isLast = index === (siteContent.sections?.length || 0) - 1;
+              (renderSiteContent.sections || []).map((section, index) => {
+                const isLast = index === (renderSiteContent.sections?.length || 0) - 1;
                 
                 // Determine if this module wrapper should be sticky/fixed
                 const modulePos =
@@ -260,7 +376,7 @@ export const Canvas: React.FC<CanvasProps> = ({
                 let topOffset = 0;
                 if (isSticky || isFixed) {
                   for (let i = 0; i < index; i++) {
-                    const prev = siteContent.sections[i];
+                    const prev = renderSiteContent.sections[i];
                     const prevPos =
                       editorState.settingsValues?.[`${prev.id}_global_position`] ??
                       prev.settings[`${prev.id}_global_position`];
@@ -307,7 +423,7 @@ export const Canvas: React.FC<CanvasProps> = ({
                 // Higher z-index for earlier modules to ensure top bar is always on top
                 const stackingZIndex = 110 - index;
 
-                const theme = siteContent.theme;
+                const theme = renderSiteContent.theme;
                 
                 const invert = theme.invertedAlternatingMode || false;
                 const isDarkForced = theme.alternatingDarkMode 
@@ -461,7 +577,7 @@ export const Canvas: React.FC<CanvasProps> = ({
                 };
 
                 if (!isPreviewMode) {
-                   console.log('[CANVAS_SECTION_RENDER_DEBUG]', {
+                   logDebug('[CANVAS_SECTION_RENDER_DEBUG]', {
                       moduleId: section.id,
                       type: section.type,
                       templateId: section.templateId,

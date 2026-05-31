@@ -66,7 +66,6 @@ import { generateSite, generateLandingWithMotherAI, generateLandingDryRunLocal, 
 import { AIGenerationContext, AIPageGenerationBrief, AIPagePlan, ReferenceDebugInfo } from '../../types/ai';
 import { ProjectForm, ProjectFormData } from '../ProjectForm';
 import { initialContent, useEditorStore } from '../../store/editorStore';
-import { PropertyEditor } from './PropertyEditor';
 import { logDebug } from '../../utils/debug';
 import {
   PROJECT_THEME_FALLBACKS,
@@ -208,6 +207,7 @@ const MASTER_DICTIONARY = {
   ]
 };
 
+const AUTOSAVE_DISABLED_VALUE = 'disabled';
 const AUTOSAVE_INTERVAL_OPTIONS = [60000, 120000, 180000, 300000, 600000] as const;
 const DEFAULT_AUTOSAVE_INTERVAL_MS = 180000;
 
@@ -374,17 +374,14 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     redo,
     setSiteContent,
     updateTheme,
-    updateSectionSettings,
     addSection,
     removeSection,
     setProject,
-    resetEditorStore,
-    showMenuRecommendation,
-    setShowMenuRecommendation
+    resetEditorStore
   } = useEditorStore();
 
   useEffect(() => {
-    console.log('[CONSTRUCTOR_RUNTIME_VERSION]', {
+    logDebug('[CONSTRUCTOR_RUNTIME_VERSION]', {
       version: "bento-editor-ux-v1",
       hasBentoEmptyState: true,
       hasBentoEditorWrapper: true,
@@ -447,7 +444,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     (window as any).webBuilderSite = { id: initialPage?.id };
     
     // [CONSTRUCTOR_RUNTIME_VERSION]
-    console.log('[CONSTRUCTOR_RUNTIME_VERSION]', {
+    logDebug('[CONSTRUCTOR_RUNTIME_VERSION]', {
       version: "footer-social-resolution-v3",
       buildTime: new Date().toISOString(),
       hasFooterSocialResolver: true,
@@ -457,7 +454,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
 
     // [PROJECT_SOCIALS_RUNTIME_DEBUG]
     if (project) {
-      console.log('[PROJECT_SOCIALS_RUNTIME_DEBUG]', {
+      logDebug('[PROJECT_SOCIALS_RUNTIME_DEBUG]', {
         projectId: project.id,
         projectSocialsRaw: project.socials,
         projectSocialsKeys: project.socials ? Object.keys(project.socials) : [],
@@ -470,7 +467,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   const [isDraftOperationInProgress, setIsDraftOperationInProgress] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [publishStatus, setPublishStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const [authNotice, setAuthNotice] = useState<{ type: 'info' | 'error'; message: string } | null>(null);
+  const [authNotice, setAuthNotice] = useState<{ type: 'info' | 'error'; message: string; title?: string } | null>(null);
   const [previewStatus, setPreviewStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [previewWarning, setPreviewWarning] = useState<string | null>(null);
   const [currentStatus, setCurrentStatus] = useState<'draft' | 'published' | 'modified'>(() => (
@@ -916,6 +913,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   const autosaveInProgressRef = useRef(false);
   const publishInProgressRef = useRef(false);
   const pendingChangesDuringSaveRef = useRef(false);
+  const autosaveActivationNoticeShownRef = useRef(false);
   const lastSaveSourceRef = useRef<'manual' | 'autosave' | 'prepublish' | null>(null);
   const activeSavePromiseRef = useRef<Promise<boolean> | null>(null);
   const changeVersionRef = useRef(0);
@@ -923,12 +921,14 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   const editorStateRef = useRef(editorState);
   const siteNameRef = useRef(siteName);
   const currentStatusRef = useRef(currentStatus);
-  const autosaveEnabled = resolveBooleanSetting(
+  const autosaveIntervalSetting = editorState.settingsValues['global_theme_builder_autosave_interval_ms'];
+  const autosaveDisabledByInterval = String(autosaveIntervalSetting).trim().toLowerCase() === AUTOSAVE_DISABLED_VALUE;
+  const autosaveEnabled = !autosaveDisabledByInterval && resolveBooleanSetting(
     editorState.settingsValues['global_theme_builder_autosave_enabled'],
     true
   );
   const autosaveIntervalMs = resolveAutosaveInterval(
-    editorState.settingsValues['global_theme_builder_autosave_interval_ms']
+    autosaveIntervalSetting
   );
   const autosaveShowIndicator = resolveBooleanSetting(
     editorState.settingsValues['global_theme_builder_autosave_show_indicator'],
@@ -966,6 +966,18 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     setAutosaveStatus('idle');
     setAutosaveError(null);
   }, [autosaveEnabled]);
+
+  useEffect(() => {
+    if (autosaveActivationNoticeShownRef.current) return;
+    if (!autosaveEnabled || isPreviewMode || isExternalRender || !projectId) return;
+
+    autosaveActivationNoticeShownRef.current = true;
+    setAuthNotice({
+      type: 'info',
+      title: 'Autoguardado activado',
+      message: 'Autoguardado activado. Puedes configurarlo en Ajustes.'
+    });
+  }, [autosaveEnabled, isExternalRender, isPreviewMode, projectId]);
 
   const markUnsavedChanges = useCallback(() => {
     changeVersionRef.current += 1;
@@ -1026,7 +1038,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         const contentProducts = section.content?.products || (section.content as any)?.productos;
         const snapshotKey = `${moduleId}_el_products_items_products`;
         
-        console.log('[PRODUCTS_SELECTION_STATE_AFTER_UPDATE_DEBUG]', {
+        logDebug('[PRODUCTS_SELECTION_STATE_AFTER_UPDATE_DEBUG]', {
           moduleId,
           sectionId: section.id,
           sectionType: section.type,
@@ -1052,7 +1064,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
 
   React.useEffect(() => {
     if (projectId) {
-      getProducts(0, 12, projectId).then(data => {
+      getProducts(0, 100, projectId).then(data => {
         setProducts(data || []);
       });
       getCustomers(0, 50, projectId).then(data => {
@@ -1071,10 +1083,49 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     // For now, let's assume any change to editorState or siteName after mount makes it dirty
   }, [editorState, siteName]);
 
+  const normalizeEditorSyncValue = (value: any) => {
+    if (typeof value === 'string') {
+      const dimensionMatch = value.trim().match(/^(-?\d+(?:\.\d+)?)px$/);
+      if (dimensionMatch) return Number(dimensionMatch[1]);
+    }
+    return value;
+  };
+
+  const areEditorValuesEquivalent = (a: any, b: any) => {
+    if (Object.is(a, b)) return true;
+    if (Object.is(normalizeEditorSyncValue(a), normalizeEditorSyncValue(b))) return true;
+    if (a && b && typeof a === 'object' && typeof b === 'object') {
+      try {
+        return JSON.stringify(a) === JSON.stringify(b);
+      } catch {
+        return false;
+      }
+    }
+    return false;
+  };
+
+  const areSettingsEquivalent = (a: Record<string, any> = {}, b: Record<string, any> = {}) => {
+    const aKeys = Object.keys(a);
+    const bKeys = Object.keys(b);
+    if (aKeys.length !== bKeys.length) return false;
+    return aKeys.every((key) => Object.prototype.hasOwnProperty.call(b, key) && areEditorValuesEquivalent(a[key], b[key]));
+  };
+
+  const areEditorStatesEquivalent = (a: EditorState, b: EditorState) => (
+    a.addedModules === b.addedModules &&
+    a.expandedModuleId === b.expandedModuleId &&
+    a.selectedElementId === b.selectedElementId &&
+    a.recentlyAddedModuleId === b.recentlyAddedModuleId &&
+    a.totalModulesAdded === b.totalModulesAdded &&
+    a.expandedGroupsByElement === b.expandedGroupsByElement &&
+    areSettingsEquivalent(a.settingsValues, b.settingsValues)
+  );
+
   // We need to wrap setEditorState and setSiteName to set hasUnsavedChanges
   const updateEditorState = (updater: (prev: EditorState) => EditorState) => {
     setEditorState(prev => {
-      const next = updater(prev);
+      const proposedNext = updater(prev);
+      const next = proposedNext === prev || areEditorStatesEquivalent(proposedNext, prev) ? prev : proposedNext;
       if (next !== prev) {
         editorStateRef.current = next;
       }
@@ -1130,7 +1181,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
 
             if (
               Object.prototype.hasOwnProperty.call(newSettings, settingsKey) &&
-              newSettings[settingsKey] !== val
+              !areEditorValuesEquivalent(newSettings[settingsKey], val)
             ) {
               newSettings[settingsKey] = val;
               changed = true;
@@ -1178,7 +1229,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         const hasRealSocials = resolved.some(s => s.url && s.url !== '');
         
         if (hasRealSocials) {
-          console.log(`[SIP v12.0] Sincronizando redes de perfil para módulo ${module.id}`);
+          logDebug(`[SIP v12.0] Sincronizando redes de perfil para módulo ${module.id}`);
           newSettings[socialKey] = resolved;
           totalChanged = true;
         }
@@ -1914,14 +1965,14 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
 
     // Bloquear dobles clics
     if (isRunningRef.current) {
-      console.log('[CONSTRUCTOR_GENERATE_LANDING_DUPLICATE_BLOCKED]', {
+      logDebug('[CONSTRUCTOR_GENERATE_LANDING_DUPLICATE_BLOCKED]', {
         idempotencyKey: activeIdempotencyKey,
         actionSlug: 'web_ai_generate_landing'
       });
       return;
     }
 
-    console.log(isDryRun ? '[CONSTRUCTOR_LANDING_DRY_RUN_LOCAL]' : '[CONSTRUCTOR_LANDING_REAL_EXECUTION_START]', {
+    logDebug(isDryRun ? '[CONSTRUCTOR_LANDING_DRY_RUN_LOCAL]' : '[CONSTRUCTOR_LANDING_REAL_EXECUTION_START]', {
       mode: isDryRun ? "dry-run" : "real",
       willCallBackend: !isDryRun,
       estimatedCostCredits: 15,
@@ -1944,7 +1995,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       let response: MotherAIPageResponse;
 
       if (isDryRun) {
-        console.log('[CONSTRUCTOR_LANDING_DRY_RUN_GUARD_BLOCKED_FETCH]', {
+        logDebug('[CONSTRUCTOR_LANDING_DRY_RUN_GUARD_BLOCKED_FETCH]', {
           reason: "dry-run must be 100% local",
           actionSlug: 'web_ai_generate_landing'
         });
@@ -1988,7 +2039,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
           aiUsageLogId: "dry_run_simulated",
           isDryRun: true
         });
-        console.log('[CONSTRUCTOR_LANDING_DRY_RUN_RESULT_LOCAL]', response);
+        logDebug('[CONSTRUCTOR_LANDING_DRY_RUN_RESULT_LOCAL]', response);
         isRunningRef.current = false;
         return;
       }
@@ -2062,7 +2113,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         aiUsageLogId: response.usage?.aiUsageLogId || 'unknown'
       });
 
-      console.log('[CONSTRUCTOR_GENERATE_LANDING_REAL_SUCCESS]', {
+      logDebug('[CONSTRUCTOR_GENERATE_LANDING_REAL_SUCCESS]', {
         idempotencyKey: activeIdempotencyKey,
         costCredits: cost
       });
@@ -2256,10 +2307,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
                 }
               }
               if (setting.id === 'select_products') {
-                const availableProducts = (products?.length || 0) > 0 ? products : (projectId === 'dev-project-id' ? MOCK_PRODUCTS : []);
-                if ((availableProducts?.length || 0) > 0) {
-                  val = availableProducts.slice(0, 8).map(p => p.id);
-                }
+                val = setting.defaultValue ?? null;
               }
             }
 
@@ -2385,9 +2433,19 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       return finalState;
     });
 
+    selectSection(moduleId);
+
     // Mobile flow: jump to structure tab and show groups
     setMobileTab('structure');
   };
+
+  const handleRecentlyAddedModuleSettled = useCallback((moduleId: string) => {
+    updateEditorState(prev => (
+      prev.recentlyAddedModuleId === moduleId
+        ? { ...prev, recentlyAddedModuleId: null }
+        : prev
+    ));
+  }, []);
 
   const removeModule = (moduleId: string) => {
     const module = (editorState.addedModules || []).find(m => m.id === moduleId);
@@ -2921,8 +2979,11 @@ const formatTimestampName = () => {
         // Specific overrides for modules that have multiple items (like products/clients)
         if (module.type === 'products' || module.type === 'product_grid') {
           // [SIP v5.5 FIX] Correctly resolve product selection settings from el_products_config
-          const selectionMode = getVal(module.id, 'el_products_config', 'selection_mode', 'auto');
-          const selectedIds = getVal(module.id, 'el_products_config', 'select_products', []);
+          const selectionMode = String(getVal(module.id, 'el_products_config', 'selection_mode', 'auto') || 'auto').toLowerCase();
+          const rawSelectedIds = getVal(module.id, 'el_products_config', 'select_products', []);
+          const selectedIds = Array.isArray(rawSelectedIds) ? rawSelectedIds.map(String).filter(Boolean) : [];
+          const catalogProducts = Array.isArray(products) ? products.filter(Boolean) : [];
+          const isManualSelectionMode = ['manual', 'selected', 'selection', 'featured', 'custom'].includes(selectionMode);
           
           content.selectionMode = selectionMode;
           content.productIds = selectedIds;
@@ -2930,32 +2991,25 @@ const formatTimestampName = () => {
           // [PROTOCOL 12.1] ATOMIC SNAPSHOT: Resolve real products for the published contract
           let finalProducts: Product[] = [];
           
-          if (Array.isArray(products) && products.length > 0) {
-            if (selectionMode === 'manual') {
-              if (Array.isArray(selectedIds) && selectedIds.length > 0) {
-                finalProducts = products.filter(p => selectedIds.includes(p.id));
-                console.log(`[PRODUCTS_CONTRACT_DEBUG] Resolved ${finalProducts.length} manually selected products.`);
+          if (catalogProducts.length > 0) {
+            if (isManualSelectionMode) {
+              if (selectedIds.length > 0) {
+                const selectedIdSet = new Set(selectedIds);
+                finalProducts = catalogProducts.filter(p => selectedIdSet.has(String(p.id)));
+                logDebug(`[PRODUCTS_CONTRACT_DEBUG] Resolved ${finalProducts.length} manually selected products.`);
               } else {
                 // [SIP v5.6 FIX] If manual mode but empty selection, publish EMPTY list, do NOT fallback to latest products
                 finalProducts = [];
-                console.log(`[PRODUCTS_CONTRACT_DEBUG] Manual selection is empty. Publishing empty product list.`);
+                logDebug(`[PRODUCTS_CONTRACT_DEBUG] Manual selection is empty. Publishing empty product list.`);
               }
             } else {
-              // Default to auto (latest 8 products) for 'auto' mode
-              finalProducts = [...products]
-                .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
-                .slice(0, 8);
-              console.log(`[PRODUCTS_CONTRACT_DEBUG] Resolved ${finalProducts.length} automated products (Mode: ${selectionMode}).`);
+              // Default to auto: publish the full real project catalog for 'auto' mode
+              finalProducts = [...catalogProducts]
+                .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+              logDebug(`[PRODUCTS_CONTRACT_DEBUG] Resolved ${finalProducts.length} automated products (Mode: ${selectionMode}).`);
             }
           }
 
-          // Fallback to existing injected products if database catalog is empty but injected source exists
-          if (finalProducts.length === 0) {
-            const currentInjected = getVal(module.id, 'el_products_items', 'products', []) as Product[];
-            if (Array.isArray(currentInjected) && currentInjected.length > 0) {
-              finalProducts = currentInjected;
-            }
-          }
 
           if (finalProducts.length > 0) {
             // [PROTOCOL 12.3] DATA NORMALIZATION
@@ -2988,14 +3042,14 @@ const formatTimestampName = () => {
             const snapshotKey = `${module.id}_el_products_items_products`;
             settings[snapshotKey] = normalizedProducts;
             
-            console.log('[PRODUCTS_LEGACY_PUBLISH_SNAPSHOT_DEBUG]', {
+            logDebug('[PRODUCTS_LEGACY_PUBLISH_SNAPSHOT_DEBUG]', {
               sectionId: module.id,
               moduleId: module.id,
               sectionType: module.type,
               selectionMode,
               selectedProductIds: selectedIds,
-              selectedProductIdsCount: Array.isArray(selectedIds) ? selectedIds.length : 0,
-              catalogProductsCount: products.length,
+              selectedProductIdsCount: selectedIds.length,
+              catalogProductsCount: catalogProducts.length,
               finalProductsCount: normalizedProducts.length,
               finalProductIds: normalizedProducts.map(p => p.id),
               finalProductNames: normalizedProducts.map(p => p.name),
@@ -3005,7 +3059,7 @@ const formatTimestampName = () => {
               hasSettingsSnapshot: !!settings[snapshotKey]
             });
             
-            console.log('[PRODUCTS_PUBLISH_SNAPSHOT_FINAL_CONTRACT_DEBUG]', {
+            logDebug('[PRODUCTS_PUBLISH_SNAPSHOT_FINAL_CONTRACT_DEBUG]', {
               sectionId: module.id,
               moduleId: module.id,
               selectionMode,
@@ -3017,7 +3071,7 @@ const formatTimestampName = () => {
               productsPreview: normalizedProducts.slice(0, 2).map(p => p.name)
             });
             
-            console.log('[PRODUCTS_PUBLISH_SNAPSHOT_FINAL_CONTRACT_DEBUG_V2]', {
+            logDebug('[PRODUCTS_PUBLISH_SNAPSHOT_FINAL_CONTRACT_DEBUG_V2]', {
               sectionId: module.id,
               moduleId: module.id,
               finalProductsCount: normalizedProducts.length,
@@ -3031,8 +3085,8 @@ const formatTimestampName = () => {
             console.warn('[PRODUCTS_PUBLISH_SNAPSHOT_EMPTY_WARNING]', {
               moduleId: module.id,
               selectionMode,
-              selectedIdsCount: selectedIds?.length,
-              availableProductsCount: products?.length
+              selectedIdsCount: selectedIds.length,
+              availableProductsCount: catalogProducts.length
             });
           }
         }
@@ -3045,7 +3099,7 @@ const formatTimestampName = () => {
           let snapshot: Product[] = [];
           
           // Debug logs for selection state
-          console.log('[PRODUCTS_SHOWCASE_V2_SELECTION_DEBUG]', {
+          logDebug('[PRODUCTS_SHOWCASE_V2_SELECTION_DEBUG]', {
             moduleId: module.id,
             selectKey,
             selectedIdsRaw: selectedIds,
@@ -3054,8 +3108,8 @@ const formatTimestampName = () => {
 
           if (Array.isArray(products) && products.length > 0) {
             if (selectedIds === null || selectedIds === undefined) {
-              // Default selection if none is made
-              snapshot = products.slice(0, 8);
+              // Default selection if none is made: keep the full real project catalog
+              snapshot = products;
             } else if (Array.isArray(selectedIds)) {
               const stringIds = selectedIds.map(String);
               snapshot = products.filter(p => stringIds.includes(String(p.id)));
@@ -3093,7 +3147,7 @@ const formatTimestampName = () => {
             // Preserve selection key in settings
             settings[selectKey] = normalizedSnapshot.map(p => p.id);
 
-            console.log('[PRODUCTS_SHOWCASE_V2_PUBLISH_SNAPSHOT_DEBUG]', {
+            logDebug('[PRODUCTS_SHOWCASE_V2_PUBLISH_SNAPSHOT_DEBUG]', {
               moduleId: module.id,
               selectedCount: Array.isArray(selectedIds) ? selectedIds.length : 'all',
               snapshotCount: normalizedSnapshot.length,
@@ -3266,7 +3320,7 @@ const formatTimestampName = () => {
 
           // Debug logs for social and logo resolution
           if (true || window.location.search.includes('debug_render=true')) {
-            console.log('[FOOTER_SOCIAL_RESOLUTION_DEBUG]', {
+            logDebug('[FOOTER_SOCIAL_RESOLUTION_DEBUG]', {
               moduleId: module.id,
               currentSocialsFromSettings: currentSocials,
               projectSocialsRaw: project?.socials,
@@ -3274,7 +3328,7 @@ const formatTimestampName = () => {
               source: (currentSocials && currentSocials.length > 0 && currentSocials.some((s: any) => s.url && s.url !== '#')) ? 'manual' : (project?.socials ? 'project_profile' : 'placeholder')
             });
 
-            console.log('[FOOTER_LOGO_RESOLUTION_DEBUG]', {
+            logDebug('[FOOTER_LOGO_RESOLUTION_DEBUG]', {
               moduleId: module.id,
               manualLogo: currentLogo,
               projectLogo: project?.logoUrl,
@@ -3498,7 +3552,7 @@ const formatTimestampName = () => {
       sections
     };
 
-    console.log('[PRODUCTS_PUBLISH_CONTRACT_FINAL_AUDIT]', {
+    logDebug('[PRODUCTS_PUBLISH_CONTRACT_FINAL_AUDIT]', {
       siteName: finalSiteName,
       sectionsCount: sections.length,
       productsSections: sections
@@ -3517,6 +3571,11 @@ const formatTimestampName = () => {
 
     return contractResult;
   };
+
+  const liveCanvasSiteContent = React.useMemo(
+    () => generateRenderingContract(siteName, editorState) as any,
+    [editorState, siteName, project, products, customers, trustedCompanyLogos]
+  );
 
   const handleSaveDraft = async (forcedStatus?: 'draft' | 'published' | 'modified') => {
     if (!projectId || isPreviewMode) return;
@@ -3713,13 +3772,13 @@ const formatTimestampName = () => {
                 });
                 setPreviewStatus('idle');
               } else {
-                console.warn('[PREVIEW_CAPTURE_DEBUG] Draft saved, but preview generation failed.', previewResult.error);
+                console.warn('[PREVIEW_CAPTURE_WARNING] Draft saved, but preview generation failed.', previewResult.error);
                 setPreviewWarning('Borrador guardado, pero no se pudo actualizar la vista previa.');
                 setPreviewStatus('error');
               }
             }
           } catch (pError) {
-            console.warn('[PREVIEW_CAPTURE_DEBUG] Preview failed after saving draft. Draft remains saved.', pError);
+            console.warn('[PREVIEW_CAPTURE_WARNING] Preview failed after saving draft. Draft remains saved.', pError);
             setPreviewWarning('Borrador guardado, pero no se pudo actualizar la vista previa.');
             setPreviewStatus('error');
           } finally {
@@ -3976,13 +4035,13 @@ const formatTimestampName = () => {
                   });
                   setPreviewStatus('idle');
                 } else {
-                  console.warn('[PREVIEW_CAPTURE_DEBUG] Draft saved, but preview generation failed.', previewResult.error);
+                  console.warn('[PREVIEW_CAPTURE_WARNING] Draft saved, but preview generation failed.', previewResult.error);
                   setPreviewWarning('Borrador guardado, pero no se pudo actualizar la vista previa.');
                   setPreviewStatus('error');
                 }
               }
             } catch (pError) {
-              console.warn('[PREVIEW_CAPTURE_DEBUG] Preview failed after saving draft. Draft remains saved.', pError);
+              console.warn('[PREVIEW_CAPTURE_WARNING] Preview failed after saving draft. Draft remains saved.', pError);
               setPreviewWarning('Borrador guardado, pero no se pudo actualizar la vista previa.');
               setPreviewStatus('error');
             } finally {
@@ -4209,7 +4268,7 @@ const formatTimestampName = () => {
       const draftHasProductsShowcase = (activeState.addedModules || []).some((m: any) => m.type === 'products_showcase');
       const contractHasProductsShowcase = (contract.sections || []).some((s: any) => s.type === 'products_showcase' || s.tipo === 'products_showcase');
 
-      console.log('[PRODUCTS_SHOWCASE_PUBLISH_PRESENCE_DEBUG]', {
+      logDebug('[PRODUCTS_SHOWCASE_PUBLISH_PRESENCE_DEBUG]', {
         draftHasProductsShowcase,
         contractHasProductsShowcase,
         sectionsCount: contract.sections?.length || 0,
@@ -4234,7 +4293,7 @@ const formatTimestampName = () => {
         }
       };
 
-      console.log('[PUBLISH_CONTRACT_INTEGRITY_CHECK]', {
+      logDebug('[PUBLISH_CONTRACT_INTEGRITY_CHECK]', {
         siteId,
         sectionsCount: contract.sections.length,
         productSnapshots: contract.sections
@@ -4251,7 +4310,7 @@ const formatTimestampName = () => {
       contract.sections
         .filter((s: any) => s.tipo === 'products' || s.tipo === 'product_grid')
         .forEach((s: any) => {
-          console.log('[PRODUCTS_LEGACY_FINAL_PUBLISHED_CONTRACT_DEBUG]', {
+          logDebug('[PRODUCTS_LEGACY_FINAL_PUBLISHED_CONTRACT_DEBUG]', {
             sectionId: s.id,
             moduleId: s.id,
             contentProductsCount: s.content?.products?.length || 0,
@@ -4334,7 +4393,7 @@ const formatTimestampName = () => {
             setPreviewStatus('loading');
             
             // [AUTO_PREVIEW_ON_PUBLISH_REQUEST_DEBUG]
-            console.log('[AUTO_PREVIEW_ON_PUBLISH_REQUEST_DEBUG]', {
+            logDebug('[AUTO_PREVIEW_ON_PUBLISH_REQUEST_DEBUG]', {
               trigger: "publish",
               project_id: projectId,
               site_id: siteId,
@@ -4432,29 +4491,6 @@ const formatTimestampName = () => {
     }
   };
 
-  const handleSwitchToHamburgerGlobal = () => {
-    const menuMod = editorState.addedModules.find(m => m.type === 'navegacion');
-    if (menuMod) {
-      const fullKey = `${menuMod.id}_global_desktop_hamburger`;
-      
-      // Update local editorState directly as it's the primary source of truth for the Canvas
-      handleSettingChange(menuMod.id, 'global_desktop_hamburger', true);
-      
-      // Also update store to prevent the synchronization useEffect from overwriting it
-      updateSectionSettings(menuMod.id, { [fullKey]: true });
-
-      // Scroll to menu immediately so user can see it
-      setTimeout(() => {
-        const element = document.getElementById(menuMod.id);
-        if (element) {
-          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-      }, 100);
-      
-      setShowMenuRecommendation(false);
-    }
-  };
-
   const handleReload = () => {
     window.location.reload();
   };
@@ -4502,6 +4538,30 @@ const formatTimestampName = () => {
     restoreCanvasScroll(scrollTop);
     window.setTimeout(() => restoreCanvasScroll(scrollTop), 50);
     window.setTimeout(() => restoreCanvasScroll(scrollTop), 150);
+  };
+
+  const handleViewportChange = (nextViewport: 'desktop' | 'tablet' | 'mobile') => {
+    const container = getCanvasScrollContainer();
+    const savedCanvasScrollTop = container?.scrollTop ?? 0;
+    const savedMaxScrollTop = container
+      ? Math.max(0, container.scrollHeight - container.clientHeight)
+      : 0;
+    const savedScrollRatio = savedMaxScrollTop > 0 ? savedCanvasScrollTop / savedMaxScrollTop : 0;
+    const restoreViewportScroll = () => {
+      const nextContainer = getCanvasScrollContainer();
+      if (!nextContainer) return;
+      const nextMaxScrollTop = Math.max(0, nextContainer.scrollHeight - nextContainer.clientHeight);
+      nextContainer.scrollTop = Math.round(nextMaxScrollTop * savedScrollRatio);
+    };
+
+    setViewport(nextViewport);
+    restoreCanvasScroll(savedCanvasScrollTop);
+    window.requestAnimationFrame(() => window.requestAnimationFrame(restoreViewportScroll));
+    window.setTimeout(restoreViewportScroll, 50);
+    window.setTimeout(restoreViewportScroll, 150);
+    window.setTimeout(restoreViewportScroll, 300);
+    window.setTimeout(restoreViewportScroll, 700);
+    window.setTimeout(restoreViewportScroll, 1200);
   };
 
   const waitForNextPaint = async () => {
@@ -4660,7 +4720,7 @@ const formatTimestampName = () => {
     const sectionId = `section_${rawId}`;
     const moduleId = sectionId; 
     
-    console.log('[BENTO_GENERATED_SCHEMA_DEBUG]', {
+    logDebug('[BENTO_GENERATED_SCHEMA_DEBUG]', {
       originalTitle: rawSchema.header.title,
       cleanTitle: schema.header.title,
       itemsCount: schema.items.length,
@@ -4731,7 +4791,7 @@ const formatTimestampName = () => {
       }
     };
 
-    console.log('[BENTO_FINAL_SECTION_PAYLOAD_DEBUG]', {
+    logDebug('[BENTO_FINAL_SECTION_PAYLOAD_DEBUG]', {
       sectionId,
       moduleId,
       title: newModule.content.title,
@@ -4766,12 +4826,14 @@ const formatTimestampName = () => {
         el.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
       
-      console.log('[BENTO_INSERT_RESULT_DEBUG]', {
+      logDebug('[BENTO_INSERT_RESULT_DEBUG]', {
         sectionId,
         itemsRendered: document.querySelectorAll(`[id^="${sectionId}"]`).length > 0
       });
     }, 400);
   };
+
+  const useConstructorSplitLayout = Boolean(!isMobile && !isPreviewMode && !isExternalRender);
 
   return (
     <div className={`h-screen w-screen flex overflow-hidden bg-surface font-sans antialiased ${(isPreviewMode || isExternalRender) ? 'p-0' : ''}`}>
@@ -4803,7 +4865,7 @@ const formatTimestampName = () => {
                     logoUrl={logoUrl}
                     assetName={assetDisplayName}
                     viewport={viewport}
-                    setViewport={setViewport}
+                    setViewport={handleViewportChange}
                     isFullscreen={isFullscreen}
                     setIsFullscreen={setIsFullscreen}
                     onReloadPreview={handleReloadPreview}
@@ -4815,10 +4877,10 @@ const formatTimestampName = () => {
                     hasUnsavedChanges={hasUnsavedChanges}
                     isSaving={isSaving}
                     isDraftOperationInProgress={isDraftOperationInProgress}
-                    autosaveStatus={autosaveStatus}
+                    autosaveStatus={autosaveEnabled ? autosaveStatus : 'disabled'}
                     autosaveError={autosaveError}
                     lastAutosavedAt={lastAutosavedAt}
-                    showAutosaveIndicator={autosaveEnabled && autosaveShowIndicator}
+                    showAutosaveIndicator={autosaveShowIndicator}
                     currentStatus={currentStatus}
                     isNewSite={!initialPage}
                   />
@@ -5043,12 +5105,14 @@ const formatTimestampName = () => {
                         logoWhiteUrl={logoWhiteUrl}
                         project={project}
                         viewport={viewport}
-                        setViewport={setViewport}
+                        setViewport={handleViewportChange}
                         isFullscreen={false}
                         setIsFullscreen={() => {}}
                         isPreviewMode={isPreviewMode || isExternalRender}
                         onSettingChange={handleSettingChange}
+                        siteContentOverride={liveCanvasSiteContent}
                         onOpenBentoGenerator={() => setShowBentoPrompt(true)}
+                        onRecentlyAddedModuleSettled={handleRecentlyAddedModuleSettled}
                       />
                     </div>
                   ) : null}
@@ -5073,9 +5137,10 @@ const formatTimestampName = () => {
                     customers={customers}
                     trustedCompanyLogos={trustedCompanyLogos}
                     activeTab={activeTab}
+                    useSplitLayout={useConstructorSplitLayout}
                   />
                 )}
-                <div className="flex-1 flex flex-col h-full">
+                <div className={`${useConstructorSplitLayout ? 'w-[50vw] flex-none' : 'flex-1'} flex flex-col h-full min-w-0`}>
                   {!isPreviewMode && !isExternalRender && (
                   <TopBar 
                     onSave={handleSaveDraft} 
@@ -5083,7 +5148,7 @@ const formatTimestampName = () => {
                     logoUrl={logoUrl}
                     assetName={assetDisplayName}
                     viewport={viewport}
-                    setViewport={setViewport}
+                    setViewport={handleViewportChange}
                     isFullscreen={isFullscreen}
                     setIsFullscreen={setIsFullscreen}
                     onReloadPreview={handleReloadPreview}
@@ -5095,10 +5160,10 @@ const formatTimestampName = () => {
                     hasUnsavedChanges={hasUnsavedChanges}
                       isSaving={isSaving}
                       isDraftOperationInProgress={isDraftOperationInProgress}
-                      autosaveStatus={autosaveStatus}
+                      autosaveStatus={autosaveEnabled ? autosaveStatus : 'disabled'}
                       autosaveError={autosaveError}
                       lastAutosavedAt={lastAutosavedAt}
-                      showAutosaveIndicator={autosaveEnabled && autosaveShowIndicator}
+                      showAutosaveIndicator={autosaveShowIndicator}
                       currentStatus={currentStatus}
                       isNewSite={!initialPage}
                     />
@@ -5116,23 +5181,17 @@ const formatTimestampName = () => {
                         logoWhiteUrl={logoWhiteUrl}
                         project={project}
                         viewport={viewport}
-                        setViewport={setViewport}
-                      isFullscreen={isFullscreen}
-                      setIsFullscreen={setIsFullscreen}
-                      isPreviewMode={isPreviewMode || isExternalRender}
-                      onSettingChange={handleSettingChange}
+                        setViewport={handleViewportChange}
+                        isFullscreen={isFullscreen}
+                        setIsFullscreen={setIsFullscreen}
+                        isPreviewMode={isPreviewMode || isExternalRender}
+                        onSettingChange={handleSettingChange}
+                        siteContentOverride={liveCanvasSiteContent}
                         reloadKey={reloadKey}
                         onOpenBentoGenerator={() => setShowBentoPrompt(true)}
+                        onRecentlyAddedModuleSettled={handleRecentlyAddedModuleSettled}
                       />
                     </div>
-                    {!isPreviewMode && !isExternalRender && (
-                      <aside className="w-80 shrink-0 border-l border-border bg-surface overflow-hidden">
-                        <PropertyEditor
-                          settingsValues={editorState.settingsValues}
-                          onSettingChange={handleSettingChange}
-                        />
-                      </aside>
-                    )}
                   </div>
                 </div>
               </>
@@ -5168,6 +5227,7 @@ const formatTimestampName = () => {
               onSettingChange={handleSettingChange}
               project={project}
               projectId={projectId}
+              onBack={() => setActiveTab('constructor')}
             />
           </div>
         )}
@@ -5217,7 +5277,7 @@ const formatTimestampName = () => {
               <p className={`text-sm font-bold ${
                 authNotice.type === 'error' ? 'text-amber-900' : 'text-blue-900'
               }`}>
-                {authNotice.type === 'error' ? 'Sesión expirada' : 'Sesión actualizada'}
+                {authNotice.title || (authNotice.type === 'error' ? 'Sesion expirada' : 'Sesion actualizada')}
               </p>
               <p className={`text-xs leading-relaxed ${
                 authNotice.type === 'error' ? 'text-amber-800' : 'text-blue-800'
@@ -5356,94 +5416,6 @@ const formatTimestampName = () => {
           />
         )}
 
-        {showMenuRecommendation && (
-          <React.Fragment key="menu-recommendation-modal">
-            {/* Extremely high z-index backdrop and modal for the recommendation */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[999998]"
-              onClick={() => setShowMenuRecommendation(false)}
-            />
-            
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[999999] max-w-2xl w-[90%] bg-white border border-slate-200 shadow-[0_32px_128px_-12px_rgba(0,0,0,0.5)] rounded-[40px] p-8 md:p-12 flex flex-col md:flex-row items-center gap-12 overflow-hidden"
-            >
-              {/* Sparkles decoration */}
-              <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
-                <LucideIcons.Sparkles size={160} />
-              </div>
-
-              {/* Visual Guide Representation */}
-              <div className="w-40 h-40 shrink-0 bg-slate-50 rounded-[32px] border border-slate-200 flex flex-col items-center justify-center relative group p-2 shadow-inner">
-                <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-transparent" />
-                
-                {/* Simulated UI element representing the Structure Panel link button */}
-                <div className="w-full flex items-center justify-between gap-1 p-2 bg-white border border-slate-100 rounded-xl shadow-md mb-3 scale-90">
-                  <div className="w-12 h-2 bg-slate-100 rounded-full" />
-                  <div className="bg-blue-500/10 text-blue-600 p-1.5 rounded-md border border-blue-500/20 shadow-sm">
-                    <LucideIcons.Link size={12} />
-                  </div>
-                </div>
-
-                <div className="bg-blue-500/20 text-blue-600 p-5 rounded-2xl border border-blue-500/30 relative shadow-lg">
-                  <LucideIcons.Link size={40} />
-                  <motion.div 
-                    animate={{ scale: [1, 1.3, 1], opacity: [0.5, 1, 0.5] }}
-                    transition={{ repeat: Infinity, duration: 2 }}
-                    className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-blue-600 rounded-full border-4 border-white" 
-                  />
-                </div>
-                <p className="text-[10px] font-black text-blue-600 mt-4 uppercase tracking-[0.2em] text-center leading-none">
-                  Desactivar Link
-                </p>
-              </div>
-
-              {/* Text Content */}
-              <div className="flex-1 text-center md:text-left space-y-4">
-                <div className="flex items-center justify-center md:justify-start gap-2 text-blue-600 font-bold">
-                  <LucideIcons.Info size={20} />
-                  <span className="text-sm tracking-[0.2em] uppercase">Optimización UI</span>
-                </div>
-                <h4 className="text-3xl font-black text-slate-900 leading-tight">¡Tu menú ha crecido mucho!</h4>
-                <p className="text-lg text-slate-500 leading-relaxed">
-                  Detectamos demasiados enlaces en tu navegación. Para que tu sitio luzca impecable en todos los dispositivos:
-                </p>
-                
-                <div className="space-y-2 pb-4">
-                   <div className="flex items-center gap-3 text-slate-600">
-                      <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold">1</div>
-                      <p className="text-sm">Desactiva enlaces en algunos módulos</p>
-                   </div>
-                   <div className="flex items-center gap-3 text-slate-600">
-                      <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold">2</div>
-                      <p className="text-sm">O simplemente usa el menú hamburguesa estilo móvil</p>
-                   </div>
-                </div>
-                
-                <div className="flex flex-wrap items-center justify-center md:justify-start gap-4">
-                  <button 
-                    onClick={handleSwitchToHamburgerGlobal}
-                    className="px-8 py-4 bg-blue-600 text-white text-xs font-black uppercase tracking-widest rounded-full hover:scale-105 active:scale-95 shadow-2xl shadow-blue-500/30 transition-all flex items-center gap-3"
-                  >
-                    <LucideIcons.Menu size={16} />
-                    Activar Hamburguesa
-                  </button>
-                  <button 
-                    onClick={() => setShowMenuRecommendation(false)}
-                    className="px-8 py-4 bg-slate-100 text-slate-600 text-xs font-bold uppercase tracking-widest rounded-full hover:bg-slate-200 transition-all"
-                  >
-                    Entendido
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </React.Fragment>
-        )}
         {showBentoPrompt && (
           <BentoPromptGenerator 
             key="bento-prompt-modal"

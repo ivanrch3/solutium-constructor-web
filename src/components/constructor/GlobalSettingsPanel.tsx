@@ -12,6 +12,7 @@ import {
   MousePointer2,
   Layout,
   AlertCircle,
+  ArrowLeft,
   Settings,
   Save
 } from 'lucide-react';
@@ -28,6 +29,7 @@ interface GlobalSettingsPanelProps {
   project: any;
   projectId: string | null;
   isSidebarMode?: boolean;
+  onBack?: () => void;
 }
 
 export const GlobalSettingsPanel: React.FC<GlobalSettingsPanelProps> = ({ 
@@ -36,7 +38,8 @@ export const GlobalSettingsPanel: React.FC<GlobalSettingsPanelProps> = ({
   onSettingChange,
   project,
   projectId,
-  isSidebarMode = false
+  isSidebarMode = false,
+  onBack
 }) => {
   const { siteContent, updateTheme, selectedSectionId } = useEditorStore();
   const theme = siteContent.theme;
@@ -67,6 +70,20 @@ export const GlobalSettingsPanel: React.FC<GlobalSettingsPanelProps> = ({
 
   const handleThemeChange = (settingId: string, value: any) => {
     onSettingChange('global', `theme_${settingId}`, value);
+
+    if (settingId === 'builder_autosave_interval_ms') {
+      onSettingChange('global', 'theme_builder_autosave_enabled', value !== 'disabled');
+    }
+
+    if (settingId === 'builder_autosave_enabled') {
+      const currentInterval = settingsValues.global_theme_builder_autosave_interval_ms;
+      if (value === false) {
+        onSettingChange('global', 'theme_builder_autosave_interval_ms', 'disabled');
+      } else if (String(currentInterval).trim().toLowerCase() === 'disabled') {
+        onSettingChange('global', 'theme_builder_autosave_interval_ms', 180000);
+      }
+    }
+
     // Also update store theme for immediate access in modules
     updateTheme({ [settingId]: value });
   };
@@ -645,6 +662,7 @@ export const GlobalSettingsPanel: React.FC<GlobalSettingsPanelProps> = ({
           type: 'select',
           defaultValue: 180000,
           options: [
+            { label: 'Desactivado', value: 'disabled' },
             { label: '1 minuto', value: 60000 },
             { label: '2 minutos', value: 120000 },
             { label: '3 minutos', value: 180000 },
@@ -678,7 +696,7 @@ export const GlobalSettingsPanel: React.FC<GlobalSettingsPanelProps> = ({
         if (setting.id === 'builder_autosave_interval_ms') {
           return {
             ...setting,
-            description: 'El guardado automático solo corre si detecta cambios sin guardar.'
+            description: 'Elige Desactivado para pausar el guardado automático sin afectar el guardado manual.'
           };
         }
 
@@ -698,6 +716,16 @@ export const GlobalSettingsPanel: React.FC<GlobalSettingsPanelProps> = ({
     <div className="max-w-4xl w-full mx-auto p-8 space-y-10">
       {/* Tab Navigation */}
       <div className="flex flex-col space-y-6">
+        {onBack && (
+          <button
+            type="button"
+            onClick={onBack}
+            className="self-start inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-black uppercase tracking-widest text-slate-600 shadow-sm transition-all hover:-translate-x-0.5 hover:border-primary/40 hover:text-primary"
+          >
+            <ArrowLeft size={14} />
+            Volver al Constructor
+          </button>
+        )}
         <div className="flex flex-col space-y-2">
           <h2 className="text-3xl font-black text-slate-900 tracking-tight flex items-center gap-3">
             <Settings className="text-primary w-8 h-8" />

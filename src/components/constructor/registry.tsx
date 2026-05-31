@@ -282,7 +282,7 @@ export const MENU_MODULE: WebModule = {
         { id: 'text_decoration', label: 'Decoración', type: 'text_decoration', defaultValue: [] }
       ],
       multimedia: [
-        { id: 'show_icons', label: 'Mostrar Iconos', type: 'boolean', defaultValue: true },
+        { id: 'show_icons', label: 'Mostrar Iconos', type: 'boolean', defaultValue: false },
         { id: 'icon_size', label: 'Tamaño Iconos', type: 'range', defaultValue: 18, min: 14, max: 24 }
       ],
       estilo: [], estructura: [], interaccion: []
@@ -543,7 +543,7 @@ export const PRODUCTS_MODULE: WebModule = {
         { label: 'Carrusel (Slider)', value: 'carousel' },
         { label: 'Lista Detallada', value: 'list' }
       ]},
-      { id: 'columns', label: 'Columnas (Desktop)', type: 'range', defaultValue: 4, min: 1, max: 5 },
+      { id: 'columns', label: 'Columnas (Desktop)', type: 'range', defaultValue: 3, min: 1, max: 5 },
       { id: 'gap', label: 'Espaciado entre productos', type: 'range', defaultValue: 24, min: 0, max: 80, unit: 'px' },
       { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 40, min: 40, max: 200, unit: 'px' }
     ],
@@ -2368,10 +2368,10 @@ export const CONTACT_MODULE: WebModule = {
     }},
     { id: 'el_contact_form', name: 'Formulario', type: 'text', groups: ['contenido', 'estilo', 'estructura', 'interaccion', 'tipografia'], settings: {
       contenido: [
-        { id: 'contact_mode', label: 'Modo de Contacto', type: 'select', defaultValue: 'both', options: [
+        { id: 'contact_mode', label: 'Como quieres recibir contactos', type: 'select', defaultValue: 'both', options: [
           { label: 'WhatsApp', value: 'whatsapp' },
           { label: 'Correo', value: 'email' },
-          { label: 'WhatsApp y Correo', value: 'both' }
+          { label: 'Ambos', value: 'both' }
         ]},
         { id: 'button_text', label: 'Texto del Botón', type: 'text', defaultValue: 'Enviar por WhatsApp' },
         ...BUTTON_LINK_SETTINGS('btn'),
@@ -3064,7 +3064,7 @@ export const CLIENTS_MODULE: WebModule = {
         { label: 'Marquesina (Scroll Infinito)', value: 'marquee' },
         { label: 'Carrusel Horizontal', value: 'carousel' }
       ]},
-      { id: 'columns', label: 'Columnas (Grilla)', type: 'range', defaultValue: 5, min: 2, max: 8 },
+      { id: 'columns', label: 'Columnas (Grilla)', type: 'range', defaultValue: 5, min: 1, max: 6 },
       { id: 'alignment', label: 'Alineación Horizontal', type: 'text_align', defaultValue: 'center' },
       { id: 'gap', label: 'Espaciado entre Logos', type: 'range', defaultValue: 40, min: 10, max: 100, unit: 'px' },
       { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 40, min: 20, max: 200, unit: 'px' }
@@ -3166,7 +3166,7 @@ export const TRUSTED_LOGOS_MODULE: WebModule = {
   globalSettings: {
     contenido: [],
     estructura: [
-      { id: 'columns', label: 'Columnas', type: 'range', defaultValue: 4, min: 2, max: 6 },
+      { id: 'columns', label: 'Columnas', type: 'range', defaultValue: 4, min: 1, max: 6 },
       { id: 'gap', label: 'Espaciado entre logos', type: 'range', defaultValue: 32, min: 12, max: 80, unit: 'px' },
       { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 40, min: 20, max: 200, unit: 'px' }
     ],

@@ -164,8 +164,10 @@ export const ContactModule: React.FC<{
   const resolvedEmail = email;
   const resolvedWhatsapp = sanitizeWhatsappNumber(whatsappNumber || phone);
   const resolvedAddress = address;
-  const showWhatsappContact = (contactMode === 'whatsapp' || contactMode === 'both') && Boolean(resolvedWhatsapp);
-  const showEmailContact = (contactMode === 'email' || contactMode === 'both') && Boolean(resolvedEmail);
+  const safeContactMode = ['whatsapp', 'email', 'both'].includes(String(contactMode)) ? String(contactMode) : 'both';
+  const showWhatsappContact = (safeContactMode === 'whatsapp' || safeContactMode === 'both') && Boolean(resolvedWhatsapp);
+  const showEmailContact = (safeContactMode === 'email' || safeContactMode === 'both') && Boolean(resolvedEmail);
+  const hasConfiguredContactChannel = showWhatsappContact || showEmailContact;
   const primaryContactLabel = showWhatsappContact ? 'WhatsApp' : 'Correo electrónico';
   const primaryButtonText = isDefaultText(buttonText, ['Enviar Mensaje', 'Enviar por WhatsApp'])
     ? (showWhatsappContact ? 'Enviar por WhatsApp' : 'Enviar por correo')
@@ -330,7 +332,7 @@ export const ContactModule: React.FC<{
 
   const renderForm = (isBento: boolean = false) => (
     <div 
-      className={`p-6 @md:p-10 rounded-[32px] shadow-2xl border ${isBento ? 'h-full' : ''} ${darkMode ? 'bg-slate-800 border-white/10 shadow-none' : 'bg-white border-slate-100 shadow-slate-200/50'}`}
+      className={`w-full max-w-full min-w-0 overflow-hidden p-5 @md:p-10 rounded-[28px] @md:rounded-[32px] shadow-2xl border ${isBento ? 'h-full' : ''} ${darkMode ? 'bg-slate-800 border-white/10 shadow-none' : 'bg-white border-slate-100 shadow-slate-200/50'}`}
       style={{
         borderWidth: '1px',
         borderStyle: 'solid',
@@ -394,7 +396,7 @@ export const ContactModule: React.FC<{
               )}
             </div>
           ))}
-          <div className={`grid grid-cols-1 ${contactMode === 'both' && showWhatsappContact && showEmailContact ? '@5xl:grid-cols-2' : ''} gap-3`}>
+          <div className={`grid grid-cols-1 ${safeContactMode === 'both' && showWhatsappContact && showEmailContact ? '@5xl:grid-cols-2' : ''} gap-3`}>
             <motion.button
               whileHover={hoverEffect === 'lift' ? { y: -5 } : hoverEffect === 'magnetic' ? { scale: 1.02 } : {}}
               whileTap={{ scale: 0.98 }}
@@ -402,7 +404,7 @@ export const ContactModule: React.FC<{
             onClick={() => {
               if (btnUrl && btnUrl !== '#' && !showWhatsappContact && !showEmailContact) window.open(btnUrl, btnTarget === '_blank' ? '_blank' : '_self');
             }}
-            className={`w-full py-5 font-black text-sm transition-all flex items-center justify-center gap-2 relative overflow-hidden group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2`}
+            className={`w-full min-w-0 px-4 py-4 @md:py-5 font-black text-sm transition-all flex items-center justify-center gap-2 relative overflow-hidden group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2`}
             style={{ backgroundColor: btnBg, color: btnColor, borderRadius: `${inputRadius}px`, boxShadow: 'none' }}
           >
             {shimmer && (
@@ -411,10 +413,10 @@ export const ContactModule: React.FC<{
             <span className="relative z-10">{primaryButtonText}</span>
             {showWhatsappContact ? <MessageCircle size={18} className="relative z-10" /> : <Send size={18} className="relative z-10" />}
           </motion.button>
-          {showEmailContact && contactMode === 'both' && (
+          {showEmailContact && safeContactMode === 'both' && (
             <a
               href={`mailto:${resolvedEmail}?subject=${encodeURIComponent('Nueva solicitud de contacto')}`}
-              className={`w-full inline-flex items-center justify-center gap-2 py-4 text-sm font-bold rounded-2xl border transition-colors ${
+              className={`w-full min-w-0 inline-flex items-center justify-center gap-2 px-4 py-4 text-sm font-bold rounded-2xl border transition-colors ${
                 darkMode ? 'border-white/10 text-white hover:bg-white/5' : 'border-slate-200 text-slate-700 hover:bg-slate-50'
               }`}
             >
@@ -424,7 +426,9 @@ export const ContactModule: React.FC<{
           )}
           </div>
           <p className={`text-xs leading-relaxed ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-            Canal configurado: {contactMode === 'both' ? 'WhatsApp y correo' : primaryContactLabel}.
+            {hasConfiguredContactChannel
+              ? <>Canal configurado: {safeContactMode === 'both' ? 'WhatsApp y correo' : primaryContactLabel}.</>
+              : 'Configura un WhatsApp o correo para activar este canal de contacto.'}
           </p>
         </form>
       )}

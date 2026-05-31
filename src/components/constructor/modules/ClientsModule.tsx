@@ -120,7 +120,8 @@ export const ClientsModule: React.FC<{
   // Global Settings
   const layout = getVal(null, 'layout', 'grid');
   const alignment = getVal(null, 'alignment', 'center');
-  const columns = Math.max(1, Math.min(8, parseInt(getVal(null, 'columns', 5)) || 5));
+  const configuredColumns = Math.max(1, Math.min(6, parseInt(getVal(null, 'columns', 5)) || 5));
+  const columns = Math.max(1, Math.min(configuredColumns, displayCustomers.length || configuredColumns));
   const logoGridClass =
     columns >= 5 ? 'grid-cols-1 @sm:grid-cols-2 @md:grid-cols-3 @5xl:grid-cols-5' :
     columns === 4 ? 'grid-cols-1 @sm:grid-cols-2 @md:grid-cols-3 @5xl:grid-cols-4' :

@@ -276,7 +276,7 @@ export const ProductsModule: React.FC<{
   // Element: Configuración de Selección
   const selectionMode = getVal(`${moduleId}_el_products_config`, 'selection_mode', 'auto');
   const layout = getVal(null, 'layout', 'grid');
-  const columns = Math.max(1, Math.min(5, parseInt(getVal(null, 'columns', 4)) || 4));
+  const columns = Math.max(1, Math.min(5, parseInt(getVal(null, 'columns', 3)) || 3));
   const productsGridClass =
     columns >= 5 ? 'grid-cols-1 @sm:grid-cols-2 @md:grid-cols-3 @5xl:grid-cols-5' :
     columns === 4 ? 'grid-cols-1 @sm:grid-cols-2 @md:grid-cols-3 @5xl:grid-cols-4' :

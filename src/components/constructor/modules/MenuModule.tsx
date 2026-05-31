@@ -196,7 +196,7 @@ export const MenuModule: React.FC<{
   const fontWeight = getVal(`${moduleId}_el_menu_items`, 'font_weight', 'medium');
   const rawTextColor = getVal(`${moduleId}_el_menu_items`, 'text_color', '#0F172A');
   const textColor = resolveThemeColor(rawTextColor, '#0F172A', '#FFFFFF', darkMode);
-  const showIcons = getVal(`${moduleId}_el_menu_items`, 'show_icons', true);
+  const showIcons = getVal(`${moduleId}_el_menu_items`, 'show_icons', false);
   const iconSize = getVal(`${moduleId}_el_menu_items`, 'icon_size', 18);
   const logoColor = resolveThemeColor(rawLogoColor, '#0F172A', '#FFFFFF', darkMode);
 

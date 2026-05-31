@@ -1106,23 +1106,83 @@ export const BentoModule: React.FC<{
     setSelectedIndex(rawItems.length);
   };
 
-  const getNextDesktopY = () => {
-    return rawItems.length > 0
-      ? Math.max(...rawItems.map((item: any) => {
-          const desktopLayout = item.layouts?.desktop;
-          return (desktopLayout?.y ?? item.y ?? 0) + (desktopLayout?.h ?? item.row_span ?? 2);
-        }))
-      : 0;
+  const getLayoutEntryForBreakpoint = (item: any, breakpoint: 'desktop' | 'tablet' | 'mobile', colsForBreakpoint: number) => {
+    if (item.layouts?.[breakpoint]) {
+      return normalizeLayoutEntry({
+        ...item.layouts[breakpoint],
+        w: Math.min(item.layouts[breakpoint].w || 1, colsForBreakpoint)
+      });
+    }
+
+    const w = breakpoint === 'mobile' ? (item.mobile_span || item.col_span || 4) :
+              breakpoint === 'tablet' ? (item.tablet_span || 2) :
+              (item.desktop_span || item.col_span || 4);
+    const h = breakpoint === 'mobile' ? (item.mobile_rows || item.row_span || 2) :
+              (item.desktop_rows || item.row_span || 2);
+
+    return {
+      x: Math.min(item.x || 0, Math.max(colsForBreakpoint - Math.min(w, colsForBreakpoint), 0)),
+      y: item.y || 0,
+      w: Math.min(w, colsForBreakpoint),
+      h
+    };
   };
 
-  const createResponsiveLayouts = (y: number, desktopW: number, desktopH: number, tabletW = Math.min(desktopW, 6), mobileW = 4) => ({
-    desktop: { x: 0, y, w: Math.min(desktopW, columns), h: desktopH },
-    tablet: { x: 0, y, w: Math.min(tabletW, 6), h: desktopH },
-    mobile: { x: 0, y, w: Math.min(mobileW, 4), h: desktopH }
+  const doLayoutsOverlap = (a: any, b: any) => (
+    a.x < b.x + b.w &&
+    a.x + a.w > b.x &&
+    a.y < b.y + b.h &&
+    a.y + a.h > b.y
+  );
+
+  const getNextFreeLayout = (
+    breakpoint: 'desktop' | 'tablet' | 'mobile',
+    colsForBreakpoint: number,
+    width: number,
+    height: number
+  ) => {
+    const safeWidth = Math.min(width, colsForBreakpoint);
+    const existingLayouts = rawItems.map((item: any) => getLayoutEntryForBreakpoint(item, breakpoint, colsForBreakpoint));
+    const maxY = existingLayouts.length > 0
+      ? Math.max(...existingLayouts.map((layout: any) => layout.y + layout.h))
+      : 0;
+
+    for (let y = 0; y <= maxY + height; y += 1) {
+      for (let x = 0; x <= colsForBreakpoint - safeWidth; x += 1) {
+        const candidate = { x, y, w: safeWidth, h: height };
+        if (!existingLayouts.some((layout: any) => doLayoutsOverlap(candidate, layout))) {
+          return candidate;
+        }
+      }
+    }
+
+    return { x: 0, y: maxY, w: safeWidth, h: height };
+  };
+
+  const getNextStackedLayout = (
+    breakpoint: 'tablet' | 'mobile',
+    colsForBreakpoint: number,
+    width: number,
+    height: number
+  ) => {
+    const safeWidth = Math.min(width, colsForBreakpoint);
+    const y = rawItems.length > 0
+      ? Math.max(...rawItems.map((item: any) => {
+          const layout = getLayoutEntryForBreakpoint(item, breakpoint, colsForBreakpoint);
+          return layout.y + layout.h;
+        }))
+      : 0;
+
+    return { x: 0, y, w: safeWidth, h: height };
+  };
+
+  const createResponsiveLayouts = (desktopW: number, desktopH: number, tabletW = Math.min(desktopW, 6), mobileW = 4) => ({
+    desktop: getNextFreeLayout('desktop', columns, desktopW, desktopH),
+    tablet: getNextFreeLayout('tablet', 6, tabletW, desktopH),
+    mobile: getNextStackedLayout('mobile', 4, mobileW, desktopH)
   });
 
   const createBentoElementPreset = (kind: string) => {
-    const y = getNextDesktopY();
     const base = {
       id: createBentoCellId(),
       card_style: "solid",
@@ -1131,20 +1191,26 @@ export const BentoModule: React.FC<{
       padding: 32,
       content_align: 'center',
       x: 0,
-      y
+      y: 0
     };
 
-    const withLayout = (item: any, desktopW: number, desktopH: number, tabletW?: number, mobileW?: number) => ({
-      ...base,
-      ...item,
-      col_span: desktopW,
-      row_span: desktopH,
-      desktop_span: desktopW,
-      desktop_rows: desktopH,
-      tablet_span: tabletW ?? Math.min(desktopW, 6),
-      mobile_span: mobileW ?? 4,
-      layouts: createResponsiveLayouts(y, desktopW, desktopH, tabletW, mobileW)
-    });
+    const withLayout = (item: any, desktopW: number, desktopH: number, tabletW?: number, mobileW?: number) => {
+      const itemLayouts = createResponsiveLayouts(desktopW, desktopH, tabletW, mobileW);
+
+      return {
+        ...base,
+        ...item,
+        col_span: desktopW,
+        row_span: desktopH,
+        desktop_span: desktopW,
+        desktop_rows: desktopH,
+        tablet_span: tabletW ?? Math.min(desktopW, 6),
+        mobile_span: mobileW ?? 4,
+        x: itemLayouts.desktop.x,
+        y: itemLayouts.desktop.y,
+        layouts: itemLayouts
+      };
+    };
 
     switch (kind) {
       case 'visual':
@@ -1155,7 +1221,7 @@ export const BentoModule: React.FC<{
           image: '',
           card_style: 'transparent',
           padding: 0
-        }, 4, 3, 3, 4);
+        }, 3, 2, 3, 4);
       case 'button':
         return withLayout({
           type: 'button',
@@ -1801,7 +1867,7 @@ export const BentoModule: React.FC<{
 
         {/* Floating Add Button (when items exist) */}
         {!isPreviewMode && rawItems.length > 0 && (
-          <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex items-center gap-3 z-40 bg-white/80 backdrop-blur-md p-2 rounded-2xl border border-gray-100 shadow-2xl">
+          <div className="relative z-40 mx-auto mt-6 flex w-fit items-center gap-3 rounded-2xl border border-gray-100 bg-white/80 p-2 shadow-2xl backdrop-blur-md">
             {renderElementPicker('floating')}
             <button 
                onClick={(e) => { e.stopPropagation(); setIsElementPickerOpen((open) => !open); }}

@@ -2283,8 +2283,12 @@ export const CONTACT_MODULE: WebModule = {
   globalSettings: {
     contenido: [],
     estructura: [
-      { id: 'layout', label: 'Diseno', type: 'select', defaultValue: 'form_map', options: [
-        { label: 'Formulario + mapa', value: 'form_map' }
+      { id: 'layout', label: 'Diseno', type: 'select', defaultValue: 'form_map_side', options: [
+        { label: 'Formulario + mapa lateral', value: 'form_map_side' },
+        { label: 'Mapa + formulario lateral', value: 'map_form_side' },
+        { label: 'Formulario arriba + mapa ancho completo', value: 'form_map_full' },
+        { label: 'Formulario arriba + mapa centrado', value: 'form_map_centered' },
+        { label: 'Mapa arriba + formulario abajo', value: 'map_form_stack' }
       ]},
       { id: 'max_width', label: 'Ancho Máximo', type: 'range', defaultValue: 1200, min: 800, max: 1600, unit: 'px' },
       { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 40, min: 40, max: 200, unit: 'px' }

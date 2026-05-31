@@ -16,6 +16,38 @@ const CONTACT_DEFAULTS = {
   whatsappNumber: ''
 };
 
+type NormalizedContactLayout =
+  | 'form_map_side'
+  | 'map_form_side'
+  | 'form_map_full'
+  | 'form_map_centered'
+  | 'map_form_stack';
+
+const normalizeContactLayout = (value: unknown): NormalizedContactLayout => {
+  const rawLayout = String(value || '').trim().toLowerCase();
+
+  switch (rawLayout) {
+    case 'map_form_side':
+    case 'map_left':
+      return 'map_form_side';
+    case 'form_map_full':
+    case 'centered':
+      return 'form_map_full';
+    case 'form_map_centered':
+      return 'form_map_centered';
+    case 'map_form_stack':
+    case 'map_top':
+      return 'map_form_stack';
+    case 'form_map_side':
+    case 'form_map':
+    case 'split':
+    case 'bento':
+    case 'map_side':
+    default:
+      return 'form_map_side';
+  }
+};
+
 export const ContactModule: React.FC<{ 
   moduleId: string, 
   settingsValues: Record<string, any>,
@@ -72,10 +104,8 @@ export const ContactModule: React.FC<{
   const sanitizeWhatsappNumber = (value: unknown) => String(value ?? '').replace(/[^\d]/g, '');
 
   // Global Settings
-  const layout = getVal(null, 'layout', 'form_map');
-  const normalizedLayout = ['form_map', 'split', 'bento', 'map_side', 'map_top', 'centered'].includes(String(layout))
-    ? 'form_map'
-    : 'form_map';
+  const layout = getVal(null, 'layout', 'form_map_side');
+  const normalizedLayout = normalizeContactLayout(layout);
   const maxWidth = parseF(getVal(null, 'max_width', 1200), 1200);
   const paddingY = parseF(getVal(null, 'padding_y', 100), 100);
   const darkMode = toBoolean(getVal(null, 'dark_mode', false));
@@ -585,15 +615,61 @@ export const ContactModule: React.FC<{
           </div>
 
           {/* Layouts */}
-          <div data-contact-layout={normalizedLayout} className="grid grid-cols-1 @5xl:grid-cols-2 gap-8 @5xl:gap-12 items-stretch">
-            <div className="h-full">
-              {renderForm(true)}
+          {normalizedLayout === 'form_map_side' && (
+            <div data-contact-layout={normalizedLayout} className="grid grid-cols-1 @5xl:grid-cols-2 gap-8 @5xl:gap-12 items-stretch">
+              <div className="h-full">
+                {renderForm(true)}
+              </div>
+              <div className="h-full space-y-6">
+                {renderMap(true)}
+                {renderCalendly()}
+              </div>
             </div>
-            <div className="h-full space-y-6">
-              {renderMap(true)}
+          )}
+
+          {normalizedLayout === 'map_form_side' && (
+            <div data-contact-layout={normalizedLayout} className="grid grid-cols-1 @5xl:grid-cols-2 gap-8 @5xl:gap-12 items-stretch">
+              <div className="h-full">
+                {renderMap(true)}
+              </div>
+              <div className="h-full space-y-6">
+                {renderForm(true)}
+                {renderCalendly()}
+              </div>
+            </div>
+          )}
+
+          {normalizedLayout === 'form_map_full' && (
+            <div data-contact-layout={normalizedLayout} className="space-y-8">
+              <div className="max-w-3xl mx-auto">
+                {renderForm()}
+              </div>
+              {renderMap()}
               {renderCalendly()}
             </div>
-          </div>
+          )}
+
+          {normalizedLayout === 'form_map_centered' && (
+            <div data-contact-layout={normalizedLayout} className="space-y-8">
+              <div className="max-w-3xl mx-auto">
+                {renderForm()}
+              </div>
+              <div className="max-w-4xl mx-auto">
+                {renderMap()}
+              </div>
+              {renderCalendly()}
+            </div>
+          )}
+
+          {normalizedLayout === 'map_form_stack' && (
+            <div data-contact-layout={normalizedLayout} className="space-y-8">
+              {renderMap()}
+              <div className="max-w-3xl mx-auto">
+                {renderForm()}
+              </div>
+              {renderCalendly()}
+            </div>
+          )}
         </motion.div>
       </div>
       <style>{`

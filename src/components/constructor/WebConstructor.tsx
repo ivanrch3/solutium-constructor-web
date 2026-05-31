@@ -361,7 +361,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   const [isDraftOperationInProgress, setIsDraftOperationInProgress] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [publishStatus, setPublishStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const [authNotice, setAuthNotice] = useState<{ type: 'info' | 'error'; message: string } | null>(null);
+  const [authNotice, setAuthNotice] = useState<{ type: 'info' | 'error'; message: string; title?: string } | null>(null);
   const [previewStatus, setPreviewStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [previewWarning, setPreviewWarning] = useState<string | null>(null);
   const [currentStatus, setCurrentStatus] = useState<'draft' | 'published' | 'modified'>(() => (
@@ -797,6 +797,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   const autosaveInProgressRef = useRef(false);
   const publishInProgressRef = useRef(false);
   const pendingChangesDuringSaveRef = useRef(false);
+  const autosaveActivationNoticeShownRef = useRef(false);
   const lastSaveSourceRef = useRef<'manual' | 'autosave' | 'prepublish' | null>(null);
   const activeSavePromiseRef = useRef<Promise<boolean> | null>(null);
   const changeVersionRef = useRef(0);
@@ -849,6 +850,18 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     setAutosaveStatus('idle');
     setAutosaveError(null);
   }, [autosaveEnabled]);
+
+  useEffect(() => {
+    if (autosaveActivationNoticeShownRef.current) return;
+    if (!autosaveEnabled || isPreviewMode || isExternalRender || !projectId) return;
+
+    autosaveActivationNoticeShownRef.current = true;
+    setAuthNotice({
+      type: 'info',
+      title: 'Autoguardado activado',
+      message: 'Autoguardado activado. Puedes configurarlo en Ajustes.'
+    });
+  }, [autosaveEnabled, isExternalRender, isPreviewMode, projectId]);
 
   const markUnsavedChanges = useCallback(() => {
     changeVersionRef.current += 1;
@@ -4506,6 +4519,7 @@ const formatTimestampName = () => {
               onSettingChange={handleSettingChange}
               project={project}
               projectId={projectId}
+              onBack={() => setActiveTab('constructor')}
             />
           </div>
         )}
@@ -4533,7 +4547,7 @@ const formatTimestampName = () => {
               <p className={`text-sm font-bold ${
                 authNotice.type === 'error' ? 'text-amber-900' : 'text-blue-900'
               }`}>
-                {authNotice.type === 'error' ? 'Sesión expirada' : 'Sesión actualizada'}
+                {authNotice.title || (authNotice.type === 'error' ? 'Sesion expirada' : 'Sesion actualizada')}
               </p>
               <p className={`text-xs leading-relaxed ${
                 authNotice.type === 'error' ? 'text-amber-800' : 'text-blue-800'

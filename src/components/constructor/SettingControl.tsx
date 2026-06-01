@@ -153,6 +153,13 @@ const toBooleanSetting = (value: unknown, fallback = false) => {
   return Boolean(value);
 };
 
+const dispatchDynamicCardsEditingEvent = (moduleId: string, active: boolean) => {
+  if (!moduleId || typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent('dynamic-cards-editor-focus', {
+    detail: { moduleId, active }
+  }));
+};
+
 const normalizeOptionList = (rawValue: any) => {
   if (Array.isArray(rawValue)) {
     return rawValue
@@ -315,6 +322,17 @@ export const SettingControl: React.FC<SettingControlProps> = ({
   const isDisabled = setting.disabledMessage !== undefined;
   const shouldShowPexels = setting.type === 'image' && !shouldHidePexelsButton(setting, moduleType);
   const preferredOrientation = inferPexelsOrientation(setting, moduleType);
+  const contextModuleId = getModuleIdFromContext(contextId);
+  const shouldPauseDynamicCardsEditing =
+    moduleType === 'dynamic_cards' &&
+    !!contextModuleId &&
+    ['text', 'textarea', 'url'].includes(setting.type || 'text');
+  const dynamicCardsEditingHandlers = shouldPauseDynamicCardsEditing
+    ? {
+      onFocus: () => dispatchDynamicCardsEditingEvent(contextModuleId, true),
+      onBlur: () => dispatchDynamicCardsEditingEvent(contextModuleId, false)
+    }
+    : {};
 
   const resolveDynamicOptions = (targetSetting: SettingDefinition, targetValue: any = currentValue) => {
     if (!targetSetting.dynamicOptionsFrom) {
@@ -1366,6 +1384,7 @@ export const SettingControl: React.FC<SettingControlProps> = ({
             value={currentValue} 
             disabled={isDisabled}
             onChange={(e) => onChange(e.target.value)}
+            {...dynamicCardsEditingHandlers}
             rows={textareaRows}
             className="w-full p-2 border border-border rounded-xl text-[10px] font-medium focus:outline-none focus:border-primary/30 bg-surface resize-none" 
             style={{ minHeight: `${Math.max(textareaRows, 3) * 22}px` }}
@@ -1385,6 +1404,7 @@ export const SettingControl: React.FC<SettingControlProps> = ({
             value={currentValue} 
             disabled={isDisabled}
             onChange={(e) => onChange(e.target.value)}
+            {...dynamicCardsEditingHandlers}
             className="w-full p-1.5 border border-border rounded-md text-[10px] font-medium focus:outline-none focus:border-primary/30 bg-surface" 
           />
         </div>

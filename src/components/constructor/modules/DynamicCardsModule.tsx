@@ -342,7 +342,9 @@ export const DynamicCardsModule: React.FC<{
   const [animationCycle, setAnimationCycle] = useState(0);
   const [animationPhase, setAnimationPhase] = useState<'enter' | 'exit'>('enter');
   const [entrySettled, setEntrySettled] = useState(false);
+  const [isEditingText, setIsEditingText] = useState(false);
   const transitionTimerRef = useRef<number | null>(null);
+  const resumeEditingTimerRef = useRef<number | null>(null);
   const animationSettingsSignatureRef = useRef<string>('');
   const prefersReducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
   const isMobile = useMediaQuery('(max-width: 640px)');
@@ -437,7 +439,8 @@ export const DynamicCardsModule: React.FC<{
     : activeCard;
   const reducedTextMotion = prefersReducedMotion || (reduceMotionMobile && isMobile);
   const reducedEffectMotion = prefersReducedMotion;
-  const isAutoplay = ['auto', 'auto_dots', 'auto_controls'].includes(navigationMode);
+  const isAnimationPaused = !isPreviewMode && isEditingText;
+  const isAutoplay = ['auto', 'auto_dots', 'auto_controls'].includes(navigationMode) && !isAnimationPaused;
   const showArrows = safeCards.length > 1 && showArrowsSetting && ['arrows', 'auto_controls'].includes(navigationMode);
   const showDots = safeCards.length > 1 && showDotsSetting && ['dots', 'auto_dots', 'auto_controls'].includes(navigationMode);
   const fallbackTotalDuration = entryDuration + visibleDuration + exitDuration;
@@ -477,7 +480,15 @@ export const DynamicCardsModule: React.FC<{
     }
   };
 
+  const clearResumeEditingTimer = () => {
+    if (resumeEditingTimerRef.current !== null) {
+      window.clearTimeout(resumeEditingTimerRef.current);
+      resumeEditingTimerRef.current = null;
+    }
+  };
+
   const goTo = (nextIndex: number) => {
+    if (isAnimationPaused) return;
     const normalizedIndex = (nextIndex + safeCards.length) % safeCards.length;
 
     clearTransitionTimer();
@@ -502,18 +513,26 @@ export const DynamicCardsModule: React.FC<{
     clearTransitionTimer();
     setAnimationPhase('enter');
     setActiveIndex((current) => Math.min(current, safeCards.length - 1));
+    if (isAnimationPaused) {
+      setEntrySettled(true);
+      return;
+    }
     setAnimationCycle((cycle) => cycle + 1);
-  }, [safeCards.length]);
+  }, [safeCards.length, isAnimationPaused]);
 
   useEffect(() => {
-    if (!isAutoplay || prefersReducedMotion) return;
+    if (!isAutoplay || prefersReducedMotion || isAnimationPaused) return;
     const timer = window.setInterval(() => {
       goTo(safeCards.length > 1 ? activeIndex + 1 : activeIndex);
     }, coordinatedInterval * 1000);
     return () => window.clearInterval(timer);
-  }, [activeIndex, coordinatedInterval, isAutoplay, prefersReducedMotion, safeCards.length]);
+  }, [activeIndex, coordinatedInterval, isAutoplay, prefersReducedMotion, safeCards.length, isAnimationPaused]);
 
   useEffect(() => {
+    if (isAnimationPaused) {
+      setEntrySettled(true);
+      return;
+    }
     if (animationPhase !== 'enter' || reducedTextMotion) {
       setEntrySettled(true);
       return;
@@ -522,9 +541,40 @@ export const DynamicCardsModule: React.FC<{
     setEntrySettled(false);
     const timer = window.setTimeout(() => setEntrySettled(true), Math.max(contentEntryDuration, 0.05) * 1000);
     return () => window.clearTimeout(timer);
-  }, [activeIndex, animationCycle, animationPhase, contentEntryDuration, reducedTextMotion]);
+  }, [activeIndex, animationCycle, animationPhase, contentEntryDuration, reducedTextMotion, isAnimationPaused]);
 
-  useEffect(() => () => clearTransitionTimer(), []);
+  useEffect(() => {
+    if (isPreviewMode || typeof window === 'undefined') return;
+    const handleEditorFocus = (event: Event) => {
+      const detail = (event as CustomEvent<{ moduleId?: string; active?: boolean }>).detail;
+      if (!detail || detail.moduleId !== moduleId) return;
+
+      clearResumeEditingTimer();
+      if (detail.active) {
+        clearTransitionTimer();
+        setAnimationPhase('enter');
+        setEntrySettled(true);
+        setIsEditingText(true);
+        return;
+      }
+
+      resumeEditingTimerRef.current = window.setTimeout(() => {
+        setIsEditingText(false);
+        resumeEditingTimerRef.current = null;
+      }, 450);
+    };
+
+    window.addEventListener('dynamic-cards-editor-focus', handleEditorFocus);
+    return () => {
+      window.removeEventListener('dynamic-cards-editor-focus', handleEditorFocus);
+      clearResumeEditingTimer();
+    };
+  }, [isPreviewMode, moduleId]);
+
+  useEffect(() => () => {
+    clearTransitionTimer();
+    clearResumeEditingTimer();
+  }, []);
 
   const effectSignature = `${effect}|${speed}|${density}|${direction}`;
   const animationSettingsSignature = [
@@ -548,6 +598,10 @@ export const DynamicCardsModule: React.FC<{
   ].join('|');
 
   useEffect(() => {
+    if (isAnimationPaused) {
+      animationSettingsSignatureRef.current = animationSettingsSignature;
+      return;
+    }
     if (!animationSettingsSignatureRef.current) {
       animationSettingsSignatureRef.current = animationSettingsSignature;
       return;
@@ -558,10 +612,10 @@ export const DynamicCardsModule: React.FC<{
     clearTransitionTimer();
     setAnimationPhase('enter');
     setAnimationCycle((cycle) => cycle + 1);
-  }, [animationSettingsSignature]);
+  }, [animationSettingsSignature, isAnimationPaused]);
 
-  const shouldAnimateContent = animationPhase === 'exit' || !entrySettled;
-  const useSingleCardContentLoop = isAutoplay && safeCards.length === 1 && !reducedTextMotion;
+  const shouldAnimateContent = !isAnimationPaused && (animationPhase === 'exit' || !entrySettled);
+  const useSingleCardContentLoop = !isAnimationPaused && isAutoplay && safeCards.length === 1 && !reducedTextMotion;
   const titleAnimation = useSingleCardContentLoop
     ? getLoopAnimationStyle(titleEnter, titleExit, reducedTextMotion, titleEntryDuration + titleVisibleDuration + titleExitDuration)
     : shouldAnimateContent
@@ -673,13 +727,19 @@ export const DynamicCardsModule: React.FC<{
   const controlsClass = controlsStyle === 'minimal'
     ? 'bg-transparent text-white border border-white/25 hover:bg-white/10'
     : 'bg-white/14 text-white border border-white/20 backdrop-blur-xl hover:bg-white/22';
-  const dynamicEffect = renderDynamicEffect(effect, speed, density, direction, reducedEffectMotion);
+  const dynamicEffect = renderDynamicEffect(effect, speed, density, direction, reducedEffectMotion || isAnimationPaused);
+  const cardContentKey = isAnimationPaused
+    ? `card-${activeIndex}-editing`
+    : `card-${activeIndex}-${animationPhase}-${animationCycle}`;
+  const ctaKey = isAnimationPaused
+    ? `cta-${activeIndex}-editing`
+    : `cta-${activeIndex}-${animationCycle}`;
 
   const renderCta = () => {
     if (!showCta) return null;
     return (
       <a
-        key={`cta-${activeIndex}-${animationCycle}`}
+        key={ctaKey}
         href={ctaHref}
         onClick={(event) => {
           if (isPreviewMode || ctaHref === '#') event.preventDefault();
@@ -694,7 +754,7 @@ export const DynamicCardsModule: React.FC<{
   };
 
   return (
-    <section id={moduleId} className="dynamic-cards-module w-full relative overflow-hidden @container">
+    <section id={moduleId} className={`dynamic-cards-module w-full relative overflow-hidden @container ${isAnimationPaused ? 'dc-editing-paused' : ''}`}>
       <style>{`
         .dynamic-cards-stage { height: var(--dc-height-desktop, 560px); min-height: var(--dc-height-desktop, 560px); }
         .dynamic-cards-viewport {
@@ -788,6 +848,20 @@ export const DynamicCardsModule: React.FC<{
         @media (prefers-reduced-motion: reduce) {
           .dc-effect, .dc-effect * { animation: none !important; }
         }
+        .dc-editing-paused .dc-effect,
+        .dc-editing-paused .dc-effect *,
+        .dc-editing-paused .dynamic-cards-title,
+        .dc-editing-paused .dynamic-cards-body,
+        .dc-editing-paused .dynamic-cards-cta {
+          animation: none !important;
+          animation-play-state: paused !important;
+        }
+        .dc-editing-paused .dynamic-cards-title,
+        .dc-editing-paused .dynamic-cards-body,
+        .dc-editing-paused .dynamic-cards-cta {
+          opacity: 1 !important;
+          transform: none !important;
+        }
       `}</style>
 
       <div className="dynamic-cards-stage relative w-full overflow-hidden" style={stageStyle}>
@@ -807,7 +881,7 @@ export const DynamicCardsModule: React.FC<{
 
         <div className="dynamic-cards-viewport">
         <div
-          key={`card-${activeIndex}-${animationPhase}-${animationCycle}`}
+          key={cardContentKey}
           className={`dynamic-cards-content dc-blocks-${contentBlockCount} h-full w-full px-6 py-7 @md:px-12 @md:py-10 @5xl:px-16 @5xl:py-12`}
         >
             <div

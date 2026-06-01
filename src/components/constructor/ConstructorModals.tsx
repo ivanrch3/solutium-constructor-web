@@ -160,8 +160,11 @@ export const PublishModal: React.FC<{
   setSiteName: (name: string) => void,
   onPublish: () => void,
   onCancel: () => void,
-  isSaving: boolean
-}> = ({ siteName, setSiteName, onPublish, onCancel, isSaving }) => (
+  isSaving: boolean,
+  publishStatus?: 'idle' | 'loading' | 'success' | 'error',
+  publishedUrl?: string | null,
+  publishedAt?: string | null
+}> = ({ siteName, setSiteName, onPublish, onCancel, isSaving, publishStatus = 'idle', publishedUrl, publishedAt }) => (
   <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4">
     <motion.div 
       initial={{ opacity: 0 }}
@@ -176,6 +179,39 @@ export const PublishModal: React.FC<{
       exit={{ scale: 0.9, opacity: 0 }}
       className="relative w-full max-w-md bg-surface rounded-3xl p-8 shadow-2xl border border-border"
     >
+      {publishStatus === 'success' ? (
+        <div className="text-center">
+          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-green-500/10">
+            <Check className="h-8 w-8 text-green-600" />
+          </div>
+          <h3 className="mb-2 text-xl font-bold text-text">Sitio publicado</h3>
+          <p className="mb-5 text-sm leading-relaxed text-text/60">
+            La página quedó publicada correctamente y el estado local del Constructor ya fue actualizado.
+          </p>
+          {publishedUrl && (
+            <a
+              href={publishedUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="mb-4 block truncate rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-xs font-semibold text-green-700 hover:bg-green-100"
+            >
+              {publishedUrl}
+            </a>
+          )}
+          {publishedAt && (
+            <p className="mb-6 text-[10px] font-bold uppercase tracking-wider text-text/40">
+              Publicado {new Date(publishedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </p>
+          )}
+          <button
+            onClick={onCancel}
+            className="w-full rounded-2xl bg-green-600 px-6 py-3 font-bold text-white shadow-lg shadow-green-600/20 transition-all hover:bg-green-700"
+          >
+            Listo
+          </button>
+        </div>
+      ) : (
+        <>
       <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mb-6">
         <Send className="text-primary w-8 h-8" />
       </div>
@@ -213,6 +249,8 @@ export const PublishModal: React.FC<{
           {isSaving ? 'Publicando...' : 'Publicar'}
         </button>
       </div>
+        </>
+      )}
     </motion.div>
   </div>
 );

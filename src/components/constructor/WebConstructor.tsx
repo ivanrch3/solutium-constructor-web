@@ -248,6 +248,20 @@ const resolveLifecycleStatusFromPage = (
   return 'draft';
 };
 
+const resolvePublishedUrlFromResult = (result: any): string | null => {
+  if (!result || typeof result !== 'object') return null;
+  return (
+    result.publishedUrl ||
+    result.published_url ||
+    result.publicUrl ||
+    result.public_url ||
+    result.url ||
+    result.metadata?.publishedUrl ||
+    result.metadata?.published_url ||
+    null
+  );
+};
+
 export const WebConstructor: React.FC<WebConstructorProps> = ({ 
   onBackToDashboard, 
   onCancelOnboarding,
@@ -361,6 +375,9 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   const [isDraftOperationInProgress, setIsDraftOperationInProgress] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [publishStatus, setPublishStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [publishModalSuccess, setPublishModalSuccess] = useState(false);
+  const [publishedSiteUrl, setPublishedSiteUrl] = useState<string | null>(null);
+  const [lastPublishedAt, setLastPublishedAt] = useState<string | null>(null);
   const [authNotice, setAuthNotice] = useState<{ type: 'info' | 'error'; message: string; title?: string } | null>(null);
   const [previewStatus, setPreviewStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [previewWarning, setPreviewWarning] = useState<string | null>(null);
@@ -3577,16 +3594,29 @@ const formatTimestampName = () => {
     }
   };
 
+  const handleClosePublishModal = () => {
+    if (publishStatus === 'loading' || isSaving) return;
+    setShowPublishModal(false);
+    setPublishModalSuccess(false);
+    if (publishStatus === 'success') {
+      setPublishStatus('idle');
+    }
+  };
+
   const handlePublish = async () => {
     if (!projectId || isPreviewMode || publishInProgressRef.current || publishStatus === 'loading') return;
     
     if (isDefaultName(siteName)) {
+      setPublishModalSuccess(false);
       setShowPublishModal(true);
       return;
     }
 
     publishInProgressRef.current = true;
     setPublishStatus('loading');
+    setPublishModalSuccess(false);
+    setPublishedSiteUrl(null);
+    setLastPublishedAt(null);
     setIsSaving(true);
     setAuthNotice(null);
     try {
@@ -3750,21 +3780,34 @@ const formatTimestampName = () => {
       }
 
       if (result) {
+        const publishedTimestamp = result.updatedAt || result.createdAt || new Date().toISOString();
+        const resolvedPublishedUrl = resolvePublishedUrlFromResult(result);
         logDebug('[SIP v6.1] Sitio publicado y sincronizado con Web Engine.');
         setPublishStatus('success');
+        setPublishedSiteUrl(resolvedPublishedUrl);
+        setLastPublishedAt(publishedTimestamp);
         currentStatusRef.current = 'published';
         setCurrentStatus('published');
         setHasUnsavedChanges(false);
-        setShowPublishModal(false);
+        if (showPublishModal) {
+          setPublishModalSuccess(true);
+        } else {
+          setShowPublishModal(false);
+        }
 
         sendToMother('SOLUTIUM_PUBLISH', {
           site_id: siteId,
           site_name: finalSiteName,
+          published_site_id: result.id,
+          published_url: resolvedPublishedUrl,
+          last_published_at: publishedTimestamp,
           status: 'published',
-          timestamp: new Date().toISOString()
+          timestamp: publishedTimestamp
         });
 
-        setTimeout(() => setPublishStatus('idle'), 3000);
+        if (!showPublishModal) {
+          setTimeout(() => setPublishStatus('idle'), 3000);
+        }
 
         // --- BACKGROUND TASK: Generate Server-Side Preview automatically on publish ---
         (async () => {
@@ -4738,8 +4781,11 @@ const formatTimestampName = () => {
             siteName={siteName}
             setSiteName={updateSiteName}
             onPublish={handlePublish}
-            onCancel={() => setShowPublishModal(false)}
+            onCancel={handleClosePublishModal}
             isSaving={isSaving}
+            publishStatus={publishModalSuccess ? 'success' : publishStatus}
+            publishedUrl={publishedSiteUrl}
+            publishedAt={lastPublishedAt}
           />
         )}
 

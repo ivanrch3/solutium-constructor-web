@@ -50,7 +50,6 @@ export const TopBar: React.FC<TopBarProps> = ({
   setIsFullscreen,
   saveStatus,
   publishStatus,
-  previewStatus = 'idle',
   isMobile,
   isPreviewMode,
   hasUnsavedChanges = false,
@@ -152,27 +151,6 @@ export const TopBar: React.FC<TopBarProps> = ({
           <div className="px-2 py-0.5 bg-secondary rounded-full">
             <span className="text-[9px] font-bold text-text/60 uppercase tracking-tighter shrink-0">
               Autoguardado desactivado
-            </span>
-          </div>
-        )}
-        {saveStatus !== 'loading' && previewStatus === 'loading' && (
-          <div className="px-2 py-0.5 bg-blue-500/10 rounded-full">
-            <span className="text-[9px] font-bold text-blue-600 uppercase tracking-tighter shrink-0">
-              Actualizando preview
-            </span>
-          </div>
-        )}
-        {saveStatus !== 'loading' && previewStatus === 'success' && (
-          <div className="px-2 py-0.5 bg-green-500/10 rounded-full">
-            <span className="text-[9px] font-bold text-green-600 uppercase tracking-tighter shrink-0">
-              Preview actualizado
-            </span>
-          </div>
-        )}
-        {saveStatus !== 'loading' && previewStatus === 'error' && (
-          <div className="px-2 py-0.5 bg-amber-500/10 rounded-full">
-            <span className="text-[9px] font-bold text-amber-700 uppercase tracking-tighter shrink-0">
-              Preview pendiente
             </span>
           </div>
         )}

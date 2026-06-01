@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { startHandshake } from './services/handshakeService';
+import { sendToMother, startHandshake } from './services/handshakeService';
 import { configService } from './services/configService';
 import { initSupabase } from './services/supabaseClient';
 import { captureAuthToken } from './services/authTokenProvider';
@@ -26,6 +26,34 @@ type View = 'dashboard' | 'selection-method' | 'form' | 'generator' | 'construct
 const CONSTRUCTOR_WEB_LOGO_URL = 'https://nyc3.digitaloceanspaces.com/solutium-space/988cd339-a2c7-4951-b944-998d32dc349b-solutium-constructor-web-imagotipo.png';
 const PREVENTIVE_SUPABASE_REFRESH_INTERVAL_MS = 10 * 60 * 1000;
 const PREVENTIVE_SUPABASE_REFRESH_THROTTLE_MS = 30 * 1000;
+
+const decodeJwtPayload = (token?: string | null): any | null => {
+  if (!token || token === 'placeholder-token') return null;
+  const parts = token.split('.');
+  if (parts.length < 2) return null;
+
+  try {
+    const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), '=');
+    return JSON.parse(window.atob(padded));
+  } catch {
+    return null;
+  }
+};
+
+const getJwtExpirationMs = (token?: string | null): number | null => {
+  const payload = decodeJwtPayload(token);
+  return typeof payload?.exp === 'number' ? payload.exp * 1000 : null;
+};
+
+const readSafeHandshakeCache = (): any | null => {
+  try {
+    const raw = window.localStorage.getItem('solutium_handshake_cache');
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+};
 
 const hasThemeColorValue = (value: any) => (
   Array.isArray(value)
@@ -258,6 +286,45 @@ const AppContent: React.FC = () => {
   const sessionRefreshInFlightRef = useRef(false);
   const lastSessionRefreshAtRef = useRef(0);
   const handshakeStartedRef = useRef(false);
+  const launchStartedAtRef = useRef(new Date());
+
+  const welcomeSessionInfo = React.useMemo(() => {
+    const safeCache = readSafeHandshakeCache();
+    const currentParams = new URLSearchParams(window.location.search);
+    const sessionToken =
+      currentParams.get('session_token') ||
+      window.sessionStorage.getItem('solutium_supabase_access_token') ||
+      safeCache?.session_token ||
+      safeCache?.sessionToken ||
+      safeCache?.supabaseAccessToken ||
+      safeCache?.accessToken ||
+      null;
+    const expiresAt = getJwtExpirationMs(sessionToken);
+    const hasRealSession = Boolean(sessionToken) && sessionToken !== 'placeholder-token' && (!expiresAt || expiresAt > Date.now());
+    const userLabel =
+      profile?.email ||
+      (profile as any)?.name ||
+      (profile as any)?.fullName ||
+      safeCache?.profile?.email ||
+      safeCache?.user?.email ||
+      'usuario autenticado';
+    const projectLabel =
+      project?.name ||
+      (project as any)?.businessName ||
+      safeCache?.project?.name ||
+      safeCache?.project?.businessName ||
+      safeCache?.siteName ||
+      projectId ||
+      'proyecto activo';
+
+    return {
+      hasRealSession,
+      userLabel,
+      projectLabel,
+      startedAt: launchStartedAtRef.current.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      canRequestMotherContext: Boolean(window.opener || (window.parent && window.parent !== window))
+    };
+  }, [profile, project, projectId]);
 
   // --- PERSISTENCE PROTOCOL v1.0 ---
   const saveSession = () => {
@@ -971,6 +1038,46 @@ const AppContent: React.FC = () => {
             </p>
           </div>
         </motion.div>
+
+        <div className="absolute bottom-16 left-1/2 w-[min(92vw,560px)] -translate-x-1/2">
+          <div className={`rounded-2xl border px-4 py-3 text-center shadow-sm ${
+            welcomeSessionInfo.hasRealSession
+              ? 'border-slate-200 bg-white/85 text-slate-500'
+              : 'border-red-200 bg-red-50/90 text-red-700'
+          }`}>
+            {welcomeSessionInfo.hasRealSession ? (
+              <p className="text-xs leading-relaxed">
+                Sesión activa: <span className="font-semibold text-slate-700">{welcomeSessionInfo.userLabel}</span>
+                {' · '}
+                Proyecto: <span className="font-semibold text-slate-700">{welcomeSessionInfo.projectLabel}</span>
+                {' · '}
+                Inicio: <span className="font-semibold text-slate-700">{welcomeSessionInfo.startedAt}</span>
+              </p>
+            ) : (
+              <div className="flex flex-col items-center gap-2">
+                <p className="text-xs font-semibold leading-relaxed">
+                  Sesión no válida o no recibida. Guardar y publicar requiere relanzar el Constructor desde App Madre.
+                </p>
+                {welcomeSessionInfo.canRequestMotherContext && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      sendToMother('SOLUTIUM_GET_CONFIG', { source: 'constructor_welcome_screen' });
+                      try {
+                        window.opener?.focus?.();
+                      } catch {
+                        // El navegador puede bloquear focus; la solicitud por postMessage queda enviada.
+                      }
+                    }}
+                    className="rounded-full border border-red-200 bg-white px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-red-700 transition-colors hover:bg-red-100"
+                  >
+                    Relanzar desde App Madre
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
 
         {/* Botón de Emergencia DISCRETO para Desarrollo */}
         {(window.location.hostname.includes('run.app') || window.location.hostname.includes('localhost')) && (

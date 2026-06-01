@@ -308,6 +308,8 @@ export const SettingControl: React.FC<SettingControlProps> = ({
   const [isUploading, setIsUploading] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
   const [isPexelsOpen, setIsPexelsOpen] = useState(false);
+  const [openRepeaterItems, setOpenRepeaterItems] = useState<Record<string, number | null>>({});
+  const [openRepeaterSections, setOpenRepeaterSections] = useState<Record<string, string | null>>({});
   const currentValue = value !== undefined ? value : setting.defaultValue;
 
   const isDisabled = setting.disabledMessage !== undefined;
@@ -999,14 +1001,35 @@ export const SettingControl: React.FC<SettingControlProps> = ({
       const sectionEntries = Object.entries(fieldsBySection);
       const shouldUseFieldSections = !!setting.useFieldSections && sectionEntries.length > 1;
       const moduleId = getModuleIdFromContext(contextId);
+      const repeaterStateKey = `${contextId || 'root'}_${setting.id}`;
       const isDynamicCardsAnimationLocked = moduleType === 'dynamic_cards' &&
         toBooleanSetting(settingsValues?.[`${moduleId}_global_use_global_effect`], true);
+      const isDynamicCardsTextLocked = moduleType === 'dynamic_cards' &&
+        toBooleanSetting(settingsValues?.[`${moduleId}_global_use_global_text_styles`], true);
+      const isDynamicCardsBackgroundLocked = moduleType === 'dynamic_cards' &&
+        toBooleanSetting(settingsValues?.[`${moduleId}_global_use_global_background`], true);
       const dynamicCardsAnimationLockMessage = 'Las animaciones por tarjeta están deshabilitadas porque se está usando la configuración global. Desactiva \'Usar animaciones globales\' en Configuración Global para personalizarlas por tarjeta.';
+      const dynamicCardsTextLockMessage = 'Los estilos de texto por tarjeta están deshabilitados porque se está usando la configuración global. Desactiva \'Usar estilos de texto globales\' en Configuración Global para personalizarlos por tarjeta.';
+      const dynamicCardsBackgroundLockMessage = 'El fondo por tarjeta está deshabilitado porque se está usando el fondo global. Desactiva \'Usar fondo global\' en Configuración Global para personalizarlo por tarjeta.';
+      const dynamicCardsTextStyleFields = new Set([
+        'titleSize', 'titleWeight', 'titleColor', 'titleAlign', 'titleLineHeight', 'titleLetterSpacing',
+        'bulletIcon', 'bodySize', 'bodyWeight', 'bodyColor', 'bodyAlign', 'ctaSize', 'ctaColor'
+      ]);
+      const dynamicCardsBackgroundFields = new Set([
+        'backgroundType', 'bgColor', 'gradientFrom', 'gradientTo', 'gradientDirection',
+        'bgImage', 'overlayEnabled', 'overlayColor', 'overlayOpacity', 'imageFit', 'imagePosition'
+      ]);
+      const getDynamicCardsLockMessage = (field: SettingDefinition) => {
+        if (isDynamicCardsAnimationLocked && field.subsection === 'Animaciones') return dynamicCardsAnimationLockMessage;
+        if (isDynamicCardsBackgroundLocked && dynamicCardsBackgroundFields.has(field.id)) return dynamicCardsBackgroundLockMessage;
+        if (isDynamicCardsTextLocked && dynamicCardsTextStyleFields.has(field.id)) return dynamicCardsTextLockMessage;
+        return undefined;
+      };
       const renderRepeaterField = (field: SettingDefinition, item: any, index: number) => (
         <SettingControl
           key={field.id}
-          setting={isDynamicCardsAnimationLocked && field.subsection === 'Animaciones'
-            ? { ...field, disabledMessage: dynamicCardsAnimationLockMessage }
+          setting={getDynamicCardsLockMessage(field)
+            ? { ...field, disabledMessage: getDynamicCardsLockMessage(field) }
             : field}
           value={item[field.id]}
           projectId={projectId}
@@ -1056,10 +1079,26 @@ export const SettingControl: React.FC<SettingControlProps> = ({
                   ? 'bg-indigo-50/70 border-indigo-100/80 hover:bg-indigo-50/90'
                   : 'bg-cyan-50/70 border-cyan-100/80 hover:bg-cyan-50/90'
                 : 'bg-secondary/30 border-border';
+              const openItemIndex = openRepeaterItems[repeaterStateKey];
+              const isItemOpen = openItemIndex === undefined ? index === 0 : openItemIndex === index;
+              const itemSectionKey = `${repeaterStateKey}:${index}`;
 
               return (
-              <details key={index} className={`${itemToneClass} border rounded-xl relative group overflow-hidden transition-colors`} open={index === 0}>
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-2 p-3">
+              <details key={index} className={`${itemToneClass} border rounded-xl relative group overflow-hidden transition-colors`} open={isItemOpen}>
+                <summary
+                  className="flex cursor-pointer list-none items-center justify-between gap-2 p-3"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    setOpenRepeaterItems((current) => ({
+                      ...current,
+                      [repeaterStateKey]: isItemOpen ? null : index
+                    }));
+                    setOpenRepeaterSections((current) => ({
+                      ...current,
+                      [itemSectionKey]: null
+                    }));
+                  }}
+                >
                   <span className="min-w-0">
                     <span className="block text-[10px] font-bold text-text/50 truncate">
                       {setting.itemLabel ? `${formattedSingularItemLabel} ${index + 1}` : item.titleText || item.title || item.name || item.text || `Item #${index + 1}`}
@@ -1088,13 +1127,39 @@ export const SettingControl: React.FC<SettingControlProps> = ({
                 </summary>
                 <div className="space-y-3 px-3 pb-3">
                   {shouldUseFieldSections
-                    ? sectionEntries.map(([sectionName, fields], sectionIndex) => (
-                      <details key={sectionName} className="overflow-hidden rounded-lg border border-border/40 bg-surface/80">
-                        <summary className="cursor-pointer list-none px-3 py-2 text-[10px] font-black uppercase tracking-wider text-text/45 hover:text-primary">
+                    ? sectionEntries.map(([sectionName, fields]) => {
+                      const isSectionOpen = openRepeaterSections[itemSectionKey] === sectionName;
+                      const showTextLockMessage = isDynamicCardsTextLocked && sectionName === 'Textos';
+                      const showCtaTextLockMessage = isDynamicCardsTextLocked && sectionName === 'CTA';
+                      const showBackgroundLockMessage = isDynamicCardsBackgroundLocked && sectionName === 'Fondo';
+                      const showAnimationLockMessage = isDynamicCardsAnimationLocked && sectionName === 'Animaciones';
+
+                      return (
+                      <details key={sectionName} className="overflow-hidden rounded-lg border border-border/40 bg-surface/80" open={isSectionOpen}>
+                        <summary
+                          className="cursor-pointer list-none px-3 py-2 text-[10px] font-black uppercase tracking-wider text-text/45 hover:text-primary"
+                          onClick={(event) => {
+                            event.preventDefault();
+                            setOpenRepeaterSections((current) => ({
+                              ...current,
+                              [itemSectionKey]: isSectionOpen ? null : sectionName
+                            }));
+                          }}
+                        >
                           {sectionName}
                         </summary>
                         <div className="space-y-3 border-t border-border/30 p-3">
-                          {isDynamicCardsAnimationLocked && sectionName === 'Animaciones' && (
+                          {(showTextLockMessage || showCtaTextLockMessage) && (
+                            <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[10px] font-semibold leading-relaxed text-amber-800">
+                              {dynamicCardsTextLockMessage}
+                            </div>
+                          )}
+                          {showBackgroundLockMessage && (
+                            <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[10px] font-semibold leading-relaxed text-amber-800">
+                              {dynamicCardsBackgroundLockMessage}
+                            </div>
+                          )}
+                          {showAnimationLockMessage && (
                             <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[10px] font-semibold leading-relaxed text-amber-800">
                               {dynamicCardsAnimationLockMessage}
                             </div>
@@ -1102,7 +1167,8 @@ export const SettingControl: React.FC<SettingControlProps> = ({
                           {fields.map(field => renderRepeaterField(field, item, index))}
                         </div>
                       </details>
-                    ))
+                      );
+                    })
                     : setting.fields?.map(field => renderRepeaterField(field, item, index))}
                 </div>
               </details>

@@ -34,6 +34,7 @@ type DynamicCard = {
   titleVisibleDuration?: number;
   titleExitDuration?: number;
   bodyText?: string;
+  showBody?: boolean;
   bullets?: string;
   bulletIcon?: string;
   bodySize?: number;
@@ -50,7 +51,7 @@ type DynamicCard = {
   ctaUrl?: string;
   ctaSize?: 'sm' | 'md' | 'lg';
   ctaStyle?: 'solid' | 'outline' | 'glass';
-  ctaPosition?: 'inline' | 'below' | 'bottom_right' | 'bottom_center';
+  ctaPosition?: 'left' | 'center' | 'right' | 'inline' | 'below' | 'bottom_right' | 'bottom_center' | 'center_bottom' | 'left_bottom' | 'right_bottom';
   ctaColor?: string;
   ctaAnimation?: string;
   ctaExitAnimation?: string;
@@ -89,6 +90,7 @@ const DEFAULT_CARD: DynamicCard = {
   titleVisibleDuration: 4,
   titleExitDuration: 0.35,
   bodyText: 'Crea experiencias dinámicas con movimiento, velocidad y alto impacto visual.',
+  showBody: true,
   bullets: 'Movimiento fluido\nFondos personalizables\nCTA por tarjeta',
   bulletIcon: 'Zap',
   bodySize: 18,
@@ -105,7 +107,7 @@ const DEFAULT_CARD: DynamicCard = {
   ctaUrl: '#',
   ctaSize: 'md',
   ctaStyle: 'solid',
-  ctaPosition: 'below',
+  ctaPosition: 'center',
   ctaColor: 'var(--primary-color, #2563EB)',
   ctaAnimation: 'zoom',
   ctaExitAnimation: 'fade',
@@ -170,6 +172,12 @@ const useMediaQuery = (query: string) => {
 
 const getWeight = (token?: string) =>
   FONT_WEIGHTS[token as keyof typeof FONT_WEIGHTS]?.value || Number(token) || 700;
+
+const normalizeCtaPosition = (position?: string): 'left' | 'center' | 'right' => {
+  if (position === 'right' || position === 'bottom_right' || position === 'right_bottom') return 'right';
+  if (position === 'left' || position === 'left_bottom' || position === 'inline') return 'left';
+  return 'center';
+};
 
 const clampCards = (cards: unknown): DynamicCard[] => {
   const source = Array.isArray(cards) && cards.length > 0 ? cards : [DEFAULT_CARD];
@@ -343,9 +351,43 @@ export const DynamicCardsModule: React.FC<{
     const key = elementId ? `${elementId}_${settingId}` : `${moduleId}_global_${settingId}`;
     return settingsValues[key] !== undefined ? settingsValues[key] : defaultValue;
   };
+  const clampRange = (value: unknown, fallback: number, min: number, max: number) =>
+    Math.min(max, Math.max(min, parseNumSafe(value, fallback)));
 
   const navigationMode = getVal(null, 'navigation_mode', 'auto_dots');
   const intervalSeconds = parseNumSafe(getVal(null, 'interval_seconds', 5), 5);
+  const heightDesktop = clampRange(getVal(null, 'height_desktop', 560), 560, 360, 800);
+  const heightTablet = clampRange(getVal(null, 'height_tablet', 480), 480, 320, 700);
+  const heightMobile = clampRange(getVal(null, 'height_mobile', 420), 420, 300, 620);
+  const useGlobalTextStyles = toBoolean(getVal(null, 'use_global_text_styles', true), true);
+  const globalTitleSize = parseNumSafe(getVal(null, 'global_title_size', 54), 54);
+  const globalTitleWeight = getVal(null, 'global_title_weight', 'black');
+  const globalTitleColor = getVal(null, 'global_title_color', '#FFFFFF');
+  const globalTitleAlign = getVal(null, 'global_title_align', 'center') as DynamicCard['titleAlign'];
+  const globalTitleLineHeight = parseNumSafe(getVal(null, 'global_title_line_height', 0.98), 0.98);
+  const globalTitleLetterSpacing = parseNumSafe(getVal(null, 'global_title_letter_spacing', 0), 0);
+  const globalBodySize = parseNumSafe(getVal(null, 'global_body_size', 18), 18);
+  const globalBodyWeight = getVal(null, 'global_body_weight', 'medium');
+  const globalBodyColor = getVal(null, 'global_body_color', '#E2E8F0');
+  const globalBodyAlign = getVal(null, 'global_body_align', 'center') as DynamicCard['bodyAlign'];
+  const globalBodyLineHeight = parseNumSafe(getVal(null, 'global_body_line_height', 1.55), 1.55);
+  const globalBulletIcon = getVal(null, 'global_bullet_icon', 'Zap');
+  const globalBulletColor = getVal(null, 'global_bullet_color', 'var(--primary-color, #2563EB)');
+  const globalCtaSize = getVal(null, 'global_cta_size', 'md') as DynamicCard['ctaSize'];
+  const globalCtaWeight = getVal(null, 'global_cta_weight', 'black');
+  const globalCtaColor = getVal(null, 'global_cta_color', 'var(--primary-color, #2563EB)');
+  const useGlobalBackground = toBoolean(getVal(null, 'use_global_background', true), true);
+  const globalBackgroundType = getVal(null, 'global_background_type', 'gradient') as DynamicCard['backgroundType'];
+  const globalBgColor = getVal(null, 'global_bg_color', '#0F172A');
+  const globalGradientFrom = getVal(null, 'global_gradient_from', '#0F172A');
+  const globalGradientTo = getVal(null, 'global_gradient_to', 'var(--primary-color, #2563EB)');
+  const globalGradientDirection = getVal(null, 'global_gradient_direction', '135deg');
+  const globalBgImage = getVal(null, 'global_bg_image', '');
+  const globalImageFit = getVal(null, 'global_image_fit', 'cover') as DynamicCard['imageFit'];
+  const globalImagePosition = getVal(null, 'global_image_position', 'center');
+  const globalOverlayEnabled = toBoolean(getVal(null, 'global_overlay_enabled', true), true);
+  const globalOverlayColor = getVal(null, 'global_overlay_color', '#020617');
+  const globalOverlayOpacity = parseNumSafe(getVal(null, 'global_overlay_opacity', 25), 25);
   const useGlobalEffect = toBoolean(getVal(null, 'use_global_effect', true), true);
   const globalEffect = getVal(null, 'global_effect', 'speed_lines');
   const globalSpeed = getVal(null, 'global_speed', 'fast');
@@ -378,6 +420,21 @@ export const DynamicCardsModule: React.FC<{
   const cards = useMemo(() => clampCards(rawCards).filter((card) => card.enabled !== false), [rawCards]);
   const safeCards = cards.length > 0 ? cards : [DEFAULT_CARD];
   const activeCard = safeCards[Math.min(activeIndex, safeCards.length - 1)] || safeCards[0];
+  const backgroundConfig: DynamicCard = useGlobalBackground
+    ? {
+      backgroundType: globalBackgroundType,
+      bgColor: globalBgColor,
+      gradientFrom: globalGradientFrom,
+      gradientTo: globalGradientTo,
+      gradientDirection: globalGradientDirection,
+      bgImage: globalBgImage,
+      imageFit: globalImageFit,
+      imagePosition: globalImagePosition,
+      overlayEnabled: globalOverlayEnabled,
+      overlayColor: globalOverlayColor,
+      overlayOpacity: globalOverlayOpacity
+    }
+    : activeCard;
   const reducedTextMotion = prefersReducedMotion || (reduceMotionMobile && isMobile);
   const reducedEffectMotion = prefersReducedMotion;
   const isAutoplay = ['auto', 'auto_dots', 'auto_controls'].includes(navigationMode);
@@ -521,34 +578,55 @@ export const DynamicCardsModule: React.FC<{
     ? getCssAnimationStyle(animationPhase === 'enter' ? ctaEnter : ctaExit, animationPhase, reducedTextMotion, animationPhase === 'enter' ? ctaEntryDuration : ctaExitDuration)
     : {};
 
-  const bgStyle: React.CSSProperties = {};
-  if (activeCard.backgroundType === 'color') {
-    bgStyle.background = activeCard.bgColor || '#0F172A';
-  } else if (activeCard.backgroundType === 'image' && activeCard.bgImage) {
-    bgStyle.backgroundImage = `url("${activeCard.bgImage}")`;
-    bgStyle.backgroundSize = activeCard.imageFit || 'cover';
-    bgStyle.backgroundPosition = activeCard.imagePosition || 'center';
-    bgStyle.backgroundRepeat = 'no-repeat';
+  const stageStyle: React.CSSProperties = {
+    ['--dc-height-desktop' as any]: `${heightDesktop}px`,
+    ['--dc-height-tablet' as any]: `${heightTablet}px`,
+    ['--dc-height-mobile' as any]: `${heightMobile}px`
+  };
+  if (backgroundConfig.backgroundType === 'color') {
+    stageStyle.background = backgroundConfig.bgColor || '#0F172A';
+  } else if (backgroundConfig.backgroundType === 'image' && backgroundConfig.bgImage) {
+    stageStyle.backgroundImage = `url("${backgroundConfig.bgImage}")`;
+    stageStyle.backgroundSize = backgroundConfig.imageFit || 'cover';
+    stageStyle.backgroundPosition = backgroundConfig.imagePosition || 'center';
+    stageStyle.backgroundRepeat = 'no-repeat';
   } else {
-    bgStyle.background = `linear-gradient(${activeCard.gradientDirection || '135deg'}, ${activeCard.gradientFrom || '#0F172A'} 0%, ${activeCard.gradientTo || 'var(--primary-color, #2563EB)'} 100%)`;
+    stageStyle.background = `linear-gradient(${backgroundConfig.gradientDirection || '135deg'}, ${backgroundConfig.gradientFrom || '#0F172A'} 0%, ${backgroundConfig.gradientTo || 'var(--primary-color, #2563EB)'} 100%)`;
   }
 
+  const titleSize = useGlobalTextStyles ? globalTitleSize : parseNumSafe(activeCard.titleSize, 54);
+  const titleWeight = useGlobalTextStyles ? globalTitleWeight : activeCard.titleWeight;
+  const titleColor = useGlobalTextStyles ? globalTitleColor : activeCard.titleColor || '#FFFFFF';
+  const titleAlign = (useGlobalTextStyles ? globalTitleAlign : activeCard.titleAlign) || 'center';
+  const titleLineHeight = useGlobalTextStyles ? globalTitleLineHeight : parseNumSafe(activeCard.titleLineHeight, 0.98);
+  const titleLetterSpacing = useGlobalTextStyles ? globalTitleLetterSpacing : parseNumSafe(activeCard.titleLetterSpacing, 0);
+  const bodySize = useGlobalTextStyles ? globalBodySize : parseNumSafe(activeCard.bodySize, 18);
+  const bodyWeight = useGlobalTextStyles ? globalBodyWeight : activeCard.bodyWeight;
+  const bodyColor = useGlobalTextStyles ? globalBodyColor : activeCard.bodyColor || '#E2E8F0';
+  const bodyAlign = (useGlobalTextStyles ? globalBodyAlign : activeCard.bodyAlign) || 'center';
+  const bodyLineHeight = useGlobalTextStyles ? globalBodyLineHeight : 1.55;
+  const bulletIconName = useGlobalTextStyles ? globalBulletIcon : activeCard.bulletIcon || 'Zap';
+  const bulletColor = useGlobalTextStyles ? globalBulletColor : activeCard.ctaColor || 'var(--primary-color, #2563EB)';
+  const ctaSize = useGlobalTextStyles ? globalCtaSize : activeCard.ctaSize || 'md';
+  const ctaWeight = useGlobalTextStyles ? globalCtaWeight : 'black';
+  const ctaColor = useGlobalTextStyles ? globalCtaColor : activeCard.ctaColor || 'var(--primary-color, #2563EB)';
+
   const titleStyle: React.CSSProperties = {
-    color: activeCard.titleColor || '#FFFFFF',
-    fontSize: `clamp(26px, 8cqw, ${parseNumSafe(activeCard.titleSize, 54)}px)`,
-    fontWeight: getWeight(activeCard.titleWeight),
-    lineHeight: parseNumSafe(activeCard.titleLineHeight, 0.98),
-    letterSpacing: `${parseNumSafe(activeCard.titleLetterSpacing, 0)}px`,
-    textAlign: activeCard.titleAlign || 'center',
+    color: titleColor,
+    fontSize: `clamp(26px, 8cqw, ${titleSize}px)`,
+    fontWeight: getWeight(titleWeight),
+    lineHeight: titleLineHeight,
+    letterSpacing: `${titleLetterSpacing}px`,
+    textAlign: titleAlign,
     fontFamily: 'var(--font-heading, inherit)'
   };
 
   const bodyStyle: React.CSSProperties = {
-    color: activeCard.bodyColor || '#E2E8F0',
-    fontSize: `clamp(14px, 3.3cqw, ${parseNumSafe(activeCard.bodySize, 18)}px)`,
-    fontWeight: getWeight(activeCard.bodyWeight),
-    lineHeight: 1.55,
-    textAlign: activeCard.bodyAlign || 'center'
+    color: bodyColor,
+    fontSize: `clamp(14px, 3.3cqw, ${bodySize}px)`,
+    fontWeight: getWeight(bodyWeight),
+    lineHeight: bodyLineHeight,
+    textAlign: bodyAlign
   };
 
   const bullets = String(activeCard.bullets || '')
@@ -556,33 +634,40 @@ export const DynamicCardsModule: React.FC<{
     .map((item) => item.trim())
     .filter(Boolean)
     .slice(0, 5);
-  const BulletIcon = (LucideIcons as any)[activeCard.bulletIcon || 'Zap'] || LucideIcons.Zap;
+  const showBody = activeCard.showBody !== false && (String(activeCard.bodyText || '').trim() !== '' || bullets.length > 0);
+  const showCta = activeCard.ctaEnabled !== false;
+  const contentBlockCount = 1 + (showBody ? 1 : 0) + (showCta ? 1 : 0);
+  const effectiveTitleAlign = contentBlockCount === 1 ? 'center' : titleAlign;
+  const effectiveTitleStyle: React.CSSProperties = {
+    ...titleStyle,
+    textAlign: effectiveTitleAlign
+  };
+  const BulletIcon = (LucideIcons as any)[bulletIconName || 'Zap'] || LucideIcons.Zap;
   const ctaHref = String(activeCard.ctaUrl || '#').trim() || '#';
-  const ctaPosition = activeCard.ctaPosition || 'below';
-  const bodyAlign = activeCard.bodyAlign || 'center';
-  const titleAlign = activeCard.titleAlign || 'center';
-  const titleBlockClass = titleAlign === 'right' ? 'justify-self-end' : titleAlign === 'left' ? 'justify-self-start' : 'justify-self-center';
-  const bodyBlockClass = bodyAlign === 'right' ? 'justify-self-end text-right' : bodyAlign === 'left' ? 'justify-self-start text-left' : 'justify-self-center text-center';
+  const ctaPosition = normalizeCtaPosition(activeCard.ctaPosition);
+  const titleBlockClass = effectiveTitleAlign === 'right' ? 'self-end' : effectiveTitleAlign === 'left' ? 'self-start' : 'self-center';
+  const bodyBlockClass = bodyAlign === 'right' ? 'self-end text-right' : bodyAlign === 'left' ? 'self-start text-left' : 'self-center text-center';
   const bulletJustifyClass = bodyAlign === 'right' ? 'justify-items-end' : bodyAlign === 'left' ? 'justify-items-start' : 'justify-items-center';
-  const ctaJustifyClass = ctaPosition === 'bottom_right' || bodyAlign === 'right'
+  const ctaJustifyClass = ctaPosition === 'right'
     ? 'justify-end'
-    : ctaPosition === 'bottom_center' || bodyAlign === 'center'
+    : ctaPosition === 'center'
       ? 'justify-center'
       : 'justify-start';
-  const ctaBaseClass = `${CTA_SIZE_CLASS[activeCard.ctaSize || 'md']} inline-flex items-center justify-center gap-2 rounded-full font-black transition-transform hover:scale-[1.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70`;
+  const ctaBaseClass = `${CTA_SIZE_CLASS[ctaSize || 'md']} inline-flex items-center justify-center gap-2 rounded-full transition-transform hover:scale-[1.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70`;
   const ctaStyle: React.CSSProperties = {
-    color: activeCard.ctaStyle === 'solid' ? '#FFFFFF' : activeCard.ctaColor || 'var(--primary-color, #2563EB)',
+    color: activeCard.ctaStyle === 'solid' ? '#FFFFFF' : ctaColor,
     background: activeCard.ctaStyle === 'solid'
-      ? activeCard.ctaColor || 'var(--primary-color, #2563EB)'
+      ? ctaColor
       : activeCard.ctaStyle === 'glass'
         ? 'rgba(255,255,255,0.16)'
         : 'transparent',
     border: activeCard.ctaStyle === 'outline'
-      ? `1px solid ${activeCard.ctaColor || '#FFFFFF'}`
+      ? `1px solid ${ctaColor || '#FFFFFF'}`
       : activeCard.ctaStyle === 'glass'
         ? '1px solid rgba(255,255,255,0.28)'
         : '1px solid transparent',
-    backdropFilter: activeCard.ctaStyle === 'glass' ? 'blur(14px)' : undefined
+    backdropFilter: activeCard.ctaStyle === 'glass' ? 'blur(14px)' : undefined,
+    fontWeight: getWeight(ctaWeight)
   };
 
   const controlsClass = controlsStyle === 'minimal'
@@ -591,7 +676,7 @@ export const DynamicCardsModule: React.FC<{
   const dynamicEffect = renderDynamicEffect(effect, speed, density, direction, reducedEffectMotion);
 
   const renderCta = () => {
-    if (!activeCard.ctaEnabled) return null;
+    if (!showCta) return null;
     return (
       <a
         key={`cta-${activeIndex}-${animationCycle}`}
@@ -600,7 +685,7 @@ export const DynamicCardsModule: React.FC<{
           if (isPreviewMode || ctaHref === '#') event.preventDefault();
         }}
         className={ctaBaseClass}
-        style={{ ...ctaStyle, ...ctaAnimation }}
+        style={ctaStyle}
       >
         <span>{activeCard.ctaText || 'Comenzar'}</span>
         <ArrowRight size={18} />
@@ -611,26 +696,42 @@ export const DynamicCardsModule: React.FC<{
   return (
     <section id={moduleId} className="dynamic-cards-module w-full relative overflow-hidden @container">
       <style>{`
-        .dynamic-cards-stage { height: 560px; }
-        .dynamic-cards-content {
-          display: grid;
-          grid-template-rows: minmax(18px, 1fr) auto minmax(22px, .85fr) auto minmax(18px, 1fr);
-          align-items: center;
-          row-gap: clamp(14px, 3cqw, 30px);
+        .dynamic-cards-stage { height: var(--dc-height-desktop, 560px); min-height: var(--dc-height-desktop, 560px); }
+        .dynamic-cards-viewport {
+          position: absolute;
+          inset: 0;
+          z-index: 10;
+          height: 100%;
+          overflow: hidden;
         }
-        .dynamic-cards-title { grid-row: 2; max-width: min(920px, 100%); }
-        .dynamic-cards-body { grid-row: 4; width: min(760px, 100%); }
+        .dynamic-cards-content {
+          position: absolute;
+          inset: 0;
+          display: flex;
+          flex-direction: column;
+          align-items: stretch;
+          justify-content: center;
+          gap: clamp(18px, 4cqw, 42px);
+        }
+        .dynamic-cards-content.dc-blocks-3 { justify-content: space-evenly; gap: clamp(18px, 3.2cqw, 34px); }
+        .dynamic-cards-content.dc-blocks-2 { justify-content: center; gap: clamp(34px, 7cqw, 72px); }
+        .dynamic-cards-content.dc-blocks-1 { justify-content: center; }
+        .dynamic-cards-title { max-width: min(920px, 100%); }
+        .dynamic-cards-body { width: min(760px, 100%); }
+        .dynamic-cards-cta { width: min(760px, 100%); }
         .dynamic-cards-body p { overflow-wrap: anywhere; }
         .dynamic-cards-bullets { margin-top: clamp(10px, 2cqw, 16px); gap: clamp(6px, 1.5cqw, 10px); }
         .dynamic-cards-bullet { max-width: min(560px, 100%); overflow-wrap: anywhere; }
         @container (max-width: 900px) {
-          .dynamic-cards-stage { height: 480px; }
-          .dynamic-cards-content { row-gap: 16px; padding: 32px 32px; }
+          .dynamic-cards-stage { height: var(--dc-height-tablet, 480px); min-height: var(--dc-height-tablet, 480px); }
+          .dynamic-cards-content { gap: 28px; padding: 32px 32px; }
+          .dynamic-cards-content.dc-blocks-3 { gap: 20px; }
           .dynamic-cards-body { width: min(680px, 100%); }
         }
         @container (max-width: 520px) {
-          .dynamic-cards-stage { height: 420px; }
-          .dynamic-cards-content { grid-template-rows: minmax(10px, .8fr) auto minmax(14px, .55fr) auto minmax(10px, .8fr); row-gap: 12px; padding: 22px 18px; }
+          .dynamic-cards-stage { height: var(--dc-height-mobile, 420px); min-height: var(--dc-height-mobile, 420px); }
+          .dynamic-cards-content { gap: 20px; padding: 22px 18px; }
+          .dynamic-cards-content.dc-blocks-3 { gap: 14px; }
           .dynamic-cards-bullets { margin-top: 8px; gap: 5px; }
           .dynamic-cards-bullet { font-size: 12px; line-height: 1.35; }
         }
@@ -689,13 +790,13 @@ export const DynamicCardsModule: React.FC<{
         }
       `}</style>
 
-      <div className="dynamic-cards-stage relative w-full overflow-hidden" style={bgStyle}>
-        {activeCard.backgroundType === 'image' && activeCard.overlayEnabled && (
+      <div className="dynamic-cards-stage relative w-full overflow-hidden" style={stageStyle}>
+        {backgroundConfig.backgroundType === 'image' && backgroundConfig.overlayEnabled && (
           <div
             className="absolute inset-0"
             style={{
-              backgroundColor: activeCard.overlayColor || '#020617',
-              opacity: parseNumSafe(activeCard.overlayOpacity, 25) / 100
+              backgroundColor: backgroundConfig.overlayColor || '#020617',
+              opacity: parseNumSafe(backgroundConfig.overlayOpacity, 25) / 100
             }}
           />
         )}
@@ -704,19 +805,21 @@ export const DynamicCardsModule: React.FC<{
           ? React.cloneElement(dynamicEffect as React.ReactElement, { key: effectSignature })
           : null}
 
+        <div className="dynamic-cards-viewport">
         <div
           key={`card-${activeIndex}-${animationPhase}-${animationCycle}`}
-          className="dynamic-cards-content relative z-10 h-full w-full px-6 py-7 @md:px-12 @md:py-10 @5xl:px-16 @5xl:py-12"
+          className={`dynamic-cards-content dc-blocks-${contentBlockCount} h-full w-full px-6 py-7 @md:px-12 @md:py-10 @5xl:px-16 @5xl:py-12`}
         >
             <div
               className={`dynamic-cards-title ${titleBlockClass}`}
               style={titleAnimation}
             >
-              <h2 style={titleStyle}>
+              <h2 style={effectiveTitleStyle}>
                 <span>{activeCard.titleText || ''}</span>
               </h2>
             </div>
 
+            {showBody && (
             <div
               className={`dynamic-cards-body ${bodyBlockClass}`}
               style={bodyAnimation}
@@ -728,20 +831,22 @@ export const DynamicCardsModule: React.FC<{
               {bullets.length > 0 && (
                 <ul className={`dynamic-cards-bullets grid ${bulletJustifyClass}`}>
                   {bullets.map((bullet, index) => (
-                    <li key={`${bullet}-${index}`} className={`dynamic-cards-bullet flex max-w-full items-start gap-2 text-sm @md:text-base ${bodyAlign === 'center' ? 'justify-center' : ''}`} style={{ color: activeCard.bodyColor || '#E2E8F0' }}>
-                      <BulletIcon size={16} className="mt-1 shrink-0" style={{ color: activeCard.ctaColor || 'var(--primary-color, #2563EB)' }} />
+                    <li key={`${bullet}-${index}`} className={`dynamic-cards-bullet flex max-w-full items-start gap-2 text-sm @md:text-base ${bodyAlign === 'center' ? 'justify-center' : ''}`} style={{ color: bodyColor }}>
+                      <BulletIcon size={16} className="mt-1 shrink-0" style={{ color: bulletColor }} />
                       <span className="break-words">{bullet}</span>
                     </li>
                   ))}
                 </ul>
               )}
-
-              {activeCard.ctaEnabled && (
-                <div className={`mt-4 flex @md:mt-6 ${ctaJustifyClass}`}>
-                  {renderCta()}
-                </div>
-              )}
             </div>
+            )}
+
+            {showCta && (
+              <div className={`dynamic-cards-cta flex ${ctaJustifyClass}`} style={ctaAnimation}>
+                {renderCta()}
+              </div>
+            )}
+          </div>
         </div>
 
         {showArrows && (

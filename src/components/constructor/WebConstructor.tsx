@@ -248,7 +248,16 @@ const resolveLifecycleStatusFromPage = (
   return 'draft';
 };
 
-const resolvePublishedUrlFromResult = (result: any): string | null => {
+const buildPublishedViewerUrl = (siteId?: string | null): string | null => {
+  if (!siteId || typeof window === 'undefined') return null;
+  const url = new URL(window.location.href);
+  url.searchParams.set('mode', 'render');
+  url.searchParams.set('site_id', siteId);
+  url.searchParams.delete('preview');
+  return url.toString();
+};
+
+const resolvePublishedUrlFromResult = (result: any, fallbackSiteId?: string | null): string | null => {
   if (!result || typeof result !== 'object') return null;
   return (
     result.publishedUrl ||
@@ -258,8 +267,36 @@ const resolvePublishedUrlFromResult = (result: any): string | null => {
     result.url ||
     result.metadata?.publishedUrl ||
     result.metadata?.published_url ||
-    null
+    buildPublishedViewerUrl(result.siteId || result.site_id || fallbackSiteId)
   );
+};
+
+const resolvePublishedUrlFromPage = (
+  page?: WebBuilderSite | PublishedSite | Page | null
+): string | null => {
+  if (!page || typeof page !== 'object') return null;
+  const pageAny = page as any;
+  const status = String(pageAny.status || '').toLowerCase();
+  const hasPublishedVersion = !('status' in pageAny) || status === 'published' || status === 'modified';
+  const explicitPublishedUrl =
+    pageAny.publishedUrl ||
+    pageAny.published_url ||
+    pageAny.publishedSiteUrl ||
+    pageAny.publicUrl ||
+    pageAny.metadata?.publishedUrl ||
+    pageAny.metadata?.published_url ||
+    pageAny.metadata?.publicUrl ||
+    null;
+
+  if (explicitPublishedUrl && hasPublishedVersion) return explicitPublishedUrl;
+  if (!hasPublishedVersion) return null;
+
+  return pageAny.url || buildPublishedViewerUrl(pageAny.siteId || pageAny.site_id || pageAny.id);
+};
+
+const openPublishedUrl = (url: string | null) => {
+  if (!url || typeof window === 'undefined') return;
+  window.open(url, '_blank', 'noopener,noreferrer');
 };
 
 export const WebConstructor: React.FC<WebConstructorProps> = ({ 
@@ -376,7 +413,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   const [saveStatus, setSaveStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [publishStatus, setPublishStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [publishModalSuccess, setPublishModalSuccess] = useState(false);
-  const [publishedSiteUrl, setPublishedSiteUrl] = useState<string | null>(null);
+  const [publishedSiteUrl, setPublishedSiteUrl] = useState<string | null>(() => resolvePublishedUrlFromPage(initialPage));
   const [lastPublishedAt, setLastPublishedAt] = useState<string | null>(null);
   const [authNotice, setAuthNotice] = useState<{ type: 'info' | 'error'; message: string; title?: string } | null>(null);
   const [previewStatus, setPreviewStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
@@ -429,6 +466,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     setCurrentStatus((previousStatus) => (
       previousStatus === incomingLifecycleStatus ? previousStatus : incomingLifecycleStatus
     ));
+    setPublishedSiteUrl(resolvePublishedUrlFromPage(initialPage));
   }, [
     incomingLifecycleStatus,
     initialPage ? ((initialPage as any).siteId || (initialPage as any).id || null) : null,
@@ -3256,7 +3294,7 @@ const formatTimestampName = () => {
         if (sessionState.state === 'missing_session' || sessionState.state === 'expired_session') {
           const sessionMessage = isAutosave
             ? 'Tu sesión expiró. Inicia sesión nuevamente para continuar guardando. Tus cambios siguen en pantalla.'
-            : 'Tu sesiÃ³n expirÃ³. Inicia sesiÃ³n nuevamente para guardar. Tus cambios siguen en pantalla.';
+            : 'Tu sesión expiró. Inicia sesión nuevamente para guardar. Tus cambios siguen en pantalla.';
           setAuthNotice({ type: 'error', message: sessionMessage });
           if (isInteractiveManualSave) {
             setSaveStatus('error');
@@ -3272,7 +3310,7 @@ const formatTimestampName = () => {
             type: 'info',
             message: isAutosave
               ? 'Sesión actualizada. Guardando automáticamente...'
-              : 'SesiÃ³n actualizada. Guardando cambios...'
+              : 'Sesión actualizada. Guardando cambios...'
           });
         }
 
@@ -3481,7 +3519,7 @@ const formatTimestampName = () => {
             type: 'error',
             message: isAutosave
               ? 'Tu sesión expiró. Inicia sesión nuevamente para continuar guardando. Tus cambios siguen en pantalla.'
-              : 'Tu sesiÃ³n expirÃ³. Inicia sesiÃ³n nuevamente para guardar. Tus cambios siguen en pantalla.'
+              : 'Tu sesión expiró. Inicia sesión nuevamente para guardar. Tus cambios siguen en pantalla.'
           });
         }
         if (isInteractiveManualSave) {
@@ -3781,7 +3819,7 @@ const formatTimestampName = () => {
 
       if (result) {
         const publishedTimestamp = result.updatedAt || result.createdAt || new Date().toISOString();
-        const resolvedPublishedUrl = resolvePublishedUrlFromResult(result);
+        const resolvedPublishedUrl = resolvePublishedUrlFromResult(result, siteId);
         logDebug('[SIP v6.1] Sitio publicado y sincronizado con Web Engine.');
         setPublishStatus('success');
         setPublishedSiteUrl(resolvedPublishedUrl);
@@ -4317,6 +4355,8 @@ const formatTimestampName = () => {
                     showAutosaveIndicator={autosaveShowIndicator}
                     currentStatus={currentStatus}
                     isNewSite={!initialPage}
+                    publishedUrl={publishedSiteUrl}
+                    onOpenPublished={() => openPublishedUrl(publishedSiteUrl)}
                   />
                 )}
                 
@@ -4588,6 +4628,8 @@ const formatTimestampName = () => {
                       showAutosaveIndicator={autosaveShowIndicator}
                       currentStatus={currentStatus}
                       isNewSite={!initialPage}
+                      publishedUrl={publishedSiteUrl}
+                      onOpenPublished={() => openPublishedUrl(publishedSiteUrl)}
                     />
                   )}
                   <div className="flex-1 flex overflow-hidden">

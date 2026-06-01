@@ -10,7 +10,8 @@ import {
   Check, 
   X, 
   Save, 
-  Send
+  Send,
+  ExternalLink
 } from 'lucide-react';
 import { motion } from 'motion/react';
 
@@ -32,6 +33,8 @@ interface TopBarProps {
   isDraftOperationInProgress?: boolean;
   currentStatus?: 'draft' | 'published' | 'modified';
   isNewSite?: boolean;
+  publishedUrl?: string | null;
+  onOpenPublished?: () => void;
   onReloadPreview?: () => void;
   assetName?: string;
   autosaveStatus?: 'idle' | 'saving' | 'saved' | 'error' | 'disabled';
@@ -57,6 +60,8 @@ export const TopBar: React.FC<TopBarProps> = ({
   isDraftOperationInProgress = false,
   currentStatus = 'draft',
   isNewSite = true,
+  publishedUrl = null,
+  onOpenPublished,
   onReloadPreview,
   assetName = 'Activo sin nombre',
   autosaveStatus = 'idle',
@@ -73,6 +78,7 @@ export const TopBar: React.FC<TopBarProps> = ({
     isDraftOperationInProgress ||
     (currentStatus === 'published' && !hasUnsavedChanges);
   const canPublish = !isPublishBlocked;
+  const canOpenPublished = Boolean(publishedUrl && onOpenPublished);
 
   return (
   <div className={`bg-surface border-b border-border/60 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-4 md:px-6 z-20 ${isMobile ? 'h-[70px]' : 'h-[60px]'}`}>
@@ -111,28 +117,6 @@ export const TopBar: React.FC<TopBarProps> = ({
         <h2 className={`${isMobile ? 'text-sm' : 'text-base'} font-bold text-text truncate text-center min-w-0`}>
           {assetName}
         </h2>
-        {saveStatus === 'loading' && (
-          <div className="flex items-center gap-1.5 px-2 py-0.5 bg-primary/10 rounded-full">
-            <motion.div 
-              animate={{ rotate: 360 }} 
-              transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
-            >
-              <RotateCw size={10} className="text-primary" />
-            </motion.div>
-            <span className="text-[9px] font-bold text-primary uppercase tracking-tighter shrink-0">Sincronizando...</span>
-          </div>
-        )}
-        {showAutosaveIndicator && saveStatus !== 'loading' && autosaveStatus === 'saving' && (
-          <div className="flex items-center gap-1.5 px-2 py-0.5 bg-primary/10 rounded-full">
-            <motion.div 
-              animate={{ rotate: 360 }} 
-              transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
-            >
-              <RotateCw size={10} className="text-primary" />
-            </motion.div>
-            <span className="text-[9px] font-bold text-primary uppercase tracking-tighter shrink-0">Guardando automáticamente...</span>
-          </div>
-        )}
         {showAutosaveIndicator && saveStatus !== 'loading' && autosaveStatus === 'saved' && lastAutosavedAt && (
           <div className="px-2 py-0.5 bg-secondary rounded-full">
             <span className="text-[9px] font-bold text-text/70 uppercase tracking-tighter shrink-0">
@@ -181,6 +165,18 @@ export const TopBar: React.FC<TopBarProps> = ({
       </div>
 
       <div className="flex items-center gap-1.5 md:gap-2">
+        {canOpenPublished && (
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={onOpenPublished}
+            className="flex items-center gap-2 px-3 md:px-4 py-2 font-bold text-[10px] md:text-xs rounded-xl transition-all bg-secondary text-text/75 border border-border hover:border-primary/30 hover:text-primary"
+            title="Abrir sitio publicado"
+          >
+            <ExternalLink size={14} />
+            {!isMobile && 'Abrir'}
+          </motion.button>
+        )}
         <motion.button 
           whileHover={canSave ? { scale: 1.02 } : {}}
           whileTap={canSave ? { scale: 0.98 } : {}}

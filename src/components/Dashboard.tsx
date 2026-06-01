@@ -300,7 +300,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             ) : (
               <div className="flex flex-col items-center gap-2">
                 <p className="text-xs font-semibold leading-relaxed">
-                  Sesión expirada o no válida. Tus cambios pueden verse en pantalla, pero para guardar o publicar necesitas volver a lanzar el Constructor desde App Madre.
+                  Sesión expirada o no válida. Por favor vuelve a lanzar el Constructor Web desde Solutium.
                 </p>
                 {sessionInfo.canRequestMotherContext && onRequestMotherContext && (
                   <button

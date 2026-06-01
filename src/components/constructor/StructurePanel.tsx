@@ -880,8 +880,15 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
 
                                   const isGroupExpanded = editorState.expandedGroupsByElement[element.id] === group;
                                   const isShining = shiningGroup === group;
-                                  const groupLabel = module.type === 'dynamic_cards' && element.type === 'global' && group === 'estilo'
-                                    ? 'Animaciones'
+                                  const dynamicCardsGlobalGroupLabels: Partial<Record<SettingGroupType, string>> = {
+                                    contenido: 'Textos',
+                                    multimedia: 'Fondo',
+                                    estilo: 'Animaciones',
+                                    estructura: 'Altura',
+                                    interaccion: 'Navegación'
+                                  };
+                                  const groupLabel = module.type === 'dynamic_cards' && element.type === 'global'
+                                    ? dynamicCardsGlobalGroupLabels[group] || GROUP_LABELS[group]
                                     : GROUP_LABELS[group];
 
                                   return (
@@ -961,7 +968,6 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                                                   };
                                                   const showDynamicCardsSubsection = module.type === 'dynamic_cards' &&
                                                     element.type === 'global' &&
-                                                    group === 'estilo' &&
                                                     setting.subsection &&
                                                     settingsToRender[settingIndex - 1]?.subsection !== setting.subsection;
 

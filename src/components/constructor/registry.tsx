@@ -2702,9 +2702,70 @@ export const DYNAMIC_CARDS_MODULE: WebModule = {
   type: 'dynamic_cards',
   iconKey: 'dynamic_cards',
   name: 'Tarjetas dinámicas',
-  globalGroups: ['estructura', 'interaccion', 'estilo'],
+  globalGroups: ['contenido', 'multimedia', 'estilo', 'estructura', 'interaccion'],
   globalSettings: {
+    contenido: [
+      { id: 'use_global_text_styles', label: 'Usar estilos de texto globales', type: 'boolean', defaultValue: true, subsection: 'General' },
+      { id: 'global_title_size', label: 'Tamaño texto superior', type: 'range', defaultValue: 54, min: 28, max: 86, unit: 'px', subsection: 'Texto superior' },
+      { id: 'global_title_weight', label: 'Peso texto superior', type: 'font_weight', defaultValue: 'black', subsection: 'Texto superior' },
+      { id: 'global_title_color', label: 'Color texto superior', type: 'color', defaultValue: '#FFFFFF', subsection: 'Texto superior' },
+      { id: 'global_title_align', label: 'Alineación texto superior', type: 'text_align', defaultValue: 'center', subsection: 'Texto superior' },
+      { id: 'global_title_line_height', label: 'Interlineado texto superior', type: 'range', defaultValue: 0.98, min: 0.8, max: 1.4, step: 0.02, subsection: 'Texto superior' },
+      { id: 'global_title_letter_spacing', label: 'Letter spacing texto superior', type: 'range', defaultValue: 0, min: 0, max: 8, step: 0.5, unit: 'px', subsection: 'Texto superior' },
+      { id: 'global_body_size', label: 'Tamaño texto inferior', type: 'range', defaultValue: 18, min: 13, max: 30, unit: 'px', subsection: 'Texto inferior' },
+      { id: 'global_body_weight', label: 'Peso texto inferior', type: 'font_weight', defaultValue: 'medium', subsection: 'Texto inferior' },
+      { id: 'global_body_color', label: 'Color texto inferior', type: 'color', defaultValue: '#E2E8F0', subsection: 'Texto inferior' },
+      { id: 'global_body_align', label: 'Alineación texto inferior', type: 'text_align', defaultValue: 'center', subsection: 'Texto inferior' },
+      { id: 'global_body_line_height', label: 'Interlineado texto inferior', type: 'range', defaultValue: 1.55, min: 1, max: 2, step: 0.05, subsection: 'Texto inferior' },
+      { id: 'global_bullet_icon', label: 'Icono de viñetas', type: 'icon', defaultValue: 'Zap', subsection: 'Texto inferior' },
+      { id: 'global_bullet_color', label: 'Color de viñetas', type: 'color', defaultValue: 'var(--primary-color, #2563EB)', subsection: 'Texto inferior' },
+      { id: 'global_cta_size', label: 'Tamaño CTA', type: 'select', defaultValue: 'md', subsection: 'CTA', options: [
+        { label: 'Pequeño', value: 'sm' },
+        { label: 'Mediano', value: 'md' },
+        { label: 'Grande', value: 'lg' }
+      ]},
+      { id: 'global_cta_weight', label: 'Peso CTA', type: 'font_weight', defaultValue: 'black', subsection: 'CTA' },
+      { id: 'global_cta_color', label: 'Color CTA', type: 'color', defaultValue: 'var(--primary-color, #2563EB)', subsection: 'CTA' }
+    ],
+    multimedia: [
+      { id: 'use_global_background', label: 'Usar fondo global', type: 'boolean', defaultValue: true, subsection: 'General' },
+      { id: 'global_background_type', label: 'Tipo de fondo', type: 'select', defaultValue: 'gradient', subsection: 'Fondo', options: [
+        { label: 'Color sólido', value: 'color' },
+        { label: 'Degradado lineal', value: 'gradient' },
+        { label: 'Imagen', value: 'image' }
+      ]},
+      { id: 'global_bg_color', label: 'Color sólido', type: 'color', defaultValue: '#0F172A', subsection: 'Fondo' },
+      { id: 'global_gradient_from', label: 'Color inicial', type: 'color', defaultValue: '#0F172A', subsection: 'Fondo' },
+      { id: 'global_gradient_to', label: 'Color final', type: 'color', defaultValue: '#2563EB', subsection: 'Fondo' },
+      { id: 'global_gradient_direction', label: 'Dirección', type: 'select', defaultValue: '135deg', subsection: 'Fondo', options: [
+        { label: 'Diagonal', value: '135deg' },
+        { label: 'Horizontal', value: '90deg' },
+        { label: 'Vertical', value: '180deg' },
+        { label: 'Diagonal inversa', value: '45deg' }
+      ]},
+      { id: 'global_bg_image', label: 'Imagen de fondo / URL', type: 'image', defaultValue: '', subsection: 'Fondo' },
+      { id: 'global_image_fit', label: 'Ajuste de imagen', type: 'select', defaultValue: 'cover', subsection: 'Fondo', options: [
+        { label: 'Cover', value: 'cover' },
+        { label: 'Contain', value: 'contain' },
+        { label: 'Fill', value: 'fill' }
+      ]},
+      { id: 'global_image_position', label: 'Posición de imagen', type: 'select', defaultValue: 'center', subsection: 'Fondo', options: [
+        { label: 'Centro', value: 'center' },
+        { label: 'Arriba', value: 'top' },
+        { label: 'Abajo', value: 'bottom' },
+        { label: 'Izquierda', value: 'left' },
+        { label: 'Derecha', value: 'right' }
+      ]},
+      { id: 'global_overlay_enabled', label: 'Overlay activo', type: 'boolean', defaultValue: true, subsection: 'Overlay' },
+      { id: 'global_overlay_color', label: 'Color overlay', type: 'color', defaultValue: '#020617', subsection: 'Overlay' },
+      { id: 'global_overlay_opacity', label: 'Opacidad overlay', type: 'range', defaultValue: 25, min: 0, max: 90, unit: '%', subsection: 'Overlay' }
+    ],
     estructura: [
+      { id: 'height_desktop', label: 'Altura desktop', type: 'range', defaultValue: 560, min: 360, max: 800, unit: 'px' },
+      { id: 'height_tablet', label: 'Altura tablet', type: 'range', defaultValue: 480, min: 320, max: 700, unit: 'px' },
+      { id: 'height_mobile', label: 'Altura móvil', type: 'range', defaultValue: 420, min: 300, max: 620, unit: 'px' }
+    ],
+    interaccion: [
       { id: 'navigation_mode', label: 'Modo de navegacion', type: 'select', defaultValue: 'auto_dots', options: [
         { label: 'Automatico', value: 'auto' },
         { label: 'Manual con flechas', value: 'arrows' },
@@ -2717,9 +2778,7 @@ export const DYNAMIC_CARDS_MODULE: WebModule = {
       { id: 'controls_style', label: 'Estilo de controles', type: 'select', defaultValue: 'glass', options: [
         { label: 'Glass', value: 'glass' },
         { label: 'Minimal', value: 'minimal' }
-      ]}
-    ],
-    interaccion: [
+      ]},
       { id: 'interval_seconds', label: 'Intervalo automatico', type: 'range', defaultValue: 5, min: 3, max: 12, step: 1, unit: 's' }
     ],
     estilo: [
@@ -2810,7 +2869,7 @@ export const DYNAMIC_CARDS_MODULE: WebModule = {
       { id: 'global_cta_exit_duration', label: 'Duración salida', type: 'range', defaultValue: 0.35, min: 0.1, max: 2, step: 0.05, unit: 's', subsection: 'CTA' },
       { id: 'reduce_motion_mobile', label: 'Reducir movimiento en movil', type: 'boolean', defaultValue: true, subsection: 'Reduced motion' }
     ],
-    contenido: [], tipografia: [], multimedia: []
+    tipografia: []
   },
   elements: [
     {
@@ -2864,6 +2923,7 @@ export const DYNAMIC_CARDS_MODULE: WebModule = {
                 titleVisibleDuration: 4,
                 titleExitDuration: 0.35,
                 bodyText: 'Crea experiencias dinámicas con movimiento, velocidad y alto impacto visual.',
+                showBody: true,
                 bullets: 'Movimiento fluido\nFondos personalizables\nCTA por tarjeta',
                 bulletIcon: 'Zap',
                 bodySize: 18,
@@ -2880,7 +2940,7 @@ export const DYNAMIC_CARDS_MODULE: WebModule = {
                 ctaUrl: '#',
                 ctaSize: 'md',
                 ctaStyle: 'solid',
-                ctaPosition: 'below',
+                ctaPosition: 'center',
                 ctaColor: '#2563EB',
                 ctaAnimation: 'zoom',
                 ctaExitAnimation: 'fade',
@@ -2897,6 +2957,7 @@ export const DYNAMIC_CARDS_MODULE: WebModule = {
               { id: 'titleAlign', label: 'Alineacion', type: 'text_align', defaultValue: 'center', subsection: 'Textos' },
               { id: 'titleLineHeight', label: 'Interlineado', type: 'range', defaultValue: 0.98, min: 0.8, max: 1.4, step: 0.02, subsection: 'Textos' },
               { id: 'titleLetterSpacing', label: 'Letter spacing', type: 'range', defaultValue: 0, min: 0, max: 8, step: 0.5, unit: 'px', subsection: 'Textos' },
+              { id: 'showBody', label: 'Mostrar texto inferior', type: 'boolean', defaultValue: true, subsection: 'Textos' },
               { id: 'bodyText', label: 'Texto inferior', type: 'textarea', defaultValue: 'Crea experiencias dinámicas con movimiento, velocidad y alto impacto visual.', rows: 3, subsection: 'Textos' },
               { id: 'bullets', label: 'Vinetas (maximo 5)', type: 'textarea', defaultValue: 'Movimiento fluido\nFondos personalizables\nCTA por tarjeta', rows: 5, subsection: 'Textos' },
               { id: 'bulletIcon', label: 'Icono de vinetas', type: 'icon', defaultValue: 'Zap', subsection: 'Textos' },
@@ -3030,11 +3091,10 @@ export const DYNAMIC_CARDS_MODULE: WebModule = {
                 { label: 'Contorno', value: 'outline' },
                 { label: 'Glass', value: 'glass' }
               ]},
-              { id: 'ctaPosition', label: 'Posicion', type: 'select', defaultValue: 'below', subsection: 'CTA', options: [
-                { label: 'Junto al texto inferior', value: 'inline' },
-                { label: 'Debajo del texto inferior', value: 'below' },
-                { label: 'Derecha inferior', value: 'bottom_right' },
-                { label: 'Centro inferior', value: 'bottom_center' }
+              { id: 'ctaPosition', label: 'Posicion', type: 'select', defaultValue: 'center', subsection: 'CTA', options: [
+                { label: 'Izquierda', value: 'left' },
+                { label: 'Centro', value: 'center' },
+                { label: 'Derecha', value: 'right' }
               ]},
               { id: 'ctaColor', label: 'Color del boton', type: 'color', defaultValue: '#2563EB', subsection: 'CTA' },
               { id: 'enabled', label: 'Tarjeta activa', type: 'boolean', defaultValue: true, subsection: 'Avanzado' }

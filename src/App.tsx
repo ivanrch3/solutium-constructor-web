@@ -28,7 +28,9 @@ const PREVENTIVE_SUPABASE_REFRESH_INTERVAL_MS = 10 * 60 * 1000;
 const PREVENTIVE_SUPABASE_REFRESH_THROTTLE_MS = 30 * 1000;
 
 const hasThemeColorValue = (value: any) => (
-  value && typeof value === 'object' && [
+  Array.isArray(value)
+    ? value.some((item) => typeof item === 'string' && item.trim() !== '')
+    : value && typeof value === 'object' && [
     'primary',
     'primaryColor',
     'primary_color',
@@ -59,8 +61,16 @@ const extractThemeBrandColors = (themeData: any): BrandColorsInput => {
   const candidates = [
     themeData.brandColors,
     themeData.brand_colors,
+    themeData.projectColors,
+    themeData.project_colors,
     themeData.palette,
     themeData.colors,
+    themeData.theme?.brandColors,
+    themeData.theme?.brand_colors,
+    themeData.theme?.projectColors,
+    themeData.theme?.project_colors,
+    themeData.theme?.palette,
+    themeData.theme?.colors,
     themeData.theme,
     themeData
   ];
@@ -73,15 +83,17 @@ const resolveLaunchThemeData = (payload: any) => {
 
   return [
     payload.activeThemeData,
+    payload.project?.activeThemeData,
     payload.projectTheme,
+    payload.theme,
+    payload.brandTheme,
     payload.projectThemeSeed,
     payload.themeSeed,
-    payload.brandTheme,
-    payload.theme,
-    payload.project?.activeThemeData,
     payload.project?.projectTheme,
     payload.project?.theme,
-    payload.project?.brandTheme
+    payload.project?.brandTheme,
+    payload.project?.brandColors,
+    payload.project?.brand_colors
   ].find((candidate) => candidate && typeof candidate === 'object') || null;
 };
 

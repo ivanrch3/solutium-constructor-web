@@ -160,6 +160,40 @@ const loadGoogleFont = (fontFamily: string) => {
   logDebug(`[THEME] Cargando Google Font: ${mainFont}`);
 };
 
+const pickThemeString = (...values: unknown[]) => {
+  for (const value of values) {
+    if (typeof value === 'string' && value.trim() !== '') {
+      return value.trim();
+    }
+  }
+  return null;
+};
+
+const resolveThemeColors = (theme: any) => {
+  const projectColors = Array.isArray(theme?.projectColors)
+    ? theme.projectColors
+    : Array.isArray(theme?.project_colors)
+      ? theme.project_colors
+      : [];
+  const colors = theme?.colors && typeof theme.colors === 'object' ? theme.colors : {};
+  const palette = theme?.palette && typeof theme.palette === 'object' ? theme.palette : {};
+  const sidebar = theme?.sidebar && typeof theme.sidebar === 'object' ? theme.sidebar : {};
+
+  return {
+    primary: pickThemeString(theme?.primary, theme?.primaryColor, theme?.primary_color, colors.primary, colors.primaryColor, colors.primary_color, palette.primary, projectColors[0]),
+    secondary: pickThemeString(theme?.secondary, theme?.secondaryColor, theme?.secondary_color, colors.secondary, colors.secondaryColor, colors.secondary_color, palette.secondary, projectColors[1]),
+    accent: pickThemeString(theme?.accent, theme?.accentColor, theme?.accent_color, colors.accent, colors.accentColor, colors.accent_color, palette.accent, projectColors[2]),
+    background: pickThemeString(theme?.background, theme?.backgroundColor, theme?.background_color, colors.background, colors.backgroundColor, colors.background_color, palette.background),
+    text: pickThemeString(theme?.text, theme?.textColor, theme?.text_color, colors.text, colors.textColor, colors.text_color, palette.text),
+    muted: pickThemeString(theme?.muted, theme?.mutedColor, theme?.muted_color, colors.muted, colors.mutedColor, colors.muted_color, palette.muted),
+    border: pickThemeString(theme?.border, theme?.borderColor, theme?.border_color, colors.border, colors.borderColor, colors.border_color, palette.border),
+    sidebarBg: pickThemeString(theme?.sidebar_bg, theme?.sidebarBg, theme?.sidebarBackground, colors.sidebar_bg, colors.sidebarBg, sidebar.background, sidebar.bg),
+    sidebarForeground: pickThemeString(theme?.sidebar_foreground, theme?.sidebarForeground, theme?.sidebarText, colors.sidebar_foreground, colors.sidebarForeground, sidebar.foreground, sidebar.text),
+    sidebarAccent: pickThemeString(theme?.sidebar_accent, theme?.sidebarAccent, colors.sidebar_accent, colors.sidebarAccent, sidebar.accent),
+    sidebarBorder: pickThemeString(theme?.sidebar_border, theme?.sidebarBorder, colors.sidebar_border, colors.sidebarBorder, sidebar.border)
+  };
+};
+
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const applyTheme = (themeData: any) => {
     const root = document.documentElement;
@@ -194,27 +228,35 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const theme = themeData || {};
     logDebug('[THEME] Aplicando tema calculado:', theme);
     applyBuilderShellTheme(root);
+    const themeColors = resolveThemeColors(theme);
+
+    if (themeColors.primary) {
+      root.style.setProperty('--primary-color', themeColors.primary);
+      root.style.setProperty('--builder-primary', themeColors.primary);
+    }
+    if (themeColors.secondary) root.style.setProperty('--secondary-color', themeColors.secondary);
+    if (themeColors.accent) root.style.setProperty('--accent-color', themeColors.accent);
+    if (themeColors.background) root.style.setProperty('--background-color', themeColors.background);
+    if (themeColors.text) {
+      root.style.setProperty('--foreground-color', themeColors.text);
+      root.style.setProperty('--solutium-dark', themeColors.text);
+    }
+    if (themeColors.border) root.style.setProperty('--border-color', themeColors.border);
 
     const sidebarBg =
-      theme.sidebar_bg ||
-      theme.sidebarBg ||
-      theme.sidebarBackground ||
+      themeColors.sidebarBg ||
       currentStyles.getPropertyValue('--sidebar-bg').trim() ||
       BUILDER_UI_THEME.sidebarBg;
     const sidebarFg =
-      theme.sidebar_foreground ||
-      theme.sidebarForeground ||
-      theme.sidebarText ||
+      themeColors.sidebarForeground ||
       currentStyles.getPropertyValue('--sidebar-foreground').trim() ||
       BUILDER_UI_THEME.sidebarForeground;
     const sidebarAccent =
-      theme.sidebar_accent ||
-      theme.sidebarAccent ||
+      themeColors.sidebarAccent ||
       currentStyles.getPropertyValue('--sidebar-accent').trim() ||
       BUILDER_UI_THEME.sidebarAccent;
     const sidebarBorder =
-      theme.sidebar_border ||
-      theme.sidebarBorder ||
+      themeColors.sidebarBorder ||
       currentStyles.getPropertyValue('--sidebar-border').trim() ||
       BUILDER_UI_THEME.sidebarBorder;
 

@@ -33,6 +33,7 @@ import {
   STATS_MODULE,
   TEAM_MODULE,
   CTA_MODULE,
+  DYNAMIC_CARDS_MODULE,
   PRICING_MODULE,
   CONTACT_MODULE,
   NEWSLETTER_MODULE,
@@ -214,6 +215,7 @@ export const MainSidebar: React.FC<MainSidebarProps> = ({
                 {expandedCategory === 'conversion' && (
                   <div className="space-y-0.5 px-2">
                     <ModuleItem icon={React.createElement(MODULE_INFO.cta.icon, { size: 18 })} label="Call to Action" onClick={() => onAddModule(CTA_MODULE)} />
+                    <ModuleItem icon={React.createElement(MODULE_INFO.dynamic_cards.icon, { size: 18 })} label="Tarjetas dinámicas" onClick={() => onAddModule(DYNAMIC_CARDS_MODULE)} />
                     <ModuleItem icon={React.createElement(MODULE_INFO.contact.icon, { size: 18 })} label="Contacto" onClick={() => onAddModule(CONTACT_MODULE)} />
                     <ModuleItem icon={React.createElement(MODULE_INFO.newsletter.icon, { size: 18 })} label="Newsletter" onClick={() => onAddModule(NEWSLETTER_MODULE)} />
                     <ModuleItem icon={React.createElement(MODULE_INFO.pricing.icon, { size: 18 })} label="Planes" onClick={() => onAddModule(PRICING_MODULE)} />

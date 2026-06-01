@@ -34,7 +34,7 @@ import {
   PRODUCTS_MODULE, HERO_MODULE, HERO2_MODULE, FEATURES_MODULE, ABOUT_MODULE, 
   PROCESS_MODULE, GALLERY_MODULE, VIDEO_MODULE, TESTIMONIALS_MODULE, 
   STATS_MODULE, NEWSLETTER_MODULE, CONTACT_MODULE, TEAM_MODULE, 
-  CTA_MODULE, PRICING_MODULE, FAQ_MODULE, TRUSTED_LOGOS_MODULE,
+  CTA_MODULE, DYNAMIC_CARDS_MODULE, PRICING_MODULE, FAQ_MODULE, TRUSTED_LOGOS_MODULE,
   BENTO_MODULE, COMPARISON_MODULE, COMPOSITION_SECTION_MODULE
 } from './registry';
 import { saveWebBuilderSiteDraft, publishWebBuilderSite, getProducts, getCustomers, getTrustedCompanyLogos, normalizeTrustedCompanyLogos, upsertPage, upsertPageSections, logEvolutionRequest, getPageBySiteId, generatePreviewServerSide } from '../../services/dataService';
@@ -91,7 +91,7 @@ import { validateCompositionSchema } from '../../utils/compositionSchemaValidato
 const MASTER_DICTIONARY = {
   modules: [
     'hero', 'hero2', 'features', 'about', 'process', 'gallery', 'video', 'testimonials', 
-    'stats', 'newsletter', 'contact', 'team', 'cta', 'pricing', 'faq', 'clients', 'trusted_logos',
+    'stats', 'newsletter', 'contact', 'team', 'cta', 'dynamic_cards', 'pricing', 'faq', 'clients', 'trusted_logos',
     'bento', 'comparative', 'header', 'menu', 'footer', 'spacer', 'products'
   ],
   styles: [
@@ -1013,12 +1013,12 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   };
 
   const areEditorStatesEquivalent = (a: EditorState, b: EditorState) => (
-    a.addedModules === b.addedModules &&
+    areEditorValuesEquivalent(a.addedModules, b.addedModules) &&
     a.expandedModuleId === b.expandedModuleId &&
     a.selectedElementId === b.selectedElementId &&
     a.recentlyAddedModuleId === b.recentlyAddedModuleId &&
     a.totalModulesAdded === b.totalModulesAdded &&
-    a.expandedGroupsByElement === b.expandedGroupsByElement &&
+    areEditorValuesEquivalent(a.expandedGroupsByElement, b.expandedGroupsByElement) &&
     areSettingsEquivalent(a.settingsValues, b.settingsValues)
   );
 
@@ -1032,9 +1032,9 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       }
       if (next !== prev && !isInitialLoad.current) {
         // Only mark as dirty if functional editor state changed (SIP v7.5)
-        const dataChanged = 
-          next.addedModules !== prev.addedModules || 
-          next.settingsValues !== prev.settingsValues;
+        const dataChanged =
+          !areEditorValuesEquivalent(next.addedModules, prev.addedModules) ||
+          !areSettingsEquivalent(next.settingsValues, prev.settingsValues);
 
         if (dataChanged) {
           markUnsavedChanges();
@@ -4348,6 +4348,7 @@ const formatTimestampName = () => {
                                   ]},
                                   { id: 'conversion', label: 'Conversión', modules: [
                                     { icon: MODULE_INFO.cta.icon, label: "Call to Action", mod: CTA_MODULE },
+                                    { icon: MODULE_INFO.dynamic_cards.icon, label: "Tarjetas dinámicas", mod: DYNAMIC_CARDS_MODULE },
                                     { icon: MODULE_INFO.contact.icon, label: "Contacto", mod: CONTACT_MODULE },
                                     { icon: MODULE_INFO.newsletter.icon, label: "Newsletter", mod: NEWSLETTER_MODULE },
                                     { icon: MODULE_INFO.pricing.icon, label: "Planes", mod: PRICING_MODULE },
@@ -4439,6 +4440,7 @@ const formatTimestampName = () => {
                                     <h4 className="text-[9px] font-black text-primary uppercase tracking-widest px-2">Conversión</h4>
                                     <div className="space-y-1">
                                       <ModuleItem icon={React.createElement(MODULE_INFO.cta.icon, { size: 18 })} label="Call to Action" onClick={() => addModule(CTA_MODULE)} />
+                                      <ModuleItem icon={React.createElement(MODULE_INFO.dynamic_cards.icon, { size: 18 })} label="Tarjetas dinámicas" onClick={() => addModule(DYNAMIC_CARDS_MODULE)} />
                                       <ModuleItem icon={React.createElement(MODULE_INFO.contact.icon, { size: 18 })} label="Contacto" onClick={() => addModule(CONTACT_MODULE)} />
                                       <ModuleItem icon={React.createElement(MODULE_INFO.newsletter.icon, { size: 18 })} label="Newsletter" onClick={() => addModule(NEWSLETTER_MODULE)} />
                                       <ModuleItem icon={React.createElement(MODULE_INFO.pricing.icon, { size: 18 })} label="Planes" onClick={() => addModule(PRICING_MODULE)} />
@@ -4675,7 +4677,7 @@ const formatTimestampName = () => {
               <p className={`text-sm font-bold ${
                 authNotice.type === 'error' ? 'text-amber-900' : 'text-blue-900'
               }`}>
-                {authNotice.title || (authNotice.type === 'error' ? 'Sesion expirada' : 'Sesion actualizada')}
+                {authNotice.title || (authNotice.type === 'error' ? 'Sesión expirada' : 'Sesión actualizada')}
               </p>
               <p className={`text-xs leading-relaxed ${
                 authNotice.type === 'error' ? 'text-amber-800' : 'text-blue-800'

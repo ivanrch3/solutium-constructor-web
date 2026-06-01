@@ -846,7 +846,31 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                                   </div>
                                 )}
 
+                                {module.type === 'dynamic_cards' && element.id.endsWith('_el_dynamic_cards_cards') && (() => {
+                                  const cardsSetting = element.settings?.contenido?.find((setting) => setting.id === 'cards');
+                                  if (!cardsSetting) return null;
+
+                                  return (
+                                    <div className="rounded-lg border border-border/30 bg-surface p-3 shadow-sm">
+                                      <SettingControl
+                                        setting={cardsSetting}
+                                        value={editorState.settingsValues[`${element.id}_${cardsSetting.id}`]}
+                                        onChange={(val) => onSettingChange(element.id, cardsSetting.id, val)}
+                                        projectId={projectId}
+                                        products={products}
+                                        customers={customers}
+                                        trustedCompanyLogos={trustedCompanyLogos}
+                                        projectColors={projectColors}
+                                        contextId={element.id}
+                                        moduleType={module.type}
+                                        settingsValues={editorState.settingsValues}
+                                      />
+                                    </div>
+                                  );
+                                })()}
+
                                 {!(isBentoItemsElement && selectedBentoCellIndex !== null) && (Object.keys(GROUP_LABELS) as SettingGroupType[]).map(group => {
+                                  if (module.type === 'dynamic_cards' && element.id.endsWith('_el_dynamic_cards_cards')) return null;
                                   const isAvailable = element.groups.includes(group);
                                   const hasSettings = element.type === 'global'
                                     ? !!module.globalSettings?.[group]?.length
@@ -856,6 +880,9 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
 
                                   const isGroupExpanded = editorState.expandedGroupsByElement[element.id] === group;
                                   const isShining = shiningGroup === group;
+                                  const groupLabel = module.type === 'dynamic_cards' && element.type === 'global' && group === 'estilo'
+                                    ? 'Animaciones'
+                                    : GROUP_LABELS[group];
 
                                   return (
                                     <div key={group} className={`border rounded-lg bg-surface overflow-hidden shadow-sm transition-all duration-500 ${
@@ -878,7 +905,7 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                                         <span className={`text-[12px] transition-all relative z-10 ${
                                           isGroupExpanded || isShining ? 'font-bold text-primary' : 'font-normal text-text/60'
                                         }`}>
-                                          {GROUP_LABELS[group]}
+                                          {groupLabel}
                                         </span>
                                         <ChevronDown size={10} className={`text-text/20 transition-transform relative z-10 ${isGroupExpanded ? 'rotate-180 text-primary' : ''}`} />
                                       </button>
@@ -922,7 +949,7 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                                                   ? module.globalSettings?.[group]
                                                   : element.settings?.[group];
 
-                                                return settingsToRender?.map(setting => {
+                                                return settingsToRender?.map((setting, settingIndex) => {
                                                   const prefix = element.id;
                                                   const show = evaluateCondition(setting.showIf, editorState.settingsValues, prefix);
                                                   if (!show.result) return null;
@@ -932,22 +959,35 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                                                     ...setting,
                                                     disabledMessage: !disabled.result ? undefined : (disabled.message || setting.disabledMessage)
                                                   };
+                                                  const showDynamicCardsSubsection = module.type === 'dynamic_cards' &&
+                                                    element.type === 'global' &&
+                                                    group === 'estilo' &&
+                                                    setting.subsection &&
+                                                    settingsToRender[settingIndex - 1]?.subsection !== setting.subsection;
 
                                                   return (
-                                                    <SettingControl
-                                                      key={setting.id}
-                                                      setting={finalSetting}
-                                                      value={editorState.settingsValues[`${prefix}_${setting.id}`]}
-                                                      onChange={(val) => onSettingChange(prefix, setting.id, val)}
-                                                      projectId={projectId}
-                                                      products={products}
-                                                      customers={customers}
-                                                      trustedCompanyLogos={trustedCompanyLogos}
-                                                      projectColors={projectColors}
-                                                      contextId={prefix}
-                                                      moduleType={module.type}
-                                                      settingsValues={editorState.settingsValues}
-                                                    />
+                                                    <React.Fragment key={setting.id}>
+                                                      {showDynamicCardsSubsection && (
+                                                        <div className="border-t border-border/40 pt-3 first:border-t-0 first:pt-0">
+                                                          <p className="text-[9px] font-black uppercase tracking-wider text-primary/70">
+                                                            {setting.subsection}
+                                                          </p>
+                                                        </div>
+                                                      )}
+                                                      <SettingControl
+                                                        setting={finalSetting}
+                                                        value={editorState.settingsValues[`${prefix}_${setting.id}`]}
+                                                        onChange={(val) => onSettingChange(prefix, setting.id, val)}
+                                                        projectId={projectId}
+                                                        products={products}
+                                                        customers={customers}
+                                                        trustedCompanyLogos={trustedCompanyLogos}
+                                                        projectColors={projectColors}
+                                                        contextId={prefix}
+                                                        moduleType={module.type}
+                                                        settingsValues={editorState.settingsValues}
+                                                      />
+                                                    </React.Fragment>
                                                   );
                                                 });
                                               })()}

@@ -145,6 +145,14 @@ const getModuleIdFromContext = (contextId?: string) => {
   return '';
 };
 
+const toBooleanSetting = (value: unknown, fallback = false) => {
+  if (value === undefined || value === null) return fallback;
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'string') return ['true', '1', 'yes', 'si'].includes(value.trim().toLowerCase());
+  if (typeof value === 'number') return value === 1;
+  return Boolean(value);
+};
+
 const normalizeOptionList = (rawValue: any) => {
   if (Array.isArray(rawValue)) {
     return rawValue
@@ -972,68 +980,140 @@ export const SettingControl: React.FC<SettingControlProps> = ({
 
     case 'repeater':
       const items = Array.isArray(currentValue) ? currentValue : [];
+      const minItems = typeof setting.min === 'number' ? setting.min : 0;
+      const maxItems = typeof setting.max === 'number' ? setting.max : Infinity;
+      const canRemoveItems = items.length > Math.max(0, minItems);
+      const canAddItems = items.length < maxItems;
+      const singularItemLabel = setting.itemLabel || 'item';
+      const pluralItemLabel = setting.itemLabelPlural || `${singularItemLabel}s`;
+      const formattedSingularItemLabel = singularItemLabel.charAt(0).toUpperCase() + singularItemLabel.slice(1);
+      const addItemLabel = setting.addLabel || 'Agregar Item';
+      const minItemsMessage = setting.minItemsMessage || 'No se puede eliminar el ultimo item';
+      const limitMessage = 'Límite máximo alcanzado';
+      const fieldsBySection = (setting.fields || []).reduce<Record<string, SettingDefinition[]>>((acc, field) => {
+        const sectionName = field.subsection || 'General';
+        acc[sectionName] = acc[sectionName] || [];
+        acc[sectionName].push(field);
+        return acc;
+      }, {});
+      const sectionEntries = Object.entries(fieldsBySection);
+      const shouldUseFieldSections = !!setting.useFieldSections && sectionEntries.length > 1;
+      const moduleId = getModuleIdFromContext(contextId);
+      const isDynamicCardsAnimationLocked = moduleType === 'dynamic_cards' &&
+        toBooleanSetting(settingsValues?.[`${moduleId}_global_use_global_effect`], true);
+      const dynamicCardsAnimationLockMessage = 'Las animaciones por tarjeta están deshabilitadas porque se está usando la configuración global. Desactiva \'Usar animaciones globales\' en Configuración Global para personalizarlas por tarjeta.';
+      const renderRepeaterField = (field: SettingDefinition, item: any, index: number) => (
+        <SettingControl
+          key={field.id}
+          setting={isDynamicCardsAnimationLocked && field.subsection === 'Animaciones'
+            ? { ...field, disabledMessage: dynamicCardsAnimationLockMessage }
+            : field}
+          value={item[field.id]}
+          projectId={projectId}
+          products={products}
+          customers={customers}
+          trustedCompanyLogos={trustedCompanyLogos}
+          projectColors={projectColors}
+          project={project}
+          contextId={contextId}
+          moduleType={moduleType}
+          settingsValues={settingsValues}
+          onChange={(val) => {
+            const newItems = [...items];
+            let updatedItem = { ...item, [field.id]: val };
+
+            // SIP v11.4: Special logic for social platform dependency
+            if (field.id === 'platform') {
+              const norm = normalizeSocialPlatform(val);
+              if (norm && SOCIAL_PLATFORMS[norm as any]) {
+                const platformConfig = SOCIAL_PLATFORMS[norm as any];
+                updatedItem.icon = platformConfig.icon;
+                updatedItem.label = platformConfig.label;
+
+                // If URL is empty or a generic placeholder, suggest a better one
+                if (!updatedItem.url || updatedItem.url === 'usuario' || updatedItem.url === '#' || updatedItem.url === '') {
+                  updatedItem.url = 'usuario';
+                }
+              }
+            }
+
+            newItems[index] = updatedItem;
+            onChange(newItems);
+          }}
+        />
+      );
       return (
         <div className="space-y-3">
-          <label className="text-[10px] font-bold text-text/40 uppercase tracking-wider">{setting.label}</label>
+          {!setting.hideLabel && (
+            <div>
+              <label className="text-[10px] font-bold text-text/40 uppercase tracking-wider">{setting.label}</label>
+            </div>
+          )}
           <div className="space-y-2">
-            {items.map((item: any, index: number) => (
-              <div key={index} className="p-3 bg-secondary/30 border border-border rounded-xl space-y-3 relative group">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold text-text/40">Item #{index + 1}</span>
+            {items.map((item: any, index: number) => {
+              const itemToneClass = setting.alternateItemTone
+                ? index % 2 === 0
+                  ? 'bg-indigo-50/70 border-indigo-100/80 hover:bg-indigo-50/90'
+                  : 'bg-cyan-50/70 border-cyan-100/80 hover:bg-cyan-50/90'
+                : 'bg-secondary/30 border-border';
+
+              return (
+              <details key={index} className={`${itemToneClass} border rounded-xl relative group overflow-hidden transition-colors`} open={index === 0}>
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-2 p-3">
+                  <span className="min-w-0">
+                    <span className="block text-[10px] font-bold text-text/50 truncate">
+                      {setting.itemLabel ? `${formattedSingularItemLabel} ${index + 1}` : item.titleText || item.title || item.name || item.text || `Item #${index + 1}`}
+                    </span>
+                    {setting.itemLabel && (item.titleText || item.title || item.name || item.text) && (
+                      <span className="block text-[9px] font-medium text-text/30 truncate">
+                        {item.titleText || item.title || item.name || item.text}
+                      </span>
+                    )}
+                  </span>
                   <button 
-                    onClick={() => {
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      if (!canRemoveItems) return;
                       const newItems = [...items];
                       newItems.splice(index, 1);
                       onChange(newItems);
                     }}
-                    className="text-text/40 hover:text-red-500 transition-colors"
+                    disabled={!canRemoveItems}
+                    className={`transition-colors ${canRemoveItems ? 'text-text/40 hover:text-red-500' : 'text-text/15 cursor-not-allowed'}`}
+                    title={canRemoveItems ? `Eliminar ${singularItemLabel}` : minItemsMessage}
                   >
                     <Trash2 size={14} />
                   </button>
+                </summary>
+                <div className="space-y-3 px-3 pb-3">
+                  {shouldUseFieldSections
+                    ? sectionEntries.map(([sectionName, fields], sectionIndex) => (
+                      <details key={sectionName} className="overflow-hidden rounded-lg border border-border/40 bg-surface/80">
+                        <summary className="cursor-pointer list-none px-3 py-2 text-[10px] font-black uppercase tracking-wider text-text/45 hover:text-primary">
+                          {sectionName}
+                        </summary>
+                        <div className="space-y-3 border-t border-border/30 p-3">
+                          {isDynamicCardsAnimationLocked && sectionName === 'Animaciones' && (
+                            <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[10px] font-semibold leading-relaxed text-amber-800">
+                              {dynamicCardsAnimationLockMessage}
+                            </div>
+                          )}
+                          {fields.map(field => renderRepeaterField(field, item, index))}
+                        </div>
+                      </details>
+                    ))
+                    : setting.fields?.map(field => renderRepeaterField(field, item, index))}
                 </div>
-                <div className="space-y-3">
-                  {setting.fields?.map(field => (
-                    <SettingControl 
-                      key={field.id}
-                      setting={field}
-                      value={item[field.id]}
-                      projectId={projectId}
-                      products={products}
-                      customers={customers}
-                      trustedCompanyLogos={trustedCompanyLogos}
-                      projectColors={projectColors}
-                      project={project}
-                      contextId={contextId}
-                      moduleType={moduleType}
-                      settingsValues={settingsValues}
-                      onChange={(val) => {
-                        const newItems = [...items];
-                        let updatedItem = { ...item, [field.id]: val };
-                        
-                        // SIP v11.4: Special logic for social platform dependency
-                        if (field.id === 'platform') {
-                          const norm = normalizeSocialPlatform(val);
-                          if (norm && SOCIAL_PLATFORMS[norm as any]) {
-                            const platformConfig = SOCIAL_PLATFORMS[norm as any];
-                            updatedItem.icon = platformConfig.icon;
-                            updatedItem.label = platformConfig.label;
-                            
-                            // If URL is empty or a generic placeholder, suggest a better one
-                            if (!updatedItem.url || updatedItem.url === 'usuario' || updatedItem.url === '#' || updatedItem.url === '') {
-                              updatedItem.url = 'usuario';
-                            }
-                          }
-                        }
-                        
-                        newItems[index] = updatedItem;
-                        onChange(newItems);
-                      }}
-                    />
-                  ))}
-                </div>
+              </details>
+              );
+            })}
+            {Number.isFinite(maxItems) && (
+              <div className="px-1 text-right text-[9px] font-black uppercase tracking-wider text-text/35">
+                {items.length}/{maxItems} {pluralItemLabel}
               </div>
-            ))}
-            {!setting.disableAdd && (
+            )}
+            {!setting.disableAdd && canAddItems && (
               <button 
                 onClick={() => {
                   const newItem: any = {};
@@ -1044,8 +1124,13 @@ export const SettingControl: React.FC<SettingControlProps> = ({
                 }}
                 className="w-full py-2 bg-surface border border-dashed border-border rounded-xl text-[10px] font-bold text-primary hover:bg-primary/5 hover:border-primary/20 transition-all flex items-center justify-center gap-2"
               >
-                <Plus size={14} /> Agregar Item
+                <Plus size={14} /> {addItemLabel}
               </button>
+            )}
+            {!setting.disableAdd && !canAddItems && Number.isFinite(maxItems) && (
+              <div className="w-full rounded-xl border border-border bg-secondary/20 px-3 py-2 text-center text-[10px] font-bold text-text/35">
+                {limitMessage}
+              </div>
             )}
           </div>
         </div>

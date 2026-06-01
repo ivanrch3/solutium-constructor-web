@@ -13,7 +13,7 @@ import {
   RotateCcw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { AIPageGenerationBrief, AIPagePlan, AIPageTone, AIPageType } from '../../types/ai';
+import { AIPageGenerationBrief, AIPagePlan, AIPageTone, AIPageType, ReferenceDebugInfo, ReferenceUrlAnalysis } from '../../types/ai';
 
 // MobileBottomNav Component
 export const MobileBottomNav = ({ 
@@ -170,7 +170,9 @@ export const PublishModal: React.FC<{
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      onClick={onCancel}
+      onClick={() => {
+        if (!isSaving) onCancel();
+      }}
       className="absolute inset-0 bg-text/40 backdrop-blur-sm"
     />
     <motion.div 
@@ -237,7 +239,8 @@ export const PublishModal: React.FC<{
       <div className="flex gap-3">
         <button 
           onClick={onCancel}
-          className="flex-1 px-6 py-3 bg-secondary hover:bg-secondary/80 text-text font-bold rounded-2xl transition-all"
+          disabled={isSaving}
+          className="flex-1 px-6 py-3 bg-secondary hover:bg-secondary/80 text-text font-bold rounded-2xl transition-all disabled:cursor-not-allowed disabled:opacity-50"
         >
           Cancelar
         </button>
@@ -257,11 +260,11 @@ export const PublishModal: React.FC<{
 
 const PAGE_TYPE_OPTIONS: Array<{ value: AIPageType; label: string }> = [
   { value: 'landing', label: 'Landing page' },
-  { value: 'home', label: 'Pagina de inicio' },
-  { value: 'services', label: 'Pagina de servicios' },
-  { value: 'product', label: 'Pagina de producto' },
-  { value: 'contact', label: 'Pagina de contacto' },
-  { value: 'promo', label: 'Pagina promocional' }
+  { value: 'home', label: 'Página de inicio' },
+  { value: 'services', label: 'Página de servicios' },
+  { value: 'product', label: 'Página de producto' },
+  { value: 'contact', label: 'Página de contacto' },
+  { value: 'promo', label: 'Página promocional' }
 ];
 
 const GOAL_OPTIONS = [
@@ -274,11 +277,260 @@ const GOAL_OPTIONS = [
 ];
 
 const TONE_OPTIONS: AIPageTone[] = ['profesional', 'cercano', 'moderno', 'premium', 'juvenil', 'institucional'];
+const REFERENCE_ANALYSIS_CREDITS = 10;
+const REFERENCE_PAGE_PLAN_CREDITS = 20;
 
 const getAIPlanModeLabel = (plan: AIPagePlan) => {
   if (plan.generationMode === 'fallback' || plan.source === 'fallback') return 'Fallback seguro';
+  if (plan.generationMode === 'reference_url_broker') return 'URL Broker';
   if (plan.generationMode === 'broker' || plan.source === 'ai_broker') return 'AI Broker';
   return 'Mock local';
+};
+
+const isAIPagePlanBrokerConfigured = () =>
+  import.meta.env.VITE_ENABLE_AI_PAGE_PLAN_BROKER === 'true' &&
+  Boolean(import.meta.env.VITE_AI_PAGE_PLAN_BROKER_URL);
+
+const StickyActionFooter: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = '' }) => (
+  <div className={`absolute bottom-0 left-0 right-0 z-30 border-t border-border bg-white px-6 py-4 shadow-[0_-16px_36px_rgba(15,23,42,0.12)] ${className}`}>
+    {children}
+  </div>
+);
+
+const ReferenceWorkingState: React.FC<{ title: string; description: string }> = ({ title, description }) => (
+  <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4">
+    <div className="flex items-start gap-3">
+      <div className="mt-0.5 h-5 w-5 shrink-0 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
+      <div>
+        <p className="text-sm font-black text-primary">{title}</p>
+        <p className="mt-1 text-xs leading-relaxed text-text/60">{description}</p>
+      </div>
+    </div>
+  </div>
+);
+
+type AIProcessStep = {
+  id: string;
+  label: string;
+};
+
+const REFERENCE_ANALYSIS_STEPS: AIProcessStep[] = [
+  { id: 'validate_url', label: 'Validando URL' },
+  { id: 'render_reference', label: 'Renderizando referencia' },
+  { id: 'capture_view', label: 'Capturando vista completa' },
+  { id: 'detect_sections', label: 'Detectando secciones visuales' },
+  { id: 'read_columns', label: 'Leyendo columnas y elementos' },
+  { id: 'prepare_structure', label: 'Preparando estructura editable' }
+];
+
+const REFERENCE_CREATION_STEPS: AIProcessStep[] = [
+  { id: 'transform_structure', label: 'Transformando estructura visual' },
+  { id: 'adapt_content', label: 'Adaptando contenido al tipo de negocio' },
+  { id: 'search_visuals', label: 'Buscando recursos visuales' },
+  { id: 'build_sections', label: 'Construyendo secciones editables' },
+  { id: 'insert_editor', label: 'Insertando página en el editor' }
+];
+
+const REFERENCE_RETRY_STEPS: AIProcessStep[] = [
+  { id: 'retry_start', label: 'Intentando de nuevo' },
+  { id: 'review_reference', label: 'Revisando la referencia' },
+  { id: 'connect_broker', label: 'Reconectando con el broker' },
+  { id: 'safe_response', label: 'Preparando una respuesta segura' }
+];
+
+const getSectionPatternLabel = (value?: string | null) => {
+  const normalized = String(value || '').replace(/_/g, ' ').trim();
+  if (!normalized) return 'Estructura visual adaptable';
+  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+};
+
+const getSectionIntentLabel = (role?: string | null) => {
+  const labels: Record<string, string> = {
+    hero: 'Presentación principal',
+    product_showcase: 'Demostración visual de producto',
+    features: 'Beneficios o capacidades',
+    services: 'Oferta o soluciones',
+    process: 'Proceso o pasos',
+    trust: 'Confianza y prueba social',
+    testimonials: 'Prueba social',
+    faq: 'Ayuda o preguntas frecuentes',
+    contact: 'Contacto o conversión',
+    cta: 'Llamado a la acción',
+    pricing: 'Comparación de opciones',
+    comparison: 'Comparativa',
+    gallery: 'Galería visual',
+    about: 'Contexto de marca'
+  };
+  return labels[String(role || '').toLowerCase()] || 'Bloque estructural detectado';
+};
+
+const AIProcessOverlay: React.FC<{ title: string; steps: AIProcessStep[] }> = ({ title, steps }) => {
+  const [activeIndex, setActiveIndex] = React.useState(0);
+
+  React.useEffect(() => {
+    setActiveIndex(0);
+    const interval = window.setInterval(() => {
+      setActiveIndex(prev => Math.min(prev + 1, Math.max(steps.length - 1, 0)));
+    }, 1200);
+    return () => window.clearInterval(interval);
+  }, [steps]);
+
+  const visibleSteps = steps.slice(0, Math.min(activeIndex + 2, steps.length));
+
+  return (
+    <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/35 px-6">
+      <div className="w-full max-w-sm rounded-3xl border border-border bg-surface p-7 shadow-2xl">
+        <div className="mx-auto mb-5 h-14 w-14 rounded-full border-4 border-primary/15 border-r-primary border-t-primary animate-spin shadow-lg shadow-primary/10" />
+        <p className="text-center text-sm font-black uppercase tracking-widest text-primary">{title}</p>
+        <div className="mt-5 space-y-3">
+          {visibleSteps.map((step, index) => {
+            const isCompleted = index < activeIndex;
+            const isActive = index === activeIndex;
+            return (
+              <div key={step.id} className={`flex items-center gap-3 text-sm transition-all ${isCompleted ? 'text-text/55' : isActive ? 'font-black text-text' : 'text-text/35'}`}>
+                <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${isCompleted ? 'border-primary bg-primary text-white' : isActive ? 'border-primary/30 bg-primary/10 text-primary' : 'border-border text-text/30'}`}>
+                  {isCompleted ? (
+                    <Check size={12} strokeWidth={3} />
+                  ) : isActive ? (
+                    <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+                  ) : (
+                    <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                  )}
+                </span>
+                <span>{step.label}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const ReferenceDebugPanel: React.FC<{ debug?: ReferenceDebugInfo | null; warnings?: string[] }> = ({ debug, warnings = [] }) => {
+  if (!debug) return null;
+  const debugWarnings = Array.from(new Set([...(debug.warnings || []), ...warnings].filter(Boolean)));
+
+  return (
+    <details className="rounded-2xl border border-blue-200 bg-blue-50/80 p-4 text-xs text-blue-950" open>
+      <summary className="cursor-pointer text-[11px] font-black uppercase tracking-widest text-blue-700">
+        Diagnóstico técnico
+      </summary>
+      <div className="mt-3 space-y-3">
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+          <div className="rounded-xl bg-white p-3">
+            <p className="font-black text-blue-700">visualScanUsed</p>
+            <p>{String(debug.visualScanUsed)}</p>
+          </div>
+          <div className="rounded-xl bg-white p-3">
+            <p className="font-black text-blue-700">fallbackDomUsed</p>
+            <p>{String(debug.fallbackDomUsed)}</p>
+          </div>
+          <div className="rounded-xl bg-white p-3">
+            <p className="font-black text-blue-700">fallbackReason</p>
+            <p className="break-words">{debug.fallbackReason || '—'}</p>
+          </div>
+          <div className="rounded-xl bg-white p-3">
+            <p className="font-black text-blue-700">secciones</p>
+            <p>{debug.sections?.length || 0}</p>
+          </div>
+        </div>
+
+        {debug.screenshot && (
+          <div className="rounded-xl bg-white p-3">
+            <p className="font-black text-blue-700">Screenshot</p>
+            <p>
+              {debug.screenshot.width || '—'}x{debug.screenshot.height || '—'} · captured {debug.screenshot.capturedHeight || '—'} · stored {String(Boolean(debug.screenshot.stored))}
+            </p>
+          </div>
+        )}
+
+        {debug.sections && debug.sections.length > 0 && (
+          <div className="overflow-x-auto rounded-xl bg-white p-3">
+            <p className="mb-2 font-black text-blue-700">Secciones visual scan</p>
+            <table className="min-w-full text-left text-[11px]">
+              <thead className="text-blue-700">
+                <tr>
+                  <th className="pr-3">Sección</th>
+                  <th className="pr-3">layout</th>
+                  <th className="pr-3">roleHint</th>
+                  <th className="pr-3">media</th>
+                  <th className="pr-3">confidence</th>
+                  <th className="pr-3">queryHint</th>
+                </tr>
+              </thead>
+              <tbody>
+                {debug.sections.slice(0, 10).map(section => (
+                  <tr key={`${section.index}-${section.layout}`}>
+                    <td className="pr-3 font-bold">{section.index}</td>
+                    <td className="pr-3">{section.layout}</td>
+                    <td className="pr-3">{section.roleHint}</td>
+                    <td className="pr-3">{String(section.media)}</td>
+                    <td className="pr-3">{typeof section.confidence === 'number' ? Math.round(section.confidence * 100) + '%' : '—'}</td>
+                    <td className="pr-3">{section.queryHint || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {debug.generation && (
+          <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+            {Object.entries(debug.generation).map(([key, value]) => (
+              <div key={key} className="rounded-xl bg-white p-3">
+                <p className="font-black text-blue-700">{key}</p>
+                <p>{String(value)}</p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {debug.pexels && debug.pexels.length > 0 && (
+          <div className="overflow-x-auto rounded-xl bg-white p-3">
+            <p className="mb-2 font-black text-blue-700">Pexels / placeholders</p>
+            <table className="min-w-full text-left text-[11px]">
+              <thead className="text-blue-700">
+                <tr>
+                  <th className="pr-3">Sección</th>
+                  <th className="pr-3">source</th>
+                  <th className="pr-3">found</th>
+                  <th className="pr-3">query</th>
+                  <th className="pr-3">candidate</th>
+                  <th className="pr-3">usedUrls</th>
+                  <th className="pr-3">photographer</th>
+                </tr>
+              </thead>
+              <tbody>
+                {debug.pexels.map(row => (
+                  <tr key={`${row.section}-${row.query || row.source}`}>
+                    <td className="pr-3 font-bold">{row.section}</td>
+                    <td className="pr-3">{row.source}</td>
+                    <td className="pr-3">{String(row.found)}</td>
+                    <td className="pr-3">{row.queryUsed || row.query || '—'}</td>
+                    <td className="pr-3">{typeof row.candidateIndex === 'number' ? row.candidateIndex + 1 : '—'}</td>
+                    <td className="pr-3">{row.usedImageUrlsCount || '—'}</td>
+                    <td className="pr-3">{row.photographer || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {debugWarnings.length > 0 && (
+          <div className="rounded-xl bg-white p-3">
+            <p className="font-black text-blue-700">Warnings</p>
+            <ul className="mt-1 list-disc pl-4">
+              {debugWarnings.slice(0, 12).map((warning, index) => (
+                <li key={`${warning}-${index}`} className="break-words">{warning}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    </details>
+  );
 };
 
 export const AIPagePlanModal: React.FC<{
@@ -286,9 +538,38 @@ export const AIPagePlanModal: React.FC<{
   isGenerating: boolean,
   projectName?: string,
   onGenerate: (brief: AIPageGenerationBrief) => void,
+  onAnalyzeReferenceUrl: (request: {
+    referenceUrl: string;
+    businessType?: string;
+    pageGoal?: string;
+    tone?: string;
+    cta?: string;
+  }) => Promise<ReferenceUrlAnalysis>,
+  onGenerateFromReferenceAnalysis: (request: {
+    referenceUrl: string;
+    analysis: ReferenceUrlAnalysis;
+    businessType?: string;
+    pageGoal?: string;
+    tone?: string;
+    cta?: string;
+    instructions?: string;
+  }) => Promise<void>,
   onApply: () => void,
   onCancel: () => void
-}> = ({ plan, isGenerating, projectName, onGenerate, onApply, onCancel }) => {
+}> = ({ plan, isGenerating, projectName, onGenerate, onAnalyzeReferenceUrl, onGenerateFromReferenceAnalysis, onApply, onCancel }) => {
+  const [creationMode, setCreationMode] = React.useState<'instructions' | 'reference_url'>('instructions');
+  const [referenceUrl, setReferenceUrl] = React.useState('');
+  const [referenceBusinessType, setReferenceBusinessType] = React.useState('');
+  const [referenceGoal, setReferenceGoal] = React.useState(GOAL_OPTIONS[0]);
+  const [referenceTone, setReferenceTone] = React.useState<AIPageTone>('profesional');
+  const [referenceCta, setReferenceCta] = React.useState('');
+  const [referenceAnalysis, setReferenceAnalysis] = React.useState<ReferenceUrlAnalysis | null>(null);
+  const [referenceInstructions, setReferenceInstructions] = React.useState('');
+  const [referenceError, setReferenceError] = React.useState<string | null>(null);
+  const [referenceErrorStage, setReferenceErrorStage] = React.useState<'analysis' | 'generation' | null>(null);
+  const [referenceProcessMode, setReferenceProcessMode] = React.useState<'analysis' | 'generation' | 'retry_analysis' | 'retry_generation' | null>(null);
+  const [isAnalyzingReference, setIsAnalyzingReference] = React.useState(false);
+  const [isGeneratingReferencePlan, setIsGeneratingReferencePlan] = React.useState(false);
   const [brief, setBrief] = React.useState<AIPageGenerationBrief>({
     pageType: 'landing',
     businessType: '',
@@ -304,6 +585,77 @@ export const AIPagePlanModal: React.FC<{
   };
 
   const canGenerate = brief.businessType.trim().length > 1 && brief.instructions.trim().length > 8 && brief.primaryCta.trim().length > 1;
+  const isReferenceBusinessTypeValid = referenceBusinessType.trim().length > 1;
+  const canAnalyzeReference = referenceUrl.trim().length > 8 && isReferenceBusinessTypeValid && !isAnalyzingReference && !isGeneratingReferencePlan;
+  const canGenerateReferencePlan = Boolean(referenceAnalysis) && isReferenceBusinessTypeValid && !isGeneratingReferencePlan;
+  const activeReferenceProcess = isAnalyzingReference || isGeneratingReferencePlan;
+  const showReferenceDebug = import.meta.env.DEV || import.meta.env.VITE_SHOW_AI_REFERENCE_DEBUG === 'true';
+  const activeReferenceDebug = creationMode === 'reference_url'
+    ? (plan?.referenceDebug || referenceAnalysis?.referenceDebug)
+    : null;
+  const processOverlayCopy = referenceProcessMode === 'retry_analysis' || referenceProcessMode === 'retry_generation'
+    ? {
+      title: 'INTENTANDO DE NUEVO',
+      steps: REFERENCE_RETRY_STEPS
+    }
+    : isGeneratingReferencePlan
+      ? {
+        title: 'CREANDO PÁGINA',
+        steps: REFERENCE_CREATION_STEPS
+      }
+      : {
+        title: 'ANALIZANDO REFERENCIA',
+        steps: REFERENCE_ANALYSIS_STEPS
+      };
+
+  const handleAnalyzeReference = async (isRetry = false) => {
+    if (!canAnalyzeReference) return;
+    setIsAnalyzingReference(true);
+    setReferenceProcessMode(isRetry ? 'retry_analysis' : 'analysis');
+    setReferenceError(null);
+    setReferenceErrorStage(null);
+    try {
+      const analysis = await onAnalyzeReferenceUrl({
+        referenceUrl,
+        businessType: referenceBusinessType,
+        pageGoal: referenceGoal,
+        tone: referenceTone,
+        cta: referenceCta
+      });
+      setReferenceAnalysis(analysis);
+    } catch (error: any) {
+      setReferenceError(error?.message || 'No se pudo analizar la URL de referencia.');
+      setReferenceErrorStage('analysis');
+    } finally {
+      setIsAnalyzingReference(false);
+      setReferenceProcessMode(null);
+    }
+  };
+
+  const handleGenerateFromReference = async (isRetry = false) => {
+    if (!canGenerateReferencePlan) return;
+    setIsGeneratingReferencePlan(true);
+    setReferenceProcessMode(isRetry ? 'retry_generation' : 'generation');
+    setReferenceError(null);
+    setReferenceErrorStage(null);
+    try {
+      await onGenerateFromReferenceAnalysis({
+        referenceUrl: referenceAnalysis.referenceUrl || referenceUrl,
+        analysis: referenceAnalysis,
+        businessType: referenceBusinessType,
+        pageGoal: referenceGoal,
+        tone: referenceTone,
+        cta: referenceCta,
+        instructions: referenceInstructions
+      });
+    } catch (error: any) {
+      setReferenceError(error?.message || 'No se pudo generar la página desde esta estructura.');
+      setReferenceErrorStage('generation');
+    } finally {
+      setIsGeneratingReferencePlan(false);
+      setReferenceProcessMode(null);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-[2150] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
@@ -311,30 +663,57 @@ export const AIPagePlanModal: React.FC<{
         initial={{ opacity: 0, scale: 0.96, y: 16 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.96, y: 16 }}
-        className="w-full max-w-5xl max-h-[92vh] overflow-hidden rounded-3xl bg-surface shadow-2xl border border-border"
+        className="relative flex h-[min(92vh,900px)] w-full max-w-5xl flex-col overflow-hidden rounded-3xl bg-surface shadow-2xl border border-border"
       >
-        <div className="flex items-center justify-between border-b border-border/60 px-6 py-5">
+        <div className="shrink-0 flex items-center justify-between border-b border-border/60 px-6 py-5">
           <div>
-            <p className="text-[10px] font-black uppercase tracking-widest text-primary">Crear con IA - Fase 1</p>
-            <h2 className="text-xl font-black text-text">Generar pagina editable</h2>
+            <p className="text-[10px] font-black uppercase tracking-widest text-primary">Crear con IA</p>
+            <h2 className="text-xl font-black text-text">Generar página editable</h2>
           </div>
-          <button onClick={onCancel} className="rounded-xl p-2 text-text/40 hover:bg-secondary hover:text-text transition-all">
+          <button
+            onClick={onCancel}
+            disabled={activeReferenceProcess || isGenerating}
+            className="rounded-xl p-2 text-text/40 hover:bg-secondary hover:text-text transition-all disabled:cursor-not-allowed disabled:opacity-30"
+          >
             <ArrowLeft size={20} />
           </button>
         </div>
 
-        <div className="grid max-h-[calc(92vh-82px)] grid-cols-1 overflow-y-auto lg:grid-cols-[1fr_0.9fr]">
-          <div className="space-y-5 p-6">
+        <div className="shrink-0 border-b border-border/60 px-6 py-4">
+          <div className="grid grid-cols-1 gap-3 rounded-2xl bg-secondary/50 p-1 md:grid-cols-2">
+            <button
+              type="button"
+              onClick={() => setCreationMode('instructions')}
+              className={`rounded-xl px-4 py-3 text-xs font-black uppercase tracking-widest transition-all ${creationMode === 'instructions' ? 'bg-surface text-primary shadow-sm' : 'text-text/45 hover:text-text'}`}
+            >
+              Crear desde instrucciones
+            </button>
+            <button
+              type="button"
+              onClick={() => setCreationMode('reference_url')}
+              className={`rounded-xl px-4 py-3 text-xs font-black uppercase tracking-widest transition-all ${creationMode === 'reference_url' ? 'bg-surface text-primary shadow-sm' : 'text-text/45 hover:text-text'}`}
+            >
+              Crear desde URL de referencia
+            </button>
+          </div>
+        </div>
+
+        <div className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden lg:grid-cols-[1fr_0.9fr]">
+          {creationMode === 'instructions' ? <div className="min-h-0 space-y-5 overflow-y-auto p-6 pb-28">
             <div className="rounded-2xl border border-primary/15 bg-primary/5 p-4">
-              <p className="text-xs font-bold text-primary">Generacion simulada local</p>
+              <p className="text-xs font-bold text-primary">
+                {isAIPagePlanBrokerConfigured() ? 'AI Broker seguro activo' : 'Generacion simulada local'}
+              </p>
               <p className="mt-1 text-xs leading-relaxed text-text/60">
-                Esta fase crea un pagePlan compatible con el Constructor. No llama APIs externas ni genera HTML libre.
+                {isAIPagePlanBrokerConfigured()
+                  ? 'Esta generación usa App Madre, valida el AIPagePlan y puede consumir créditos IA reales.'
+                  : 'Esta fase crea un pagePlan compatible con el Constructor. No llama APIs externas ni genera HTML libre.'}
               </p>
             </div>
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <label className="space-y-2">
-                <span className="text-xs font-black uppercase tracking-widest text-text/45">Tipo de pagina</span>
+                <span className="text-xs font-black uppercase tracking-widest text-text/45">Tipo de página</span>
                 <select
                   value={brief.pageType}
                   onChange={(event) => updateBrief({ pageType: event.target.value as AIPageType })}
@@ -358,7 +737,7 @@ export const AIPagePlanModal: React.FC<{
             </div>
 
             <label className="space-y-2 block">
-              <span className="text-xs font-black uppercase tracking-widest text-text/45">Objetivo de la pagina</span>
+              <span className="text-xs font-black uppercase tracking-widest text-text/45">Objetivo de la página</span>
               <select
                 value={brief.pageGoal}
                 onChange={(event) => updateBrief({ pageGoal: event.target.value })}
@@ -375,7 +754,7 @@ export const AIPagePlanModal: React.FC<{
               <textarea
                 value={brief.instructions}
                 onChange={(event) => updateBrief({ instructions: event.target.value })}
-                placeholder="Describe que quieres que tenga la pagina..."
+                placeholder="Describe que quieres que tenga la página..."
                 rows={5}
                 className="w-full resize-none rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text outline-none focus:border-primary"
               />
@@ -400,28 +779,254 @@ export const AIPagePlanModal: React.FC<{
                 <input
                   value={brief.primaryCta}
                   onChange={(event) => updateBrief({ primaryCta: event.target.value })}
-                  placeholder="Solicitar informacion, Agendar cita..."
+                  placeholder="Solicitar información, Agendar cita..."
                   className="w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text outline-none focus:border-primary"
                 />
               </label>
             </div>
 
-            <button
-              onClick={() => onGenerate(brief)}
-              disabled={!canGenerate || isGenerating}
-              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-6 py-4 text-sm font-black uppercase tracking-widest text-white shadow-lg shadow-primary/20 transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45"
-            >
-              {isGenerating ? <div className="h-5 w-5 rounded-full border-2 border-white/30 border-t-white animate-spin" /> : <Sparkles size={18} />}
-              {plan ? 'Regenerar pagina' : 'Generar pagina'}
-            </button>
-          </div>
+            <StickyActionFooter>
+              <button
+                onClick={() => onGenerate(brief)}
+                disabled={!canGenerate || isGenerating}
+                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-6 py-4 text-sm font-black uppercase tracking-widest text-white shadow-lg shadow-primary/20 transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45"
+              >
+                {isGenerating ? <div className="h-5 w-5 rounded-full border-2 border-white/30 border-t-white animate-spin" /> : <Sparkles size={18} />}
+                {plan ? 'Regenerar página' : 'Generar página'}
+              </button>
+            </StickyActionFooter>
+          </div> : <div className="min-h-0 space-y-5 overflow-y-auto p-6 pb-28">
+            <div className="rounded-2xl border border-amber-300/60 bg-amber-50 p-4">
+              <p className="text-xs font-black uppercase tracking-widest text-amber-700">Inspiracion estructural segura</p>
+              <p className="mt-1 text-xs leading-relaxed text-amber-800">
+                La URL se usara como guia estructural. Solutium creara una version nueva con secciones editables, textos propios y recursos visuales adaptados a tu negocio.
+              </p>
+              <p className="mt-3 text-[11px] font-black uppercase tracking-widest text-amber-700">
+                Analizar referencia: {REFERENCE_ANALYSIS_CREDITS} Créditos IA · Crear página: {REFERENCE_PAGE_PLAN_CREDITS} Créditos IA
+              </p>
+            </div>
 
-          <div className="border-t border-border/60 bg-secondary/35 p-6 lg:border-l lg:border-t-0">
-            <h3 className="text-sm font-black uppercase tracking-widest text-text/45">Resumen generado</h3>
+            <label className="space-y-2 block">
+              <span className="text-xs font-black uppercase tracking-widest text-text/45">URL de referencia</span>
+              <input
+                value={referenceUrl}
+                onChange={(event) => setReferenceUrl(event.target.value)}
+                placeholder="https://example.com"
+                className="w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text outline-none focus:border-primary"
+              />
+            </label>
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <label className="space-y-2">
+                <span className="text-xs font-black uppercase tracking-widest text-text/45">Tipo de negocio requerido</span>
+                <input
+                  value={referenceBusinessType}
+                  onChange={(event) => setReferenceBusinessType(event.target.value)}
+                  placeholder="restaurante, clinica dental, software CRM..."
+                  className="w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text outline-none focus:border-primary"
+                />
+                {!isReferenceBusinessTypeValid && (
+                  <p className="text-[11px] font-bold text-amber-700">Indica el tipo de negocio para adaptar los textos e imágenes de la página generada.</p>
+                )}
+              </label>
+
+              <label className="space-y-2">
+                <span className="text-xs font-black uppercase tracking-widest text-text/45">CTA opcional</span>
+                <input
+                  value={referenceCta}
+                  onChange={(event) => setReferenceCta(event.target.value)}
+                  placeholder="Solicitar información"
+                  className="w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text outline-none focus:border-primary"
+                />
+              </label>
+            </div>
+
+            <label className="space-y-2 block">
+              <span className="text-xs font-black uppercase tracking-widest text-text/45">Objetivo opcional</span>
+              <select
+                value={referenceGoal}
+                onChange={(event) => setReferenceGoal(event.target.value)}
+                className="w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text outline-none focus:border-primary"
+              >
+                {GOAL_OPTIONS.map(goal => (
+                  <option key={goal} value={goal}>{goal}</option>
+                ))}
+              </select>
+            </label>
+
+            <label className="space-y-2 block">
+              <span className="text-xs font-black uppercase tracking-widest text-text/45">Tono opcional</span>
+              <select
+                value={referenceTone}
+                onChange={(event) => setReferenceTone(event.target.value as AIPageTone)}
+                className="w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text outline-none focus:border-primary"
+              >
+                {TONE_OPTIONS.map(tone => (
+                  <option key={tone} value={tone}>{tone}</option>
+                ))}
+              </select>
+            </label>
+
+            <label className="space-y-2 block">
+              <span className="text-xs font-black uppercase tracking-widest text-text/45">Instrucciones adicionales para la página</span>
+              <textarea
+                value={referenceInstructions}
+                onChange={(event) => setReferenceInstructions(event.target.value)}
+                placeholder="Ej: usa un tono mas premium, enfocate en agendar llamadas, evita mencionar precios..."
+                rows={4}
+                className="w-full resize-none rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text outline-none focus:border-primary"
+              />
+            </label>
+
+            {isAnalyzingReference && (
+              <ReferenceWorkingState
+                title="Escaneando visualmente la referencia..."
+                description="Renderizamos la página para detectar estructura real sin copiar textos, imágenes, logos ni código."
+              />
+            )}
+
+            <StickyActionFooter>
+              <button
+                onClick={() => handleAnalyzeReference(false)}
+                disabled={!canAnalyzeReference}
+                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-6 py-4 text-sm font-black uppercase tracking-widest text-white shadow-lg shadow-primary/20 transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45"
+              >
+                {isAnalyzingReference ? <div className="h-5 w-5 rounded-full border-2 border-white/30 border-t-white animate-spin" /> : <Sparkles size={18} />}
+                {isAnalyzingReference ? 'Analizando referencia...' : `Analizar referencia · ${REFERENCE_ANALYSIS_CREDITS} Créditos IA`}
+              </button>
+            </StickyActionFooter>
+          </div>}
+
+          <div className="min-h-0 overflow-y-auto border-t border-border/60 bg-secondary/35 p-6 pb-28 lg:border-l lg:border-t-0">
+            <h3 className="text-sm font-black uppercase tracking-widest text-text/45">
+              {creationMode === 'reference_url' ? 'Analisis de referencia' : 'Resumen generado'}
+            </h3>
+            {creationMode === 'reference_url' ? (
+              <div className="mt-5 space-y-4">
+                {isAnalyzingReference && (
+                  <ReferenceWorkingState
+                    title="Detectando secciones visuales..."
+                    description="Estamos leyendo columnas, media, botones, fondos y jerarquia visual desde una vista renderizada."
+                  />
+                )}
+                {isGeneratingReferencePlan && (
+                  <ReferenceWorkingState
+                    title="Generando página editable desde la referencia..."
+                    description="Estamos transformando la estructura detectada en secciones editables de Solutium."
+                  />
+                )}
+                {!referenceAnalysis && !referenceError && !isAnalyzingReference && (
+                  <div className="rounded-2xl border border-dashed border-border bg-surface/70 p-8 text-center">
+                    <Sparkles className="mx-auto mb-4 text-text/25" size={30} />
+                    <p className="text-sm font-bold text-text/50">Pega una URL publica para detectar estructura, secciones y presets sugeridos.</p>
+                  </div>
+                )}
+                {referenceError && (
+                  <div className="rounded-2xl border border-red-200 bg-red-50 p-4">
+                    <p className="text-xs font-black uppercase tracking-widest text-red-700">
+                      {referenceErrorStage === 'generation' ? 'No se pudo generar' : 'No se pudo analizar'}
+                    </p>
+                    <p className="mt-2 text-xs leading-relaxed text-red-800">{referenceError}</p>
+                    <button
+                      type="button"
+                      onClick={() => referenceErrorStage === 'generation' ? handleGenerateFromReference(true) : handleAnalyzeReference(true)}
+                      disabled={referenceErrorStage === 'generation' ? !canGenerateReferencePlan : !canAnalyzeReference}
+                      className="mt-3 inline-flex items-center gap-2 rounded-xl border border-red-200 bg-white px-3 py-2 text-[11px] font-black uppercase tracking-widest text-red-700 transition-all hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <RotateCcw size={13} />
+                      Intentar de nuevo
+                    </button>
+                  </div>
+                )}
+                {referenceAnalysis && (
+                  <>
+                    <div className="rounded-2xl border border-border bg-surface p-4">
+                      <p className="text-base font-black text-text">{referenceAnalysis.detectedPageType}</p>
+                      <p className="mt-1 text-xs text-text/55">{referenceAnalysis.overallStructure}</p>
+                      <p className="mt-3 text-xs leading-relaxed text-text/55">{referenceAnalysis.visualStyleSummary}</p>
+                      {referenceAnalysis.structureSignals && (
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <span className="rounded-full bg-secondary px-2.5 py-1 text-[10px] font-bold text-text/50">{referenceAnalysis.structureSignals.heroPattern}</span>
+                          <span className="rounded-full bg-secondary px-2.5 py-1 text-[10px] font-bold text-text/50">Densidad {referenceAnalysis.structureSignals.textDensity}</span>
+                          <span className="rounded-full bg-secondary px-2.5 py-1 text-[10px] font-bold text-text/50">{referenceAnalysis.structureSignals.ctaPattern}</span>
+                        </div>
+                      )}
+                      {typeof referenceAnalysis.estimatedCredits === 'number' && referenceAnalysis.estimatedCredits > 0 && (
+                        <p className="mt-3 text-[11px] font-bold text-text/45">Créditos estimados: {referenceAnalysis.estimatedCredits}</p>
+                      )}
+                    </div>
+                    {referenceAnalysis.warnings.length > 0 && (
+                      <div className="rounded-2xl border border-amber-300/60 bg-amber-50 p-4">
+                        <p className="text-xs font-black uppercase tracking-widest text-amber-700">Advertencias</p>
+                        <ul className="mt-2 space-y-1 text-xs leading-relaxed text-amber-800">
+                          {referenceAnalysis.warnings.slice(0, 5).map((warning, index) => (
+                            <li key={`${warning}-${index}`}>â€¢ {warning}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {showReferenceDebug && (
+                      <ReferenceDebugPanel
+                        debug={activeReferenceDebug}
+                        warnings={[...(referenceAnalysis.warnings || []), ...(plan?.warnings || [])]}
+                      />
+                    )}
+                    <div className="space-y-2">
+                      {referenceAnalysis.sections.map((section, index) => (
+                        <div key={section.id} className="rounded-2xl border border-border bg-surface p-4">
+                          <div className="flex items-start gap-3">
+                            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-xs font-black text-primary">{index + 1}</span>
+                            <div className="min-w-0">
+                              <p className="text-sm font-black text-text">Sección {index + 1}</p>
+                              <p className="mt-1 text-[11px] font-bold uppercase tracking-wider text-text/40">
+                                Patrón detectado: {getSectionPatternLabel(referenceAnalysis.sectionLayoutBlueprints?.[index]?.layout?.type || section.layoutPattern)}
+                              </p>
+                              <p className="mt-1 text-[11px] font-bold uppercase tracking-wider text-text/40">
+                                Intención visual: {getSectionIntentLabel(section.detectedRole)}
+                              </p>
+                              <p className="mt-1 text-[11px] font-bold uppercase tracking-wider text-text/40">
+                                Elementos detectados: {(referenceAnalysis.sectionLayoutBlueprints?.[index]?.layout?.columns || [])
+                                  .flatMap(column => column.elements || [])
+                                  .map(element => element.semanticRole || element.type)
+                                  .slice(0, 5)
+                                  .join(', ') || 'estructura editable'}
+                              </p>
+                              <p className="mt-1 text-[11px] font-bold uppercase tracking-wider text-text/40">
+                                Imagen sugerida: {referenceAnalysis.sectionLayoutBlueprints?.[index]?.mediaIntent?.needsMedia ? 'Pexels o placeholder propio' : 'No requerida'}
+                              </p>
+                              <p className="mt-2 text-xs leading-relaxed text-text/55">{section.purpose}</p>
+                              <p className="mt-2 inline-flex rounded-full bg-primary/10 px-2 py-1 text-[10px] font-black uppercase tracking-wider text-primary">Inspirada en estructura</p>
+                              <p className="mt-2 text-[11px] text-text/40">Confianza {Math.round(section.confidence * 100)}%</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="rounded-2xl border border-primary/15 bg-primary/5 p-4">
+                      <p className="text-xs font-black uppercase tracking-widest text-primary">Antes de generar</p>
+                      <p className="mt-1 text-xs leading-relaxed text-text/60">
+                        La página sera una version nueva inspirada en la estructura de la referencia. No se copiaran textos, imágenes, logos ni código.
+                      </p>
+                    </div>
+                    <StickyActionFooter>
+                      <button
+                        onClick={() => handleGenerateFromReference(false)}
+                        disabled={!canGenerateReferencePlan}
+                        className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-3 text-xs font-black uppercase tracking-widest text-white shadow-lg shadow-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {isGeneratingReferencePlan ? <div className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" /> : <Sparkles size={15} />}
+                        {isGeneratingReferencePlan ? 'Creando página editable...' : `Crear página desde esta referencia · ${REFERENCE_PAGE_PLAN_CREDITS} Créditos IA`}
+                      </button>
+                    </StickyActionFooter>
+                  </>
+                )}
+              </div>
+            ) : (
+            <>
             {!plan ? (
               <div className="mt-5 rounded-2xl border border-dashed border-border bg-surface/70 p-8 text-center">
                 <Sparkles className="mx-auto mb-4 text-text/25" size={30} />
-                <p className="text-sm font-bold text-text/50">Completa el formulario para generar el plan de pagina.</p>
+                <p className="text-sm font-bold text-text/50">Completa el formulario para generar el plan de página.</p>
               </div>
             ) : (
               <div className="mt-5 space-y-4">
@@ -443,7 +1048,7 @@ export const AIPagePlanModal: React.FC<{
                     <p className="text-xs font-black uppercase tracking-widest text-amber-700">Advertencias</p>
                     <ul className="mt-2 space-y-1 text-xs leading-relaxed text-amber-800">
                       {plan.warnings.slice(0, 4).map((warning, index) => (
-                        <li key={`${warning}-${index}`}>• {warning}</li>
+                        <li key={`${warning}-${index}`}>â€¢ {warning}</li>
                       ))}
                     </ul>
                   </div>
@@ -466,7 +1071,7 @@ export const AIPagePlanModal: React.FC<{
                   ))}
                 </div>
 
-                <div className="flex gap-3 pt-2">
+                <StickyActionFooter className="flex gap-3">
                   <button
                     onClick={() => onGenerate(brief)}
                     disabled={isGenerating}
@@ -482,11 +1087,19 @@ export const AIPagePlanModal: React.FC<{
                     <Check size={16} />
                     Aplicar al sitio
                   </button>
-                </div>
+                </StickyActionFooter>
               </div>
+            )}
+            </>
             )}
           </div>
         </div>
+        {activeReferenceProcess && (
+          <AIProcessOverlay
+            title={processOverlayCopy.title}
+            steps={processOverlayCopy.steps}
+          />
+        )}
       </motion.div>
     </div>
   );

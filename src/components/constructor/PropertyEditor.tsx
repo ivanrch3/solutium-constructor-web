@@ -613,7 +613,7 @@ export const PropertyEditor: React.FC<PropertyEditorProps> = ({
               {selectedSection.name}
             </h3>
             <div className="px-2 py-0.5 bg-gray-100 rounded text-[10px] font-mono text-gray-500 uppercase">
-              composition_section
+              Módulo Maestro
             </div>
           </div>
         </div>
@@ -621,10 +621,9 @@ export const PropertyEditor: React.FC<PropertyEditorProps> = ({
         <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-5">
           <div className="rounded-2xl border border-blue-100 bg-blue-50/50 p-4 space-y-4">
             <div className="space-y-1">
-              <p className="text-[11px] font-black uppercase tracking-wider text-blue-700">Preset de composición</p>
+              <p className="text-[11px] font-black uppercase tracking-wider text-blue-700">Preset de Módulo Maestro</p>
               <p className="text-xs text-blue-700/70">
-                Elige una base premium. Aplicar un preset reemplaza la composición actual y conserva edición interna por elementos.
-              </p>
+                Elige una base premium. Aplicar un preset reemplaza el M?dulo Maestro actual y conserva edici?n interna por elementos.</p>
             </div>
 
             {renderSelect(
@@ -655,7 +654,7 @@ export const PropertyEditor: React.FC<PropertyEditorProps> = ({
             </button>
             {pendingCompositionPresetId === selectedCompositionPresetId && (
               <p className="text-[10px] font-bold text-amber-700">
-                Este preset reemplazará la composición actual. Presiona confirmar para continuar.
+                Este preset reemplazará el Módulo Maestro actual. Presiona confirmar para continuar.
               </p>
             )}
           </div>

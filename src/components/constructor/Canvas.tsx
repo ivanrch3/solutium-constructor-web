@@ -678,6 +678,7 @@ export const Canvas: React.FC<CanvasProps> = ({
                       <GalleryModule 
                         moduleId={section.id}
                         settingsValues={finalSettings}
+                        content={section.content}
                         isPreviewMode={isPreviewMode}
                       />
                     )}

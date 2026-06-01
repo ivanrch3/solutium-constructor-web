@@ -1,8 +1,7 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { SiteContent, VisualStyle } from "../types";
-import { AIGenerationContext, AIPageGenerationBrief, AIPagePlan } from "../types/ai";
+import { AIGenerationContext, AIPageGenerationBrief, AIPagePlan, AIPageTone, ReferenceUrlAnalysis, ReferenceUrlAnalysisRequest, VisualReferenceScan } from "../types/ai";
 import {
-  AI_PAGE_PLAN_ACTION_SLUG,
   AI_PAGE_PLAN_ESTIMATED_CREDITS,
   ALLOWED_AI_PAGE_MODULE_TYPES,
   ALLOWED_COMPOSITION_PRESETS,
@@ -295,7 +294,7 @@ export const generatePagePlanLocal = (brief: AIPageGenerationBrief): AIPagePlan 
   const businessName = normalizeBriefText(brief.businessName || '', titleCase(businessType));
   const goal = normalizeBriefText(brief.pageGoal, 'conseguir clientes potenciales');
   const instructions = normalizeBriefText(brief.instructions, `Presentar ${businessName} con una propuesta clara y editable.`);
-  const primaryCta = normalizeBriefText(brief.primaryCta, 'Solicitar informacion');
+  const primaryCta = normalizeBriefText(brief.primaryCta, 'Solicitar información');
   const tone = brief.tone || 'profesional';
   const isContactFocused = /contact|whatsapp|mensaje|cita|agenda/i.test(`${brief.pageType} ${goal} ${instructions}`);
   const isProductFocused = brief.pageType === 'product' || /producto|comprar|venta/i.test(`${goal} ${instructions}`);
@@ -306,7 +305,7 @@ export const generatePagePlanLocal = (brief: AIPageGenerationBrief): AIPagePlan 
       ? `Servicios de ${businessName}`
       : brief.pageType === 'product'
         ? `${businessName}: producto destacado`
-        : `${businessName}: pagina generada con IA`;
+        : `${businessName}: página generada con IA`;
 
   const valueWord = tone === 'premium' ? 'premium' : tone === 'cercano' ? 'simple y cercana' : 'profesional';
   const benefitItems = [
@@ -396,7 +395,7 @@ export const generatePagePlanLocal = (brief: AIPageGenerationBrief): AIPagePlan 
       moduleType: 'composition_section',
       preset: 'cta_premium',
       title: 'CTA principal',
-      purpose: 'Cerrar la pagina con una accion concreta.',
+      purpose: 'Cerrar la página con una accion concreta.',
       content: {
         eyebrow: 'Siguiente paso',
         title: isContactFocused ? 'Hablemos hoy mismo' : 'Convierte esta visita en una oportunidad',
@@ -413,9 +412,9 @@ export const generatePagePlanLocal = (brief: AIPageGenerationBrief): AIPagePlan 
       moduleType: 'contact',
       preset: null,
       title: 'Contacto',
-      purpose: 'Facilitar el contacto posterior a la revision.',
+      purpose: 'Facilitar el contacto posterior a la revisión.',
       content: {
-        title: 'Contacto rapido',
+        title: 'Contacto r?pido',
         description: 'Completa los datos de contacto reales antes de publicar.',
         cta: primaryCta
       },
@@ -434,6 +433,222 @@ export const generatePagePlanLocal = (brief: AIPageGenerationBrief): AIPagePlan 
     warnings: [],
     sections: sections.slice(0, 7)
   };
+};
+
+export const searchReferenceSectionImage = async ({
+  projectId,
+  businessType,
+  role,
+  mediaKind,
+  queryHint,
+  layout,
+  sectionIndex = 1,
+  usedImageUrls = [],
+  orientation = 'landscape'
+}: {
+  projectId?: string | null;
+  businessType: string;
+  role?: string | null;
+  mediaKind?: string | null;
+  queryHint?: string | null;
+  layout?: string | null;
+  sectionIndex?: number;
+  usedImageUrls?: string[];
+  orientation?: 'landscape' | 'portrait' | 'square';
+}) => {
+  const buildPexelsQueryForSection = () => {
+    const lowerBusiness = businessType.toLowerCase();
+    const normalizedRole = String(role || '').toLowerCase();
+    const normalizedLayout = String(layout || '').toLowerCase();
+    const normalizedMedia = String(mediaKind || '').toLowerCase();
+    const isHero = sectionIndex === 1 || normalizedRole === 'hero';
+    const isGrid = normalizedLayout.includes('grid') || normalizedRole.includes('feature');
+    const isShowcase = normalizedRole.includes('showcase') || normalizedMedia.includes('screenshot') || normalizedLayout.includes('split');
+    const isTrust = normalizedRole.includes('trust') || normalizedRole.includes('social') || normalizedRole.includes('testimonial');
+    const isFinal = normalizedRole === 'cta';
+
+    if (lowerBusiness.includes('batido') || lowerBusiness.includes('smoothie') || lowerBusiness.includes('jugo')) {
+      if (isHero) return 'fresh fruit smoothie colorful drink';
+      if (isShowcase) return 'healthy smoothie bar fresh juice';
+      if (isGrid) return 'tropical fruit drinks';
+      if (isTrust) return 'people drinking smoothies';
+      if (isFinal) return 'fresh juice close up';
+      return sectionIndex % 2 === 0 ? 'smoothie shop counter' : 'healthy drink ingredients';
+    }
+
+    if (lowerBusiness.includes('crm') || lowerBusiness.includes('software')) {
+      if (isHero) return 'business dashboard team workflow';
+      if (isShowcase) return 'crm software dashboard';
+      if (isGrid) return 'customer support dashboard';
+      if (isTrust) return 'business team meeting';
+      if (isFinal) return 'sales pipeline planning';
+      return 'business software workspace';
+    }
+
+    if (lowerBusiness.includes('dental')) {
+      if (isHero) return 'dental clinic smile care';
+      if (isShowcase) return 'dentist patient consultation';
+      if (isGrid) return 'modern dental clinic';
+      return 'smile dental care';
+    }
+
+    if (lowerBusiness.includes('restaurante')) {
+      if (isHero) return 'restaurant food dining table';
+      if (isShowcase) return 'chef plating restaurant';
+      if (isGrid) return 'restaurant dishes table';
+      return 'restaurant interior dining';
+    }
+
+    const cleanHint = String(queryHint || '').replace(/kommo|whatsapp crm|generic visual|unknown|cta/gi, '').trim();
+    return cleanHint ? `${businessType} ${cleanHint}` : `${businessType} business visual`;
+  };
+
+  const safeQuery = buildPexelsQueryForSection();
+  const usedUrls = new Set(usedImageUrls.filter(Boolean));
+
+  const response = await searchPexelsMedia({
+    projectId,
+    query: safeQuery,
+    per_page: 8,
+    orientation,
+    moduleType: 'composition_section',
+    fieldKey: String(mediaKind || role || 'reference_visual'),
+    industry: businessType
+  });
+
+  const photos = response.photos || [];
+  const selectedIndex = photos.findIndex((photo: any) => {
+    const url = photo?.src?.landscape || photo?.src?.large || photo?.src?.medium || '';
+    return url && !usedUrls.has(url);
+  });
+  const candidateIndex = selectedIndex >= 0 ? selectedIndex : 0;
+  const photo = photos[candidateIndex];
+  if (!photo) return null;
+  const url = photo.src?.landscape || photo.src?.large || photo.src?.medium || '';
+  if (!url || usedUrls.has(url)) return null;
+
+  return {
+    url,
+    alt: photo.alt || `${businessType} visual`,
+    source: 'pexels' as const,
+    photographer: photo.photographer,
+    pexelsUrl: photo.pexels_url || photo.url,
+    query: safeQuery,
+    queryUsed: safeQuery,
+    candidateIndex,
+    imageWasReused: false,
+    usedImageUrlsCount: usedUrls.size + 1
+  };
+};
+
+const REFERENCE_ROLE_PRESETS: Record<string, AIPagePlan['sections'][number]['preset']> = {
+  hero: 'saas_split_hero_visual',
+  features: 'features_bento',
+  services: 'services_grid',
+  process: 'process_steps',
+  testimonials: 'trust_logos',
+  trust: 'trust_logos',
+  pricing: 'comparison',
+  faq: null,
+  contact: null,
+  cta: 'cta_premium',
+  gallery: null,
+  about: 'services_grid',
+  comparison: 'comparison',
+  unknown: 'features_bento'
+};
+
+const REFERENCE_LAYOUT_PRESETS: Record<string, AIPagePlan['sections'][number]['preset']> = {
+  split_hero: 'saas_split_hero_visual',
+  centered_hero: 'hero_visual_premium',
+  product_screenshot: 'product_screenshot_showcase',
+  card_grid: 'features_bento',
+  bento_grid: 'features_bento',
+  alternating_media_text: 'product_screenshot_showcase',
+  faq_split: 'faq_split_visual',
+  dark_cta: 'cta_premium',
+  logo_trust: 'trust_logos',
+  unknown: 'features_bento'
+};
+
+const REFERENCE_ROLE_TITLES: Record<string, string> = {
+  hero: 'Hero inspirado en la referencia',
+  features: 'Beneficios y diferenciales',
+  services: 'Servicios o propuesta',
+  process: 'Proceso o metodolog?a',
+  testimonials: 'Confianza y prueba social',
+  trust: 'Confianza',
+  pricing: 'Comparativa de valor',
+  faq: 'Preguntas frecuentes',
+  contact: 'Contacto',
+  cta: 'CTA final',
+  gallery: 'Galer?a editable',
+  about: 'Sobre la propuesta',
+  comparison: 'Comparativa',
+  unknown: 'Sección editable'
+};
+
+const createReferenceDrivenFallbackPlan = (
+  request: { analysis: ReferenceUrlAnalysis; businessType?: string; pageGoal?: string; tone?: string; cta?: string },
+  brief: AIPageGenerationBrief,
+  warnings: string[]
+): AIPagePlan => {
+  const base = generatePagePlanLocal({
+    ...brief,
+    businessType: request.businessType || brief.businessType || request.analysis.detectedBusinessCategory || 'servicios profesionales',
+    pageGoal: request.pageGoal || brief.pageGoal,
+    tone: (request.tone as AIPageTone) || brief.tone,
+    primaryCta: request.cta || brief.primaryCta,
+    instructions: brief.instructions || `Crear una página nueva inspirada en la estructura detectada: ${request.analysis.overallStructure}`
+  });
+  const sourceSections = request.analysis.sections.length ? request.analysis.sections : [];
+  const selectedSections = sourceSections.slice(0, 10);
+  const fallbackSections = base.sections.filter(section => section.moduleType === 'composition_section');
+  const sections = selectedSections.length >= 4
+    ? selectedSections.map((section, index) => {
+      const role = section.detectedRole || 'unknown';
+      const blueprintLayout = request.analysis.visualBlueprint?.layoutPatterns?.find(pattern => pattern.order === section.order || pattern.role === role)?.layout;
+      const preset = (blueprintLayout ? REFERENCE_LAYOUT_PRESETS[blueprintLayout] : null) || section.recommendedPreset || REFERENCE_ROLE_PRESETS[role] || 'features_bento';
+      const fallback = fallbackSections[index % fallbackSections.length];
+      const title = REFERENCE_ROLE_TITLES[role] || fallback.title;
+      return {
+        id: `reference-${role}-${index + 1}`,
+        moduleType: 'composition_section',
+        preset,
+        title,
+        purpose: section.purpose || fallback.purpose,
+        content: {
+          ...fallback.content,
+          businessType: request.businessType || brief.businessType,
+          sectionBlueprint: request.analysis.sectionBlueprints?.[index] || {
+            id: `${section.id}_blueprint`,
+            order: section.order,
+            role,
+            sourceVisualPattern: blueprintLayout || 'unknown',
+            recommendedMasterPreset: preset,
+            adaptationNotes: 'Modulo Maestro generado desde referencia sin copiar contenido.'
+          },
+          eyebrow: title,
+          title,
+          description: `${section.layoutPattern}. ${section.visualNotes || 'Estructura original y editable sin copiar contenido.'}`,
+          cta: request.cta || brief.primaryCta || fallback.content.cta,
+          items: [section.purpose, section.layoutPattern, section.visualNotes].filter(Boolean).slice(0, 4)
+        },
+        settings: {}
+      };
+    })
+    : base.sections;
+
+  return validateAIPagePlan({
+    ...base,
+    source: 'fallback',
+    generationMode: 'fallback',
+    warnings: [
+      ...warnings,
+      'Fallback inspirado en la estructura detectada; no copia textos, imágenes, logos ni código.'
+    ],
+    sections: sections.slice(0, 10)
+  }, brief, { source: 'fallback', generationMode: 'fallback' });
 };
 
 export const buildAIPagePlanPrompt = (brief: AIPageGenerationBrief) => {
@@ -509,6 +724,7 @@ export const generateAIPagePlan = async (
   brief: AIPageGenerationBrief,
   options: {
     projectId?: string | null;
+    siteId?: string | null;
     userId?: string | null;
     forceFallback?: boolean;
     brokerResponseOverride?: unknown;
@@ -520,7 +736,7 @@ export const generateAIPagePlan = async (
   });
 
   if (options.forceFallback) {
-    return createLocalAIPagePlanFallback(brief, ['Fallback forzado para validación.']);
+    return createLocalAIPagePlanFallback(brief, ['Fallback forzado para validacion.']);
   }
 
   if (options.brokerResponseOverride !== undefined) {
@@ -538,7 +754,7 @@ export const generateAIPagePlan = async (
       ...localPlan,
       warnings: [
         ...(localPlan.warnings || []),
-        'Broker IA seguro no configurado; se usó generación local editable.'
+        'Broker IA seguro no configurado; se uso generacion local editable.'
       ]
     };
   }
@@ -548,12 +764,12 @@ export const generateAIPagePlan = async (
 
   if (!token || token.split('.').length !== 3) {
     return createLocalAIPagePlanFallback(brief, [
-      'No hay sesión válida para llamar al broker IA. Se usó fallback editable.'
+      'No hay sesion valida para llamar al broker IA. Se usó fallback editable.'
     ]);
   }
 
   const controller = new AbortController();
-  const timeout = window.setTimeout(() => controller.abort(), 25000);
+  const timeout = window.setTimeout(() => controller.abort(), 45000);
 
   try {
     const response = await fetch(brokerUrl, {
@@ -565,46 +781,392 @@ export const generateAIPagePlan = async (
       signal: controller.signal,
       body: JSON.stringify({
         projectId: options.projectId,
-        userId: options.userId,
-        appSlug: 'constructor_web',
-        actionSlug: AI_PAGE_PLAN_ACTION_SLUG,
-        estimatedCredits: AI_PAGE_PLAN_ESTIMATED_CREDITS,
-        prompt: buildAIPagePlanPrompt(brief),
-        brief,
-        responseFormat: 'AIPagePlan'
+        siteId: options.siteId || null,
+        pageType: brief.pageType,
+        businessType: brief.businessType,
+        pageGoal: brief.pageGoal,
+        tone: brief.tone,
+        cta: brief.primaryCta,
+        instructions: brief.instructions,
+        idempotencyKey: `website_ai_generate_page:${options.projectId || 'unknown'}:${Date.now()}`
       })
     });
 
     const text = await response.text();
-
-    if (!response.ok) {
-      return createLocalAIPagePlanFallback(brief, [
-        `Broker IA respondió HTTP ${response.status}. Se usó fallback editable.`
-      ]);
-    }
-
     const parsed = (() => {
       try {
         return JSON.parse(text);
       } catch {
-        return text;
+        return null;
       }
     })();
 
-    const plan = validateAIPagePlan(parsed, brief, {
+    if (!response.ok) {
+      const safeError = parsed && typeof parsed === 'object'
+        ? parsed as { error?: string; message?: string; warnings?: string[]; reason?: string }
+        : null;
+      const reason = safeError?.reason || safeError?.error || safeError?.message || `HTTP ${response.status}`;
+      const warning =
+        response.status === 401
+          ? 'Sesion invalida o expirada para el broker IA. Se usó fallback editable.'
+          : response.status === 402
+            ? 'Créditos IA insuficientes para generar con broker real. Se usó fallback editable.'
+            : response.status === 403
+              ? 'No hay permisos para generar con IA en este proyecto. Se usó fallback editable.'
+              : `Broker IA respondio ${reason}. Se usó fallback editable.`;
+
+      return createLocalAIPagePlanFallback(brief, [
+        warning,
+        ...(Array.isArray(safeError?.warnings) ? safeError.warnings : [])
+      ]);
+    }
+
+    if (!parsed || typeof parsed !== 'object') {
+      return createLocalAIPagePlanFallback(brief, [
+        'El broker IA devolvio una respuesta no JSON. Se usó fallback editable.'
+      ]);
+    }
+
+    const responseBody = parsed as {
+      success?: boolean;
+      plan?: unknown;
+      warnings?: string[];
+      usage?: {
+        actionSlug?: string;
+        estimatedCredits?: number;
+        model?: string;
+        aiUsageLogId?: string;
+        totalConsumed?: number;
+      };
+    };
+
+    if (responseBody.success !== true || !responseBody.plan) {
+      return createLocalAIPagePlanFallback(brief, [
+        'El broker IA no devolvio un AIPagePlan v?lido. Se usó fallback editable.',
+        ...(Array.isArray(responseBody.warnings) ? responseBody.warnings : [])
+      ]);
+    }
+
+    const plan = validateAIPagePlan(responseBody.plan, brief, {
       source: 'ai_broker',
       generationMode: 'broker'
     });
 
     return {
       ...plan,
-      warnings: plan.warnings || []
+      estimatedCredits: responseBody.usage?.estimatedCredits ?? plan.estimatedCredits ?? AI_PAGE_PLAN_ESTIMATED_CREDITS,
+      warnings: [
+        ...(plan.warnings || []),
+        ...(Array.isArray(responseBody.warnings) ? responseBody.warnings : []),
+        ...(responseBody.usage?.aiUsageLogId ? [`AI Broker ref: ${responseBody.usage.aiUsageLogId}`] : []),
+        ...(responseBody.usage?.totalConsumed !== undefined ? [`Créditos consumidos: ${responseBody.usage.totalConsumed}`] : [])
+      ]
     };
   } catch (error: any) {
     return createLocalAIPagePlanFallback(brief, [
       error?.name === 'AbortError'
-        ? 'El broker IA superó el tiempo de espera. Se usó fallback editable.'
+        ? 'El broker IA supero el tiempo de espera. Se usó fallback editable.'
         : 'No se pudo contactar el broker IA. Se usó fallback editable.'
+    ]);
+  } finally {
+    window.clearTimeout(timeout);
+  }
+};
+
+export const analyzeReferenceUrl = async (
+  request: ReferenceUrlAnalysisRequest
+): Promise<ReferenceUrlAnalysis> => {
+  const visualScanEnabled = import.meta.env.VITE_ENABLE_REFERENCE_URL_VISUAL_SCAN !== 'false';
+  const visualScanUrl = import.meta.env.VITE_REFERENCE_URL_VISUAL_SCAN_URL
+    || `${(import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api').replace(/\/$/, '')}/ai/reference-url/visual-scan`;
+  const brokerUrl = import.meta.env.VITE_REFERENCE_URL_ANALYSIS_BROKER_URL
+    || `${(import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api').replace(/\/$/, '')}/ai/reference-url/analyze`;
+
+  const authData = await getUploadAuthToken();
+  const token = authData.token || '';
+
+  if (!token || token.split('.').length !== 3) {
+    throw new Error('No hay sesion valida para analizar URL de referencia.');
+  }
+
+  if (visualScanEnabled && visualScanUrl && request.businessType?.trim()) {
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 52000);
+    try {
+      const response = await fetch(visualScanUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        signal: controller.signal,
+        body: JSON.stringify({
+          projectId: request.projectId,
+          siteId: request.siteId,
+          referenceUrl: request.referenceUrl,
+          businessType: request.businessType,
+          viewport: { width: 1440, height: 1200 }
+        })
+      });
+      const text = await response.text();
+      const parsed = (() => {
+        try {
+          return JSON.parse(text);
+        } catch {
+          return null;
+        }
+      })() as {
+        success?: boolean;
+        scan?: VisualReferenceScan;
+        analysis?: ReferenceUrlAnalysis;
+        warnings?: string[];
+        error?: string;
+        message?: string;
+      } | null;
+
+      if (response.ok && parsed?.success && parsed.analysis) {
+        const visualSections = parsed.scan?.sectionLayoutBlueprints?.map((blueprint, index) => ({
+          index: blueprint.sectionIndex || index + 1,
+          layout: blueprint.layout?.type || parsed.scan?.sections?.[index]?.layoutGuess || 'unknown',
+          roleHint: blueprint.roleHint || 'generic',
+          media: Boolean(blueprint.mediaIntent?.needsMedia || parsed.scan?.sections?.[index]?.elements?.some(element => element.type === 'image' || element.visualRole === 'media')),
+          confidence: blueprint.confidence,
+          queryHint: blueprint.mediaIntent?.queryHint,
+          columnsDetected: blueprint.elementSummary?.columnsDetected || blueprint.layout?.columns?.length || parsed.scan?.sections?.[index]?.columns?.length,
+          layoutReason: blueprint.layoutReason || parsed.scan?.sections?.[index]?.layoutReason,
+          elementSummary: blueprint.elementSummary || parsed.scan?.sections?.[index]?.elementSummary,
+          columns: blueprint.layout?.columns
+        })) || [];
+        return {
+          ...parsed.analysis,
+          warnings: [
+            ...(parsed.analysis.warnings || []),
+            ...(Array.isArray(parsed.warnings) ? parsed.warnings : []),
+            `Visual scan: ${parsed.scan?.sections?.length || parsed.analysis.sections.length} secciones detectadas`
+          ],
+          referenceDebug: {
+            visualScanUsed: true,
+            fallbackDomUsed: false,
+            screenshot: parsed.scan?.screenshot,
+            sections: visualSections,
+            warnings: [
+              ...(parsed.analysis.warnings || []),
+              ...(Array.isArray(parsed.warnings) ? parsed.warnings : [])
+            ]
+          },
+          generationMode: 'visual_scan'
+        };
+      }
+
+      const fallbackReason = parsed?.error || parsed?.message || `HTTP ${response.status}`;
+      console.warn('[REFERENCE_VISUAL_SCAN_FALLBACK_TO_DOM]', {
+        reason: fallbackReason
+      });
+      (request as any).__visualScanFallbackReason = fallbackReason;
+    } catch (error: any) {
+      const fallbackReason = error?.name === 'AbortError' ? 'VISUAL_SCAN_TIMEOUT' : error?.message || 'VISUAL_SCAN_ERROR';
+      console.warn('[REFERENCE_VISUAL_SCAN_FALLBACK_TO_DOM]', {
+        reason: fallbackReason
+      });
+      (request as any).__visualScanFallbackReason = fallbackReason;
+    } finally {
+      window.clearTimeout(timeout);
+    }
+  }
+
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 45000);
+
+  try {
+    const response = await fetch(brokerUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      signal: controller.signal,
+      body: JSON.stringify({
+        ...request,
+        idempotencyKey: `website_ai_analyze_reference_url:${request.projectId}:${Date.now()}`
+      })
+    });
+
+    const text = await response.text();
+    const parsed = (() => {
+      try {
+        return JSON.parse(text);
+      } catch {
+        return null;
+      }
+    })() as {
+      success?: boolean;
+      analysis?: ReferenceUrlAnalysis;
+      error?: string;
+      message?: string;
+      warnings?: string[];
+      usage?: {
+        estimatedCredits?: number;
+        totalConsumed?: number;
+        aiUsageLogId?: string;
+      };
+    } | null;
+
+    if (!response.ok || !parsed?.success || !parsed.analysis) {
+      const warningText = Array.isArray(parsed?.warnings) && parsed.warnings.length
+        ? ` ${parsed.warnings.join(' ')}`
+        : '';
+      throw new Error(`${parsed?.error || parsed?.message || `HTTP ${response.status}`}${warningText}`);
+    }
+
+    const domAnalysis = {
+      ...parsed.analysis,
+      estimatedCredits: parsed.usage?.estimatedCredits ?? parsed.analysis.estimatedCredits,
+      warnings: [
+        ...(parsed.analysis.warnings || []),
+        ...(Array.isArray(parsed.warnings) ? parsed.warnings : []),
+        ...(parsed.usage?.aiUsageLogId ? [`AI Broker ref: ${parsed.usage.aiUsageLogId}`] : []),
+        ...(parsed.usage?.totalConsumed !== undefined ? [`Créditos consumidos: ${parsed.usage.totalConsumed}`] : []),
+        ...((request as any).__visualScanFallbackReason ? [`REFERENCE_VISUAL_SCAN_FALLBACK_TO_DOM: ${(request as any).__visualScanFallbackReason}`] : [])
+      ],
+      referenceDebug: {
+        visualScanUsed: false,
+        fallbackDomUsed: true,
+        fallbackReason: (request as any).__visualScanFallbackReason || 'VISUAL_SCAN_NOT_USED',
+        sections: (parsed.analysis.sectionLayoutBlueprints || []).map((blueprint, index) => ({
+          index: blueprint.sectionIndex || index + 1,
+          layout: blueprint.layout?.type || parsed.analysis.sections?.[index]?.layoutPattern || 'unknown',
+          roleHint: blueprint.roleHint || parsed.analysis.sections?.[index]?.detectedRole || 'generic',
+          media: Boolean(blueprint.mediaIntent?.needsMedia),
+          confidence: blueprint.confidence,
+          queryHint: blueprint.mediaIntent?.queryHint,
+          columnsDetected: blueprint.elementSummary?.columnsDetected || blueprint.layout?.columns?.length,
+          layoutReason: blueprint.layoutReason,
+          elementSummary: blueprint.elementSummary,
+          columns: blueprint.layout?.columns
+        })),
+        warnings: [
+          ...(parsed.analysis.warnings || []),
+          ...(Array.isArray(parsed.warnings) ? parsed.warnings : []),
+          ...((request as any).__visualScanFallbackReason ? [`REFERENCE_VISUAL_SCAN_FALLBACK_TO_DOM: ${(request as any).__visualScanFallbackReason}`] : [])
+        ]
+      }
+    };
+    return domAnalysis;
+  } catch (error: any) {
+    if (error?.name === 'AbortError') {
+      throw new Error('El analisis de URL supero el tiempo de espera.');
+    }
+    throw error;
+  } finally {
+    window.clearTimeout(timeout);
+  }
+};
+
+export const generateAIPagePlanFromReferenceAnalysis = async (
+  request: {
+    projectId: string;
+    siteId?: string | null;
+    referenceUrl: string;
+    analysis: ReferenceUrlAnalysis;
+    businessType?: string;
+    pageGoal?: string;
+    tone?: string;
+    cta?: string;
+    instructions?: string;
+  },
+  brief: AIPageGenerationBrief
+): Promise<AIPagePlan> => {
+  const brokerEnabled = import.meta.env.VITE_ENABLE_REFERENCE_URL_PAGE_PLAN_BROKER === 'true';
+  const brokerUrl = import.meta.env.VITE_REFERENCE_URL_PAGE_PLAN_BROKER_URL
+    || `${(import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api').replace(/\/$/, '')}/ai/reference-url/generate-page-plan`;
+
+  if (!brokerEnabled || !brokerUrl) {
+    return createReferenceDrivenFallbackPlan(request, brief, [
+      'Broker para generar desde URL no configurado; se usó fallback editable.'
+    ]);
+  }
+
+  const authData = await getUploadAuthToken();
+  const token = authData.token || '';
+
+  if (!token || token.split('.').length !== 3) {
+    return createReferenceDrivenFallbackPlan(request, brief, [
+      'No hay sesion valida para generar desde URL. Se usó fallback editable.'
+    ]);
+  }
+
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 55000);
+
+  try {
+    const response = await fetch(brokerUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      signal: controller.signal,
+      body: JSON.stringify({
+        ...request,
+        idempotencyKey: `website_ai_generate_page_from_reference_url:${request.projectId}:${Date.now()}`
+      })
+    });
+
+    const text = await response.text();
+    const parsed = (() => {
+      try {
+        return JSON.parse(text);
+      } catch {
+        return null;
+      }
+    })() as {
+      success?: boolean;
+      plan?: unknown;
+      error?: string;
+      message?: string;
+      warnings?: string[];
+      usage?: {
+        estimatedCredits?: number;
+        totalConsumed?: number;
+        aiUsageLogId?: string;
+      };
+    } | null;
+
+    if (!response.ok || !parsed?.success || !parsed.plan) {
+      const safeWarnings = Array.isArray(parsed?.warnings) ? parsed.warnings : [];
+      const warning =
+        response.status === 401
+          ? 'Sesion invalida o expirada para generar desde URL. Se usó fallback editable.'
+          : response.status === 402
+            ? 'Créditos IA insuficientes para generar desde URL. Se usó fallback editable.'
+            : response.status === 403
+              ? 'No hay permisos para generar desde URL en este proyecto. Se usó fallback editable.'
+              : parsed?.error || parsed?.message || `HTTP ${response.status}`;
+
+      return createReferenceDrivenFallbackPlan(request, brief, [warning, ...safeWarnings]);
+    }
+
+    const plan = validateAIPagePlan(parsed.plan, brief, {
+      source: 'ai_broker',
+      generationMode: 'reference_url_broker'
+    });
+
+    return {
+      ...plan,
+      estimatedCredits: parsed.usage?.estimatedCredits ?? plan.estimatedCredits ?? 20,
+      warnings: [
+        ...(plan.warnings || []),
+        ...(Array.isArray(parsed.warnings) ? parsed.warnings : []),
+        'Página original inspirada en la estructura de referencia; no se copiaron textos, imágenes, logos ni código.',
+        ...(parsed.usage?.aiUsageLogId ? [`AI Broker ref: ${parsed.usage.aiUsageLogId}`] : []),
+        ...(parsed.usage?.totalConsumed !== undefined ? [`Créditos consumidos: ${parsed.usage.totalConsumed}`] : [])
+      ]
+    };
+  } catch (error: any) {
+    return createReferenceDrivenFallbackPlan(request, brief, [
+      error?.name === 'AbortError'
+        ? 'La generacion desde URL supero el tiempo de espera. Se usó fallback editable.'
+        : 'No se pudo contactar el broker para generar desde URL. Se usó fallback editable.'
     ]);
   } finally {
     window.clearTimeout(timeout);

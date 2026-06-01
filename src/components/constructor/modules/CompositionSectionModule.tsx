@@ -309,7 +309,7 @@ export const CompositionSectionModule: React.FC<CompositionSectionModuleProps> =
   return (
     <section
       id={schema.section.htmlId || moduleId}
-      aria-label={schema.section.ariaLabel || schema.name || 'Composición Visual'}
+      aria-label={schema.section.ariaLabel || schema.name || 'Módulo Maestro'}
       className={rootClassName}
       style={{
         background,

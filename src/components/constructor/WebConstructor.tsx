@@ -976,6 +976,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   const editorStateRef = useRef(editorState);
   const siteNameRef = useRef(siteName);
   const currentStatusRef = useRef(currentStatus);
+  const lastLocalSectionsSignatureRef = useRef<string | null>(null);
   const autosaveIntervalSetting = editorState.settingsValues['global_theme_builder_autosave_interval_ms'];
   const autosaveDisabledByInterval = String(autosaveIntervalSetting).trim().toLowerCase() === AUTOSAVE_DISABLED_VALUE;
   const autosaveEnabled = !autosaveDisabledByInterval && resolveBooleanSetting(
@@ -1146,6 +1147,14 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     return value;
   };
 
+  const getSectionsSyncSignature = (sections: unknown) => {
+    try {
+      return JSON.stringify(sections || []);
+    } catch {
+      return '';
+    }
+  };
+
   const areEditorValuesEquivalent = (a: any, b: any) => {
     if (Object.is(a, b)) return true;
     if (Object.is(normalizeEditorSyncValue(a), normalizeEditorSyncValue(b))) return true;
@@ -1214,8 +1223,9 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     const contract = generateRenderingContract(siteName);
     
     // Solo actualizar si realmente hay cambios para evitar bucles infinitos
-    const currentSectionsHash = JSON.stringify(siteContent.sections);
-    const newSectionsHash = JSON.stringify(contract.sections);
+    const currentSectionsHash = getSectionsSyncSignature(siteContent.sections);
+    const newSectionsHash = getSectionsSyncSignature(contract.sections);
+    lastLocalSectionsSignatureRef.current = newSectionsHash;
     
     if (currentSectionsHash !== newSectionsHash) {
       setSiteContent(contract as any);
@@ -1225,6 +1235,9 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   // Synchronize store settings back to local editorState
   useEffect(() => {
     if (siteContent.sections.length > 0) {
+      const incomingSectionsSignature = getSectionsSyncSignature(siteContent.sections);
+      if (incomingSectionsSignature === lastLocalSectionsSignatureRef.current) return;
+
       setEditorState(prev => {
         const newSettings = { ...prev.settingsValues };
         let changed = false;
@@ -2662,9 +2675,14 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
 
   const handleSettingChange = (elementOrModuleId: string, settingId: string, value: any) => {
     updateEditorState(prev => {
+      const settingKey = `${elementOrModuleId}_${settingId}`;
+      if (areEditorValuesEquivalent(prev.settingsValues[settingKey], value)) {
+        return prev;
+      }
+
       const nextSettingsValues: Record<string, any> = {
         ...prev.settingsValues,
-        [`${elementOrModuleId}_${settingId}`]: value
+        [settingKey]: value
       };
 
       if (settingId === 'bg_parallax_enabled' && value === true) {

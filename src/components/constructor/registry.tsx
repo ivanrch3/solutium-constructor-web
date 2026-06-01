@@ -3191,7 +3191,7 @@ export const BENTO_MODULE: WebModule = {
   id: 'mod_bento_1',
   type: 'bento',
   iconKey: 'bento',
-  name: 'Bento / Composición Libre',
+  name: 'Bento',
   globalGroups: ['estructura', 'estilo', 'interaccion', 'multimedia'],
   globalSettings: {
     estructura: [
@@ -3491,11 +3491,11 @@ export const MODULE_INFO: Record<string, {
   hiddenFromLibrary?: boolean;
   replacement?: string;
 }> = {
-  header: { label: 'Barra superior', icon: PanelTop },
+  header: { label: 'Publicidad', icon: PanelTop },
   menu: { label: 'Menú', icon: Menu },
   footer: { label: 'Pie de página', icon: PanelBottom },
   spacer: { label: 'Espaciadores', icon: SeparatorHorizontal },
-  products: { label: 'Productos', icon: ShoppingBag },
+  products: { label: 'Productos y Servicios', icon: ShoppingBag },
   products_showcase: {
     label: 'EXPERIMENTAL: Catalogo V2',
     icon: ShoppingBag,
@@ -3516,7 +3516,7 @@ export const MODULE_INFO: Record<string, {
   contact: { label: 'Contacto', icon: PhoneCall },
   team: { label: 'Equipo', icon: Users2 },
   cta: { label: 'Call to Action', icon: MousePointerClick },
-  pricing: { label: 'Precios', icon: Tags },
+  pricing: { label: 'Planes', icon: Tags },
   faq: { label: 'FAQ', icon: MessageCircleQuestion },
   comparative: { label: 'Comparativo', icon: Columns2 },
   clients: {
@@ -3527,7 +3527,7 @@ export const MODULE_INFO: Record<string, {
     replacement: 'trusted_logos'
   },
   trusted_logos: { label: 'Logos de Empresas', icon: Handshake },
-  bento: { label: 'Bento / Composición Libre', icon: Layout },
+  bento: { label: 'Bento', icon: Layout },
   composition_section: { label: 'Composición Visual', icon: Layout }
 };
 

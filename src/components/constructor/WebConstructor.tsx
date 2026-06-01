@@ -1630,8 +1630,57 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     }
   };
 
+  const isFooterModuleInstance = (module?: Partial<WebModule> | null) => (
+    module?.type === 'footer' ||
+    module?.templateId === 'mod_footer_1' ||
+    module?.id === 'mod_footer_1' ||
+    Boolean(module?.id?.startsWith('mod_footer_1'))
+  );
+
+  const isMenuModuleInstance = (module?: Partial<WebModule> | null) => (
+    !isFooterModuleInstance(module) && (
+      module?.type === 'menu' ||
+      module?.type === 'navegacion' ||
+      module?.templateId === 'mod_menu_1' ||
+      module?.id === 'mod_menu_1' ||
+      Boolean(module?.id?.startsWith('mod_menu_1'))
+    )
+  );
+
+  const keepFooterModulesLast = (modules: WebModule[]) => [
+    ...modules.filter(module => !isFooterModuleInstance(module)),
+    ...modules.filter(isFooterModuleInstance)
+  ];
+
   const addModule = (module: WebModule) => {
     logDebug('Adding module:', module.type);
+    const existingMenu = (editorState.addedModules || []).find(isMenuModuleInstance);
+    const existingFooter = (editorState.addedModules || []).find(isFooterModuleInstance);
+
+    if (isMenuModuleInstance(module) && existingMenu) {
+      updateEditorState(prev => ({
+        ...prev,
+        expandedModuleId: existingMenu.id,
+        selectedElementId: `${existingMenu.id}_global`,
+        recentlyAddedModuleId: existingMenu.id
+      }));
+      selectSection(existingMenu.id);
+      setMobileTab('structure');
+      return;
+    }
+
+    if (isFooterModuleInstance(module) && existingFooter) {
+      updateEditorState(prev => ({
+        ...prev,
+        expandedModuleId: existingFooter.id,
+        selectedElementId: `${existingFooter.id}_global`,
+        recentlyAddedModuleId: existingFooter.id
+      }));
+      selectSection(existingFooter.id);
+      setMobileTab('structure');
+      return;
+    }
+
     // Use persistent UUIDs (Solutium Protocol v2.0)
     const rawId = crypto.randomUUID();
     const moduleId = `mod_${rawId}`;
@@ -1766,10 +1815,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       const addedModules = prev.addedModules || [];
       let newModules = [...addedModules];
       
-      if (module.id === 'mod_header_1') {
-        // Always at the very top
-        newModules = [newModule, ...addedModules];
-      } else if (module.id === 'mod_menu_1') {
+      if (isMenuModuleInstance(module)) {
         // Top, but below header if exists
         const headerIndex = addedModules.findIndex(m => m.id.startsWith('mod_header_1'));
         if (headerIndex !== -1) {
@@ -1777,18 +1823,19 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         } else {
           newModules = [newModule, ...addedModules];
         }
-      } else if (module.id === 'mod_footer_1') {
+      } else if (isFooterModuleInstance(module)) {
         // Always at the end
-        newModules = [...addedModules, newModule];
+        newModules = [...addedModules.filter(m => !isFooterModuleInstance(m)), newModule];
       } else {
         // Standard module: insert before footer if exists, otherwise at the end
-        const footerIndex = addedModules.findIndex(m => m.id.startsWith('mod_footer_1'));
+        const footerIndex = addedModules.findIndex(isFooterModuleInstance);
         if (footerIndex !== -1) {
           newModules.splice(footerIndex, 0, newModule);
         } else {
           newModules = [...addedModules, newModule];
         }
       }
+      newModules = keepFooterModulesLast(newModules);
 
       const isUtilityModule = isUtilityMenuModule(module);
 
@@ -1867,7 +1914,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       // Restriction: Header cannot move down, Menu cannot move at all, Footer cannot move up
       if (module.id.startsWith('mod_header_1') && direction === 'down') return prev;
       if (module.id.startsWith('mod_menu_1')) return prev;
-      if (module.id.startsWith('mod_footer_1') && direction === 'up') return prev;
+      if (isFooterModuleInstance(module) && direction === 'up') return prev;
 
       const newModules = [...addedModules];
       const targetIndex = direction === 'up' ? index - 1 : index + 1;
@@ -1878,7 +1925,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
 
       // Restriction: Cannot move a module above Header or Menu, or below Footer
       if (direction === 'up' && (targetModule.id.startsWith('mod_header_1') || targetModule.id.startsWith('mod_menu_1'))) return prev;
-      if (direction === 'down' && targetModule.id.startsWith('mod_footer_1')) return prev;
+      if (direction === 'down' && isFooterModuleInstance(targetModule)) return prev;
       
       const temp = newModules[index];
       newModules[index] = newModules[targetIndex];
@@ -4143,10 +4190,11 @@ const formatTimestampName = () => {
 
     updateEditorState(prev => {
       const addedModules = prev.addedModules || [];
-      const footerIndex = addedModules.findIndex(m => m.id.startsWith('mod_footer_1'));
-      const newModulesList = [...addedModules];
+      const footerIndex = addedModules.findIndex(isFooterModuleInstance);
+      let newModulesList = [...addedModules];
       if (footerIndex !== -1) newModulesList.splice(footerIndex, 0, newModule);
       else newModulesList.push(newModule);
+      newModulesList = keepFooterModulesLast(newModulesList);
       return {
         ...prev,
         addedModules: newModulesList,
@@ -4240,45 +4288,38 @@ const formatTimestampName = () => {
                             /* MOBILE/TABLET VIEW: Accordion + Centered */
                             <div className="flex flex-col items-center px-6 py-10">
                               <h3 className="text-xl md:text-2xl font-black text-sidebar-foreground uppercase tracking-[0.1em] mb-12 text-center px-2">Catálogo de Módulos</h3>
+                              <div className="w-full max-w-[200px] space-y-1 mb-4">
+                                <ModuleItem icon={React.createElement(MODULE_INFO.menu.icon, { size: 18 })} label="Menú" onClick={() => addModule(MENU_MODULE)} />
+                              </div>
+                              <div className="w-full max-w-md border-t border-sidebar-foreground/10 mb-4" />
                               <div className="w-full max-w-md space-y-4">
                                 {[
-                                  { id: 'nav', label: 'Navegación', modules: [
-                                    { icon: MODULE_INFO.menu.icon, label: "Menú", mod: MENU_MODULE },
-                                    { icon: MODULE_INFO.footer.icon, label: "Pie de página", mod: FOOTER_MODULE }
-                                  ]},
                                   { id: 'content', label: 'Contenido', modules: [
+                                    { icon: MODULE_INFO.features.icon, label: "Características", mod: FEATURES_MODULE },
+                                    { icon: MODULE_INFO.team.icon, label: "Equipo", mod: TEAM_MODULE },
+                                    { icon: MODULE_INFO.stats.icon, label: "Estadísticas", mod: STATS_MODULE },
                                     { icon: MODULE_INFO.hero.icon, label: "Portada", mod: HERO_MODULE },
                                     { icon: MODULE_INFO.hero2.icon, label: "Portada Solutium", mod: HERO2_MODULE },
-                                    { icon: MODULE_INFO.features.icon, label: "Características", mod: FEATURES_MODULE },
-                                    { icon: MODULE_INFO.about.icon, label: "Sobre Nosotros", mod: ABOUT_MODULE },
                                     { icon: MODULE_INFO.process.icon, label: "Proceso", mod: PROCESS_MODULE },
-                                    { icon: MODULE_INFO.stats.icon, label: "Estadísticas", mod: STATS_MODULE },
-                                    { icon: MODULE_INFO.team.icon, label: "Equipo", mod: TEAM_MODULE },
-                                    { icon: MODULE_INFO.comparative.icon, label: "Comparativo", mod: COMPARISON_MODULE }
-                                  ]},
-                                  { id: 'multimedia', label: 'Multimedia', modules: [
-                                    { icon: MODULE_INFO.gallery.icon, label: "Galería", mod: GALLERY_MODULE },
-                                    { icon: MODULE_INFO.video.icon, label: "Video", mod: VIDEO_MODULE }
+                                    { icon: MODULE_INFO.about.icon, label: "Sobre Nosotros", mod: ABOUT_MODULE }
                                   ]},
                                   { id: 'conversion', label: 'Conversión', modules: [
-                                    { icon: MODULE_INFO.header.icon, label: "Barra superior", mod: HEADER_MODULE },
                                     { icon: MODULE_INFO.cta.icon, label: "Call to Action", mod: CTA_MODULE },
-                                    { icon: MODULE_INFO.pricing.icon, label: "Precios", mod: PRICING_MODULE },
                                     { icon: MODULE_INFO.contact.icon, label: "Contacto", mod: CONTACT_MODULE },
-                                    { icon: MODULE_INFO.newsletter.icon, label: "Newsletter", mod: NEWSLETTER_MODULE }
+                                    { icon: MODULE_INFO.newsletter.icon, label: "Newsletter", mod: NEWSLETTER_MODULE },
+                                    { icon: MODULE_INFO.pricing.icon, label: "Planes", mod: PRICING_MODULE },
+                                    { icon: MODULE_INFO.header.icon, label: "Publicidad", mod: HEADER_MODULE },
+                                    { icon: MODULE_INFO.products.icon, label: "Productos y Servicios", mod: PRODUCTS_MODULE }
                                   ]},
                                   { id: 'social', label: 'Social', modules: [
-                                    { icon: MODULE_INFO.testimonials.icon, label: "Testimonios", mod: TESTIMONIALS_MODULE },
+                                    { icon: MODULE_INFO.faq.icon, label: "FAQ", mod: FAQ_MODULE },
                                     { icon: MODULE_INFO.trusted_logos.icon, label: "Logos de Empresas", mod: TRUSTED_LOGOS_MODULE },
-                                    { icon: MODULE_INFO.faq.icon, label: "FAQ", mod: FAQ_MODULE }
+                                    { icon: MODULE_INFO.testimonials.icon, label: "Testimonios", mod: TESTIMONIALS_MODULE }
                                   ]},
-                                  { id: 'ecommerce', label: 'Catálogo', modules: [
-                                    { icon: MODULE_INFO.products.icon, label: "Productos & Servicios", mod: PRODUCTS_MODULE }
-                                  ]},
-                                  { id: 'structure', label: 'Estructura', modules: [
-                                    { icon: MODULE_INFO.spacer.icon, label: "Espaciadores", mod: SPACER_MODULE },
-                                    { icon: MODULE_INFO.bento.icon, label: "Composición Libre", mod: BENTO_MODULE },
-                                    { icon: MODULE_INFO.composition_section.icon, label: "Composición Visual", mod: COMPOSITION_SECTION_MODULE }
+                                  { id: 'multimedia', label: 'Multimedia', modules: [
+                                    { icon: MODULE_INFO.comparative.icon, label: "Comparativo", mod: COMPARISON_MODULE },
+                                    { icon: MODULE_INFO.gallery.icon, label: "Galería", mod: GALLERY_MODULE },
+                                    { icon: MODULE_INFO.video.icon, label: "Video", mod: VIDEO_MODULE }
                                   ]}
                                 ].map((cat) => (
                                   <div key={cat.id} className="border-b border-sidebar-foreground/5 last:border-0 pb-4">
@@ -4318,6 +4359,13 @@ const formatTimestampName = () => {
                                     </AnimatePresence>
                                   </div>
                                 ))}
+                                <div className="border-t border-sidebar-foreground/10 pt-4">
+                                  <div className="mx-auto w-full max-w-[200px] space-y-1">
+                                  <ModuleItem icon={React.createElement(MODULE_INFO.bento.icon, { size: 18 })} label="Diseño libre" onClick={() => addModule(BENTO_MODULE)} />
+                                  <ModuleItem icon={React.createElement(MODULE_INFO.footer.icon, { size: 18 })} label="Pie de página" onClick={() => addModule(FOOTER_MODULE)} />
+                                  <ModuleItem icon={React.createElement(MODULE_INFO.spacer.icon, { size: 18 })} label="Espaciadores" onClick={() => addModule(SPACER_MODULE)} />
+                                  </div>
+                                </div>
                               </div>
                             </div>
                           ) : (
@@ -4327,74 +4375,60 @@ const formatTimestampName = () => {
                               
                               <div className="grid grid-cols-2 gap-8">
                                 <div className="space-y-8">
-                                  <div className="space-y-4">
-                                    <h4 className="text-[9px] font-black text-primary uppercase tracking-widest px-2">Navegación</h4>
-                                    <div className="space-y-1">
-                                      <ModuleItem icon={React.createElement(MODULE_INFO.menu.icon, { size: 18 })} label="Menú" onClick={() => addModule(MENU_MODULE)} />
-                                      <ModuleItem icon={React.createElement(MODULE_INFO.footer.icon, { size: 18 })} label="Pie de página" onClick={() => addModule(FOOTER_MODULE)} />
-                                    </div>
+                                  <div className="space-y-1">
+                                    <ModuleItem icon={React.createElement(MODULE_INFO.menu.icon, { size: 18 })} label="Menú" onClick={() => addModule(MENU_MODULE)} />
                                   </div>
 
                                   <div className="space-y-4">
                                     <h4 className="text-[9px] font-black text-primary uppercase tracking-widest px-2">Contenido</h4>
                                     <div className="space-y-1">
+                                      <ModuleItem icon={React.createElement(MODULE_INFO.features.icon, { size: 18 })} label="Características" onClick={() => addModule(FEATURES_MODULE)} />
+                                      <ModuleItem icon={React.createElement(MODULE_INFO.team.icon, { size: 18 })} label="Equipo" onClick={() => addModule(TEAM_MODULE)} />
+                                      <ModuleItem icon={React.createElement(MODULE_INFO.stats.icon, { size: 18 })} label="Estadísticas" onClick={() => addModule(STATS_MODULE)} />
                                       <ModuleItem icon={React.createElement(MODULE_INFO.hero.icon, { size: 18 })} label="Portada" onClick={() => addModule(HERO_MODULE)} />
                                       <ModuleItem icon={React.createElement(MODULE_INFO.hero2.icon, { size: 18 })} label="Portada Solutium" onClick={() => addModule(HERO2_MODULE)} />
-                                      <ModuleItem icon={React.createElement(MODULE_INFO.features.icon, { size: 18 })} label="Características" onClick={() => addModule(FEATURES_MODULE)} />
-                                      <ModuleItem icon={React.createElement(MODULE_INFO.about.icon, { size: 18 })} label="Sobre Nosotros" onClick={() => addModule(ABOUT_MODULE)} />
                                       <ModuleItem icon={React.createElement(MODULE_INFO.process.icon, { size: 18 })} label="Proceso" onClick={() => addModule(PROCESS_MODULE)} />
-                                      <ModuleItem icon={React.createElement(MODULE_INFO.stats.icon, { size: 18 })} label="Estadísticas" onClick={() => addModule(STATS_MODULE)} />
-                                      <ModuleItem icon={React.createElement(MODULE_INFO.team.icon, { size: 18 })} label="Equipo" onClick={() => addModule(TEAM_MODULE)} />
-                                      <ModuleItem icon={React.createElement(MODULE_INFO.comparative.icon, { size: 18 })} label="Comparativo" onClick={() => addModule(COMPARISON_MODULE)} />
+                                      <ModuleItem icon={React.createElement(MODULE_INFO.about.icon, { size: 18 })} label="Sobre Nosotros" onClick={() => addModule(ABOUT_MODULE)} />
                                     </div>
                                   </div>
 
                                   <div className="space-y-4">
-                                    <h4 className="text-[9px] font-black text-primary uppercase tracking-widest px-2">Multimedia</h4>
+                                    <h4 className="text-[9px] font-black text-primary uppercase tracking-widest px-2">Conversión</h4>
                                     <div className="space-y-1">
-                                      <ModuleItem icon={React.createElement(MODULE_INFO.gallery.icon, { size: 18 })} label="Galería" onClick={() => addModule(GALLERY_MODULE)} />
-                                      <ModuleItem icon={React.createElement(MODULE_INFO.video.icon, { size: 18 })} label="Video" onClick={() => addModule(VIDEO_MODULE)} />
+                                      <ModuleItem icon={React.createElement(MODULE_INFO.cta.icon, { size: 18 })} label="Call to Action" onClick={() => addModule(CTA_MODULE)} />
+                                      <ModuleItem icon={React.createElement(MODULE_INFO.contact.icon, { size: 18 })} label="Contacto" onClick={() => addModule(CONTACT_MODULE)} />
+                                      <ModuleItem icon={React.createElement(MODULE_INFO.newsletter.icon, { size: 18 })} label="Newsletter" onClick={() => addModule(NEWSLETTER_MODULE)} />
+                                      <ModuleItem icon={React.createElement(MODULE_INFO.pricing.icon, { size: 18 })} label="Planes" onClick={() => addModule(PRICING_MODULE)} />
+                                      <ModuleItem icon={React.createElement(MODULE_INFO.header.icon, { size: 18 })} label="Publicidad" onClick={() => addModule(HEADER_MODULE)} />
+                                      <ModuleItem icon={React.createElement(MODULE_INFO.products.icon, { size: 18 })} label="Productos y Servicios" onClick={() => addModule(PRODUCTS_MODULE)} />
                                     </div>
                                   </div>
                                 </div>
 
                                 <div className="space-y-8">
                                   <div className="space-y-4">
-                                    <h4 className="text-[9px] font-black text-primary uppercase tracking-widest px-2">Conversión</h4>
-                                    <div className="space-y-1">
-                                      <ModuleItem icon={React.createElement(MODULE_INFO.header.icon, { size: 18 })} label="Barra superior" onClick={() => addModule(HEADER_MODULE)} />
-                                      <ModuleItem icon={React.createElement(MODULE_INFO.cta.icon, { size: 18 })} label="Call to Action" onClick={() => addModule(CTA_MODULE)} />
-                                      <ModuleItem icon={React.createElement(MODULE_INFO.pricing.icon, { size: 18 })} label="Precios" onClick={() => addModule(PRICING_MODULE)} />
-                                      <ModuleItem icon={React.createElement(MODULE_INFO.contact.icon, { size: 18 })} label="Contacto" onClick={() => addModule(CONTACT_MODULE)} />
-                                      <ModuleItem icon={React.createElement(MODULE_INFO.newsletter.icon, { size: 18 })} label="Newsletter" onClick={() => addModule(NEWSLETTER_MODULE)} />
-                                    </div>
-                                  </div>
-
-                                  <div className="space-y-4">
                                     <h4 className="text-[9px] font-black text-primary uppercase tracking-widest px-2">Social</h4>
                                     <div className="space-y-1">
-                                      <ModuleItem icon={React.createElement(MODULE_INFO.testimonials.icon, { size: 18 })} label="Testimonios" onClick={() => addModule(TESTIMONIALS_MODULE)} />
-                                      <ModuleItem icon={React.createElement(MODULE_INFO.trusted_logos.icon, { size: 18 })} label="Logos de Empresas" onClick={() => addModule(TRUSTED_LOGOS_MODULE)} />
                                       <ModuleItem icon={React.createElement(MODULE_INFO.faq.icon, { size: 18 })} label="FAQ" onClick={() => addModule(FAQ_MODULE)} />
+                                      <ModuleItem icon={React.createElement(MODULE_INFO.trusted_logos.icon, { size: 18 })} label="Logos de Empresas" onClick={() => addModule(TRUSTED_LOGOS_MODULE)} />
+                                      <ModuleItem icon={React.createElement(MODULE_INFO.testimonials.icon, { size: 18 })} label="Testimonios" onClick={() => addModule(TESTIMONIALS_MODULE)} />
                                     </div>
                                   </div>
 
                                   <div className="space-y-4">
-                                    <h4 className="text-[9px] font-black text-primary uppercase tracking-widest px-2">Catálogo</h4>
+                                    <h4 className="text-[9px] font-black text-primary uppercase tracking-widest px-2">Multimedia</h4>
                                     <div className="space-y-1">
-                                      <ModuleItem icon={React.createElement(MODULE_INFO.products.icon, { size: 18 })} label="Productos & Servicios" onClick={() => addModule(PRODUCTS_MODULE)} />
-                                    </div>
-                                  </div>
-
-                                  <div className="space-y-4">
-                                    <h4 className="text-[9px] font-black text-primary uppercase tracking-widest px-2">Estructura</h4>
-                                    <div className="space-y-1">
-                                      <ModuleItem icon={React.createElement(MODULE_INFO.spacer.icon, { size: 18 })} label="Espaciadores" onClick={() => addModule(SPACER_MODULE)} />
-                                      <ModuleItem icon={React.createElement(MODULE_INFO.bento.icon, { size: 18 })} label="Composición Libre" onClick={() => addModule(BENTO_MODULE)} />
-                                      <ModuleItem icon={React.createElement(MODULE_INFO.composition_section.icon, { size: 18 })} label="Composición Visual" onClick={() => addModule(COMPOSITION_SECTION_MODULE)} />
+                                      <ModuleItem icon={React.createElement(MODULE_INFO.comparative.icon, { size: 18 })} label="Comparativo" onClick={() => addModule(COMPARISON_MODULE)} />
+                                      <ModuleItem icon={React.createElement(MODULE_INFO.gallery.icon, { size: 18 })} label="Galería" onClick={() => addModule(GALLERY_MODULE)} />
+                                      <ModuleItem icon={React.createElement(MODULE_INFO.video.icon, { size: 18 })} label="Video" onClick={() => addModule(VIDEO_MODULE)} />
                                     </div>
                                   </div>
                                 </div>
+                              </div>
+                              <div className="mt-8 border-t border-sidebar-foreground/10 pt-4 space-y-1">
+                                <ModuleItem icon={React.createElement(MODULE_INFO.bento.icon, { size: 18 })} label="Diseño libre" onClick={() => addModule(BENTO_MODULE)} />
+                                <ModuleItem icon={React.createElement(MODULE_INFO.footer.icon, { size: 18 })} label="Pie de página" onClick={() => addModule(FOOTER_MODULE)} />
+                                <ModuleItem icon={React.createElement(MODULE_INFO.spacer.icon, { size: 18 })} label="Espaciadores" onClick={() => addModule(SPACER_MODULE)} />
                               </div>
                             </div>
                           )}

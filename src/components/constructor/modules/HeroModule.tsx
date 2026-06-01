@@ -708,13 +708,16 @@ export const HeroModule: React.FC<{
         animate={floatingAnim ? {
           y: [0, -15, 0],
           rotate: [0, 1, 0]
-      } : {}}
+      } : {
+        y: 0,
+        rotate: 0
+      }}
       transition={floatingAnim ? {
         y: { duration: 4, repeat: Infinity, ease: "easeInOut" },
         rotate: { duration: 6, repeat: Infinity, ease: "easeInOut" },
         opacity: { duration: 1 },
         scale: { duration: 1 }
-      } : { duration: 1 }}
+      } : { duration: 0.25, ease: "easeOut" }}
       viewport={{ once: true }}
       onClick={(e) => {
         if (isPreviewMode) return;

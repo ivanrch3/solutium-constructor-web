@@ -1,12 +1,12 @@
-import React from 'react';
-import { 
-  Layers, 
-  ChevronLeft, 
-  ChevronRight, 
-  ChevronUp, 
-  ChevronDown, 
-  Layout, 
-  GripVertical, 
+﻿import React from 'react';
+import {
+  Layers,
+  ChevronLeft,
+  ChevronRight,
+  ChevronUp,
+  ChevronDown,
+  Layout,
+  GripVertical,
   Trash2,
   Link,
   Image as ImageIcon,
@@ -17,7 +17,6 @@ import {
   MousePointer2,
   Settings,
   Sparkles,
-  Play,
   Copy,
   Eye,
   EyeOff,
@@ -62,6 +61,82 @@ const COMPOSITION_ADDABLE_TYPES: CompositionElementType[] = [
   'divider'
 ];
 
+const BENTO_ELEMENT_OPTIONS = [
+  { type: 'text', label: 'Texto', icon: <Type size={14} /> },
+  { type: 'visual', label: 'Imagen', icon: <ImageIcon size={14} /> },
+  { type: 'button', label: 'Botón', icon: <MousePointer2 size={14} /> },
+  { type: 'icon', label: 'Ícono', icon: <Sparkles size={14} /> },
+  { type: 'badge', label: 'Badge', icon: <Star size={14} /> },
+  { type: 'metric', label: 'Métrica', icon: <Database size={14} /> },
+  { type: 'list', label: 'Lista', icon: <Layers size={14} /> },
+  { type: 'accordion', label: 'Acordeón', icon: <ChevronDown size={14} /> },
+  { type: 'marquee', label: 'Cinta animada', icon: <Sparkles size={14} /> },
+  { type: 'card', label: 'Tarjeta simple', icon: <Box size={14} /> }
+];
+
+const getBentoElementOption = (type?: string) => {
+  const normalizedType = type === 'image' ? 'visual' : type === 'cta' ? 'button' : type === 'stat' ? 'metric' : type;
+  return BENTO_ELEMENT_OPTIONS.find((option) => option.type === normalizedType) || BENTO_ELEMENT_OPTIONS[0];
+};
+
+const createBentoCellId = () => {
+  const randomId = globalThis.crypto?.randomUUID?.() || Math.random().toString(36).slice(2);
+  return `bento_cell_${randomId}`;
+};
+
+const createBentoPanelElementPreset = (kind: string, existingItems: any[]) => {
+  const maxY = existingItems.length > 0
+    ? Math.max(...existingItems.map((item: any) => (Number(item.y) || 0) + (Number(item.row_span || item.h) || 2)))
+    : 0;
+
+  const withLayout = (item: any, desktopW: number, desktopH: number, tabletW = Math.min(desktopW, 6), mobileW = 4) => ({
+    id: createBentoCellId(),
+    card_style: 'solid',
+    card_radius: 28,
+    card_shadow: 'sm',
+    padding: 32,
+    content_align: 'center',
+    ...item,
+    col_span: desktopW,
+    row_span: desktopH,
+    desktop_span: desktopW,
+    desktop_rows: desktopH,
+    tablet_span: tabletW,
+    mobile_span: mobileW,
+    x: 0,
+    y: maxY,
+    layouts: {
+      desktop: { x: 0, y: maxY, w: desktopW, h: desktopH },
+      tablet: { x: 0, y: maxY, w: tabletW, h: desktopH },
+      mobile: { x: 0, y: maxY, w: mobileW, h: desktopH }
+    }
+  });
+
+  switch (kind) {
+    case 'visual':
+      return withLayout({ type: 'visual', title: '', description: '', image: '', card_style: 'transparent', padding: 0 }, 3, 2, 3, 4);
+    case 'button':
+      return withLayout({ type: 'button', title: 'Haz clic aquí', button_text: 'Haz clic aquí', btn_url: '#', card_style: 'transparent', padding: 16 }, 3, 1, 3, 4);
+    case 'icon':
+      return withLayout({ type: 'icon', title: 'Ícono destacado', icon: 'Sparkles', description: '' }, 2, 2, 2, 4);
+    case 'badge':
+      return withLayout({ type: 'badge', title: 'Nuevo', icon: 'Tag', card_style: 'transparent', padding: 12 }, 2, 1, 2, 4);
+    case 'metric':
+      return withLayout({ type: 'metric', title: '99+', description: 'Impacto medible', metric_value: '99+', metric_label: 'Impacto', icon: 'BarChart3', accent_color: '#3B82F6' }, 3, 2, 3, 4);
+    case 'list':
+      return withLayout({ type: 'list', title: 'Puntos clave', description: '', list_items: ['Primer punto', 'Segundo punto', 'Tercer punto'], icon: 'ListChecks' }, 4, 3, 4, 4);
+    case 'accordion':
+      return withLayout({ type: 'accordion', title: 'Ver más detalles', description: 'Contenido desplegable para ampliar esta idea.', icon: 'ChevronDown' }, 4, 2, 4, 4);
+    case 'marquee':
+      return withLayout({ type: 'marquee', title: 'PROMO • NUEVO • 24/7', card_style: 'transparent', padding: 12 }, 8, 1, 6, 4);
+    case 'card':
+      return withLayout({ type: 'card', title: 'Tarjeta simple', description: 'Combina texto, estilo e imagen de fondo.', icon: 'PanelTop' }, 4, 2, 3, 4);
+    case 'text':
+    default:
+      return withLayout({ type: 'text', text_style: 'heading', title: 'Título del texto', description: 'Escribe aquí tu contenido...', icon: 'Type' }, 4, 2, 3, 4);
+  }
+};
+
 interface StructurePanelProps {
   editorState: EditorState;
   setEditorState: React.Dispatch<React.SetStateAction<EditorState>>;
@@ -79,11 +154,11 @@ interface StructurePanelProps {
   useSplitLayout?: boolean;
 }
 
-export const StructurePanel: React.FC<StructurePanelProps> = ({ 
-  editorState, 
-  setEditorState, 
-  onSettingChange, 
-  onRemoveModule, 
+export const StructurePanel: React.FC<StructurePanelProps> = ({
+  editorState,
+  setEditorState,
+  onSettingChange,
+  onRemoveModule,
   onMoveModule,
   isCollapsed,
   onToggleCollapse,
@@ -109,8 +184,8 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
   const containerRef = React.useRef<HTMLDivElement>(null);
   const [shiningGroup, setShiningGroup] = React.useState<string | null>(null);
   const [expandedBentoItem, setExpandedBentoItem] = React.useState<number | null>(null);
-  const [expandedBentoGroup, setExpandedBentoGroup] = React.useState<string | null>(null);
-  
+  const [isBentoAddExpanded, setIsBentoAddExpanded] = React.useState(false);
+
   const shiningIntervalRef = React.useRef<NodeJS.Timeout | null>(null);
   const shiningTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
@@ -118,10 +193,10 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
   React.useEffect(() => {
     if (isCollapsed) return;
 
-    const targetId = editorState.selectedElementId 
-      ? `structure_el_${editorState.selectedElementId}` 
-      : editorState.expandedModuleId 
-        ? `structure_mod_${editorState.expandedModuleId}` 
+    const targetId = editorState.selectedElementId
+      ? `structure_el_${editorState.selectedElementId}`
+      : editorState.expandedModuleId
+        ? `structure_mod_${editorState.expandedModuleId}`
         : null;
 
     if (targetId) {
@@ -133,6 +208,12 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
       }, 300); // Wait for animations
     }
   }, [editorState.expandedModuleId, editorState.selectedElementId, isCollapsed]);
+
+  React.useEffect(() => {
+    if (selectedBentoCellIndex !== null) {
+      setExpandedBentoItem(selectedBentoCellIndex);
+    }
+  }, [selectedBentoCellIndex]);
 
   // Effect to handle shining animation
   React.useEffect(() => {
@@ -146,7 +227,7 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
     if (editorState.expandedModuleId && editorState.selectedElementId && isRecentlyAdded && isWithinFirstThree) {
       const elementId = editorState.selectedElementId;
       const module = editorState.addedModules.find(m => m.id === editorState.expandedModuleId);
-      const element = module?.elements.find(e => e.id === elementId) || 
+      const element = module?.elements.find(e => e.id === elementId) ||
                       (elementId.endsWith('_global') ? { id: elementId, groups: module?.globalGroups || [] } : null);
 
       const availableGroups = element?.groups || [];
@@ -158,7 +239,7 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
 
         if (shiningIntervalRef.current) clearInterval(shiningIntervalRef.current);
         if (shiningTimeoutRef.current) clearTimeout(shiningTimeoutRef.current);
-        
+
         shiningIntervalRef.current = setInterval(() => {
           const nextIndex = Math.floor(Math.random() * availableGroups.length);
           setShiningGroup(availableGroups[nextIndex]);
@@ -233,10 +314,10 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
       settings['global_theme_secondary_color'],
       settings['global_theme_accent_color'],
     ].filter(Boolean) as string[];
-    
+
     // Add default solutium primary if not exists
     if (colors.length === 0) return ['#3B82F6', '#8B5CF6', '#1E293B'];
-    
+
     return Array.from(new Set(colors));
   };
 
@@ -466,7 +547,7 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
           {(!isCollapsed || isMobile) && <span className="text-sm font-bold text-text">Estructura</span>}
         </div>
         {!isMobile && (
-          <button 
+          <button
             onClick={onToggleCollapse}
             className="text-text/40 hover:text-primary hover:bg-primary/10 p-1.5 rounded-lg transition-colors"
           >
@@ -478,7 +559,7 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
       <div className="flex-1 overflow-y-auto custom-scrollbar overflow-x-hidden">
         {(activeTab === 'design-style' || activeTab === 'design-animations') ? (
           <div className="h-full">
-            <GlobalSettingsPanel 
+            <GlobalSettingsPanel
               view={activeTab as any}
               settingsValues={editorState.settingsValues}
               onSettingChange={onSettingChange}
@@ -513,9 +594,9 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
             !module.id.startsWith('mod_header_1') &&
             !module.id.startsWith('mod_menu_1') &&
             !module.id.startsWith('mod_footer_1');
-          
+
           const moduleInfo = (module.iconKey && MODULE_INFO[module.iconKey]) || MODULE_INFO[module.type] || { icon: Layout, label: resolveModuleDisplayLabel(module) };
-          
+
           // Virtual element for global configuration
           const globalElement: ModuleElement = {
             id: module.id + '_global',
@@ -524,23 +605,25 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
             groups: module.globalGroups
           };
 
-          const allElements = [globalElement, ...module.elements];
           const isBento = module.type === 'bento'
             || (module as any).templateId === 'mod_bento_1'
             || module.id.startsWith('mod_bento_1');
+          const allElements = [globalElement, ...module.elements].filter((element) => (
+            !isBento || (element.id !== 'el_bento_items' && element.id !== `${module.id}_el_bento_items`)
+          ));
           const isCompositionSection = module.type === 'composition_section';
 
           return (
-            <div 
-              key={module.id} 
+            <div
+              key={module.id}
               id={`structure_mod_${module.id}`}
               className={`p-3 border-b border-border/30 last:border-0 ${isCollapsed ? 'px-2' : ''}`}
             >
-              <div 
+              <div
                 onClick={() => !isCollapsed && toggleModule(module.id)}
                 className={`flex items-center gap-2.5 p-2.5 rounded-xl border transition-all cursor-pointer group ${
                   isModuleExpanded && !isCollapsed
-                    ? 'bg-primary/10 border-primary/20' 
+                    ? 'bg-primary/10 border-primary/20'
                     : 'bg-secondary/50 border-border/50 hover:border-border'
                 } ${isCollapsed ? 'justify-center' : ''}`}
                 title={isCollapsed ? moduleInfo.label : undefined}
@@ -550,7 +633,7 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                     {hasMultipleModules ? (
                       <div className="flex flex-col gap-0.5">
                         {canMoveUp && (
-                          <button 
+                          <button
                             onClick={(e) => { e.stopPropagation(); onMoveModule(module.id, 'up'); }}
                             className="p-0.5 rounded hover:bg-primary/20 transition-colors text-text/40 hover:text-primary"
                           >
@@ -558,7 +641,7 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                           </button>
                         )}
                         {canMoveDown && (
-                          <button 
+                          <button
                             onClick={(e) => { e.stopPropagation(); onMoveModule(module.id, 'down'); }}
                             className="p-0.5 rounded hover:bg-primary/20 transition-colors text-text/40 hover:text-primary"
                           >
@@ -571,16 +654,16 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                     )}
                   </>
                 )}
-                
+
                 <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
                   isModuleExpanded && !isCollapsed ? 'bg-primary' : 'bg-surface border border-border/50'
                 }`}>
-                  {React.createElement(moduleInfo.icon, { 
-                    size: 12, 
-                    className: isModuleExpanded && !isCollapsed ? 'text-white' : 'text-text/40' 
+                  {React.createElement(moduleInfo.icon, {
+                    size: 12,
+                    className: isModuleExpanded && !isCollapsed ? 'text-white' : 'text-text/40'
                   })}
                 </div>
-                
+
                 {!isCollapsed && (
                   <>
                     <span className={`text-[14px] font-bold flex-1 truncate ${
@@ -590,14 +673,14 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                     </span>
 
                     {isMenuEligible && hasMenuModule && (
-                      <button 
+                      <button
                         onClick={(e) => {
                           e.stopPropagation();
                           toggleMenuLink(module.id);
                         }}
                         className={`p-1.5 rounded-lg transition-all ${
-                          isModuleLinked(module.id) 
-                            ? 'text-primary bg-primary/10 opacity-100' 
+                          isModuleLinked(module.id)
+                            ? 'text-primary bg-primary/10 opacity-100'
                             : 'text-text/35 hover:text-primary hover:bg-primary/5 opacity-70 group-hover:opacity-100'
                         }`}
                         title={isModuleLinked(module.id) ? "Quitar del menú" : "Agregar al menú"}
@@ -605,8 +688,8 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                         <Link size={14} />
                       </button>
                     )}
-                    
-                    <button 
+
+                    <button
                       onClick={(e) => {
                         e.stopPropagation();
                         onRemoveModule(module.id);
@@ -621,280 +704,6 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                   </>
                 )}
               </div>
-
-              {/* Bento Toolbox */}
-              <AnimatePresence>
-                {isModuleExpanded && isBento && !isCollapsed && (
-                  <motion.div 
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    className="mt-4 mb-2 p-3 bg-primary/5 rounded-2xl border border-primary/10 overflow-hidden"
-                  >
-                    <div className="flex items-center gap-2 mb-3">
-                       <Sparkles className="text-primary w-3 h-3" />
-                       <span className="text-[10px] font-bold uppercase tracking-wider text-primary">Bento Toolbox</span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      {[
-                        { type: 'text', label: 'Texto', icon: <Type size={14} /> },
-                        { type: 'visual', label: 'Imagen', icon: <ImageIcon size={14} /> },
-                        { type: 'button', label: 'Boton', icon: <MousePointer2 size={14} /> },
-                        { type: 'badge', label: 'Badge', icon: <Star size={14} /> },
-                        { type: 'metric', label: 'Metrica', icon: <Database size={14} /> }
-                      ].map((item) => (
-                        <div
-                          key={item.type}
-                          draggable={true}
-                          unselectable="on"
-                          onDragStart={(e) => {
-                            e.dataTransfer.setData("text/plain", ""); // Required for FF
-                            // Store the bento item type in a global or pass it via dataTransfer if RGL allows
-                            (window as any)._draggingBentoType = item.type;
-                          }}
-                          onClick={() => {
-                            const bentoItems = editorState.settingsValues[`${module.id}_el_bento_items_items`] || [];
-                            const newItem = {
-                              id: `bento_cell_${crypto.randomUUID()}`,
-                              type: item.type,
-                              title: item.type === 'metric' ? '99+' : (item.type === 'button' ? 'Haz clic aqui' : item.type === 'badge' ? 'Nuevo' : item.type === 'visual' ? 'Imagen destacada' : 'Nuevo Bloque'),
-                              description: item.type === 'button' || item.type === 'badge' || item.type === 'visual' ? '' : 'Personaliza este bloque desde el panel de ajustes.',
-                              col_span: item.type === 'visual' ? 6 : item.type === 'badge' ? 2 : 4,
-                              row_span: item.type === 'visual' ? 4 : item.type === 'button' || item.type === 'badge' ? 1 : 2,
-                              x: (bentoItems.length * 4) % 12, // Simple placement logic
-                              y: Infinity, // Add to bottom
-                              card_style: item.type === 'button' || item.type === 'badge' || item.type === 'visual' ? 'transparent' : 'solid',
-                              card_radius: 28,
-                              padding: item.type === 'button' || item.type === 'badge' ? 16 : 32,
-                              content_align: 'center',
-                              icon: item.type === 'metric' ? 'BarChart3' : item.type === 'badge' ? 'Tag' : 'Sparkles',
-                              button_text: item.type === 'button' ? 'Haz clic aqui' : 'Explorar',
-                              metric_value: item.type === 'metric' ? '99+' : undefined,
-                              metric_label: item.type === 'metric' ? 'Impacto' : undefined,
-                              image: item.type === 'visual' ? '' : undefined
-                            };
-                            
-                            const newItems = [...bentoItems, newItem];
-                            onSettingChange(`${module.id}_el_bento_items`, 'items', newItems);
-                            
-                            selectSection(module.id);
-                            setSelectedBentoCellIndex(newItems.length - 1);
-                            setEditorState(prev => ({
-                              ...prev,
-                              expandedModuleId: module.id,
-                              selectedElementId: `${module.id}_el_bento_items`
-                            }));
-
-                            // Auto-expand the newly added layer
-                            setTimeout(() => {
-                              setExpandedBentoItem(newItems.length - 1);
-                            }, 100);
-                          }}
-                          className="droppable-element flex items-center gap-2 p-2 bg-surface border border-border/50 rounded-xl cursor-copy hover:border-primary/30 hover:shadow-md transition-all active:scale-95 group"
-                          title="Haz clic o arrastra para añadir"
-                        >
-                          <div className="text-text/40 group-hover:text-primary transition-colors">
-                            {item.icon}
-                          </div>
-                          <span className="text-[10px] font-bold text-text/60 group-hover:text-text transition-colors">
-                            {item.label}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                    <p className="text-[9px] text-text/40 mt-3 text-center italic border-b border-border/20 pb-4">Arrastra una pieza al Bento para construirlo</p>
-
-                    {/* Bento Layers Navigator (Internal Structure) */}
-                    <div className="mt-4 space-y-2">
-                       <div className="flex items-center gap-2 mb-2">
-                          <Layers className="text-primary w-3 h-3" />
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-text/60">Capas del Bento</span>
-                       </div>
-                       
-                       {(() => {
-                         // Look for the definition in the registry to ensure settings are always available
-                         const bentoModuleId = module.type;
-                         // Accessing registry info if available or falling back to module elements
-                         const bentoItemsElement = module.elements.find(e => e.id === 'el_bento_items');
-                         const bentoItems = editorState.settingsValues[`${module.id}_el_bento_items_items`] || [];
-                         
-                         if (bentoItems.length === 0) {
-                           return <div className="p-4 border border-dashed border-border rounded-xl text-center text-[10px] text-text/40">No hay capas todavía</div>;
-                         }
-
-                         // Helper to organize items automatically
-                         const organizeAutomatically = () => {
-                            const sortedItems = [...bentoItems].sort((a, b) => {
-                               if (a.y !== b.y) return a.y - b.y;
-                               return a.x - b.x;
-                            });
-                            
-                            // Re-calculate positions to be compact
-                            let currentY = 0;
-                            let currentX = 0;
-                            const organizedItems = sortedItems.map((item) => {
-                               const newItem = { ...item, x: currentX, y: currentY };
-                               currentX += item.col_span;
-                               if (currentX >= 12) {
-                                  currentX = 0;
-                                  currentY += 2; // Assuming default row height logic
-                               }
-                               return newItem;
-                            });
-                            onSettingChange(`${module.id}_el_bento_items`, 'items', organizedItems);
-                         };
-
-                         return (
-                           <>
-                             <button 
-                               onClick={organizeAutomatically}
-                               className="w-full flex items-center justify-center gap-2 p-2 mb-4 bg-primary/10 text-primary rounded-xl text-[10px] font-bold hover:bg-primary/20 transition-all border border-primary/20"
-                             >
-                                <Sparkles size={12} />
-                                Organizar Automáticamente
-                             </button>
-                             
-                             {bentoItems.map((item: any, itemIndex: number) => {
-                               const isItemExpanded = expandedBentoItem === itemIndex;
-                               const IconComponent = item.type === 'text' ? Type : 
-                                                   item.type === 'image' ? ImageIcon : 
-                                                   item.type === 'video' ? Play :
-                                                   item.type === 'cta' ? MousePointer2 :
-                                                   item.type === 'stat' ? Database : Sparkles;
-
-                               const itemGroups: SettingGroupType[] = ['contenido', 'estructura', 'estilo', 'tipografia', 'multimedia', 'interaccion'].filter(g => {
-                                  if (g === 'tipografia' && !['text', 'stat', 'icon_text', 'cta', 'image'].includes(item.type)) return false;
-                                  if (g === 'multimedia' && !['image', 'video', 'text'].includes(item.type)) return false;
-                                  return true;
-                               }) as SettingGroupType[];
-
-                               return (
-                                 <div key={itemIndex} className="space-y-1">
-                                    <div 
-                                      onClick={() => {
-                                        const nextIndex = isItemExpanded && selectedBentoCellIndex === itemIndex ? null : itemIndex;
-                                        selectSection(module.id);
-                                        setSelectedBentoCellIndex(nextIndex);
-                                        setExpandedBentoItem(nextIndex);
-                                        setEditorState(prev => ({
-                                          ...prev,
-                                          expandedModuleId: module.id,
-                                          selectedElementId: nextIndex === null ? `${module.id}_global` : `${module.id}_el_bento_items`
-                                        }));
-                                      }}
-                                      className={`flex items-center gap-2.5 p-2 rounded-xl border transition-all cursor-pointer ${
-                                        isItemExpanded ? 'bg-primary/5 border-primary/20' : 'bg-surface border-border/30 hover:border-border'
-                                      }`}
-                                    >
-                                       <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${
-                                         isItemExpanded ? 'bg-primary text-white' : 'bg-secondary text-text/40'
-                                       }`}>
-                                         <IconComponent size={14} />
-                                       </div>
-                                       <div className="flex-1 min-w-0">
-                                          <p className={`text-[11px] font-bold truncate ${isItemExpanded ? 'text-primary' : 'text-text'}`}>
-                                            {item.admin_label || item.title || `Capa ${itemIndex + 1}`}
-                                          </p>
-                                          <p className="text-[9px] text-text/40 uppercase font-medium">{item.type}</p>
-                                       </div>
-                                       <ChevronDown size={14} className={`text-text/20 transition-transform ${isItemExpanded ? 'rotate-180 text-primary' : ''}`} />
-                                    </div>
-
-                                    <AnimatePresence>
-                                      {isItemExpanded && (
-                                        <motion.div 
-                                          initial={{ height: 0, opacity: 0 }}
-                                          animate={{ height: 'auto', opacity: 1 }}
-                                          exit={{ height: 0, opacity: 0 }}
-                                          className="ml-3 border-l-2 border-primary/20 pl-3 py-2 space-y-1.5 overflow-hidden"
-                                        >
-                                           {selectedBentoCellIndex === itemIndex && (
-                                             <div className="rounded-xl border border-primary/10 bg-primary/5 p-3 text-[10px] leading-relaxed text-text/60">
-                                               Editando esta capa en Bloques de Contenido (Celdas).
-                                             </div>
-                                           )}
-
-                                           {selectedBentoCellIndex !== itemIndex && itemGroups.map(group => {
-                                             const isGroupExpanded = expandedBentoGroup === `${itemIndex}_${group}`;
-                                             // Robust lookup in BENTO_MODULE registry
-                                             const bentoSettings = (BENTO_MODULE.elements.find(e => e.id === 'el_bento_items')?.settings as any) || {};
-                                             const settingsForGroup = bentoSettings[group] || [];
-                                             
-                                             return (
-                                               <div key={group} className="space-y-1">
-                                                  <button 
-                                                    onClick={() => setExpandedBentoGroup(isGroupExpanded ? null : `${itemIndex}_${group}`)}
-                                                    className={`w-full flex items-center justify-between p-2 rounded-lg transition-all ${
-                                                      isGroupExpanded ? 'bg-surface border border-border/50 shadow-sm' : 'hover:bg-secondary'
-                                                    }`}
-                                                  >
-                                                    <span className={`text-[10px] tracking-wide ${isGroupExpanded ? 'font-bold text-primary' : 'font-medium text-text/60'}`}>
-                                                      {GROUP_LABELS[group]}
-                                                    </span>
-                                                    <ChevronDown size={10} className={`text-text/20 transition-transform ${isGroupExpanded ? 'rotate-180 text-primary' : ''}`} />
-                                                  </button>
-
-                                                  <AnimatePresence>
-                                                    {isGroupExpanded && (
-                                                      <motion.div 
-                                                        initial={{ opacity: 0 }}
-                                                        animate={{ opacity: 1 }}
-                                                        className="p-3 bg-surface rounded-xl border border-border/30 shadow-inner space-y-4"
-                                                      >
-                                                         {settingsForGroup.map((setting: any) => (
-                                                            <SettingControl
-                                                              key={setting.id}
-                                                              setting={setting}
-                                                              value={item[setting.id] ?? setting.defaultValue}
-                                                              onChange={(value) => {
-                                                                const newItems = [...bentoItems];
-                                                                newItems[itemIndex] = { ...newItems[itemIndex], [setting.id]: value };
-                                                                onSettingChange(`${module.id}_el_bento_items`, 'items', newItems);
-                                                              }}
-                                                              projectId={projectId}
-                                                              products={products}
-                                                              customers={customers}
-                                                              trustedCompanyLogos={trustedCompanyLogos}
-                                                              projectColors={projectColors}
-                                                              contextId={`${module.id}_el_bento_items`}
-                                                              moduleType={module.type}
-                                                              settingsValues={editorState.settingsValues}
-                                                            />
-                                                         ))}
-                                                      </motion.div>
-                                                    )}
-                                                  </AnimatePresence>
-                                               </div>
-                                             );
-                                           })}
-                                           
-                                           <button 
-                                              onClick={() => {
-                                                const newItems = bentoItems.filter((_: any, idx: number) => idx !== itemIndex);
-                                                onSettingChange(`${module.id}_el_bento_items`, 'items', newItems);
-                                                if (selectedBentoCellIndex === itemIndex) {
-                                                  setSelectedBentoCellIndex(null);
-                                                }
-                                                setExpandedBentoItem(null);
-                                              }}
-                                              className="w-full flex items-center justify-center gap-2 p-2 mt-2 text-[10px] font-bold text-rose-500 hover:bg-rose-50 rounded-lg transition-colors border border-transparent hover:border-rose-100"
-                                           >
-                                              <Trash2 size={12} />
-                                              Eliminar Capa
-                                           </button>
-                                        </motion.div>
-                                      )}
-                                    </AnimatePresence>
-                                 </div>
-                               );
-                             })}
-                           </>
-                         );
-                       })()}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
 
               {/* Composition Section Internal Tree */}
               <AnimatePresence>
@@ -962,7 +771,7 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
               {/* Elements List */}
               <AnimatePresence>
                 {isModuleExpanded && (
-                  <motion.div 
+                  <motion.div
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: 'auto', opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
@@ -972,21 +781,21 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                       const isBentoItemsElement = isBento && element.id === `${module.id}_el_bento_items`;
                       const isElementSelected = editorState.selectedElementId === element.id
                         || (isBentoItemsElement && selectedBentoCellIndex !== null);
-                      
+
                       return (
-                        <div 
-                          key={element.id} 
+                        <div
+                          key={element.id}
                           id={`structure_el_${element.id}`}
                           className="space-y-1"
                         >
-                          <div 
+                          <div
                             onClick={() => {
                               if (isBento) setSelectedBentoCellIndex(null);
                               toggleElement(element.id);
                             }}
                             className={`flex items-center gap-2.5 p-2 rounded-lg border transition-all cursor-pointer ${
-                              isElementSelected 
-                                ? 'bg-primary/5 border-primary/20' 
+                              isElementSelected
+                                ? 'bg-primary/5 border-primary/20'
                                 : 'bg-transparent border-transparent hover:bg-secondary'
                             }`}
                           >
@@ -1006,7 +815,7 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                           {/* Inline Configuration Groups */}
                           <AnimatePresence>
                             {isElementSelected && (
-                              <motion.div 
+                              <motion.div
                                 initial={{ height: 0, opacity: 0 }}
                                 animate={{ height: 'auto', opacity: 1 }}
                                 exit={{ height: 0, opacity: 0 }}
@@ -1037,29 +846,63 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                                   </div>
                                 )}
 
+                                {module.type === 'dynamic_cards' && element.id.endsWith('_el_dynamic_cards_cards') && (() => {
+                                  const cardsSetting = element.settings?.contenido?.find((setting) => setting.id === 'cards');
+                                  if (!cardsSetting) return null;
+
+                                  return (
+                                    <div className="rounded-lg border border-border/30 bg-surface p-3 shadow-sm">
+                                      <SettingControl
+                                        setting={cardsSetting}
+                                        value={editorState.settingsValues[`${element.id}_${cardsSetting.id}`]}
+                                        onChange={(val) => onSettingChange(element.id, cardsSetting.id, val)}
+                                        projectId={projectId}
+                                        products={products}
+                                        customers={customers}
+                                        trustedCompanyLogos={trustedCompanyLogos}
+                                        projectColors={projectColors}
+                                        contextId={element.id}
+                                        moduleType={module.type}
+                                        settingsValues={editorState.settingsValues}
+                                      />
+                                    </div>
+                                  );
+                                })()}
+
                                 {!(isBentoItemsElement && selectedBentoCellIndex !== null) && (Object.keys(GROUP_LABELS) as SettingGroupType[]).map(group => {
+                                  if (module.type === 'dynamic_cards' && element.id.endsWith('_el_dynamic_cards_cards')) return null;
                                   const isAvailable = element.groups.includes(group);
-                                  const hasSettings = element.type === 'global' 
-                                    ? !!module.globalSettings?.[group]?.length 
+                                  const hasSettings = element.type === 'global'
+                                    ? !!module.globalSettings?.[group]?.length
                                     : !!element.settings?.[group]?.length;
-                                  
+
                                   if (!isAvailable || !hasSettings) return null;
 
                                   const isGroupExpanded = editorState.expandedGroupsByElement[element.id] === group;
                                   const isShining = shiningGroup === group;
+                                  const dynamicCardsGlobalGroupLabels: Partial<Record<SettingGroupType, string>> = {
+                                    contenido: 'Textos',
+                                    multimedia: 'Fondo',
+                                    estilo: 'Animaciones',
+                                    estructura: 'Altura',
+                                    interaccion: 'Navegación'
+                                  };
+                                  const groupLabel = module.type === 'dynamic_cards' && element.type === 'global'
+                                    ? dynamicCardsGlobalGroupLabels[group] || GROUP_LABELS[group]
+                                    : GROUP_LABELS[group];
 
                                   return (
                                     <div key={group} className={`border rounded-lg bg-surface overflow-hidden shadow-sm transition-all duration-500 ${
                                       isShining ? 'border-primary shadow-[0_0_15px_rgba(59,130,246,0.5)] ring-1 ring-primary/30' : 'border-border/30'
                                     }`}>
-                                      <button 
+                                      <button
                                         onClick={() => toggleGroup(element.id, group)}
                                         className={`w-full flex items-center justify-between p-2 hover:bg-secondary transition-colors relative overflow-hidden ${
                                           isShining ? 'bg-primary/5' : ''
                                         }`}
                                       >
                                         {isShining && (
-                                          <motion.div 
+                                          <motion.div
                                             initial={{ x: '-100%' }}
                                             animate={{ x: '200%' }}
                                             transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
@@ -1069,14 +912,14 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                                         <span className={`text-[12px] transition-all relative z-10 ${
                                           isGroupExpanded || isShining ? 'font-bold text-primary' : 'font-normal text-text/60'
                                         }`}>
-                                          {GROUP_LABELS[group]}
+                                          {groupLabel}
                                         </span>
                                         <ChevronDown size={10} className={`text-text/20 transition-transform relative z-10 ${isGroupExpanded ? 'rotate-180 text-primary' : ''}`} />
                                       </button>
-                                      
+
                                       <AnimatePresence>
                                         {isGroupExpanded && (
-                                          <motion.div 
+                                          <motion.div
                                             initial={{ height: 0, opacity: 0 }}
                                             animate={{ height: 'auto', opacity: 1 }}
                                             exit={{ height: 0, opacity: 0 }}
@@ -1087,7 +930,7 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                                               {(() => {
                                                 const evaluateCondition = (condition: any, currentSettings: Record<string, any>, prefix: string) => {
                                                   if (!condition) return { result: true };
-                                                  
+
                                                   // Try with prefix first (element-specific), then without (global/module-wide)
                                                   let val = currentSettings[`${prefix}_${condition.settingId}`];
                                                   if (val === undefined) {
@@ -1095,7 +938,7 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                                                     const modulePrefix = prefix.split('_').slice(0, 3).join('_') + '_global';
                                                     val = currentSettings[`${modulePrefix}_${condition.settingId}`];
                                                   }
-                                                  
+
                                                   const op = condition.operator || 'eq';
                                                   let result = false;
 
@@ -1109,11 +952,11 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                                                   return { result, message: condition.message };
                                                 };
 
-                                                const settingsToRender = element.type === 'global' 
-                                                  ? module.globalSettings?.[group] 
+                                                const settingsToRender = element.type === 'global'
+                                                  ? module.globalSettings?.[group]
                                                   : element.settings?.[group];
 
-                                                return settingsToRender?.map(setting => {
+                                                return settingsToRender?.map((setting, settingIndex) => {
                                                   const prefix = element.id;
                                                   const show = evaluateCondition(setting.showIf, editorState.settingsValues, prefix);
                                                   if (!show.result) return null;
@@ -1123,28 +966,40 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                                                     ...setting,
                                                     disabledMessage: !disabled.result ? undefined : (disabled.message || setting.disabledMessage)
                                                   };
+                                                  const showDynamicCardsSubsection = module.type === 'dynamic_cards' &&
+                                                    element.type === 'global' &&
+                                                    setting.subsection &&
+                                                    settingsToRender[settingIndex - 1]?.subsection !== setting.subsection;
 
                                                   return (
-                                                    <SettingControl 
-                                                      key={setting.id} 
-                                                      setting={finalSetting} 
-                                                      value={editorState.settingsValues[`${prefix}_${setting.id}`]}
-                                                      onChange={(val) => onSettingChange(prefix, setting.id, val)}
-                                                      projectId={projectId}
-                                                      products={products}
-                                                      customers={customers}
-                                                      trustedCompanyLogos={trustedCompanyLogos}
-                                                      projectColors={projectColors}
-                                                      contextId={prefix}
-                                                      moduleType={module.type}
-                                                      settingsValues={editorState.settingsValues}
-                                                    />
+                                                    <React.Fragment key={setting.id}>
+                                                      {showDynamicCardsSubsection && (
+                                                        <div className="border-t border-border/40 pt-3 first:border-t-0 first:pt-0">
+                                                          <p className="text-[9px] font-black uppercase tracking-wider text-primary/70">
+                                                            {setting.subsection}
+                                                          </p>
+                                                        </div>
+                                                      )}
+                                                      <SettingControl
+                                                        setting={finalSetting}
+                                                        value={editorState.settingsValues[`${prefix}_${setting.id}`]}
+                                                        onChange={(val) => onSettingChange(prefix, setting.id, val)}
+                                                        projectId={projectId}
+                                                        products={products}
+                                                        customers={customers}
+                                                        trustedCompanyLogos={trustedCompanyLogos}
+                                                        projectColors={projectColors}
+                                                        contextId={prefix}
+                                                        moduleType={module.type}
+                                                        settingsValues={editorState.settingsValues}
+                                                      />
+                                                    </React.Fragment>
                                                   );
                                                 });
                                               })()}
-                                              
+
                                               {/* Fallback if no settings defined for this group */}
-                                              {((element.type === 'global' && !module.globalSettings?.[group]?.length) || 
+                                              {((element.type === 'global' && !module.globalSettings?.[group]?.length) ||
                                                 (element.type !== 'global' && !element.settings?.[group]?.length)) && (
                                                 <p className="text-[10px] text-text/40 italic pt-2">No hay opciones disponibles para este grupo.</p>
                                               )}
@@ -1161,6 +1016,199 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                         </div>
                       );
                     })}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Add design elements */}
+              <AnimatePresence>
+                {isModuleExpanded && isBento && !isCollapsed && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="mt-4 mb-2"
+                  >
+                    <div className="rounded-2xl border border-primary/10 bg-primary/5 p-2">
+                      <button
+                        type="button"
+                        onClick={() => setIsBentoAddExpanded((expanded) => !expanded)}
+                        className="flex w-full items-center gap-2 rounded-xl px-2 py-2 text-left transition-colors hover:bg-primary/10"
+                        aria-expanded={isBentoAddExpanded}
+                      >
+                        <Sparkles className="h-3 w-3 text-primary" />
+                        <span className="flex-1 text-[11px] font-bold text-primary">Agregar elemento</span>
+                        <ChevronDown size={14} className={`text-primary/60 transition-transform ${isBentoAddExpanded ? 'rotate-180' : ''}`} />
+                      </button>
+
+                      <AnimatePresence initial={false}>
+                        {isBentoAddExpanded && (
+                          <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                          >
+                            <div className="px-2 pb-2 pt-1">
+                              <p className="mb-3 text-[10px] text-text/50">Agrega elementos para construir tu diseño.</p>
+                              <div className="grid grid-cols-2 gap-2">
+                                {BENTO_ELEMENT_OPTIONS.map((item) => (
+                                  <div
+                                    key={item.type}
+                                    draggable={true}
+                                    unselectable="on"
+                                    onDragStart={(e) => {
+                                      e.dataTransfer.setData("text/plain", "");
+                                      (window as any)._draggingBentoType = item.type;
+                                    }}
+                                    onClick={() => {
+                                      const bentoItems = editorState.settingsValues[`${module.id}_el_bento_items_items`] || [];
+                                      const newItem = createBentoPanelElementPreset(item.type, bentoItems);
+                                      const newItems = [...bentoItems, newItem];
+                                      onSettingChange(`${module.id}_el_bento_items`, 'items', newItems);
+                                      selectSection(module.id);
+                                      setSelectedBentoCellIndex(newItems.length - 1);
+                                      setEditorState(prev => ({
+                                        ...prev,
+                                        expandedModuleId: module.id,
+                                        selectedElementId: `${module.id}_el_bento_items`
+                                      }));
+                                      setTimeout(() => {
+                                        setExpandedBentoItem(newItems.length - 1);
+                                      }, 100);
+                                    }}
+                                    className="droppable-element flex items-center gap-2 p-2 bg-surface border border-border/50 rounded-xl cursor-pointer hover:border-primary/30 hover:shadow-md transition-all active:scale-95 group"
+                                    title="Haz clic para añadir"
+                                  >
+                                    <div className="text-text/40 group-hover:text-primary transition-colors">
+                                      {item.icon}
+                                    </div>
+                                    <span className="text-[10px] font-bold text-text/60 group-hover:text-text transition-colors">
+                                      {item.label}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+
+                    {/* Bento Layers Navigator (Internal Structure) */}
+                    <div className="mt-4 border-t border-border/20 pt-4 space-y-2">
+                       <div className="flex items-center gap-2 mb-2">
+                          <Layers className="text-primary w-3 h-3" />
+                          <span className="text-[11px] font-bold text-text/70">Elementos</span>
+                       </div>
+
+                        {(() => {
+                          const bentoItems = editorState.settingsValues[`${module.id}_el_bento_items_items`] || [];
+
+                         if (bentoItems.length === 0) {
+                           return <div className="p-4 border border-dashed border-border rounded-xl text-center text-[10px] text-text/40">No hay capas todavía</div>;
+                         }
+
+                         return (
+                           <>
+                              {bentoItems.map((item: any, itemIndex: number) => {
+                                const isItemExpanded = expandedBentoItem === itemIndex;
+                                const elementOption = getBentoElementOption(item.type);
+
+                                 return (
+                                  <div key={itemIndex} className="space-y-1">
+                                    <div
+                                      onClick={() => {
+                                        const shouldCollapseEditor = isItemExpanded && selectedBentoCellIndex === itemIndex;
+                                        const nextExpandedIndex = shouldCollapseEditor ? null : itemIndex;
+                                        selectSection(module.id);
+                                        setSelectedBentoCellIndex(itemIndex);
+                                        setExpandedBentoItem(nextExpandedIndex);
+                                        setEditorState(prev => ({
+                                          ...prev,
+                                          expandedModuleId: module.id,
+                                          selectedElementId: `${module.id}_el_bento_items`
+                                        }));
+                                      }}
+                                      className={`flex items-center gap-2.5 p-2 rounded-xl border transition-all cursor-pointer ${
+                                        isItemExpanded ? 'bg-primary/5 border-primary/20' : 'bg-surface border-border/30 hover:border-border'
+                                      }`}
+                                    >
+                                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${
+                                          isItemExpanded ? 'bg-primary text-white' : 'bg-secondary text-text/40'
+                                        }`}>
+                                          {elementOption.icon}
+                                        </div>
+                                       <div className="flex-1 min-w-0">
+                                          <p className={`text-[11px] font-bold truncate ${isItemExpanded ? 'text-primary' : 'text-text'}`}>
+                                            {item.admin_label || item.title || `Elemento ${itemIndex + 1}`}
+                                          </p>
+                                           <p className="text-[9px] text-text/40 uppercase font-medium">{item.type === 'text' ? (item.text_style || 'texto') : elementOption.label}</p>
+                                        </div>
+                                        <button
+                                          type="button"
+                                          onClick={(event) => {
+                                            event.stopPropagation();
+                                            const newItems = bentoItems.filter((_: any, idx: number) => idx !== itemIndex);
+                                            onSettingChange(`${module.id}_el_bento_items`, 'items', newItems);
+                                            if (selectedBentoCellIndex === itemIndex) {
+                                              setSelectedBentoCellIndex(null);
+                                            } else if (selectedBentoCellIndex !== null && selectedBentoCellIndex > itemIndex) {
+                                              setSelectedBentoCellIndex(selectedBentoCellIndex - 1);
+                                            }
+                                            setExpandedBentoItem(null);
+                                          }}
+                                          className="rounded-lg p-1.5 text-text/30 transition-colors hover:bg-rose-50 hover:text-rose-500"
+                                          title="Eliminar elemento"
+                                          aria-label="Eliminar elemento"
+                                        >
+                                          <Trash2 size={13} />
+                                        </button>
+                                        <ChevronDown size={14} className={`text-text/20 transition-transform ${isItemExpanded ? 'rotate-180 text-primary' : ''}`} />
+                                     </div>
+
+                                    <AnimatePresence>
+                                      {isItemExpanded && (
+                                        <motion.div
+                                          initial={{ height: 0, opacity: 0 }}
+                                          animate={{ height: 'auto', opacity: 1 }}
+                                          exit={{ height: 0, opacity: 0 }}
+                                          className="ml-3 border-l-2 border-primary/20 pl-3 py-2 space-y-1.5 overflow-hidden"
+                                        >
+                                           {selectedBentoCellIndex === itemIndex && (
+                                             <div className="mb-3 overflow-hidden rounded-2xl border border-primary/15 bg-white shadow-sm">
+                                               <BentoCellEditor
+                                                 selectedSection={module}
+                                                 moduleDef={BENTO_MODULE}
+                                                 selectedBentoCellIndex={selectedBentoCellIndex}
+                                                 setSelectedBentoCellIndex={(index) => {
+                                                   setSelectedBentoCellIndex(index);
+                                                   setExpandedBentoItem(index);
+                                                   setEditorState(prev => ({
+                                                     ...prev,
+                                                     expandedModuleId: module.id,
+                                                     selectedElementId: index === null ? `${module.id}_global` : `${module.id}_el_bento_items`
+                                                   }));
+                                                 }}
+                                                 settingsValues={editorState.settingsValues}
+                                                 onSettingChange={onSettingChange}
+                                                 updateSectionSettings={updateSectionSettings}
+                                                 project={project}
+                                                 projectColors={projectColors}
+                                                 title="Editar elemento"
+                                                 embedded
+                                               />
+                                             </div>
+                                           )}
+                                         </motion.div>
+                                      )}
+                                    </AnimatePresence>
+                                 </div>
+                               );
+                             })}
+                           </>
+                         );
+                       })()}
+                    </div>
                   </motion.div>
                 )}
               </AnimatePresence>

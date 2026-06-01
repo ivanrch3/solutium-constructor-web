@@ -40,6 +40,16 @@ const PILLAR_LABELS: Record<string, string> = {
 
 const PILLARS_ORDER: string[] = ['contenido', 'estructura', 'estilo', 'tipografia', 'multimedia', 'interaccion'];
 
+const TEXT_STYLE_PRESETS: Record<string, Record<string, any>> = {
+  display: { title_size: 't1', title_weight: 'black', description_size: 'p', line_height: 1.05, letter_spacing: -2 },
+  heading_large: { title_size: 't2', title_weight: 'black', description_size: 'p', line_height: 1.1, letter_spacing: -1 },
+  heading: { title_size: 't3', title_weight: 'extrabold', description_size: 'p', line_height: 1.2, letter_spacing: 0 },
+  subtitle: { title_size: 'p', title_weight: 'semibold', description_size: 'p', line_height: 1.35, letter_spacing: 0 },
+  paragraph: { title_size: 'p', title_weight: 'normal', description_size: 'p', line_height: 1.55, letter_spacing: 0 },
+  small: { title_size: 's', title_weight: 'normal', description_size: 's', line_height: 1.45, letter_spacing: 0 },
+  caption: { title_size: 's', title_weight: 'bold', description_size: 's', line_height: 1.3, letter_spacing: 1 }
+};
+
 interface BentoCellEditorProps {
   selectedSection: any;
   moduleDef: any;
@@ -52,6 +62,7 @@ interface BentoCellEditorProps {
   projectColors: string[];
   title?: string;
   onClose?: () => void;
+  embedded?: boolean;
 }
 
 export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
@@ -64,8 +75,9 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
   updateSectionSettings,
   project,
   projectColors,
-  title = 'Editar Celda',
-  onClose
+  title = 'Editar elemento',
+  onClose,
+  embedded = false
 }) => {
   const [expandedPillars, setExpandedPillars] = React.useState<Record<string, boolean>>({
     contenido: true,
@@ -98,6 +110,27 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
     return items[selectedBentoCellIndex] || null;
   };
 
+  const selectedBentoItem = getSelectedBentoItem();
+  const selectedType = selectedBentoItem?.type || 'text';
+
+  const visibleFieldsByType: Record<string, string[]> = {
+    text: ['text_style', 'title', 'description', 'title_size', 'title_weight', 'font_family', 'title_color', 'description_size', 'content_align', 'line_height', 'letter_spacing', 'card_image', 'card_overlay', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'align_items', 'card_style', 'card_bg', 'card_gradient', 'card_radius', 'card_shadow', 'text_contrast'],
+    visual: ['image', 'image_fit', 'card_image', 'card_overlay', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'align_items', 'card_style', 'card_bg', 'card_gradient', 'card_radius', 'card_shadow'],
+    button: ['button_text', 'btn_url', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'align_items', 'card_style', 'card_bg', 'card_gradient', 'card_image', 'card_overlay', 'card_radius', 'card_shadow'],
+    icon: ['title', 'description', 'icon', 'title_size', 'title_weight', 'title_color', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'align_items', 'card_style', 'card_bg', 'card_gradient', 'card_image', 'card_overlay', 'card_radius', 'card_shadow', 'text_contrast'],
+    badge: ['title', 'icon', 'title_size', 'title_weight', 'title_color', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'align_items', 'card_style', 'card_bg', 'card_gradient', 'card_image', 'card_overlay', 'card_radius', 'card_shadow'],
+    metric: ['metric_value', 'metric_prefix', 'metric_suffix', 'metric_label', 'accent_color', 'icon', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'align_items', 'card_style', 'card_bg', 'card_gradient', 'card_image', 'card_overlay', 'card_radius', 'card_shadow'],
+    list: ['title', 'list_items', 'icon', 'title_size', 'title_weight', 'title_color', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'align_items', 'card_style', 'card_bg', 'card_gradient', 'card_image', 'card_overlay', 'card_radius', 'card_shadow'],
+    accordion: ['title', 'description', 'title_size', 'title_weight', 'title_color', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'align_items', 'card_style', 'card_bg', 'card_gradient', 'card_image', 'card_overlay', 'card_radius', 'card_shadow'],
+    marquee: ['title', 'title_size', 'title_weight', 'title_color', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'align_items', 'card_style', 'card_bg', 'card_gradient', 'card_image', 'card_overlay', 'card_radius', 'card_shadow'],
+    card: ['title', 'description', 'icon', 'title_size', 'title_weight', 'title_color', 'description_size', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'align_items', 'card_style', 'card_bg', 'card_gradient', 'card_image', 'card_overlay', 'card_radius', 'card_shadow', 'text_contrast']
+  };
+
+  const shouldShowFieldForType = (field: any) => {
+    const visibleFields = visibleFieldsByType[selectedType] || visibleFieldsByType.text;
+    return visibleFields.includes(field.id);
+  };
+
   const settingsByPillar: Record<string, { label: string, setting: any, contextId: string }[]> = {};
 
   moduleDef.elements.forEach((element: any) => {
@@ -110,7 +143,7 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
 
       (settings as any[]).forEach((setting) => {
         const cellSettings = setting.type === 'repeater' && Array.isArray(setting.fields) ? setting.fields : [setting];
-        cellSettings.forEach((field: any) => {
+        cellSettings.filter(shouldShowFieldForType).forEach((field: any) => {
           settingsByPillar[targetPillar].push({
             label: field.label,
             setting: field,
@@ -161,7 +194,7 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
 
   const handleFieldChange = (contextId: string, settingId: string, value: any) => {
     logDebug('[BENTO_CELL_EDITOR_CHANGE_DEBUG]', { contextId, settingId, value });
-    const [sectionId, , indexStr] = contextId.split('_el_bento_items_');
+    const [sectionId, indexStr] = contextId.split('_el_bento_items_');
     const realSectionId = sectionId || selectedSection.id;
     const index = parseInt(indexStr);
     const repeaterKey = `${realSectionId}_el_bento_items_items`;
@@ -169,7 +202,10 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
     const newItems = [...currentItems];
 
     if (newItems[index]) {
-      newItems[index] = { ...newItems[index], [settingId]: value };
+      const textStylePreset = settingId === 'text_style'
+        ? TEXT_STYLE_PRESETS[value as string] || {}
+        : {};
+      newItems[index] = { ...newItems[index], [settingId]: value, ...textStylePreset };
       if (onSettingChange) {
         onSettingChange(`${realSectionId}_el_bento_items`, 'items', newItems);
       } else {
@@ -178,11 +214,44 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
     }
   };
 
-  const selectedBentoItem = getSelectedBentoItem();
+  const renderFieldControl = ({ label, setting, contextId }: { label: string; setting: any; contextId: string }) => {
+    const conditionSettings = selectedBentoItem
+      ? {
+        ...selectedSection.settings,
+        ...Object.fromEntries(Object.entries(selectedBentoItem).map(([key, itemValue]) => [`${contextId}_${key}`, itemValue]))
+      }
+      : selectedSection.settings;
+    const show = evaluateCondition(setting.showIf, conditionSettings, contextId);
+    if (!show.result) return null;
+
+    const value = selectedBentoItem && selectedBentoItem[setting.id] !== undefined
+      ? selectedBentoItem[setting.id]
+      : setting.defaultValue;
+
+    return (
+      <div key={`${contextId}_${setting.id}`} className="space-y-1">
+        <SettingControl
+          setting={{ ...setting, label: setting.subsection ? setting.label : label }}
+          value={value}
+          onChange={(val) => handleFieldChange(contextId, setting.id, val)}
+          projectId={project?.id || null}
+          products={project?.products || []}
+          customers={project?.customers || []}
+          projectColors={projectColors}
+          project={project}
+          contextId={contextId}
+          moduleType={selectedSection.type}
+        />
+        {setting.description && (
+          <p className="text-[10px] text-gray-400 mt-1 italic pl-1">{setting.description}</p>
+        )}
+      </div>
+    );
+  };
 
   return (
-    <div className="flex flex-col h-full bg-white border-l border-gray-100 overflow-hidden shadow-sm">
-      <div className="p-4 border-b border-gray-100 bg-gray-50/50 flex flex-col gap-2">
+    <div className={`flex flex-col h-full bg-white overflow-hidden ${embedded ? '' : 'border-l border-gray-100 shadow-sm'}`}>
+      {!embedded && <div className="p-4 border-b border-gray-100 bg-gray-50/50 flex flex-col gap-2">
         <div className="flex items-center justify-between">
           <h3 className="font-bold text-gray-900 text-sm flex items-center gap-2">
             <div className="w-6 h-6 bg-blue-600 rounded-md flex items-center justify-center text-white">
@@ -214,140 +283,126 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
           <LucideIcons.ArrowLeft size={10} />
           Volver a Configuración Global
         </button>
-      </div>
+      </div>}
 
       <div className="flex-1 overflow-y-auto custom-scrollbar">
-        {PILLARS_ORDER.map(pillar => {
-          const fields = settingsByPillar[pillar];
-          if (!fields || fields.length === 0) return null;
+        {embedded ? (
+          <div className="space-y-5 p-3">
+            {PILLARS_ORDER.map(pillar => {
+              const fields = settingsByPillar[pillar];
+              if (!fields || fields.length === 0) return null;
 
-          const isExpanded = expandedPillars[pillar];
+              return (
+                <section key={pillar} className="space-y-3">
+                  <div className="flex items-center gap-2 border-b border-gray-100 pb-2">
+                    <span className="text-blue-600">{PILLAR_ICONS[pillar]}</span>
+                    <h4 className="text-[11px] font-black uppercase tracking-wider text-gray-700">
+                      {PILLAR_LABELS[pillar]}
+                    </h4>
+                  </div>
+                  <div className="space-y-4">
+                    {fields.map(renderFieldControl)}
+                  </div>
+                </section>
+              );
+            })}
+          </div>
+        ) : (
+          PILLARS_ORDER.map(pillar => {
+            const fields = settingsByPillar[pillar];
+            if (!fields || fields.length === 0) return null;
 
-          return (
-            <div key={pillar} className="border-b border-gray-50 last:border-none">
-              <button
-                onClick={() => togglePillar(pillar)}
-                className="w-full px-4 py-3.5 flex items-center justify-between hover:bg-gray-50 transition-colors group"
-              >
-                <div className="flex items-center gap-3 text-sm font-semibold text-gray-700">
-                  <span className={`transition-colors ${isExpanded ? 'text-blue-600' : 'text-gray-400 group-hover:text-gray-600'}`}>
-                    {PILLAR_ICONS[pillar]}
-                  </span>
-                  {PILLAR_LABELS[pillar]}
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] px-1.5 py-0.5 bg-gray-100 rounded-full text-gray-400 font-bold">
-                    {fields.length}
-                  </span>
-                  {isExpanded ? <ChevronDown size={14} className="text-gray-400" /> : <ChevronRight size={14} className="text-gray-400" />}
-                </div>
-              </button>
+            const isExpanded = expandedPillars[pillar];
 
-              <AnimatePresence>
-                {isExpanded && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.25, ease: 'easeInOut' }}
-                    className="overflow-hidden"
-                  >
-                    <div className="px-4 pb-5 space-y-5">
-                      {Object.entries(
-                        fields.reduce((acc, field) => {
-                          const subsection = field.setting.subsection || '__default__';
-                          if (!acc[subsection]) acc[subsection] = [];
-                          acc[subsection].push(field);
-                          return acc;
-                        }, {} as Record<string, typeof fields>)
-                      ).map(([subsection, subsectionFields]) => {
-                        const renderField = ({ label, setting, contextId }: typeof subsectionFields[number]) => {
-                          const conditionSettings = selectedBentoItem
-                            ? {
-                              ...selectedSection.settings,
-                              ...Object.fromEntries(Object.entries(selectedBentoItem).map(([key, itemValue]) => [`${contextId}_${key}`, itemValue]))
-                            }
-                            : selectedSection.settings;
-                          const show = evaluateCondition(setting.showIf, conditionSettings, contextId);
-                          if (!show.result) return null;
+            return (
+              <div key={pillar} className="border-b border-gray-50 last:border-none">
+                <button
+                  onClick={() => togglePillar(pillar)}
+                  className="w-full px-4 py-3.5 flex items-center justify-between hover:bg-gray-50 transition-colors group"
+                >
+                  <div className="flex items-center gap-3 text-sm font-semibold text-gray-700">
+                    <span className={`transition-colors ${isExpanded ? 'text-blue-600' : 'text-gray-400 group-hover:text-gray-600'}`}>
+                      {PILLAR_ICONS[pillar]}
+                    </span>
+                    {PILLAR_LABELS[pillar]}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] px-1.5 py-0.5 bg-gray-100 rounded-full text-gray-400 font-bold">
+                      {fields.length}
+                    </span>
+                    {isExpanded ? <ChevronDown size={14} className="text-gray-400" /> : <ChevronRight size={14} className="text-gray-400" />}
+                  </div>
+                </button>
 
-                          const defaultValue = setting.defaultValue;
-                          const value = selectedBentoItem
-                            ? selectedBentoItem[setting.id] ?? defaultValue
-                            : defaultValue;
+                <AnimatePresence>
+                  {isExpanded && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.25, ease: 'easeInOut' }}
+                      className="overflow-hidden"
+                    >
+                      <div className="px-4 pb-5 space-y-5">
+                        {Object.entries(
+                          fields.reduce((acc, field) => {
+                            const subsection = field.setting.subsection || '__default__';
+                            if (!acc[subsection]) acc[subsection] = [];
+                            acc[subsection].push(field);
+                            return acc;
+                          }, {} as Record<string, typeof fields>)
+                        ).map(([subsection, subsectionFields]) => {
+                          if (subsection === '__default__') {
+                            return subsectionFields.map(renderFieldControl);
+                          }
+
+                          const subsectionKey = `${selectedSection.id}:${pillar}:${subsection}`;
+                          const isSubsectionExpanded = expandedSubsections[subsectionKey] === true;
 
                           return (
-                            <div key={`${contextId}_${setting.id}`} className="space-y-1">
-                              <SettingControl
-                                setting={{ ...setting, label: setting.subsection ? setting.label : label }}
-                                value={value}
-                                onChange={(val) => handleFieldChange(contextId, setting.id, val)}
-                                projectId={project?.id || null}
-                                products={project?.products || []}
-                                customers={project?.customers || []}
-                                projectColors={projectColors}
-                                project={project}
-                                contextId={contextId}
-                                moduleType={selectedSection.type}
-                              />
-                              {setting.description && (
-                                <p className="text-[10px] text-gray-400 mt-1 italic pl-1">{setting.description}</p>
-                              )}
+                            <div key={subsectionKey} className="overflow-hidden rounded-2xl border border-gray-100 bg-gray-50/70">
+                              <button
+                                onClick={() => toggleSubsection(subsectionKey)}
+                                className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-100/80 transition-colors"
+                              >
+                                <span className="text-[11px] font-black uppercase tracking-wider text-gray-700">
+                                  {subsection}
+                                </span>
+                                {isSubsectionExpanded ? <ChevronDown size={14} className="text-gray-400" /> : <ChevronRight size={14} className="text-gray-400" />}
+                              </button>
+                              <AnimatePresence initial={false}>
+                                {isSubsectionExpanded && (
+                                  <motion.div
+                                    initial={{ height: 0, opacity: 0 }}
+                                    animate={{ height: 'auto', opacity: 1 }}
+                                    exit={{ height: 0, opacity: 0 }}
+                                    transition={{ duration: 0.2, ease: 'easeInOut' }}
+                                    className="overflow-hidden"
+                                  >
+                                    <div className="px-4 pb-4 space-y-4">
+                                      {subsectionFields.map(renderFieldControl)}
+                                    </div>
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
                             </div>
                           );
-                        };
-
-                        if (subsection === '__default__') {
-                          return subsectionFields.map(renderField);
-                        }
-
-                        const subsectionKey = `${selectedSection.id}:${pillar}:${subsection}`;
-                        const isSubsectionExpanded = expandedSubsections[subsectionKey] ?? true;
-
-                        return (
-                          <div key={subsectionKey} className="overflow-hidden rounded-2xl border border-gray-100 bg-gray-50/70">
-                            <button
-                              onClick={() => toggleSubsection(subsectionKey)}
-                              className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-100/80 transition-colors"
-                            >
-                              <span className="text-[11px] font-black uppercase tracking-wider text-gray-700">
-                                {subsection}
-                              </span>
-                              {isSubsectionExpanded ? <ChevronDown size={14} className="text-gray-400" /> : <ChevronRight size={14} className="text-gray-400" />}
-                            </button>
-                            <AnimatePresence initial={false}>
-                              {isSubsectionExpanded && (
-                                <motion.div
-                                  initial={{ height: 0, opacity: 0 }}
-                                  animate={{ height: 'auto', opacity: 1 }}
-                                  exit={{ height: 0, opacity: 0 }}
-                                  transition={{ duration: 0.2, ease: 'easeInOut' }}
-                                  className="overflow-hidden"
-                                >
-                                  <div className="px-4 pb-4 space-y-4">
-                                    {subsectionFields.map(renderField)}
-                                  </div>
-                                </motion.div>
-                              )}
-                            </AnimatePresence>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          );
-        })}
+                        })}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            );
+          })
+        )}
       </div>
-
-      <div className="p-4 border-t border-gray-100 bg-gray-50/30">
+      {!embedded && <div className="p-4 border-t border-gray-100 bg-gray-50/30">
         <p className="text-[10px] text-gray-400 text-center leading-relaxed">
           Protocolo Solutium 6 Pilares v4.0<br/>
           Diseño Granular y Alta Fidelidad
         </p>
-      </div>
+      </div>}
     </div>
   );
 };

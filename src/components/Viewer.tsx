@@ -17,6 +17,7 @@ import { ProductsModule } from './constructor/modules/ProductsModule';
 import { ClientsModule } from './constructor/modules/ClientsModule';
 import { TrustedLogosModule } from './constructor/modules/TrustedLogosModule';
 import { CTAModule } from './constructor/modules/CTAModule';
+import { DynamicCardsModule } from './constructor/modules/DynamicCardsModule';
 import { HeaderModule } from './constructor/modules/HeaderModule';
 import { FooterModule } from './constructor/modules/FooterModule';
 import { NewsletterModule } from './constructor/modules/NewsletterModule';
@@ -611,6 +612,8 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
             );
           case 'cta':
             return <CTAModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} />;
+          case 'dynamic_cards':
+            return <DynamicCardsModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} isPreviewMode={isConstructorMode} />;
           case 'newsletter':
             return <NewsletterModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} />;
           case 'video':

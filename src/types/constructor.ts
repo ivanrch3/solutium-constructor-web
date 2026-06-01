@@ -33,6 +33,13 @@ export interface SettingDefinition {
   description?: string;
   placeholder?: string;
   fields?: SettingDefinition[];
+  itemLabel?: string;
+  itemLabelPlural?: string;
+  addLabel?: string;
+  minItemsMessage?: string;
+  useFieldSections?: boolean;
+  hideLabel?: boolean;
+  alternateItemTone?: boolean;
   /** Used for typography_size to filter available levels (e.g. ['t1', 't2']) */
   allowedLevels?: string[];
   disableAdd?: boolean;

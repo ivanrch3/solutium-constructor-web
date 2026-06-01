@@ -12,6 +12,14 @@ interface DashboardProps {
   onSelectAsset: (asset: Asset) => void;
   onSelectPage: (page: WebBuilderSite | PublishedSite) => void;
   onRenamePage: (siteId: string, newName: string) => Promise<void>;
+  sessionInfo?: {
+    hasRealSession: boolean;
+    userLabel: string;
+    projectLabel: string;
+    startedAt: string;
+    canRequestMotherContext: boolean;
+  };
+  onRequestMotherContext?: () => void;
   logoUrl?: string | null;
   logoWhiteUrl?: string | null;
 }
@@ -25,6 +33,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onSelectAsset, 
   onSelectPage, 
   onRenamePage,
+  sessionInfo,
+  onRequestMotherContext,
   logoUrl, 
   logoWhiteUrl 
 }) => {
@@ -271,6 +281,41 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </button>
         </motion.div>
       </div>
+
+      {sessionInfo && (
+        <div className="mt-6 w-full max-w-6xl">
+          <div className={`rounded-2xl border px-4 py-3 text-center shadow-sm ${
+            sessionInfo.hasRealSession
+              ? 'border-slate-200 bg-white/85 text-slate-500'
+              : 'border-red-200 bg-red-50/90 text-red-700'
+          }`}>
+            {sessionInfo.hasRealSession ? (
+              <p className="text-xs leading-relaxed">
+                Sesión activa: <span className="font-semibold text-slate-700">{sessionInfo.userLabel}</span>
+                {' · '}
+                Proyecto: <span className="font-semibold text-slate-700">{sessionInfo.projectLabel}</span>
+                {' · '}
+                Inicio: <span className="font-semibold text-slate-700">{sessionInfo.startedAt}</span>
+              </p>
+            ) : (
+              <div className="flex flex-col items-center gap-2">
+                <p className="text-xs font-semibold leading-relaxed">
+                  Sesión expirada o no válida. Por favor vuelve a lanzar el Constructor Web desde Solutium.
+                </p>
+                {sessionInfo.canRequestMotherContext && onRequestMotherContext && (
+                  <button
+                    type="button"
+                    onClick={onRequestMotherContext}
+                    className="rounded-full border border-red-200 bg-white px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-red-700 transition-colors hover:bg-red-100"
+                  >
+                    Relanzar desde App Madre
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <style dangerouslySetInnerHTML={{ __html: `
         .custom-scrollbar::-webkit-scrollbar {

@@ -2697,6 +2697,416 @@ export const CTA_MODULE: WebModule = {
   ]
 };
 
+export const DYNAMIC_CARDS_MODULE: WebModule = {
+  id: 'mod_dynamic_cards_1',
+  type: 'dynamic_cards',
+  iconKey: 'dynamic_cards',
+  name: 'Tarjetas dinámicas',
+  globalGroups: ['contenido', 'multimedia', 'estilo', 'estructura', 'interaccion'],
+  globalSettings: {
+    contenido: [
+      { id: 'use_global_text_styles', label: 'Usar estilos de texto globales', type: 'boolean', defaultValue: true, subsection: 'General' },
+      { id: 'global_title_size', label: 'Tamaño texto superior', type: 'range', defaultValue: 54, min: 28, max: 86, unit: 'px', subsection: 'Texto superior' },
+      { id: 'global_title_weight', label: 'Peso texto superior', type: 'font_weight', defaultValue: 'black', subsection: 'Texto superior' },
+      { id: 'global_title_color', label: 'Color texto superior', type: 'color', defaultValue: '#FFFFFF', subsection: 'Texto superior' },
+      { id: 'global_title_align', label: 'Alineación texto superior', type: 'text_align', defaultValue: 'center', subsection: 'Texto superior' },
+      { id: 'global_title_line_height', label: 'Interlineado texto superior', type: 'range', defaultValue: 0.98, min: 0.8, max: 1.4, step: 0.02, subsection: 'Texto superior' },
+      { id: 'global_title_letter_spacing', label: 'Letter spacing texto superior', type: 'range', defaultValue: 0, min: 0, max: 8, step: 0.5, unit: 'px', subsection: 'Texto superior' },
+      { id: 'global_body_size', label: 'Tamaño texto inferior', type: 'range', defaultValue: 18, min: 13, max: 30, unit: 'px', subsection: 'Texto inferior' },
+      { id: 'global_body_weight', label: 'Peso texto inferior', type: 'font_weight', defaultValue: 'medium', subsection: 'Texto inferior' },
+      { id: 'global_body_color', label: 'Color texto inferior', type: 'color', defaultValue: '#E2E8F0', subsection: 'Texto inferior' },
+      { id: 'global_body_align', label: 'Alineación texto inferior', type: 'text_align', defaultValue: 'center', subsection: 'Texto inferior' },
+      { id: 'global_body_line_height', label: 'Interlineado texto inferior', type: 'range', defaultValue: 1.55, min: 1, max: 2, step: 0.05, subsection: 'Texto inferior' },
+      { id: 'global_bullet_icon', label: 'Icono de viñetas', type: 'icon', defaultValue: 'Zap', subsection: 'Texto inferior' },
+      { id: 'global_bullet_color', label: 'Color de viñetas', type: 'color', defaultValue: 'var(--primary-color, #2563EB)', subsection: 'Texto inferior' },
+      { id: 'global_cta_size', label: 'Tamaño CTA', type: 'select', defaultValue: 'md', subsection: 'CTA', options: [
+        { label: 'Pequeño', value: 'sm' },
+        { label: 'Mediano', value: 'md' },
+        { label: 'Grande', value: 'lg' }
+      ]},
+      { id: 'global_cta_weight', label: 'Peso CTA', type: 'font_weight', defaultValue: 'black', subsection: 'CTA' },
+      { id: 'global_cta_color', label: 'Color CTA', type: 'color', defaultValue: 'var(--primary-color, #2563EB)', subsection: 'CTA' }
+    ],
+    multimedia: [
+      { id: 'use_global_background', label: 'Usar fondo global', type: 'boolean', defaultValue: true, subsection: 'General' },
+      { id: 'global_background_type', label: 'Tipo de fondo', type: 'select', defaultValue: 'gradient', subsection: 'Fondo', options: [
+        { label: 'Color sólido', value: 'color' },
+        { label: 'Degradado lineal', value: 'gradient' },
+        { label: 'Imagen', value: 'image' }
+      ]},
+      { id: 'global_bg_color', label: 'Color sólido', type: 'color', defaultValue: '#0F172A', subsection: 'Fondo' },
+      { id: 'global_gradient_from', label: 'Color inicial', type: 'color', defaultValue: '#0F172A', subsection: 'Fondo' },
+      { id: 'global_gradient_to', label: 'Color final', type: 'color', defaultValue: '#2563EB', subsection: 'Fondo' },
+      { id: 'global_gradient_direction', label: 'Dirección', type: 'select', defaultValue: '135deg', subsection: 'Fondo', options: [
+        { label: 'Diagonal', value: '135deg' },
+        { label: 'Horizontal', value: '90deg' },
+        { label: 'Vertical', value: '180deg' },
+        { label: 'Diagonal inversa', value: '45deg' }
+      ]},
+      { id: 'global_bg_image', label: 'Imagen de fondo / URL', type: 'image', defaultValue: '', subsection: 'Fondo' },
+      { id: 'global_image_fit', label: 'Ajuste de imagen', type: 'select', defaultValue: 'cover', subsection: 'Fondo', options: [
+        { label: 'Cover', value: 'cover' },
+        { label: 'Contain', value: 'contain' },
+        { label: 'Fill', value: 'fill' }
+      ]},
+      { id: 'global_image_position', label: 'Posición de imagen', type: 'select', defaultValue: 'center', subsection: 'Fondo', options: [
+        { label: 'Centro', value: 'center' },
+        { label: 'Arriba', value: 'top' },
+        { label: 'Abajo', value: 'bottom' },
+        { label: 'Izquierda', value: 'left' },
+        { label: 'Derecha', value: 'right' }
+      ]},
+      { id: 'global_overlay_enabled', label: 'Overlay activo', type: 'boolean', defaultValue: true, subsection: 'Overlay' },
+      { id: 'global_overlay_color', label: 'Color overlay', type: 'color', defaultValue: '#020617', subsection: 'Overlay' },
+      { id: 'global_overlay_opacity', label: 'Opacidad overlay', type: 'range', defaultValue: 25, min: 0, max: 90, unit: '%', subsection: 'Overlay' }
+    ],
+    estructura: [
+      { id: 'height_desktop', label: 'Altura desktop', type: 'range', defaultValue: 560, min: 360, max: 800, unit: 'px' },
+      { id: 'height_tablet', label: 'Altura tablet', type: 'range', defaultValue: 480, min: 320, max: 700, unit: 'px' },
+      { id: 'height_mobile', label: 'Altura móvil', type: 'range', defaultValue: 420, min: 300, max: 620, unit: 'px' }
+    ],
+    interaccion: [
+      { id: 'navigation_mode', label: 'Modo de navegacion', type: 'select', defaultValue: 'auto_dots', options: [
+        { label: 'Automatico', value: 'auto' },
+        { label: 'Manual con flechas', value: 'arrows' },
+        { label: 'Manual con puntos', value: 'dots' },
+        { label: 'Automatico + puntos', value: 'auto_dots' },
+        { label: 'Automatico + controles', value: 'auto_controls' }
+      ]},
+      { id: 'show_arrows', label: 'Mostrar flechas', type: 'boolean', defaultValue: true },
+      { id: 'show_dots', label: 'Mostrar puntos', type: 'boolean', defaultValue: true },
+      { id: 'controls_style', label: 'Estilo de controles', type: 'select', defaultValue: 'glass', options: [
+        { label: 'Glass', value: 'glass' },
+        { label: 'Minimal', value: 'minimal' }
+      ]},
+      { id: 'interval_seconds', label: 'Intervalo automatico', type: 'range', defaultValue: 5, min: 3, max: 12, step: 1, unit: 's' }
+    ],
+    estilo: [
+      { id: 'use_global_effect', label: 'Usar animaciones globales', type: 'boolean', defaultValue: true, subsection: 'General' },
+      { id: 'global_effect', label: 'Efecto de fondo global', type: 'select', defaultValue: 'speed_lines', subsection: 'Fondo', options: [
+        { label: 'Ninguno', value: 'none' },
+        { label: 'Lineas de velocidad', value: 'speed_lines' },
+        { label: 'Brillo diagonal', value: 'light_sweep' },
+        { label: 'Particulas', value: 'particles' },
+        { label: 'Degradado animado', value: 'animated_gradient' },
+        { label: 'Ondas suaves', value: 'waves' },
+        { label: 'Rayos / energia', value: 'energy' },
+        { label: 'Ruido / grano', value: 'grain' }
+      ]},
+      { id: 'global_speed', label: 'Velocidad global', type: 'select', defaultValue: 'fast', subsection: 'Fondo', options: [
+        { label: 'Lento', value: 'slow' },
+        { label: 'Normal', value: 'normal' },
+        { label: 'Rapido', value: 'fast' },
+        { label: 'Muy rapido', value: 'very_fast' }
+      ]},
+      { id: 'global_density', label: 'Densidad global', type: 'select', defaultValue: 'medium', subsection: 'Fondo', options: [
+        { label: 'Baja', value: 'low' },
+        { label: 'Media', value: 'medium' },
+        { label: 'Alta', value: 'high' }
+      ]},
+      { id: 'global_direction', label: 'Dirección del movimiento global', type: 'select', defaultValue: 'ltr', subsection: 'Fondo', options: [
+        { label: 'Izquierda a derecha', value: 'ltr' },
+        { label: 'Derecha a izquierda', value: 'rtl' }
+      ]},
+      { id: 'global_title_enter_animation', label: 'Entrada texto superior', type: 'select', defaultValue: 'from_left', subsection: 'Texto superior', options: [
+        { label: 'Desde izquierda', value: 'from_left' },
+        { label: 'Desde derecha', value: 'from_right' },
+        { label: 'Desde arriba', value: 'from_top' },
+        { label: 'Desde abajo', value: 'from_bottom' },
+        { label: 'Fade', value: 'fade' },
+        { label: 'Zoom suave', value: 'zoom' },
+        { label: 'Ninguna', value: 'none' }
+      ]},
+      { id: 'global_title_exit_animation', label: 'Salida texto superior', type: 'select', defaultValue: 'fade', subsection: 'Texto superior', options: [
+        { label: 'Hacia izquierda', value: 'to_left' },
+        { label: 'Hacia derecha', value: 'to_right' },
+        { label: 'Hacia arriba', value: 'to_top' },
+        { label: 'Hacia abajo', value: 'to_bottom' },
+        { label: 'Fade', value: 'fade' },
+        { label: 'Zoom suave', value: 'zoom' },
+        { label: 'Ninguna', value: 'none' }
+      ]},
+      { id: 'global_title_entry_duration', label: 'Duración entrada', type: 'range', defaultValue: 0.55, min: 0.1, max: 2, step: 0.05, unit: 's', subsection: 'Texto superior' },
+      { id: 'global_title_visible_duration', label: 'Duración visible', type: 'range', defaultValue: 4, min: 2, max: 10, step: 0.5, unit: 's', subsection: 'Texto superior' },
+      { id: 'global_title_exit_duration', label: 'Duración salida', type: 'range', defaultValue: 0.35, min: 0.1, max: 2, step: 0.05, unit: 's', subsection: 'Texto superior' },
+      { id: 'global_body_enter_animation', label: 'Entrada texto inferior', type: 'select', defaultValue: 'from_bottom', subsection: 'Texto inferior', options: [
+        { label: 'Desde izquierda', value: 'from_left' },
+        { label: 'Desde derecha', value: 'from_right' },
+        { label: 'Desde arriba', value: 'from_top' },
+        { label: 'Desde abajo', value: 'from_bottom' },
+        { label: 'Fade', value: 'fade' },
+        { label: 'Zoom suave', value: 'zoom' },
+        { label: 'Ninguna', value: 'none' }
+      ]},
+      { id: 'global_body_exit_animation', label: 'Salida texto inferior', type: 'select', defaultValue: 'fade', subsection: 'Texto inferior', options: [
+        { label: 'Hacia izquierda', value: 'to_left' },
+        { label: 'Hacia derecha', value: 'to_right' },
+        { label: 'Hacia arriba', value: 'to_top' },
+        { label: 'Hacia abajo', value: 'to_bottom' },
+        { label: 'Fade', value: 'fade' },
+        { label: 'Zoom suave', value: 'zoom' },
+        { label: 'Ninguna', value: 'none' }
+      ]},
+      { id: 'global_body_entry_duration', label: 'Duración entrada', type: 'range', defaultValue: 0.55, min: 0.1, max: 2, step: 0.05, unit: 's', subsection: 'Texto inferior' },
+      { id: 'global_body_visible_duration', label: 'Duración visible', type: 'range', defaultValue: 4, min: 2, max: 10, step: 0.5, unit: 's', subsection: 'Texto inferior' },
+      { id: 'global_body_exit_duration', label: 'Duración salida', type: 'range', defaultValue: 0.35, min: 0.1, max: 2, step: 0.05, unit: 's', subsection: 'Texto inferior' },
+      { id: 'global_cta_enter_animation', label: 'Entrada CTA', type: 'select', defaultValue: 'zoom', subsection: 'CTA', options: [
+        { label: 'Fade', value: 'fade' },
+        { label: 'Zoom suave', value: 'zoom' },
+        { label: 'Desde abajo', value: 'from_bottom' },
+        { label: 'Desde arriba', value: 'from_top' },
+        { label: 'Ninguna', value: 'none' }
+      ]},
+      { id: 'global_cta_exit_animation', label: 'Salida CTA', type: 'select', defaultValue: 'fade', subsection: 'CTA', options: [
+        { label: 'Hacia abajo', value: 'to_bottom' },
+        { label: 'Hacia arriba', value: 'to_top' },
+        { label: 'Fade', value: 'fade' },
+        { label: 'Zoom suave', value: 'zoom' },
+        { label: 'Ninguna', value: 'none' }
+      ]},
+      { id: 'global_cta_entry_duration', label: 'Duración entrada', type: 'range', defaultValue: 0.55, min: 0.1, max: 2, step: 0.05, unit: 's', subsection: 'CTA' },
+      { id: 'global_cta_visible_duration', label: 'Duración visible', type: 'range', defaultValue: 4, min: 2, max: 10, step: 0.5, unit: 's', subsection: 'CTA' },
+      { id: 'global_cta_exit_duration', label: 'Duración salida', type: 'range', defaultValue: 0.35, min: 0.1, max: 2, step: 0.05, unit: 's', subsection: 'CTA' },
+      { id: 'reduce_motion_mobile', label: 'Reducir movimiento en movil', type: 'boolean', defaultValue: true, subsection: 'Reduced motion' }
+    ],
+    tipografia: []
+  },
+  elements: [
+    {
+      id: 'el_dynamic_cards_cards',
+      name: 'Tarjetas',
+      type: 'repeater',
+      groups: ['contenido'],
+      settings: {
+        contenido: [
+          {
+            id: 'cards',
+            label: 'Tarjetas',
+            type: 'repeater',
+            min: 1,
+            max: 5,
+            itemLabel: 'tarjeta',
+            itemLabelPlural: 'tarjetas',
+            addLabel: 'Agregar tarjeta',
+            minItemsMessage: 'No se puede eliminar la última tarjeta',
+            useFieldSections: true,
+            hideLabel: true,
+            alternateItemTone: true,
+            defaultValue: [
+              {
+                enabled: true,
+                backgroundType: 'gradient',
+                bgColor: '#0F172A',
+                gradientFrom: '#0F172A',
+                gradientTo: '#2563EB',
+                gradientDirection: '135deg',
+                bgImage: '',
+                overlayEnabled: true,
+                overlayColor: '#020617',
+                overlayOpacity: 25,
+                imageFit: 'cover',
+                imagePosition: 'center',
+                effect: 'speed_lines',
+                effectSpeed: 'fast',
+                effectDensity: 'medium',
+                effectDirection: 'ltr',
+                titleText: 'Impulsa tu negocio',
+                titleSize: 54,
+                titleWeight: 'black',
+                titleColor: '#FFFFFF',
+                titleAlign: 'center',
+                titleLineHeight: 0.98,
+                titleLetterSpacing: 0,
+                titleEnterAnimation: 'from_left',
+                titleExitAnimation: 'fade',
+                titleEntryDuration: 0.55,
+                titleVisibleDuration: 4,
+                titleExitDuration: 0.35,
+                bodyText: 'Crea experiencias dinámicas con movimiento, velocidad y alto impacto visual.',
+                showBody: true,
+                bullets: 'Movimiento fluido\nFondos personalizables\nCTA por tarjeta',
+                bulletIcon: 'Zap',
+                bodySize: 18,
+                bodyWeight: 'medium',
+                bodyColor: '#E2E8F0',
+                bodyAlign: 'center',
+                bodyEnterAnimation: 'from_bottom',
+                bodyExitAnimation: 'fade',
+                bodyEntryDuration: 0.55,
+                bodyVisibleDuration: 4,
+                bodyExitDuration: 0.35,
+                ctaEnabled: true,
+                ctaText: 'Comenzar',
+                ctaUrl: '#',
+                ctaSize: 'md',
+                ctaStyle: 'solid',
+                ctaPosition: 'center',
+                ctaColor: '#2563EB',
+                ctaAnimation: 'zoom',
+                ctaExitAnimation: 'fade',
+                ctaEntryDuration: 0.55,
+                ctaVisibleDuration: 4,
+                ctaExitDuration: 0.35
+              }
+            ],
+            fields: [
+              { id: 'titleText', label: 'Texto superior', type: 'text', defaultValue: 'Impulsa tu negocio', subsection: 'Textos' },
+              { id: 'titleSize', label: 'Tamano', type: 'range', defaultValue: 54, min: 28, max: 86, unit: 'px', subsection: 'Textos' },
+              { id: 'titleWeight', label: 'Peso', type: 'font_weight', defaultValue: 'black', subsection: 'Textos' },
+              { id: 'titleColor', label: 'Color', type: 'color', defaultValue: '#FFFFFF', subsection: 'Textos' },
+              { id: 'titleAlign', label: 'Alineacion', type: 'text_align', defaultValue: 'center', subsection: 'Textos' },
+              { id: 'titleLineHeight', label: 'Interlineado', type: 'range', defaultValue: 0.98, min: 0.8, max: 1.4, step: 0.02, subsection: 'Textos' },
+              { id: 'titleLetterSpacing', label: 'Letter spacing', type: 'range', defaultValue: 0, min: 0, max: 8, step: 0.5, unit: 'px', subsection: 'Textos' },
+              { id: 'showBody', label: 'Mostrar texto inferior', type: 'boolean', defaultValue: true, subsection: 'Textos' },
+              { id: 'bodyText', label: 'Texto inferior', type: 'textarea', defaultValue: 'Crea experiencias dinámicas con movimiento, velocidad y alto impacto visual.', rows: 3, subsection: 'Textos' },
+              { id: 'bullets', label: 'Vinetas (maximo 5)', type: 'textarea', defaultValue: 'Movimiento fluido\nFondos personalizables\nCTA por tarjeta', rows: 5, subsection: 'Textos' },
+              { id: 'bulletIcon', label: 'Icono de vinetas', type: 'icon', defaultValue: 'Zap', subsection: 'Textos' },
+              { id: 'bodySize', label: 'Tamano', type: 'range', defaultValue: 18, min: 13, max: 30, unit: 'px', subsection: 'Textos' },
+              { id: 'bodyWeight', label: 'Peso', type: 'font_weight', defaultValue: 'medium', subsection: 'Textos' },
+              { id: 'bodyColor', label: 'Color', type: 'color', defaultValue: '#E2E8F0', subsection: 'Textos' },
+              { id: 'bodyAlign', label: 'Alineacion', type: 'text_align', defaultValue: 'center', subsection: 'Textos' },
+              { id: 'backgroundType', label: 'Tipo de fondo', type: 'select', defaultValue: 'gradient', subsection: 'Fondo', options: [
+                { label: 'Color solido', value: 'color' },
+                { label: 'Degradado lineal', value: 'gradient' },
+                { label: 'Imagen', value: 'image' }
+              ]},
+              { id: 'bgColor', label: 'Color solido', type: 'color', defaultValue: '#0F172A', subsection: 'Fondo' },
+              { id: 'gradientFrom', label: 'Color inicial', type: 'color', defaultValue: '#0F172A', subsection: 'Fondo' },
+              { id: 'gradientTo', label: 'Color final', type: 'color', defaultValue: '#2563EB', subsection: 'Fondo' },
+              { id: 'gradientDirection', label: 'Direccion', type: 'select', defaultValue: '135deg', subsection: 'Fondo', options: [
+                { label: 'Diagonal', value: '135deg' },
+                { label: 'Horizontal', value: '90deg' },
+                { label: 'Vertical', value: '180deg' },
+                { label: 'Diagonal inversa', value: '45deg' }
+              ]},
+              { id: 'bgImage', label: 'Imagen de fondo / URL', type: 'image', defaultValue: '', subsection: 'Fondo' },
+              { id: 'overlayEnabled', label: 'Overlay activo', type: 'boolean', defaultValue: true, subsection: 'Fondo' },
+              { id: 'overlayColor', label: 'Color overlay', type: 'color', defaultValue: '#020617', subsection: 'Fondo' },
+              { id: 'overlayOpacity', label: 'Opacidad overlay', type: 'range', defaultValue: 25, min: 0, max: 90, unit: '%', subsection: 'Fondo' },
+              { id: 'imageFit', label: 'Ajuste de imagen', type: 'select', defaultValue: 'cover', subsection: 'Fondo', options: [
+                { label: 'Cover', value: 'cover' },
+                { label: 'Contain', value: 'contain' },
+                { label: 'Fill', value: 'fill' }
+              ]},
+              { id: 'imagePosition', label: 'Posicion de imagen', type: 'select', defaultValue: 'center', subsection: 'Fondo', options: [
+                { label: 'Centro', value: 'center' },
+                { label: 'Arriba', value: 'top' },
+                { label: 'Abajo', value: 'bottom' },
+                { label: 'Izquierda', value: 'left' },
+                { label: 'Derecha', value: 'right' }
+              ]},
+              { id: 'effect', label: 'Efecto de esta tarjeta', type: 'select', defaultValue: 'speed_lines', subsection: 'Animaciones', options: [
+                { label: 'Ninguno', value: 'none' },
+                { label: 'Lineas de velocidad', value: 'speed_lines' },
+                { label: 'Brillo diagonal', value: 'light_sweep' },
+                { label: 'Particulas', value: 'particles' },
+                { label: 'Degradado animado', value: 'animated_gradient' },
+                { label: 'Ondas suaves', value: 'waves' },
+                { label: 'Rayos / energia', value: 'energy' },
+                { label: 'Ruido / grano', value: 'grain' }
+              ]},
+              { id: 'effectSpeed', label: 'Velocidad de efecto', type: 'select', defaultValue: 'fast', subsection: 'Animaciones', options: [
+                { label: 'Lenta', value: 'slow' },
+                { label: 'Normal', value: 'normal' },
+                { label: 'Rapida', value: 'fast' },
+                { label: 'Muy rapida', value: 'very_fast' }
+              ]},
+              { id: 'effectDensity', label: 'Densidad de efecto', type: 'select', defaultValue: 'medium', subsection: 'Animaciones', options: [
+                { label: 'Baja', value: 'low' },
+                { label: 'Media', value: 'medium' },
+                { label: 'Alta', value: 'high' }
+              ]},
+              { id: 'effectDirection', label: 'Dirección del movimiento', type: 'select', defaultValue: 'ltr', subsection: 'Animaciones', options: [
+                { label: 'Izquierda a derecha', value: 'ltr' },
+                { label: 'Derecha a izquierda', value: 'rtl' }
+              ]},
+              { id: 'titleEnterAnimation', label: 'Entrada titulo', type: 'select', defaultValue: 'from_left', subsection: 'Animaciones', options: [
+                { label: 'Desde izquierda', value: 'from_left' },
+                { label: 'Desde derecha', value: 'from_right' },
+                { label: 'Desde arriba', value: 'from_top' },
+                { label: 'Desde abajo', value: 'from_bottom' },
+                { label: 'Fade', value: 'fade' },
+                { label: 'Zoom suave', value: 'zoom' },
+                { label: 'Ninguna', value: 'none' }
+              ]},
+              { id: 'titleExitAnimation', label: 'Salida titulo', type: 'select', defaultValue: 'fade', subsection: 'Animaciones', options: [
+                { label: 'Hacia izquierda', value: 'to_left' },
+                { label: 'Hacia derecha', value: 'to_right' },
+                { label: 'Hacia arriba', value: 'to_top' },
+                { label: 'Hacia abajo', value: 'to_bottom' },
+                { label: 'Fade', value: 'fade' },
+                { label: 'Zoom suave', value: 'zoom' },
+                { label: 'Ninguna', value: 'none' }
+              ]},
+              { id: 'titleEntryDuration', label: 'Duración entrada texto superior', type: 'range', defaultValue: 0.55, min: 0.1, max: 2, step: 0.05, unit: 's', subsection: 'Animaciones' },
+              { id: 'titleVisibleDuration', label: 'Duración visible texto superior', type: 'range', defaultValue: 4, min: 2, max: 10, step: 0.5, unit: 's', subsection: 'Animaciones' },
+              { id: 'titleExitDuration', label: 'Duración salida texto superior', type: 'range', defaultValue: 0.35, min: 0.1, max: 2, step: 0.05, unit: 's', subsection: 'Animaciones' },
+              { id: 'bodyEnterAnimation', label: 'Entrada texto inferior', type: 'select', defaultValue: 'from_bottom', subsection: 'Animaciones', options: [
+                { label: 'Desde izquierda', value: 'from_left' },
+                { label: 'Desde derecha', value: 'from_right' },
+                { label: 'Desde arriba', value: 'from_top' },
+                { label: 'Desde abajo', value: 'from_bottom' },
+                { label: 'Fade', value: 'fade' },
+                { label: 'Zoom suave', value: 'zoom' },
+                { label: 'Ninguna', value: 'none' }
+              ]},
+              { id: 'bodyExitAnimation', label: 'Salida texto inferior', type: 'select', defaultValue: 'fade', subsection: 'Animaciones', options: [
+                { label: 'Hacia izquierda', value: 'to_left' },
+                { label: 'Hacia derecha', value: 'to_right' },
+                { label: 'Hacia arriba', value: 'to_top' },
+                { label: 'Hacia abajo', value: 'to_bottom' },
+                { label: 'Fade', value: 'fade' },
+                { label: 'Zoom suave', value: 'zoom' },
+                { label: 'Ninguna', value: 'none' }
+              ]},
+              { id: 'bodyEntryDuration', label: 'Duración entrada texto inferior', type: 'range', defaultValue: 0.55, min: 0.1, max: 2, step: 0.05, unit: 's', subsection: 'Animaciones' },
+              { id: 'bodyVisibleDuration', label: 'Duración visible texto inferior', type: 'range', defaultValue: 4, min: 2, max: 10, step: 0.5, unit: 's', subsection: 'Animaciones' },
+              { id: 'bodyExitDuration', label: 'Duración salida texto inferior', type: 'range', defaultValue: 0.35, min: 0.1, max: 2, step: 0.05, unit: 's', subsection: 'Animaciones' },
+              { id: 'ctaAnimation', label: 'Animacion CTA', type: 'select', defaultValue: 'zoom', subsection: 'Animaciones', options: [
+                { label: 'Fade', value: 'fade' },
+                { label: 'Zoom suave', value: 'zoom' },
+                { label: 'Desde abajo', value: 'from_bottom' },
+                { label: 'Ninguna', value: 'none' }
+              ]},
+              { id: 'ctaExitAnimation', label: 'Salida CTA', type: 'select', defaultValue: 'fade', subsection: 'Animaciones', options: [
+                { label: 'Hacia abajo', value: 'to_bottom' },
+                { label: 'Hacia arriba', value: 'to_top' },
+                { label: 'Fade', value: 'fade' },
+                { label: 'Zoom suave', value: 'zoom' },
+                { label: 'Ninguna', value: 'none' }
+              ]},
+              { id: 'ctaEntryDuration', label: 'Duración entrada CTA', type: 'range', defaultValue: 0.55, min: 0.1, max: 2, step: 0.05, unit: 's', subsection: 'Animaciones' },
+              { id: 'ctaVisibleDuration', label: 'Duración visible CTA', type: 'range', defaultValue: 4, min: 2, max: 10, step: 0.5, unit: 's', subsection: 'Animaciones' },
+              { id: 'ctaExitDuration', label: 'Duración salida CTA', type: 'range', defaultValue: 0.35, min: 0.1, max: 2, step: 0.05, unit: 's', subsection: 'Animaciones' },
+              { id: 'ctaEnabled', label: 'CTA activo', type: 'boolean', defaultValue: true, subsection: 'CTA' },
+              { id: 'ctaText', label: 'Texto del boton', type: 'text', defaultValue: 'Comenzar', subsection: 'CTA' },
+              { id: 'ctaUrl', label: 'URL', type: 'url', defaultValue: '#', subsection: 'CTA' },
+              { id: 'ctaSize', label: 'Tamano', type: 'select', defaultValue: 'md', subsection: 'CTA', options: [
+                { label: 'Pequeno', value: 'sm' },
+                { label: 'Mediano', value: 'md' },
+                { label: 'Grande', value: 'lg' }
+              ]},
+              { id: 'ctaStyle', label: 'Estilo', type: 'select', defaultValue: 'solid', subsection: 'CTA', options: [
+                { label: 'Solido', value: 'solid' },
+                { label: 'Contorno', value: 'outline' },
+                { label: 'Glass', value: 'glass' }
+              ]},
+              { id: 'ctaPosition', label: 'Posicion', type: 'select', defaultValue: 'center', subsection: 'CTA', options: [
+                { label: 'Izquierda', value: 'left' },
+                { label: 'Centro', value: 'center' },
+                { label: 'Derecha', value: 'right' }
+              ]},
+              { id: 'ctaColor', label: 'Color del boton', type: 'color', defaultValue: '#2563EB', subsection: 'CTA' },
+              { id: 'enabled', label: 'Tarjeta activa', type: 'boolean', defaultValue: true, subsection: 'Avanzado' }
+            ]
+          }
+        ],
+        estructura: [], estilo: [], tipografia: [], multimedia: [], interaccion: []
+      }
+    }
+  ]
+};
+
 export const PRICING_MODULE: WebModule = {
   id: 'mod_pricing_1',
   type: 'pricing',
@@ -3191,7 +3601,7 @@ export const BENTO_MODULE: WebModule = {
   id: 'mod_bento_1',
   type: 'bento',
   iconKey: 'bento',
-  name: 'Bento / Composición Libre',
+  name: 'Diseño libre',
   globalGroups: ['estructura', 'estilo', 'interaccion', 'multimedia'],
   globalSettings: {
     estructura: [
@@ -3251,9 +3661,9 @@ export const BENTO_MODULE: WebModule = {
       ],
       tipografia: [], estilo: [], multimedia: [], interaccion: []
     }},
-    { id: 'el_bento_items', name: 'Bloques de Contenido (Celdas)', type: 'repeater', groups: ['contenido', 'estructura', 'estilo', 'tipografia', 'multimedia'], settings: {
+    { id: 'el_bento_items', name: 'Elementos', type: 'repeater', groups: ['contenido', 'estructura', 'estilo', 'tipografia', 'multimedia'], settings: {
       contenido: [
-        { id: 'items', label: 'Lista de Celdas', type: 'repeater', defaultValue: [], fields: [
+        { id: 'items', label: 'Lista de elementos', type: 'repeater', defaultValue: [], fields: [
           { id: 'type', label: 'Tipo de Elemento', type: 'select', defaultValue: 'text', options: [
             { label: 'Texto', value: 'text' },
             { label: 'Imagen', value: 'visual' },
@@ -3276,8 +3686,34 @@ export const BENTO_MODULE: WebModule = {
             { label: 'Señal de Confianza', value: 'trust_signal' }
           ]},
           // Campos comunes
+          { id: 'text_style', label: 'Estilo de texto', type: 'select', defaultValue: 'heading', options: [
+            { label: 'Título XL', value: 'display' },
+            { label: 'Título grande', value: 'heading_large' },
+            { label: 'Título', value: 'heading' },
+            { label: 'Subtítulo', value: 'subtitle' },
+            { label: 'Párrafo', value: 'paragraph' },
+            { label: 'Texto pequeño', value: 'small' },
+            { label: 'Caption / etiqueta', value: 'caption' }
+          ], showIf: { settingId: 'type', value: 'text' } },
           { id: 'title', label: 'Título / Valor', type: 'text', defaultValue: 'Nueva Celda' },
           { id: 'description', label: 'Descripción / Texto', type: 'text', defaultValue: 'Describe el contenido de este bloque.', showIf: { settingId: 'type', value: ['visual'], operator: 'neq' } },
+          { id: 'title_size', label: 'Tamaño del título', type: 'typography_size', defaultValue: 't3', allowedLevels: ['t1', 't2', 't3', 'p', 's'] },
+          { id: 'title_weight', label: 'Peso del título', type: 'font_weight', defaultValue: 'extrabold' },
+          { id: 'title_color', label: 'Color del título', type: 'color', defaultValue: '#0F172A' },
+          { id: 'font_family', label: 'Familia tipográfica', type: 'select', defaultValue: 'inherit', options: [
+            { label: 'Heredada del tema', value: 'inherit' },
+            { label: 'Sans', value: 'sans-serif' },
+            { label: 'Serif', value: 'serif' },
+            { label: 'Monoespaciada', value: 'monospace' }
+          ], showIf: { settingId: 'type', value: 'text' } },
+          { id: 'description_size', label: 'Tamaño del texto', type: 'typography_size', defaultValue: 'p', allowedLevels: ['t3', 'p', 's'] },
+          { id: 'content_align', label: 'Alineación del contenido', type: 'select', defaultValue: 'center', options: [
+            { label: 'Izquierda', value: 'left' },
+            { label: 'Centro', value: 'center' },
+            { label: 'Derecha', value: 'right' }
+          ]},
+          { id: 'line_height', label: 'Interlineado', type: 'range', defaultValue: 1.4, min: 1, max: 2, step: 0.05, showIf: { settingId: 'type', value: 'text' } },
+          { id: 'letter_spacing', label: 'Espaciado de letras', type: 'range', defaultValue: 0, min: -5, max: 10, step: 0.5, unit: 'px', showIf: { settingId: 'type', value: 'text' } },
           
           // Metric específicos (Dato principal)
           { id: 'metric_value', label: 'Valor Numérico', type: 'text', defaultValue: '', showIf: { settingId: 'type', value: 'metric' } },
@@ -3491,11 +3927,11 @@ export const MODULE_INFO: Record<string, {
   hiddenFromLibrary?: boolean;
   replacement?: string;
 }> = {
-  header: { label: 'Barra superior', icon: PanelTop },
+  header: { label: 'Publicidad', icon: PanelTop },
   menu: { label: 'Menú', icon: Menu },
   footer: { label: 'Pie de página', icon: PanelBottom },
   spacer: { label: 'Espaciadores', icon: SeparatorHorizontal },
-  products: { label: 'Productos', icon: ShoppingBag },
+  products: { label: 'Productos y Servicios', icon: ShoppingBag },
   products_showcase: {
     label: 'EXPERIMENTAL: Catalogo V2',
     icon: ShoppingBag,
@@ -3516,7 +3952,8 @@ export const MODULE_INFO: Record<string, {
   contact: { label: 'Contacto', icon: PhoneCall },
   team: { label: 'Equipo', icon: Users2 },
   cta: { label: 'Call to Action', icon: MousePointerClick },
-  pricing: { label: 'Precios', icon: Tags },
+  dynamic_cards: { label: 'Tarjetas dinámicas', icon: Zap },
+  pricing: { label: 'Planes', icon: Tags },
   faq: { label: 'FAQ', icon: MessageCircleQuestion },
   comparative: { label: 'Comparativo', icon: Columns2 },
   clients: {
@@ -3527,8 +3964,8 @@ export const MODULE_INFO: Record<string, {
     replacement: 'trusted_logos'
   },
   trusted_logos: { label: 'Logos de Empresas', icon: Handshake },
-  bento: { label: 'Bento / Composición Libre', icon: Layout },
-  composition_section: { label: 'Módulo Maestro', icon: Layout }
+  bento: { label: 'Diseño libre', icon: Layout },
+  composition_section: { label: 'Composición Visual', icon: Layout }
 };
 
 

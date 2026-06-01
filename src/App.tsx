@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { startHandshake } from './services/handshakeService';
+import { sendToMother, startHandshake } from './services/handshakeService';
 import { configService } from './services/configService';
 import { initSupabase } from './services/supabaseClient';
 import { captureAuthToken } from './services/authTokenProvider';
@@ -19,7 +19,7 @@ import { Viewer } from './components/Viewer';
 import { logDebug } from './utils/debug';
 import { Profile, Project, Asset, WebBuilderSite, PublishedSite } from './types/schema';
 import { getAssets } from './services/dataService';
-import { normalizeProjectBrandColors } from './utils/projectTheme';
+import { BrandColorsInput, normalizeProjectBrandColors } from './utils/projectTheme';
 
 type View = 'dashboard' | 'selection-method' | 'form' | 'generator' | 'constructor' | 'viewer';
 
@@ -27,15 +27,118 @@ const CONSTRUCTOR_WEB_LOGO_URL = 'https://nyc3.digitaloceanspaces.com/solutium-s
 const PREVENTIVE_SUPABASE_REFRESH_INTERVAL_MS = 10 * 60 * 1000;
 const PREVENTIVE_SUPABASE_REFRESH_THROTTLE_MS = 30 * 1000;
 
-const normalizeIncomingProject = (rawProject: any): Project | null => {
+const decodeJwtPayload = (token?: string | null): any | null => {
+  if (!token || token === 'placeholder-token') return null;
+  const parts = token.split('.');
+  if (parts.length < 2) return null;
+
+  try {
+    const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), '=');
+    return JSON.parse(window.atob(padded));
+  } catch {
+    return null;
+  }
+};
+
+const getJwtExpirationMs = (token?: string | null): number | null => {
+  const payload = decodeJwtPayload(token);
+  return typeof payload?.exp === 'number' ? payload.exp * 1000 : null;
+};
+
+const readSafeHandshakeCache = (): any | null => {
+  try {
+    const raw = window.localStorage.getItem('solutium_handshake_cache');
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+};
+
+const hasThemeColorValue = (value: any) => (
+  Array.isArray(value)
+    ? value.some((item) => typeof item === 'string' && item.trim() !== '')
+    : value && typeof value === 'object' && [
+    'primary',
+    'primaryColor',
+    'primary_color',
+    'secondary',
+    'secondaryColor',
+    'secondary_color',
+    'accent',
+    'accentColor',
+    'accent_color',
+    'background',
+    'backgroundColor',
+    'background_color',
+    'text',
+    'textColor',
+    'text_color',
+    'muted',
+    'mutedColor',
+    'muted_color',
+    'border',
+    'borderColor',
+    'border_color'
+  ].some((key) => typeof value[key] === 'string' && value[key].trim() !== '')
+);
+
+const extractThemeBrandColors = (themeData: any): BrandColorsInput => {
+  if (!themeData || typeof themeData !== 'object') return null;
+
+  const candidates = [
+    themeData.brandColors,
+    themeData.brand_colors,
+    themeData.projectColors,
+    themeData.project_colors,
+    themeData.palette,
+    themeData.colors,
+    themeData.theme?.brandColors,
+    themeData.theme?.brand_colors,
+    themeData.theme?.projectColors,
+    themeData.theme?.project_colors,
+    themeData.theme?.palette,
+    themeData.theme?.colors,
+    themeData.theme,
+    themeData
+  ];
+
+  return candidates.find(hasThemeColorValue) || null;
+};
+
+const resolveLaunchThemeData = (payload: any) => {
+  if (!payload || typeof payload !== 'object') return null;
+
+  return [
+    payload.activeThemeData,
+    payload.project?.activeThemeData,
+    payload.projectTheme,
+    payload.theme,
+    payload.brandTheme,
+    payload.projectThemeSeed,
+    payload.themeSeed,
+    payload.project?.projectTheme,
+    payload.project?.theme,
+    payload.project?.brandTheme,
+    payload.project?.brandColors,
+    payload.project?.brand_colors
+  ].find((candidate) => candidate && typeof candidate === 'object') || null;
+};
+
+const normalizeIncomingProject = (rawProject: any, launchThemeData?: any): Project | null => {
   if (!rawProject || typeof rawProject !== 'object') return null;
+
+  const projectBrandColors = normalizeProjectBrandColors(rawProject.brandColors || rawProject.brand_colors);
+  const launchThemeBrandColors = extractThemeBrandColors(launchThemeData);
 
   return {
     ...rawProject,
     logoWhiteUrl: rawProject.logoWhiteUrl || rawProject.logo_white_url || null,
     projectIconUrl: rawProject.projectIconUrl || rawProject.project_icon_url || null,
     fontFamily: rawProject.fontFamily || rawProject.font_family || null,
-    brandColors: normalizeProjectBrandColors(rawProject.brandColors || rawProject.brand_colors),
+    brandColors: launchThemeBrandColors
+      ? normalizeProjectBrandColors(launchThemeBrandColors, projectBrandColors)
+      : projectBrandColors,
     webConfig: rawProject.webConfig || rawProject.web_config || null,
     imageMappings: rawProject.imageMappings || rawProject.image_mappings || null,
     schemaVersion: rawProject.schemaVersion || rawProject.schema_version || null,
@@ -183,6 +286,45 @@ const AppContent: React.FC = () => {
   const sessionRefreshInFlightRef = useRef(false);
   const lastSessionRefreshAtRef = useRef(0);
   const handshakeStartedRef = useRef(false);
+  const launchStartedAtRef = useRef(new Date());
+
+  const welcomeSessionInfo = React.useMemo(() => {
+    const safeCache = readSafeHandshakeCache();
+    const currentParams = new URLSearchParams(window.location.search);
+    const sessionToken =
+      currentParams.get('session_token') ||
+      window.sessionStorage.getItem('solutium_supabase_access_token') ||
+      safeCache?.session_token ||
+      safeCache?.sessionToken ||
+      safeCache?.supabaseAccessToken ||
+      safeCache?.accessToken ||
+      null;
+    const expiresAt = getJwtExpirationMs(sessionToken);
+    const hasRealSession = Boolean(sessionToken) && sessionToken !== 'placeholder-token' && (!expiresAt || expiresAt > Date.now());
+    const userLabel =
+      profile?.email ||
+      (profile as any)?.name ||
+      (profile as any)?.fullName ||
+      safeCache?.profile?.email ||
+      safeCache?.user?.email ||
+      'usuario autenticado';
+    const projectLabel =
+      project?.name ||
+      (project as any)?.businessName ||
+      safeCache?.project?.name ||
+      safeCache?.project?.businessName ||
+      safeCache?.siteName ||
+      projectId ||
+      'proyecto activo';
+
+    return {
+      hasRealSession,
+      userLabel,
+      projectLabel,
+      startedAt: launchStartedAtRef.current.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      canRequestMotherContext: Boolean(window.opener || (window.parent && window.parent !== window))
+    };
+  }, [profile, project, projectId]);
 
   // --- PERSISTENCE PROTOCOL v1.0 ---
   const saveSession = () => {
@@ -505,7 +647,7 @@ const AppContent: React.FC = () => {
         payload.activeThemeData?.font ||
         '';
 
-      const handshakeThemeData = payload.activeThemeData;
+      const handshakeThemeData = resolveLaunchThemeData(payload);
       const handshakeThemeName = payload.profile?.activeTheme || payload.project?.activeTheme;
       const hasThemeData = handshakeThemeData && Object.keys(handshakeThemeData).length > 0;
       const initialThemeToApply = (hasThemeData ? handshakeThemeData : null) || handshakeThemeName || 'blue-light';
@@ -549,9 +691,9 @@ const AppContent: React.FC = () => {
         setAppId(handshakeAppId);
 
         const projectPromise = payload.project
-          ? Promise.resolve(normalizeIncomingProject(payload.project))
+          ? Promise.resolve(normalizeIncomingProject(payload.project, handshakeThemeData))
           : finalProjectId
-            ? getProject(finalProjectId).then((data) => normalizeIncomingProject(data))
+            ? getProject(finalProjectId).then((data) => normalizeIncomingProject(data, handshakeThemeData))
             : Promise.resolve(null);
 
         const pagesPromise = finalProjectId ? refreshData(finalProjectId) : Promise.resolve([]);
@@ -897,6 +1039,7 @@ const AppContent: React.FC = () => {
           </div>
         </motion.div>
 
+
         {/* Botón de Emergencia DISCRETO para Desarrollo */}
         {(window.location.hostname.includes('run.app') || window.location.hostname.includes('localhost')) && (
           <div className="absolute bottom-6 opacity-20 hover:opacity-100 transition-opacity">
@@ -947,6 +1090,15 @@ const AppContent: React.FC = () => {
               }
             }}
             onRenamePage={handleRenamePage}
+            sessionInfo={welcomeSessionInfo}
+            onRequestMotherContext={() => {
+              sendToMother('SOLUTIUM_GET_CONFIG', { source: 'constructor_dashboard' });
+              try {
+                window.opener?.focus?.();
+              } catch {
+                // El navegador puede bloquear focus; la solicitud por postMessage queda enviada.
+              }
+            }}
             logoUrl={urlLogo}
             logoWhiteUrl={urlLogoWhite}
           />

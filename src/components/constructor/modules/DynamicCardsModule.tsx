@@ -176,6 +176,7 @@ const getWeight = (token?: string) =>
 const normalizeCtaPosition = (position?: string): 'left' | 'center' | 'right' => {
   if (position === 'right' || position === 'bottom_right' || position === 'right_bottom') return 'right';
   if (position === 'left' || position === 'left_bottom' || position === 'inline') return 'left';
+  if (position === 'center' || position === 'bottom_center' || position === 'center_bottom' || position === 'below') return 'center';
   return 'center';
 };
 
@@ -680,14 +681,18 @@ export const DynamicCardsModule: React.FC<{
     fontSize: `clamp(14px, 3.3cqw, ${bodySize}px)`,
     fontWeight: getWeight(bodyWeight),
     lineHeight: bodyLineHeight,
-    textAlign: bodyAlign
+    textAlign: bodyAlign,
+    whiteSpace: 'pre-line',
+    overflowWrap: 'anywhere'
   };
 
-  const bullets = String(activeCard.bullets || '')
-    .split('\n')
-    .map((item) => item.trim())
-    .filter(Boolean)
-    .slice(0, 5);
+  const bullets = useMemo(() => (
+    String(activeCard.bullets || '')
+      .split('\n')
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .slice(0, 5)
+  ), [activeCard.bullets]);
   const showBody = activeCard.showBody !== false && (String(activeCard.bodyText || '').trim() !== '' || bullets.length > 0);
   const showCta = activeCard.ctaEnabled !== false;
   const contentBlockCount = 1 + (showBody ? 1 : 0) + (showCta ? 1 : 0);
@@ -700,7 +705,7 @@ export const DynamicCardsModule: React.FC<{
   const ctaHref = String(activeCard.ctaUrl || '#').trim() || '#';
   const ctaPosition = normalizeCtaPosition(activeCard.ctaPosition);
   const titleBlockClass = effectiveTitleAlign === 'right' ? 'self-end' : effectiveTitleAlign === 'left' ? 'self-start' : 'self-center';
-  const bodyBlockClass = bodyAlign === 'right' ? 'self-end text-right' : bodyAlign === 'left' ? 'self-start text-left' : 'self-center text-center';
+  const bodyBlockClass = bodyAlign === 'right' ? 'self-center text-right' : bodyAlign === 'left' ? 'self-center text-left' : 'self-center text-center';
   const bulletJustifyClass = bodyAlign === 'right' ? 'justify-items-end' : bodyAlign === 'left' ? 'justify-items-start' : 'justify-items-center';
   const ctaJustifyClass = ctaPosition === 'right'
     ? 'justify-end'
@@ -777,9 +782,13 @@ export const DynamicCardsModule: React.FC<{
         .dynamic-cards-content.dc-blocks-2 { justify-content: center; gap: clamp(34px, 7cqw, 72px); }
         .dynamic-cards-content.dc-blocks-1 { justify-content: center; }
         .dynamic-cards-title { max-width: min(920px, 100%); }
-        .dynamic-cards-body { width: min(760px, 100%); }
-        .dynamic-cards-cta { width: min(760px, 100%); }
-        .dynamic-cards-body p { overflow-wrap: anywhere; }
+        .dynamic-cards-body,
+        .dynamic-cards-cta {
+          width: min(760px, 100%);
+          max-width: 100%;
+          align-self: center;
+        }
+        .dynamic-cards-body p { overflow-wrap: anywhere; white-space: pre-line; }
         .dynamic-cards-bullets { margin-top: clamp(10px, 2cqw, 16px); gap: clamp(6px, 1.5cqw, 10px); }
         .dynamic-cards-bullet { max-width: min(560px, 100%); overflow-wrap: anywhere; }
         @container (max-width: 900px) {

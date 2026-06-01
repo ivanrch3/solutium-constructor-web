@@ -1,6 +1,6 @@
-import { logDebug } from '../../../utils/debug';
+﻿import { logDebug } from '../../../utils/debug';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion } from 'motion/react';
 import * as LucideIcons from 'lucide-react';
 import { ArrowRight, Sparkles, ExternalLink } from 'lucide-react';
 import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
@@ -14,7 +14,6 @@ import '/node_modules/react-grid-layout/css/styles.css';
 import '/node_modules/react-resizable/css/styles.css';
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
-const BENTO_AI_ACTIONS_ENABLED = false;
 const BENTO_BREAKPOINT_TO_LAYOUT: Record<string, 'desktop' | 'tablet' | 'mobile'> = {
   lg: 'desktop',
   md: 'desktop',
@@ -25,18 +24,6 @@ const BENTO_BREAKPOINT_TO_LAYOUT: Record<string, 'desktop' | 'tablet' | 'mobile'
 
 const BENTO_BREAKPOINT_ORDER = ['lg', 'md', 'sm', 'xs', 'xxs'];
 
-const BENTO_ELEMENT_OPTIONS = [
-  { kind: 'text', label: 'Texto', icon: 'Type', description: 'Bloque de texto libre' },
-  { kind: 'visual', label: 'Imagen', icon: 'Image', description: 'Imagen principal' },
-  { kind: 'button', label: 'Botón', icon: 'MousePointerClick', description: 'Llamado a la acción' },
-  { kind: 'icon', label: 'Ícono', icon: 'Sparkles', description: 'Símbolo destacado' },
-  { kind: 'badge', label: 'Badge', icon: 'Badge', description: 'Etiqueta compacta' },
-  { kind: 'metric', label: 'Métrica', icon: 'BarChart3', description: 'Dato o indicador' },
-  { kind: 'list', label: 'Lista', icon: 'ListChecks', description: 'Puntos clave' },
-  { kind: 'accordion', label: 'Acordeón', icon: 'ChevronDownSquare', description: 'Texto desplegable' },
-  { kind: 'marquee', label: 'Cinta animada', icon: 'MoveRight', description: 'Texto en movimiento' },
-  { kind: 'card', label: 'Tarjeta simple', icon: 'PanelTop', description: 'Contenedor flexible' }
-];
 
 const isBentoDebugEnabled = () => {
   if (typeof window === 'undefined') return false;
@@ -127,9 +114,16 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave }: a
     image,
     card_image,
     image_fit = 'cover',
+    card_overlay = 0,
     title_size,
     title_weight = 'extrabold',
     title_color,
+    text_style,
+    font_family = 'inherit',
+    line_height,
+    letter_spacing,
+    content_align,
+    description_size,
     desc_size,
     desc_color,
     metric_suffix,
@@ -140,8 +134,18 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave }: a
   } = item;
 
   const adaptive = getAdaptiveTypography(priority, col_span, row_span);
-  const finalTitleSize = (title_size && title_size !== 'auto') ? title_size : adaptive.title;
-  const finalDescSize = (desc_size && desc_size !== 'auto') ? desc_size : adaptive.desc;
+  const textStyleDefaults: Record<string, { titleSize: string; descSize: string; lineHeight: number; letterSpacing: number }> = {
+    display: { titleSize: 't1', descSize: 'p', lineHeight: 1.05, letterSpacing: -2 },
+    heading_large: { titleSize: 't2', descSize: 'p', lineHeight: 1.1, letterSpacing: -1 },
+    heading: { titleSize: 't3', descSize: 'p', lineHeight: 1.2, letterSpacing: 0 },
+    subtitle: { titleSize: 'p', descSize: 'p', lineHeight: 1.35, letterSpacing: 0 },
+    paragraph: { titleSize: 'p', descSize: 'p', lineHeight: 1.55, letterSpacing: 0 },
+    small: { titleSize: 's', descSize: 's', lineHeight: 1.45, letterSpacing: 0 },
+    caption: { titleSize: 's', descSize: 's', lineHeight: 1.3, letterSpacing: 1 }
+  };
+  const textStyleDefault = type === 'text' ? textStyleDefaults[text_style as string] : undefined;
+  const finalTitleSize = (title_size && title_size !== 'auto') ? title_size : (textStyleDefault?.titleSize || adaptive.title);
+  const finalDescSize = ((description_size || desc_size) && (description_size || desc_size) !== 'auto') ? (description_size || desc_size) : (textStyleDefault?.descSize || adaptive.desc);
   const finalTitleWeight = getFontWeightValue(title_weight, 'extrabold');
 
   const IconComponent = (LucideIcons as any)[icon] || Sparkles;
@@ -153,11 +157,12 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave }: a
 
   const isHero = type === 'hero' || priority === 'hero';
 
+  const resolvedContentPosition = content_align || content_position;
   const alignClass = {
     'left': 'items-start text-left',
     'center': 'items-center text-center',
     'right': 'items-end text-right'
-  }[content_position as string] || 'items-center text-center';
+  }[resolvedContentPosition as string] || 'items-center text-center';
 
   switch (type) {
     case 'hero':
@@ -745,6 +750,7 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave }: a
 
     case 'visual':
       const visualImage = image || card_image;
+      const hasVisualCaption = Boolean(title || description);
 
       return (
         <div className="relative z-10 w-full h-full overflow-hidden">
@@ -761,37 +767,46 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave }: a
               <LucideIcons.Image size={56} strokeWidth={1.5} />
             </div>
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-          <div className="absolute inset-x-0 bottom-0 flex flex-col justify-end p-6">
-            <h3
-              className="leading-tight mb-2 text-white"
-              style={{
-                fontSize: `${TYPOGRAPHY_SCALE[finalTitleSize as keyof typeof TYPOGRAPHY_SCALE]?.fontSize || 20}px`,
-                fontWeight: finalTitleWeight
-              }}
-            >
-              <InlineEditableText
-                moduleId={moduleId}
-                settingId="title"
-                value={title}
-                tagName="span"
-                isPreviewMode={isPreviewMode}
-                onSave={(val) => onSave('title', val)}
-              />
-            </h3>
-            {description && (
-              <p className="text-white/80 text-xs mb-2 line-clamp-2">
-                <InlineEditableText
-                  moduleId={moduleId}
-                  settingId="description"
-                  value={description}
-                  tagName="span"
-                  isPreviewMode={isPreviewMode}
-                  onSave={(val) => onSave('description', val)}
-                />
-              </p>
-            )}
-          </div>
+          {card_overlay > 0 && (
+            <div className="absolute inset-0 bg-black" style={{ opacity: card_overlay / 100 }} />
+          )}
+          {hasVisualCaption && (
+            <>
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+              <div className="absolute inset-x-0 bottom-0 flex flex-col justify-end p-6">
+                {title && (
+                  <h3
+                    className="leading-tight mb-2 text-white"
+                    style={{
+                      fontSize: `${TYPOGRAPHY_SCALE[finalTitleSize as keyof typeof TYPOGRAPHY_SCALE]?.fontSize || 20}px`,
+                      fontWeight: finalTitleWeight
+                    }}
+                  >
+                    <InlineEditableText
+                      moduleId={moduleId}
+                      settingId="title"
+                      value={title}
+                      tagName="span"
+                      isPreviewMode={isPreviewMode}
+                      onSave={(val) => onSave('title', val)}
+                    />
+                  </h3>
+                )}
+                {description && (
+                  <p className="text-white/80 text-xs mb-2 line-clamp-2">
+                    <InlineEditableText
+                      moduleId={moduleId}
+                      settingId="description"
+                      value={description}
+                      tagName="span"
+                      isPreviewMode={isPreviewMode}
+                      onSave={(val) => onSave('description', val)}
+                    />
+                  </p>
+                )}
+              </div>
+            </>
+          )}
         </div>
       );
 
@@ -823,7 +838,10 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave }: a
 
     default: // 'text'
       return (
-        <div className="flex flex-col gap-3 z-10 w-full h-full">
+        <div
+          className={`flex flex-col gap-3 z-10 w-full h-full ${alignClass}`}
+          style={{ fontFamily: font_family === 'inherit' ? undefined : font_family }}
+        >
           {eyebrow && (
             <span 
               className="text-xs font-bold tracking-[0.2em] uppercase opacity-70 mb-1 block"
@@ -838,7 +856,9 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave }: a
               style={{ 
                 fontSize: `${TYPOGRAPHY_SCALE[finalTitleSize as keyof typeof TYPOGRAPHY_SCALE]?.fontSize || 24}px`,
                 fontWeight: finalTitleWeight,
-                color: finalTitleColor
+                color: finalTitleColor,
+                lineHeight: line_height || textStyleDefault?.lineHeight || 1.2,
+                letterSpacing: `${letter_spacing ?? textStyleDefault?.letterSpacing ?? 0}px`
               }}
             >
               <InlineEditableText
@@ -859,7 +879,8 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave }: a
               style={{ 
                 fontSize: `${TYPOGRAPHY_SCALE[finalDescSize as keyof typeof TYPOGRAPHY_SCALE]?.fontSize || 16}px`,
                 color: finalDescColor,
-                lineHeight: 1.6
+                lineHeight: line_height || textStyleDefault?.lineHeight || 1.6,
+                letterSpacing: `${letter_spacing ?? textStyleDefault?.letterSpacing ?? 0}px`
               }}
             >
               <InlineEditableText
@@ -888,7 +909,7 @@ export const BentoModule: React.FC<{
   onSettingChange?: (id: string, settingId: string, value: any) => void;
   isPreviewMode?: boolean;
   onOpenBentoGenerator?: () => void;
-}> = ({ moduleId, settingsValues, content, onSettingChange, isPreviewMode, onOpenBentoGenerator }) => {
+}> = ({ moduleId, settingsValues, content, onSettingChange, isPreviewMode }) => {
   useEffect(() => {
     if (!isBentoDebugEnabled()) return;
     logDebug('[BENTO_MODULE_MOUNT_DEBUG]', {
@@ -902,7 +923,6 @@ export const BentoModule: React.FC<{
 
   const { selectedBentoCellIndex, setSelectedBentoCellIndex, selectSection } = useEditorStore();
   const [isDragging, setIsDragging] = useState(false);
-  const [isElementPickerOpen, setIsElementPickerOpen] = useState(false);
   // Remove local selectedIndex, use store instead
   // const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const selectedIndex = selectedBentoCellIndex;
@@ -1160,303 +1180,6 @@ export const BentoModule: React.FC<{
     };
   };
 
-  const doLayoutsOverlap = (a: any, b: any) => (
-    a.x < b.x + b.w &&
-    a.x + a.w > b.x &&
-    a.y < b.y + b.h &&
-    a.y + a.h > b.y
-  );
-
-  const getNextFreeLayout = (
-    breakpoint: 'desktop' | 'tablet' | 'mobile',
-    colsForBreakpoint: number,
-    width: number,
-    height: number
-  ) => {
-    const safeWidth = Math.min(width, colsForBreakpoint);
-    const existingLayouts = rawItems.map((item: any) => getLayoutEntryForBreakpoint(item, breakpoint, colsForBreakpoint));
-    const maxY = existingLayouts.length > 0
-      ? Math.max(...existingLayouts.map((layout: any) => layout.y + layout.h))
-      : 0;
-
-    for (let y = 0; y <= maxY + height; y += 1) {
-      for (let x = 0; x <= colsForBreakpoint - safeWidth; x += 1) {
-        const candidate = { x, y, w: safeWidth, h: height };
-        if (!existingLayouts.some((layout: any) => doLayoutsOverlap(candidate, layout))) {
-          return candidate;
-        }
-      }
-    }
-
-    return { x: 0, y: maxY, w: safeWidth, h: height };
-  };
-
-  const getNextStackedLayout = (
-    breakpoint: 'tablet' | 'mobile',
-    colsForBreakpoint: number,
-    width: number,
-    height: number
-  ) => {
-    const safeWidth = Math.min(width, colsForBreakpoint);
-    const y = rawItems.length > 0
-      ? Math.max(...rawItems.map((item: any) => {
-          const layout = getLayoutEntryForBreakpoint(item, breakpoint, colsForBreakpoint);
-          return layout.y + layout.h;
-        }))
-      : 0;
-
-    return { x: 0, y, w: safeWidth, h: height };
-  };
-
-  const createResponsiveLayouts = (desktopW: number, desktopH: number, tabletW = Math.min(desktopW, 6), mobileW = 4) => ({
-    desktop: getNextFreeLayout('desktop', columns, desktopW, desktopH),
-    tablet: getNextFreeLayout('tablet', 6, tabletW, desktopH),
-    mobile: getNextStackedLayout('mobile', 4, mobileW, desktopH)
-  });
-
-  const createBentoElementPreset = (kind: string) => {
-    const base = {
-      id: createBentoCellId(),
-      card_style: "solid",
-      card_radius: 28,
-      card_shadow: 'sm',
-      padding: 32,
-      content_align: 'center',
-      x: 0,
-      y: 0
-    };
-
-    const withLayout = (item: any, desktopW: number, desktopH: number, tabletW?: number, mobileW?: number) => {
-      const itemLayouts = createResponsiveLayouts(desktopW, desktopH, tabletW, mobileW);
-
-      return {
-        ...base,
-        ...item,
-        col_span: desktopW,
-        row_span: desktopH,
-        desktop_span: desktopW,
-        desktop_rows: desktopH,
-        tablet_span: tabletW ?? Math.min(desktopW, 6),
-        mobile_span: mobileW ?? 4,
-        x: itemLayouts.desktop.x,
-        y: itemLayouts.desktop.y,
-        layouts: itemLayouts
-      };
-    };
-
-    switch (kind) {
-      case 'visual':
-        return withLayout({
-          type: 'visual',
-          title: 'Imagen destacada',
-          description: '',
-          image: '',
-          card_style: 'transparent',
-          padding: 0
-        }, 3, 2, 3, 4);
-      case 'button':
-        return withLayout({
-          type: 'button',
-          title: 'Haz clic aquí',
-          button_text: 'Haz clic aquí',
-          btn_url: '#',
-          card_style: 'transparent',
-          padding: 16
-        }, 3, 1, 3, 4);
-      case 'icon':
-        return withLayout({
-          type: 'icon',
-          title: 'Ícono destacado',
-          icon: 'Sparkles',
-          description: ''
-        }, 2, 2, 2, 4);
-      case 'badge':
-        return withLayout({
-          type: 'badge',
-          title: 'Nuevo',
-          icon: 'Tag',
-          card_style: 'transparent',
-          padding: 12
-        }, 2, 1, 2, 4);
-      case 'metric':
-        return withLayout({
-          type: 'metric',
-          title: '99+',
-          description: 'Impacto medible',
-          metric_value: '99+',
-          metric_label: 'Impacto',
-          icon: 'BarChart3',
-          accent_color: '#3B82F6'
-        }, 3, 2, 3, 4);
-      case 'list':
-        return withLayout({
-          type: 'list',
-          title: 'Puntos clave',
-          description: '',
-          list_items: ['Primer punto', 'Segundo punto', 'Tercer punto'],
-          icon: 'ListChecks'
-        }, 4, 3, 4, 4);
-      case 'accordion':
-        return withLayout({
-          type: 'accordion',
-          title: 'Ver más detalles',
-          description: 'Contenido desplegable para ampliar esta idea.',
-          icon: 'ChevronDown'
-        }, 4, 2, 4, 4);
-      case 'marquee':
-        return withLayout({
-          type: 'marquee',
-          title: 'PROMO • NUEVO • 24/7',
-          card_style: 'transparent',
-          padding: 12
-        }, 8, 1, 6, 4);
-      case 'card':
-        return withLayout({
-          type: 'card',
-          title: 'Tarjeta simple',
-          description: 'Combina texto, estilo e imagen de fondo.',
-          icon: 'PanelTop'
-        }, 4, 2, 3, 4);
-      case 'text':
-      default:
-        return withLayout({
-          type: 'text',
-          title: 'Título del texto',
-          description: 'Escribe aquí tu contenido...',
-          icon: 'Type'
-        }, 4, 2, 3, 4);
-    }
-  };
-
-  const handleAddElement = (kind: string) => {
-    if (!onSettingChange) return;
-
-    const newItem = createBentoElementPreset(kind);
-
-    const newItems = [...rawItems, newItem];
-    onSettingChange(`${moduleId}_el_bento_items`, 'items', newItems);
-    selectSection(moduleId);
-    setSelectedIndex(newItems.length - 1);
-    setIsElementPickerOpen(false);
-
-    if (isBentoDebugEnabled()) {
-      logDebug('[BENTO_CELL_UPDATE_DEBUG]', {
-        moduleId,
-        action: "add_element",
-        kind,
-        itemsCount: newItems.length,
-        updatedItem: newItem
-      });
-    }
-  };
-
-  const removeItem = (index: number) => {
-    if (!onSettingChange) return;
-    const newItems = rawItems.filter((_: any, i: number) => i !== index);
-    onSettingChange(`${moduleId}_el_bento_items`, 'items', newItems);
-    if (selectedIndex === index) setSelectedIndex(null);
-    else if (selectedIndex !== null && selectedIndex > index) setSelectedIndex(selectedIndex - 1);
-  };
-
-  const duplicateItem = (index: number) => {
-    if (!onSettingChange) return;
-    const itemToDuplicate = rawItems[index];
-    const offsetLayout = (layout: any, colsForLayout: number) => {
-      const entry = normalizeLayoutEntry(layout);
-      const nextX = Math.min(entry.x + 1, Math.max(0, colsForLayout - entry.w));
-      return { ...entry, x: nextX, y: entry.y + 1 };
-    };
-    const duplicatedLayouts = itemToDuplicate.layouts
-      ? {
-          ...itemToDuplicate.layouts,
-          ...(itemToDuplicate.layouts.desktop ? { desktop: offsetLayout(itemToDuplicate.layouts.desktop, columns) } : {}),
-          ...(itemToDuplicate.layouts.tablet ? { tablet: offsetLayout(itemToDuplicate.layouts.tablet, 6) } : {}),
-          ...(itemToDuplicate.layouts.mobile ? { mobile: offsetLayout(itemToDuplicate.layouts.mobile, 4) } : {})
-        }
-      : undefined;
-    const duplicatedDesktopLayout = duplicatedLayouts?.desktop;
-    const newItem = { 
-      ...itemToDuplicate,
-      id: createBentoCellId(),
-      ...(duplicatedLayouts ? { layouts: duplicatedLayouts } : {}),
-      x: duplicatedDesktopLayout?.x ?? ((itemToDuplicate.x + 1) % columns),
-      y: duplicatedDesktopLayout?.y ?? (itemToDuplicate.y + 1),
-      col_span: duplicatedDesktopLayout?.w ?? itemToDuplicate.col_span,
-      row_span: duplicatedDesktopLayout?.h ?? itemToDuplicate.row_span
-    };
-    onSettingChange(`${moduleId}_el_bento_items`, 'items', [...rawItems, newItem]);
-    selectSection(moduleId);
-    setSelectedIndex(rawItems.length);
-  };
-
-  const renameItem = (index: number, newName: string) => {
-    if (!onSettingChange) return;
-    const newItems = [...rawItems];
-    newItems[index] = { ...newItems[index], admin_label: newName };
-    onSettingChange(`${moduleId}_el_bento_items`, 'items', newItems);
-  };
-
-  const renderElementPicker = (variant: 'empty' | 'floating') => (
-    <AnimatePresence>
-      {isElementPickerOpen && (
-        <motion.div
-          initial={{ opacity: 0, y: variant === 'empty' ? 8 : 12, scale: 0.98 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 8, scale: 0.98 }}
-          className={variant === 'empty'
-            ? 'pointer-events-auto fixed left-1/2 top-1/2 z-50 w-[680px] max-w-[calc(100vw-32px)] max-h-[70vh] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-[2rem] border border-gray-100 bg-white text-left shadow-2xl'
-            : 'absolute bottom-full left-1/2 z-50 mb-3 w-[680px] max-w-[calc(100vw-48px)] max-h-[70vh] -translate-x-1/2 overflow-hidden rounded-[2rem] border border-gray-100 bg-white text-left shadow-2xl'
-          }
-          onClick={(event) => event.stopPropagation()}
-        >
-          <div className="flex items-start justify-between gap-4 border-b border-gray-100 p-4">
-            <div>
-              <h4 className="text-sm font-black text-slate-900">Elegir elemento</h4>
-              <p className="mt-1 text-xs font-medium text-slate-500">
-                Agrega piezas flexibles al Bento sin salir del lienzo.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                setIsElementPickerOpen(false);
-              }}
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
-              aria-label="Cerrar selector de elementos Bento"
-            >
-              <LucideIcons.X size={18} />
-            </button>
-          </div>
-          <div className="grid max-h-[calc(70vh-88px)] grid-cols-1 gap-2 overflow-y-auto p-3 sm:grid-cols-2">
-            {BENTO_ELEMENT_OPTIONS.map((option) => {
-              const PickerIcon = (LucideIcons as any)[option.icon] || Sparkles;
-              return (
-                <button
-                  key={option.kind}
-                  type="button"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    handleAddElement(option.kind);
-                  }}
-                  className="flex min-h-[76px] items-start gap-3 rounded-2xl border border-gray-100 bg-white p-3 text-left transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/5"
-                >
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                    <PickerIcon size={18} />
-                  </span>
-                  <span>
-                    <span className="block text-xs font-black text-gray-900">{option.label}</span>
-                    <span className="block text-[10px] font-medium leading-snug text-gray-400">{option.description}</span>
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
-
   // Header Values
   const headerEyebrow = getVal(`${moduleId}_el_bento_header`, 'eyebrow', '');
   const headerTitle = getVal(`${moduleId}_el_bento_header`, 'title', '');
@@ -1512,7 +1235,7 @@ export const BentoModule: React.FC<{
           selectSection(moduleId);
           setSelectedIndex(null);
         }}
-        className={`w-full relative ${isElementPickerOpen ? 'overflow-visible' : 'overflow-hidden'} transition-colors duration-500 bento-specialization-${bentoType} ${isDragging ? 'bento-dragging' : ''}`}
+        className={`w-full relative overflow-hidden transition-colors duration-500 bento-specialization-${bentoType} ${isDragging ? 'bento-dragging' : ''}`}
         data-bento-type={bentoType}
         style={{ 
           backgroundColor: bgColor,
@@ -1648,7 +1371,7 @@ export const BentoModule: React.FC<{
           </div>
         )}
 
-        {/* Bento Grid */}
+        {/* Visual editing grid */}
         <div 
           className={`w-full transition-all duration-500 relative ${!isPreviewMode ? 'min-h-[400px] border-2 border-dashed border-gray-200 rounded-[40px] hover:border-primary/40' : ''} ${!isPreviewMode && rawItems.length === 0 ? 'bg-blue-50/10 border-blue-200/50' : ''}`} 
           style={{ 
@@ -1660,7 +1383,7 @@ export const BentoModule: React.FC<{
           {/* Editor Label */}
           {!isPreviewMode && (
             <div className="absolute -top-3 left-8 z-30 bg-primary text-white text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full shadow-lg">
-              {selectedIndex !== null ? 'Estás editando una celda' : 'Bento Grid'}
+              {selectedIndex !== null ? 'Editando elemento' : 'Diseño libre'}
             </div>
           )}
 
@@ -1755,6 +1478,13 @@ export const BentoModule: React.FC<{
                 <div 
                   key={rglKey} 
                   className={`relative ${!isPreviewMode ? 'group/rgl' : ''}`}
+                  onClick={(e) => {
+                    if (!isPreviewMode) {
+                      e.stopPropagation();
+                      selectSection(moduleId);
+                      setSelectedIndex(i);
+                    }
+                  }}
                 >
                   <motion.div 
                     key={cellKey}
@@ -1763,6 +1493,14 @@ export const BentoModule: React.FC<{
                     whileInView={entranceAnim !== 'none' ? "visible" : "visible"}
                     viewport={{ once: true }}
                     transition={{ delay: i * 0.1 }}
+                    onClickCapture={() => {
+                      if (!isPreviewMode) {
+                        window.setTimeout(() => {
+                          selectSection(moduleId);
+                          setSelectedIndex(i);
+                        }, 0);
+                      }
+                    }}
                     onClick={(e) => {
                       if (!isPreviewMode) {
                         e.stopPropagation();
@@ -1789,26 +1527,6 @@ export const BentoModule: React.FC<{
                         <div className="bg-primary text-white text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded shadow-lg">
                           Editando Bloque: {item.title || 'Nuevo'}
                         </div>
-                      </div>
-                    )}
-
-                    {/* Delete/Action Buttons (Only in Constructor) */}
-                    {!isPreviewMode && (
-                      <div className="absolute top-3 right-3 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-50">
-                        <button 
-                          onClick={(e) => { e.stopPropagation(); duplicateItem(i); }}
-                          className="p-1.5 bg-white text-gray-700 rounded-lg hover:bg-gray-50 shadow-md border border-gray-100"
-                          title="Duplicar"
-                        >
-                          <LucideIcons.Copy size={12} />
-                        </button>
-                        <button 
-                          onClick={(e) => { e.stopPropagation(); removeItem(i); }}
-                          className="p-1.5 bg-rose-500 text-white rounded-lg hover:bg-rose-600 shadow-md transition-colors"
-                          title="Eliminar"
-                        >
-                          <LucideIcons.Trash2 size={12} />
-                        </button>
                       </div>
                     )}
 
@@ -1859,69 +1577,25 @@ export const BentoModule: React.FC<{
           </ResponsiveGridLayout>
         </div>
 
-        {/* Hint when empty - subtle overlay over the grid guide */}
+        {/* Hint when empty - creation happens from the Structure panel */}
         {!isPreviewMode && rawItems.length === 0 && (
           <div className="absolute inset-0 flex flex-col items-center justify-center p-12 pointer-events-none z-20">
             <motion.div 
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              className="bg-white p-10 rounded-[3rem] border border-gray-100 shadow-2xl text-center max-w-sm pointer-events-auto"
+              className="bg-white p-10 rounded-[3rem] border border-gray-100 shadow-2xl text-center max-w-sm"
             >
               <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-6">
                 <Sparkles size={32} />
               </div>
-              <h3 className="text-xl font-black text-gray-900 mb-2">Bento Grid Vacío</h3>
-              <p className="text-sm text-gray-400 mb-8 leading-relaxed">
-                Esta sección permite crear composiciones modulares flexibles. Arrastra bloques desde el panel o usa las acciones de abajo.
+              <h3 className="text-xl font-black text-gray-900 mb-2">Diseño libre vacío</h3>
+              <p className="text-sm text-gray-400 leading-relaxed">
+                Agrega elementos desde el panel Estructura para construir tu diseño.
               </p>
-              <div className="flex flex-col gap-3">
-                 <button 
-                   onClick={(e) => { e.stopPropagation(); setIsElementPickerOpen((open) => !open); }}
-                   className="w-full flex items-center justify-center gap-2 bg-primary text-white py-4 rounded-2xl font-bold hover:scale-[1.02] active:scale-95 transition-all shadow-lg"
-                 >
-                   <LucideIcons.Plus size={18} />
-                   Agregar elemento
-                 </button>
-                 {BENTO_AI_ACTIONS_ENABLED && (
-                   <button 
-                     onClick={(e) => { e.stopPropagation(); onOpenBentoGenerator?.(); }}
-                     className="w-full flex items-center justify-center gap-2 bg-blue-50 text-blue-600 py-4 rounded-2xl font-bold hover:bg-blue-100 active:scale-95 transition-all border border-blue-100"
-                   >
-                     <Sparkles size={18} />
-                     Generar con IA
-                   </button>
-                 )}
-              </div>
             </motion.div>
-            {renderElementPicker('empty')}
           </div>
         )}
 
-        {/* Floating Add Button (when items exist) */}
-        {!isPreviewMode && rawItems.length > 0 && (
-          <div className="relative z-40 mx-auto mt-6 flex w-fit items-center gap-3 rounded-2xl border border-gray-100 bg-white/80 p-2 shadow-2xl backdrop-blur-md">
-            {renderElementPicker('floating')}
-            <button 
-               onClick={(e) => { e.stopPropagation(); setIsElementPickerOpen((open) => !open); }}
-               className="flex items-center gap-2 px-6 py-2.5 bg-primary text-white rounded-xl font-bold hover:shadow-xl hover:-translate-y-0.5 transition-all active:scale-95 whitespace-nowrap"
-            >
-              <LucideIcons.Plus size={16} />
-              <span className="text-xs">Agregar elemento</span>
-            </button>
-            {BENTO_AI_ACTIONS_ENABLED && (
-              <>
-                <div className="w-px h-6 bg-gray-200" />
-                <button 
-                   onClick={(e) => { e.stopPropagation(); onOpenBentoGenerator?.(); }}
-                   className="flex items-center gap-2 px-6 py-2.5 bg-blue-50 text-blue-600 rounded-xl font-bold hover:bg-blue-100 transition-all active:scale-95"
-                >
-                  <Sparkles size={16} />
-                  <span className="text-xs">IA</span>
-                </button>
-              </>
-            )}
-          </div>
-        )}
       </div>
       </section>
     </SectionAnimation>

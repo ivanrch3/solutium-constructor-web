@@ -199,11 +199,11 @@ export const PropertyEditor: React.FC<PropertyEditorProps> = ({
       return (
         <div className="flex h-full flex-col bg-white">
           <div className="border-b border-gray-100 bg-gray-50/70 p-4">
-            <h3 className="text-sm font-bold text-gray-900">Elemento Bento seleccionado</h3>
+            <h3 className="text-sm font-bold text-gray-900">Elemento seleccionado</h3>
             <p className="mt-1 text-xs leading-relaxed text-gray-500">
               {bentoCellDrawerOpen
-                ? 'La edicion de esta celda esta abierta en el drawer Bento.'
-                : 'El drawer Bento esta cerrado. Puedes reabrirlo o volver a la configuracion global.'}
+                ? 'La edición de este elemento está abierta en el panel.'
+                : 'El panel de edición está cerrado. Puedes reabrirlo o volver a la configuración global.'}
             </p>
           </div>
           <div className="flex flex-1 flex-col items-center justify-center p-6 text-center">
@@ -225,7 +225,7 @@ export const PropertyEditor: React.FC<PropertyEditorProps> = ({
               onClick={() => setSelectedBentoCellIndex(null)}
               className="mt-3 rounded-full bg-blue-50 px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-blue-600 transition-colors hover:bg-blue-100"
             >
-              Volver a Configuracion Global
+              Volver a Configuración Global
             </button>
           </div>
         </div>
@@ -894,7 +894,7 @@ export const PropertyEditor: React.FC<PropertyEditorProps> = ({
                         }
 
                         const subsectionKey = `${selectedSection.id}:${pillar}:${subsection}`;
-                        const isSubsectionExpanded = expandedSubsections[subsectionKey] ?? true;
+                        const isSubsectionExpanded = expandedSubsections[subsectionKey] === true;
 
                         return (
                           <div key={subsectionKey} className="overflow-hidden rounded-2xl border border-gray-100 bg-gray-50/70">

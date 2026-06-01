@@ -3191,7 +3191,7 @@ export const BENTO_MODULE: WebModule = {
   id: 'mod_bento_1',
   type: 'bento',
   iconKey: 'bento',
-  name: 'Bento',
+  name: 'Diseño libre',
   globalGroups: ['estructura', 'estilo', 'interaccion', 'multimedia'],
   globalSettings: {
     estructura: [
@@ -3251,9 +3251,9 @@ export const BENTO_MODULE: WebModule = {
       ],
       tipografia: [], estilo: [], multimedia: [], interaccion: []
     }},
-    { id: 'el_bento_items', name: 'Bloques de Contenido (Celdas)', type: 'repeater', groups: ['contenido', 'estructura', 'estilo', 'tipografia', 'multimedia'], settings: {
+    { id: 'el_bento_items', name: 'Elementos', type: 'repeater', groups: ['contenido', 'estructura', 'estilo', 'tipografia', 'multimedia'], settings: {
       contenido: [
-        { id: 'items', label: 'Lista de Celdas', type: 'repeater', defaultValue: [], fields: [
+        { id: 'items', label: 'Lista de elementos', type: 'repeater', defaultValue: [], fields: [
           { id: 'type', label: 'Tipo de Elemento', type: 'select', defaultValue: 'text', options: [
             { label: 'Texto', value: 'text' },
             { label: 'Imagen', value: 'visual' },
@@ -3276,8 +3276,34 @@ export const BENTO_MODULE: WebModule = {
             { label: 'Señal de Confianza', value: 'trust_signal' }
           ]},
           // Campos comunes
+          { id: 'text_style', label: 'Estilo de texto', type: 'select', defaultValue: 'heading', options: [
+            { label: 'Título XL', value: 'display' },
+            { label: 'Título grande', value: 'heading_large' },
+            { label: 'Título', value: 'heading' },
+            { label: 'Subtítulo', value: 'subtitle' },
+            { label: 'Párrafo', value: 'paragraph' },
+            { label: 'Texto pequeño', value: 'small' },
+            { label: 'Caption / etiqueta', value: 'caption' }
+          ], showIf: { settingId: 'type', value: 'text' } },
           { id: 'title', label: 'Título / Valor', type: 'text', defaultValue: 'Nueva Celda' },
           { id: 'description', label: 'Descripción / Texto', type: 'text', defaultValue: 'Describe el contenido de este bloque.', showIf: { settingId: 'type', value: ['visual'], operator: 'neq' } },
+          { id: 'title_size', label: 'Tamaño del título', type: 'typography_size', defaultValue: 't3', allowedLevels: ['t1', 't2', 't3', 'p', 's'] },
+          { id: 'title_weight', label: 'Peso del título', type: 'font_weight', defaultValue: 'extrabold' },
+          { id: 'title_color', label: 'Color del título', type: 'color', defaultValue: '#0F172A' },
+          { id: 'font_family', label: 'Familia tipográfica', type: 'select', defaultValue: 'inherit', options: [
+            { label: 'Heredada del tema', value: 'inherit' },
+            { label: 'Sans', value: 'sans-serif' },
+            { label: 'Serif', value: 'serif' },
+            { label: 'Monoespaciada', value: 'monospace' }
+          ], showIf: { settingId: 'type', value: 'text' } },
+          { id: 'description_size', label: 'Tamaño del texto', type: 'typography_size', defaultValue: 'p', allowedLevels: ['t3', 'p', 's'] },
+          { id: 'content_align', label: 'Alineación del contenido', type: 'select', defaultValue: 'center', options: [
+            { label: 'Izquierda', value: 'left' },
+            { label: 'Centro', value: 'center' },
+            { label: 'Derecha', value: 'right' }
+          ]},
+          { id: 'line_height', label: 'Interlineado', type: 'range', defaultValue: 1.4, min: 1, max: 2, step: 0.05, showIf: { settingId: 'type', value: 'text' } },
+          { id: 'letter_spacing', label: 'Espaciado de letras', type: 'range', defaultValue: 0, min: -5, max: 10, step: 0.5, unit: 'px', showIf: { settingId: 'type', value: 'text' } },
           
           // Metric específicos (Dato principal)
           { id: 'metric_value', label: 'Valor Numérico', type: 'text', defaultValue: '', showIf: { settingId: 'type', value: 'metric' } },
@@ -3527,7 +3553,7 @@ export const MODULE_INFO: Record<string, {
     replacement: 'trusted_logos'
   },
   trusted_logos: { label: 'Logos de Empresas', icon: Handshake },
-  bento: { label: 'Bento', icon: Layout },
+  bento: { label: 'Diseño libre', icon: Layout },
   composition_section: { label: 'Composición Visual', icon: Layout }
 };
 

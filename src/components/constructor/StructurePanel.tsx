@@ -237,6 +237,7 @@ const createBentoPanelElementPreset = (kind: string, existingItems: any[], deskt
         icon: 'Sparkles',
         icon_color: '#2563EB',
         icon_image: '',
+        icon_image_size: 72,
         description: 'Describe brevemente este ícono.'
       }, 4, 2, 2, 4);
     case 'badge':

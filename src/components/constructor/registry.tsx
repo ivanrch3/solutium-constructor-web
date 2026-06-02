@@ -3746,6 +3746,7 @@ export const BENTO_MODULE: WebModule = {
           { id: 'show_icon_bg', label: 'Mostrar fondo del icono', type: 'boolean', defaultValue: true, showIf: { settingId: 'type', value: 'icon' } },
           { id: 'icon_bg', label: 'Color de fondo del icono', type: 'color', defaultValue: 'rgba(59, 130, 246, 0.1)', showIf: { settingId: 'type', value: 'icon' } },
           { id: 'icon_image', label: 'Imagen del icono', type: 'image', defaultValue: '', showIf: { settingId: 'type', value: 'icon' } },
+          { id: 'icon_image_size', label: 'Tamaño de imagen', type: 'range', defaultValue: 72, min: 32, max: 180, unit: 'px', showIf: { settingId: 'type', value: 'icon' } },
           { id: 'list_items', label: 'Items de Lista', type: 'textarea', defaultValue: 'Primer punto\nSegundo punto\nTercer punto', showIf: { settingId: 'type', value: 'list' } },
           { id: 'show_description', label: 'Mostrar Descripción', type: 'boolean', defaultValue: true, showIf: { settingId: 'type', value: ['compact', 'icon_text'], operator: 'includes' } },
           

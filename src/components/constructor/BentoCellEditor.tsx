@@ -311,7 +311,7 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
     text: ['text_style', 'title', 'description', 'title_size', 'title_weight', 'font_family', 'title_color', 'description_size', 'content_align', 'line_height', 'letter_spacing', 'card_image', 'card_overlay', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'align_items', 'card_style', 'card_bg', 'card_gradient', 'card_radius', 'card_shadow', 'text_contrast'],
     visual: ['image', 'image_fit', 'card_image', 'card_overlay', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'align_items', 'card_style', 'card_bg', 'card_gradient', 'card_radius', 'card_shadow'],
     button: ['button_text', 'btn_url', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'align_items', 'card_style', 'card_bg', 'card_gradient', 'card_image', 'card_overlay', 'card_radius', 'card_shadow'],
-    icon: ['title', 'description', 'icon_visual_type', 'icon', 'icon_color', 'icon_size', 'show_icon_bg', 'icon_bg', 'icon_image', 'title_size', 'title_weight', 'title_color', 'description_size', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'align_items', 'card_style', 'card_bg', 'card_gradient', 'card_image', 'card_overlay', 'card_radius', 'card_shadow', 'text_contrast'],
+    icon: ['title', 'description', 'icon_visual_type', 'icon', 'icon_color', 'icon_size', 'show_icon_bg', 'icon_bg', 'icon_image', 'icon_image_size', 'title_size', 'title_weight', 'title_color', 'description_size', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'align_items', 'card_style', 'card_bg', 'card_gradient', 'card_image', 'card_overlay', 'card_radius', 'card_shadow', 'text_contrast'],
     badge: ['title', 'icon', 'title_size', 'title_weight', 'title_color', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'align_items', 'card_style', 'card_bg', 'card_gradient', 'card_image', 'card_overlay', 'card_radius', 'card_shadow'],
     metric: ['metric_value', 'metric_prefix', 'metric_suffix', 'metric_label', 'accent_color', 'icon', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'align_items', 'card_style', 'card_bg', 'card_gradient', 'card_image', 'card_overlay', 'card_radius', 'card_shadow'],
     list: ['title', 'list_items', 'icon', 'title_size', 'title_weight', 'title_color', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'align_items', 'card_style', 'card_bg', 'card_gradient', 'card_image', 'card_overlay', 'card_radius', 'card_shadow'],
@@ -326,7 +326,7 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
     if (selectedType === 'icon' && iconVisualType === 'image') {
       if (['icon', 'icon_color', 'icon_size', 'show_icon_bg', 'icon_bg'].includes(field.id)) return false;
     }
-    if (selectedType === 'icon' && iconVisualType !== 'image' && field.id === 'icon_image') return false;
+    if (selectedType === 'icon' && iconVisualType !== 'image' && ['icon_image', 'icon_image_size'].includes(field.id)) return false;
     return visibleFields.includes(field.id);
   };
 
@@ -340,8 +340,46 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
     if (selectedType === 'icon' && field.id === 'description_size') {
       nextField = { ...nextField, allowedLevels: ['t3', 'p', 's'] };
     }
-    if (field.id === 'desktop_span') {
+    if (selectedType === 'icon' && field.id === 'desktop_span') {
+      nextField = { ...nextField, label: 'Ancho de celda en escritorio', max: desktopColumns, subsection: 'Tamaño de celda', description: 'Ajusta el espacio que ocupa el bloque en el grid; no cambia el tamaño interno del icono o la imagen.' };
+    } else if (field.id === 'desktop_span') {
       nextField = { ...nextField, max: desktopColumns };
+    }
+    if (selectedType === 'icon' && field.id === 'desktop_rows') {
+      nextField = { ...nextField, label: 'Alto de celda en escritorio', subsection: 'Tamaño de celda', description: 'Ajusta filas de alto de la celda. También puedes usar el resize visual del canvas.' };
+    }
+    if (selectedType === 'icon' && field.id === 'tablet_span') {
+      nextField = { ...nextField, label: 'Ancho de celda en tablet', subsection: 'Tamaño de celda', description: 'Ajusta el ancho del bloque en el grid tablet.' };
+    }
+    if (selectedType === 'icon' && field.id === 'mobile_span') {
+      nextField = { ...nextField, label: 'Ancho de celda en móvil', subsection: 'Tamaño de celda', description: 'Ajusta el ancho del bloque en el grid móvil.' };
+    }
+    if (selectedType === 'icon' && field.id === 'padding') {
+      nextField = { ...nextField, label: 'Separación interna de la celda', description: 'Espacio entre el borde del contenedor y el contenido interno.' };
+    }
+    if (selectedType === 'icon' && field.id === 'align_items') {
+      nextField = { ...nextField, label: 'Alineación vertical del contenido', description: 'Mueve juntos el visual, título y descripción dentro de una celda alta.' };
+    }
+    if (selectedType === 'icon' && field.id === 'card_style') {
+      nextField = { ...nextField, label: 'Estilo del contenedor', description: 'Cambia el fondo visual de la celda completa, no el icono o imagen interna.' };
+    }
+    if (selectedType === 'icon' && field.id === 'card_bg') {
+      nextField = { ...nextField, label: 'Fondo del contenedor' };
+    }
+    if (selectedType === 'icon' && field.id === 'card_gradient') {
+      nextField = { ...nextField, label: 'Degradado del contenedor' };
+    }
+    if (selectedType === 'icon' && field.id === 'card_image') {
+      nextField = { ...nextField, label: 'Imagen de fondo del contenedor' };
+    }
+    if (selectedType === 'icon' && field.id === 'card_overlay') {
+      nextField = { ...nextField, label: 'Opacidad de imagen de fondo' };
+    }
+    if (selectedType === 'icon' && field.id === 'card_radius') {
+      nextField = { ...nextField, label: 'Redondeo del contenedor' };
+    }
+    if (selectedType === 'icon' && field.id === 'card_shadow') {
+      nextField = { ...nextField, label: 'Sombra del contenedor' };
     }
     return nextField;
   };
@@ -419,7 +457,92 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
       const textStylePreset = settingId === 'text_style'
         ? TEXT_STYLE_PRESETS[value as string] || {}
         : {};
-      newItems[index] = { ...newItems[index], [settingId]: value, ...textStylePreset };
+      const currentItem = newItems[index];
+      let nextItem = { ...currentItem, [settingId]: value, ...textStylePreset };
+      const numericValue = Number(value);
+
+      if (Number.isFinite(numericValue) && ['desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span'].includes(settingId)) {
+        const existingLayouts = currentItem.layouts || {};
+        const updateLayoutSize = (
+          breakpoint: 'desktop' | 'tablet' | 'mobile',
+          cols: number,
+          updates: { w?: number; h?: number }
+        ) => {
+          const currentLayout = breakpoint === activeLayoutKey
+            ? getActiveLayout(currentItem)
+            : (() => {
+                const savedLayout = existingLayouts[breakpoint];
+                const fallbackW = breakpoint === 'desktop'
+                  ? (currentItem.desktop_span || currentItem.col_span || 4)
+                  : breakpoint === 'tablet'
+                    ? (currentItem.tablet_span || Math.min(currentItem.col_span || 3, BENTO_TABLET_COLUMNS))
+                    : (currentItem.mobile_span || BENTO_MOBILE_COLUMNS);
+                const fallbackH = breakpoint === 'mobile'
+                  ? (currentItem.mobile_rows || currentItem.row_span || 2)
+                  : (currentItem.desktop_rows || currentItem.row_span || 2);
+                return {
+                  x: Number(savedLayout?.x ?? currentItem.x ?? 0) || 0,
+                  y: Number(savedLayout?.y ?? currentItem.y ?? 0) || 0,
+                  w: Number(savedLayout?.w ?? fallbackW) || 1,
+                  h: Number(savedLayout?.h ?? fallbackH) || 1
+                };
+              })();
+          const nextW = clampNumber(updates.w ?? currentLayout.w, 1, cols);
+          const nextH = Math.max(updates.h ?? currentLayout.h, 1);
+
+          return {
+            x: clampNumber(currentLayout.x, 0, Math.max(cols - nextW, 0)),
+            y: Math.max(currentLayout.y, 0),
+            w: nextW,
+            h: nextH,
+            columns: cols
+          };
+        };
+
+        if (settingId === 'desktop_span') {
+          const layout = updateLayoutSize('desktop', desktopColumns, { w: numericValue });
+          nextItem = {
+            ...nextItem,
+            x: layout.x,
+            y: layout.y,
+            col_span: layout.w,
+            desktop_span: layout.w,
+            layouts: { ...existingLayouts, desktop: layout },
+            layout_columns: { ...(currentItem.layout_columns || {}), desktop: desktopColumns }
+          };
+        }
+        if (settingId === 'desktop_rows') {
+          const layout = updateLayoutSize('desktop', desktopColumns, { h: numericValue });
+          nextItem = {
+            ...nextItem,
+            y: layout.y,
+            row_span: layout.h,
+            desktop_rows: layout.h,
+            layouts: { ...(nextItem.layouts || existingLayouts), desktop: layout },
+            layout_columns: { ...(currentItem.layout_columns || {}), desktop: desktopColumns }
+          };
+        }
+        if (settingId === 'tablet_span') {
+          const layout = updateLayoutSize('tablet', BENTO_TABLET_COLUMNS, { w: numericValue });
+          nextItem = {
+            ...nextItem,
+            tablet_span: layout.w,
+            layouts: { ...existingLayouts, tablet: layout },
+            layout_columns: { ...(currentItem.layout_columns || {}), tablet: BENTO_TABLET_COLUMNS }
+          };
+        }
+        if (settingId === 'mobile_span') {
+          const layout = updateLayoutSize('mobile', BENTO_MOBILE_COLUMNS, { w: numericValue });
+          nextItem = {
+            ...nextItem,
+            mobile_span: layout.w,
+            layouts: { ...existingLayouts, mobile: layout },
+            layout_columns: { ...(currentItem.layout_columns || {}), mobile: BENTO_MOBILE_COLUMNS }
+          };
+        }
+      }
+
+      newItems[index] = nextItem;
       if (onSettingChange) {
         onSettingChange(`${realSectionId}_el_bento_items`, 'items', newItems);
       } else {

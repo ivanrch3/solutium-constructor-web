@@ -166,6 +166,7 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave }: a
     show_icon_bg = true,
     icon_bg = 'rgba(59, 130, 246, 0.1)',
     icon_image = '',
+    icon_image_size,
     text_contrast = 'auto'
   } = item;
 
@@ -194,6 +195,7 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave }: a
   const finalIconColor = resolveThemeColor(icon_color, '#2563EB', '#60A5FA', darkMode);
   const resolvedIconBg = resolveThemeColor(icon_bg, 'rgba(59, 130, 246, 0.1)', 'rgba(96, 165, 250, 0.18)', darkMode);
   const numericIconSize = parseNumSafe(icon_size, isHero ? 40 : 32);
+  const numericIconImageSize = parseNumSafe(icon_image_size, 72);
   const iconFrameSize = Math.max(numericIconSize + 16, 40);
   const verticalContentClass = {
     start: 'justify-start',
@@ -375,13 +377,14 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave }: a
     case 'icon':
       const isIconImage = icon_visual_type === 'image';
       const iconImageSrc = icon_image || image;
+      const visualFrameSize = isIconImage ? numericIconImageSize : iconFrameSize;
       return (
         <div className={`flex flex-col z-10 w-full h-full items-center ${verticalContentClass} gap-3 text-center`}>
           <div
             className="flex items-center justify-center overflow-hidden rounded-3xl"
             style={{
-              width: `${iconFrameSize}px`,
-              height: `${iconFrameSize}px`,
+              width: `${visualFrameSize}px`,
+              height: `${visualFrameSize}px`,
               backgroundColor: !isIconImage && toBoolean(show_icon_bg) ? resolvedIconBg : 'transparent',
               color: finalIconColor
             }}
@@ -390,7 +393,7 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave }: a
               <img
                 src={iconImageSrc}
                 alt=""
-                className="h-full w-full object-cover"
+                className="h-full w-full object-contain"
                 referrerPolicy="no-referrer"
               />
             ) : (
@@ -1148,6 +1151,77 @@ export const BentoModule: React.FC<{
   };
 
   const getBentoLayoutForBreakpoint = (items: any[], breakpoint: string, cols: number) => {
+    const buildResponsiveFallbackLayouts = () => {
+      if (breakpoint === 'desktop') return null;
+
+      const orderedItems = items
+        .map((item: any, index: number) => {
+          const desktopSource = item.layouts?.desktop || {
+            x: item.x || 0,
+            y: item.y || 0,
+            w: item.desktop_span || item.col_span || 4,
+            h: item.desktop_rows || item.row_span || 2
+          };
+          return {
+            item,
+            index,
+            desktopLayout: scaleLegacyDesktopLayout(item, desktopSource, columns)
+          };
+        })
+        .sort((left, right) => (
+          left.desktopLayout.y - right.desktopLayout.y ||
+          left.desktopLayout.x - right.desktopLayout.x ||
+          left.index - right.index
+        ));
+
+      const fallbackLayouts = new Map<number, { x: number; y: number; w: number; h: number }>();
+      const occupied: { x: number; y: number; w: number; h: number }[] = [];
+      let mobileY = 0;
+      const collides = (
+        candidate: { x: number; y: number; w: number; h: number },
+        existing: { x: number; y: number; w: number; h: number }
+      ) => (
+        candidate.x < existing.x + existing.w &&
+        candidate.x + candidate.w > existing.x &&
+        candidate.y < existing.y + existing.h &&
+        candidate.y + candidate.h > existing.y
+      );
+
+      orderedItems.forEach(({ item, index }) => {
+        const h = breakpoint === 'mobile'
+          ? (item.mobile_rows || item.row_span || item.desktop_rows || 2)
+          : (item.desktop_rows || item.row_span || 2);
+        const w = breakpoint === 'mobile'
+          ? cols
+          : Math.min(item.tablet_span || item.col_span || Math.ceil(cols / 2), cols);
+
+        if (breakpoint === 'mobile') {
+          const layout = { x: 0, y: mobileY, w, h };
+          fallbackLayouts.set(index, layout);
+          mobileY += h;
+          return;
+        }
+
+        for (let y = 0; y < 100; y += 1) {
+          let placed = false;
+          for (let x = 0; x <= cols - w; x += 1) {
+            const candidate = { x, y, w, h };
+            if (!occupied.some((entry) => collides(candidate, entry))) {
+              occupied.push(candidate);
+              fallbackLayouts.set(index, candidate);
+              placed = true;
+              break;
+            }
+          }
+          if (placed) break;
+        }
+      });
+
+      return fallbackLayouts;
+    };
+
+    const responsiveFallbackLayouts = buildResponsiveFallbackLayouts();
+
     return items.map((item: any, index: number) => {
       const layoutId = getLayoutItemId(item, index);
 
@@ -1161,6 +1235,13 @@ export const BentoModule: React.FC<{
           i: layoutId,
           ...savedLayout,
           ...scaledLayout
+        };
+      }
+
+      if (responsiveFallbackLayouts?.has(index)) {
+        return {
+          i: layoutId,
+          ...responsiveFallbackLayouts.get(index)
         };
       }
 

@@ -1,10 +1,12 @@
 export interface SecureLaunchSessionPayload {
+  contractVersion?: string | null;
   launcher?: {
     appId?: string | null;
     appSlug?: string | null;
     mode?: string | null;
     siteId?: string | null;
     satelliteId?: string | null;
+    contractVersion?: string | null;
     allowedOrigin?: string | null;
     createdAt?: string | null;
     expiresAt?: string | null;

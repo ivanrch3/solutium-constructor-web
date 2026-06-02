@@ -205,6 +205,71 @@ const createBentoPanelElementPreset = (kind: string, existingItems: any[]) => {
   }
 };
 
+const cloneBentoValue = (value: any) => {
+  try {
+    return structuredClone(value);
+  } catch {
+    return JSON.parse(JSON.stringify(value));
+  }
+};
+
+const createDuplicatedBentoItem = (sourceItem: any, existingItems: any[]) => {
+  const clonedItem = cloneBentoValue(sourceItem);
+  const sourceDesktop = getBentoPlacementLayout(sourceItem, 'desktop', BENTO_DESKTOP_COLUMNS);
+  const sourceTablet = getBentoPlacementLayout(sourceItem, 'tablet', BENTO_TABLET_COLUMNS);
+  const sourceMobile = getBentoPlacementLayout(sourceItem, 'mobile', BENTO_MOBILE_COLUMNS);
+  const resolveDuplicatePosition = (
+    sourceLayout: { x: number; y: number; w: number; h: number },
+    cols: number,
+    breakpoint: 'desktop' | 'tablet' | 'mobile'
+  ) => {
+    const candidateX = Math.min(sourceLayout.x + 1, Math.max(cols - sourceLayout.w, 0));
+    const candidateY = sourceLayout.y + 1;
+    const candidate = { x: candidateX, y: candidateY, w: sourceLayout.w, h: sourceLayout.h };
+    const occupied = existingItems.map((item) => getBentoPlacementLayout(item, breakpoint, cols));
+    const collides = occupied.some((entry) => (
+      candidate.x < entry.x + entry.w &&
+      candidate.x + candidate.w > entry.x &&
+      candidate.y < entry.y + entry.h &&
+      candidate.y + candidate.h > entry.y
+    ));
+
+    return collides
+      ? findFirstFreeBentoPosition(existingItems, sourceLayout.w, sourceLayout.h, cols, breakpoint)
+      : { x: candidateX, y: candidateY };
+  };
+
+  const desktopPos = resolveDuplicatePosition(sourceDesktop, BENTO_DESKTOP_COLUMNS, 'desktop');
+  const tabletPos = resolveDuplicatePosition(sourceTablet, BENTO_TABLET_COLUMNS, 'tablet');
+  const mobilePos = resolveDuplicatePosition(sourceMobile, BENTO_MOBILE_COLUMNS, 'mobile');
+
+  return {
+    ...clonedItem,
+    id: createBentoCellId(),
+    admin_label: clonedItem.admin_label ? `${clonedItem.admin_label} copia` : undefined,
+    x: desktopPos.x,
+    y: desktopPos.y,
+    col_span: sourceDesktop.w,
+    row_span: sourceDesktop.h,
+    desktop_span: sourceDesktop.w,
+    desktop_rows: sourceDesktop.h,
+    tablet_span: sourceTablet.w,
+    mobile_span: sourceMobile.w,
+    layouts: {
+      ...(clonedItem.layouts || {}),
+      desktop: { x: desktopPos.x, y: desktopPos.y, w: sourceDesktop.w, h: sourceDesktop.h, columns: BENTO_DESKTOP_COLUMNS },
+      tablet: { x: tabletPos.x, y: tabletPos.y, w: sourceTablet.w, h: sourceTablet.h, columns: BENTO_TABLET_COLUMNS },
+      mobile: { x: mobilePos.x, y: mobilePos.y, w: sourceMobile.w, h: sourceMobile.h, columns: BENTO_MOBILE_COLUMNS }
+    },
+    layout_columns: {
+      ...(clonedItem.layout_columns || {}),
+      desktop: BENTO_DESKTOP_COLUMNS,
+      tablet: BENTO_TABLET_COLUMNS,
+      mobile: BENTO_MOBILE_COLUMNS
+    }
+  };
+};
+
 interface StructurePanelProps {
   editorState: EditorState;
   setEditorState: React.Dispatch<React.SetStateAction<EditorState>>;
@@ -1175,14 +1240,23 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                            return <div className="p-4 border border-dashed border-border rounded-xl text-center text-[10px] text-text/40">No hay capas todavía</div>;
                          }
 
+                         const visibleBentoItems = selectedBentoCellIndex !== null && bentoItems[selectedBentoCellIndex]
+                           ? [
+                               { item: bentoItems[selectedBentoCellIndex], itemIndex: selectedBentoCellIndex },
+                               ...bentoItems
+                                 .map((item: any, itemIndex: number) => ({ item, itemIndex }))
+                                 .filter(({ itemIndex }: { itemIndex: number }) => itemIndex !== selectedBentoCellIndex)
+                             ]
+                           : bentoItems.map((item: any, itemIndex: number) => ({ item, itemIndex }));
+
                          return (
                            <>
-                              {bentoItems.map((item: any, itemIndex: number) => {
+                              {visibleBentoItems.map(({ item, itemIndex }: { item: any; itemIndex: number }) => {
                                 const isItemExpanded = expandedBentoItem === itemIndex;
                                 const elementOption = getBentoElementOption(item.type);
 
                                  return (
-                                  <div key={itemIndex} className="space-y-1">
+                                  <div key={item.id || itemIndex} className="space-y-1">
                                     <div
                                       onClick={() => {
                                         const shouldCollapseEditor = isItemExpanded && selectedBentoCellIndex === itemIndex;
@@ -1211,25 +1285,50 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                                           </p>
                                            <p className="text-[9px] text-text/40 uppercase font-medium">{item.type === 'text' ? (item.text_style || 'texto') : elementOption.label}</p>
                                         </div>
-                                        <button
-                                          type="button"
-                                          onClick={(event) => {
-                                            event.stopPropagation();
-                                            const newItems = bentoItems.filter((_: any, idx: number) => idx !== itemIndex);
-                                            onSettingChange(`${module.id}_el_bento_items`, 'items', newItems);
-                                            if (selectedBentoCellIndex === itemIndex) {
-                                              setSelectedBentoCellIndex(null);
-                                            } else if (selectedBentoCellIndex !== null && selectedBentoCellIndex > itemIndex) {
-                                              setSelectedBentoCellIndex(selectedBentoCellIndex - 1);
-                                            }
-                                            setExpandedBentoItem(null);
-                                          }}
-                                          className="rounded-lg p-1.5 text-text/30 transition-colors hover:bg-rose-50 hover:text-rose-500"
-                                          title="Eliminar elemento"
-                                          aria-label="Eliminar elemento"
-                                        >
-                                          <Trash2 size={13} />
-                                        </button>
+                                        <div className="flex shrink-0 items-center gap-1">
+                                          <button
+                                            type="button"
+                                            onClick={(event) => {
+                                              event.stopPropagation();
+                                              const duplicatedItem = createDuplicatedBentoItem(item, bentoItems);
+                                              const newItems = [...bentoItems, duplicatedItem];
+                                              const duplicatedIndex = newItems.length - 1;
+                                              onSettingChange(`${module.id}_el_bento_items`, 'items', newItems);
+                                              selectSection(module.id);
+                                              setSelectedBentoCellIndex(duplicatedIndex);
+                                              setExpandedBentoItem(duplicatedIndex);
+                                              setEditorState(prev => ({
+                                                ...prev,
+                                                expandedModuleId: module.id,
+                                                selectedElementId: `${module.id}_el_bento_items`
+                                              }));
+                                            }}
+                                            className="rounded-lg p-1.5 text-text/30 transition-colors hover:bg-blue-50 hover:text-primary"
+                                            title="Duplicar elemento"
+                                            aria-label="Duplicar elemento"
+                                          >
+                                            <Copy size={13} />
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={(event) => {
+                                              event.stopPropagation();
+                                              const newItems = bentoItems.filter((_: any, idx: number) => idx !== itemIndex);
+                                              onSettingChange(`${module.id}_el_bento_items`, 'items', newItems);
+                                              if (selectedBentoCellIndex === itemIndex) {
+                                                setSelectedBentoCellIndex(null);
+                                              } else if (selectedBentoCellIndex !== null && selectedBentoCellIndex > itemIndex) {
+                                                setSelectedBentoCellIndex(selectedBentoCellIndex - 1);
+                                              }
+                                              setExpandedBentoItem(null);
+                                            }}
+                                            className="rounded-lg p-1.5 text-text/30 transition-colors hover:bg-rose-50 hover:text-rose-500"
+                                            title="Eliminar elemento"
+                                            aria-label="Eliminar elemento"
+                                          >
+                                            <Trash2 size={13} />
+                                          </button>
+                                        </div>
                                         <ChevronDown size={14} className={`text-text/20 transition-transform ${isItemExpanded ? 'rotate-180 text-primary' : ''}`} />
                                      </div>
 

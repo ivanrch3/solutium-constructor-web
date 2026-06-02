@@ -48,7 +48,7 @@ import {
   COMPARISON_MODULE
 } from './registry';
 
-const CONSTRUCTOR_WEB_LOGO_URL = 'https://nyc3.digitaloceanspaces.com/solutium-space/988cd339-a2c7-4951-b944-998d32dc349b-solutium-constructor-web-imagotipo.png';
+const CONSTRUCTOR_WEB_LOGO_URL = 'https://nyc3.digitaloceanspaces.com/solutium-space/58fbbd99-7b4c-4f13-a77c-7e484b52506b-solutium-constructor-web-imagotipo-blanco.png';
 
 interface SidebarItemProps {
   icon: React.ReactNode;

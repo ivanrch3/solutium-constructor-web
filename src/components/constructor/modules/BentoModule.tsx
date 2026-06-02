@@ -27,9 +27,8 @@ const BENTO_DESKTOP_COLUMNS = 24;
 const BENTO_TABLET_COLUMNS = 6;
 const BENTO_MOBILE_COLUMNS = 4;
 const BENTO_MIN_EDITABLE_ROWS = 36;
-const BENTO_BASE_VISIBLE_ROWS = 6;
+const BENTO_BASE_VISIBLE_ROWS = 10;
 const BENTO_VISIBLE_ROW_BUFFER = 2;
-const BENTO_EMPTY_EDITOR_HEIGHT = 420;
 const BENTO_ROW_HEIGHT = 80;
 
 
@@ -1381,9 +1380,7 @@ export const BentoModule: React.FC<{
         BENTO_BASE_VISIBLE_ROWS,
         BENTO_MIN_EDITABLE_ROWS
       );
-  const visibleEditorMinHeight = shouldShowEmptyState
-    ? BENTO_EMPTY_EDITOR_HEIGHT
-    : (visibleEditorRows * BENTO_ROW_HEIGHT) + ((visibleEditorRows - 1) * gap);
+  const visibleEditorMinHeight = (visibleEditorRows * BENTO_ROW_HEIGHT) + ((visibleEditorRows - 1) * gap);
   const isSelected = !isPreviewMode && settingsValues.isSelected; // Some canvases pass this
 
   useEffect(() => {

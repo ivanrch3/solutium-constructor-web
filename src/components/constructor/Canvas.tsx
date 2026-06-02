@@ -4,7 +4,11 @@ import {
   Monitor, 
   Tablet, 
   Smartphone, 
-  Minimize 
+  Minimize,
+  ZoomIn,
+  ZoomOut,
+  RotateCcw,
+  Map
 } from 'lucide-react';
 import { EditorState, WebModule } from '../../types/constructor';
 import { Product, Customer, TrustedCompanyLogo } from '../../types/schema';
@@ -101,8 +105,22 @@ export const Canvas: React.FC<CanvasProps> = ({
   const canvasScrollContainerRef = React.useRef<HTMLDivElement>(null);
   const fullscreenRootRef = React.useRef<HTMLDivElement>(null);
   const renderRootRef = React.useRef<HTMLDivElement>(null);
+  const panStartRef = React.useRef({ x: 0, y: 0, scrollLeft: 0, scrollTop: 0 });
   const [canvasViewportWidth, setCanvasViewportWidth] = React.useState(0);
+  const [renderContentWidth, setRenderContentWidth] = React.useState(0);
   const [renderContentHeight, setRenderContentHeight] = React.useState(0);
+  const [userZoom, setUserZoom] = React.useState(1);
+  const [isPanning, setIsPanning] = React.useState(false);
+  const [isMinimapHidden, setIsMinimapHidden] = React.useState(false);
+  const [isMinimapDragging, setIsMinimapDragging] = React.useState(false);
+  const [scrollMetrics, setScrollMetrics] = React.useState({
+    scrollLeft: 0,
+    scrollTop: 0,
+    scrollWidth: 0,
+    scrollHeight: 0,
+    clientWidth: 0,
+    clientHeight: 0
+  });
   const [browserViewportWidth, setBrowserViewportWidth] = React.useState(
     typeof window !== 'undefined' ? window.innerWidth : 1440
   );
@@ -135,6 +153,34 @@ export const Canvas: React.FC<CanvasProps> = ({
   const desktopPreviewScale = useVirtualDesktopPreview && canvasViewportWidth > 0
     ? Math.min(1, canvasViewportWidth / desktopLogicalWidth)
     : 1;
+  const effectivePreviewScale = useVirtualDesktopPreview ? desktopPreviewScale * userZoom : userZoom;
+  const isUserZoomed = !isPreviewMode && userZoom !== 1;
+  const canPanPreview = !isPreviewMode && userZoom > 1;
+  const zoomPercent = Math.round(userZoom * 100);
+  const minimapWidth = 164;
+  const minimapHeight = 104;
+  const hasMinimapScrollableArea =
+    scrollMetrics.scrollWidth > scrollMetrics.clientWidth + 1 ||
+    scrollMetrics.scrollHeight > scrollMetrics.clientHeight + 1;
+  const showMinimap =
+    !isPreviewMode &&
+    !isMinimapHidden &&
+    userZoom > 1 &&
+    hasMinimapScrollableArea &&
+    scrollMetrics.scrollWidth > 0 &&
+    scrollMetrics.scrollHeight > 0;
+  const minimapViewport = React.useMemo(() => {
+    if (!scrollMetrics.scrollWidth || !scrollMetrics.scrollHeight) {
+      return { x: 0, y: 0, width: minimapWidth, height: minimapHeight };
+    }
+
+    return {
+      x: Math.max(0, (scrollMetrics.scrollLeft / scrollMetrics.scrollWidth) * minimapWidth),
+      y: Math.max(0, (scrollMetrics.scrollTop / scrollMetrics.scrollHeight) * minimapHeight),
+      width: Math.min(minimapWidth, Math.max(12, (scrollMetrics.clientWidth / scrollMetrics.scrollWidth) * minimapWidth)),
+      height: Math.min(minimapHeight, Math.max(12, (scrollMetrics.clientHeight / scrollMetrics.scrollHeight) * minimapHeight))
+    };
+  }, [scrollMetrics]);
 
   React.useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -163,12 +209,107 @@ export const Canvas: React.FC<CanvasProps> = ({
     const renderNode = renderRootRef.current;
     if (!renderNode || typeof ResizeObserver === 'undefined') return;
 
-    const updateRenderContentHeight = () => setRenderContentHeight(renderNode.offsetHeight || 0);
-    updateRenderContentHeight();
-    const observer = new ResizeObserver(updateRenderContentHeight);
+    const updateRenderContentSize = () => {
+      setRenderContentWidth(renderNode.offsetWidth || 0);
+      setRenderContentHeight(renderNode.offsetHeight || 0);
+    };
+    updateRenderContentSize();
+    const observer = new ResizeObserver(updateRenderContentSize);
     observer.observe(renderNode);
     return () => observer.disconnect();
   }, [viewport, isFullscreen, isPreviewMode, reloadKey, editorState.addedModules?.length]);
+
+  const updateScrollMetrics = React.useCallback(() => {
+    const node = canvasScrollContainerRef.current;
+    if (!node) return;
+    setScrollMetrics({
+      scrollLeft: node.scrollLeft,
+      scrollTop: node.scrollTop,
+      scrollWidth: node.scrollWidth,
+      scrollHeight: node.scrollHeight,
+      clientWidth: node.clientWidth,
+      clientHeight: node.clientHeight
+    });
+  }, []);
+
+  React.useEffect(() => {
+    updateScrollMetrics();
+  }, [updateScrollMetrics, renderContentWidth, renderContentHeight, userZoom, viewport, isFullscreen]);
+
+  React.useEffect(() => {
+    if (!isUserZoomed) {
+      setIsMinimapHidden(false);
+      setIsPanning(false);
+      const node = canvasScrollContainerRef.current;
+      if (node) node.scrollLeft = 0;
+    }
+  }, [isUserZoomed]);
+
+  const clampZoom = (nextZoom: number) => Math.min(2.5, Math.max(0.5, Number(nextZoom.toFixed(2))));
+  const setZoomAroundCenter = (nextZoom: number) => {
+    setUserZoom((currentZoom) => {
+      const node = canvasScrollContainerRef.current;
+      const clampedZoom = clampZoom(nextZoom);
+      if (node && currentZoom !== clampedZoom) {
+        const centerX = node.scrollLeft + node.clientWidth / 2;
+        const centerY = node.scrollTop + node.clientHeight / 2;
+        const ratio = clampedZoom / currentZoom;
+        window.requestAnimationFrame(() => {
+          node.scrollLeft = Math.max(0, centerX * ratio - node.clientWidth / 2);
+          node.scrollTop = Math.max(0, centerY * ratio - node.clientHeight / 2);
+          updateScrollMetrics();
+        });
+      }
+      return clampedZoom;
+    });
+  };
+
+  const isPreviewPanBlocked = (target: EventTarget | null) => {
+    if (!(target instanceof HTMLElement)) return true;
+    return Boolean(target.closest(
+      'button, input, textarea, select, a, [contenteditable="true"], [role="button"], .react-resizable-handle, [data-no-preview-pan="true"]'
+    ));
+  };
+
+  const handlePreviewPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!canPanPreview || isPreviewPanBlocked(event.target)) return;
+    const node = canvasScrollContainerRef.current;
+    if (!node) return;
+    panStartRef.current = {
+      x: event.clientX,
+      y: event.clientY,
+      scrollLeft: node.scrollLeft,
+      scrollTop: node.scrollTop
+    };
+    setIsPanning(true);
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+  };
+
+  const handlePreviewPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!isPanning) return;
+    const node = canvasScrollContainerRef.current;
+    if (!node) return;
+    node.scrollLeft = panStartRef.current.scrollLeft - (event.clientX - panStartRef.current.x);
+    node.scrollTop = panStartRef.current.scrollTop - (event.clientY - panStartRef.current.y);
+    updateScrollMetrics();
+    event.preventDefault();
+  };
+
+  const stopPreviewPan = (event?: React.PointerEvent<HTMLDivElement>) => {
+    if (event) event.currentTarget.releasePointerCapture?.(event.pointerId);
+    setIsPanning(false);
+  };
+
+  const moveViewportFromMinimap = (event: React.PointerEvent<HTMLDivElement>) => {
+    const node = canvasScrollContainerRef.current;
+    if (!node) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    const xRatio = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
+    const yRatio = Math.min(1, Math.max(0, (event.clientY - rect.top) / rect.height));
+    node.scrollLeft = Math.max(0, (xRatio * node.scrollWidth) - node.clientWidth / 2);
+    node.scrollTop = Math.max(0, (yRatio * node.scrollHeight) - node.clientHeight / 2);
+    updateScrollMetrics();
+  };
 
   React.useEffect(() => {
     const modulesLength = editorState.addedModules?.length || 0;
@@ -276,10 +417,16 @@ export const Canvas: React.FC<CanvasProps> = ({
       <div
         ref={setCanvasRootRef}
         id="constructor-canvas-scroll-container"
-        className={`flex-1 overflow-y-scroll custom-scrollbar preview-scrollbar transition-all duration-500 ${isFullscreen ? 'fixed inset-0 z-[100]' : ''} ${isPreviewMode ? 'p-0' : ''}`}
+        onScroll={updateScrollMetrics}
+        onPointerDown={handlePreviewPointerDown}
+        onPointerMove={handlePreviewPointerMove}
+        onPointerUp={stopPreviewPan}
+        onPointerLeave={stopPreviewPan}
+        className={`flex-1 ${canPanPreview ? 'overflow-auto' : 'overflow-y-scroll overflow-x-hidden'} custom-scrollbar preview-scrollbar transition-all duration-500 ${isFullscreen ? 'fixed inset-0 z-[120]' : ''} ${isPreviewMode ? 'p-0' : ''}`}
         style={{
           scrollbarGutter: 'stable',
-          backgroundColor: isPreviewMode ? 'var(--builder-surface)' : 'var(--builder-surface-muted)'
+          backgroundColor: isPreviewMode ? 'var(--builder-surface)' : 'var(--builder-surface-muted)',
+          cursor: canPanPreview ? (isPanning ? 'grabbing' : 'grab') : undefined
         }}
       >
       {isFullscreen && !isPreviewMode && (
@@ -317,11 +464,14 @@ export const Canvas: React.FC<CanvasProps> = ({
         </div>
       )}
       <div
-        className={`flex min-h-full ${useVirtualDesktopPreview ? 'relative justify-start overflow-hidden' : 'justify-center transition-all duration-500'} ${isFullscreen ? (isDesktopCanvas ? 'px-0 pb-0 pt-24' : 'p-6 pt-24') : isPreviewMode ? 'p-0' : isDesktopCanvas ? 'p-0' : 'p-6'}`}
+        className={`flex min-h-full ${useVirtualDesktopPreview ? 'relative justify-start' : 'justify-center transition-all duration-500'} ${isFullscreen ? (isDesktopCanvas ? 'px-0 pb-0 pt-24' : 'p-6 pt-24') : isPreviewMode ? 'p-0' : isDesktopCanvas ? 'p-0' : 'p-6'}`}
         style={useVirtualDesktopPreview ? {
-          width: '100%',
-          minHeight: renderContentHeight ? `${Math.ceil(renderContentHeight * desktopPreviewScale)}px` : undefined
-        } : undefined}
+          width: `${Math.ceil(desktopLogicalWidth * effectivePreviewScale)}px`,
+          minHeight: renderContentHeight ? `${Math.ceil(renderContentHeight * effectivePreviewScale)}px` : undefined
+        } : (!isPreviewMode && userZoom !== 1 ? {
+          width: renderContentWidth ? `${Math.ceil(renderContentWidth * userZoom)}px` : undefined,
+          minHeight: renderContentHeight ? `${Math.ceil(renderContentHeight * userZoom)}px` : undefined
+        } : undefined)}
       >
         <div 
           ref={renderRootRef}
@@ -335,8 +485,8 @@ export const Canvas: React.FC<CanvasProps> = ({
             width: isPreviewMode ? '100%' : (useVirtualDesktopPreview ? `${desktopLogicalWidth}px` : (isFullscreen ? fullscreenViewportWidth : viewportWidths[viewport])),
             maxWidth: isPreviewMode ? 'none' : (useVirtualDesktopPreview ? `${desktopLogicalWidth}px` : (isFullscreen ? (viewport === 'desktop' ? 'none' : viewportWidths[viewport]) : viewport === 'desktop' ? 'none' : viewportWidths[viewport])),
             minHeight: isPreviewMode ? '100vh' : (isDesktopCanvas ? (isFullscreen ? '100vh' : '100%') : viewport === 'mobile' ? '667px' : '1024px'),
-            transform: useVirtualDesktopPreview ? `scale(${desktopPreviewScale})` : undefined,
-            transformOrigin: useVirtualDesktopPreview ? 'top left' : undefined,
+            transform: !isPreviewMode && effectivePreviewScale !== 1 ? `scale(${effectivePreviewScale})` : undefined,
+            transformOrigin: useVirtualDesktopPreview ? 'top left' : 'top center',
             position: useVirtualDesktopPreview ? 'absolute' : 'relative',
             top: useVirtualDesktopPreview ? 0 : undefined,
             left: useVirtualDesktopPreview ? 0 : undefined
@@ -829,7 +979,7 @@ export const Canvas: React.FC<CanvasProps> = ({
                         content={section.content}
                         onSettingChange={onSettingChange}
                         isPreviewMode={isPreviewMode}
-                        previewScale={desktopPreviewScale}
+                        previewScale={effectivePreviewScale}
                         constructorViewport={viewport}
                         onOpenBentoGenerator={onOpenBentoGenerator}
                       />
@@ -867,6 +1017,103 @@ export const Canvas: React.FC<CanvasProps> = ({
           </div>
         </div>
       </div>
+      {!isPreviewMode && (
+        <div
+          className="fixed bottom-5 right-5 z-[130] flex flex-col items-end gap-3"
+          data-no-preview-pan="true"
+        >
+          {showMinimap && (
+            <div
+              className="rounded-2xl border border-border/60 bg-surface/90 p-2 shadow-xl backdrop-blur-md"
+              data-no-preview-pan="true"
+            >
+              <div className="mb-1 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wider text-text/50">
+                  <Map size={11} />
+                  Mapa
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsMinimapHidden(true)}
+                  className="rounded-md px-1.5 py-0.5 text-[9px] font-bold text-text/35 transition hover:bg-secondary hover:text-text"
+                  title="Ocultar minimapa"
+                  aria-label="Ocultar minimapa"
+                >
+                  ocultar
+                </button>
+              </div>
+              <div
+                className="relative overflow-hidden rounded-xl border border-primary/15 bg-secondary/70"
+                style={{ width: minimapWidth, height: minimapHeight }}
+                onPointerDown={(event) => {
+                  setIsMinimapDragging(true);
+                  event.currentTarget.setPointerCapture?.(event.pointerId);
+                  moveViewportFromMinimap(event);
+                }}
+                onPointerMove={(event) => {
+                  if (isMinimapDragging) moveViewportFromMinimap(event);
+                }}
+                onPointerUp={(event) => {
+                  setIsMinimapDragging(false);
+                  event.currentTarget.releasePointerCapture?.(event.pointerId);
+                }}
+                onPointerLeave={() => setIsMinimapDragging(false)}
+              >
+                <div className="absolute inset-2 rounded-lg border border-text/10 bg-surface/70" />
+                <div
+                  className="absolute rounded-md border-2 border-primary bg-primary/15 shadow-sm"
+                  style={{
+                    left: minimapViewport.x,
+                    top: minimapViewport.y,
+                    width: minimapViewport.width,
+                    height: minimapViewport.height
+                  }}
+                />
+              </div>
+            </div>
+          )}
+          <div className="flex items-center gap-1 rounded-2xl border border-border/60 bg-surface/90 p-1.5 shadow-xl backdrop-blur-md">
+            <button
+              type="button"
+              onClick={() => setZoomAroundCenter(userZoom - 0.1)}
+              className="rounded-xl p-2 text-text/60 transition hover:bg-secondary hover:text-primary disabled:opacity-30"
+              disabled={userZoom <= 0.5}
+              title="Alejar preview"
+              aria-label="Alejar preview"
+            >
+              <ZoomOut size={15} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setZoomAroundCenter(1)}
+              className="min-w-14 rounded-xl px-2 py-2 text-[10px] font-black text-text/70 transition hover:bg-secondary hover:text-primary"
+              title="Restablecer zoom"
+              aria-label="Restablecer zoom"
+            >
+              {zoomPercent}%
+            </button>
+            <button
+              type="button"
+              onClick={() => setZoomAroundCenter(userZoom + 0.1)}
+              className="rounded-xl p-2 text-text/60 transition hover:bg-secondary hover:text-primary disabled:opacity-30"
+              disabled={userZoom >= 2.5}
+              title="Acercar preview"
+              aria-label="Acercar preview"
+            >
+              <ZoomIn size={15} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setZoomAroundCenter(1)}
+              className="rounded-xl p-2 text-text/40 transition hover:bg-secondary hover:text-primary"
+              title="Reset 100%"
+              aria-label="Reset 100%"
+            >
+              <RotateCcw size={14} />
+            </button>
+          </div>
+        </div>
+      )}
       </div>
     </ParallaxScrollContext.Provider>
   );

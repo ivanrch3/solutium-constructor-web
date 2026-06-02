@@ -991,6 +991,16 @@ export const BentoModule: React.FC<{
     ...normalizeLayoutEntry(layout)
   });
 
+  const getLayoutItemId = (item: any, index: number) => String(item?.id || index);
+
+  const findItemIndexByLayoutId = (items: any[], layoutId: string) => {
+    const byStableId = items.findIndex((item, index) => getLayoutItemId(item, index) === layoutId);
+    if (byStableId >= 0) return byStableId;
+
+    const numericIndex = Number.parseInt(layoutId, 10);
+    return Number.isInteger(numericIndex) && numericIndex >= 0 && numericIndex < items.length ? numericIndex : -1;
+  };
+
   const areLayoutsEqual = (a: any[] = [], b: any[] = []) => {
     const normalizeLayout = (layout: any[] = []) =>
       layout
@@ -1015,9 +1025,11 @@ export const BentoModule: React.FC<{
 
   const getBentoLayoutForBreakpoint = (items: any[], breakpoint: string, cols: number) => {
     return items.map((item: any, index: number) => {
+      const layoutId = getLayoutItemId(item, index);
+
       // 1. Try saved layouts object
       if (item.layouts && item.layouts[breakpoint]) {
-        return { i: index.toString(), ...item.layouts[breakpoint] };
+        return { i: layoutId, ...item.layouts[breakpoint] };
       }
 
       // 2. Try legacy / specific span fields
@@ -1030,7 +1042,7 @@ export const BentoModule: React.FC<{
 
       // Simple positional fallback if x/y not set for bp
       return {
-        i: index.toString(),
+        i: layoutId,
         x: item.x || 0,
         y: item.y || 0,
         w: Math.min(w, cols),
@@ -1041,6 +1053,8 @@ export const BentoModule: React.FC<{
 
   const currentBreakpointRef = useRef('lg');
   const lastPersistedLayoutSignatureRef = useRef('');
+  const pendingLayoutRef = useRef<{ currentLayout: readonly any[]; allLayouts?: any } | null>(null);
+  const layoutPersistTimerRef = useRef<number | null>(null);
   
   // Items Data - Robust Normalization
   const getItemsFromMultipleSources = () => {
@@ -1062,7 +1076,7 @@ export const BentoModule: React.FC<{
     xxs: getBentoLayoutForBreakpoint(rawItems, 'mobile', 1)
   }), [rawItems, columns]);
 
-  const handleLayoutChange = (currentLayout: any, allLayouts: any) => {
+  const persistLayoutChange = (currentLayout: readonly any[], allLayouts?: any) => {
     if (!onSettingChange || isPreviewMode) return;
     if (!Array.isArray(currentLayout) || currentLayout.length === 0) return;
 
@@ -1084,7 +1098,7 @@ export const BentoModule: React.FC<{
     let changed = false;
 
     normalizedCurrentLayout.forEach((l: any) => {
-      const idx = parseInt(l.i);
+      const idx = findItemIndexByLayoutId(newItems, l.i);
       if (newItems[idx]) {
         const entry = normalizeLayoutEntry(l);
         const existingLayouts = newItems[idx].layouts || {};
@@ -1112,6 +1126,34 @@ export const BentoModule: React.FC<{
       lastPersistedLayoutSignatureRef.current = currentSignature;
       onSettingChange(`${moduleId}_el_bento_items`, 'items', newItems);
     }
+  };
+
+  const commitPendingLayoutChange = (fallbackLayout?: readonly any[]) => {
+    if (layoutPersistTimerRef.current !== null) {
+      window.clearTimeout(layoutPersistTimerRef.current);
+      layoutPersistTimerRef.current = null;
+    }
+
+    const pending = pendingLayoutRef.current;
+    pendingLayoutRef.current = null;
+    persistLayoutChange(pending?.currentLayout || fallbackLayout || [], pending?.allLayouts);
+  };
+
+  const schedulePendingLayoutCommit = () => {
+    if (layoutPersistTimerRef.current !== null) {
+      window.clearTimeout(layoutPersistTimerRef.current);
+    }
+
+    layoutPersistTimerRef.current = window.setTimeout(() => {
+      commitPendingLayoutChange();
+    }, 250);
+  };
+
+  const handleLayoutChange = (currentLayout: any, allLayouts: any) => {
+    if (!onSettingChange || isPreviewMode) return;
+    if (!Array.isArray(currentLayout) || currentLayout.length === 0) return;
+    pendingLayoutRef.current = { currentLayout, allLayouts };
+    schedulePendingLayoutCommit();
   };
 
   const handleBreakpointChange = (newBreakpoint: string) => {
@@ -1404,10 +1446,19 @@ export const BentoModule: React.FC<{
             isDroppable={!isPreviewMode}
             onLayoutChange={handleLayoutChange}
             onDragStart={() => setIsDragging(true)}
-            onDragStop={() => setIsDragging(false)}
+            onDragStop={(layout) => {
+              setIsDragging(false);
+              commitPendingLayoutChange(layout);
+            }}
             onResizeStart={() => setIsDragging(true)}
-            onResizeStop={() => setIsDragging(false)}
+            onResizeStop={(layout) => {
+              setIsDragging(false);
+              commitPendingLayoutChange(layout);
+            }}
             onDrop={handleDrop}
+            compactType={null}
+            preventCollision={true}
+            isBounded={true}
             useCSSTransforms={true}
             measureBeforeMount={true}
             droppingItem={{ i: "__dropping_elem__", w: 4, h: 2, x: 0, y: 0 }}
@@ -1471,8 +1522,8 @@ export const BentoModule: React.FC<{
               }[hover_effect as string] || '' : '';
 
               const isSelected = selectedIndex === i;
-              const rglKey = i.toString();
-              const cellKey = item.id || rglKey;
+              const rglKey = getLayoutItemId(item, i);
+              const cellKey = rglKey;
 
               return (
                 <div 
@@ -1508,8 +1559,8 @@ export const BentoModule: React.FC<{
                         setSelectedIndex(i);
                       }
                     }}
-                    className={`w-full h-full overflow-hidden transition-all duration-300 group flex flex-col cursor-pointer relative ${shadowClass} ${hoverClass} ${alignClass} ${card_style === 'glass' ? 'backdrop-blur-xl' : ''} ${
-                      isSelected ? 'ring-4 ring-primary ring-offset-4 scale-[1.01] z-50 shadow-2xl' : 'z-10'
+                    className={`w-full h-full overflow-hidden group flex flex-col cursor-pointer relative ${isDragging ? 'transition-none' : 'transition-all duration-300'} ${shadowClass} ${hoverClass} ${alignClass} ${card_style === 'glass' ? 'backdrop-blur-xl' : ''} ${
+                      isSelected ? `ring-4 ring-primary ring-offset-4 ${isDragging ? '' : 'scale-[1.01]'} z-50 shadow-2xl` : 'z-10'
                     }`}
                     style={{
                       backgroundColor: specialBg ? undefined : (card_style !== 'gradient' ? finalBg : undefined),

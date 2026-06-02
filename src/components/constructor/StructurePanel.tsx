@@ -84,33 +84,85 @@ const createBentoCellId = () => {
   return `bento_cell_${randomId}`;
 };
 
-const createBentoPanelElementPreset = (kind: string, existingItems: any[]) => {
-  const maxY = existingItems.length > 0
-    ? Math.max(...existingItems.map((item: any) => (Number(item.y) || 0) + (Number(item.row_span || item.h) || 2)))
-    : 0;
+const getBentoPlacementLayout = (item: any, breakpoint: 'desktop' | 'tablet' | 'mobile', cols: number) => {
+  const savedLayout = item.layouts?.[breakpoint];
+  const width = breakpoint === 'mobile'
+    ? (item.mobile_span || item.col_span || 4)
+    : breakpoint === 'tablet'
+      ? (item.tablet_span || item.col_span || 2)
+      : (item.desktop_span || item.col_span || 4);
+  const height = breakpoint === 'mobile' ? (item.mobile_rows || item.row_span || 2) : (item.desktop_rows || item.row_span || 2);
 
-  const withLayout = (item: any, desktopW: number, desktopH: number, tabletW = Math.min(desktopW, 6), mobileW = 4) => ({
-    id: createBentoCellId(),
-    card_style: 'solid',
-    card_radius: 28,
-    card_shadow: 'sm',
-    padding: 32,
-    content_align: 'center',
-    ...item,
-    col_span: desktopW,
-    row_span: desktopH,
-    desktop_span: desktopW,
-    desktop_rows: desktopH,
-    tablet_span: tabletW,
-    mobile_span: mobileW,
-    x: 0,
-    y: maxY,
-    layouts: {
-      desktop: { x: 0, y: maxY, w: desktopW, h: desktopH },
-      tablet: { x: 0, y: maxY, w: tabletW, h: desktopH },
-      mobile: { x: 0, y: maxY, w: mobileW, h: desktopH }
+  return {
+    x: Math.min(Number(savedLayout?.x ?? item.x ?? 0) || 0, Math.max(cols - Math.min(width, cols), 0)),
+    y: Number(savedLayout?.y ?? item.y ?? 0) || 0,
+    w: Math.min(Number(savedLayout?.w ?? width) || 1, cols),
+    h: Number(savedLayout?.h ?? height) || 1
+  };
+};
+
+const findFirstFreeBentoPosition = (
+  existingItems: any[],
+  width: number,
+  height: number,
+  cols: number,
+  breakpoint: 'desktop' | 'tablet' | 'mobile'
+) => {
+  const normalizedWidth = Math.min(width, cols);
+  const collides = (
+    candidate: { x: number; y: number; w: number; h: number },
+    existing: { x: number; y: number; w: number; h: number }
+  ) => (
+    candidate.x < existing.x + existing.w &&
+    candidate.x + candidate.w > existing.x &&
+    candidate.y < existing.y + existing.h &&
+    candidate.y + candidate.h > existing.y
+  );
+
+  const occupied = existingItems.map((item) => getBentoPlacementLayout(item, breakpoint, cols));
+
+  for (let y = 0; y < 100; y += 1) {
+    for (let x = 0; x <= cols - normalizedWidth; x += 1) {
+      const candidate = { x, y, w: normalizedWidth, h: height };
+      if (!occupied.some((entry) => collides(candidate, entry))) {
+        return { x, y };
+      }
     }
-  });
+  }
+
+  const maxY = occupied.length > 0 ? Math.max(...occupied.map((entry) => entry.y + entry.h)) : 0;
+  return { x: 0, y: maxY };
+};
+
+const createBentoPanelElementPreset = (kind: string, existingItems: any[]) => {
+  const withLayout = (item: any, desktopW: number, desktopH: number, tabletW = Math.min(desktopW, 6), mobileW = 4) => {
+    const desktopPos = findFirstFreeBentoPosition(existingItems, desktopW, desktopH, 12, 'desktop');
+    const tabletPos = findFirstFreeBentoPosition(existingItems, tabletW, desktopH, 6, 'tablet');
+    const mobilePos = findFirstFreeBentoPosition(existingItems, mobileW, desktopH, 4, 'mobile');
+
+    return {
+      id: createBentoCellId(),
+      card_style: 'solid',
+      card_radius: 28,
+      card_shadow: 'sm',
+      padding: 32,
+      content_align: 'center',
+      ...item,
+      col_span: desktopW,
+      row_span: desktopH,
+      desktop_span: desktopW,
+      desktop_rows: desktopH,
+      tablet_span: tabletW,
+      mobile_span: mobileW,
+      x: desktopPos.x,
+      y: desktopPos.y,
+      layouts: {
+        desktop: { x: desktopPos.x, y: desktopPos.y, w: desktopW, h: desktopH },
+        tablet: { x: tabletPos.x, y: tabletPos.y, w: tabletW, h: desktopH },
+        mobile: { x: mobilePos.x, y: mobilePos.y, w: mobileW, h: desktopH }
+      }
+    };
+  };
 
   switch (kind) {
     case 'visual':

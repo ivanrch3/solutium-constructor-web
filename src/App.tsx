@@ -5,6 +5,7 @@ import { configService } from './services/configService';
 import { initSupabase } from './services/supabaseClient';
 import { captureAuthToken } from './services/authTokenProvider';
 import { ensureActiveSupabaseSession } from './services/supabaseSessionService';
+import { consumeSecureLaunchSession, getLaunchTokenFromUrl, type SecureLaunchSessionPayload } from './services/secureLaunchSession';
 import { getProfile, getProject, getWebBuilderSites, getPublishedSites, renameWebBuilderSite } from './services/dataService';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { Sidebar } from './components/Sidebar';
@@ -109,6 +110,8 @@ const extractThemeBrandColors = (themeData: any): BrandColorsInput => {
 const resolveLaunchThemeData = (payload: any) => {
   if (!payload || typeof payload !== 'object') return null;
 
+  if (payload.uiTheme && typeof payload.uiTheme === 'object') return payload.uiTheme;
+
   return [
     payload.activeThemeData,
     payload.project?.activeThemeData,
@@ -125,17 +128,61 @@ const resolveLaunchThemeData = (payload: any) => {
   ].find((candidate) => candidate && typeof candidate === 'object') || null;
 };
 
-const normalizeIncomingProject = (rawProject: any, launchThemeData?: any): Project | null => {
+const normalizeProjectBrandingToProject = (
+  projectBranding: any,
+  projectId?: string | null
+): Project | null => {
+  if (!projectBranding || typeof projectBranding !== 'object') return null;
+
+  const brandColors = Array.isArray(projectBranding.brandColors)
+    ? projectBranding.brandColors
+    : [
+      projectBranding.primaryColor,
+      projectBranding.secondaryColor,
+      projectBranding.accentColor
+    ].filter(Boolean);
+
+  return {
+    id: projectBranding.projectId || projectId || '',
+    name: projectBranding.projectName || projectBranding.businessName || 'Proyecto Solutium',
+    industry: projectBranding.industry || null,
+    website: projectBranding.website || null,
+    logoUrl: projectBranding.logoUrl || null,
+    logoWhiteUrl: projectBranding.logoWhiteUrl || projectBranding.logo_white_url || null,
+    projectIconUrl: projectBranding.projectIconUrl || projectBranding.project_icon_url || null,
+    faviconUrl: projectBranding.faviconUrl || projectBranding.favicon_url || null,
+    fontFamily: projectBranding.typography?.fontFamily || projectBranding.fontFamily || null,
+    brandColors: normalizeProjectBrandColors(brandColors)
+  } as Project;
+};
+
+const getProjectBrandColorsFromContract = (projectBranding: any): BrandColorsInput => {
+  if (!projectBranding || typeof projectBranding !== 'object') return null;
+  if (Array.isArray(projectBranding.brandColors)) return projectBranding.brandColors;
+  return {
+    primary: projectBranding.primaryColor,
+    secondary: projectBranding.secondaryColor,
+    accent: projectBranding.accentColor
+  };
+};
+
+const normalizeIncomingProject = (
+  rawProject: any,
+  launchThemeData?: any,
+  projectBranding?: any
+): Project | null => {
   if (!rawProject || typeof rawProject !== 'object') return null;
 
   const projectBrandColors = normalizeProjectBrandColors(rawProject.brandColors || rawProject.brand_colors);
-  const launchThemeBrandColors = extractThemeBrandColors(launchThemeData);
+  const contractBrandColors = getProjectBrandColorsFromContract(projectBranding);
+  const launchThemeBrandColors = projectBranding ? contractBrandColors : extractThemeBrandColors(launchThemeData);
 
   return {
     ...rawProject,
-    logoWhiteUrl: rawProject.logoWhiteUrl || rawProject.logo_white_url || null,
-    projectIconUrl: rawProject.projectIconUrl || rawProject.project_icon_url || null,
-    fontFamily: rawProject.fontFamily || rawProject.font_family || null,
+    logoUrl: projectBranding?.logoUrl || rawProject.logoUrl || rawProject.logo_url || null,
+    logoWhiteUrl: projectBranding?.logoWhiteUrl || projectBranding?.logo_white_url || rawProject.logoWhiteUrl || rawProject.logo_white_url || null,
+    projectIconUrl: projectBranding?.projectIconUrl || projectBranding?.project_icon_url || rawProject.projectIconUrl || rawProject.project_icon_url || null,
+    fontFamily: projectBranding?.typography?.fontFamily || rawProject.fontFamily || rawProject.font_family || null,
     brandColors: launchThemeBrandColors
       ? normalizeProjectBrandColors(launchThemeBrandColors, projectBrandColors)
       : projectBrandColors,
@@ -146,6 +193,15 @@ const normalizeIncomingProject = (rawProject: any, launchThemeData?: any): Proje
     updatedAt: rawProject.updatedAt || rawProject.updated_at || null
   } as Project;
 };
+
+const summarizeLaunchPayload = (payload: any) => ({
+  hasProjectId: Boolean(payload?.projectId || payload?.satellite_id || payload?.projectContext?.projectId),
+  hasSiteId: Boolean(payload?.site_id || payload?.asset_id || payload?.launcher?.siteId),
+  hasUiTheme: Boolean(payload?.uiTheme),
+  hasProjectBranding: Boolean(payload?.projectBranding),
+  hasLegacySessionToken: Boolean(payload?.session_token),
+  hasLegacyStorageKeys: Boolean(payload?.storage_secret_key || payload?.storage_access_key)
+});
 
 const normalizeDraftLifecycleStatus = (
   rawStatus: unknown,
@@ -283,10 +339,12 @@ const AppContent: React.FC = () => {
   ]), []);
   const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
   const { applyTheme } = useTheme();
+  const [secureLaunchError, setSecureLaunchError] = useState<string | null>(null);
   const sessionRefreshInFlightRef = useRef(false);
   const lastSessionRefreshAtRef = useRef(0);
   const handshakeStartedRef = useRef(false);
   const launchStartedAtRef = useRef(new Date());
+  const secureLaunchPayloadRef = useRef<SecureLaunchSessionPayload | null>(null);
 
   const welcomeSessionInfo = React.useMemo(() => {
     const safeCache = readSafeHandshakeCache();
@@ -534,7 +592,12 @@ const AppContent: React.FC = () => {
     }
   };
 
-  const hydrateProfileAndThemeFromSession = async (payload: any, handshakeFont: string, fallbackTheme: any) => {
+  const hydrateProfileAndThemeFromSession = async (
+    payload: any,
+    handshakeFont: string,
+    fallbackTheme: any,
+    options?: { preserveSecureUiTheme?: boolean }
+  ) => {
     if (!payload.supabase_url || !payload.supabase_anon_key || !payload.session_token) {
       return;
     }
@@ -574,6 +637,10 @@ const AppContent: React.FC = () => {
         });
       }
 
+      if (options?.preserveSecureUiTheme) {
+        return;
+      }
+
       if (typeof themeToApply === 'object') {
         applyTheme({
           ...themeToApply,
@@ -590,7 +657,11 @@ const AppContent: React.FC = () => {
 
   const processHandshake = async (payload: any) => {
     try {
-      logDebug('[HANDSHAKE] Procesando payload:', payload);
+      const secureLaunchPayload = secureLaunchPayloadRef.current;
+      const secureUiTheme = secureLaunchPayload?.uiTheme || null;
+      const secureProjectBranding = secureLaunchPayload?.projectBranding || payload.projectBranding || null;
+
+      logDebug('[HANDSHAKE] Procesando payload:', summarizeLaunchPayload(payload));
       
       // [APP_MADRE_PRODUCTS_PAYLOAD_FINAL_DEBUG] (FASE 1)
       const sections = payload.sections || payload.content?.sections || payload.site_content?.sections || [];
@@ -626,13 +697,16 @@ const AppContent: React.FC = () => {
         fullFirstSection: payload.sections?.[0]
       });
 
-      // Cache the handshake data for literal reloads
-      localStorage.setItem('solutium_handshake_cache', JSON.stringify(payload));
+      if (!secureLaunchPayload) {
+        localStorage.setItem('solutium_handshake_cache', JSON.stringify(payload));
+      }
 
       // Actualizar configuración dinámica (API Keys) desde la Madre
-      configService.updateConfig({
-        geminiApiKey: payload.gemini_api_key || payload.VITE_GEMINI_API_KEY || null
-      });
+      if (!secureLaunchPayload) {
+        configService.updateConfig({
+          geminiApiKey: payload.gemini_api_key || payload.VITE_GEMINI_API_KEY || null
+        });
+      }
 
       // Extraer fontFamily con máxima cobertura de claves posibles
       const handshakeFont = 
@@ -647,7 +721,7 @@ const AppContent: React.FC = () => {
         payload.activeThemeData?.font ||
         '';
 
-      const handshakeThemeData = resolveLaunchThemeData(payload);
+      const handshakeThemeData = secureUiTheme || resolveLaunchThemeData(payload);
       const handshakeThemeName = payload.profile?.activeTheme || payload.project?.activeTheme;
       const hasThemeData = handshakeThemeData && Object.keys(handshakeThemeData).length > 0;
       const initialThemeToApply = (hasThemeData ? handshakeThemeData : null) || handshakeThemeName || 'blue-light';
@@ -662,7 +736,9 @@ const AppContent: React.FC = () => {
         if (handshakeFont) applyTheme({ fontFamily: handshakeFont });
       }
 
-      void hydrateProfileAndThemeFromSession(payload, handshakeFont, initialThemeToApply);
+      void hydrateProfileAndThemeFromSession(payload, handshakeFont, initialThemeToApply, {
+        preserveSecureUiTheme: Boolean(secureUiTheme)
+      });
       
       // Update favicon if provided
       const handshakeFavicon = 
@@ -690,7 +766,15 @@ const AppContent: React.FC = () => {
         const handshakeAppId = payload.appId || (payload as any).app_id || '11111111-1111-1111-1111-111111111111';
         setAppId(handshakeAppId);
 
-        const projectPromise = payload.project
+        const projectPromise = secureProjectBranding
+          ? Promise.resolve(
+            normalizeIncomingProject(
+              payload.project || normalizeProjectBrandingToProject(secureProjectBranding, finalProjectId),
+              handshakeThemeData,
+              secureProjectBranding
+            )
+          )
+          : payload.project
           ? Promise.resolve(normalizeIncomingProject(payload.project, handshakeThemeData))
           : finalProjectId
             ? getProject(finalProjectId).then((data) => normalizeIncomingProject(data, handshakeThemeData))
@@ -701,7 +785,7 @@ const AppContent: React.FC = () => {
 
         if (resolvedProject) {
           setProject(resolvedProject);
-          if (resolvedProject.fontFamily || handshakeFont) {
+          if (!secureUiTheme && (resolvedProject.fontFamily || handshakeFont)) {
             applyTheme({
               fontFamily: handshakeFont || resolvedProject.fontFamily || undefined
             });
@@ -712,7 +796,7 @@ const AppContent: React.FC = () => {
         }
 
         if (finalProjectId) {
-          const resolvedSiteId = payload.site_id || payload.asset_id || null;
+          const resolvedSiteId = payload.site_id || payload.asset_id || secureLaunchPayload?.launcher?.siteId || null;
 
           if (resolvedSiteId) {
             // SIP v7.2: Robust search by either logical siteId or primary key id
@@ -776,6 +860,48 @@ const AppContent: React.FC = () => {
       console.error('Error processing handshake:', err);
       setIsHandshakeComplete(true);
     }
+  };
+
+  const processSecureLaunch = async (payload: SecureLaunchSessionPayload) => {
+    secureLaunchPayloadRef.current = payload;
+    setSecureLaunchError(null);
+
+    const secureProjectId =
+      payload.projectContext?.projectId ||
+      payload.launcher?.satelliteId ||
+      payload.projectBranding?.projectId ||
+      null;
+    const secureAppId = payload.launcher?.appId || payload.launcher?.appSlug || '11111111-1111-1111-1111-111111111111';
+    const secureSiteId = payload.launcher?.siteId || null;
+
+    if (payload.uiTheme) {
+      applyTheme(payload.uiTheme);
+    }
+
+    if (secureProjectId) {
+      setProjectId(secureProjectId);
+    }
+    if (secureAppId) {
+      setAppId(secureAppId);
+    }
+
+    const brandingProject = normalizeProjectBrandingToProject(payload.projectBranding, secureProjectId);
+    if (brandingProject) {
+      setProject(brandingProject);
+      if (brandingProject.logoUrl) setUrlLogo(brandingProject.logoUrl);
+      if (brandingProject.logoWhiteUrl) setUrlLogoWhite(brandingProject.logoWhiteUrl);
+    }
+
+    if (secureSiteId) {
+      setSelectedPage({
+        siteId: secureSiteId,
+        name: 'Cargando sitio...',
+        status: 'draft'
+      } as any);
+      setCurrentView(payload.launcher?.mode === 'render' ? 'viewer' : 'constructor');
+    }
+
+    setIsHandshakeComplete(true);
   };
 
   useEffect(() => {
@@ -887,7 +1013,13 @@ const AppContent: React.FC = () => {
     }
     
     logDebug("--- DIAGNÓSTICO SIP v5.2 ---");
-    logDebug("1. window.name contenido:", window.name ? (window.name.substring(0, 50) + "...") : "VACÍO");
+    const hasSecureLaunchTokenForDiagnostics = Boolean(getLaunchTokenFromUrl());
+    logDebug(
+      "1. window.name contenido:",
+      hasSecureLaunchTokenForDiagnostics
+        ? "OMITIDO_POR_LAUNCH_TOKEN"
+        : (window.name ? (window.name.substring(0, 50) + "...") : "VACIO")
+    );
     logDebug("2. ¿Tiene abridor (window.opener)?:", !!window.opener);
     logDebug("3. ¿Está en iframe?:", window.parent !== window);
     logDebug("4. URL actual:", window.location.href);
@@ -934,7 +1066,41 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     if (handshakeStartedRef.current) return;
     handshakeStartedRef.current = true;
-    startHandshake(processHandshake);
+    const launchToken = getLaunchTokenFromUrl();
+
+    if (!launchToken) {
+      startHandshake(processHandshake);
+      return;
+    }
+
+    const isLocalDev = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+
+    void consumeSecureLaunchSession(launchToken).then(async (result) => {
+      if (result.success && result.payload) {
+        logDebug('[SECURE_LAUNCH] launch_token consumido correctamente.', {
+          hasUiTheme: Boolean(result.payload.uiTheme),
+          hasProjectBranding: Boolean(result.payload.projectBranding),
+          projectId: result.payload.projectContext?.projectId || result.payload.launcher?.satelliteId || null
+        });
+        await processSecureLaunch(result.payload);
+        // Legacy compatibility path: still listens for operational data until App Madre
+        // exposes scoped Constructor APIs and the legacy handshake can be removed.
+        startHandshake(processHandshake);
+        return;
+      }
+
+      const message = 'No se pudo iniciar la sesión segura del Constructor. Vuelva a abrirlo desde Solutium.';
+      setSecureLaunchError(message);
+      console.error('[SECURE_LAUNCH] Error consuming launch_token:', {
+        error: result.error,
+        message: result.message
+      });
+
+      if (isLocalDev) {
+        logDebug('[SECURE_LAUNCH] Fallback legacy habilitado solo en local/dev.');
+        startHandshake(processHandshake);
+      }
+    });
   }, []);
 
   const handleNewPage = () => {
@@ -984,6 +1150,20 @@ const AppContent: React.FC = () => {
   };
 
   if (!isHandshakeComplete) {
+    if (secureLaunchError) {
+      return (
+        <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center p-6 font-sans">
+          <div className="max-w-md rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-xl">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-rose-50 text-rose-600">
+              <span className="text-2xl font-black">!</span>
+            </div>
+            <h1 className="text-xl font-black text-slate-900">No se pudo iniciar el Constructor</h1>
+            <p className="mt-3 text-sm leading-6 text-slate-600">{secureLaunchError}</p>
+          </div>
+        </div>
+      );
+    }
+
     if (isPublicRenderMode) {
       return (
         <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-white">

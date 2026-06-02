@@ -170,6 +170,10 @@ const pickThemeString = (...values: unknown[]) => {
   return null;
 };
 
+const setCssVar = (root: HTMLElement, name: string, value: string | null) => {
+  if (value) root.style.setProperty(name, value);
+};
+
 const resolveExpectedThemeOrigin = () => {
   try {
     if (document.referrer) return new URL(document.referrer).origin;
@@ -214,7 +218,10 @@ const resolveThemeColors = (theme: any) => {
     sidebarBg: pickThemeString(theme?.sidebar_bg, theme?.sidebarBg, theme?.sidebarBackground, colors.sidebar_bg, colors.sidebarBg, sidebar.background, sidebar.bg),
     sidebarForeground: pickThemeString(theme?.sidebar_foreground, theme?.sidebarForeground, theme?.sidebarText, colors.sidebar_foreground, colors.sidebarForeground, sidebar.foreground, sidebar.text),
     sidebarAccent: pickThemeString(theme?.sidebar_accent, theme?.sidebarAccent, colors.sidebar_accent, colors.sidebarAccent, sidebar.accent),
-    sidebarBorder: pickThemeString(theme?.sidebar_border, theme?.sidebarBorder, colors.sidebar_border, colors.sidebarBorder, sidebar.border)
+    sidebarBorder: pickThemeString(theme?.sidebar_border, theme?.sidebarBorder, colors.sidebar_border, colors.sidebarBorder, sidebar.border),
+    surface: pickThemeString(theme?.surface, theme?.surfaceColor, theme?.surface_color, theme?.card, theme?.cardColor, theme?.card_color, colors.surface, colors.surfaceColor, colors.surface_color, colors.card, colors.cardColor, colors.card_color, palette.surface, palette.card),
+    surfaceMuted: pickThemeString(theme?.surfaceMuted, theme?.surface_muted, theme?.mutedSurface, theme?.muted_surface, colors.surfaceMuted, colors.surface_muted, colors.mutedSurface, colors.muted_surface, palette.surfaceMuted, palette.surface_muted),
+    primarySoft: pickThemeString(theme?.primarySoft, theme?.primary_soft, colors.primarySoft, colors.primary_soft, sidebar.accent)
   };
 };
 
@@ -254,18 +261,26 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     applyBuilderShellTheme(root);
     const themeColors = resolveThemeColors(theme);
 
-    if (themeColors.primary) {
-      root.style.setProperty('--primary-color', themeColors.primary);
-      root.style.setProperty('--builder-primary', themeColors.primary);
-    }
-    if (themeColors.secondary) root.style.setProperty('--secondary-color', themeColors.secondary);
-    if (themeColors.accent) root.style.setProperty('--accent-color', themeColors.accent);
-    if (themeColors.background) root.style.setProperty('--background-color', themeColors.background);
-    if (themeColors.text) {
-      root.style.setProperty('--foreground-color', themeColors.text);
-      root.style.setProperty('--solutium-dark', themeColors.text);
-    }
-    if (themeColors.border) root.style.setProperty('--border-color', themeColors.border);
+    const shellSurface = themeColors.surface || themeColors.secondary;
+    const shellSurfaceMuted = themeColors.surfaceMuted || themeColors.secondary;
+    const shellPrimarySoft = themeColors.primarySoft || (themeColors.primary ? `color-mix(in srgb, ${themeColors.primary} 12%, transparent)` : null);
+
+    setCssVar(root, '--primary-color', themeColors.primary);
+    setCssVar(root, '--builder-primary', themeColors.primary);
+    setCssVar(root, '--builder-primary-soft', shellPrimarySoft);
+    setCssVar(root, '--secondary-color', themeColors.secondary);
+    setCssVar(root, '--accent-color', themeColors.accent);
+    setCssVar(root, '--background-color', themeColors.background);
+    setCssVar(root, '--builder-bg', themeColors.background);
+    setCssVar(root, '--card-color', shellSurface);
+    setCssVar(root, '--builder-surface', shellSurface);
+    setCssVar(root, '--builder-surface-muted', shellSurfaceMuted);
+    setCssVar(root, '--foreground-color', themeColors.text);
+    setCssVar(root, '--builder-text', themeColors.text);
+    setCssVar(root, '--solutium-dark', themeColors.text);
+    setCssVar(root, '--builder-muted', themeColors.muted);
+    setCssVar(root, '--border-color', themeColors.border);
+    setCssVar(root, '--builder-border', themeColors.border);
 
     const sidebarBg =
       themeColors.sidebarBg ||

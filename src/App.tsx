@@ -203,6 +203,9 @@ const summarizeLaunchPayload = (payload: any) => ({
   hasLegacyStorageKeys: Boolean(payload?.storage_secret_key || payload?.storage_access_key)
 });
 
+const getLaunchContractVersion = (payload: SecureLaunchSessionPayload | null | undefined) =>
+  payload?.contractVersion || payload?.launcher?.contractVersion || null;
+
 const normalizeDraftLifecycleStatus = (
   rawStatus: unknown,
   hasActivePublishedVersion: boolean
@@ -1069,6 +1072,12 @@ const AppContent: React.FC = () => {
     const launchToken = getLaunchTokenFromUrl();
 
     if (!launchToken) {
+      logDebug('[SECURE_LAUNCH] Launcher mode:', {
+        launchMode: 'legacy',
+        contractVersion: null,
+        hasUiTheme: false,
+        hasProjectBranding: false
+      });
       startHandshake(processHandshake);
       return;
     }
@@ -1077,11 +1086,19 @@ const AppContent: React.FC = () => {
 
     void consumeSecureLaunchSession(launchToken).then(async (result) => {
       if (result.success && result.payload) {
-        logDebug('[SECURE_LAUNCH] launch_token consumido correctamente.', {
+        const safeLaunchDebug = {
+          launchMode: 'secure',
+          contractVersion: getLaunchContractVersion(result.payload),
           hasUiTheme: Boolean(result.payload.uiTheme),
-          hasProjectBranding: Boolean(result.payload.projectBranding),
+          hasProjectBranding: Boolean(result.payload.projectBranding)
+        };
+        logDebug('[SECURE_LAUNCH] launch_token consumido correctamente.', {
+          ...safeLaunchDebug,
           projectId: result.payload.projectContext?.projectId || result.payload.launcher?.satelliteId || null
         });
+        if (isLocalDev) {
+          (window as any).SOLUTIUM_LAUNCH_DEBUG = safeLaunchDebug;
+        }
         await processSecureLaunch(result.payload);
         // Legacy compatibility path: still listens for operational data until App Madre
         // exposes scoped Constructor APIs and the legacy handshake can be removed.

@@ -27,6 +27,9 @@ const BENTO_DESKTOP_COLUMNS = 24;
 const BENTO_TABLET_COLUMNS = 6;
 const BENTO_MOBILE_COLUMNS = 4;
 const BENTO_MIN_EDITABLE_ROWS = 36;
+const BENTO_BASE_VISIBLE_ROWS = 6;
+const BENTO_VISIBLE_ROW_BUFFER = 2;
+const BENTO_EMPTY_EDITOR_HEIGHT = 420;
 const BENTO_ROW_HEIGHT = 80;
 
 
@@ -350,6 +353,24 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave }: a
                 onSave={(val) => onSave('title', val)}
               />
             </h3>
+          )}
+          {description && (
+            <p
+              className="max-w-[180px] text-xs leading-snug opacity-70"
+              style={{
+                color: finalDescColor,
+                fontSize: `${TYPOGRAPHY_SCALE[finalDescSize as keyof typeof TYPOGRAPHY_SCALE]?.fontSize || 14}px`
+              }}
+            >
+              <InlineEditableText
+                moduleId={moduleId}
+                settingId="description"
+                value={description}
+                tagName="span"
+                isPreviewMode={isPreviewMode}
+                onSave={(val) => onSave('description', val)}
+              />
+            </p>
           )}
         </div>
       );
@@ -959,7 +980,6 @@ export const BentoModule: React.FC<{
   // Global Settings
   const columns = BENTO_DESKTOP_COLUMNS;
   const gap = parseNumSafe(getVal(null, 'gap', 20), 20);
-  const editableMinHeight = (BENTO_MIN_EDITABLE_ROWS * BENTO_ROW_HEIGHT) + ((BENTO_MIN_EDITABLE_ROWS - 1) * gap);
   const paddingY = parseNumSafe(getVal(null, 'padding_y', 40), 40);
   const maxWidth = parseNumSafe(getVal(null, 'max_width', 1200), 1200);
   const darkMode = toBoolean(getVal(null, 'dark_mode', false));
@@ -1350,6 +1370,20 @@ export const BentoModule: React.FC<{
   const showHeader = headerEyebrow || headerTitle || headerSubtitle;
 
   const shouldShowEmptyState = !isPreviewMode && rawItems.length === 0;
+  const activeLayoutForHeight = layouts[forcedBreakpoint as keyof typeof layouts] || [];
+  const occupiedRows = Math.ceil(activeLayoutForHeight.reduce((maxRows: number, item: any) => {
+    return Math.max(maxRows, (Number(item?.y) || 0) + Math.max(Number(item?.h) || 1, 1));
+  }, 0));
+  const visibleEditorRows = shouldShowEmptyState
+    ? BENTO_BASE_VISIBLE_ROWS
+    : clampNumber(
+        Math.max(BENTO_BASE_VISIBLE_ROWS, occupiedRows + BENTO_VISIBLE_ROW_BUFFER),
+        BENTO_BASE_VISIBLE_ROWS,
+        BENTO_MIN_EDITABLE_ROWS
+      );
+  const visibleEditorMinHeight = shouldShowEmptyState
+    ? BENTO_EMPTY_EDITOR_HEIGHT
+    : (visibleEditorRows * BENTO_ROW_HEIGHT) + ((visibleEditorRows - 1) * gap);
   const isSelected = !isPreviewMode && settingsValues.isSelected; // Some canvases pass this
 
   useEffect(() => {
@@ -1505,7 +1539,7 @@ export const BentoModule: React.FC<{
                 gap: `${gap}px`,
               }}
             >
-              {Array.from({ length: columns * BENTO_MIN_EDITABLE_ROWS }).map((_, i) => (
+              {Array.from({ length: columns * visibleEditorRows }).map((_, i) => (
                 <div 
                   key={i} 
                   className="border border-primary/30 rounded-[28px]" 
@@ -1523,7 +1557,7 @@ export const BentoModule: React.FC<{
           style={{ 
             opacity: 1,
             visibility: 'visible',
-            minHeight: !isPreviewMode ? `${editableMinHeight}px` : 'auto'
+            minHeight: !isPreviewMode ? `${visibleEditorMinHeight}px` : 'auto'
           }}
         >
           {/* Editor Label */}
@@ -1543,15 +1577,15 @@ export const BentoModule: React.FC<{
             layouts={layouts}
             breakpoint={forcedBreakpoint}
             width={gridWidth}
-            style={{ minHeight: !isPreviewMode ? `${editableMinHeight}px` : undefined }}
+            style={{ minHeight: !isPreviewMode ? `${visibleEditorMinHeight}px` : undefined }}
             breakpoints={{ lg: 992, md: 768, sm: 600, xs: 360, xxs: 0 }}
             cols={{ lg: columns, md: BENTO_TABLET_COLUMNS, sm: BENTO_TABLET_COLUMNS, xs: BENTO_MOBILE_COLUMNS, xxs: 1 }}
             rowHeight={BENTO_ROW_HEIGHT}
             margin={[gap, gap]}
             containerPadding={[0, 0]}
-            isDraggable={!isPreviewMode}
+            isDraggable={false}
             isResizable={!isPreviewMode}
-            isDroppable={!isPreviewMode}
+            isDroppable={false}
             onLayoutChange={handleLayoutChange}
             onDragStart={() => {
               cancelPendingLayoutCommit();

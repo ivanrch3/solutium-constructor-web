@@ -186,7 +186,7 @@ const createBentoPanelElementPreset = (kind: string, existingItems: any[]) => {
     case 'button':
       return withLayout({ type: 'button', title: 'Haz clic aquí', button_text: 'Haz clic aquí', btn_url: '#', card_style: 'transparent', padding: 16 }, 6, 1, 3, 4);
     case 'icon':
-      return withLayout({ type: 'icon', title: 'Ícono destacado', icon: 'Sparkles', description: '' }, 4, 2, 2, 4);
+      return withLayout({ type: 'icon', title: 'Ícono destacado', icon: 'Sparkles', description: 'Describe brevemente este ícono.' }, 4, 2, 2, 4);
     case 'badge':
       return withLayout({ type: 'badge', title: 'Nuevo', icon: 'Tag', card_style: 'transparent', padding: 12 }, 4, 1, 2, 4);
     case 'metric':
@@ -1125,12 +1125,8 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                                 {BENTO_ELEMENT_OPTIONS.map((item) => (
                                   <div
                                     key={item.type}
-                                    draggable={true}
+                                    draggable={false}
                                     unselectable="on"
-                                    onDragStart={(e) => {
-                                      e.dataTransfer.setData("text/plain", "");
-                                      (window as any)._draggingBentoType = item.type;
-                                    }}
                                     onClick={() => {
                                       const bentoItems = editorState.settingsValues[`${module.id}_el_bento_items_items`] || [];
                                       const newItem = createBentoPanelElementPreset(item.type, bentoItems);
@@ -1147,7 +1143,7 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                                         setExpandedBentoItem(newItems.length - 1);
                                       }, 100);
                                     }}
-                                    className="droppable-element flex items-center gap-2 p-2 bg-surface border border-border/50 rounded-xl cursor-pointer hover:border-primary/30 hover:shadow-md transition-all active:scale-95 group"
+                                    className="flex items-center gap-2 p-2 bg-surface border border-border/50 rounded-xl cursor-pointer hover:border-primary/30 hover:shadow-md transition-all active:scale-95 group"
                                     title="Haz clic para añadir"
                                   >
                                     <div className="text-text/40 group-hover:text-primary transition-colors">

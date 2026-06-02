@@ -225,6 +225,22 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
   };
 
   const selectedLayout = selectedBentoItem ? getActiveLayout(selectedBentoItem) : null;
+  const canMoveSelectedCell = (dx: number, dy: number) => {
+    if (!selectedLayout) return false;
+
+    const nextLayout = {
+      ...selectedLayout,
+      x: clampNumber(selectedLayout.x + dx, 0, Math.max(activeColumns - selectedLayout.w, 0)),
+      y: Math.max(selectedLayout.y + dy, 0)
+    };
+
+    if (nextLayout.x === selectedLayout.x && nextLayout.y === selectedLayout.y) return false;
+
+    return !getBentoItems().some((item: any, index: number) => {
+      if (index === selectedBentoCellIndex) return false;
+      return layoutsCollide(nextLayout, getActiveLayout(item));
+    });
+  };
 
   const visibleFieldsByType: Record<string, string[]> = {
     text: ['text_style', 'title', 'description', 'title_size', 'title_weight', 'font_family', 'title_color', 'description_size', 'content_align', 'line_height', 'letter_spacing', 'card_image', 'card_overlay', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'align_items', 'card_style', 'card_bg', 'card_gradient', 'card_radius', 'card_shadow', 'text_contrast'],
@@ -335,7 +351,8 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
       }
       : selectedSection.settings;
     const show = evaluateCondition(setting.showIf, conditionSettings, contextId);
-    if (!show.result) return null;
+    const forceShowButtonField = selectedType === 'button' && ['button_text', 'btn_url'].includes(setting.id);
+    if (!show.result && !forceShowButtonField) return null;
 
     const value = selectedBentoItem && selectedBentoItem[setting.id] !== undefined
       ? selectedBentoItem[setting.id]
@@ -384,7 +401,7 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
         <button
           type="button"
           onClick={() => moveSelectedCell(0, -1)}
-          disabled={selectedLayout.y <= 0}
+          disabled={!canMoveSelectedCell(0, -1)}
           className="flex h-8 items-center justify-center rounded-lg border border-blue-100 bg-white text-blue-600 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-40"
           title="Mover arriba"
           aria-label="Mover arriba"
@@ -395,7 +412,7 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
         <button
           type="button"
           onClick={() => moveSelectedCell(-1, 0)}
-          disabled={selectedLayout.x <= 0}
+          disabled={!canMoveSelectedCell(-1, 0)}
           className="flex h-8 items-center justify-center rounded-lg border border-blue-100 bg-white text-blue-600 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-40"
           title="Mover izquierda"
           aria-label="Mover izquierda"
@@ -408,7 +425,7 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
         <button
           type="button"
           onClick={() => moveSelectedCell(1, 0)}
-          disabled={selectedLayout.x + selectedLayout.w >= activeColumns}
+          disabled={!canMoveSelectedCell(1, 0)}
           className="flex h-8 items-center justify-center rounded-lg border border-blue-100 bg-white text-blue-600 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-40"
           title="Mover derecha"
           aria-label="Mover derecha"
@@ -419,7 +436,8 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
         <button
           type="button"
           onClick={() => moveSelectedCell(0, 1)}
-          className="flex h-8 items-center justify-center rounded-lg border border-blue-100 bg-white text-blue-600 transition hover:bg-blue-100"
+          disabled={!canMoveSelectedCell(0, 1)}
+          className="flex h-8 items-center justify-center rounded-lg border border-blue-100 bg-white text-blue-600 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-40"
           title="Mover abajo"
           aria-label="Mover abajo"
         >

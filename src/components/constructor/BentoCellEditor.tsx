@@ -42,6 +42,8 @@ const PILLARS_ORDER: string[] = ['contenido', 'estructura', 'estilo', 'tipografi
 const BENTO_DESKTOP_COLUMNS = 24;
 const BENTO_TABLET_COLUMNS = 6;
 const BENTO_MOBILE_COLUMNS = 4;
+const BENTO_BASE_VISIBLE_ROWS = 7;
+const BENTO_MAX_EDITABLE_ROWS = 36;
 
 const TEXT_STYLE_PRESETS: Record<string, Record<string, any>> = {
   display: { title_size: 't1', title_weight: 'black', description_size: 'p', line_height: 1.05, letter_spacing: -2 },
@@ -126,6 +128,44 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
 
   const clampNumber = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 
+  const getWorkspaceRows = () => {
+    const workspaceRowsKey = `${selectedSection.id}_el_bento_items_workspace_rows`;
+    const workspaceRowsValue = settingsValues?.[workspaceRowsKey] ?? selectedSection.settings?.[workspaceRowsKey];
+    const rawRows = typeof workspaceRowsValue === 'object' && workspaceRowsValue !== null
+      ? workspaceRowsValue[activeLayoutKey]
+      : workspaceRowsValue;
+    const parsedRows = Number(rawRows);
+    return clampNumber(
+      Number.isFinite(parsedRows) ? parsedRows : BENTO_BASE_VISIBLE_ROWS,
+      BENTO_BASE_VISIBLE_ROWS,
+      BENTO_MAX_EDITABLE_ROWS
+    );
+  };
+
+  const getOccupiedRows = (items: any[]) => Math.ceil(items.reduce((maxRows: number, item: any) => {
+    const layout = getActiveLayout(item);
+    return Math.max(maxRows, layout.y + Math.max(layout.h, 1));
+  }, 0));
+
+  const updateWorkspaceRows = (rows: number) => {
+    const nextRows = clampNumber(rows, BENTO_BASE_VISIBLE_ROWS, BENTO_MAX_EDITABLE_ROWS);
+    const workspaceRowsKey = `${selectedSection.id}_el_bento_items_workspace_rows`;
+    const currentValue = settingsValues?.[workspaceRowsKey] ?? selectedSection.settings?.[workspaceRowsKey];
+    const currentRows = getWorkspaceRows();
+    if (currentRows === nextRows) return;
+
+    const nextValue = {
+      ...(typeof currentValue === 'object' && currentValue !== null ? currentValue : {}),
+      [activeLayoutKey]: nextRows
+    };
+
+    if (onSettingChange) {
+      onSettingChange(`${selectedSection.id}_el_bento_items`, 'workspace_rows', nextValue);
+    } else {
+      updateSectionSettings(selectedSection.id, { [workspaceRowsKey]: nextValue });
+    }
+  };
+
   const shouldScaleLegacyDesktopLayout = (item: any, layout: any) => {
     const declaredColumns = Number(layout?.columns || item?.layout_columns?.desktop || item?.layoutColumns?.desktop || 0);
     return activeLayoutKey === 'desktop' && declaredColumns < BENTO_DESKTOP_COLUMNS;
@@ -190,6 +230,10 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
     });
     if (collides) return;
 
+    const currentWorkspaceRows = getWorkspaceRows();
+    const nextBottom = nextLayout.y + nextLayout.h;
+    if (nextBottom > BENTO_MAX_EDITABLE_ROWS) return;
+
     const newItems = [...currentItems];
     const existingLayouts = currentItem.layouts || {};
     const nextItem = {
@@ -222,6 +266,12 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
     } else {
       updateSectionSettings(selectedSection.id, { [`${selectedSection.id}_el_bento_items_items`]: newItems });
     }
+
+    if (dy > 0 && nextBottom > currentWorkspaceRows) {
+      updateWorkspaceRows(nextBottom);
+    } else if (dy < 0) {
+      updateWorkspaceRows(Math.max(BENTO_BASE_VISIBLE_ROWS, getOccupiedRows(newItems)));
+    }
   };
 
   const selectedLayout = selectedBentoItem ? getActiveLayout(selectedBentoItem) : null;
@@ -235,6 +285,7 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
     };
 
     if (nextLayout.x === selectedLayout.x && nextLayout.y === selectedLayout.y) return false;
+    if (nextLayout.y + nextLayout.h > BENTO_MAX_EDITABLE_ROWS) return false;
 
     return !getBentoItems().some((item: any, index: number) => {
       if (index === selectedBentoCellIndex) return false;

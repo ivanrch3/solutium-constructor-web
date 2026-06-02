@@ -77,6 +77,8 @@ const BENTO_ELEMENT_OPTIONS = [
 const BENTO_DESKTOP_COLUMNS = 24;
 const BENTO_TABLET_COLUMNS = 6;
 const BENTO_MOBILE_COLUMNS = 4;
+const BENTO_BASE_VISIBLE_ROWS = 7;
+const BENTO_MAX_EDITABLE_ROWS = 36;
 
 const getBentoElementOption = (type?: string) => {
   const normalizedType = type === 'image' ? 'visual' : type === 'cta' ? 'button' : type === 'stat' ? 'metric' : type;
@@ -143,6 +145,36 @@ const findFirstFreeBentoPosition = (
 
   const maxY = occupied.length > 0 ? Math.max(...occupied.map((entry) => entry.y + entry.h)) : 0;
   return { x: 0, y: maxY };
+};
+
+const getBentoOccupiedRows = (
+  items: any[],
+  breakpoint: 'desktop' | 'tablet' | 'mobile',
+  cols: number
+) => Math.ceil(items.reduce((maxRows: number, item: any) => {
+  const layout = getBentoPlacementLayout(item, breakpoint, cols);
+  return Math.max(maxRows, layout.y + Math.max(layout.h, 1));
+}, 0));
+
+const normalizeBentoWorkspaceRows = (currentValue: any, items: any[]) => {
+  const currentRows = typeof currentValue === 'object' && currentValue !== null ? currentValue : {};
+  const nextRows = {
+    ...currentRows,
+    desktop: Math.min(
+      BENTO_MAX_EDITABLE_ROWS,
+      Math.max(BENTO_BASE_VISIBLE_ROWS, getBentoOccupiedRows(items, 'desktop', BENTO_DESKTOP_COLUMNS))
+    ),
+    tablet: Math.min(
+      BENTO_MAX_EDITABLE_ROWS,
+      Math.max(BENTO_BASE_VISIBLE_ROWS, getBentoOccupiedRows(items, 'tablet', BENTO_TABLET_COLUMNS))
+    ),
+    mobile: Math.min(
+      BENTO_MAX_EDITABLE_ROWS,
+      Math.max(BENTO_BASE_VISIBLE_ROWS, getBentoOccupiedRows(items, 'mobile', BENTO_MOBILE_COLUMNS))
+    )
+  };
+
+  return nextRows;
 };
 
 const createBentoPanelElementPreset = (kind: string, existingItems: any[]) => {
@@ -1196,7 +1228,12 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                                       const bentoItems = editorState.settingsValues[`${module.id}_el_bento_items_items`] || [];
                                       const newItem = createBentoPanelElementPreset(item.type, bentoItems);
                                       const newItems = [...bentoItems, newItem];
+                                      const nextWorkspaceRows = normalizeBentoWorkspaceRows(
+                                        editorState.settingsValues[`${module.id}_el_bento_items_workspace_rows`],
+                                        newItems
+                                      );
                                       onSettingChange(`${module.id}_el_bento_items`, 'items', newItems);
+                                      onSettingChange(`${module.id}_el_bento_items`, 'workspace_rows', nextWorkspaceRows);
                                       selectSection(module.id);
                                       setSelectedBentoCellIndex(newItems.length - 1);
                                       setEditorState(prev => ({
@@ -1293,7 +1330,12 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                                               const duplicatedItem = createDuplicatedBentoItem(item, bentoItems);
                                               const newItems = [...bentoItems, duplicatedItem];
                                               const duplicatedIndex = newItems.length - 1;
+                                              const nextWorkspaceRows = normalizeBentoWorkspaceRows(
+                                                editorState.settingsValues[`${module.id}_el_bento_items_workspace_rows`],
+                                                newItems
+                                              );
                                               onSettingChange(`${module.id}_el_bento_items`, 'items', newItems);
+                                              onSettingChange(`${module.id}_el_bento_items`, 'workspace_rows', nextWorkspaceRows);
                                               selectSection(module.id);
                                               setSelectedBentoCellIndex(duplicatedIndex);
                                               setExpandedBentoItem(duplicatedIndex);
@@ -1314,7 +1356,12 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                                             onClick={(event) => {
                                               event.stopPropagation();
                                               const newItems = bentoItems.filter((_: any, idx: number) => idx !== itemIndex);
+                                              const nextWorkspaceRows = normalizeBentoWorkspaceRows(
+                                                editorState.settingsValues[`${module.id}_el_bento_items_workspace_rows`],
+                                                newItems
+                                              );
                                               onSettingChange(`${module.id}_el_bento_items`, 'items', newItems);
+                                              onSettingChange(`${module.id}_el_bento_items`, 'workspace_rows', nextWorkspaceRows);
                                               if (selectedBentoCellIndex === itemIndex) {
                                                 setSelectedBentoCellIndex(null);
                                               } else if (selectedBentoCellIndex !== null && selectedBentoCellIndex > itemIndex) {

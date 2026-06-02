@@ -26,9 +26,8 @@ const BENTO_BREAKPOINT_ORDER = ['lg', 'md', 'sm', 'xs', 'xxs'];
 const BENTO_DESKTOP_COLUMNS = 24;
 const BENTO_TABLET_COLUMNS = 6;
 const BENTO_MOBILE_COLUMNS = 4;
-const BENTO_MIN_EDITABLE_ROWS = 36;
-const BENTO_BASE_VISIBLE_ROWS = 10;
-const BENTO_VISIBLE_ROW_BUFFER = 2;
+const BENTO_BASE_VISIBLE_ROWS = 7;
+const BENTO_MAX_EDITABLE_ROWS = 36;
 const BENTO_ROW_HEIGHT = 80;
 
 
@@ -55,6 +54,21 @@ const isBentoDebugEnabled = () => {
     return false;
   }
 };
+
+const getBentoWorkspaceRows = (value: any, breakpoint: 'desktop' | 'tablet' | 'mobile') => {
+  const rawRows = typeof value === 'object' && value !== null ? value[breakpoint] : value;
+  const parsedRows = Number(rawRows);
+  return Number.isFinite(parsedRows) ? parsedRows : BENTO_BASE_VISIBLE_ROWS;
+};
+
+const buildBentoWorkspaceRowsValue = (
+  currentValue: any,
+  breakpoint: 'desktop' | 'tablet' | 'mobile',
+  rows: number
+) => ({
+  ...(typeof currentValue === 'object' && currentValue !== null ? currentValue : {}),
+  [breakpoint]: rows
+});
 
 const createBentoCellId = () => {
   const randomId = globalThis.crypto?.randomUUID?.() || Math.random().toString(36).slice(2);
@@ -1168,6 +1182,8 @@ export const BentoModule: React.FC<{
   };
 
   const rawItems = useMemo(() => getItemsFromMultipleSources(), [settingsValues, moduleId]);
+  const workspaceRowsSettingKey = `${moduleId}_el_bento_items_workspace_rows`;
+  const workspaceRowsSetting = settingsValues[workspaceRowsSettingKey];
 
   const layouts = useMemo(() => ({
     lg: getBentoLayoutForBreakpoint(rawItems, 'desktop', columns),
@@ -1230,6 +1246,22 @@ export const BentoModule: React.FC<{
     if (changed) {
       lastPersistedLayoutSignatureRef.current = currentSignature;
       onSettingChange(`${moduleId}_el_bento_items`, 'items', newItems);
+      const nextOccupiedRows = Math.ceil(normalizedCurrentLayout.reduce((maxRows: number, entry: any) => {
+        return Math.max(maxRows, (Number(entry?.y) || 0) + Math.max(Number(entry?.h) || 1, 1));
+      }, 0));
+      const currentWorkspaceRows = getBentoWorkspaceRows(workspaceRowsSetting, currentBP);
+      const nextWorkspaceRows = clampNumber(
+        Math.max(BENTO_BASE_VISIBLE_ROWS, currentWorkspaceRows, nextOccupiedRows),
+        BENTO_BASE_VISIBLE_ROWS,
+        BENTO_MAX_EDITABLE_ROWS
+      );
+      if (nextWorkspaceRows !== currentWorkspaceRows) {
+        onSettingChange(
+          `${moduleId}_el_bento_items`,
+          'workspace_rows',
+          buildBentoWorkspaceRowsValue(workspaceRowsSetting, currentBP, nextWorkspaceRows)
+        );
+      }
     }
   };
 
@@ -1370,18 +1402,46 @@ export const BentoModule: React.FC<{
 
   const shouldShowEmptyState = !isPreviewMode && rawItems.length === 0;
   const activeLayoutForHeight = layouts[forcedBreakpoint as keyof typeof layouts] || [];
+  const activeLayoutKeyForHeight = BENTO_BREAKPOINT_TO_LAYOUT[forcedBreakpoint] || 'desktop';
   const occupiedRows = Math.ceil(activeLayoutForHeight.reduce((maxRows: number, item: any) => {
     return Math.max(maxRows, (Number(item?.y) || 0) + Math.max(Number(item?.h) || 1, 1));
   }, 0));
-  const visibleEditorRows = shouldShowEmptyState
-    ? BENTO_BASE_VISIBLE_ROWS
-    : clampNumber(
-        Math.max(BENTO_BASE_VISIBLE_ROWS, occupiedRows + BENTO_VISIBLE_ROW_BUFFER),
-        BENTO_BASE_VISIBLE_ROWS,
-        BENTO_MIN_EDITABLE_ROWS
-      );
+  const storedWorkspaceRows = getBentoWorkspaceRows(workspaceRowsSetting, activeLayoutKeyForHeight);
+  const workspaceRows = clampNumber(
+    Math.max(BENTO_BASE_VISIBLE_ROWS, storedWorkspaceRows, occupiedRows),
+    BENTO_BASE_VISIBLE_ROWS,
+    BENTO_MAX_EDITABLE_ROWS
+  );
+  const visibleEditorRows = shouldShowEmptyState ? BENTO_BASE_VISIBLE_ROWS : workspaceRows;
   const visibleEditorMinHeight = (visibleEditorRows * BENTO_ROW_HEIGHT) + ((visibleEditorRows - 1) * gap);
   const isSelected = !isPreviewMode && settingsValues.isSelected; // Some canvases pass this
+
+  useEffect(() => {
+    if (isPreviewMode || !onSettingChange || rawItems.length === 0 || isInteractingWithLayoutRef.current) return;
+
+    const targetWorkspaceRows = clampNumber(
+      Math.max(BENTO_BASE_VISIBLE_ROWS, occupiedRows),
+      BENTO_BASE_VISIBLE_ROWS,
+      BENTO_MAX_EDITABLE_ROWS
+    );
+
+    if (storedWorkspaceRows !== targetWorkspaceRows) {
+      onSettingChange(
+        `${moduleId}_el_bento_items`,
+        'workspace_rows',
+        buildBentoWorkspaceRowsValue(workspaceRowsSetting, activeLayoutKeyForHeight, targetWorkspaceRows)
+      );
+    }
+  }, [
+    activeLayoutKeyForHeight,
+    isPreviewMode,
+    moduleId,
+    occupiedRows,
+    onSettingChange,
+    rawItems.length,
+    storedWorkspaceRows,
+    workspaceRowsSetting
+  ]);
 
   useEffect(() => {
     if (!isPreviewMode && isBentoDebugEnabled()) {

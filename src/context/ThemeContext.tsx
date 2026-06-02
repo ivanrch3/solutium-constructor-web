@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect } from 'react';
 import { Theme } from '../types/schema';
 import { logDebug } from '../utils/debug';
+import { getAppMadreBaseUrl, getLaunchTokenFromUrl } from '../services/secureLaunchSession';
 
 export const SOLUTIUM_COLORS = {
   green: '#004D61',
@@ -169,15 +170,38 @@ const pickThemeString = (...values: unknown[]) => {
   return null;
 };
 
+const resolveExpectedThemeOrigin = () => {
+  try {
+    if (document.referrer) return new URL(document.referrer).origin;
+  } catch {
+    // noop
+  }
+
+  try {
+    return new URL(getAppMadreBaseUrl()).origin;
+  } catch {
+    return window.location.origin;
+  }
+};
+
 const resolveThemeColors = (theme: any) => {
   const projectColors = Array.isArray(theme?.projectColors)
     ? theme.projectColors
     : Array.isArray(theme?.project_colors)
       ? theme.project_colors
       : [];
-  const colors = theme?.colors && typeof theme.colors === 'object' ? theme.colors : {};
+  const uiTokens = theme?.uiTokens && typeof theme.uiTokens === 'object' ? theme.uiTokens : {};
+  const colors = theme?.colors && typeof theme.colors === 'object'
+    ? theme.colors
+    : uiTokens.colors && typeof uiTokens.colors === 'object'
+      ? uiTokens.colors
+      : {};
   const palette = theme?.palette && typeof theme.palette === 'object' ? theme.palette : {};
-  const sidebar = theme?.sidebar && typeof theme.sidebar === 'object' ? theme.sidebar : {};
+  const sidebar = theme?.sidebar && typeof theme.sidebar === 'object'
+    ? theme.sidebar
+    : uiTokens.sidebar && typeof uiTokens.sidebar === 'object'
+      ? uiTokens.sidebar
+      : {};
 
   return {
     primary: pickThemeString(theme?.primary, theme?.primaryColor, theme?.primary_color, colors.primary, colors.primaryColor, colors.primary_color, palette.primary, projectColors[0]),
@@ -269,6 +293,8 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       theme.fontFamily ||
       theme.font_family ||
       theme.font ||
+      theme.uiTokens?.fontFamily ||
+      theme.uiTokens?.font_family ||
       theme.font_family_base ||
       theme.fontFamilyBase ||
       theme.typography?.fontFamily ||
@@ -286,22 +312,32 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       document.body.style.fontFamily = fontValue;
     }
 
-    if (theme.uiStyle === 'windows') {
+    const uiStyle = theme.uiStyle || theme.baseStyle || theme.ui_style;
+    const borderRadius = theme.borderRadius || theme.border_radius || theme.uiTokens?.borderRadius || theme.uiTokens?.border_radius;
+
+    if (uiStyle === 'windows') {
       root.style.setProperty('--radius', '2px');
-    } else if (theme.borderRadius) {
-      root.style.setProperty('--radius', theme.borderRadius);
+    } else if (borderRadius) {
+      root.style.setProperty('--radius', borderRadius);
     }
   };
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === 'SOLUTIUM_THEME') {
+        if (getLaunchTokenFromUrl() && event.origin !== resolveExpectedThemeOrigin()) {
+          logDebug('[THEME] Ignorando tema desde origin no autorizado.', {
+            origin: event.origin
+          });
+          return;
+        }
+
         const themePayload = event.data.payload.theme || event.data.payload;
         applyTheme(themePayload);
 
         const target = window.opener || window.parent;
         if (target && target !== window) {
-          target.postMessage({ type: 'SOLUTIUM_THEME_ACK' }, '*');
+          target.postMessage({ type: 'SOLUTIUM_THEME_ACK' }, event.origin || window.location.origin);
         }
       }
     };

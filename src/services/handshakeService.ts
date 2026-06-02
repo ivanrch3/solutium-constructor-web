@@ -1,5 +1,6 @@
 import { logDebug } from '../utils/debug';
 import { initSupabase } from './supabaseClient';
+import { getAppMadreBaseUrl, getLaunchTokenFromUrl } from './secureLaunchSession';
 
 export interface HandshakePayload {
   projectId: string;
@@ -16,6 +17,20 @@ let motherWindow: any = window.opener || window.parent;
 let isStable = false;
 
 const CONFIG_EVENT_TYPES = ['SOLUTIUM_CONFIG', 'SOLUTIUM_CONFIG_RESPONSE', 'SOLUTIUM_SET_CONFIG'] as const;
+
+const resolveMotherOrigin = () => {
+  try {
+    if (document.referrer) return new URL(document.referrer).origin;
+  } catch {
+    // noop
+  }
+
+  try {
+    return new URL(getAppMadreBaseUrl()).origin;
+  } catch {
+    return window.location.origin;
+  }
+};
 
 const extractConfigPayload = (message: any) =>
   message?.payload || message?.config || (message?.projectId || message?.satellite_id ? message : null);
@@ -34,6 +49,7 @@ const syncSupabaseAccessToken = (payload: any) => {
  */
 export const startHandshake = (onConfig: (payload: HandshakePayload) => void) => {
   logDebug('[SIP v5.2] Iniciando protocolo de arranque...');
+  const hasSecureLaunchToken = Boolean(getLaunchTokenFromUrl());
 
   const processConfig = (payload: any) => {
     if (!payload) return;
@@ -61,6 +77,17 @@ export const startHandshake = (onConfig: (payload: HandshakePayload) => void) =>
 
   const handleMessage = (event: MessageEvent) => {
     if (!event.data?.type) return;
+
+    if (
+      getLaunchTokenFromUrl() &&
+      CONFIG_EVENT_TYPES.includes(event.data.type) &&
+      event.origin !== resolveMotherOrigin()
+    ) {
+      logDebug('[SIP v5.2] Ignorando configuración legacy desde origin no autorizado.', {
+        origin: event.origin
+      });
+      return;
+    }
 
     if (event.source && event.source !== window) {
       motherWindow = event.source;
@@ -105,14 +132,14 @@ export const startHandshake = (onConfig: (payload: HandshakePayload) => void) =>
     siteName: urlParams.get('site_name'),
   };
 
-  if (configFromUrl.supabase_url && configFromUrl.session_token) {
+  if (!hasSecureLaunchToken && configFromUrl.supabase_url && configFromUrl.session_token) {
     logDebug('[SIP v5.2] Configuración recuperada desde URL.');
     processConfig(configFromUrl);
     setupMessageListener();
     return;
   }
 
-  if (window.name) {
+  if (!hasSecureLaunchToken && window.name) {
     try {
       const data = JSON.parse(window.name);
       if (data.type === 'SOLUTIUM_DIRECT_INJECTION' || data.type === 'SOLUTIUM_CONFIG') {
@@ -147,7 +174,7 @@ export const startHandshake = (onConfig: (payload: HandshakePayload) => void) =>
 export const sendToMother = (typeOrMessage: any, payload?: any) => {
   if (motherWindow && motherWindow !== window) {
     const message = payload !== undefined ? { type: typeOrMessage, payload } : typeOrMessage;
-    motherWindow.postMessage(message, '*');
+    motherWindow.postMessage(message, resolveMotherOrigin());
   }
 };
 
@@ -169,6 +196,15 @@ export const requestFreshSupabaseConfig = async (timeoutMs: number = 6000): Prom
         return;
       }
 
+      const hasSecureLaunchToken = Boolean(getLaunchTokenFromUrl());
+
+      if (hasSecureLaunchToken && event.origin !== resolveMotherOrigin()) {
+        logDebug('[SIP AUTH RECOVERY] Ignorando refresh desde origin no autorizado.', {
+          origin: event.origin
+        });
+        return;
+      }
+
       const payload = extractConfigPayload(event.data);
       const supabaseUrl = payload?.supabase_url;
       const supabaseAnonKey = payload?.supabase_anon_key;
@@ -180,7 +216,9 @@ export const requestFreshSupabaseConfig = async (timeoutMs: number = 6000): Prom
 
       try {
         sessionStorage.setItem('solutium_supabase_access_token', sessionToken);
-        localStorage.setItem('solutium_handshake_cache', JSON.stringify(payload));
+        if (!hasSecureLaunchToken) {
+          localStorage.setItem('solutium_handshake_cache', JSON.stringify(payload));
+        }
         (window as any).SOLUTIUM_SUPABASE_SESSION = { access_token: sessionToken };
         initSupabase(supabaseUrl, supabaseAnonKey, sessionToken);
         logDebug('[SIP AUTH RECOVERY] Supabase config refreshed from App Madre.');

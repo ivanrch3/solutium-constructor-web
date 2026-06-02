@@ -131,9 +131,9 @@ export const MainSidebar: React.FC<MainSidebarProps> = ({
           className="flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity group"
           onClick={onLogoClick}
         >
-          <div className="h-12 w-full flex items-center justify-center relative">
+          <div className="h-14 w-full flex items-center justify-center relative">
             {displayLogo ? (
-              <img src={displayLogo} alt="Constructor Web" className="h-full w-auto object-contain" referrerPolicy="no-referrer" />
+              <img src={displayLogo} alt="Constructor Web" className="h-full max-w-[180px] w-auto object-contain" referrerPolicy="no-referrer" />
             ) : (
               <FileText className="text-sidebar-foreground/40 w-10 h-10" />
             )}

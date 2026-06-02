@@ -24,6 +24,8 @@ const BENTO_BREAKPOINT_TO_LAYOUT: Record<string, 'desktop' | 'tablet' | 'mobile'
 
 const BENTO_BREAKPOINT_ORDER = ['lg', 'md', 'sm', 'xs', 'xxs'];
 const BENTO_DESKTOP_COLUMNS = 24;
+const BENTO_MIN_DESKTOP_COLUMNS = 12;
+const BENTO_MAX_DESKTOP_COLUMNS = 32;
 const BENTO_TABLET_COLUMNS = 6;
 const BENTO_MOBILE_COLUMNS = 4;
 const BENTO_BASE_VISIBLE_ROWS = 7;
@@ -91,6 +93,12 @@ const toBoolean = (value: unknown) => {
   return value === true || value === 'true' || value === 1 || value === '1';
 };
 
+const clampBentoDesktopColumns = (value: any) => {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return BENTO_DESKTOP_COLUMNS;
+  return Math.min(BENTO_MAX_DESKTOP_COLUMNS, Math.max(BENTO_MIN_DESKTOP_COLUMNS, Math.round(parsed)));
+};
+
 const resolveThemeColor = (
   value: string | undefined,
   lightDefault: string,
@@ -151,6 +159,13 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave }: a
     accent_color,
     show_description = true,
     content_position = 'center',
+    align_items = 'start',
+    icon_visual_type = 'icon',
+    icon_size,
+    icon_color = '#2563EB',
+    show_icon_bg = true,
+    icon_bg = 'rgba(59, 130, 246, 0.1)',
+    icon_image = '',
     text_contrast = 'auto'
   } = item;
 
@@ -175,8 +190,16 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave }: a
   const forcedColor = text_contrast === 'white' ? '#FFFFFF' : text_contrast === 'black' ? '#0F172A' : null;
   const finalTitleColor = forcedColor || resolveThemeColor(title_color, '#0F172A', '#FFFFFF', darkMode);
   const finalDescColor = forcedColor || resolveThemeColor(desc_color, '#64748B', '#94A3B8', darkMode);
-
   const isHero = type === 'hero' || priority === 'hero';
+  const finalIconColor = resolveThemeColor(icon_color, '#2563EB', '#60A5FA', darkMode);
+  const resolvedIconBg = resolveThemeColor(icon_bg, 'rgba(59, 130, 246, 0.1)', 'rgba(96, 165, 250, 0.18)', darkMode);
+  const numericIconSize = parseNumSafe(icon_size, isHero ? 40 : 32);
+  const iconFrameSize = Math.max(numericIconSize + 16, 40);
+  const verticalContentClass = {
+    start: 'justify-start',
+    center: 'justify-center',
+    end: 'justify-end'
+  }[align_items as string] || 'justify-start';
 
   const resolvedContentPosition = content_align || content_position;
   const alignClass = {
@@ -350,13 +373,39 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave }: a
       );
 
     case 'icon':
+      const isIconImage = icon_visual_type === 'image';
+      const iconImageSrc = icon_image || image;
       return (
-        <div className="flex flex-col z-10 w-full h-full items-center justify-center gap-3 text-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-primary/10 text-primary">
-            <IconComponent size={32} />
+        <div className={`flex flex-col z-10 w-full h-full items-center ${verticalContentClass} gap-3 text-center`}>
+          <div
+            className="flex items-center justify-center overflow-hidden rounded-3xl"
+            style={{
+              width: `${iconFrameSize}px`,
+              height: `${iconFrameSize}px`,
+              backgroundColor: !isIconImage && toBoolean(show_icon_bg) ? resolvedIconBg : 'transparent',
+              color: finalIconColor
+            }}
+          >
+            {isIconImage && iconImageSrc ? (
+              <img
+                src={iconImageSrc}
+                alt=""
+                className="h-full w-full object-cover"
+                referrerPolicy="no-referrer"
+              />
+            ) : (
+              <IconComponent size={numericIconSize} />
+            )}
           </div>
           {title && (
-            <h3 className="text-base leading-tight" style={{ color: finalTitleColor, fontWeight: finalTitleWeight }}>
+            <h3
+              className="leading-tight"
+              style={{
+                color: finalTitleColor,
+                fontWeight: finalTitleWeight,
+                fontSize: `${TYPOGRAPHY_SCALE[finalTitleSize as keyof typeof TYPOGRAPHY_SCALE]?.fontSize || 16}px`
+              }}
+            >
               <InlineEditableText
                 moduleId={moduleId}
                 settingId="title"
@@ -369,7 +418,7 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave }: a
           )}
           {description && (
             <p
-              className="max-w-[180px] text-xs leading-snug opacity-70"
+              className="max-w-[220px] leading-snug opacity-70"
               style={{
                 color: finalDescColor,
                 fontSize: `${TYPOGRAPHY_SCALE[finalDescSize as keyof typeof TYPOGRAPHY_SCALE]?.fontSize || 14}px`
@@ -991,7 +1040,7 @@ export const BentoModule: React.FC<{
   };
 
   // Global Settings
-  const columns = BENTO_DESKTOP_COLUMNS;
+  const columns = clampBentoDesktopColumns(getVal(null, 'columns', BENTO_DESKTOP_COLUMNS));
   const gap = parseNumSafe(getVal(null, 'gap', 20), 20);
   const paddingY = parseNumSafe(getVal(null, 'padding_y', 40), 40);
   const maxWidth = parseNumSafe(getVal(null, 'max_width', 1200), 1200);
@@ -1023,7 +1072,7 @@ export const BentoModule: React.FC<{
   const clampNumber = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 
   const getColumnsForBreakpoint = (breakpoint: string) => {
-    if (breakpoint === 'lg' || breakpoint === 'desktop') return BENTO_DESKTOP_COLUMNS;
+    if (breakpoint === 'lg' || breakpoint === 'desktop') return columns;
     if (breakpoint === 'md' || breakpoint === 'sm' || breakpoint === 'tablet') return BENTO_TABLET_COLUMNS;
     return BENTO_MOBILE_COLUMNS;
   };
@@ -1047,10 +1096,8 @@ export const BentoModule: React.FC<{
   };
 
   const shouldScaleLegacyDesktopLayout = (item: any, layout: any, cols: number) => {
-    if (cols !== BENTO_DESKTOP_COLUMNS) return false;
     const declaredColumns = Number(layout?.columns || item?.layout_columns?.desktop || item?.layoutColumns?.desktop || 0);
-    if (declaredColumns >= BENTO_DESKTOP_COLUMNS) return false;
-    return true;
+    return declaredColumns > 0 ? declaredColumns < cols : cols === BENTO_DESKTOP_COLUMNS;
   };
 
   const scaleLegacyDesktopLayout = (item: any, layout: any, cols: number) => {
@@ -1617,13 +1664,6 @@ export const BentoModule: React.FC<{
             minHeight: !isPreviewMode ? `${visibleEditorMinHeight}px` : 'auto'
           }}
         >
-          {/* Editor Label */}
-          {!isPreviewMode && (
-            <div className="absolute -top-3 left-8 z-30 bg-primary text-white text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full shadow-lg">
-              {selectedIndex !== null ? 'Editando elemento' : 'Diseño libre'}
-            </div>
-          )}
-
           <ResponsiveGridLayout
             key={`bento-grid-${constructorViewport}-${Math.round(normalizedPreviewScale * 1000)}`}
             className="layout w-full relative z-10"
@@ -1788,15 +1828,6 @@ export const BentoModule: React.FC<{
                       zIndex: isSelected ? 50 : z_index
                     }}
                   >
-                    {/* Selected Indicator Labels (Only in Constructor) */}
-                    {isSelected && (
-                      <div className="absolute top-4 left-4 z-50 flex items-center gap-2">
-                        <div className="bg-primary text-white text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded shadow-lg">
-                          Editando Bloque: {item.title || 'Nuevo'}
-                        </div>
-                      </div>
-                    )}
-
                     {/* Background Image Logic */}
                     {card_image && type !== 'visual' && (
                       <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">

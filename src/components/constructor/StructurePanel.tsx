@@ -75,10 +75,22 @@ const BENTO_ELEMENT_OPTIONS = [
 ];
 
 const BENTO_DESKTOP_COLUMNS = 24;
+const BENTO_MIN_DESKTOP_COLUMNS = 12;
+const BENTO_MAX_DESKTOP_COLUMNS = 32;
 const BENTO_TABLET_COLUMNS = 6;
 const BENTO_MOBILE_COLUMNS = 4;
 const BENTO_BASE_VISIBLE_ROWS = 7;
 const BENTO_MAX_EDITABLE_ROWS = 36;
+
+const clampBentoDesktopColumns = (value: any) => {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return BENTO_DESKTOP_COLUMNS;
+  return Math.min(BENTO_MAX_DESKTOP_COLUMNS, Math.max(BENTO_MIN_DESKTOP_COLUMNS, Math.round(parsed)));
+};
+
+const getBentoDesktopColumns = (settingsValues: Record<string, any>, moduleId: string) => (
+  clampBentoDesktopColumns(settingsValues?.[`${moduleId}_global_columns`])
+);
 
 const getBentoElementOption = (type?: string) => {
   const normalizedType = type === 'image' ? 'visual' : type === 'cta' ? 'button' : type === 'stat' ? 'metric' : type;
@@ -94,8 +106,7 @@ const getBentoPlacementLayout = (item: any, breakpoint: 'desktop' | 'tablet' | '
   const savedLayout = item.layouts?.[breakpoint];
   const declaredColumns = Number(savedLayout?.columns || item.layout_columns?.[breakpoint] || 0);
   const shouldScaleLegacyDesktop = breakpoint === 'desktop'
-    && cols === BENTO_DESKTOP_COLUMNS
-    && declaredColumns < BENTO_DESKTOP_COLUMNS;
+    && (declaredColumns > 0 ? declaredColumns < cols : cols === BENTO_DESKTOP_COLUMNS);
   const width = breakpoint === 'mobile'
     ? (item.mobile_span || item.col_span || 4)
     : breakpoint === 'tablet'
@@ -156,13 +167,13 @@ const getBentoOccupiedRows = (
   return Math.max(maxRows, layout.y + Math.max(layout.h, 1));
 }, 0));
 
-const normalizeBentoWorkspaceRows = (currentValue: any, items: any[]) => {
+const normalizeBentoWorkspaceRows = (currentValue: any, items: any[], desktopColumns = BENTO_DESKTOP_COLUMNS) => {
   const currentRows = typeof currentValue === 'object' && currentValue !== null ? currentValue : {};
   const nextRows = {
     ...currentRows,
     desktop: Math.min(
       BENTO_MAX_EDITABLE_ROWS,
-      Math.max(BENTO_BASE_VISIBLE_ROWS, getBentoOccupiedRows(items, 'desktop', BENTO_DESKTOP_COLUMNS))
+      Math.max(BENTO_BASE_VISIBLE_ROWS, getBentoOccupiedRows(items, 'desktop', desktopColumns))
     ),
     tablet: Math.min(
       BENTO_MAX_EDITABLE_ROWS,
@@ -177,9 +188,10 @@ const normalizeBentoWorkspaceRows = (currentValue: any, items: any[]) => {
   return nextRows;
 };
 
-const createBentoPanelElementPreset = (kind: string, existingItems: any[]) => {
+const createBentoPanelElementPreset = (kind: string, existingItems: any[], desktopColumns = BENTO_DESKTOP_COLUMNS) => {
   const withLayout = (item: any, desktopW: number, desktopH: number, tabletW = Math.min(desktopW, BENTO_TABLET_COLUMNS), mobileW = BENTO_MOBILE_COLUMNS) => {
-    const desktopPos = findFirstFreeBentoPosition(existingItems, desktopW, desktopH, BENTO_DESKTOP_COLUMNS, 'desktop');
+    const safeDesktopW = Math.min(desktopW, desktopColumns);
+    const desktopPos = findFirstFreeBentoPosition(existingItems, safeDesktopW, desktopH, desktopColumns, 'desktop');
     const tabletPos = findFirstFreeBentoPosition(existingItems, tabletW, desktopH, BENTO_TABLET_COLUMNS, 'tablet');
     const mobilePos = findFirstFreeBentoPosition(existingItems, mobileW, desktopH, BENTO_MOBILE_COLUMNS, 'mobile');
 
@@ -191,21 +203,21 @@ const createBentoPanelElementPreset = (kind: string, existingItems: any[]) => {
       padding: 32,
       content_align: 'center',
       ...item,
-      col_span: desktopW,
+      col_span: safeDesktopW,
       row_span: desktopH,
-      desktop_span: desktopW,
+      desktop_span: safeDesktopW,
       desktop_rows: desktopH,
       tablet_span: tabletW,
       mobile_span: mobileW,
       x: desktopPos.x,
       y: desktopPos.y,
       layouts: {
-        desktop: { x: desktopPos.x, y: desktopPos.y, w: desktopW, h: desktopH, columns: BENTO_DESKTOP_COLUMNS },
+        desktop: { x: desktopPos.x, y: desktopPos.y, w: safeDesktopW, h: desktopH, columns: desktopColumns },
         tablet: { x: tabletPos.x, y: tabletPos.y, w: tabletW, h: desktopH, columns: BENTO_TABLET_COLUMNS },
         mobile: { x: mobilePos.x, y: mobilePos.y, w: mobileW, h: desktopH, columns: BENTO_MOBILE_COLUMNS }
       },
       layout_columns: {
-        desktop: BENTO_DESKTOP_COLUMNS,
+        desktop: desktopColumns,
         tablet: BENTO_TABLET_COLUMNS,
         mobile: BENTO_MOBILE_COLUMNS
       }
@@ -218,7 +230,15 @@ const createBentoPanelElementPreset = (kind: string, existingItems: any[]) => {
     case 'button':
       return withLayout({ type: 'button', title: 'Haz clic aquí', button_text: 'Haz clic aquí', btn_url: '#', card_style: 'transparent', padding: 16 }, 6, 1, 3, 4);
     case 'icon':
-      return withLayout({ type: 'icon', title: 'Ícono destacado', icon: 'Sparkles', description: 'Describe brevemente este ícono.' }, 4, 2, 2, 4);
+      return withLayout({
+        type: 'icon',
+        title: 'Ícono destacado',
+        icon_visual_type: 'icon',
+        icon: 'Sparkles',
+        icon_color: '#2563EB',
+        icon_image: '',
+        description: 'Describe brevemente este ícono.'
+      }, 4, 2, 2, 4);
     case 'badge':
       return withLayout({ type: 'badge', title: 'Nuevo', icon: 'Tag', card_style: 'transparent', padding: 12 }, 4, 1, 2, 4);
     case 'metric':
@@ -245,9 +265,9 @@ const cloneBentoValue = (value: any) => {
   }
 };
 
-const createDuplicatedBentoItem = (sourceItem: any, existingItems: any[]) => {
+const createDuplicatedBentoItem = (sourceItem: any, existingItems: any[], desktopColumns = BENTO_DESKTOP_COLUMNS) => {
   const clonedItem = cloneBentoValue(sourceItem);
-  const sourceDesktop = getBentoPlacementLayout(sourceItem, 'desktop', BENTO_DESKTOP_COLUMNS);
+  const sourceDesktop = getBentoPlacementLayout(sourceItem, 'desktop', desktopColumns);
   const sourceTablet = getBentoPlacementLayout(sourceItem, 'tablet', BENTO_TABLET_COLUMNS);
   const sourceMobile = getBentoPlacementLayout(sourceItem, 'mobile', BENTO_MOBILE_COLUMNS);
   const resolveDuplicatePosition = (
@@ -271,7 +291,7 @@ const createDuplicatedBentoItem = (sourceItem: any, existingItems: any[]) => {
       : { x: candidateX, y: candidateY };
   };
 
-  const desktopPos = resolveDuplicatePosition(sourceDesktop, BENTO_DESKTOP_COLUMNS, 'desktop');
+  const desktopPos = resolveDuplicatePosition(sourceDesktop, desktopColumns, 'desktop');
   const tabletPos = resolveDuplicatePosition(sourceTablet, BENTO_TABLET_COLUMNS, 'tablet');
   const mobilePos = resolveDuplicatePosition(sourceMobile, BENTO_MOBILE_COLUMNS, 'mobile');
 
@@ -289,13 +309,13 @@ const createDuplicatedBentoItem = (sourceItem: any, existingItems: any[]) => {
     mobile_span: sourceMobile.w,
     layouts: {
       ...(clonedItem.layouts || {}),
-      desktop: { x: desktopPos.x, y: desktopPos.y, w: sourceDesktop.w, h: sourceDesktop.h, columns: BENTO_DESKTOP_COLUMNS },
+      desktop: { x: desktopPos.x, y: desktopPos.y, w: sourceDesktop.w, h: sourceDesktop.h, columns: desktopColumns },
       tablet: { x: tabletPos.x, y: tabletPos.y, w: sourceTablet.w, h: sourceTablet.h, columns: BENTO_TABLET_COLUMNS },
       mobile: { x: mobilePos.x, y: mobilePos.y, w: sourceMobile.w, h: sourceMobile.h, columns: BENTO_MOBILE_COLUMNS }
     },
     layout_columns: {
       ...(clonedItem.layout_columns || {}),
-      desktop: BENTO_DESKTOP_COLUMNS,
+      desktop: desktopColumns,
       tablet: BENTO_TABLET_COLUMNS,
       mobile: BENTO_MOBILE_COLUMNS
     }
@@ -349,10 +369,12 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
     selectCompositionElement
   } = useEditorStore();
   const containerRef = React.useRef<HTMLDivElement>(null);
+  const bentoLayerRefs = React.useRef<Record<number, HTMLDivElement | null>>({});
   const [shiningGroup, setShiningGroup] = React.useState<string | null>(null);
   const [expandedBentoItem, setExpandedBentoItem] = React.useState<number | null>(null);
   const [isBentoAddExpanded, setIsBentoAddExpanded] = React.useState(false);
 
+  const autoExpandedBentoModuleRef = React.useRef<string | null>(null);
   const shiningIntervalRef = React.useRef<NodeJS.Timeout | null>(null);
   const shiningTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
@@ -379,8 +401,29 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
   React.useEffect(() => {
     if (selectedBentoCellIndex !== null) {
       setExpandedBentoItem(selectedBentoCellIndex);
+      if (typeof window === 'undefined') return;
+      window.requestAnimationFrame(() => {
+        bentoLayerRefs.current[selectedBentoCellIndex]?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'nearest'
+        });
+      });
     }
   }, [selectedBentoCellIndex]);
+
+  React.useEffect(() => {
+    const activeBentoModule = editorState.addedModules.find(
+      (module) => module.id === editorState.expandedModuleId && module.type === 'bento'
+    );
+    if (!activeBentoModule) return;
+    if (autoExpandedBentoModuleRef.current === activeBentoModule.id) return;
+
+    const bentoItems = editorState.settingsValues[`${activeBentoModule.id}_el_bento_items_items`] || [];
+    if (Array.isArray(bentoItems) && bentoItems.length === 0 && selectedBentoCellIndex === null) {
+      setIsBentoAddExpanded(true);
+      autoExpandedBentoModuleRef.current = activeBentoModule.id;
+    }
+  }, [editorState.addedModules, editorState.expandedModuleId, editorState.settingsValues, selectedBentoCellIndex]);
 
   // Effect to handle shining animation
   React.useEffect(() => {
@@ -1226,11 +1269,13 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                                     unselectable="on"
                                     onClick={() => {
                                       const bentoItems = editorState.settingsValues[`${module.id}_el_bento_items_items`] || [];
-                                      const newItem = createBentoPanelElementPreset(item.type, bentoItems);
+                                      const desktopColumns = getBentoDesktopColumns(editorState.settingsValues, module.id);
+                                      const newItem = createBentoPanelElementPreset(item.type, bentoItems, desktopColumns);
                                       const newItems = [...bentoItems, newItem];
                                       const nextWorkspaceRows = normalizeBentoWorkspaceRows(
                                         editorState.settingsValues[`${module.id}_el_bento_items_workspace_rows`],
-                                        newItems
+                                        newItems,
+                                        desktopColumns
                                       );
                                       onSettingChange(`${module.id}_el_bento_items`, 'items', newItems);
                                       onSettingChange(`${module.id}_el_bento_items`, 'workspace_rows', nextWorkspaceRows);
@@ -1277,14 +1322,7 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                            return <div className="p-4 border border-dashed border-border rounded-xl text-center text-[10px] text-text/40">No hay capas todavía</div>;
                          }
 
-                         const visibleBentoItems = selectedBentoCellIndex !== null && bentoItems[selectedBentoCellIndex]
-                           ? [
-                               { item: bentoItems[selectedBentoCellIndex], itemIndex: selectedBentoCellIndex },
-                               ...bentoItems
-                                 .map((item: any, itemIndex: number) => ({ item, itemIndex }))
-                                 .filter(({ itemIndex }: { itemIndex: number }) => itemIndex !== selectedBentoCellIndex)
-                             ]
-                           : bentoItems.map((item: any, itemIndex: number) => ({ item, itemIndex }));
+                         const visibleBentoItems = bentoItems.map((item: any, itemIndex: number) => ({ item, itemIndex }));
 
                          return (
                            <>
@@ -1293,7 +1331,13 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                                 const elementOption = getBentoElementOption(item.type);
 
                                  return (
-                                  <div key={item.id || itemIndex} className="space-y-1">
+                                  <div
+                                    key={item.id || itemIndex}
+                                    ref={(node) => {
+                                      bentoLayerRefs.current[itemIndex] = node;
+                                    }}
+                                    className="space-y-1"
+                                  >
                                     <div
                                       onClick={() => {
                                         const shouldCollapseEditor = isItemExpanded && selectedBentoCellIndex === itemIndex;
@@ -1327,12 +1371,14 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                                             type="button"
                                             onClick={(event) => {
                                               event.stopPropagation();
-                                              const duplicatedItem = createDuplicatedBentoItem(item, bentoItems);
+                                              const desktopColumns = getBentoDesktopColumns(editorState.settingsValues, module.id);
+                                              const duplicatedItem = createDuplicatedBentoItem(item, bentoItems, desktopColumns);
                                               const newItems = [...bentoItems, duplicatedItem];
                                               const duplicatedIndex = newItems.length - 1;
                                               const nextWorkspaceRows = normalizeBentoWorkspaceRows(
                                                 editorState.settingsValues[`${module.id}_el_bento_items_workspace_rows`],
-                                                newItems
+                                                newItems,
+                                                desktopColumns
                                               );
                                               onSettingChange(`${module.id}_el_bento_items`, 'items', newItems);
                                               onSettingChange(`${module.id}_el_bento_items`, 'workspace_rows', nextWorkspaceRows);
@@ -1356,9 +1402,11 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                                             onClick={(event) => {
                                               event.stopPropagation();
                                               const newItems = bentoItems.filter((_: any, idx: number) => idx !== itemIndex);
+                                              const desktopColumns = getBentoDesktopColumns(editorState.settingsValues, module.id);
                                               const nextWorkspaceRows = normalizeBentoWorkspaceRows(
                                                 editorState.settingsValues[`${module.id}_el_bento_items_workspace_rows`],
-                                                newItems
+                                                newItems,
+                                                desktopColumns
                                               );
                                               onSettingChange(`${module.id}_el_bento_items`, 'items', newItems);
                                               onSettingChange(`${module.id}_el_bento_items`, 'workspace_rows', nextWorkspaceRows);

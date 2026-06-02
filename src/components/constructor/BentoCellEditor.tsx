@@ -40,6 +40,8 @@ const PILLAR_LABELS: Record<string, string> = {
 
 const PILLARS_ORDER: string[] = ['contenido', 'estructura', 'estilo', 'tipografia', 'multimedia', 'interaccion'];
 const BENTO_DESKTOP_COLUMNS = 24;
+const BENTO_MIN_DESKTOP_COLUMNS = 12;
+const BENTO_MAX_DESKTOP_COLUMNS = 32;
 const BENTO_TABLET_COLUMNS = 6;
 const BENTO_MOBILE_COLUMNS = 4;
 const BENTO_BASE_VISIBLE_ROWS = 7;
@@ -53,6 +55,12 @@ const TEXT_STYLE_PRESETS: Record<string, Record<string, any>> = {
   paragraph: { title_size: 'p', title_weight: 'normal', description_size: 'p', line_height: 1.55, letter_spacing: 0 },
   small: { title_size: 's', title_weight: 'normal', description_size: 's', line_height: 1.45, letter_spacing: 0 },
   caption: { title_size: 's', title_weight: 'bold', description_size: 's', line_height: 1.3, letter_spacing: 1 }
+};
+
+const clampBentoDesktopColumns = (value: any) => {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return BENTO_DESKTOP_COLUMNS;
+  return Math.min(BENTO_MAX_DESKTOP_COLUMNS, Math.max(BENTO_MIN_DESKTOP_COLUMNS, Math.round(parsed)));
 };
 
 interface BentoCellEditorProps {
@@ -120,8 +128,13 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
   const selectedBentoItem = getSelectedBentoItem();
   const selectedType = selectedBentoItem?.type || 'text';
   const activeLayoutKey = activeViewport;
+  const desktopColumns = clampBentoDesktopColumns(
+    settingsValues?.[`${selectedSection.id}_global_columns`]
+      ?? selectedSection.settings?.[`${selectedSection.id}_global_columns`]
+      ?? selectedSection.content?.columns
+  );
   const activeColumns = activeViewport === 'desktop'
-    ? BENTO_DESKTOP_COLUMNS
+    ? desktopColumns
     : activeViewport === 'tablet'
       ? BENTO_TABLET_COLUMNS
       : BENTO_MOBILE_COLUMNS;
@@ -168,7 +181,8 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
 
   const shouldScaleLegacyDesktopLayout = (item: any, layout: any) => {
     const declaredColumns = Number(layout?.columns || item?.layout_columns?.desktop || item?.layoutColumns?.desktop || 0);
-    return activeLayoutKey === 'desktop' && declaredColumns < BENTO_DESKTOP_COLUMNS;
+    return activeLayoutKey === 'desktop'
+      && (declaredColumns > 0 ? declaredColumns < activeColumns : activeColumns === BENTO_DESKTOP_COLUMNS);
   };
 
   const getActiveLayout = (item: any) => {
@@ -297,7 +311,7 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
     text: ['text_style', 'title', 'description', 'title_size', 'title_weight', 'font_family', 'title_color', 'description_size', 'content_align', 'line_height', 'letter_spacing', 'card_image', 'card_overlay', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'align_items', 'card_style', 'card_bg', 'card_gradient', 'card_radius', 'card_shadow', 'text_contrast'],
     visual: ['image', 'image_fit', 'card_image', 'card_overlay', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'align_items', 'card_style', 'card_bg', 'card_gradient', 'card_radius', 'card_shadow'],
     button: ['button_text', 'btn_url', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'align_items', 'card_style', 'card_bg', 'card_gradient', 'card_image', 'card_overlay', 'card_radius', 'card_shadow'],
-    icon: ['title', 'description', 'icon', 'title_size', 'title_weight', 'title_color', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'align_items', 'card_style', 'card_bg', 'card_gradient', 'card_image', 'card_overlay', 'card_radius', 'card_shadow', 'text_contrast'],
+    icon: ['title', 'description', 'icon_visual_type', 'icon', 'icon_color', 'icon_size', 'show_icon_bg', 'icon_bg', 'icon_image', 'title_size', 'title_weight', 'title_color', 'description_size', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'align_items', 'card_style', 'card_bg', 'card_gradient', 'card_image', 'card_overlay', 'card_radius', 'card_shadow', 'text_contrast'],
     badge: ['title', 'icon', 'title_size', 'title_weight', 'title_color', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'align_items', 'card_style', 'card_bg', 'card_gradient', 'card_image', 'card_overlay', 'card_radius', 'card_shadow'],
     metric: ['metric_value', 'metric_prefix', 'metric_suffix', 'metric_label', 'accent_color', 'icon', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'align_items', 'card_style', 'card_bg', 'card_gradient', 'card_image', 'card_overlay', 'card_radius', 'card_shadow'],
     list: ['title', 'list_items', 'icon', 'title_size', 'title_weight', 'title_color', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'align_items', 'card_style', 'card_bg', 'card_gradient', 'card_image', 'card_overlay', 'card_radius', 'card_shadow'],
@@ -308,10 +322,29 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
 
   const shouldShowFieldForType = (field: any) => {
     const visibleFields = visibleFieldsByType[selectedType] || visibleFieldsByType.text;
+    const iconVisualType = selectedBentoItem?.icon_visual_type || 'icon';
+    if (selectedType === 'icon' && iconVisualType === 'image') {
+      if (['icon', 'icon_color', 'icon_size', 'show_icon_bg', 'icon_bg'].includes(field.id)) return false;
+    }
+    if (selectedType === 'icon' && iconVisualType !== 'image' && field.id === 'icon_image') return false;
     return visibleFields.includes(field.id);
   };
 
   const settingsByPillar: Record<string, { label: string, setting: any, contextId: string }[]> = {};
+
+  const normalizeFieldForSelectedType = (field: any) => {
+    let nextField = field;
+    if (selectedType === 'icon' && field.id === 'title_size') {
+      nextField = { ...nextField, allowedLevels: ['t1', 't2', 't3'] };
+    }
+    if (selectedType === 'icon' && field.id === 'description_size') {
+      nextField = { ...nextField, allowedLevels: ['t3', 'p', 's'] };
+    }
+    if (field.id === 'desktop_span') {
+      nextField = { ...nextField, max: desktopColumns };
+    }
+    return nextField;
+  };
 
   moduleDef.elements.forEach((element: any) => {
     if (element.id !== 'el_bento_items' || !element.settings) return;
@@ -324,9 +357,10 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
       (settings as any[]).forEach((setting) => {
         const cellSettings = setting.type === 'repeater' && Array.isArray(setting.fields) ? setting.fields : [setting];
         cellSettings.filter(shouldShowFieldForType).forEach((field: any) => {
+          const normalizedField = normalizeFieldForSelectedType(field);
           settingsByPillar[targetPillar].push({
-            label: field.label,
-            setting: field,
+            label: normalizedField.label,
+            setting: normalizedField,
             contextId: `${selectedSection.id}_${element.id}_${selectedBentoCellIndex}`
           });
         });

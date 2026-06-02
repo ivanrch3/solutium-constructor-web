@@ -3605,17 +3605,7 @@ export const BENTO_MODULE: WebModule = {
   globalGroups: ['estructura', 'estilo', 'interaccion', 'multimedia'],
   globalSettings: {
     estructura: [
-      { id: 'bento_type', label: 'Especialización (Tipo)', type: 'select', defaultValue: 'mixed_content', options: [
-        { label: 'Contenido Mixto', value: 'mixed_content' },
-        { label: 'Beneficios (Grid)', value: 'benefits_grid' },
-        { label: 'Características Técnicas', value: 'technical_features' },
-        { label: 'Ecosistema de Apps', value: 'apps_ecosystem' },
-        { label: 'Métricas e Impacto', value: 'metrics_impact' },
-        { label: 'Resumen de Proceso', value: 'process_summary' },
-        { label: 'Casos de Uso', value: 'use_cases' },
-        { label: 'Call to Action', value: 'cta_grid' }
-      ] },
-      { id: 'columns', label: 'Columnas Desktop', type: 'range', defaultValue: 24, min: 24, max: 24 },
+      { id: 'columns', label: 'Columnas del lienzo', type: 'range', defaultValue: 24, min: 12, max: 32, step: 1 },
       { id: 'gap', label: 'Espaciado (Gap)', type: 'range', defaultValue: 20, min: 0, max: 100, unit: 'px' },
       { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 40, min: 0, max: 200, unit: 'px' },
       { id: 'max_width', label: 'Ancho Máximo', type: 'range', defaultValue: 1200, min: 800, max: 1600, unit: 'px' }
@@ -3746,7 +3736,16 @@ export const BENTO_MODULE: WebModule = {
           { id: 'trust_note', label: 'Nota de Confianza', type: 'text', defaultValue: '*No requiere tarjeta', showIf: { settingId: 'type', value: 'cta' } },
 
           // Icon/Text / Compact / Feature específicos
+          { id: 'icon_visual_type', label: 'Tipo visual', type: 'select', defaultValue: 'icon', options: [
+            { label: 'Ícono', value: 'icon' },
+            { label: 'Imagen', value: 'image' }
+          ], showIf: { settingId: 'type', value: 'icon' } },
           { id: 'icon', label: 'Icono', type: 'icon', defaultValue: 'Sparkles', showIf: { settingId: 'type', value: ['hero', 'icon_text', 'compact', 'metric', 'feature', 'app_card', 'step', 'icon', 'badge', 'list'], operator: 'includes' } },
+          { id: 'icon_color', label: 'Color del icono', type: 'color', defaultValue: '#2563EB', showIf: { settingId: 'type', value: 'icon' } },
+          { id: 'icon_size', label: 'Tamaño del icono', type: 'range', defaultValue: 32, min: 16, max: 96, unit: 'px', showIf: { settingId: 'type', value: 'icon' } },
+          { id: 'show_icon_bg', label: 'Mostrar fondo del icono', type: 'boolean', defaultValue: true, showIf: { settingId: 'type', value: 'icon' } },
+          { id: 'icon_bg', label: 'Color de fondo del icono', type: 'color', defaultValue: 'rgba(59, 130, 246, 0.1)', showIf: { settingId: 'type', value: 'icon' } },
+          { id: 'icon_image', label: 'Imagen del icono', type: 'image', defaultValue: '', showIf: { settingId: 'type', value: 'icon' } },
           { id: 'list_items', label: 'Items de Lista', type: 'textarea', defaultValue: 'Primer punto\nSegundo punto\nTercer punto', showIf: { settingId: 'type', value: 'list' } },
           { id: 'show_description', label: 'Mostrar Descripción', type: 'boolean', defaultValue: true, showIf: { settingId: 'type', value: ['compact', 'icon_text'], operator: 'includes' } },
           

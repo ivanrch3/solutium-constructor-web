@@ -7,22 +7,27 @@ import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
 import { TextRenderer } from '../TextRenderer';
 import { ParallaxBackground, useParallaxScrollProgress } from '../ParallaxBackground';
 import { parseNumSafe } from '../utils';
-import { Responsive, WidthProvider } from 'react-grid-layout/legacy';
+import { Responsive } from 'react-grid-layout/legacy';
 import { SectionAnimation } from '../animations/SectionAnimation';
 import { normalizeSectionAnimation } from '../../../constants/moduleAnimations';
 import '/node_modules/react-grid-layout/css/styles.css';
 import '/node_modules/react-resizable/css/styles.css';
 
-const ResponsiveGridLayout = WidthProvider(Responsive);
+const ResponsiveGridLayout = Responsive;
 const BENTO_BREAKPOINT_TO_LAYOUT: Record<string, 'desktop' | 'tablet' | 'mobile'> = {
   lg: 'desktop',
-  md: 'desktop',
+  md: 'tablet',
   sm: 'tablet',
   xs: 'mobile',
   xxs: 'mobile'
 };
 
 const BENTO_BREAKPOINT_ORDER = ['lg', 'md', 'sm', 'xs', 'xxs'];
+const BENTO_DESKTOP_COLUMNS = 24;
+const BENTO_TABLET_COLUMNS = 6;
+const BENTO_MOBILE_COLUMNS = 4;
+const BENTO_MIN_EDITABLE_ROWS = 36;
+const BENTO_ROW_HEIGHT = 80;
 
 
 const isBentoDebugEnabled = () => {
@@ -908,8 +913,10 @@ export const BentoModule: React.FC<{
   content?: any;
   onSettingChange?: (id: string, settingId: string, value: any) => void;
   isPreviewMode?: boolean;
+  previewScale?: number;
+  constructorViewport?: 'desktop' | 'tablet' | 'mobile';
   onOpenBentoGenerator?: () => void;
-}> = ({ moduleId, settingsValues, content, onSettingChange, isPreviewMode }) => {
+}> = ({ moduleId, settingsValues, content, onSettingChange, isPreviewMode, previewScale = 1, constructorViewport = 'desktop' }) => {
   useEffect(() => {
     if (!isBentoDebugEnabled()) return;
     logDebug('[BENTO_MODULE_MOUNT_DEBUG]', {
@@ -950,8 +957,9 @@ export const BentoModule: React.FC<{
   };
 
   // Global Settings
-  const columns = Math.max(1, parseInt(getVal(null, 'columns', 12)) || 12);
+  const columns = BENTO_DESKTOP_COLUMNS;
   const gap = parseNumSafe(getVal(null, 'gap', 20), 20);
+  const editableMinHeight = (BENTO_MIN_EDITABLE_ROWS * BENTO_ROW_HEIGHT) + ((BENTO_MIN_EDITABLE_ROWS - 1) * gap);
   const paddingY = parseNumSafe(getVal(null, 'padding_y', 40), 40);
   const maxWidth = parseNumSafe(getVal(null, 'max_width', 1200), 1200);
   const darkMode = toBoolean(getVal(null, 'dark_mode', false));
@@ -979,12 +987,48 @@ export const BentoModule: React.FC<{
 
   // --- LAYOUT HELPERS ---
 
+  const clampNumber = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
+
+  const getColumnsForBreakpoint = (breakpoint: string) => {
+    if (breakpoint === 'lg' || breakpoint === 'desktop') return BENTO_DESKTOP_COLUMNS;
+    if (breakpoint === 'md' || breakpoint === 'sm' || breakpoint === 'tablet') return BENTO_TABLET_COLUMNS;
+    return BENTO_MOBILE_COLUMNS;
+  };
+
   const normalizeLayoutEntry = (layout: any) => ({
     x: Number(layout?.x) || 0,
     y: Number(layout?.y) || 0,
     w: Number(layout?.w) || 1,
     h: Number(layout?.h) || 1
   });
+
+  const clampLayoutEntry = (layout: any, cols: number) => {
+    const normalized = normalizeLayoutEntry(layout);
+    const w = clampNumber(normalized.w, 1, cols);
+    return {
+      x: clampNumber(normalized.x, 0, Math.max(cols - w, 0)),
+      y: Math.max(normalized.y, 0),
+      w,
+      h: Math.max(normalized.h, 1)
+    };
+  };
+
+  const shouldScaleLegacyDesktopLayout = (item: any, layout: any, cols: number) => {
+    if (cols !== BENTO_DESKTOP_COLUMNS) return false;
+    const declaredColumns = Number(layout?.columns || item?.layout_columns?.desktop || item?.layoutColumns?.desktop || 0);
+    if (declaredColumns >= BENTO_DESKTOP_COLUMNS) return false;
+    return true;
+  };
+
+  const scaleLegacyDesktopLayout = (item: any, layout: any, cols: number) => {
+    const shouldScale = shouldScaleLegacyDesktopLayout(item, layout, cols);
+    const source = normalizeLayoutEntry(layout);
+    return clampLayoutEntry({
+      ...source,
+      x: shouldScale ? source.x * 2 : source.x,
+      w: shouldScale ? source.w * 2 : source.w
+    }, cols);
+  };
 
   const normalizeLayoutEntryWithId = (layout: any) => ({
     i: String(layout?.i ?? ''),
@@ -1029,7 +1073,15 @@ export const BentoModule: React.FC<{
 
       // 1. Try saved layouts object
       if (item.layouts && item.layouts[breakpoint]) {
-        return { i: layoutId, ...item.layouts[breakpoint] };
+        const savedLayout = item.layouts[breakpoint];
+        const scaledLayout = breakpoint === 'desktop'
+          ? scaleLegacyDesktopLayout(item, savedLayout, cols)
+          : clampLayoutEntry(savedLayout, cols);
+        return {
+          i: layoutId,
+          ...savedLayout,
+          ...scaledLayout
+        };
       }
 
       // 2. Try legacy / specific span fields
@@ -1040,13 +1092,14 @@ export const BentoModule: React.FC<{
       const h = breakpoint === 'mobile' ? (item.mobile_rows || item.row_span || 2) : 
                 (item.desktop_rows || item.row_span || 2);
 
+      const fallbackLayout = breakpoint === 'desktop'
+        ? scaleLegacyDesktopLayout(item, { x: item.x || 0, y: item.y || 0, w, h }, cols)
+        : clampLayoutEntry({ x: item.x || 0, y: item.y || 0, w, h }, cols);
+
       // Simple positional fallback if x/y not set for bp
       return {
         i: layoutId,
-        x: item.x || 0,
-        y: item.y || 0,
-        w: Math.min(w, cols),
-        h: h
+        ...fallbackLayout
       };
     });
   };
@@ -1055,6 +1108,35 @@ export const BentoModule: React.FC<{
   const lastPersistedLayoutSignatureRef = useRef('');
   const pendingLayoutRef = useRef<{ currentLayout: readonly any[]; allLayouts?: any } | null>(null);
   const layoutPersistTimerRef = useRef<number | null>(null);
+  const gridContainerRef = useRef<HTMLDivElement | null>(null);
+  const isInteractingWithLayoutRef = useRef(false);
+  const [gridWidth, setGridWidth] = useState(1280);
+  const normalizedPreviewScale = Number.isFinite(previewScale) && previewScale > 0 ? previewScale : 1;
+  const forcedBreakpoint = constructorViewport === 'desktop'
+    ? 'lg'
+    : constructorViewport === 'tablet'
+      ? 'md'
+      : 'xs';
+
+  useEffect(() => {
+    const node = gridContainerRef.current;
+    if (!node || typeof ResizeObserver === 'undefined') return;
+
+    const updateGridWidth = (width: number) => {
+      const safeWidth = Math.max(1, Math.round(width));
+      setGridWidth((currentWidth) => (currentWidth === safeWidth ? currentWidth : safeWidth));
+    };
+
+    updateGridWidth(node.getBoundingClientRect().width / normalizedPreviewScale);
+
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (entry) updateGridWidth(entry.contentRect.width);
+    });
+
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [normalizedPreviewScale, constructorViewport]);
   
   // Items Data - Robust Normalization
   const getItemsFromMultipleSources = () => {
@@ -1070,9 +1152,9 @@ export const BentoModule: React.FC<{
 
   const layouts = useMemo(() => ({
     lg: getBentoLayoutForBreakpoint(rawItems, 'desktop', columns),
-    md: getBentoLayoutForBreakpoint(rawItems, 'desktop', columns),
-    sm: getBentoLayoutForBreakpoint(rawItems, 'tablet', 6),
-    xs: getBentoLayoutForBreakpoint(rawItems, 'mobile', 4),
+    md: getBentoLayoutForBreakpoint(rawItems, 'tablet', BENTO_TABLET_COLUMNS),
+    sm: getBentoLayoutForBreakpoint(rawItems, 'tablet', BENTO_TABLET_COLUMNS),
+    xs: getBentoLayoutForBreakpoint(rawItems, 'mobile', BENTO_MOBILE_COLUMNS),
     xxs: getBentoLayoutForBreakpoint(rawItems, 'mobile', 1)
   }), [rawItems, columns]);
 
@@ -1084,6 +1166,7 @@ export const BentoModule: React.FC<{
       ? currentBreakpointRef.current
       : BENTO_BREAKPOINT_ORDER.find((breakpoint) => areLayoutsEqual(currentLayout, allLayouts?.[breakpoint])) || currentBreakpointRef.current;
     const currentBP = BENTO_BREAKPOINT_TO_LAYOUT[activeBreakpoint] || 'desktop';
+    const currentCols = getColumnsForBreakpoint(activeBreakpoint);
     const normalizedCurrentLayout = currentLayout.map(normalizeLayoutEntryWithId);
     const currentSignature = JSON.stringify({
       breakpoint: currentBP,
@@ -1100,7 +1183,7 @@ export const BentoModule: React.FC<{
     normalizedCurrentLayout.forEach((l: any) => {
       const idx = findItemIndexByLayoutId(newItems, l.i);
       if (newItems[idx]) {
-        const entry = normalizeLayoutEntry(l);
+        const entry = clampLayoutEntry(l, currentCols);
         const existingLayouts = newItems[idx].layouts || {};
         const existingEntry = existingLayouts[currentBP] ? normalizeLayoutEntry(existingLayouts[currentBP]) : null;
         
@@ -1113,9 +1196,12 @@ export const BentoModule: React.FC<{
         ) {
           newItems[idx] = {
             ...newItems[idx],
-            layouts: { ...existingLayouts, [currentBP]: { x: entry.x, y: entry.y, w: entry.w, h: entry.h } },
+            layouts: { ...existingLayouts, [currentBP]: { x: entry.x, y: entry.y, w: entry.w, h: entry.h, columns: currentCols } },
+            layout_columns: { ...(newItems[idx].layout_columns || {}), [currentBP]: currentCols },
             // Keep legacy synced for desktop compatibility
-            ...(currentBP === 'desktop' ? { x: l.x, y: l.y, col_span: l.w, row_span: l.h } : {})
+            ...(currentBP === 'desktop' ? { x: entry.x, y: entry.y, col_span: entry.w, row_span: entry.h, desktop_span: entry.w, desktop_rows: entry.h } : {}),
+            ...(currentBP === 'tablet' ? { tablet_span: entry.w } : {}),
+            ...(currentBP === 'mobile' ? { mobile_span: entry.w } : {})
           };
           changed = true;
         }
@@ -1139,6 +1225,14 @@ export const BentoModule: React.FC<{
     persistLayoutChange(pending?.currentLayout || fallbackLayout || [], pending?.allLayouts);
   };
 
+  const cancelPendingLayoutCommit = () => {
+    if (layoutPersistTimerRef.current !== null) {
+      window.clearTimeout(layoutPersistTimerRef.current);
+      layoutPersistTimerRef.current = null;
+    }
+    pendingLayoutRef.current = null;
+  };
+
   const schedulePendingLayoutCommit = () => {
     if (layoutPersistTimerRef.current !== null) {
       window.clearTimeout(layoutPersistTimerRef.current);
@@ -1151,6 +1245,7 @@ export const BentoModule: React.FC<{
 
   const handleLayoutChange = (currentLayout: any, allLayouts: any) => {
     if (!onSettingChange || isPreviewMode) return;
+    if (!isInteractingWithLayoutRef.current) return;
     if (!Array.isArray(currentLayout) || currentLayout.length === 0) return;
     pendingLayoutRef.current = { currentLayout, allLayouts };
     schedulePendingLayoutCommit();
@@ -1171,20 +1266,32 @@ export const BentoModule: React.FC<{
     if (!onSettingChange) return;
     
     const type = (window as any)._draggingBentoType || 'text';
-    const currentLayoutKey = BENTO_BREAKPOINT_TO_LAYOUT[currentBreakpointRef.current] || 'desktop';
-    const droppedLayout = normalizeLayoutEntry(item);
+    const currentBreakpoint = forcedBreakpoint;
+    const currentLayoutKey = BENTO_BREAKPOINT_TO_LAYOUT[currentBreakpoint] || 'desktop';
+    const currentCols = getColumnsForBreakpoint(currentBreakpoint);
+    const droppedLayout = clampLayoutEntry(item, currentCols);
+    const defaultDesktopSpan = currentLayoutKey === 'desktop' ? droppedLayout.w : 8;
+    const defaultTabletSpan = currentLayoutKey === 'tablet' ? droppedLayout.w : Math.min(defaultDesktopSpan, BENTO_TABLET_COLUMNS);
+    const defaultMobileSpan = currentLayoutKey === 'mobile' ? droppedLayout.w : BENTO_MOBILE_COLUMNS;
     
     const newItem = {
       id: createBentoCellId(),
       type,
       title: type === 'stat' ? '99+' : (type === 'cta' ? '¡Únete ahora!' : 'Nuevo Bloque'),
       description: 'Personaliza este bloque desde el panel de ajustes.',
-      col_span: item.w,
-      row_span: item.h,
-      x: item.x,
-      y: item.y,
+      col_span: defaultDesktopSpan,
+      row_span: droppedLayout.h,
+      desktop_span: defaultDesktopSpan,
+      desktop_rows: droppedLayout.h,
+      tablet_span: defaultTabletSpan,
+      mobile_span: defaultMobileSpan,
+      x: currentLayoutKey === 'desktop' ? droppedLayout.x : 0,
+      y: currentLayoutKey === 'desktop' ? droppedLayout.y : 0,
       layouts: {
-        [currentLayoutKey]: droppedLayout
+        [currentLayoutKey]: { ...droppedLayout, columns: currentCols }
+      },
+      layout_columns: {
+        [currentLayoutKey]: currentCols
       },
       card_style: 'solid',
       card_radius: 28,
@@ -1202,10 +1309,9 @@ export const BentoModule: React.FC<{
 
   const getLayoutEntryForBreakpoint = (item: any, breakpoint: 'desktop' | 'tablet' | 'mobile', colsForBreakpoint: number) => {
     if (item.layouts?.[breakpoint]) {
-      return normalizeLayoutEntry({
-        ...item.layouts[breakpoint],
-        w: Math.min(item.layouts[breakpoint].w || 1, colsForBreakpoint)
-      });
+      return breakpoint === 'desktop'
+        ? scaleLegacyDesktopLayout(item, item.layouts[breakpoint], colsForBreakpoint)
+        : clampLayoutEntry(item.layouts[breakpoint], colsForBreakpoint);
     }
 
     const w = breakpoint === 'mobile' ? (item.mobile_span || item.col_span || 4) :
@@ -1214,12 +1320,9 @@ export const BentoModule: React.FC<{
     const h = breakpoint === 'mobile' ? (item.mobile_rows || item.row_span || 2) :
               (item.desktop_rows || item.row_span || 2);
 
-    return {
-      x: Math.min(item.x || 0, Math.max(colsForBreakpoint - Math.min(w, colsForBreakpoint), 0)),
-      y: item.y || 0,
-      w: Math.min(w, colsForBreakpoint),
-      h
-    };
+    return breakpoint === 'desktop'
+      ? scaleLegacyDesktopLayout(item, { x: item.x || 0, y: item.y || 0, w, h }, colsForBreakpoint)
+      : clampLayoutEntry({ x: item.x || 0, y: item.y || 0, w, h }, colsForBreakpoint);
   };
 
   // Header Values
@@ -1402,11 +1505,11 @@ export const BentoModule: React.FC<{
                 gap: `${gap}px`,
               }}
             >
-              {Array.from({ length: columns * 8 }).map((_, i) => (
+              {Array.from({ length: columns * BENTO_MIN_EDITABLE_ROWS }).map((_, i) => (
                 <div 
                   key={i} 
                   className="border border-primary/30 rounded-[28px]" 
-                  style={{ height: '80px' }}
+                  style={{ height: `${BENTO_ROW_HEIGHT}px` }}
                 />
               ))}
             </div>
@@ -1415,11 +1518,12 @@ export const BentoModule: React.FC<{
 
         {/* Visual editing grid */}
         <div 
+          ref={gridContainerRef}
           className={`w-full transition-all duration-500 relative ${!isPreviewMode ? 'min-h-[400px] border-2 border-dashed border-gray-200 rounded-[40px] hover:border-primary/40' : ''} ${!isPreviewMode && rawItems.length === 0 ? 'bg-blue-50/10 border-blue-200/50' : ''}`} 
           style={{ 
             opacity: 1,
             visibility: 'visible',
-            minHeight: !isPreviewMode ? '400px' : 'auto'
+            minHeight: !isPreviewMode ? `${editableMinHeight}px` : 'auto'
           }}
         >
           {/* Editor Label */}
@@ -1430,38 +1534,59 @@ export const BentoModule: React.FC<{
           )}
 
           <ResponsiveGridLayout
+            key={`bento-grid-${constructorViewport}-${Math.round(normalizedPreviewScale * 1000)}`}
             className="layout w-full relative z-10"
             onBreakpointChange={handleBreakpointChange}
             onWidthChange={(w) => {
               if (isBentoDebugEnabled()) logDebug('[BENTO_WIDTH_CHANGE]', w);
             }}
             layouts={layouts}
-            breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
-            cols={{ lg: columns, md: columns, sm: 6, xs: 4, xxs: 1 }}
-            rowHeight={80}
+            breakpoint={forcedBreakpoint}
+            width={gridWidth}
+            style={{ minHeight: !isPreviewMode ? `${editableMinHeight}px` : undefined }}
+            breakpoints={{ lg: 992, md: 768, sm: 600, xs: 360, xxs: 0 }}
+            cols={{ lg: columns, md: BENTO_TABLET_COLUMNS, sm: BENTO_TABLET_COLUMNS, xs: BENTO_MOBILE_COLUMNS, xxs: 1 }}
+            rowHeight={BENTO_ROW_HEIGHT}
             margin={[gap, gap]}
             containerPadding={[0, 0]}
             isDraggable={!isPreviewMode}
             isResizable={!isPreviewMode}
             isDroppable={!isPreviewMode}
             onLayoutChange={handleLayoutChange}
-            onDragStart={() => setIsDragging(true)}
+            onDragStart={() => {
+              cancelPendingLayoutCommit();
+              isInteractingWithLayoutRef.current = true;
+              setIsDragging(true);
+            }}
             onDragStop={(layout) => {
               setIsDragging(false);
               commitPendingLayoutChange(layout);
+              isInteractingWithLayoutRef.current = false;
             }}
-            onResizeStart={() => setIsDragging(true)}
+            onResizeStart={() => {
+              cancelPendingLayoutCommit();
+              isInteractingWithLayoutRef.current = true;
+              setIsDragging(true);
+            }}
             onResizeStop={(layout) => {
               setIsDragging(false);
               commitPendingLayoutChange(layout);
+              isInteractingWithLayoutRef.current = false;
             }}
             onDrop={handleDrop}
             compactType={null}
-            preventCollision={true}
+            preventCollision={false}
+            allowOverlap={false}
             isBounded={true}
             useCSSTransforms={true}
-            measureBeforeMount={true}
-            droppingItem={{ i: "__dropping_elem__", w: 4, h: 2, x: 0, y: 0 }}
+            transformScale={normalizedPreviewScale}
+            droppingItem={{
+              i: "__dropping_elem__",
+              w: forcedBreakpoint === 'lg' ? 8 : forcedBreakpoint === 'md' ? 3 : 4,
+              h: 2,
+              x: 0,
+              y: 0
+            }}
           >
             {rawItems.map((item: any, i: number) => {
               const {

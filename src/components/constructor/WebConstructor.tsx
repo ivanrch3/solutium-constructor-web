@@ -4777,8 +4777,9 @@ const formatTimestampName = () => {
 
   const getPreviewDisableReason = (siteId?: string) => {
     try {
-      return localStorage.getItem(getPreviewDisableKey(siteId))
-        || sessionStorage.getItem(getPreviewDisableKey(siteId));
+      const key = getPreviewDisableKey(siteId);
+      localStorage.removeItem(key);
+      return sessionStorage.getItem(key);
     } catch {
       return null;
     }
@@ -4786,8 +4787,9 @@ const formatTimestampName = () => {
 
   const setPreviewDisableReason = (reason: string, siteId?: string) => {
     try {
-      localStorage.setItem(getPreviewDisableKey(siteId), reason);
-      sessionStorage.setItem(getPreviewDisableKey(siteId), reason);
+      const key = getPreviewDisableKey(siteId);
+      localStorage.removeItem(key);
+      sessionStorage.setItem(key, reason);
     } catch {
       // ignore sessionStorage access issues
     }
@@ -4962,19 +4964,23 @@ const formatTimestampName = () => {
 
     // 2. Normalizar items y asegurar layout básico
     const normalizedItems = schema.items.map((item, idx) => {
+      const itemAny = item as any;
       const colsPerRow = 3;
-      const colWidth = 4;
+      const colWidth = 8;
       const rowHeight = 2;
       
       return {
         ...item,
         id: item.id || `item_${idx}_${Math.random().toString(36).substr(2, 9)}`,
-        x: typeof item.x === 'number' ? item.x : (idx % colsPerRow) * colWidth,
+        x: typeof item.x === 'number' ? Math.min(item.x * 2, 23) : (idx % colsPerRow) * colWidth,
         y: typeof item.y === 'number' ? item.y : Math.floor(idx / colsPerRow) * rowHeight,
         type: item.type || 'icon_text',
         card_style: item.card_style || 'solid',
-        col_span: item.col_span || 4,
-        row_span: item.row_span || 2
+        col_span: item.col_span ? Math.min(item.col_span * 2, 24) : 8,
+        row_span: item.row_span || 2,
+        desktop_span: itemAny.desktop_span ? Math.min(itemAny.desktop_span * 2, 24) : 8,
+        desktop_rows: itemAny.desktop_rows || item.row_span || 2,
+        layout_columns: { ...(itemAny.layout_columns || {}), desktop: 24 }
       };
     });
 
@@ -5017,7 +5023,7 @@ const formatTimestampName = () => {
     Object.values(BENTO_MODULE.globalSettings || {}).forEach(groupSettings => {
       groupSettings.forEach(setting => {
         let val = resolveProjectAwareSettingDefault(setting, setting.defaultValue);
-        if (setting.id === 'columns') val = schema.layout.columns;
+        if (setting.id === 'columns') val = 24;
         if (setting.id === 'gap') val = schema.layout.gap;
         if (setting.id === 'bento_type') val = schema.layout.bento_type || 'mixed_content';
         initialValues[`${moduleId}_global_${setting.id}`] = val;
@@ -5042,17 +5048,36 @@ const formatTimestampName = () => {
 
     // 3. Forzar inserción de items en la clave que BentoModule espera
     const itemsKey = `${moduleId}_el_bento_items_items`;
-    initialValues[itemsKey] = schema.items.map(item => ({
-      ...item,
-      icon: item.icon || 'Sparkles',
-      image: item.image || '',
-      col_span: item.col_span || 4,
-      row_span: item.row_span || 2,
-      card_style: item.card_style || 'solid',
-      button_text: item.button_text || 'Explorar',
-      btn_url: item.btn_url || '#',
-      eyebrow: item.badge || ''
-    }));
+    initialValues[itemsKey] = schema.items.map(item => {
+      const itemAny = item as any;
+      const desktopSpan = itemAny.desktop_span || item.col_span || 8;
+      const desktopRows = itemAny.desktop_rows || item.row_span || 2;
+
+      return {
+        ...item,
+        icon: item.icon || 'Sparkles',
+        image: item.image || '',
+        col_span: item.col_span || 8,
+        row_span: item.row_span || 2,
+        desktop_span: desktopSpan,
+        desktop_rows: desktopRows,
+        layouts: {
+          ...(itemAny.layouts || {}),
+          desktop: {
+            x: item.x || 0,
+            y: item.y || 0,
+            w: desktopSpan,
+            h: desktopRows,
+            columns: 24
+          }
+        },
+        layout_columns: { ...(itemAny.layout_columns || {}), desktop: 24 },
+        card_style: item.card_style || 'solid',
+        button_text: item.button_text || 'Explorar',
+        btn_url: item.btn_url || '#',
+        eyebrow: item.badge || ''
+      };
+    });
 
     const newModule = { 
       ...BENTO_MODULE, 
@@ -5357,6 +5382,7 @@ const formatTimestampName = () => {
                         trustedCompanyLogos={trustedCompanyLogos}
                         isMobile={true}
                         activeTab={activeTab}
+                        activeViewport={viewport}
                       />
                     </div>
                   )}
@@ -5407,6 +5433,7 @@ const formatTimestampName = () => {
                     trustedCompanyLogos={trustedCompanyLogos}
                     activeTab={activeTab}
                     useSplitLayout={useConstructorSplitLayout}
+                    activeViewport={viewport}
                   />
                 )}
                 <div className={`${useConstructorSplitLayout ? 'w-[50vw] flex-none' : 'flex-1'} flex flex-col h-full min-w-0`}>

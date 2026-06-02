@@ -74,6 +74,10 @@ const BENTO_ELEMENT_OPTIONS = [
   { type: 'card', label: 'Tarjeta simple', icon: <Box size={14} /> }
 ];
 
+const BENTO_DESKTOP_COLUMNS = 24;
+const BENTO_TABLET_COLUMNS = 6;
+const BENTO_MOBILE_COLUMNS = 4;
+
 const getBentoElementOption = (type?: string) => {
   const normalizedType = type === 'image' ? 'visual' : type === 'cta' ? 'button' : type === 'stat' ? 'metric' : type;
   return BENTO_ELEMENT_OPTIONS.find((option) => option.type === normalizedType) || BENTO_ELEMENT_OPTIONS[0];
@@ -86,17 +90,24 @@ const createBentoCellId = () => {
 
 const getBentoPlacementLayout = (item: any, breakpoint: 'desktop' | 'tablet' | 'mobile', cols: number) => {
   const savedLayout = item.layouts?.[breakpoint];
+  const declaredColumns = Number(savedLayout?.columns || item.layout_columns?.[breakpoint] || 0);
+  const shouldScaleLegacyDesktop = breakpoint === 'desktop'
+    && cols === BENTO_DESKTOP_COLUMNS
+    && declaredColumns < BENTO_DESKTOP_COLUMNS;
   const width = breakpoint === 'mobile'
     ? (item.mobile_span || item.col_span || 4)
     : breakpoint === 'tablet'
       ? (item.tablet_span || item.col_span || 2)
       : (item.desktop_span || item.col_span || 4);
   const height = breakpoint === 'mobile' ? (item.mobile_rows || item.row_span || 2) : (item.desktop_rows || item.row_span || 2);
+  const rawX = Number(savedLayout?.x ?? item.x ?? 0) || 0;
+  const rawW = Number(savedLayout?.w ?? width) || 1;
+  const normalizedW = Math.min(shouldScaleLegacyDesktop ? rawW * 2 : rawW, cols);
 
   return {
-    x: Math.min(Number(savedLayout?.x ?? item.x ?? 0) || 0, Math.max(cols - Math.min(width, cols), 0)),
+    x: Math.min(shouldScaleLegacyDesktop ? rawX * 2 : rawX, Math.max(cols - normalizedW, 0)),
     y: Number(savedLayout?.y ?? item.y ?? 0) || 0,
-    w: Math.min(Number(savedLayout?.w ?? width) || 1, cols),
+    w: normalizedW,
     h: Number(savedLayout?.h ?? height) || 1
   };
 };
@@ -135,10 +146,10 @@ const findFirstFreeBentoPosition = (
 };
 
 const createBentoPanelElementPreset = (kind: string, existingItems: any[]) => {
-  const withLayout = (item: any, desktopW: number, desktopH: number, tabletW = Math.min(desktopW, 6), mobileW = 4) => {
-    const desktopPos = findFirstFreeBentoPosition(existingItems, desktopW, desktopH, 12, 'desktop');
-    const tabletPos = findFirstFreeBentoPosition(existingItems, tabletW, desktopH, 6, 'tablet');
-    const mobilePos = findFirstFreeBentoPosition(existingItems, mobileW, desktopH, 4, 'mobile');
+  const withLayout = (item: any, desktopW: number, desktopH: number, tabletW = Math.min(desktopW, BENTO_TABLET_COLUMNS), mobileW = BENTO_MOBILE_COLUMNS) => {
+    const desktopPos = findFirstFreeBentoPosition(existingItems, desktopW, desktopH, BENTO_DESKTOP_COLUMNS, 'desktop');
+    const tabletPos = findFirstFreeBentoPosition(existingItems, tabletW, desktopH, BENTO_TABLET_COLUMNS, 'tablet');
+    const mobilePos = findFirstFreeBentoPosition(existingItems, mobileW, desktopH, BENTO_MOBILE_COLUMNS, 'mobile');
 
     return {
       id: createBentoCellId(),
@@ -157,35 +168,40 @@ const createBentoPanelElementPreset = (kind: string, existingItems: any[]) => {
       x: desktopPos.x,
       y: desktopPos.y,
       layouts: {
-        desktop: { x: desktopPos.x, y: desktopPos.y, w: desktopW, h: desktopH },
-        tablet: { x: tabletPos.x, y: tabletPos.y, w: tabletW, h: desktopH },
-        mobile: { x: mobilePos.x, y: mobilePos.y, w: mobileW, h: desktopH }
+        desktop: { x: desktopPos.x, y: desktopPos.y, w: desktopW, h: desktopH, columns: BENTO_DESKTOP_COLUMNS },
+        tablet: { x: tabletPos.x, y: tabletPos.y, w: tabletW, h: desktopH, columns: BENTO_TABLET_COLUMNS },
+        mobile: { x: mobilePos.x, y: mobilePos.y, w: mobileW, h: desktopH, columns: BENTO_MOBILE_COLUMNS }
+      },
+      layout_columns: {
+        desktop: BENTO_DESKTOP_COLUMNS,
+        tablet: BENTO_TABLET_COLUMNS,
+        mobile: BENTO_MOBILE_COLUMNS
       }
     };
   };
 
   switch (kind) {
     case 'visual':
-      return withLayout({ type: 'visual', title: '', description: '', image: '', card_style: 'transparent', padding: 0 }, 3, 2, 3, 4);
+      return withLayout({ type: 'visual', title: '', description: '', image: '', card_style: 'transparent', padding: 0 }, 6, 2, 3, 4);
     case 'button':
-      return withLayout({ type: 'button', title: 'Haz clic aquí', button_text: 'Haz clic aquí', btn_url: '#', card_style: 'transparent', padding: 16 }, 3, 1, 3, 4);
+      return withLayout({ type: 'button', title: 'Haz clic aquí', button_text: 'Haz clic aquí', btn_url: '#', card_style: 'transparent', padding: 16 }, 6, 1, 3, 4);
     case 'icon':
-      return withLayout({ type: 'icon', title: 'Ícono destacado', icon: 'Sparkles', description: '' }, 2, 2, 2, 4);
+      return withLayout({ type: 'icon', title: 'Ícono destacado', icon: 'Sparkles', description: '' }, 4, 2, 2, 4);
     case 'badge':
-      return withLayout({ type: 'badge', title: 'Nuevo', icon: 'Tag', card_style: 'transparent', padding: 12 }, 2, 1, 2, 4);
+      return withLayout({ type: 'badge', title: 'Nuevo', icon: 'Tag', card_style: 'transparent', padding: 12 }, 4, 1, 2, 4);
     case 'metric':
-      return withLayout({ type: 'metric', title: '99+', description: 'Impacto medible', metric_value: '99+', metric_label: 'Impacto', icon: 'BarChart3', accent_color: '#3B82F6' }, 3, 2, 3, 4);
+      return withLayout({ type: 'metric', title: '99+', description: 'Impacto medible', metric_value: '99+', metric_label: 'Impacto', icon: 'BarChart3', accent_color: '#3B82F6' }, 6, 2, 3, 4);
     case 'list':
-      return withLayout({ type: 'list', title: 'Puntos clave', description: '', list_items: ['Primer punto', 'Segundo punto', 'Tercer punto'], icon: 'ListChecks' }, 4, 3, 4, 4);
+      return withLayout({ type: 'list', title: 'Puntos clave', description: '', list_items: ['Primer punto', 'Segundo punto', 'Tercer punto'], icon: 'ListChecks' }, 8, 3, 4, 4);
     case 'accordion':
-      return withLayout({ type: 'accordion', title: 'Ver más detalles', description: 'Contenido desplegable para ampliar esta idea.', icon: 'ChevronDown' }, 4, 2, 4, 4);
+      return withLayout({ type: 'accordion', title: 'Ver más detalles', description: 'Contenido desplegable para ampliar esta idea.', icon: 'ChevronDown' }, 8, 2, 4, 4);
     case 'marquee':
-      return withLayout({ type: 'marquee', title: 'PROMO • NUEVO • 24/7', card_style: 'transparent', padding: 12 }, 8, 1, 6, 4);
+      return withLayout({ type: 'marquee', title: 'PROMO • NUEVO • 24/7', card_style: 'transparent', padding: 12 }, 16, 1, 6, 4);
     case 'card':
-      return withLayout({ type: 'card', title: 'Tarjeta simple', description: 'Combina texto, estilo e imagen de fondo.', icon: 'PanelTop' }, 4, 2, 3, 4);
+      return withLayout({ type: 'card', title: 'Tarjeta simple', description: 'Combina texto, estilo e imagen de fondo.', icon: 'PanelTop' }, 8, 2, 3, 4);
     case 'text':
     default:
-      return withLayout({ type: 'text', text_style: 'heading', title: 'Título del texto', description: 'Escribe aquí tu contenido...', icon: 'Type' }, 4, 2, 3, 4);
+      return withLayout({ type: 'text', text_style: 'heading', title: 'Título del texto', description: 'Escribe aquí tu contenido...', icon: 'Type' }, 8, 2, 3, 4);
   }
 };
 
@@ -204,6 +220,7 @@ interface StructurePanelProps {
   isMobile?: boolean;
   activeTab?: string;
   useSplitLayout?: boolean;
+  activeViewport?: 'desktop' | 'tablet' | 'mobile';
 }
 
 export const StructurePanel: React.FC<StructurePanelProps> = ({
@@ -220,7 +237,8 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
   trustedCompanyLogos,
   isMobile,
   activeTab = 'constructor',
-  useSplitLayout = false
+  useSplitLayout = false,
+  activeViewport = 'desktop'
 }) => {
   const {
     siteContent,
@@ -894,6 +912,7 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                                       project={project}
                                       projectColors={projectColors}
                                       title="Editar elemento Bento"
+                                      activeViewport={activeViewport}
                                     />
                                   </div>
                                 )}
@@ -1247,6 +1266,7 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                                                  project={project}
                                                  projectColors={projectColors}
                                                  title="Editar elemento"
+                                                 activeViewport={activeViewport}
                                                  embedded
                                                />
                                              </div>

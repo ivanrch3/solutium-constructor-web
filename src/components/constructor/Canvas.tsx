@@ -829,6 +829,8 @@ export const Canvas: React.FC<CanvasProps> = ({
                         content={section.content}
                         onSettingChange={onSettingChange}
                         isPreviewMode={isPreviewMode}
+                        previewScale={desktopPreviewScale}
+                        constructorViewport={viewport}
                         onOpenBentoGenerator={onOpenBentoGenerator}
                       />
                     )}

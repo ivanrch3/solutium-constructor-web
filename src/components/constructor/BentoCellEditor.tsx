@@ -39,6 +39,9 @@ const PILLAR_LABELS: Record<string, string> = {
 };
 
 const PILLARS_ORDER: string[] = ['contenido', 'estructura', 'estilo', 'tipografia', 'multimedia', 'interaccion'];
+const BENTO_DESKTOP_COLUMNS = 24;
+const BENTO_TABLET_COLUMNS = 6;
+const BENTO_MOBILE_COLUMNS = 4;
 
 const TEXT_STYLE_PRESETS: Record<string, Record<string, any>> = {
   display: { title_size: 't1', title_weight: 'black', description_size: 'p', line_height: 1.05, letter_spacing: -2 },
@@ -63,6 +66,7 @@ interface BentoCellEditorProps {
   title?: string;
   onClose?: () => void;
   embedded?: boolean;
+  activeViewport?: 'desktop' | 'tablet' | 'mobile';
 }
 
 export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
@@ -77,7 +81,8 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
   projectColors,
   title = 'Editar elemento',
   onClose,
-  embedded = false
+  embedded = false,
+  activeViewport = 'desktop'
 }) => {
   const [expandedPillars, setExpandedPillars] = React.useState<Record<string, boolean>>({
     contenido: true,
@@ -112,6 +117,114 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
 
   const selectedBentoItem = getSelectedBentoItem();
   const selectedType = selectedBentoItem?.type || 'text';
+  const activeLayoutKey = activeViewport;
+  const activeColumns = activeViewport === 'desktop'
+    ? BENTO_DESKTOP_COLUMNS
+    : activeViewport === 'tablet'
+      ? BENTO_TABLET_COLUMNS
+      : BENTO_MOBILE_COLUMNS;
+
+  const clampNumber = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
+
+  const shouldScaleLegacyDesktopLayout = (item: any, layout: any) => {
+    const declaredColumns = Number(layout?.columns || item?.layout_columns?.desktop || item?.layoutColumns?.desktop || 0);
+    return activeLayoutKey === 'desktop' && declaredColumns < BENTO_DESKTOP_COLUMNS;
+  };
+
+  const getActiveLayout = (item: any) => {
+    const savedLayout = item.layouts?.[activeLayoutKey];
+    const defaultW = activeLayoutKey === 'desktop'
+      ? (item.desktop_span || item.col_span || 8)
+      : activeLayoutKey === 'tablet'
+        ? (item.tablet_span || Math.min(item.col_span || 3, BENTO_TABLET_COLUMNS))
+        : (item.mobile_span || BENTO_MOBILE_COLUMNS);
+    const defaultH = activeLayoutKey === 'mobile'
+      ? (item.mobile_rows || item.row_span || 2)
+      : (item.desktop_rows || item.row_span || 2);
+    const rawLayout = {
+      x: Number(savedLayout?.x ?? item.x ?? 0) || 0,
+      y: Number(savedLayout?.y ?? item.y ?? 0) || 0,
+      w: Number(savedLayout?.w ?? defaultW) || 1,
+      h: Number(savedLayout?.h ?? defaultH) || 1
+    };
+    const scaleLegacyDesktop = savedLayout
+      ? shouldScaleLegacyDesktopLayout(item, savedLayout)
+      : shouldScaleLegacyDesktopLayout(item, rawLayout);
+    const w = clampNumber(scaleLegacyDesktop ? rawLayout.w * 2 : rawLayout.w, 1, activeColumns);
+
+    return {
+      x: clampNumber(scaleLegacyDesktop ? rawLayout.x * 2 : rawLayout.x, 0, Math.max(activeColumns - w, 0)),
+      y: Math.max(rawLayout.y, 0),
+      w,
+      h: Math.max(rawLayout.h, 1)
+    };
+  };
+
+  const layoutsCollide = (
+    candidate: { x: number; y: number; w: number; h: number },
+    existing: { x: number; y: number; w: number; h: number }
+  ) => (
+    candidate.x < existing.x + existing.w &&
+    candidate.x + candidate.w > existing.x &&
+    candidate.y < existing.y + existing.h &&
+    candidate.y + candidate.h > existing.y
+  );
+
+  const moveSelectedCell = (dx: number, dy: number) => {
+    const currentItems = getBentoItems();
+    const currentItem = currentItems[selectedBentoCellIndex];
+    if (!currentItem) return;
+
+    const currentLayout = getActiveLayout(currentItem);
+    const nextLayout = {
+      ...currentLayout,
+      x: clampNumber(currentLayout.x + dx, 0, Math.max(activeColumns - currentLayout.w, 0)),
+      y: Math.max(currentLayout.y + dy, 0)
+    };
+
+    if (nextLayout.x === currentLayout.x && nextLayout.y === currentLayout.y) return;
+
+    const collides = currentItems.some((item: any, index: number) => {
+      if (index === selectedBentoCellIndex) return false;
+      return layoutsCollide(nextLayout, getActiveLayout(item));
+    });
+    if (collides) return;
+
+    const newItems = [...currentItems];
+    const existingLayouts = currentItem.layouts || {};
+    const nextItem = {
+      ...currentItem,
+      layouts: {
+        ...existingLayouts,
+        [activeLayoutKey]: { ...nextLayout, columns: activeColumns }
+      },
+      layout_columns: {
+        ...(currentItem.layout_columns || {}),
+        [activeLayoutKey]: activeColumns
+      },
+      ...(activeLayoutKey === 'desktop'
+        ? {
+          x: nextLayout.x,
+          y: nextLayout.y,
+          col_span: nextLayout.w,
+          row_span: nextLayout.h,
+          desktop_span: nextLayout.w,
+          desktop_rows: nextLayout.h
+        }
+        : {}),
+      ...(activeLayoutKey === 'tablet' ? { tablet_span: nextLayout.w } : {}),
+      ...(activeLayoutKey === 'mobile' ? { mobile_span: nextLayout.w } : {})
+    };
+
+    newItems[selectedBentoCellIndex] = nextItem;
+    if (onSettingChange) {
+      onSettingChange(`${selectedSection.id}_el_bento_items`, 'items', newItems);
+    } else {
+      updateSectionSettings(selectedSection.id, { [`${selectedSection.id}_el_bento_items_items`]: newItems });
+    }
+  };
+
+  const selectedLayout = selectedBentoItem ? getActiveLayout(selectedBentoItem) : null;
 
   const visibleFieldsByType: Record<string, string[]> = {
     text: ['text_style', 'title', 'description', 'title_size', 'title_weight', 'font_family', 'title_color', 'description_size', 'content_align', 'line_height', 'letter_spacing', 'card_image', 'card_overlay', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'align_items', 'card_style', 'card_bg', 'card_gradient', 'card_radius', 'card_shadow', 'text_contrast'],
@@ -249,6 +362,74 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
     );
   };
 
+  const activeViewportLabel = activeViewport === 'desktop'
+    ? 'Desktop'
+    : activeViewport === 'tablet'
+      ? 'Tablet'
+      : 'Móvil';
+
+  const movementControls = selectedLayout && (
+    <div className="rounded-2xl border border-blue-100 bg-blue-50/60 p-3">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-wider text-blue-700">Mover en {activeViewportLabel}</p>
+          <p className="text-[10px] text-blue-500">x {selectedLayout.x} / y {selectedLayout.y}</p>
+        </div>
+        <div className="rounded-lg bg-white px-2 py-1 text-[10px] font-mono font-bold text-blue-600">
+          {activeColumns} cols
+        </div>
+      </div>
+      <div className="mx-auto grid w-28 grid-cols-3 gap-1">
+        <span />
+        <button
+          type="button"
+          onClick={() => moveSelectedCell(0, -1)}
+          disabled={selectedLayout.y <= 0}
+          className="flex h-8 items-center justify-center rounded-lg border border-blue-100 bg-white text-blue-600 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-40"
+          title="Mover arriba"
+          aria-label="Mover arriba"
+        >
+          <LucideIcons.ArrowUp size={14} />
+        </button>
+        <span />
+        <button
+          type="button"
+          onClick={() => moveSelectedCell(-1, 0)}
+          disabled={selectedLayout.x <= 0}
+          className="flex h-8 items-center justify-center rounded-lg border border-blue-100 bg-white text-blue-600 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-40"
+          title="Mover izquierda"
+          aria-label="Mover izquierda"
+        >
+          <LucideIcons.ArrowLeft size={14} />
+        </button>
+        <div className="flex h-8 items-center justify-center rounded-lg bg-blue-100 text-[10px] font-black text-blue-700">
+          1
+        </div>
+        <button
+          type="button"
+          onClick={() => moveSelectedCell(1, 0)}
+          disabled={selectedLayout.x + selectedLayout.w >= activeColumns}
+          className="flex h-8 items-center justify-center rounded-lg border border-blue-100 bg-white text-blue-600 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-40"
+          title="Mover derecha"
+          aria-label="Mover derecha"
+        >
+          <LucideIcons.ArrowRight size={14} />
+        </button>
+        <span />
+        <button
+          type="button"
+          onClick={() => moveSelectedCell(0, 1)}
+          className="flex h-8 items-center justify-center rounded-lg border border-blue-100 bg-white text-blue-600 transition hover:bg-blue-100"
+          title="Mover abajo"
+          aria-label="Mover abajo"
+        >
+          <LucideIcons.ArrowDown size={14} />
+        </button>
+        <span />
+      </div>
+    </div>
+  );
+
   return (
     <div className={`flex flex-col h-full bg-white overflow-hidden ${embedded ? '' : 'border-l border-gray-100 shadow-sm'}`}>
       {!embedded && <div className="p-4 border-b border-gray-100 bg-gray-50/50 flex flex-col gap-2">
@@ -288,6 +469,7 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
       <div className="flex-1 overflow-y-auto custom-scrollbar">
         {embedded ? (
           <div className="space-y-5 p-3">
+            {movementControls}
             {PILLARS_ORDER.map(pillar => {
               const fields = settingsByPillar[pillar];
               if (!fields || fields.length === 0) return null;
@@ -308,7 +490,11 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
             })}
           </div>
         ) : (
-          PILLARS_ORDER.map(pillar => {
+          <>
+          <div className="p-4 pb-2">
+            {movementControls}
+          </div>
+          {PILLARS_ORDER.map(pillar => {
             const fields = settingsByPillar[pillar];
             if (!fields || fields.length === 0) return null;
 
@@ -394,7 +580,8 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
                 </AnimatePresence>
               </div>
             );
-          })
+          })}
+          </>
         )}
       </div>
       {!embedded && <div className="p-4 border-t border-gray-100 bg-gray-50/30">

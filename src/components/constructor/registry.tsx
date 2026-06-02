@@ -3615,7 +3615,7 @@ export const BENTO_MODULE: WebModule = {
         { label: 'Casos de Uso', value: 'use_cases' },
         { label: 'Call to Action', value: 'cta_grid' }
       ] },
-      { id: 'columns', label: 'Columnas Desktop', type: 'range', defaultValue: 12, min: 1, max: 12 },
+      { id: 'columns', label: 'Columnas Desktop', type: 'range', defaultValue: 24, min: 24, max: 24 },
       { id: 'gap', label: 'Espaciado (Gap)', type: 'range', defaultValue: 20, min: 0, max: 100, unit: 'px' },
       { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 40, min: 0, max: 200, unit: 'px' },
       { id: 'max_width', label: 'Ancho Máximo', type: 'range', defaultValue: 1200, min: 800, max: 1600, unit: 'px' }
@@ -3756,7 +3756,7 @@ export const BENTO_MODULE: WebModule = {
 
 
           // Estructura (Per item, breakpoint specific labels)
-          { id: 'desktop_span', label: 'Ancho Desktop (Columnas)', type: 'range', defaultValue: 4, min: 1, max: 12 },
+          { id: 'desktop_span', label: 'Ancho Desktop (Columnas)', type: 'range', defaultValue: 8, min: 1, max: 24 },
           { id: 'desktop_rows', label: 'Alto Desktop (Filas)', type: 'range', defaultValue: 2, min: 1, max: 8 },
           { id: 'tablet_span', label: 'Ancho Tablet (Columnas)', type: 'range', defaultValue: 3, min: 1, max: 6 },
           { id: 'mobile_span', label: 'Ancho Móvil (Columnas)', type: 'range', defaultValue: 4, min: 1, max: 4 },

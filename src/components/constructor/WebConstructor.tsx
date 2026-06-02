@@ -356,23 +356,94 @@ const resolveLifecycleStatusFromPage = (
 
 const buildPublishedViewerUrl = (siteId?: string | null): string | null => {
   if (!siteId || typeof window === 'undefined') return null;
-  const url = new URL(window.location.href);
+  const url = new URL(window.location.pathname || '/', window.location.origin);
   url.searchParams.set('mode', 'render');
   url.searchParams.set('site_id', siteId);
-  url.searchParams.delete('preview');
   return url.toString();
+};
+
+const normalizePublishedUrlCandidate = (value: unknown): string | null => {
+  const rawValue = String(value || '').trim();
+  if (!rawValue || rawValue === '#') return null;
+
+  if (/^https?:\/\//i.test(rawValue)) return rawValue;
+  if (/^[a-z0-9.-]+\.[a-z]{2,}(?:\/.*)?$/i.test(rawValue)) return `https://${rawValue}`;
+
+  return null;
+};
+
+const isLocalPublishedViewerUrl = (url: URL) => {
+  const isLocalConstructorHost =
+    url.hostname === 'localhost' ||
+    url.hostname === '127.0.0.1' ||
+    url.hostname === '::1' ||
+    url.hostname === '[::1]';
+
+  return (
+    isLocalConstructorHost &&
+    url.port === '3010' &&
+    url.searchParams.get('mode') === 'render' &&
+    Boolean(url.searchParams.get('site_id'))
+  );
+};
+
+const isValidPublishedPublicUrl = (value: unknown): value is string => {
+  const candidate = normalizePublishedUrlCandidate(value);
+  if (!candidate) return false;
+
+  try {
+    const url = new URL(candidate);
+    if (isLocalPublishedViewerUrl(url)) return true;
+
+    const isLocalConstructorHost =
+      url.hostname === 'localhost' ||
+      url.hostname === '127.0.0.1' ||
+      url.hostname === '::1' ||
+      url.hostname === '[::1]';
+    if (isLocalConstructorHost && url.port === '3010') return false;
+
+    const search = url.searchParams;
+    if (search.has('preview') || search.get('mode') === 'preview' || search.has('launch') || search.has('constructor')) {
+      return false;
+    }
+
+    const urlText = candidate.toLowerCase();
+    if (urlText.includes('constructor') && !urlText.includes('mode=render')) return false;
+
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+const resolveFirstValidPublishedUrl = (...candidates: unknown[]) => {
+  for (const candidate of candidates) {
+    const normalizedCandidate = normalizePublishedUrlCandidate(candidate);
+    if (normalizedCandidate && isValidPublishedPublicUrl(normalizedCandidate)) {
+      return normalizedCandidate;
+    }
+  }
+  return null;
 };
 
 const resolvePublishedUrlFromResult = (result: any, fallbackSiteId?: string | null): string | null => {
   if (!result || typeof result !== 'object') return null;
-  return (
-    result.publishedUrl ||
-    result.published_url ||
-    result.publicUrl ||
-    result.public_url ||
-    result.url ||
-    result.metadata?.publishedUrl ||
-    result.metadata?.published_url ||
+  return resolveFirstValidPublishedUrl(
+    result.publishedUrl,
+    result.published_url,
+    result.publicUrl,
+    result.public_url,
+    result.metadata?.publishedUrl,
+    result.metadata?.published_url,
+    result.metadata?.publicUrl,
+    result.metadata?.public_url,
+    result.metadata?.domain,
+    result.metadata?.customDomain,
+    result.metadata?.custom_domain,
+    result.domain,
+    result.customDomain,
+    result.custom_domain,
+    result.url,
     buildPublishedViewerUrl(result.siteId || result.site_id || fallbackSiteId)
   );
 };
@@ -384,24 +455,32 @@ const resolvePublishedUrlFromPage = (
   const pageAny = page as any;
   const status = String(pageAny.status || '').toLowerCase();
   const hasPublishedVersion = !('status' in pageAny) || status === 'published' || status === 'modified';
-  const explicitPublishedUrl =
-    pageAny.publishedUrl ||
-    pageAny.published_url ||
-    pageAny.publishedSiteUrl ||
-    pageAny.publicUrl ||
-    pageAny.metadata?.publishedUrl ||
-    pageAny.metadata?.published_url ||
-    pageAny.metadata?.publicUrl ||
-    null;
-
-  if (explicitPublishedUrl && hasPublishedVersion) return explicitPublishedUrl;
   if (!hasPublishedVersion) return null;
 
-  return pageAny.url || buildPublishedViewerUrl(pageAny.siteId || pageAny.site_id || pageAny.id);
+  return resolveFirstValidPublishedUrl(
+    pageAny.publishedUrl,
+    pageAny.published_url,
+    pageAny.publishedSiteUrl,
+    pageAny.publicUrl,
+    pageAny.public_url,
+    pageAny.metadata?.publishedUrl,
+    pageAny.metadata?.published_url,
+    pageAny.metadata?.publicUrl,
+    pageAny.metadata?.public_url,
+    pageAny.metadata?.domain,
+    pageAny.metadata?.customDomain,
+    pageAny.metadata?.custom_domain,
+    pageAny.domain,
+    pageAny.customDomain,
+    pageAny.custom_domain,
+    pageAny.url,
+    buildPublishedViewerUrl(pageAny.siteId || pageAny.site_id || pageAny.id)
+  );
 };
 
 const openPublishedUrl = (url: string | null) => {
   if (!url || typeof window === 'undefined') return;
+  if (!isValidPublishedPublicUrl(url)) return;
   window.open(url, '_blank', 'noopener,noreferrer');
 };
 
@@ -562,6 +641,41 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       fontHeading: project?.fontFamily || 'Inter'
     };
   }, [project]);
+
+  const projectThemeSeedSignature = React.useMemo(() => [
+    projectThemeSeed.primary,
+    projectThemeSeed.secondary,
+    projectThemeSeed.accent,
+    projectThemeSeed.background,
+    projectThemeSeed.text,
+    projectThemeSeed.muted,
+    projectThemeSeed.border,
+    projectThemeSeed.fontSans,
+    projectThemeSeed.fontHeading
+  ].map((value) => String(value || '').trim().toLowerCase()).join('|'), [projectThemeSeed]);
+
+  const siteThemeSeedSignature = React.useMemo(() => {
+    const theme = (siteContent.theme || {}) as any;
+    return [
+      theme.primaryColor,
+      theme.secondaryColor,
+      theme.accentColor,
+      theme.backgroundColor,
+      theme.textColor,
+      (theme as any).mutedColor,
+      (theme as any).borderColor,
+      theme.fontFamily
+    ].map((value) => String(value || '').trim().toLowerCase()).join('|');
+  }, [
+    siteContent.theme?.primaryColor,
+    siteContent.theme?.secondaryColor,
+    siteContent.theme?.accentColor,
+    siteContent.theme?.backgroundColor,
+    siteContent.theme?.textColor,
+    (siteContent.theme as any)?.mutedColor,
+    (siteContent.theme as any)?.borderColor,
+    siteContent.theme?.fontFamily
+  ]);
 
   const incomingLifecycleStatus = React.useMemo(
     () => resolveLifecycleStatusFromPage(initialPage),
@@ -761,7 +875,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         return defaults.some((candidate) => normalizedCurrent === candidate.toLowerCase());
       };
 
-      updateEditorState((prev) => {
+      const buildSeededProjectSettings = (prev: EditorState) => {
         const nextSettings = { ...prev.settingsValues };
         let changed = false;
 
@@ -831,8 +945,22 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
           });
         });
 
-        return changed ? { ...prev, settingsValues: nextSettings } : prev;
-      });
+        return { changed, nextSettings };
+      };
+
+      const seedEffectSignature = `${projectThemeSeedSignature}|${siteThemeSeedSignature}`;
+      const seededSnapshot = buildSeededProjectSettings(editorStateRef.current);
+
+      if (lastProjectThemeSeedSignatureRef.current !== seedEffectSignature || seededSnapshot.changed) {
+        if (seededSnapshot.changed) {
+          updateEditorState((prev) => {
+            const { changed, nextSettings } = buildSeededProjectSettings(prev);
+            return changed ? { ...prev, settingsValues: nextSettings } : prev;
+          });
+        }
+
+        lastProjectThemeSeedSignatureRef.current = seedEffectSignature;
+      }
 
       const themeDefaults = {
         primaryColor: ['#3b82f6'],
@@ -871,7 +999,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       if (Object.keys(themeUpdate).length > 0) {
         updateTheme(themeUpdate);
       }
-    }, [project, projectThemeSeed, siteContent.theme, updateTheme]);
+    }, [project, projectThemeSeed, projectThemeSeedSignature, siteThemeSeedSignature, updateTheme]);
 
   // Effect to load from pages table strictly if we only have a siteId (SIP v6.1)
   useEffect(() => {
@@ -964,6 +1092,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   const [autosaveError, setAutosaveError] = useState<string | null>(null);
   const [showUnsavedModal, setShowUnsavedModal] = useState(false);
   const isInitialLoad = useRef(true);
+  const editorStateRef = useRef(editorState);
   const saveInProgressRef = useRef(false);
   const autosaveInProgressRef = useRef(false);
   const publishInProgressRef = useRef(false);
@@ -973,10 +1102,10 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   const activeSavePromiseRef = useRef<Promise<boolean> | null>(null);
   const changeVersionRef = useRef(0);
   const lastSaveChangeVersionRef = useRef(0);
-  const editorStateRef = useRef(editorState);
   const siteNameRef = useRef(siteName);
   const currentStatusRef = useRef(currentStatus);
   const lastLocalSectionsSignatureRef = useRef<string | null>(null);
+  const lastProjectThemeSeedSignatureRef = useRef<string | null>(null);
   const autosaveIntervalSetting = editorState.settingsValues['global_theme_builder_autosave_interval_ms'];
   const autosaveDisabledByInterval = String(autosaveIntervalSetting).trim().toLowerCase() === AUTOSAVE_DISABLED_VALUE;
   const autosaveEnabled = !autosaveDisabledByInterval && resolveBooleanSetting(
@@ -5033,6 +5162,7 @@ const formatTimestampName = () => {
                     currentStatus={currentStatus}
                     isNewSite={!initialPage}
                     publishedUrl={publishedSiteUrl}
+                    canOpenPublishedUrl={isValidPublishedPublicUrl(publishedSiteUrl)}
                     onOpenPublished={() => openPublishedUrl(publishedSiteUrl)}
                   />
                 )}
@@ -5306,6 +5436,7 @@ const formatTimestampName = () => {
                       currentStatus={currentStatus}
                       isNewSite={!initialPage}
                       publishedUrl={publishedSiteUrl}
+                      canOpenPublishedUrl={isValidPublishedPublicUrl(publishedSiteUrl)}
                       onOpenPublished={() => openPublishedUrl(publishedSiteUrl)}
                     />
                   )}

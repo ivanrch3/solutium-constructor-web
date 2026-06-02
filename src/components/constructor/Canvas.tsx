@@ -146,16 +146,18 @@ export const Canvas: React.FC<CanvasProps> = ({
   const fullscreenViewportWidth = viewport === 'desktop'
     ? '100%'
     : `min(${viewportWidths[viewport]}, calc(100vw - 48px))`;
+  const isCleanPreviewMode = isPreviewMode || isFullscreen;
+  const showEditorChrome = !isCleanPreviewMode;
   const isDesktopCanvas = viewport === 'desktop';
-  const useFullBleedDesktopCanvas = !isPreviewMode && isDesktopCanvas;
+  const useFullBleedDesktopCanvas = showEditorChrome && isDesktopCanvas;
   const useVirtualDesktopPreview = useFullBleedDesktopCanvas && !isFullscreen;
   const desktopLogicalWidth = Math.max(1200, browserViewportWidth);
   const desktopPreviewScale = useVirtualDesktopPreview && canvasViewportWidth > 0
     ? Math.min(1, canvasViewportWidth / desktopLogicalWidth)
     : 1;
   const effectivePreviewScale = useVirtualDesktopPreview ? desktopPreviewScale * userZoom : userZoom;
-  const isUserZoomed = !isPreviewMode && userZoom !== 1;
-  const canPanPreview = !isPreviewMode && userZoom > 1;
+  const isUserZoomed = showEditorChrome && userZoom !== 1;
+  const canPanPreview = showEditorChrome && userZoom > 1;
   const zoomPercent = Math.round(userZoom * 100);
   const minimapWidth = 164;
   const minimapHeight = 104;
@@ -163,7 +165,7 @@ export const Canvas: React.FC<CanvasProps> = ({
     scrollMetrics.scrollWidth > scrollMetrics.clientWidth + 1 ||
     scrollMetrics.scrollHeight > scrollMetrics.clientHeight + 1;
   const showMinimap =
-    !isPreviewMode &&
+    showEditorChrome &&
     !isMinimapHidden &&
     userZoom > 1 &&
     hasMinimapScrollableArea &&
@@ -412,8 +414,21 @@ export const Canvas: React.FC<CanvasProps> = ({
     };
   }, [isFullscreen, isPreviewMode, setIsFullscreen]);
 
+  React.useEffect(() => {
+    if (!isFullscreen || isPreviewMode) return;
+
+    const handleFullscreenEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsFullscreen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleFullscreenEscape);
+    return () => window.removeEventListener('keydown', handleFullscreenEscape);
+  }, [isFullscreen, isPreviewMode, setIsFullscreen]);
+
   return (
-    <ParallaxScrollContext.Provider value={isPreviewMode ? null : canvasScrollContainerRef}>
+    <ParallaxScrollContext.Provider value={isCleanPreviewMode ? null : canvasScrollContainerRef}>
       <div
         ref={setCanvasRootRef}
         id="constructor-canvas-scroll-container"
@@ -422,14 +437,14 @@ export const Canvas: React.FC<CanvasProps> = ({
         onPointerMove={handlePreviewPointerMove}
         onPointerUp={stopPreviewPan}
         onPointerLeave={stopPreviewPan}
-        className={`flex-1 ${canPanPreview ? 'overflow-auto' : 'overflow-y-scroll overflow-x-hidden'} custom-scrollbar preview-scrollbar transition-all duration-500 ${isFullscreen ? 'fixed inset-0 z-[120]' : ''} ${isPreviewMode ? 'p-0' : ''}`}
+        className={`flex-1 ${canPanPreview ? 'overflow-auto' : 'overflow-y-scroll overflow-x-hidden'} custom-scrollbar preview-scrollbar transition-all duration-500 ${isFullscreen ? 'fixed inset-0 z-[120]' : ''} ${isCleanPreviewMode ? 'p-0' : ''}`}
         style={{
           scrollbarGutter: 'stable',
-          backgroundColor: isPreviewMode ? 'var(--builder-surface)' : 'var(--builder-surface-muted)',
+          backgroundColor: isCleanPreviewMode ? 'var(--builder-surface)' : 'var(--builder-surface-muted)',
           cursor: canPanPreview ? (isPanning ? 'grabbing' : 'grab') : undefined
         }}
       >
-      {isFullscreen && !isPreviewMode && (
+      {false && isFullscreen && !isPreviewMode && (
         <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[110] flex items-center gap-2 bg-surface/80 backdrop-blur-md border border-border/50 p-1.5 rounded-2xl shadow-2xl">
           <div className="flex items-center gap-1 bg-secondary/50 p-1 rounded-xl">
             <button 
@@ -464,11 +479,11 @@ export const Canvas: React.FC<CanvasProps> = ({
         </div>
       )}
       <div
-        className={`flex min-h-full ${useVirtualDesktopPreview ? 'relative justify-start' : 'justify-center transition-all duration-500'} ${isFullscreen ? (isDesktopCanvas ? 'px-0 pb-0 pt-24' : 'p-6 pt-24') : isPreviewMode ? 'p-0' : isDesktopCanvas ? 'p-0' : 'p-6'}`}
+        className={`flex min-h-full ${useVirtualDesktopPreview ? 'relative justify-start' : 'justify-center transition-all duration-500'} ${isFullscreen ? 'p-0' : isPreviewMode ? 'p-0' : isDesktopCanvas ? 'p-0' : 'p-6'}`}
         style={useVirtualDesktopPreview ? {
           width: `${Math.ceil(desktopLogicalWidth * effectivePreviewScale)}px`,
           minHeight: renderContentHeight ? `${Math.ceil(renderContentHeight * effectivePreviewScale)}px` : undefined
-        } : (!isPreviewMode && userZoom !== 1 ? {
+        } : (showEditorChrome && userZoom !== 1 ? {
           width: renderContentWidth ? `${Math.ceil(renderContentWidth * userZoom)}px` : undefined,
           minHeight: renderContentHeight ? `${Math.ceil(renderContentHeight * userZoom)}px` : undefined
         } : undefined)}
@@ -478,27 +493,27 @@ export const Canvas: React.FC<CanvasProps> = ({
           id="constructor-canvas-render"
           data-preview-root="true"
           className={`bg-surface relative @container ${
-            isPreviewMode ? 'w-full max-w-none border-none rounded-none shadow-none' : 
+            isCleanPreviewMode ? 'w-full max-w-none border-none rounded-none shadow-none' :
             useFullBleedDesktopCanvas ? 'w-full max-w-none min-h-full rounded-none border-none shadow-none' : 'transition-all duration-500 ease-in-out rounded-2xl border border-border/50 shadow-2xl'
-          } ${viewport === 'mobile' && !isPreviewMode ? 'rounded-[3rem] border-[8px] border-slate-900 shadow-[0_0_0_2px_rgba(0,0,0,0.1)]' : ''} ${viewport === 'tablet' && !isPreviewMode ? 'rounded-[2rem] border-[12px] border-slate-900 shadow-[0_0_0_2px_rgba(0,0,0,0.1)]' : ''}`}
+          } ${viewport === 'mobile' && showEditorChrome ? 'rounded-[3rem] border-[8px] border-slate-900 shadow-[0_0_0_2px_rgba(0,0,0,0.1)]' : ''} ${viewport === 'tablet' && showEditorChrome ? 'rounded-[2rem] border-[12px] border-slate-900 shadow-[0_0_0_2px_rgba(0,0,0,0.1)]' : ''}`}
           style={{ 
             width: isPreviewMode ? '100%' : (useVirtualDesktopPreview ? `${desktopLogicalWidth}px` : (isFullscreen ? fullscreenViewportWidth : viewportWidths[viewport])),
             maxWidth: isPreviewMode ? 'none' : (useVirtualDesktopPreview ? `${desktopLogicalWidth}px` : (isFullscreen ? (viewport === 'desktop' ? 'none' : viewportWidths[viewport]) : viewport === 'desktop' ? 'none' : viewportWidths[viewport])),
-            minHeight: isPreviewMode ? '100vh' : (isDesktopCanvas ? (isFullscreen ? '100vh' : '100%') : viewport === 'mobile' ? '667px' : '1024px'),
-            transform: !isPreviewMode && effectivePreviewScale !== 1 ? `scale(${effectivePreviewScale})` : undefined,
+            minHeight: isCleanPreviewMode ? '100vh' : (isDesktopCanvas ? '100%' : viewport === 'mobile' ? '667px' : '1024px'),
+            transform: showEditorChrome && effectivePreviewScale !== 1 ? `scale(${effectivePreviewScale})` : undefined,
             transformOrigin: useVirtualDesktopPreview ? 'top left' : 'top center',
             position: useVirtualDesktopPreview ? 'absolute' : 'relative',
             top: useVirtualDesktopPreview ? 0 : undefined,
             left: useVirtualDesktopPreview ? 0 : undefined
           }}
         >
-          {viewport === 'mobile' && !isPreviewMode && (
+          {viewport === 'mobile' && showEditorChrome && (
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-6 bg-slate-900 rounded-b-2xl z-50 flex items-center justify-center">
               <div className="w-10 h-1 bg-slate-800 rounded-full" />
             </div>
           )}
           <div className="w-full" key={reloadKey}>
-            {(!renderSiteContent.sections || renderSiteContent.sections.length === 0) && !isPreviewMode ? (
+            {(!renderSiteContent.sections || renderSiteContent.sections.length === 0) && showEditorChrome ? (
               <div className="flex flex-col items-center justify-center py-32 px-6 text-center">
                 <div className="w-20 h-20 bg-secondary rounded-3xl flex items-center justify-center mb-6 text-text/20">
                   <PlusCircle size={40} />
@@ -727,7 +742,7 @@ export const Canvas: React.FC<CanvasProps> = ({
                   ...moduleOverrides 
                 };
 
-                if (!isPreviewMode) {
+                if (!isCleanPreviewMode) {
                    logDebug('[CANVAS_SECTION_RENDER_DEBUG]', {
                       moduleId: section.id,
                       type: section.type,
@@ -760,14 +775,14 @@ export const Canvas: React.FC<CanvasProps> = ({
                     id={section.id} 
                     ref={isLast ? lastModuleRef : null} 
                     onClick={(e) => {
-                      if (isPreviewMode) return;
+                      if (isCleanPreviewMode) return;
                       e.stopPropagation();
                       selectSection(section.id);
                     }}
                     className={`w-full group relative outline-none transition-all duration-300 ${isSticky || isFixed ? 'sticky' : 'relative'} ${
-                      (!isPreviewMode && selectedSectionId === section.id) 
+                      (showEditorChrome && selectedSectionId === section.id)
                         ? 'ring-2 ring-blue-500 ring-inset shadow-2xl z-50 cursor-pointer' 
-                        : !isPreviewMode ? 'hover:ring-1 hover:ring-blue-300/50 ring-inset cursor-pointer' : ''
+                        : showEditorChrome ? 'hover:ring-1 hover:ring-blue-300/50 ring-inset cursor-pointer' : ''
                     }`}
                     style={{ 
                       top: isSticky || isFixed ? `${topOffset}px` : undefined,
@@ -775,7 +790,7 @@ export const Canvas: React.FC<CanvasProps> = ({
                     }}
                   >
                     {/* Indicador de Selección */}
-                    {selectedSectionId === section.id && !isPreviewMode && (
+                    {selectedSectionId === section.id && showEditorChrome && (
                       <div className="absolute -left-1 top-0 bottom-0 w-1 bg-blue-500 z-50 rounded-full selection-indicator" />
                     )}
                     {section.type === 'products' && (
@@ -784,7 +799,7 @@ export const Canvas: React.FC<CanvasProps> = ({
                         settingsValues={finalSettings}
                         products={products}
                         isDevMode={isDevMode}
-                        isPreviewMode={isPreviewMode}
+                        isPreviewMode={isCleanPreviewMode}
                       />
                     )}
                     {section.type === 'hero' && (
@@ -793,35 +808,35 @@ export const Canvas: React.FC<CanvasProps> = ({
                         settingsValues={finalSettings}
                         logoUrl={logoUrl}
                         logoWhiteUrl={logoWhiteUrl}
-                        isPreviewMode={isPreviewMode}
+                        isPreviewMode={isCleanPreviewMode}
                       />
                     )}
                     {section.type === 'hero2' && (
                       <Hero2Module 
                         moduleId={section.id}
                         settingsValues={finalSettings}
-                        isPreviewMode={isPreviewMode}
+                        isPreviewMode={isCleanPreviewMode}
                       />
                     )}
                     {section.type === 'features' && (
                       <FeaturesModule 
                         moduleId={section.id}
                         settingsValues={finalSettings}
-                        isPreviewMode={isPreviewMode}
+                        isPreviewMode={isCleanPreviewMode}
                       />
                     )}
                     {section.type === 'about' && (
                       <AboutModule 
                         moduleId={section.id}
                         settingsValues={finalSettings}
-                        isPreviewMode={isPreviewMode}
+                        isPreviewMode={isCleanPreviewMode}
                       />
                     )}
                     {section.type === 'process' && (
                       <ProcessModule 
                         moduleId={section.id}
                         settingsValues={finalSettings}
-                        isPreviewMode={isPreviewMode}
+                        isPreviewMode={isCleanPreviewMode}
                       />
                     )}
                     {section.type === 'gallery' && (
@@ -829,21 +844,21 @@ export const Canvas: React.FC<CanvasProps> = ({
                         moduleId={section.id}
                         settingsValues={finalSettings}
                         content={section.content}
-                        isPreviewMode={isPreviewMode}
+                        isPreviewMode={isCleanPreviewMode}
                       />
                     )}
                     {section.type === 'video' && (
                       <VideoModule 
                         moduleId={section.id}
                         settingsValues={finalSettings}
-                        isPreviewMode={isPreviewMode}
+                        isPreviewMode={isCleanPreviewMode}
                       />
                     )}
                     {section.type === 'testimonials' && (
                       <TestimonialsModule 
                         moduleId={section.id}
                         settingsValues={finalSettings}
-                        isPreviewMode={isPreviewMode}
+                        isPreviewMode={isCleanPreviewMode}
                       />
                     )}
                     {section.type === 'products_showcase' && (
@@ -852,42 +867,42 @@ export const Canvas: React.FC<CanvasProps> = ({
                         content={section.content}
                         settingsValues={finalSettings}
                         products={products}
-                        isActuallyEditor={!isPreviewMode}
+                        isActuallyEditor={!isCleanPreviewMode}
                       />
                     )}
                     {section.type === 'stats' && (
                       <StatsModule 
                         moduleId={section.id}
                         settingsValues={finalSettings}
-                        isPreviewMode={isPreviewMode}
+                        isPreviewMode={isCleanPreviewMode}
                       />
                     )}
                     {section.type === 'team' && (
                       <TeamModule 
                         moduleId={section.id}
                         settingsValues={finalSettings}
-                        isPreviewMode={isPreviewMode}
+                        isPreviewMode={isCleanPreviewMode}
                       />
                     )}
                     {section.type === 'pricing' && (
                       <PricingModule 
                         moduleId={section.id}
                         settingsValues={finalSettings}
-                        isPreviewMode={isPreviewMode}
+                        isPreviewMode={isCleanPreviewMode}
                       />
                     )}
                     {section.type === 'faq' && (
                       <FAQModule 
                         moduleId={section.id}
                         settingsValues={finalSettings}
-                        isPreviewMode={isPreviewMode}
+                        isPreviewMode={isCleanPreviewMode}
                       />
                     )}
                     {section.type === 'contact' && (
                       <ContactModule 
                         moduleId={section.id}
                         settingsValues={finalSettings}
-                        isPreviewMode={isPreviewMode}
+                        isPreviewMode={isCleanPreviewMode}
                       />
                     )}
                     {section.type === 'clients' && (
@@ -896,7 +911,7 @@ export const Canvas: React.FC<CanvasProps> = ({
                         settingsValues={finalSettings}
                         customers={customers}
                         isDevMode={isDevMode}
-                        isPreviewMode={isPreviewMode}
+                        isPreviewMode={isCleanPreviewMode}
                       />
                     )}
                     {section.type === 'trusted_logos' && (
@@ -904,35 +919,35 @@ export const Canvas: React.FC<CanvasProps> = ({
                         moduleId={section.id}
                         settingsValues={finalSettings}
                         companies={trustedCompanyLogos}
-                        isPreviewMode={isPreviewMode}
+                        isPreviewMode={isCleanPreviewMode}
                       />
                     )}
                     {section.type === 'cta' && (
                       <CTAModule 
                         moduleId={section.id}
                         settingsValues={finalSettings}
-                        isPreviewMode={isPreviewMode}
+                        isPreviewMode={isCleanPreviewMode}
                       />
                     )}
                     {section.type === 'dynamic_cards' && (
                       <DynamicCardsModule
                         moduleId={section.id}
                         settingsValues={finalSettings}
-                        isPreviewMode={isPreviewMode}
+                        isPreviewMode={isCleanPreviewMode}
                       />
                     )}
                     {section.type === 'newsletter' && (
                       <NewsletterModule 
                         moduleId={section.id}
                         settingsValues={finalSettings}
-                        isPreviewMode={isPreviewMode}
+                        isPreviewMode={isCleanPreviewMode}
                       />
                     )}
                     {section.type === 'conversion' && (section.templateId === 'mod_header_1' || section.id.startsWith('mod_header_1')) && (
                       <HeaderModule 
                         moduleId={section.id}
                         settingsValues={finalSettings}
-                        isPreviewMode={isPreviewMode}
+                        isPreviewMode={isCleanPreviewMode}
                       />
                     )}
                     {(section.type === 'navegacion' || section.type === 'menu') && (
@@ -941,8 +956,8 @@ export const Canvas: React.FC<CanvasProps> = ({
                         settingsValues={finalSettings}
                         logoUrl={logoUrl}
                         logoWhiteUrl={logoWhiteUrl}
-                        isPreviewMode={isPreviewMode}
-                        isEditorCanvas={!isPreviewMode}
+                        isPreviewMode={isCleanPreviewMode}
+                        isEditorCanvas={!isCleanPreviewMode}
                         menuMode={resolveMenuMode(section.id, finalSettings)}
                         automaticMenuItems={automaticMenuItems}
                       />
@@ -953,7 +968,7 @@ export const Canvas: React.FC<CanvasProps> = ({
                         settingsValues={finalSettings}
                         logoUrl={logoUrl}
                         logoWhiteUrl={logoWhiteUrl}
-                        isPreviewMode={isPreviewMode}
+                        isPreviewMode={isCleanPreviewMode}
                       />
                     )}
                     {(section.type === 'navegacion') && (section.templateId === 'mod_footer_1' || section.id.startsWith('mod_footer_1')) && (
@@ -962,14 +977,14 @@ export const Canvas: React.FC<CanvasProps> = ({
                         settingsValues={finalSettings}
                         logoUrl={logoUrl}
                         logoWhiteUrl={logoWhiteUrl}
-                        isPreviewMode={isPreviewMode}
+                        isPreviewMode={isCleanPreviewMode}
                       />
                     )}
                     {section.type === 'spacer' && (
                       <SpacerModule 
                         moduleId={section.id}
                         settingsValues={finalSettings}
-                        isPreviewMode={isPreviewMode}
+                        isPreviewMode={isCleanPreviewMode}
                       />
                     )}
                     {(section.type === 'bento' || section.templateId === 'mod_bento_1' || section.id.startsWith('mod_bento_1') || (section.type === 'content' && section.templateId === 'mod_bento_1')) && (
@@ -978,7 +993,7 @@ export const Canvas: React.FC<CanvasProps> = ({
                         settingsValues={finalSettings}
                         content={section.content}
                         onSettingChange={onSettingChange}
-                        isPreviewMode={isPreviewMode}
+                        isPreviewMode={isCleanPreviewMode}
                         previewScale={effectivePreviewScale}
                         constructorViewport={viewport}
                         onOpenBentoGenerator={onOpenBentoGenerator}
@@ -989,9 +1004,9 @@ export const Canvas: React.FC<CanvasProps> = ({
                         moduleId={section.id}
                         settingsValues={finalSettings}
                         content={section.content}
-                        isPreviewMode={isPreviewMode}
-                        selectedElementId={selectedSectionId === section.id ? selectedCompositionElementId : null}
-                        onElementSelect={!isPreviewMode ? (elementId) => {
+                        isPreviewMode={isCleanPreviewMode}
+                        selectedElementId={showEditorChrome && selectedSectionId === section.id ? selectedCompositionElementId : null}
+                        onElementSelect={showEditorChrome ? (elementId) => {
                           selectCompositionElement(section.id, elementId);
                         } : undefined}
                       />
@@ -1007,7 +1022,7 @@ export const Canvas: React.FC<CanvasProps> = ({
                       <ComparisonModule 
                         moduleId={section.id}
                         settingsValues={finalSettings}
-                        preview={isPreviewMode}
+                        preview={isCleanPreviewMode}
                       />
                     )}
                   </div>
@@ -1017,7 +1032,7 @@ export const Canvas: React.FC<CanvasProps> = ({
           </div>
         </div>
       </div>
-      {!isPreviewMode && (
+      {showEditorChrome && (
         <div
           className="fixed bottom-5 right-5 z-[130] flex flex-col items-end gap-3"
           data-no-preview-pan="true"

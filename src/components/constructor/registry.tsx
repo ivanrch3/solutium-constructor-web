@@ -3761,6 +3761,7 @@ export const BENTO_MODULE: WebModule = {
           { id: 'tablet_span', label: 'Ancho Tablet (Columnas)', type: 'range', defaultValue: 3, min: 1, max: 6 },
           { id: 'mobile_span', label: 'Ancho Móvil (Columnas)', type: 'range', defaultValue: 4, min: 1, max: 4 },
           
+          { id: 'element_padding_y', label: 'Separación vertical del elemento', type: 'range', defaultValue: 20, min: 0, max: 120, unit: 'px', showIf: { settingId: 'type', value: 'icon' } },
           { id: 'padding', label: 'Padding Interno', type: 'range', defaultValue: 32, min: 0, max: 80, unit: 'px' },
           { id: 'align_items', label: 'Alineación Vertical', type: 'select', defaultValue: 'start', options: [
             { label: 'Arriba', value: 'start' },

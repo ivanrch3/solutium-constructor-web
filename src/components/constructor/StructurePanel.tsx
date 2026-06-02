@@ -80,7 +80,7 @@ const BENTO_MAX_DESKTOP_COLUMNS = 32;
 const BENTO_TABLET_COLUMNS = 6;
 const BENTO_MOBILE_COLUMNS = 4;
 const BENTO_BASE_VISIBLE_ROWS = 7;
-const BENTO_MAX_EDITABLE_ROWS = 36;
+const BENTO_MAX_EDITABLE_ROWS = 240;
 
 const clampBentoDesktopColumns = (value: any) => {
   const parsed = Number(value);
@@ -145,7 +145,7 @@ const findFirstFreeBentoPosition = (
 
   const occupied = existingItems.map((item) => getBentoPlacementLayout(item, breakpoint, cols));
 
-  for (let y = 0; y < 100; y += 1) {
+  for (let y = 0; y < BENTO_MAX_EDITABLE_ROWS; y += 1) {
     for (let x = 0; x <= cols - normalizedWidth; x += 1) {
       const candidate = { x, y, w: normalizedWidth, h: height };
       if (!occupied.some((entry) => collides(candidate, entry))) {
@@ -201,6 +201,7 @@ const createBentoPanelElementPreset = (kind: string, existingItems: any[], deskt
       card_radius: 28,
       card_shadow: 'sm',
       padding: 32,
+      element_padding_y: 20,
       content_align: 'center',
       ...item,
       col_span: safeDesktopW,

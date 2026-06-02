@@ -29,7 +29,7 @@ const BENTO_MAX_DESKTOP_COLUMNS = 32;
 const BENTO_TABLET_COLUMNS = 6;
 const BENTO_MOBILE_COLUMNS = 4;
 const BENTO_BASE_VISIBLE_ROWS = 7;
-const BENTO_MAX_EDITABLE_ROWS = 36;
+const BENTO_MAX_EDITABLE_ROWS = 240;
 const BENTO_ROW_HEIGHT = 80;
 
 
@@ -91,6 +91,70 @@ const getAdaptiveTypography = (priority: string, colSpan: number, rowSpan: numbe
 
 const toBoolean = (value: unknown) => {
   return value === true || value === 'true' || value === 1 || value === '1';
+};
+
+const estimateTextLines = (value: any, charsPerLine: number) => {
+  const text = String(value || '').trim();
+  if (!text) return 0;
+  return Math.max(1, Math.ceil(text.length / Math.max(charsPerLine, 1)));
+};
+
+const getTypographyFontSize = (token: any, fallback: keyof typeof TYPOGRAPHY_SCALE) => {
+  const resolvedToken = token && token !== 'auto' ? token : fallback;
+  return TYPOGRAPHY_SCALE[resolvedToken as keyof typeof TYPOGRAPHY_SCALE]?.fontSize
+    || TYPOGRAPHY_SCALE[fallback]?.fontSize
+    || 16;
+};
+
+const getBentoResponsiveMinRows = (
+  item: any,
+  breakpoint: 'desktop' | 'tablet' | 'mobile',
+  rowHeight: number,
+  rowGap: number
+) => {
+  if (breakpoint === 'desktop') return 1;
+
+  const type = item?.type || 'text';
+  const safeGap = Math.max(Number(rowGap) || 0, 0);
+  let minHeight = rowHeight;
+
+  if (type === 'icon') {
+    const isImage = item.icon_visual_type === 'image';
+    const iconSize = parseNumSafe(item.icon_size, 32);
+    const iconImageSize = parseNumSafe(item.icon_image_size, 72);
+    const visualSize = isImage ? iconImageSize : Math.max(iconSize + 16, 40);
+    const textPadding = parseNumSafe(item.padding, 32);
+    const elementPaddingY = parseNumSafe(item.element_padding_y, 20);
+    const charsPerLine = breakpoint === 'mobile' ? 22 : 34;
+    const titleFontSize = getTypographyFontSize(item.title_size, 't3');
+    const descFontSize = getTypographyFontSize(item.description_size || item.desc_size, 'p');
+    const titleLines = estimateTextLines(item.title, charsPerLine);
+    const descLines = estimateTextLines(item.description, charsPerLine);
+    const titleHeight = titleLines * titleFontSize * 1.25;
+    const descHeight = descLines * descFontSize * 1.45;
+    const textHeight = titleLines || descLines
+      ? titleHeight + descHeight + (titleLines && descLines ? 8 : 0) + (textPadding * 2)
+      : 0;
+
+    minHeight = visualSize + (textHeight ? 12 : 0) + textHeight + (elementPaddingY * 2);
+  } else if (type === 'visual') {
+    minHeight = breakpoint === 'mobile' ? 220 : 260;
+  } else if (type === 'list') {
+    const listItems = Array.isArray(item.list_items)
+      ? item.list_items
+      : String(item.list_items || '').split('\n').filter(Boolean);
+    minHeight = 80 + (listItems.length * 28);
+  } else if (type === 'accordion') {
+    minHeight = 140 + estimateTextLines(item.description, breakpoint === 'mobile' ? 28 : 44) * 20;
+  } else if (type === 'text' || type === 'card') {
+    const charsPerLine = breakpoint === 'mobile' ? 28 : 46;
+    minHeight = 96
+      + (estimateTextLines(item.title, charsPerLine) * 24)
+      + (estimateTextLines(item.description, charsPerLine) * 22)
+      + (parseNumSafe(item.padding, 32) * 2);
+  }
+
+  return Math.max(1, Math.ceil((minHeight + safeGap) / (rowHeight + safeGap)));
 };
 
 const clampBentoDesktopColumns = (value: any) => {
@@ -167,6 +231,8 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave }: a
     icon_bg = 'rgba(59, 130, 246, 0.1)',
     icon_image = '',
     icon_image_size,
+    element_padding_y,
+    padding,
     text_contrast = 'auto'
   } = item;
 
@@ -196,6 +262,8 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave }: a
   const resolvedIconBg = resolveThemeColor(icon_bg, 'rgba(59, 130, 246, 0.1)', 'rgba(96, 165, 250, 0.18)', darkMode);
   const numericIconSize = parseNumSafe(icon_size, isHero ? 40 : 32);
   const numericIconImageSize = parseNumSafe(icon_image_size, 72);
+  const numericTextPadding = parseNumSafe(padding, 32);
+  const numericElementPaddingY = parseNumSafe(element_padding_y, 20);
   const iconFrameSize = Math.max(numericIconSize + 16, 40);
   const verticalContentClass = {
     start: 'justify-start',
@@ -379,7 +447,14 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave }: a
       const iconImageSrc = icon_image || image;
       const visualFrameSize = isIconImage ? numericIconImageSize : iconFrameSize;
       return (
-        <div className={`flex flex-col z-10 w-full h-full items-center ${verticalContentClass} gap-3 text-center`}>
+        <div
+          className={`flex flex-col z-10 w-full h-full items-center ${verticalContentClass} gap-3 text-center`}
+          style={{
+            boxSizing: 'border-box',
+            paddingTop: `${numericElementPaddingY}px`,
+            paddingBottom: `${numericElementPaddingY}px`
+          }}
+        >
           <div
             className="flex items-center justify-center overflow-hidden rounded-3xl"
             style={{
@@ -400,42 +475,52 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave }: a
               <IconComponent size={numericIconSize} />
             )}
           </div>
-          {title && (
-            <h3
-              className="leading-tight"
+          {(title || description) && (
+            <div
+              className="flex w-full max-w-full flex-col items-center gap-2 text-center"
               style={{
-                color: finalTitleColor,
-                fontWeight: finalTitleWeight,
-                fontSize: `${TYPOGRAPHY_SCALE[finalTitleSize as keyof typeof TYPOGRAPHY_SCALE]?.fontSize || 16}px`
+                boxSizing: 'border-box',
+                padding: `${numericTextPadding}px`
               }}
             >
-              <InlineEditableText
-                moduleId={moduleId}
-                settingId="title"
-                value={title}
-                tagName="span"
-                isPreviewMode={isPreviewMode}
-                onSave={(val) => onSave('title', val)}
-              />
-            </h3>
-          )}
-          {description && (
-            <p
-              className="max-w-[220px] leading-snug opacity-70"
-              style={{
-                color: finalDescColor,
-                fontSize: `${TYPOGRAPHY_SCALE[finalDescSize as keyof typeof TYPOGRAPHY_SCALE]?.fontSize || 14}px`
-              }}
-            >
-              <InlineEditableText
-                moduleId={moduleId}
-                settingId="description"
-                value={description}
-                tagName="span"
-                isPreviewMode={isPreviewMode}
-                onSave={(val) => onSave('description', val)}
-              />
-            </p>
+              {title && (
+                <h3
+                  className="leading-tight"
+                  style={{
+                    color: finalTitleColor,
+                    fontWeight: finalTitleWeight,
+                    fontSize: `${TYPOGRAPHY_SCALE[finalTitleSize as keyof typeof TYPOGRAPHY_SCALE]?.fontSize || 16}px`
+                  }}
+                >
+                  <InlineEditableText
+                    moduleId={moduleId}
+                    settingId="title"
+                    value={title}
+                    tagName="span"
+                    isPreviewMode={isPreviewMode}
+                    onSave={(val) => onSave('title', val)}
+                  />
+                </h3>
+              )}
+              {description && (
+                <p
+                  className="max-w-[220px] leading-snug opacity-70"
+                  style={{
+                    color: finalDescColor,
+                    fontSize: `${TYPOGRAPHY_SCALE[finalDescSize as keyof typeof TYPOGRAPHY_SCALE]?.fontSize || 14}px`
+                  }}
+                >
+                  <InlineEditableText
+                    moduleId={moduleId}
+                    settingId="description"
+                    value={description}
+                    tagName="span"
+                    isPreviewMode={isPreviewMode}
+                    onSave={(val) => onSave('description', val)}
+                  />
+                </p>
+              )}
+            </div>
           )}
         </div>
       );
@@ -1188,9 +1273,13 @@ export const BentoModule: React.FC<{
       );
 
       orderedItems.forEach(({ item, index }) => {
-        const h = breakpoint === 'mobile'
+        const savedH = breakpoint === 'mobile'
           ? (item.mobile_rows || item.row_span || item.desktop_rows || 2)
           : (item.desktop_rows || item.row_span || 2);
+        const h = Math.max(
+          savedH,
+          getBentoResponsiveMinRows(item, breakpoint as 'tablet' | 'mobile', BENTO_ROW_HEIGHT, gap)
+        );
         const w = breakpoint === 'mobile'
           ? cols
           : Math.min(item.tablet_span || item.col_span || Math.ceil(cols / 2), cols);
@@ -1202,7 +1291,7 @@ export const BentoModule: React.FC<{
           return;
         }
 
-        for (let y = 0; y < 100; y += 1) {
+        for (let y = 0; y < BENTO_MAX_EDITABLE_ROWS; y += 1) {
           let placed = false;
           for (let x = 0; x <= cols - w; x += 1) {
             const candidate = { x, y, w, h };
@@ -1231,10 +1320,17 @@ export const BentoModule: React.FC<{
         const scaledLayout = breakpoint === 'desktop'
           ? scaleLegacyDesktopLayout(item, savedLayout, cols)
           : clampLayoutEntry(savedLayout, cols);
+        const responsiveMinRows = getBentoResponsiveMinRows(
+          item,
+          breakpoint as 'desktop' | 'tablet' | 'mobile',
+          BENTO_ROW_HEIGHT,
+          gap
+        );
         return {
           i: layoutId,
           ...savedLayout,
-          ...scaledLayout
+          ...scaledLayout,
+          h: Math.max(scaledLayout.h, responsiveMinRows)
         };
       }
 
@@ -1256,11 +1352,18 @@ export const BentoModule: React.FC<{
       const fallbackLayout = breakpoint === 'desktop'
         ? scaleLegacyDesktopLayout(item, { x: item.x || 0, y: item.y || 0, w, h }, cols)
         : clampLayoutEntry({ x: item.x || 0, y: item.y || 0, w, h }, cols);
+      const responsiveMinRows = getBentoResponsiveMinRows(
+        item,
+        breakpoint as 'desktop' | 'tablet' | 'mobile',
+        BENTO_ROW_HEIGHT,
+        gap
+      );
 
       // Simple positional fallback if x/y not set for bp
       return {
         i: layoutId,
-        ...fallbackLayout
+        ...fallbackLayout,
+        h: Math.max(fallbackLayout.h, responsiveMinRows)
       };
     });
   };
@@ -1475,6 +1578,7 @@ export const BentoModule: React.FC<{
       card_style: 'solid',
       card_radius: 28,
       padding: 32,
+      element_padding_y: 20,
       content_align: 'center',
       icon: type === 'stat' ? 'Zap' : 'Sparkles',
       button_text: 'Explorar'
@@ -1488,9 +1592,16 @@ export const BentoModule: React.FC<{
 
   const getLayoutEntryForBreakpoint = (item: any, breakpoint: 'desktop' | 'tablet' | 'mobile', colsForBreakpoint: number) => {
     if (item.layouts?.[breakpoint]) {
-      return breakpoint === 'desktop'
+      const layout = breakpoint === 'desktop'
         ? scaleLegacyDesktopLayout(item, item.layouts[breakpoint], colsForBreakpoint)
         : clampLayoutEntry(item.layouts[breakpoint], colsForBreakpoint);
+      return {
+        ...layout,
+        h: Math.max(
+          layout.h,
+          getBentoResponsiveMinRows(item, breakpoint, BENTO_ROW_HEIGHT, gap)
+        )
+      };
     }
 
     const w = breakpoint === 'mobile' ? (item.mobile_span || item.col_span || 4) :
@@ -1499,9 +1610,17 @@ export const BentoModule: React.FC<{
     const h = breakpoint === 'mobile' ? (item.mobile_rows || item.row_span || 2) :
               (item.desktop_rows || item.row_span || 2);
 
-    return breakpoint === 'desktop'
+    const layout = breakpoint === 'desktop'
       ? scaleLegacyDesktopLayout(item, { x: item.x || 0, y: item.y || 0, w, h }, colsForBreakpoint)
       : clampLayoutEntry({ x: item.x || 0, y: item.y || 0, w, h }, colsForBreakpoint);
+
+    return {
+      ...layout,
+      h: Math.max(
+        layout.h,
+        getBentoResponsiveMinRows(item, breakpoint, BENTO_ROW_HEIGHT, gap)
+      )
+    };
   };
 
   // Header Values
@@ -1763,6 +1882,7 @@ export const BentoModule: React.FC<{
             containerPadding={[0, 0]}
             isDraggable={false}
             isResizable={!isPreviewMode}
+            resizeHandles={isPreviewMode ? [] : ['se']}
             isDroppable={false}
             onLayoutChange={handleLayoutChange}
             onDragStart={() => {
@@ -1858,7 +1978,7 @@ export const BentoModule: React.FC<{
                 none: ''
               }[hover_effect as string] || '' : '';
 
-              const isSelected = selectedIndex === i;
+              const isSelected = !isPreviewMode && selectedIndex === i;
               const rglKey = getLayoutItemId(item, i);
               const cellKey = rglKey;
 
@@ -1896,7 +2016,7 @@ export const BentoModule: React.FC<{
                         setSelectedIndex(i);
                       }
                     }}
-                    className={`w-full h-full overflow-hidden group flex flex-col cursor-pointer relative ${isDragging ? 'transition-none' : 'transition-all duration-300'} ${shadowClass} ${hoverClass} ${alignClass} ${card_style === 'glass' ? 'backdrop-blur-xl' : ''} ${
+                    className={`w-full h-full overflow-hidden group flex flex-col ${!isPreviewMode ? 'cursor-pointer' : ''} relative ${isDragging ? 'transition-none' : 'transition-all duration-300'} ${shadowClass} ${hoverClass} ${alignClass} ${card_style === 'glass' ? 'backdrop-blur-xl' : ''} ${
                       isSelected ? `ring-4 ring-primary ring-offset-4 ${isDragging ? '' : 'scale-[1.01]'} z-50 shadow-2xl` : 'z-10'
                     }`}
                     style={{
@@ -1904,7 +2024,7 @@ export const BentoModule: React.FC<{
                       backgroundImage: specialBg || (card_style === 'gradient' ? finalBg : undefined),
                       borderRadius: `${card_radius}px`,
                       border: (card_style === 'transparent' || isHeroType) ? 'none' : `1px solid ${resolvedCardBorder}`,
-                      padding: type === 'visual' ? 0 : `${padding}px`,
+                      padding: (type === 'visual' || type === 'icon') ? 0 : `${padding}px`,
                       boxShadow: glowShadow,
                       zIndex: isSelected ? 50 : z_index
                     }}

@@ -45,7 +45,7 @@ const BENTO_MAX_DESKTOP_COLUMNS = 32;
 const BENTO_TABLET_COLUMNS = 6;
 const BENTO_MOBILE_COLUMNS = 4;
 const BENTO_BASE_VISIBLE_ROWS = 7;
-const BENTO_MAX_EDITABLE_ROWS = 36;
+const BENTO_MAX_EDITABLE_ROWS = 240;
 
 const TEXT_STYLE_PRESETS: Record<string, Record<string, any>> = {
   display: { title_size: 't1', title_weight: 'black', description_size: 'p', line_height: 1.05, letter_spacing: -2 },
@@ -140,6 +140,27 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
       : BENTO_MOBILE_COLUMNS;
 
   const clampNumber = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
+  const parseNumber = (value: any, fallback: number) => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : fallback;
+  };
+
+  const getResponsiveMinimumRows = (item: any) => {
+    if (activeLayoutKey === 'desktop') return 1;
+    if (item?.type === 'icon') {
+      const visualSize = item.icon_visual_type === 'image'
+        ? parseNumber(item.icon_image_size, 72)
+        : Math.max(parseNumber(item.icon_size, 32) + 16, 40);
+      const hasText = Boolean(item.title || item.description);
+      const textPadding = parseNumber(item.padding, 32);
+      const elementPaddingY = parseNumber(item.element_padding_y, 20);
+      const estimatedHeight = visualSize + (hasText ? 92 + (textPadding * 2) : 0) + (elementPaddingY * 2);
+      return Math.max(2, Math.ceil(estimatedHeight / 96));
+    }
+    if (item?.type === 'list') return 3;
+    if (item?.type === 'visual') return 3;
+    return 2;
+  };
 
   const getWorkspaceRows = () => {
     const workspaceRowsKey = `${selectedSection.id}_el_bento_items_workspace_rows`;
@@ -210,7 +231,7 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
       x: clampNumber(scaleLegacyDesktop ? rawLayout.x * 2 : rawLayout.x, 0, Math.max(activeColumns - w, 0)),
       y: Math.max(rawLayout.y, 0),
       w,
-      h: Math.max(rawLayout.h, 1)
+      h: Math.max(rawLayout.h, getResponsiveMinimumRows(item))
     };
   };
 
@@ -311,7 +332,7 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
     text: ['text_style', 'title', 'description', 'title_size', 'title_weight', 'font_family', 'title_color', 'description_size', 'content_align', 'line_height', 'letter_spacing', 'card_image', 'card_overlay', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'align_items', 'card_style', 'card_bg', 'card_gradient', 'card_radius', 'card_shadow', 'text_contrast'],
     visual: ['image', 'image_fit', 'card_image', 'card_overlay', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'align_items', 'card_style', 'card_bg', 'card_gradient', 'card_radius', 'card_shadow'],
     button: ['button_text', 'btn_url', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'align_items', 'card_style', 'card_bg', 'card_gradient', 'card_image', 'card_overlay', 'card_radius', 'card_shadow'],
-    icon: ['title', 'description', 'icon_visual_type', 'icon', 'icon_color', 'icon_size', 'show_icon_bg', 'icon_bg', 'icon_image', 'icon_image_size', 'title_size', 'title_weight', 'title_color', 'description_size', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'align_items', 'card_style', 'card_bg', 'card_gradient', 'card_image', 'card_overlay', 'card_radius', 'card_shadow', 'text_contrast'],
+    icon: ['title', 'description', 'icon_visual_type', 'icon', 'icon_color', 'icon_size', 'show_icon_bg', 'icon_bg', 'icon_image', 'icon_image_size', 'title_size', 'title_weight', 'title_color', 'description_size', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'element_padding_y', 'padding', 'align_items', 'card_style', 'card_bg', 'card_gradient', 'card_image', 'card_overlay', 'card_radius', 'card_shadow', 'text_contrast'],
     badge: ['title', 'icon', 'title_size', 'title_weight', 'title_color', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'align_items', 'card_style', 'card_bg', 'card_gradient', 'card_image', 'card_overlay', 'card_radius', 'card_shadow'],
     metric: ['metric_value', 'metric_prefix', 'metric_suffix', 'metric_label', 'accent_color', 'icon', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'align_items', 'card_style', 'card_bg', 'card_gradient', 'card_image', 'card_overlay', 'card_radius', 'card_shadow'],
     list: ['title', 'list_items', 'icon', 'title_size', 'title_weight', 'title_color', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'align_items', 'card_style', 'card_bg', 'card_gradient', 'card_image', 'card_overlay', 'card_radius', 'card_shadow'],
@@ -354,8 +375,11 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
     if (selectedType === 'icon' && field.id === 'mobile_span') {
       nextField = { ...nextField, label: 'Ancho de celda en móvil', subsection: 'Tamaño de celda', description: 'Ajusta el ancho del bloque en el grid móvil.' };
     }
+    if (selectedType === 'icon' && field.id === 'element_padding_y') {
+      nextField = { ...nextField, label: 'Separación vertical del elemento', subsection: 'Espaciado del elemento', description: 'Aire superior e inferior del conjunto visual + textos dentro de la celda.' };
+    }
     if (selectedType === 'icon' && field.id === 'padding') {
-      nextField = { ...nextField, label: 'Separación interna de la celda', description: 'Espacio entre el borde del contenedor y el contenido interno.' };
+      nextField = { ...nextField, label: 'Separación interna de textos', description: 'Espacio propio del bloque de título y descripción; no cambia el tamaño ni la posición del visual.' };
     }
     if (selectedType === 'icon' && field.id === 'align_items') {
       nextField = { ...nextField, label: 'Alineación vertical del contenido', description: 'Mueve juntos el visual, título y descripción dentro de una celda alta.' };

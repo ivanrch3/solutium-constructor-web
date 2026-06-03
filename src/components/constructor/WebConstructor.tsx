@@ -338,6 +338,10 @@ interface WebConstructorProps {
   project: Project | null;
   initialPage?: WebBuilderSite | PublishedSite | Page | null;
   creationMethod?: 'ai' | 'template' | 'scratch' | null;
+  secureProducts?: Product[];
+  secureCustomers?: Customer[];
+  secureTrustedCompanyLogos?: TrustedCompanyLogo[];
+  useSecureCatalogContext?: boolean;
 }
 
 const resolveLifecycleStatusFromPage = (
@@ -494,7 +498,11 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   logoWhiteUrl,
   project,
   initialPage,
-  creationMethod
+  creationMethod,
+  secureProducts = [],
+  secureCustomers = [],
+  secureTrustedCompanyLogos = [],
+  useSecureCatalogContext = false
 }) => {
   const { 
     siteContent, 
@@ -1248,18 +1256,30 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   }, []);
 
   React.useEffect(() => {
-    if (projectId) {
-      getProducts(0, 100, projectId).then(data => {
-        setProducts(data || []);
+    if (!projectId) return;
+
+    if (useSecureCatalogContext) {
+      setProducts(Array.isArray(secureProducts) ? secureProducts : []);
+      setCustomers(Array.isArray(secureCustomers) ? secureCustomers : []);
+      setTrustedCompanyLogos(Array.isArray(secureTrustedCompanyLogos) ? secureTrustedCompanyLogos : []);
+      logDebug('[SECURE_CONSTRUCTOR_CATALOG_CONTEXT_APPLIED]', {
+        productsCount: secureProducts?.length || 0,
+        customersCount: secureCustomers?.length || 0,
+        trustedLogosCount: secureTrustedCompanyLogos?.length || 0
       });
-      getCustomers(0, 50, projectId).then(data => {
-        setCustomers(data || []);
-      });
-      getTrustedCompanyLogos(projectId).then(data => {
-        setTrustedCompanyLogos(data || []);
-      });
+      return;
     }
-  }, [projectId]);
+
+    getProducts(0, 100, projectId).then(data => {
+      setProducts(data || []);
+    });
+    getCustomers(0, 50, projectId).then(data => {
+      setCustomers(data || []);
+    });
+    getTrustedCompanyLogos(projectId).then(data => {
+      setTrustedCompanyLogos(data || []);
+    });
+  }, [projectId, secureCustomers, secureProducts, secureTrustedCompanyLogos, useSecureCatalogContext]);
 
   // Track unsaved changes
   React.useEffect(() => {

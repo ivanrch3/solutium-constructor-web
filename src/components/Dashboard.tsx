@@ -8,6 +8,7 @@ import { logDebug } from '../utils/debug';
 interface DashboardProps {
   assets: Asset[];
   pages: (WebBuilderSite | PublishedSite)[];
+  pagesLoadError?: string | null;
   onNewPage: () => void;
   onSelectAsset: (asset: Asset) => void;
   onSelectPage: (page: WebBuilderSite | PublishedSite) => void;
@@ -29,6 +30,7 @@ const CONSTRUCTOR_WEB_LOGO_URL = 'https://nyc3.digitaloceanspaces.com/solutium-s
 export const Dashboard: React.FC<DashboardProps> = ({ 
   assets, 
   pages, 
+  pagesLoadError,
   onNewPage, 
   onSelectAsset, 
   onSelectPage, 
@@ -248,6 +250,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   );
                 })}
               </div>
+            ) : pagesLoadError ? (
+              <div className="h-full border-2 border-dashed border-amber-200 bg-amber-50/70 rounded-2xl flex flex-col items-center justify-center text-amber-800 space-y-3 px-6 text-center">
+                <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center">
+                  <FileText className="w-6 h-6 text-amber-700" />
+                </div>
+                <p className="text-base font-semibold">No se pudieron cargar las páginas.</p>
+                <p className="text-xs leading-relaxed text-amber-700">{pagesLoadError}</p>
+              </div>
             ) : (
               <div className="h-full border-2 border-dashed border-border rounded-2xl flex flex-col items-center justify-center text-text/80 space-y-3">
                 <div className="w-12 h-12 bg-secondary rounded-full flex items-center justify-center">
@@ -273,8 +283,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
           
           <button 
             onClick={onNewPage}
-            className="flex items-center justify-center gap-2 hover:opacity-90 text-white font-bold py-3 px-6 rounded-xl transition-all w-fit group border border-black/5"
-            style={{ backgroundColor: 'var(--builder-primary)', boxShadow: '0 18px 36px -18px color-mix(in srgb, var(--builder-primary) 40%, transparent)' }}
+            className="flex items-center justify-center gap-2 hover:opacity-90 font-bold py-3 px-6 rounded-xl transition-all w-fit group border border-black/5"
+            style={{
+              backgroundColor: 'var(--builder-primary)',
+              color: 'var(--builder-primary-contrast)',
+              boxShadow: '0 18px 36px -18px color-mix(in srgb, var(--builder-primary) 40%, transparent)'
+            }}
           >
             <PlusSquare className="w-5 h-5 group-hover:scale-110 transition-transform" />
             <span className="text-base">Crear nuevo</span>

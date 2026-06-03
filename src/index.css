@@ -3,28 +3,40 @@
 
 :root {
   --builder-primary: #2563EB;
-  --builder-primary-soft: rgba(37, 99, 235, 0.1);
-  --builder-bg: #F8FAFC;
+  --builder-primary-soft: #DBEAFE;
+  --builder-primary-hover: #1D4ED8;
+  --builder-primary-contrast: #FFFFFF;
+  --builder-active-bg: #EFF6FF;
+  --builder-active-text: #0F172A;
+  --builder-bg: #F7F8FC;
   --builder-surface: #FFFFFF;
-  --builder-surface-muted: #F1F5F9;
+  --builder-surface-muted: #F2F4F8;
   --builder-text: #0F172A;
   --builder-muted: #64748B;
   --builder-border: #E2E8F0;
+  --builder-sidebar-bg: #FFFFFF;
+  --builder-sidebar-text: #2563EB;
+  --builder-sidebar-muted: #64748B;
+  --builder-sidebar-active-bg: #DBEAFE;
+  --builder-sidebar-active-text: #2563EB;
+  --builder-sidebar-border: #E2E8F0;
 }
 
 @theme {
   --color-primary: var(--primary-color, var(--builder-primary, #2563EB));
-  --color-secondary: var(--secondary-color, var(--builder-surface-muted, #F1F5F9));
+  --color-secondary: var(--secondary-color, var(--builder-surface-muted, #F2F4F8));
   --color-accent: var(--accent-color, #7C3AED);
-  --color-background: var(--background-color, var(--builder-bg, #F8FAFC));
+  --color-background: var(--background-color, var(--builder-bg, #F7F8FC));
   --color-surface: var(--card-color, var(--builder-surface, #FFFFFF));
   --color-text: var(--foreground-color, var(--builder-text, #0F172A));
   --color-border: var(--border-color, var(--builder-border, #E2E8F0));
   
-  --color-sidebar-bg: var(--sidebar-bg, #0F172A);
-  --color-sidebar-foreground: var(--sidebar-foreground, #FFFFFF);
-  --color-sidebar-accent: var(--sidebar-accent, rgba(255, 255, 255, 0.1));
-  --color-sidebar-border: var(--sidebar-border, rgba(255, 255, 255, 0.1));
+  --color-sidebar-bg: var(--sidebar-bg, var(--builder-sidebar-bg, #FFFFFF));
+  --color-sidebar-foreground: var(--sidebar-foreground, var(--builder-sidebar-text, #2563EB));
+  --color-sidebar-muted: var(--sidebar-muted, var(--builder-sidebar-muted, #64748B));
+  --color-sidebar-accent: var(--sidebar-accent, var(--builder-sidebar-active-bg, #DBEAFE));
+  --color-sidebar-active-text: var(--sidebar-active-text, var(--builder-sidebar-active-text, #2563EB));
+  --color-sidebar-border: var(--sidebar-border, var(--builder-sidebar-border, #E2E8F0));
   
   --font-sans: var(--solutium-font, "Inter", sans-serif);
   --font-heading: var(--font-heading, var(--font-sans));

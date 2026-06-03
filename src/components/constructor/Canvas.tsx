@@ -156,6 +156,13 @@ export const Canvas: React.FC<CanvasProps> = ({
     ? Math.min(1, canvasViewportWidth / desktopLogicalWidth)
     : 1;
   const effectivePreviewScale = useVirtualDesktopPreview ? desktopPreviewScale * userZoom : userZoom;
+  const previewBaseWidth = useVirtualDesktopPreview
+    ? desktopLogicalWidth
+    : viewport === 'tablet'
+      ? 768
+      : viewport === 'mobile'
+        ? 375
+        : Math.max(canvasViewportWidth || renderContentWidth || browserViewportWidth, 1);
   const isUserZoomed = showEditorChrome && userZoom !== 1;
   const canPanPreview = showEditorChrome && userZoom > 1;
   const zoomPercent = Math.round(userZoom * 100);
@@ -245,6 +252,32 @@ export const Canvas: React.FC<CanvasProps> = ({
   }, [updateScrollMetrics, renderContentWidth, renderContentHeight, userZoom, viewport, isFullscreen]);
 
   React.useEffect(() => {
+    const node = canvasScrollContainerRef.current;
+    if (!node || !showEditorChrome) return;
+
+    window.requestAnimationFrame(() => {
+      const maxScrollLeft = Math.max(0, node.scrollWidth - node.clientWidth);
+      const maxScrollTop = Math.max(0, node.scrollHeight - node.clientHeight);
+
+      if (userZoom <= 1) {
+        node.scrollLeft = Math.round(maxScrollLeft / 2);
+      } else {
+        node.scrollLeft = Math.min(maxScrollLeft, Math.max(0, node.scrollLeft));
+      }
+
+      node.scrollTop = Math.min(maxScrollTop, Math.max(0, node.scrollTop));
+      updateScrollMetrics();
+    });
+  }, [
+    canvasViewportWidth,
+    renderContentWidth,
+    renderContentHeight,
+    showEditorChrome,
+    updateScrollMetrics,
+    userZoom
+  ]);
+
+  React.useEffect(() => {
     if (!isUserZoomed) {
       setIsMinimapHidden(false);
       setIsPanning(false);
@@ -271,15 +304,17 @@ export const Canvas: React.FC<CanvasProps> = ({
       const node = canvasScrollContainerRef.current;
       const clampedZoom = clampZoom(nextZoom);
       if (node && currentZoom !== clampedZoom) {
-        const currentEffectiveScale = useVirtualDesktopPreview ? desktopPreviewScale * currentZoom : currentZoom;
-        const nextEffectiveScale = useVirtualDesktopPreview ? desktopPreviewScale * clampedZoom : clampedZoom;
-        const centerX = (node.scrollLeft + node.clientWidth / 2) / currentEffectiveScale;
-        const centerY = (node.scrollTop + node.clientHeight / 2) / currentEffectiveScale;
+        const centerXRatio = node.scrollWidth > 0
+          ? (node.scrollLeft + node.clientWidth / 2) / node.scrollWidth
+          : 0.5;
+        const centerYRatio = node.scrollHeight > 0
+          ? (node.scrollTop + node.clientHeight / 2) / node.scrollHeight
+          : 0.5;
         window.requestAnimationFrame(() => {
           const maxScrollLeft = Math.max(0, node.scrollWidth - node.clientWidth);
           const maxScrollTop = Math.max(0, node.scrollHeight - node.clientHeight);
-          node.scrollLeft = Math.min(maxScrollLeft, Math.max(0, centerX * nextEffectiveScale - node.clientWidth / 2));
-          node.scrollTop = Math.min(maxScrollTop, Math.max(0, centerY * nextEffectiveScale - node.clientHeight / 2));
+          node.scrollLeft = Math.min(maxScrollLeft, Math.max(0, centerXRatio * node.scrollWidth - node.clientWidth / 2));
+          node.scrollTop = Math.min(maxScrollTop, Math.max(0, centerYRatio * node.scrollHeight - node.clientHeight / 2));
           updateScrollMetrics();
         });
       }
@@ -502,10 +537,10 @@ export const Canvas: React.FC<CanvasProps> = ({
       <div
         className={`flex min-h-full ${useVirtualDesktopPreview ? 'relative justify-start' : 'justify-center transition-all duration-500'} ${isFullscreen ? 'p-0' : isPreviewMode ? 'p-0' : isDesktopCanvas ? 'p-0' : 'p-6'}`}
         style={useVirtualDesktopPreview ? {
-          width: `${Math.ceil(desktopLogicalWidth * effectivePreviewScale)}px`,
+          width: `${Math.ceil(previewBaseWidth * effectivePreviewScale)}px`,
           minHeight: renderContentHeight ? `${Math.ceil(renderContentHeight * effectivePreviewScale)}px` : undefined
         } : (showEditorChrome && userZoom !== 1 ? {
-          width: renderContentWidth ? `${Math.ceil(renderContentWidth * userZoom)}px` : undefined,
+          width: `${Math.ceil(previewBaseWidth * userZoom)}px`,
           minHeight: renderContentHeight ? `${Math.ceil(renderContentHeight * userZoom)}px` : undefined
         } : undefined)}
       >
@@ -522,7 +557,7 @@ export const Canvas: React.FC<CanvasProps> = ({
             maxWidth: isPreviewMode ? 'none' : (useVirtualDesktopPreview ? `${desktopLogicalWidth}px` : (isFullscreen ? (viewport === 'desktop' ? 'none' : viewportWidths[viewport]) : viewport === 'desktop' ? 'none' : viewportWidths[viewport])),
             minHeight: isCleanPreviewMode ? '100vh' : (isDesktopCanvas ? '100%' : viewport === 'mobile' ? '667px' : '1024px'),
             transform: showEditorChrome && effectivePreviewScale !== 1 ? `scale(${effectivePreviewScale})` : undefined,
-            transformOrigin: useVirtualDesktopPreview ? 'top left' : 'top center',
+            transformOrigin: showEditorChrome ? 'top left' : 'top center',
             position: useVirtualDesktopPreview ? 'absolute' : 'relative',
             top: useVirtualDesktopPreview ? 0 : undefined,
             left: useVirtualDesktopPreview ? 0 : undefined

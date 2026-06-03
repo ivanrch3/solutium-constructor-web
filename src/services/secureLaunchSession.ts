@@ -72,6 +72,102 @@ export const getLaunchTokenFromUrl = () => {
   return queryParams.get('launch_token') || hashParams.get('launch_token') || null;
 };
 
+const LAUNCH_ACCESS_TOKEN_STORAGE_KEY = 'solutium_constructor_launch_access_token';
+const LAUNCH_ACCESS_EXPIRES_AT_STORAGE_KEY = 'solutium_constructor_launch_access_expires_at';
+
+const readSessionStorage = (key: string) => {
+  try {
+    return window.sessionStorage.getItem(key);
+  } catch {
+    return null;
+  }
+};
+
+const writeSessionStorage = (key: string, value: string) => {
+  try {
+    window.sessionStorage.setItem(key, value);
+  } catch {
+    // Storage persistence is best-effort; window globals still cover this tab.
+  }
+};
+
+const removeSessionStorage = (key: string) => {
+  try {
+    window.sessionStorage.removeItem(key);
+  } catch {
+    // noop
+  }
+};
+
+export const isLaunchAccessExpired = (expiresAt?: string | null, bufferMs = 0) => {
+  if (!expiresAt) return false;
+  const expiresAtMs = Date.parse(expiresAt);
+  if (!Number.isFinite(expiresAtMs)) return true;
+  return expiresAtMs <= Date.now() + bufferMs;
+};
+
+export const clearStoredLaunchAccessSession = () => {
+  removeSessionStorage(LAUNCH_ACCESS_TOKEN_STORAGE_KEY);
+  removeSessionStorage(LAUNCH_ACCESS_EXPIRES_AT_STORAGE_KEY);
+  try {
+    delete (window as any).SOLUTIUM_CONSTRUCTOR_LAUNCH_ACCESS;
+  } catch {
+    // noop
+  }
+};
+
+export const storeLaunchAccessSession = (payload: SecureLaunchSessionPayload | null | undefined) => {
+  const token = payload?.access?.launch_access_token || null;
+  const expiresAt = payload?.access?.expires_at || null;
+  if (!token || isLaunchAccessExpired(expiresAt)) {
+    clearStoredLaunchAccessSession();
+    return;
+  }
+
+  writeSessionStorage(LAUNCH_ACCESS_TOKEN_STORAGE_KEY, token);
+  if (expiresAt) {
+    writeSessionStorage(LAUNCH_ACCESS_EXPIRES_AT_STORAGE_KEY, expiresAt);
+  }
+
+  try {
+    (window as any).SOLUTIUM_CONSTRUCTOR_LAUNCH_ACCESS = {
+      token,
+      expiresAt
+    };
+  } catch {
+    // noop
+  }
+};
+
+export const getStoredLaunchAccessSession = () => {
+  const runtimeSession = (() => {
+    try {
+      return (window as any).SOLUTIUM_CONSTRUCTOR_LAUNCH_ACCESS || null;
+    } catch {
+      return null;
+    }
+  })();
+
+  const token =
+    (typeof runtimeSession?.token === 'string' && runtimeSession.token) ||
+    readSessionStorage(LAUNCH_ACCESS_TOKEN_STORAGE_KEY);
+  const expiresAt =
+    (typeof runtimeSession?.expiresAt === 'string' && runtimeSession.expiresAt) ||
+    readSessionStorage(LAUNCH_ACCESS_EXPIRES_AT_STORAGE_KEY);
+
+  if (!token) return { token: null, expiresAt: expiresAt || null, active: false };
+  if (isLaunchAccessExpired(expiresAt)) {
+    clearStoredLaunchAccessSession();
+    return { token: null, expiresAt: expiresAt || null, active: false };
+  }
+
+  return {
+    token,
+    expiresAt: expiresAt || null,
+    active: true
+  };
+};
+
 let consumeAttemptSequence = 0;
 const secureLaunchConsumeCache = new Map<string, Promise<SecureLaunchSessionResult>>();
 
@@ -118,7 +214,7 @@ const consumeSecureLaunchSessionNetwork = async (
       return {
         success: false,
         error: result.error || 'SECURE_LAUNCH_CONSUME_FAILED',
-        message: result.message || 'No se pudo iniciar la sesi�n segura del Constructor. Vuelva a abrirlo desde Solutium.',
+        message: result.message || 'La sesión segura del Constructor ya no es válida. Por favor vuelve a lanzar el Constructor Web desde Solutium.',
         httpStatus: response.status,
         consumeAttemptId
       };
@@ -139,7 +235,7 @@ const consumeSecureLaunchSessionNetwork = async (
       error: error instanceof DOMException && error.name === 'AbortError' ? 'SECURE_LAUNCH_CONSUME_TIMEOUT' : 'SECURE_LAUNCH_NETWORK_ERROR',
       message: error instanceof Error
         ? error.message
-        : 'No se pudo iniciar la sesi�n segura del Constructor. Vuelva a abrirlo desde Solutium.',
+        : 'La sesión segura del Constructor ya no es válida. Por favor vuelve a lanzar el Constructor Web desde Solutium.',
       httpStatus: 0,
       consumeAttemptId
     };
@@ -167,6 +263,8 @@ export const consumeSecureLaunchSession = async (
   const result = await consumePromise;
   if (!result.success) {
     secureLaunchConsumeCache.delete(launchToken);
+  } else {
+    storeLaunchAccessSession(result.payload);
   }
   return result;
 };

@@ -1,4 +1,5 @@
-import { getUploadAuthToken } from './authTokenProvider';
+﻿import { getUploadAuthToken } from './authTokenProvider';
+import { getAppMadreBaseUrl } from './secureLaunchSession';
 
 export interface PexelsSearchParams {
   projectId?: string | null;
@@ -61,7 +62,9 @@ export class PexelsMediaClientError extends Error {
 
 const getMotherApiBaseUrl = () => {
   const apiBaseUrl = import.meta.env.VITE_APP_MADRE_API_URL;
-  return typeof apiBaseUrl === 'string' ? apiBaseUrl.replace(/\/$/, '') : '';
+  return typeof apiBaseUrl === 'string' && apiBaseUrl.trim()
+    ? apiBaseUrl.replace(/\/$/, '')
+    : getAppMadreBaseUrl();
 };
 
 export const searchPexelsMedia = async ({
@@ -82,7 +85,7 @@ export const searchPexelsMedia = async ({
   const { token } = await getUploadAuthToken();
   if (!token) {
     throw new PexelsMediaClientError(
-      'No hay una sesión activa para consultar imágenes. Vuelve a iniciar sesión en la App Madre.',
+      'La sesión segura del Constructor ya no es válida. Por favor vuelve a lanzar el Constructor Web desde Solutium.',
       'missing_auth_token',
       401
     );
@@ -128,7 +131,7 @@ export const searchPexelsMedia = async ({
 
     if (response.status === 401) {
       throw new PexelsMediaClientError(
-        'Tu sesión no está disponible para buscar imágenes. Vuelve a abrir el Constructor desde la App Madre.',
+        'La sesión segura del Constructor ya no es válida. Por favor vuelve a lanzar el Constructor Web desde Solutium.',
         'unauthorized',
         401
       );

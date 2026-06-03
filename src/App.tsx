@@ -1541,7 +1541,7 @@ const AppContent: React.FC = () => {
         return;
       }
 
-      const message = 'No se pudo iniciar la sesión segura del Constructor. Vuelva a abrirlo desde Solutium.';
+      const message = 'La sesión segura del Constructor ya no es válida. Por favor vuelve a lanzar el Constructor Web desde Solutium.';
       setSecureLaunchError(message);
       console.error('[SECURE_LAUNCH] Error consuming launch_token:', {
         consumeAttemptId: result.consumeAttemptId,

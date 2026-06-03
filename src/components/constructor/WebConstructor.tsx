@@ -40,6 +40,10 @@ import {
 import { saveWebBuilderSiteDraft, publishWebBuilderSite, getProducts, getCustomers, getTrustedCompanyLogos, normalizeTrustedCompanyLogos, upsertPage, upsertPageSections, logEvolutionRequest, getPageBySiteId, generatePreviewServerSide } from '../../services/dataService';
 import { sendToMother } from '../../services/handshakeService';
 import { ensureActiveSupabaseSession, SupabaseSessionError } from '../../services/supabaseSessionService';
+import {
+  hasActiveSecureConstructorWriteSession,
+  SecureConstructorWriteError
+} from '../../services/secureConstructorWriteApi';
 import { Product, Customer, PageSection, TrustedCompanyLogo } from '../../types/schema';
 import { MOCK_PRODUCTS, MOCK_CUSTOMERS } from '../../constants/mockData';
 import { MainSidebar, ModuleItem } from './MainSidebar';
@@ -358,14 +362,6 @@ const resolveLifecycleStatusFromPage = (
   return 'draft';
 };
 
-const buildPublishedViewerUrl = (siteId?: string | null): string | null => {
-  if (!siteId || typeof window === 'undefined') return null;
-  const url = new URL(window.location.pathname || '/', window.location.origin);
-  url.searchParams.set('mode', 'render');
-  url.searchParams.set('site_id', siteId);
-  return url.toString();
-};
-
 const normalizePublishedUrlCandidate = (value: unknown): string | null => {
   const rawValue = String(value || '').trim();
   if (!rawValue || rawValue === '#') return null;
@@ -397,7 +393,7 @@ const isValidPublishedPublicUrl = (value: unknown): value is string => {
 
   try {
     const url = new URL(candidate);
-    if (isLocalPublishedViewerUrl(url)) return true;
+    if (isLocalPublishedViewerUrl(url)) return false;
 
     const isLocalConstructorHost =
       url.hostname === 'localhost' ||
@@ -407,12 +403,17 @@ const isValidPublishedPublicUrl = (value: unknown): value is string => {
     if (isLocalConstructorHost && url.port === '3010') return false;
 
     const search = url.searchParams;
-    if (search.has('preview') || search.get('mode') === 'preview' || search.has('launch') || search.has('constructor')) {
+    if (search.has('preview') || search.has('launch') || search.has('constructor')) {
+      return false;
+    }
+
+    const mode = String(search.get('mode') || '').toLowerCase();
+    if (mode === 'preview' || mode === 'render') {
       return false;
     }
 
     const urlText = candidate.toLowerCase();
-    if (urlText.includes('constructor') && !urlText.includes('mode=render')) return false;
+    if (urlText.includes('constructor')) return false;
 
     return true;
   } catch {
@@ -430,7 +431,7 @@ const resolveFirstValidPublishedUrl = (...candidates: unknown[]) => {
   return null;
 };
 
-const resolvePublishedUrlFromResult = (result: any, fallbackSiteId?: string | null): string | null => {
+const resolvePublishedUrlFromResult = (result: any): string | null => {
   if (!result || typeof result !== 'object') return null;
   return resolveFirstValidPublishedUrl(
     result.publishedUrl,
@@ -447,8 +448,7 @@ const resolvePublishedUrlFromResult = (result: any, fallbackSiteId?: string | nu
     result.domain,
     result.customDomain,
     result.custom_domain,
-    result.url,
-    buildPublishedViewerUrl(result.siteId || result.site_id || fallbackSiteId)
+    result.url
   );
 };
 
@@ -477,8 +477,7 @@ const resolvePublishedUrlFromPage = (
     pageAny.domain,
     pageAny.customDomain,
     pageAny.custom_domain,
-    pageAny.url,
-    buildPublishedViewerUrl(pageAny.siteId || pageAny.site_id || pageAny.id)
+    pageAny.url
   );
 };
 
@@ -554,6 +553,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   const [trustedCompanyLogos, setTrustedCompanyLogos] = useState<TrustedCompanyLogo[]>([]);
   const [moduleToDelete, setModuleToDelete] = useState<WebModule | null>(null);
   const [showPublishModal, setShowPublishModal] = useState(false);
+  const [publishModalName, setPublishModalName] = useState('');
   const [siteName, setSiteName] = useState(() => {
     if (!initialPage) return '';
     return (initialPage as any).siteName || (initialPage as any).title || '';
@@ -605,7 +605,6 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   const [isDraftOperationInProgress, setIsDraftOperationInProgress] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [publishStatus, setPublishStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const [publishModalSuccess, setPublishModalSuccess] = useState(false);
   const [publishedSiteUrl, setPublishedSiteUrl] = useState<string | null>(() => resolvePublishedUrlFromPage(initialPage));
   const [lastPublishedAt, setLastPublishedAt] = useState<string | null>(null);
   const [authNotice, setAuthNotice] = useState<{ type: 'info' | 'error'; message: string; title?: string } | null>(null);
@@ -3389,6 +3388,16 @@ const formatTimestampName = () => {
           const selectedIds = Array.isArray(rawSelectedIds) ? rawSelectedIds.map(String).filter(Boolean) : [];
           const catalogProducts = Array.isArray(products) ? products.filter(Boolean) : [];
           const isManualSelectionMode = ['manual', 'selected', 'selection', 'featured', 'custom'].includes(selectionMode);
+          const snapshotKey = `${module.id}_el_products_items_products`;
+          const previousSnapshotSource =
+            currentState.settingsValues?.[snapshotKey] ||
+            (module as any).content?.products ||
+            (module as any).content?.productos ||
+            (module as any).content?.items ||
+            [];
+          const previousSnapshotProducts = Array.isArray(previousSnapshotSource)
+            ? previousSnapshotSource.filter(Boolean)
+            : [];
           
           content.selectionMode = selectionMode;
           content.productIds = selectedIds;
@@ -3415,6 +3424,26 @@ const formatTimestampName = () => {
             }
           }
 
+          if (finalProducts.length === 0 && previousSnapshotProducts.length > 0) {
+            if (isManualSelectionMode) {
+              const selectedIdSet = new Set(selectedIds);
+              finalProducts = selectedIds.length > 0
+                ? previousSnapshotProducts.filter((product: any) => selectedIdSet.has(String(product?.id)))
+                : [];
+            } else {
+              finalProducts = previousSnapshotProducts as Product[];
+            }
+
+            if (finalProducts.length > 0) {
+              logDebug('[PRODUCTS_CONTRACT_SNAPSHOT_FALLBACK_DEBUG]', {
+                moduleId: module.id,
+                selectionMode,
+                selectedIdsCount: selectedIds.length,
+                previousSnapshotCount: previousSnapshotProducts.length,
+                finalProductsCount: finalProducts.length
+              });
+            }
+          }
 
           if (finalProducts.length > 0) {
             // [PROTOCOL 12.3] DATA NORMALIZATION
@@ -3444,7 +3473,6 @@ const formatTimestampName = () => {
             content.items = normalizedProducts; // Legacy fallback
             
             // Also store in deep settings for hydrationBridge consistency
-            const snapshotKey = `${module.id}_el_products_items_products`;
             settings[snapshotKey] = normalizedProducts;
             
             logDebug('[PRODUCTS_LEGACY_PUBLISH_SNAPSHOT_DEBUG]', {
@@ -4003,7 +4031,9 @@ const formatTimestampName = () => {
     await waitForNextPaint();
     
     try {
-      const sessionState = await ensureActiveSupabaseSession();
+      const sessionState = hasActiveSecureConstructorWriteSession()
+        ? { state: 'active' as const, source: 'secure_launch' as const }
+        : await ensureActiveSupabaseSession();
       if (sessionState.state === 'missing_session' || sessionState.state === 'expired_session') {
         setAuthNotice({
           type: 'error',
@@ -4252,7 +4282,9 @@ const formatTimestampName = () => {
       }
 
       try {
-        const sessionState = await ensureActiveSupabaseSession();
+        const sessionState = hasActiveSecureConstructorWriteSession()
+          ? { state: 'active' as const, source: 'secure_launch' as const }
+          : await ensureActiveSupabaseSession();
         if (sessionState.state === 'missing_session' || sessionState.state === 'expired_session') {
           const sessionMessage = isAutosave
             ? 'Tu sesión expiró. Inicia sesión nuevamente para continuar guardando. Tus cambios siguen en pantalla.'
@@ -4476,7 +4508,12 @@ const formatTimestampName = () => {
         return true;
       } catch (error) {
         console.error(isAutosave ? 'Error autosaving draft:' : 'Error saving draft:', error);
-        if (error instanceof SupabaseSessionError) {
+        if (error instanceof SecureConstructorWriteError) {
+          setAuthNotice({
+            type: 'error',
+            message: error.message
+          });
+        } else if (error instanceof SupabaseSessionError) {
           setAuthNotice({
             type: 'error',
             message: isAutosave
@@ -4490,7 +4527,7 @@ const formatTimestampName = () => {
         } else if (isAutosave) {
           setAutosaveStatus('error');
           setAutosaveError(
-            error instanceof SupabaseSessionError
+            error instanceof SecureConstructorWriteError ? error.message : error instanceof SupabaseSessionError
               ? 'Tu sesión expiró. Inicia sesión nuevamente para continuar guardando.'
               : 'No se pudo guardar automáticamente. Tus cambios siguen en pantalla.'
           );
@@ -4597,24 +4634,24 @@ const formatTimestampName = () => {
   const handleClosePublishModal = () => {
     if (publishStatus === 'loading' || isSaving) return;
     setShowPublishModal(false);
-    setPublishModalSuccess(false);
+    setPublishModalName('');
     if (publishStatus === 'success') {
       setPublishStatus('idle');
     }
   };
 
-  const handlePublish = async () => {
+  const handlePublish = async (requestedPublicName?: string) => {
     if (!projectId || isPreviewMode || publishInProgressRef.current || publishStatus !== 'idle') return;
+    const publicName = typeof requestedPublicName === 'string' ? requestedPublicName.trim() : '';
     
-    if (isDefaultName(siteName)) {
-      setPublishModalSuccess(false);
+    if (currentStatus === 'draft' && !publicName) {
+      setPublishModalName('');
       setShowPublishModal(true);
       return;
     }
 
     publishInProgressRef.current = true;
     setPublishStatus('loading');
-    setPublishModalSuccess(false);
     setPublishedSiteUrl(null);
     setLastPublishedAt(null);
     setIsSaving(true);
@@ -4631,9 +4668,11 @@ const formatTimestampName = () => {
         return;
       }
 
-      const finalSiteName = siteNameRef.current || siteName;
+      const finalSiteName = publicName || siteNameRef.current || siteName;
 
-      const sessionState = await ensureActiveSupabaseSession();
+      const sessionState = hasActiveSecureConstructorWriteSession()
+        ? { state: 'active' as const, source: 'secure_launch' as const }
+        : await ensureActiveSupabaseSession();
       if (sessionState.state === 'missing_session' || sessionState.state === 'expired_session') {
         setAuthNotice({
           type: 'error',
@@ -4781,23 +4820,30 @@ const formatTimestampName = () => {
 
       if (result) {
         const publishedTimestamp = result.updatedAt || result.createdAt || new Date().toISOString();
-        const resolvedPublishedUrl = resolvePublishedUrlFromResult(result, siteId);
+        const resolvedPublishedUrl = resolvePublishedUrlFromResult(result);
+        const publishedDisplayName =
+          (result as any).siteName ||
+          (result as any).site_name ||
+          (actualSite as any)?.siteName ||
+          (actualSite as any)?.site_name ||
+          finalSiteName;
         logDebug('[SIP v6.1] Sitio publicado y sincronizado con Web Engine.');
         setPublishStatus('success');
         setPublishedSiteUrl(resolvedPublishedUrl);
         setLastPublishedAt(publishedTimestamp);
+        setSiteName(publishedDisplayName);
+        siteNameRef.current = publishedDisplayName;
         currentStatusRef.current = 'published';
         setCurrentStatus('published');
         setHasUnsavedChanges(false);
-        if (showPublishModal) {
-          setPublishModalSuccess(true);
-        } else {
-          setShowPublishModal(false);
-        }
+        setShowPublishModal(false);
+        window.setTimeout(() => {
+          setPublishStatus('idle');
+        }, 1000);
 
         sendToMother('SOLUTIUM_PUBLISH', {
           site_id: siteId,
-          site_name: finalSiteName,
+          site_name: publishedDisplayName,
           published_site_id: result.id,
           published_url: resolvedPublishedUrl,
           last_published_at: publishedTimestamp,
@@ -4910,6 +4956,12 @@ const formatTimestampName = () => {
       }
     } catch (error) {
       console.error('Error publishing site:', error);
+      if (error instanceof SecureConstructorWriteError) {
+        setAuthNotice({
+          type: 'error',
+          message: error.message
+        });
+      }
       if (error instanceof SupabaseSessionError) {
         setAuthNotice({
           type: 'error',
@@ -5594,7 +5646,7 @@ const formatTimestampName = () => {
                     activeViewport={viewport}
                   />
                 )}
-                <div className={`${useConstructorSplitLayout ? 'w-[50vw] flex-none' : 'flex-1'} flex flex-col h-full min-w-0`}>
+                <div className="flex-1 flex flex-col h-full min-w-0">
                   {!isPreviewMode && !isExternalRender && (
                   <TopBar 
                     onSave={handleSaveDraft} 
@@ -5839,12 +5891,12 @@ const formatTimestampName = () => {
         {showPublishModal && (
           <PublishModal 
             key="publish-modal"
-            siteName={siteName}
-            setSiteName={updateSiteName}
-            onPublish={handlePublish}
+            siteName={publishModalName}
+            setSiteName={setPublishModalName}
+            onPublish={() => handlePublish(publishModalName)}
             onCancel={handleClosePublishModal}
             isSaving={isSaving}
-            publishStatus={publishModalSuccess ? 'success' : publishStatus}
+            publishStatus={publishStatus}
             publishedUrl={publishedSiteUrl}
             publishedAt={lastPublishedAt}
           />

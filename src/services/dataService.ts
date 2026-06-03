@@ -6,6 +6,15 @@ import { getUploadAuthToken } from './authTokenProvider';
 import { logDebug } from '../utils/debug';
 import { requestFreshSupabaseConfig } from './handshakeService';
 import { assertActiveSupabaseSession, resolveSupabaseUserIdentity, SupabaseSessionError } from './supabaseSessionService';
+import {
+  hasActiveSecureConstructorWriteSession,
+  publishSecureWebBuilderSite,
+  saveSecureWebBuilderSiteDraft,
+  updateSecureSitePreview,
+  upsertSecurePage,
+  upsertSecurePageSections
+} from './secureConstructorWriteApi';
+import { getAppMadreBaseUrl } from './secureLaunchSession';
 
 // Helper to handle validation and logging
 const validateData = <T>(schema: z.ZodType<T>, data: unknown, context: string): T | null => {
@@ -486,6 +495,10 @@ export const getAssets = async (projectId: string, type?: string): Promise<Asset
 
 export const saveWebBuilderSiteDraft = async (site: Partial<WebBuilderSite>): Promise<WebBuilderSite | null> => {
   try {
+    if (hasActiveSecureConstructorWriteSession()) {
+      return await saveSecureWebBuilderSiteDraft(site);
+    }
+
     return await withSupabaseAuthRetry(async () => {
       const supabase = getSupabase();
       if (!supabase) return null;
@@ -571,6 +584,10 @@ export const saveWebBuilderSiteDraft = async (site: Partial<WebBuilderSite>): Pr
 
 export const publishWebBuilderSite = async (site: Partial<PublishedSite>): Promise<PublishedSite | null> => {
   try {
+    if (hasActiveSecureConstructorWriteSession()) {
+      return await publishSecureWebBuilderSite(site);
+    }
+
     return await withSupabaseAuthRetry(async () => {
     const supabase = getSupabase();
     if (!supabase) return null;
@@ -853,6 +870,10 @@ export const registerAsset = async (asset: Partial<Asset>): Promise<Asset | null
  */
 export async function upsertPage(pageData: Partial<Page>): Promise<Page | null> {
   try {
+    if (hasActiveSecureConstructorWriteSession()) {
+      return await upsertSecurePage(pageData);
+    }
+
     return await withSupabaseAuthRetry(async () => {
       const supabase = getSupabase();
       if (!supabase) return null;
@@ -942,6 +963,10 @@ export async function getPageBySiteId(siteId: string, projectId?: string, slug: 
  */
 export async function upsertPageSections(pageId: string, sections: Partial<PageSection>[]): Promise<PageSection[]> {
   try {
+    if (hasActiveSecureConstructorWriteSession()) {
+      return await upsertSecurePageSections(pageId, sections);
+    }
+
     return await withSupabaseAuthRetry(async () => {
       const supabase = getSupabase();
       if (!supabase) return [];
@@ -1057,6 +1082,10 @@ export const updateSitePreview = async (
   }
 ): Promise<boolean> => {
   try {
+    if (hasActiveSecureConstructorWriteSession()) {
+      return await updateSecureSitePreview(siteId, previewData);
+    }
+
     const supabase = getSupabase();
     if (!supabase) return false;
 
@@ -1154,8 +1183,8 @@ export const generatePreviewServerSide = async (params: {
     const { token, source } = await getUploadAuthToken();
     
     // @ts-ignore
-    const appMadreUrl = import.meta.env.VITE_APP_MADRE_API_URL;
-    if (!appMadreUrl) throw new Error('VITE_APP_MADRE_API_URL not configured');
+    const appMadreUrl = import.meta.env.VITE_APP_MADRE_API_URL || getAppMadreBaseUrl();
+    if (!appMadreUrl) throw new Error('App Madre API URL not configured');
 
     const cleanUrl = appMadreUrl.endsWith('/') ? appMadreUrl.slice(0, -1) : appMadreUrl;
     const endpoint = `${cleanUrl}/api/previews/generate`;
@@ -1206,7 +1235,7 @@ export const generatePreviewServerSide = async (params: {
       site_id: finalSiteId,
       web_builder_site_id: finalWebBuilderSiteId,
       hasToken: Boolean(token),
-      tokenPrefix: token ? token.slice(0, 12) : null,
+      tokenSource: source,
       headersKeys: Object.keys(headers),
       authorizationHeaderPresent: Boolean(headers.Authorization || headers.authorization),
       contentType: headers['Content-Type'] || headers['content-type'],

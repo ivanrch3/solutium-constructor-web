@@ -26,7 +26,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ profile, project, urlLogo, act
 
   const activeButtonStyle = {
     backgroundColor: 'var(--sidebar-accent)',
-    color: 'inherit', // Use inherit to let the foreground color rule
+    color: 'var(--sidebar-active-text)'
   };
 
   const [logoError, setLogoError] = React.useState(false);
@@ -123,7 +123,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ profile, project, urlLogo, act
           </div>
           <div className="flex-1 text-left truncate">
             <p className="text-base font-bold truncate text-inherit">{project?.name || 'Proyecto'}</p>
-            <p className="text-xs font-medium opacity-60 truncate">Proyecto Activo</p>
+            <p className="text-xs font-medium truncate" style={{ color: 'var(--sidebar-muted)' }}>Proyecto Activo</p>
           </div>
         </div>
       </div>

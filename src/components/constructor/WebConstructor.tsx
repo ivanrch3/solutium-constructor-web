@@ -2447,6 +2447,59 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     ...modules.filter(isFooterModuleInstance)
   ];
 
+  const createModuleInstanceId = () => `mod_${crypto.randomUUID()}`;
+
+  const cloneConstructorData = <T,>(value: T): T => {
+    if (value === null || value === undefined) return value;
+    if (typeof structuredClone === 'function') {
+      return structuredClone(value);
+    }
+    return JSON.parse(JSON.stringify(value));
+  };
+
+  const createDuplicatedBentoItemId = () => `bento_cell_${crypto.randomUUID()}`;
+
+  const duplicateBentoItemsWithFreshIds = (items: any) => {
+    if (!Array.isArray(items)) return items;
+    return items.map((item) => {
+      if (!item || typeof item !== 'object') return item;
+      return {
+        ...cloneConstructorData(item),
+        id: createDuplicatedBentoItemId()
+      };
+    });
+  };
+
+  const cloneDuplicatedSettingValue = (key: string, value: any, moduleType: string) => {
+    if (moduleType === 'bento' && key.includes('_el_bento_items_items')) {
+      return duplicateBentoItemsWithFreshIds(value);
+    }
+    return cloneConstructorData(value);
+  };
+
+  const cloneDuplicatedModuleContent = (module: WebModule) => {
+    const clonedContent = cloneConstructorData(module.content);
+    if (module.type !== 'bento' || !clonedContent || typeof clonedContent !== 'object') {
+      return clonedContent;
+    }
+
+    ['items', 'cells'].forEach((key) => {
+      if (Array.isArray(clonedContent[key])) {
+        clonedContent[key] = duplicateBentoItemsWithFreshIds(clonedContent[key]);
+      }
+    });
+
+    if (clonedContent.data && typeof clonedContent.data === 'object') {
+      ['items', 'cells'].forEach((key) => {
+        if (Array.isArray(clonedContent.data[key])) {
+          clonedContent.data[key] = duplicateBentoItemsWithFreshIds(clonedContent.data[key]);
+        }
+      });
+    }
+
+    return clonedContent;
+  };
+
   const addModule = (module: WebModule) => {
     logDebug('Adding module:', module.type);
     const existingMenu = (editorState.addedModules || []).find(isMenuModuleInstance);
@@ -2477,8 +2530,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     }
 
     // Use persistent UUIDs (Solutium Protocol v2.0)
-    const rawId = crypto.randomUUID();
-    const moduleId = `mod_${rawId}`;
+    const moduleId = createModuleInstanceId();
     
     // Prefix element IDs to ensure uniqueness
     const newElements = module.elements.map(el => ({
@@ -2731,6 +2783,90 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         addedModules: newModules
       };
     });
+  };
+
+  const duplicateModule = (moduleId: string) => {
+    const sourceModule = (editorState.addedModules || []).find(module => module.id === moduleId);
+    if (!sourceModule || isMenuModuleInstance(sourceModule) || isFooterModuleInstance(sourceModule)) {
+      return;
+    }
+
+    const duplicatedModuleId = createModuleInstanceId();
+
+    updateEditorState(prev => {
+      const addedModules = prev.addedModules || [];
+      const sourceIndex = addedModules.findIndex(module => module.id === moduleId);
+      const source = addedModules[sourceIndex];
+      if (sourceIndex === -1 || !source || isMenuModuleInstance(source) || isFooterModuleInstance(source)) {
+        return prev;
+      }
+
+      const duplicatedElements = source.elements.map((element) => {
+        const clonedElement = cloneConstructorData(element);
+        const suffix = element.id.startsWith(`${source.id}_`)
+          ? element.id.slice(source.id.length + 1)
+          : element.id;
+        return {
+          ...clonedElement,
+          id: `${duplicatedModuleId}_${suffix}`
+        };
+      });
+
+      const duplicatedModule: WebModule = {
+        ...cloneConstructorData(source),
+        id: duplicatedModuleId,
+        templateId: source.templateId || source.id,
+        elements: duplicatedElements,
+        content: cloneDuplicatedModuleContent(source)
+      };
+
+      const duplicatedSettingsValues: Record<string, any> = {};
+      Object.entries(prev.settingsValues || {}).forEach(([key, value]) => {
+        if (!key.startsWith(source.id)) return;
+        const duplicatedKey = `${duplicatedModuleId}${key.slice(source.id.length)}`;
+        duplicatedSettingsValues[duplicatedKey] = cloneDuplicatedSettingValue(key, value, source.type);
+      });
+
+      duplicatedSettingsValues[getShowInMenuKey(duplicatedModuleId)] = false;
+
+      const newModules = [...addedModules];
+      let insertIndex = sourceIndex + 1;
+      const footerIndex = addedModules.findIndex(isFooterModuleInstance);
+      if (footerIndex !== -1 && insertIndex > footerIndex) {
+        insertIndex = footerIndex;
+      }
+      newModules.splice(insertIndex, 0, duplicatedModule);
+      const orderedModules = keepFooterModulesLast(newModules);
+
+      let nextState: EditorState = {
+        ...prev,
+        addedModules: orderedModules,
+        expandedModuleId: duplicatedModuleId,
+        selectedElementId: `${duplicatedModuleId}_global`,
+        expandedGroupsByElement: {
+          ...prev.expandedGroupsByElement,
+          [`${duplicatedModuleId}_global`]: null
+        },
+        settingsValues: {
+          ...prev.settingsValues,
+          ...duplicatedSettingsValues
+        },
+        recentlyAddedModuleId: duplicatedModuleId,
+        totalModulesAdded: (prev.totalModulesAdded || 0) + 1
+      };
+
+      if (!isPreviewMode) {
+        const menuModule = orderedModules.find(module => module.type === 'navegacion' || module.type === 'menu');
+        if (menuModule) {
+          nextState = rebuildMenuLinksIfNeeded(nextState, menuModule.id);
+        }
+      }
+
+      return nextState;
+    });
+
+    selectSection(duplicatedModuleId);
+    setMobileTab('structure');
   };
 
   const confirmRemoveModule = () => {
@@ -5373,6 +5509,7 @@ const formatTimestampName = () => {
                         setEditorState={setEditorState} 
                         onSettingChange={handleSettingChange}
                         onRemoveModule={removeModule}
+                        onDuplicateModule={duplicateModule}
                         onMoveModule={moveModule}
                         isCollapsed={false}
                         onToggleCollapse={() => {}}
@@ -5424,6 +5561,7 @@ const formatTimestampName = () => {
                     setEditorState={setEditorState} 
                     onSettingChange={handleSettingChange}
                     onRemoveModule={removeModule}
+                    onDuplicateModule={duplicateModule}
                     onMoveModule={moveModule}
                     isCollapsed={structurePanelCollapsed}
                     onToggleCollapse={() => setStructurePanelCollapsed(!structurePanelCollapsed)}

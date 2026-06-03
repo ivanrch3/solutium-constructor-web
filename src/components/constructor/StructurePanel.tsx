@@ -203,6 +203,7 @@ const createBentoPanelElementPreset = (kind: string, existingItems: any[], deskt
       padding: 32,
       element_padding_y: 20,
       content_align: 'center',
+      clickActionType: 'none',
       ...item,
       col_span: safeDesktopW,
       row_span: desktopH,
@@ -329,6 +330,7 @@ interface StructurePanelProps {
   setEditorState: React.Dispatch<React.SetStateAction<EditorState>>;
   onSettingChange: (elementId: string, settingId: string, value: any) => void;
   onRemoveModule: (moduleId: string) => void;
+  onDuplicateModule: (moduleId: string) => void;
   onMoveModule: (moduleId: string, direction: 'up' | 'down') => void;
   isCollapsed: boolean;
   onToggleCollapse: () => void;
@@ -347,6 +349,7 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
   setEditorState,
   onSettingChange,
   onRemoveModule,
+  onDuplicateModule,
   onMoveModule,
   isCollapsed,
   onToggleCollapse,
@@ -801,6 +804,7 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
           const canMoveDown = index < (editorState.addedModules?.length || 0) - 1 && !isHeader && !isMenu;
           const hasMultipleModules = (editorState.addedModules?.length || 0) > 1;
           const hasMenuModule = editorState.addedModules.some(m => m.type === 'navegacion' || m.type === 'menu');
+          const canDuplicateModule = !isMenu && !isFooter && !['navegacion', 'menu', 'footer'].includes(module.type);
           const isMenuEligible =
             !['navegacion', 'menu', 'espaciador', 'footer'].includes(module.type) &&
             !module.id.startsWith('mod_header_1') &&
@@ -900,6 +904,24 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                         <Link size={14} />
                       </button>
                     )}
+
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (canDuplicateModule) {
+                          onDuplicateModule(module.id);
+                        }
+                      }}
+                      disabled={!canDuplicateModule}
+                      className={`p-1.5 rounded-lg transition-all opacity-0 group-hover:opacity-100 ${
+                        canDuplicateModule
+                          ? 'text-text/35 hover:text-primary hover:bg-primary/10'
+                          : 'text-text/15 cursor-not-allowed'
+                      }`}
+                      title={canDuplicateModule ? "Duplicar módulo" : "Este módulo es único"}
+                    >
+                      <Copy size={14} />
+                    </button>
 
                     <button
                       onClick={(e) => {

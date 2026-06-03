@@ -159,6 +159,12 @@ export const Canvas: React.FC<CanvasProps> = ({
   const isUserZoomed = showEditorChrome && userZoom !== 1;
   const canPanPreview = showEditorChrome && userZoom > 1;
   const zoomPercent = Math.round(userZoom * 100);
+  const zoomLimitsByViewport = React.useMemo(() => ({
+    desktop: { min: 0.65, max: 2.5 },
+    tablet: { min: 0.75, max: 2 },
+    mobile: { min: 0.85, max: 1.8 }
+  }), []);
+  const zoomLimits = zoomLimitsByViewport[viewport];
   const minimapWidth = 164;
   const minimapHeight = 104;
   const hasMinimapScrollableArea =
@@ -243,22 +249,37 @@ export const Canvas: React.FC<CanvasProps> = ({
       setIsMinimapHidden(false);
       setIsPanning(false);
       const node = canvasScrollContainerRef.current;
-      if (node) node.scrollLeft = 0;
+      if (node) {
+        window.requestAnimationFrame(() => {
+          node.scrollLeft = Math.max(0, (node.scrollWidth - node.clientWidth) / 2);
+          updateScrollMetrics();
+        });
+      }
     }
-  }, [isUserZoomed]);
+  }, [isUserZoomed, updateScrollMetrics]);
 
-  const clampZoom = (nextZoom: number) => Math.min(2.5, Math.max(0.5, Number(nextZoom.toFixed(2))));
+  React.useEffect(() => {
+    setUserZoom((currentZoom) => {
+      const clampedZoom = Math.min(zoomLimits.max, Math.max(zoomLimits.min, currentZoom));
+      return clampedZoom === currentZoom ? currentZoom : Number(clampedZoom.toFixed(2));
+    });
+  }, [viewport, zoomLimits.max, zoomLimits.min]);
+
+  const clampZoom = (nextZoom: number) => Math.min(zoomLimits.max, Math.max(zoomLimits.min, Number(nextZoom.toFixed(2))));
   const setZoomAroundCenter = (nextZoom: number) => {
     setUserZoom((currentZoom) => {
       const node = canvasScrollContainerRef.current;
       const clampedZoom = clampZoom(nextZoom);
       if (node && currentZoom !== clampedZoom) {
-        const centerX = node.scrollLeft + node.clientWidth / 2;
-        const centerY = node.scrollTop + node.clientHeight / 2;
-        const ratio = clampedZoom / currentZoom;
+        const currentEffectiveScale = useVirtualDesktopPreview ? desktopPreviewScale * currentZoom : currentZoom;
+        const nextEffectiveScale = useVirtualDesktopPreview ? desktopPreviewScale * clampedZoom : clampedZoom;
+        const centerX = (node.scrollLeft + node.clientWidth / 2) / currentEffectiveScale;
+        const centerY = (node.scrollTop + node.clientHeight / 2) / currentEffectiveScale;
         window.requestAnimationFrame(() => {
-          node.scrollLeft = Math.max(0, centerX * ratio - node.clientWidth / 2);
-          node.scrollTop = Math.max(0, centerY * ratio - node.clientHeight / 2);
+          const maxScrollLeft = Math.max(0, node.scrollWidth - node.clientWidth);
+          const maxScrollTop = Math.max(0, node.scrollHeight - node.clientHeight);
+          node.scrollLeft = Math.min(maxScrollLeft, Math.max(0, centerX * nextEffectiveScale - node.clientWidth / 2));
+          node.scrollTop = Math.min(maxScrollTop, Math.max(0, centerY * nextEffectiveScale - node.clientHeight / 2));
           updateScrollMetrics();
         });
       }
@@ -1092,7 +1113,7 @@ export const Canvas: React.FC<CanvasProps> = ({
               type="button"
               onClick={() => setZoomAroundCenter(userZoom - 0.1)}
               className="rounded-xl p-2 text-text/60 transition hover:bg-secondary hover:text-primary disabled:opacity-30"
-              disabled={userZoom <= 0.5}
+              disabled={userZoom <= zoomLimits.min}
               title="Alejar preview"
               aria-label="Alejar preview"
             >
@@ -1111,7 +1132,7 @@ export const Canvas: React.FC<CanvasProps> = ({
               type="button"
               onClick={() => setZoomAroundCenter(userZoom + 0.1)}
               className="rounded-xl p-2 text-text/60 transition hover:bg-secondary hover:text-primary disabled:opacity-30"
-              disabled={userZoom >= 2.5}
+              disabled={userZoom >= zoomLimits.max}
               title="Acercar preview"
               aria-label="Acercar preview"
             >

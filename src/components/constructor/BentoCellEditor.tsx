@@ -57,6 +57,212 @@ const TEXT_STYLE_PRESETS: Record<string, Record<string, any>> = {
   caption: { title_size: 's', title_weight: 'bold', description_size: 's', line_height: 1.3, letter_spacing: 1 }
 };
 
+const BENTO_CLICK_ACTION_FIELDS = [
+  {
+    label: 'Acción al hacer clic',
+    setting: {
+      id: 'clickActionType',
+      label: 'Acción al hacer clic',
+      type: 'select',
+      defaultValue: 'none',
+      options: [
+        { label: 'Sin acción', value: 'none' },
+        { label: 'Abrir URL', value: 'url' },
+        { label: 'Abrir imagen ampliada', value: 'image' },
+        { label: 'Abrir modal informativo', value: 'modal' },
+        { label: 'Ir a sección', value: 'section' },
+        { label: 'WhatsApp', value: 'whatsapp' },
+        { label: 'Teléfono', value: 'phone' },
+        { label: 'Email', value: 'email' }
+      ],
+      description: 'La acción se aplica a toda la tarjeta en preview limpio y sitio publicado.'
+    }
+  },
+  {
+    label: 'URL',
+    setting: {
+      id: 'clickUrl',
+      label: 'URL',
+      type: 'url',
+      defaultValue: '',
+      placeholder: 'https://...',
+      showIf: { settingId: 'clickActionType', value: 'url' }
+    }
+  },
+  {
+    label: 'Destino',
+    setting: {
+      id: 'clickOpenTarget',
+      label: 'Destino',
+      type: 'select',
+      defaultValue: 'new_tab',
+      options: [
+        { label: 'Nueva pestaña', value: 'new_tab' },
+        { label: 'Misma pestaña', value: 'same_tab' }
+      ],
+      showIf: { settingId: 'clickActionType', value: 'url' }
+    }
+  },
+  {
+    label: 'Imagen ampliada',
+    setting: {
+      id: 'clickImageUrl',
+      label: 'Imagen ampliada',
+      type: 'image',
+      defaultValue: '',
+      showIf: { settingId: 'clickActionType', value: 'image' }
+    }
+  },
+  {
+    label: 'Título de imagen',
+    setting: {
+      id: 'clickImageTitle',
+      label: 'Título de imagen',
+      type: 'text',
+      defaultValue: '',
+      showIf: { settingId: 'clickActionType', value: 'image' }
+    }
+  },
+  {
+    label: 'Descripción de imagen',
+    setting: {
+      id: 'clickImageDescription',
+      label: 'Descripción de imagen',
+      type: 'textarea',
+      rows: 3,
+      defaultValue: '',
+      showIf: { settingId: 'clickActionType', value: 'image' }
+    }
+  },
+  {
+    label: 'Título del modal',
+    setting: {
+      id: 'clickModalTitle',
+      label: 'Título del modal',
+      type: 'text',
+      defaultValue: '',
+      showIf: { settingId: 'clickActionType', value: 'modal' }
+    }
+  },
+  {
+    label: 'Descripción del modal',
+    setting: {
+      id: 'clickModalDescription',
+      label: 'Descripción del modal',
+      type: 'textarea',
+      rows: 4,
+      defaultValue: '',
+      showIf: { settingId: 'clickActionType', value: 'modal' }
+    }
+  },
+  {
+    label: 'Imagen del modal',
+    setting: {
+      id: 'clickModalImageUrl',
+      label: 'Imagen del modal',
+      type: 'image',
+      defaultValue: '',
+      showIf: { settingId: 'clickActionType', value: 'modal' }
+    }
+  },
+  {
+    label: 'Texto CTA',
+    setting: {
+      id: 'clickModalCtaText',
+      label: 'Texto CTA',
+      type: 'text',
+      defaultValue: '',
+      showIf: { settingId: 'clickActionType', value: 'modal' }
+    }
+  },
+  {
+    label: 'URL CTA',
+    setting: {
+      id: 'clickModalCtaUrl',
+      label: 'URL CTA',
+      type: 'url',
+      defaultValue: '',
+      showIf: { settingId: 'clickActionType', value: 'modal' }
+    }
+  },
+  {
+    label: 'Ancla de sección',
+    setting: {
+      id: 'clickSectionAnchor',
+      label: 'Ancla de sección',
+      type: 'text',
+      defaultValue: '',
+      placeholder: '#contacto',
+      showIf: { settingId: 'clickActionType', value: 'section' }
+    }
+  },
+  {
+    label: 'Número de WhatsApp',
+    setting: {
+      id: 'clickWhatsappNumber',
+      label: 'Número de WhatsApp',
+      type: 'text',
+      defaultValue: '',
+      placeholder: '+50688888888',
+      showIf: { settingId: 'clickActionType', value: 'whatsapp' }
+    }
+  },
+  {
+    label: 'Mensaje de WhatsApp',
+    setting: {
+      id: 'clickWhatsappMessage',
+      label: 'Mensaje de WhatsApp',
+      type: 'textarea',
+      rows: 3,
+      defaultValue: '',
+      showIf: { settingId: 'clickActionType', value: 'whatsapp' }
+    }
+  },
+  {
+    label: 'Número de teléfono',
+    setting: {
+      id: 'clickPhoneNumber',
+      label: 'Número de teléfono',
+      type: 'text',
+      defaultValue: '',
+      placeholder: '+50688888888',
+      showIf: { settingId: 'clickActionType', value: 'phone' }
+    }
+  },
+  {
+    label: 'Email',
+    setting: {
+      id: 'clickEmail',
+      label: 'Email',
+      type: 'text',
+      defaultValue: '',
+      placeholder: 'hola@empresa.com',
+      showIf: { settingId: 'clickActionType', value: 'email' }
+    }
+  },
+  {
+    label: 'Asunto',
+    setting: {
+      id: 'clickEmailSubject',
+      label: 'Asunto',
+      type: 'text',
+      defaultValue: '',
+      showIf: { settingId: 'clickActionType', value: 'email' }
+    }
+  },
+  {
+    label: 'Mensaje',
+    setting: {
+      id: 'clickEmailBody',
+      label: 'Mensaje',
+      type: 'textarea',
+      rows: 3,
+      defaultValue: '',
+      showIf: { settingId: 'clickActionType', value: 'email' }
+    }
+  }
+];
+
 const clampBentoDesktopColumns = (value: any) => {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return BENTO_DESKTOP_COLUMNS;
@@ -429,6 +635,15 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
       });
     });
   });
+
+  const interactionContextId = `${selectedSection.id}_el_bento_items_${selectedBentoCellIndex}`;
+  if (!settingsByPillar.interaccion) settingsByPillar.interaccion = [];
+  settingsByPillar.interaccion.push(
+    ...BENTO_CLICK_ACTION_FIELDS.map((field) => ({
+      ...field,
+      contextId: interactionContextId
+    }))
+  );
 
   const togglePillar = (pillar: string) => {
     setExpandedPillars(prev => ({ ...prev, [pillar]: !prev[pillar] }));

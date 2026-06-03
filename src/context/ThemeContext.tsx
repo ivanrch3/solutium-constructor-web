@@ -14,29 +14,45 @@ export const SOLUTIUM_COLORS = {
 
 const BUILDER_UI_THEME = {
   primary: '#2563EB',
-  primarySoft: 'rgba(37, 99, 235, 0.1)',
-  secondary: '#F1F5F9',
+  primarySoft: '#DBEAFE',
+  primaryHover: '#1D4ED8',
+  primaryContrast: '#FFFFFF',
+  activeBg: '#EFF6FF',
+  activeText: '#1E3A8A',
+  secondary: '#F2F4F8',
   accent: '#7C3AED',
-  background: '#F8FAFC',
+  background: '#F7F8FC',
   surface: '#FFFFFF',
   text: '#0F172A',
   muted: '#64748B',
   border: '#E2E8F0',
-  sidebarBg: SOLUTIUM_COLORS.green,
-  sidebarForeground: '#FFFFFF',
-  sidebarAccent: 'rgba(255, 255, 255, 0.1)',
-  sidebarBorder: 'rgba(255, 255, 255, 0.1)'
+  sidebarBg: '#FFFFFF',
+  sidebarText: '#2563EB',
+  sidebarMuted: '#64748B',
+  sidebarActiveBg: '#DBEAFE',
+  sidebarActiveText: '#2563EB',
+  sidebarBorder: '#E2E8F0'
 } as const;
 
 const applyBuilderShellTheme = (root: HTMLElement) => {
   root.style.setProperty('--builder-primary', BUILDER_UI_THEME.primary);
   root.style.setProperty('--builder-primary-soft', BUILDER_UI_THEME.primarySoft);
+  root.style.setProperty('--builder-primary-hover', BUILDER_UI_THEME.primaryHover);
+  root.style.setProperty('--builder-primary-contrast', BUILDER_UI_THEME.primaryContrast);
+  root.style.setProperty('--builder-active-bg', BUILDER_UI_THEME.activeBg);
+  root.style.setProperty('--builder-active-text', BUILDER_UI_THEME.activeText);
   root.style.setProperty('--builder-bg', BUILDER_UI_THEME.background);
   root.style.setProperty('--builder-surface', BUILDER_UI_THEME.surface);
   root.style.setProperty('--builder-surface-muted', BUILDER_UI_THEME.secondary);
   root.style.setProperty('--builder-text', BUILDER_UI_THEME.text);
   root.style.setProperty('--builder-muted', BUILDER_UI_THEME.muted);
   root.style.setProperty('--builder-border', BUILDER_UI_THEME.border);
+  root.style.setProperty('--builder-sidebar-bg', BUILDER_UI_THEME.sidebarBg);
+  root.style.setProperty('--builder-sidebar-text', BUILDER_UI_THEME.sidebarText);
+  root.style.setProperty('--builder-sidebar-muted', BUILDER_UI_THEME.sidebarMuted);
+  root.style.setProperty('--builder-sidebar-active-bg', BUILDER_UI_THEME.sidebarActiveBg);
+  root.style.setProperty('--builder-sidebar-active-text', BUILDER_UI_THEME.sidebarActiveText);
+  root.style.setProperty('--builder-sidebar-border', BUILDER_UI_THEME.sidebarBorder);
 
   root.style.setProperty('--primary-color', BUILDER_UI_THEME.primary);
   root.style.setProperty('--secondary-color', BUILDER_UI_THEME.secondary);
@@ -225,10 +241,121 @@ const resolveThemeColors = (theme: any) => {
   };
 };
 
+const isValidHexColor = (value?: string | null) => Boolean(
+  value && /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(value.trim())
+);
+
+const expandHexColor = (value: string) => {
+  const normalized = value.trim();
+  if (normalized.length === 4) {
+    return `#${normalized[1]}${normalized[1]}${normalized[2]}${normalized[2]}${normalized[3]}${normalized[3]}`;
+  }
+  return normalized;
+};
+
+const hexToRgb = (value: string) => {
+  if (!isValidHexColor(value)) return null;
+  const hex = expandHexColor(value).slice(1);
+  return {
+    r: Number.parseInt(hex.slice(0, 2), 16),
+    g: Number.parseInt(hex.slice(2, 4), 16),
+    b: Number.parseInt(hex.slice(4, 6), 16)
+  };
+};
+
+const rgbToHex = ({ r, g, b }: { r: number; g: number; b: number }) => (
+  `#${[r, g, b].map((channel) => Math.round(Math.max(0, Math.min(255, channel))).toString(16).padStart(2, '0')).join('')}`
+);
+
+const mixHexColors = (base: string, target: string, amount: number) => {
+  const baseRgb = hexToRgb(base);
+  const targetRgb = hexToRgb(target);
+  if (!baseRgb || !targetRgb) return base;
+  const ratio = Math.max(0, Math.min(1, amount));
+  return rgbToHex({
+    r: baseRgb.r + (targetRgb.r - baseRgb.r) * ratio,
+    g: baseRgb.g + (targetRgb.g - baseRgb.g) * ratio,
+    b: baseRgb.b + (targetRgb.b - baseRgb.b) * ratio
+  });
+};
+
+const getRelativeLuminance = (value: string) => {
+  const rgb = hexToRgb(value);
+  if (!rgb) return null;
+
+  const normalize = (channel: number) => {
+    const srgb = channel / 255;
+    return srgb <= 0.03928 ? srgb / 12.92 : ((srgb + 0.055) / 1.055) ** 2.4;
+  };
+
+  return 0.2126 * normalize(rgb.r) + 0.7152 * normalize(rgb.g) + 0.0722 * normalize(rgb.b);
+};
+
+const getContrastRatio = (foreground: string, background: string) => {
+  const fg = getRelativeLuminance(foreground);
+  const bg = getRelativeLuminance(background);
+  if (fg === null || bg === null) return 0;
+  const lighter = Math.max(fg, bg);
+  const darker = Math.min(fg, bg);
+  return (lighter + 0.05) / (darker + 0.05);
+};
+
+const pickReadableTextColor = (background: string) => (
+  getContrastRatio('#FFFFFF', background) >= getContrastRatio('#0F172A', background)
+    ? '#FFFFFF'
+    : '#0F172A'
+);
+
+const pickHexColor = (...values: Array<string | null | undefined>) => {
+  const value = values.find((candidate) => isValidHexColor(candidate));
+  return value ? expandHexColor(value).toUpperCase() : null;
+};
+
+const ensureReadableOn = (foreground: string, background: string, fallback: string, minimum = 4.5) => (
+  getContrastRatio(foreground, background) >= minimum ? foreground : fallback
+);
+
+const normalizeBuilderUiTheme = (themeColors: ReturnType<typeof resolveThemeColors>) => {
+  const builderPrimary = pickHexColor(themeColors.primary, themeColors.accent, BUILDER_UI_THEME.primary) || BUILDER_UI_THEME.primary;
+  const builderBg = BUILDER_UI_THEME.background;
+  const builderSurface = BUILDER_UI_THEME.surface;
+  const builderSurfaceMuted = BUILDER_UI_THEME.secondary;
+  const builderText = BUILDER_UI_THEME.text;
+  const builderMuted = BUILDER_UI_THEME.muted;
+  const builderBorder = mixHexColors(builderText, builderSurface, 0.88) || BUILDER_UI_THEME.border;
+  const builderPrimarySoft = mixHexColors(builderPrimary, '#FFFFFF', 0.94);
+  const builderActiveBg = mixHexColors(builderPrimary, '#FFFFFF', 0.93);
+  const builderActiveText = ensureReadableOn(builderText, builderActiveBg, builderText, 4.5);
+  const primaryContrastCandidate = pickReadableTextColor(builderPrimary);
+  const builderPrimaryContrast = ensureReadableOn(primaryContrastCandidate, builderPrimary, primaryContrastCandidate);
+  const builderPrimaryHover = mixHexColors(builderPrimary, '#000000', 0.14);
+  const builderSidebarText = ensureReadableOn(builderPrimary, builderSurface, mixHexColors(builderPrimary, '#000000', 0.32), 4.5);
+  const builderSidebarMuted = builderMuted;
+  const builderSidebarActiveBg = builderPrimarySoft;
+  const builderSidebarActiveText = ensureReadableOn(builderSidebarText, builderSidebarActiveBg, builderText, 4.5);
+
+  return {
+    builderBg,
+    builderSurface,
+    builderSurfaceMuted,
+    builderText,
+    builderMuted,
+    builderBorder,
+    builderPrimary,
+    builderPrimaryHover,
+    builderPrimarySoft,
+    builderPrimaryContrast,
+    builderActiveBg,
+    builderActiveText,
+    builderSidebarText,
+    builderSidebarMuted,
+    builderSidebarActiveBg,
+    builderSidebarActiveText
+  };
+};
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const applyTheme = (themeData: any) => {
     const root = document.documentElement;
-    const currentStyles = getComputedStyle(root);
 
     if (typeof themeData === 'string') {
       const normalizedName = themeData.toLowerCase();
@@ -237,10 +364,12 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const theme = SOLUTIUM_THEMES.find(t => t.name.toLowerCase() === normalizedName) || SOLUTIUM_THEMES[2];
       applyBuilderShellTheme(root);
 
-      root.style.setProperty('--sidebar-bg', theme.colors.sidebar_bg || BUILDER_UI_THEME.sidebarBg);
-      root.style.setProperty('--sidebar-foreground', theme.colors.sidebar_foreground || BUILDER_UI_THEME.sidebarForeground);
-      root.style.setProperty('--sidebar-accent', theme.colors.sidebar_accent || BUILDER_UI_THEME.sidebarAccent);
-      root.style.setProperty('--sidebar-border', theme.colors.sidebar_border || BUILDER_UI_THEME.sidebarBorder);
+      root.style.setProperty('--sidebar-bg', BUILDER_UI_THEME.sidebarBg);
+      root.style.setProperty('--sidebar-foreground', BUILDER_UI_THEME.sidebarText);
+      root.style.setProperty('--sidebar-muted', BUILDER_UI_THEME.sidebarMuted);
+      root.style.setProperty('--sidebar-accent', BUILDER_UI_THEME.sidebarActiveBg);
+      root.style.setProperty('--sidebar-active-text', BUILDER_UI_THEME.sidebarActiveText);
+      root.style.setProperty('--sidebar-border', BUILDER_UI_THEME.sidebarBorder);
 
       const font = theme.fontFamily || 'Inter, sans-serif';
       const cleanFont = font.split(',')[0].trim().replace(/['"]/g, '');
@@ -261,47 +390,45 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     applyBuilderShellTheme(root);
     const themeColors = resolveThemeColors(theme);
 
-    const shellSurface = themeColors.surface || themeColors.secondary;
-    const shellSurfaceMuted = themeColors.surfaceMuted || themeColors.secondary;
-    const shellPrimarySoft = themeColors.primarySoft || (themeColors.primary ? `color-mix(in srgb, ${themeColors.primary} 12%, transparent)` : null);
+    const builderTokens = normalizeBuilderUiTheme(themeColors);
 
-    setCssVar(root, '--primary-color', themeColors.primary);
-    setCssVar(root, '--builder-primary', themeColors.primary);
-    setCssVar(root, '--builder-primary-soft', shellPrimarySoft);
-    setCssVar(root, '--secondary-color', themeColors.secondary);
-    setCssVar(root, '--accent-color', themeColors.accent);
-    setCssVar(root, '--background-color', themeColors.background);
-    setCssVar(root, '--builder-bg', themeColors.background);
-    setCssVar(root, '--card-color', shellSurface);
-    setCssVar(root, '--builder-surface', shellSurface);
-    setCssVar(root, '--builder-surface-muted', shellSurfaceMuted);
-    setCssVar(root, '--foreground-color', themeColors.text);
-    setCssVar(root, '--builder-text', themeColors.text);
-    setCssVar(root, '--solutium-dark', themeColors.text);
-    setCssVar(root, '--builder-muted', themeColors.muted);
-    setCssVar(root, '--border-color', themeColors.border);
-    setCssVar(root, '--builder-border', themeColors.border);
-
-    const sidebarBg =
-      themeColors.sidebarBg ||
-      currentStyles.getPropertyValue('--sidebar-bg').trim() ||
-      BUILDER_UI_THEME.sidebarBg;
-    const sidebarFg =
-      themeColors.sidebarForeground ||
-      currentStyles.getPropertyValue('--sidebar-foreground').trim() ||
-      BUILDER_UI_THEME.sidebarForeground;
-    const sidebarAccent =
-      themeColors.sidebarAccent ||
-      currentStyles.getPropertyValue('--sidebar-accent').trim() ||
-      BUILDER_UI_THEME.sidebarAccent;
-    const sidebarBorder =
-      themeColors.sidebarBorder ||
-      currentStyles.getPropertyValue('--sidebar-border').trim() ||
-      BUILDER_UI_THEME.sidebarBorder;
-
+    root.style.setProperty('--primary-color', builderTokens.builderPrimary);
+    root.style.setProperty('--builder-primary', builderTokens.builderPrimary);
+    root.style.setProperty('--builder-primary-hover', builderTokens.builderPrimaryHover);
+    root.style.setProperty('--builder-primary-soft', builderTokens.builderPrimarySoft);
+    root.style.setProperty('--builder-primary-contrast', builderTokens.builderPrimaryContrast);
+    root.style.setProperty('--builder-active-bg', builderTokens.builderActiveBg);
+    root.style.setProperty('--builder-active-text', builderTokens.builderActiveText);
+    root.style.setProperty('--secondary-color', builderTokens.builderSurfaceMuted);
+    setCssVar(root, '--accent-color', pickHexColor(themeColors.accent));
+    root.style.setProperty('--background-color', builderTokens.builderBg);
+    root.style.setProperty('--builder-bg', builderTokens.builderBg);
+    root.style.setProperty('--card-color', builderTokens.builderSurface);
+    root.style.setProperty('--builder-surface', builderTokens.builderSurface);
+    root.style.setProperty('--builder-surface-muted', builderTokens.builderSurfaceMuted);
+    root.style.setProperty('--foreground-color', builderTokens.builderText);
+    root.style.setProperty('--builder-text', builderTokens.builderText);
+    root.style.setProperty('--solutium-dark', builderTokens.builderText);
+    root.style.setProperty('--builder-muted', builderTokens.builderMuted);
+    root.style.setProperty('--border-color', builderTokens.builderBorder);
+    root.style.setProperty('--builder-border', builderTokens.builderBorder);
+    const sidebarBg = builderTokens.builderSurface;
+    const sidebarFg = builderTokens.builderSidebarText;
+    const sidebarMuted = builderTokens.builderSidebarMuted;
+    const sidebarAccent = builderTokens.builderSidebarActiveBg;
+    const sidebarActiveText = builderTokens.builderSidebarActiveText;
+    const sidebarBorder = builderTokens.builderBorder;
+    root.style.setProperty('--builder-sidebar-bg', sidebarBg);
+    root.style.setProperty('--builder-sidebar-text', sidebarFg);
+    root.style.setProperty('--builder-sidebar-muted', sidebarMuted);
+    root.style.setProperty('--builder-sidebar-active-bg', sidebarAccent);
+    root.style.setProperty('--builder-sidebar-active-text', sidebarActiveText);
+    root.style.setProperty('--builder-sidebar-border', sidebarBorder);
     root.style.setProperty('--sidebar-bg', sidebarBg);
     root.style.setProperty('--sidebar-foreground', sidebarFg);
+    root.style.setProperty('--sidebar-muted', sidebarMuted);
     root.style.setProperty('--sidebar-accent', sidebarAccent);
+    root.style.setProperty('--sidebar-active-text', sidebarActiveText);
     root.style.setProperty('--sidebar-border', sidebarBorder);
 
     const font =

@@ -2,10 +2,10 @@ import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { sendToMother, startHandshake } from './services/handshakeService';
 import { configService } from './services/configService';
-import { initSupabase } from './services/supabaseClient';
+import { getSupabase, getSupabaseConfig, initSupabase } from './services/supabaseClient';
 import { captureAuthToken } from './services/authTokenProvider';
 import { ensureActiveSupabaseSession } from './services/supabaseSessionService';
-import { consumeSecureLaunchSession, getLaunchTokenFromUrl, type SecureLaunchSessionPayload } from './services/secureLaunchSession';
+import { consumeSecureLaunchSession, fetchConstructorContext, getAppMadreBaseUrl, getLaunchTokenFromUrl, type SecureLaunchSessionPayload } from './services/secureLaunchSession';
 import { getProfile, getProject, getWebBuilderSites, getPublishedSites, renameWebBuilderSite } from './services/dataService';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { Sidebar } from './components/Sidebar';
@@ -147,6 +147,11 @@ const normalizeProjectBrandingToProject = (
     name: projectBranding.projectName || projectBranding.businessName || 'Proyecto Solutium',
     industry: projectBranding.industry || null,
     website: projectBranding.website || null,
+    email: projectBranding.email || projectBranding.contactInfo?.email || projectBranding.contact?.email || null,
+    phone: projectBranding.phone || projectBranding.contactInfo?.phone || projectBranding.contact?.phone || null,
+    whatsapp: projectBranding.whatsapp || projectBranding.contactInfo?.whatsapp || projectBranding.contact?.whatsapp || null,
+    address: projectBranding.address || projectBranding.contactInfo?.address || projectBranding.contact?.address || null,
+    socials: projectBranding.socials || projectBranding.socialLinks || null,
     logoUrl: projectBranding.logoUrl || null,
     logoWhiteUrl: projectBranding.logoWhiteUrl || projectBranding.logo_white_url || null,
     projectIconUrl: projectBranding.projectIconUrl || projectBranding.project_icon_url || null,
@@ -155,6 +160,26 @@ const normalizeProjectBrandingToProject = (
     brandColors: normalizeProjectBrandColors(brandColors)
   } as Project;
 };
+
+const hasContactInfoInPayload = (payload: any) => Boolean(
+  payload?.projectContact?.email ||
+  payload?.projectContact?.phone ||
+  payload?.projectContact?.whatsapp ||
+  payload?.projectBranding?.email ||
+  payload?.projectBranding?.phone ||
+  payload?.projectBranding?.whatsapp ||
+  payload?.projectBranding?.contactInfo ||
+  payload?.projectBranding?.contact
+);
+
+const hasSocialLinksInPayload = (payload: any) => Boolean(
+  payload?.projectContact?.socials ||
+  payload?.projectContact?.socialLinks ||
+  payload?.projectBranding?.socials ||
+  payload?.projectBranding?.socialLinks ||
+  payload?.projectBranding?.instagram ||
+  payload?.projectBranding?.facebook
+);
 
 const getProjectBrandColorsFromContract = (projectBranding: any): BrandColorsInput => {
   if (!projectBranding || typeof projectBranding !== 'object') return null;
@@ -195,7 +220,7 @@ const normalizeIncomingProject = (
 };
 
 const summarizeLaunchPayload = (payload: any) => ({
-  hasProjectId: Boolean(payload?.projectId || payload?.satellite_id || payload?.projectContext?.projectId),
+  hasProjectId: Boolean(payload?.projectId || payload?.project_id || payload?.satellite_id || payload?.projectContext?.projectId || payload?.launcher?.projectId || payload?.launcher?.satelliteId || payload?.projectBranding?.projectId),
   hasSiteId: Boolean(payload?.site_id || payload?.asset_id || payload?.launcher?.siteId),
   hasUiTheme: Boolean(payload?.uiTheme),
   hasProjectBranding: Boolean(payload?.projectBranding),
@@ -206,6 +231,87 @@ const summarizeLaunchPayload = (payload: any) => ({
 const getLaunchContractVersion = (payload: SecureLaunchSessionPayload | null | undefined) =>
   payload?.contractVersion || payload?.launcher?.contractVersion || null;
 
+const getSecureLaunchProjectId = (payload: SecureLaunchSessionPayload | null | undefined) => (
+  payload?.projectContext?.projectId ||
+  payload?.launcher?.projectId ||
+  payload?.launcher?.satelliteId ||
+  payload?.projectBranding?.projectId ||
+  null
+);
+
+const getSecureLaunchUserId = (payload: SecureLaunchSessionPayload | null | undefined) => (
+  payload?.projectContext?.userId ||
+  payload?.projectContext?.profileId ||
+  payload?.launcher?.userId ||
+  payload?.launcher?.profileId ||
+  null
+);
+
+const getReadableSessionValue = (...values: unknown[]) => {
+  for (const value of values) {
+    if (typeof value !== 'string') continue;
+    const normalized = value.trim();
+    if (!normalized) continue;
+    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(normalized)) {
+      continue;
+    }
+    return normalized;
+  }
+  return null;
+};
+
+const getSecureLaunchSessionLabel = (payload: SecureLaunchSessionPayload | null | undefined) => (
+  getReadableSessionValue(
+    payload?.projectContext?.userEmail,
+    payload?.launcher?.userEmail,
+    payload?.projectContext?.email,
+    payload?.launcher?.email,
+    payload?.projectContext?.userName,
+    payload?.launcher?.userName,
+    payload?.projectContext?.displayName,
+    payload?.launcher?.displayName,
+    payload?.projectContext?.fullName,
+    payload?.launcher?.fullName
+  ) || 'Usuario activo'
+);
+
+const normalizeSecureLaunchPayloadForHandshake = (payload: SecureLaunchSessionPayload) => {
+  const params = new URLSearchParams(window.location.search);
+  const projectId = getSecureLaunchProjectId(payload);
+  const userId = getSecureLaunchUserId(payload);
+  const appId = payload.launcher?.appId || params.get('app_id') || '11111111-1111-1111-1111-111111111111';
+  const siteId = payload.launcher?.siteId || params.get('site_id') || params.get('asset_id') || null;
+  const mode = payload.launcher?.mode || params.get('mode') || params.get('editor_mode') || null;
+  const projectFromBranding = normalizeProjectBrandingToProject(payload.projectBranding, projectId);
+
+  return {
+    type: 'SOLUTIUM_SECURE_LAUNCH',
+    projectId,
+    project_id: projectId,
+    satellite_id: projectId,
+    userId,
+    user_id: userId,
+    profileId: userId,
+    profile_id: userId,
+    appId,
+    app_id: appId,
+    site_id: siteId,
+    asset_id: params.get('asset_id') || siteId,
+    siteName: params.get('site_name') || undefined,
+    mode,
+    editor_mode: params.get('editor_mode') || mode,
+    site_status: params.get('site_status') || undefined,
+    source: params.get('source') || 'secure_launch',
+    launch_contract: getLaunchContractVersion(payload) || params.get('launch_contract') || 'app-launch-v1',
+    launcher: payload.launcher || null,
+    projectContext: payload.projectContext || null,
+    uiTheme: payload.uiTheme || null,
+    projectBranding: payload.projectBranding || null,
+    project: projectFromBranding,
+    publicRenderContext: (payload as any).publicRenderContext || null,
+    projectContact: payload.projectContact || (payload as any).projectContact || null
+  };
+};
 const normalizeDraftLifecycleStatus = (
   rawStatus: unknown,
   hasActivePublishedVersion: boolean
@@ -324,6 +430,7 @@ const AppContent: React.FC = () => {
   const [project, setProject] = useState<Project | null>(null);
   const [assets, setAssets] = useState<Asset[]>([]);
   const [pages, setPages] = useState<(WebBuilderSite | PublishedSite)[]>([]);
+  const [pagesLoadError, setPagesLoadError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('home');
   const [currentView, setCurrentView] = useState<View>('dashboard');
   const [selectedMethod, setSelectedMethod] = useState<CreationMethod | null>(null);
@@ -361,14 +468,24 @@ const AppContent: React.FC = () => {
       safeCache?.accessToken ||
       null;
     const expiresAt = getJwtExpirationMs(sessionToken);
-    const hasRealSession = Boolean(sessionToken) && sessionToken !== 'placeholder-token' && (!expiresAt || expiresAt > Date.now());
+    const hasLegacySession = Boolean(sessionToken) && sessionToken !== 'placeholder-token' && (!expiresAt || expiresAt > Date.now());
+    const secureLaunchPayload = secureLaunchPayloadRef.current;
+    const hasSecureLaunchSession = Boolean(getSecureLaunchProjectId(secureLaunchPayload));
+    const hasRealSession = hasLegacySession || hasSecureLaunchSession;
     const userLabel =
       profile?.email ||
       (profile as any)?.name ||
       (profile as any)?.fullName ||
+      (profile as any)?.displayName ||
       safeCache?.profile?.email ||
+      safeCache?.profile?.name ||
+      safeCache?.profile?.fullName ||
+      safeCache?.profile?.displayName ||
       safeCache?.user?.email ||
-      'usuario autenticado';
+      safeCache?.user?.name ||
+      safeCache?.user?.fullName ||
+      safeCache?.user?.displayName ||
+      (secureLaunchPayload ? getSecureLaunchSessionLabel(secureLaunchPayload) : 'Usuario activo');
     const projectLabel =
       project?.name ||
       (project as any)?.businessName ||
@@ -567,7 +684,168 @@ const AppContent: React.FC = () => {
     const idToUse = fProjectId || projectId;
     if (!idToUse) return [];
 
+    const secureLaunchPayload = secureLaunchPayloadRef.current;
+    const usingSecureLaunch = Boolean(secureLaunchPayload);
+    const safeCache = readSafeHandshakeCache();
+    const supabase = getSupabase();
+    const supabaseConfig = getSupabaseConfig();
+    const launchAccessToken = secureLaunchPayload?.access?.launch_access_token || null;
+    const usingLegacySession = Boolean(
+      supabaseConfig?.token ||
+      safeCache?.session_token ||
+      safeCache?.sessionToken ||
+      safeCache?.supabaseAccessToken ||
+      safeCache?.accessToken ||
+      window.sessionStorage.getItem('solutium_supabase_access_token')
+    );
+    let hasSupabaseSession = Boolean(supabaseConfig?.token);
+    let pagesErrorMessage: string | null = null;
+
+    if (supabase) {
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        hasSupabaseSession = hasSupabaseSession || Boolean(data?.session?.access_token);
+        if (error) pagesErrorMessage = error.message;
+      } catch (error: any) {
+        pagesErrorMessage = error?.message || 'No se pudo inspeccionar la sesion de Supabase.';
+      }
+    } else {
+      pagesErrorMessage = 'Supabase client not initialized.';
+    }
+
+    const pageDiagnosticsBase = {
+      pagesQueryProjectId: idToUse,
+      assetsQueryProjectId: idToUse,
+      pagesSource: usingSecureLaunch && launchAccessToken ? 'api' : (supabase ? 'supabase' : 'unknown'),
+      pagesHttpStatus: null,
+      hasSupabaseSession,
+      usingSecureLaunch,
+      usingLegacySession,
+      currentProjectId: idToUse,
+      currentUserId: profile?.id || getSecureLaunchUserId(secureLaunchPayload)
+    };
+
+    logDebug('[PAGES_LOAD_DIAGNOSTIC]', {
+      ...pageDiagnosticsBase,
+      pagesResultCount: null,
+      pagesErrorMessage
+    });
+
+    if (usingSecureLaunch) {
+      if (!launchAccessToken) {
+        const message = 'El Constructor recibio el proyecto, pero no tiene una API autorizada para leer las paginas existentes.';
+        setPagesLoadError(message);
+        setPages([]);
+        setAssets([]);
+        logDebug('[PAGES_LOAD_DIAGNOSTIC]', {
+          ...pageDiagnosticsBase,
+          pagesSource: 'unknown',
+          pagesResultCount: 0,
+          pagesErrorMessage: message
+        });
+        return [];
+      }
+
+      const contextResult = await fetchConstructorContext({
+        appBaseUrl: getAppMadreBaseUrl(),
+        launchAccessToken
+      });
+
+      logDebug('[CONSTRUCTOR_CONTEXT_LOAD_DIAGNOSTIC]', {
+        httpStatus: contextResult.httpStatus || null,
+        hasWebBuilderSites: Array.isArray(contextResult.webBuilderSites),
+        webBuilderSitesCount: contextResult.webBuilderSites?.length || 0,
+        publishedSitesCount: contextResult.publishedSites?.length || 0,
+        assetsCount: contextResult.assets?.length || 0,
+        hasProjectContact: Boolean(contextResult.projectContact),
+        hasProjectBranding: Boolean(contextResult.projectBranding)
+      });
+
+      if (!contextResult.success) {
+        const message = contextResult.message || 'No se pudieron cargar las paginas existentes.';
+        setPagesLoadError(message);
+        setPages([]);
+        setAssets([]);
+        logDebug('[PAGES_LOAD_DIAGNOSTIC]', {
+          ...pageDiagnosticsBase,
+          pagesSource: 'api',
+          pagesResultCount: 0,
+          pagesErrorMessage: message,
+          pagesHttpStatus: contextResult.httpStatus || null
+        });
+        return [];
+      }
+
+      const contextAssets = contextResult.assets || [];
+      const contextDrafts = contextResult.webBuilderSites || [];
+      const contextPublished = contextResult.publishedSites || [];
+      const allPages = mergePagesByCurrentLifecycle(contextDrafts as WebBuilderSite[], contextPublished as PublishedSite[]);
+      if (secureLaunchPayloadRef.current) {
+        secureLaunchPayloadRef.current = {
+          ...secureLaunchPayloadRef.current,
+          projectContact: contextResult.projectContact || secureLaunchPayloadRef.current.projectContact || null,
+          projectBranding: contextResult.projectBranding || secureLaunchPayloadRef.current.projectBranding || null
+        };
+      }
+
+      const contextProjectBranding = contextResult.projectBranding || secureLaunchPayload?.projectBranding || null;
+      const contextProjectContact = contextResult.projectContact || null;
+      const projectFromContext = normalizeProjectBrandingToProject(
+        contextProjectBranding
+          ? {
+            ...contextProjectBranding,
+            email: contextProjectContact?.email ?? (contextProjectBranding as any)?.email,
+            phone: contextProjectContact?.phone ?? (contextProjectBranding as any)?.phone,
+            whatsapp: contextProjectContact?.whatsapp ?? (contextProjectBranding as any)?.whatsapp,
+            address: contextProjectContact?.address ?? (contextProjectBranding as any)?.address,
+            socials: contextProjectContact?.socialLinks || contextProjectContact?.socials || (contextProjectBranding as any)?.socials || (contextProjectBranding as any)?.socialLinks || null
+          }
+          : null,
+        contextResult.projectId || idToUse
+      );
+
+      if (projectFromContext) {
+        setProject(projectFromContext);
+        if (projectFromContext.logoUrl) setUrlLogo(projectFromContext.logoUrl);
+        if (projectFromContext.logoWhiteUrl) setUrlLogoWhite(projectFromContext.logoWhiteUrl);
+      }
+
+      setAssets(contextAssets as Asset[]);
+      setPagesLoadError(null);
+      setPages(allPages);
+      logDebug('[PAGES_LOAD_DIAGNOSTIC]', {
+        ...pageDiagnosticsBase,
+        pagesSource: 'api',
+        pagesResultCount: allPages.length,
+        pagesErrorMessage: null,
+        pagesHttpStatus: contextResult.httpStatus || null
+      });
+      return allPages;
+    }
+
+    if (!supabase || (usingSecureLaunch && !hasSupabaseSession)) {
+      const message = usingSecureLaunch
+        ? 'El Constructor recibio el proyecto, pero no tiene una sesion o API autorizada para leer las paginas existentes.'
+        : 'No se pudo conectar con Supabase para cargar las paginas existentes.';
+      setPagesLoadError(message);
+      setPages([]);
+      setAssets([]);
+      logDebug('[PAGES_LOAD_DIAGNOSTIC]', {
+        ...pageDiagnosticsBase,
+        pagesResultCount: 0,
+        pagesErrorMessage: pagesErrorMessage || message
+      });
+      return [];
+    }
+
     try {
+      logDebug('[SECURE_LAUNCH_SCOPE_DEBUG]', {
+        pagesQueryProjectId: idToUse,
+        assetsQueryProjectId: idToUse,
+        currentProjectIdState: projectId,
+        hasSecureLaunchSession: usingSecureLaunch
+      });
+
       const projectAssets = await getAssets(idToUse, 'web_page');
       setAssets(projectAssets);
 
@@ -587,10 +865,24 @@ const AppContent: React.FC = () => {
         });
       }
       
+      setPagesLoadError(null);
       setPages(allPages);
+      logDebug('[PAGES_LOAD_DIAGNOSTIC]', {
+        ...pageDiagnosticsBase,
+        pagesResultCount: allPages.length,
+        pagesErrorMessage: null
+      });
       return allPages;
-    } catch (error) {
+    } catch (error: any) {
+      const message = error?.message || 'No se pudieron cargar las paginas existentes.';
       console.error('[DATA] Error refreshing data:', error);
+      setPagesLoadError(message);
+      logDebug('[PAGES_LOAD_DIAGNOSTIC]', {
+        ...pageDiagnosticsBase,
+        pagesResultCount: 0,
+        pagesErrorMessage: message,
+        pagesHttpStatus: error?.status || error?.statusCode || null
+      });
       return [];
     }
   };
@@ -764,6 +1056,18 @@ const AppContent: React.FC = () => {
 
       if (payload.projectId || projectId) {
         const finalProjectId = payload.projectId || projectId;
+        if (secureLaunchPayload) {
+          logDebug('[SECURE_LAUNCH_SCOPE_DEBUG]', {
+            secureProjectId: getSecureLaunchProjectId(secureLaunchPayload),
+            secureUserId: getSecureLaunchUserId(secureLaunchPayload),
+            normalizedProjectId: finalProjectId,
+            normalizedUserId: payload.userId || payload.user_id || payload.profileId || payload.profile_id || null,
+            satelliteId: payload.satellite_id || null,
+            siteId: payload.site_id || payload.asset_id || secureLaunchPayload.launcher?.siteId || null,
+            pagesQueryProjectId: finalProjectId,
+            assetsQueryProjectId: finalProjectId
+          });
+        }
         setProjectId(finalProjectId);
         
         const handshakeAppId = payload.appId || (payload as any).app_id || '11111111-1111-1111-1111-111111111111';
@@ -869,42 +1173,35 @@ const AppContent: React.FC = () => {
     secureLaunchPayloadRef.current = payload;
     setSecureLaunchError(null);
 
-    const secureProjectId =
-      payload.projectContext?.projectId ||
-      payload.launcher?.satelliteId ||
-      payload.projectBranding?.projectId ||
-      null;
-    const secureAppId = payload.launcher?.appId || payload.launcher?.appSlug || '11111111-1111-1111-1111-111111111111';
-    const secureSiteId = payload.launcher?.siteId || null;
+    const normalizedPayload = normalizeSecureLaunchPayloadForHandshake(payload);
+    const secureProjectId = normalizedPayload.projectId;
+    const secureUserId = getSecureLaunchUserId(payload);
 
-    if (payload.uiTheme) {
-      applyTheme(payload.uiTheme);
+    logDebug('[SECURE_LAUNCH] Payload seguro normalizado.', {
+      launchMode: 'secure',
+      contractVersion: normalizedPayload.launch_contract,
+      hasLauncher: Boolean(payload.launcher),
+      hasProjectContext: Boolean(payload.projectContext),
+      secureProjectId: getSecureLaunchProjectId(payload),
+      secureUserId,
+      normalizedProjectId: normalizedPayload.projectId,
+      normalizedUserId: normalizedPayload.userId || normalizedPayload.profileId || null,
+      satelliteId: normalizedPayload.satellite_id,
+      siteId: normalizedPayload.site_id || normalizedPayload.asset_id || null,
+      pagesQueryProjectId: normalizedPayload.projectId,
+      assetsQueryProjectId: normalizedPayload.projectId,
+      hasUiTheme: Boolean(payload.uiTheme),
+      hasProjectBranding: Boolean(payload.projectBranding),
+      hasLaunchAccess: Boolean(payload.access?.launch_access_token),
+      launchAccessExpiresAt: payload.access?.expires_at || null
+    });
+
+    if (!secureProjectId) {
+      setSecureLaunchError('No se pudo sincronizar el contexto del proyecto. Vuelva a abrir el Constructor desde Solutium.');
+      return;
     }
 
-    if (secureProjectId) {
-      setProjectId(secureProjectId);
-    }
-    if (secureAppId) {
-      setAppId(secureAppId);
-    }
-
-    const brandingProject = normalizeProjectBrandingToProject(payload.projectBranding, secureProjectId);
-    if (brandingProject) {
-      setProject(brandingProject);
-      if (brandingProject.logoUrl) setUrlLogo(brandingProject.logoUrl);
-      if (brandingProject.logoWhiteUrl) setUrlLogoWhite(brandingProject.logoWhiteUrl);
-    }
-
-    if (secureSiteId) {
-      setSelectedPage({
-        siteId: secureSiteId,
-        name: 'Cargando sitio...',
-        status: 'draft'
-      } as any);
-      setCurrentView(payload.launcher?.mode === 'render' ? 'viewer' : 'constructor');
-    }
-
-    setIsHandshakeComplete(true);
+    await processHandshake(normalizedPayload);
   };
 
   useEffect(() => {
@@ -1090,33 +1387,36 @@ const AppContent: React.FC = () => {
           launchMode: 'secure',
           contractVersion: getLaunchContractVersion(result.payload),
           hasUiTheme: Boolean(result.payload.uiTheme),
-          hasProjectBranding: Boolean(result.payload.projectBranding)
+          hasProjectBranding: Boolean(result.payload.projectBranding),
+          hasLaunchAccess: Boolean(result.payload.access?.launch_access_token),
+          launchAccessExpiresAt: result.payload.access?.expires_at || null,
+          hasContactInfo: hasContactInfoInPayload(result.payload),
+          hasSocialLinks: hasSocialLinksInPayload(result.payload),
+          consumeAttemptId: result.consumeAttemptId,
+          consumeStatus: result.fromCache ? 'cached_success' : 'success',
+          httpStatus: result.httpStatus || null
         };
         logDebug('[SECURE_LAUNCH] launch_token consumido correctamente.', {
           ...safeLaunchDebug,
-          projectId: result.payload.projectContext?.projectId || result.payload.launcher?.satelliteId || null
+          secureProjectId: getSecureLaunchProjectId(result.payload),
+          secureUserId: getSecureLaunchUserId(result.payload)
         });
         if (isLocalDev) {
           (window as any).SOLUTIUM_LAUNCH_DEBUG = safeLaunchDebug;
         }
         await processSecureLaunch(result.payload);
-        // Legacy compatibility path: still listens for operational data until App Madre
-        // exposes scoped Constructor APIs and the legacy handshake can be removed.
-        startHandshake(processHandshake);
         return;
       }
 
       const message = 'No se pudo iniciar la sesión segura del Constructor. Vuelva a abrirlo desde Solutium.';
       setSecureLaunchError(message);
       console.error('[SECURE_LAUNCH] Error consuming launch_token:', {
-        error: result.error,
-        message: result.message
+        consumeAttemptId: result.consumeAttemptId,
+        consumeStatus: result.fromCache ? 'cached_error' : 'error',
+        httpStatus: result.httpStatus || null,
+        errorCode: result.error,
+        errorMessage: result.message
       });
-
-      if (isLocalDev) {
-        logDebug('[SECURE_LAUNCH] Fallback legacy habilitado solo en local/dev.');
-        startHandshake(processHandshake);
-      }
     });
   }, []);
 
@@ -1273,6 +1573,7 @@ const AppContent: React.FC = () => {
           <Dashboard 
             assets={assets} 
             pages={pages}
+            pagesLoadError={pagesLoadError}
             onNewPage={() => {
               setSelectedPage(null);
               handleNewPage();

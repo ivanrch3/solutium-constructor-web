@@ -1,5 +1,6 @@
 import { getSupabase } from './supabaseClient';
 import { logDebug } from '../utils/debug';
+import { getStoredLaunchAccessSession } from './secureLaunchSession';
 
 /**
  * [AUTH_TOKEN_PROVIDER_DEBUG] Centralized Token Provider
@@ -34,6 +35,14 @@ export async function getUploadAuthToken(): Promise<TokenResult> {
     }
   } catch (err) {
     // Log suppressed but tracked
+  }
+
+  // 1b. Secure Constructor launch access token.
+  // This is intentionally not a Supabase JWT; App Madre validates it on scoped
+  // Constructor proxy endpoints such as Pexels search and preview generation.
+  const secureLaunchSession = getStoredLaunchAccessSession();
+  if (secureLaunchSession.active && secureLaunchSession.token) {
+    return { token: secureLaunchSession.token, source: 'secure_constructor_launch' };
   }
 
   // 2. URL Parameters (Explicit overrides)

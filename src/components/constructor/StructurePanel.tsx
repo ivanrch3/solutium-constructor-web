@@ -74,6 +74,24 @@ const BENTO_ELEMENT_OPTIONS = [
   { type: 'card', label: 'Tarjeta simple', icon: <Box size={14} /> }
 ];
 
+const BENTO_DESKTOP_COLUMNS = 24;
+const BENTO_MIN_DESKTOP_COLUMNS = 12;
+const BENTO_MAX_DESKTOP_COLUMNS = 32;
+const BENTO_TABLET_COLUMNS = 6;
+const BENTO_MOBILE_COLUMNS = 4;
+const BENTO_BASE_VISIBLE_ROWS = 7;
+const BENTO_MAX_EDITABLE_ROWS = 240;
+
+const clampBentoDesktopColumns = (value: any) => {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return BENTO_DESKTOP_COLUMNS;
+  return Math.min(BENTO_MAX_DESKTOP_COLUMNS, Math.max(BENTO_MIN_DESKTOP_COLUMNS, Math.round(parsed)));
+};
+
+const getBentoDesktopColumns = (settingsValues: Record<string, any>, moduleId: string) => (
+  clampBentoDesktopColumns(settingsValues?.[`${moduleId}_global_columns`])
+);
+
 const getBentoElementOption = (type?: string) => {
   const normalizedType = type === 'image' ? 'visual' : type === 'cta' ? 'button' : type === 'stat' ? 'metric' : type;
   return BENTO_ELEMENT_OPTIONS.find((option) => option.type === normalizedType) || BENTO_ELEMENT_OPTIONS[0];
@@ -84,57 +102,227 @@ const createBentoCellId = () => {
   return `bento_cell_${randomId}`;
 };
 
-const createBentoPanelElementPreset = (kind: string, existingItems: any[]) => {
-  const maxY = existingItems.length > 0
-    ? Math.max(...existingItems.map((item: any) => (Number(item.y) || 0) + (Number(item.row_span || item.h) || 2)))
-    : 0;
+const getBentoPlacementLayout = (item: any, breakpoint: 'desktop' | 'tablet' | 'mobile', cols: number) => {
+  const savedLayout = item.layouts?.[breakpoint];
+  const declaredColumns = Number(savedLayout?.columns || item.layout_columns?.[breakpoint] || 0);
+  const shouldScaleLegacyDesktop = breakpoint === 'desktop'
+    && (declaredColumns > 0 ? declaredColumns < cols : cols === BENTO_DESKTOP_COLUMNS);
+  const width = breakpoint === 'mobile'
+    ? (item.mobile_span || item.col_span || 4)
+    : breakpoint === 'tablet'
+      ? (item.tablet_span || item.col_span || 2)
+      : (item.desktop_span || item.col_span || 4);
+  const height = breakpoint === 'mobile' ? (item.mobile_rows || item.row_span || 2) : (item.desktop_rows || item.row_span || 2);
+  const rawX = Number(savedLayout?.x ?? item.x ?? 0) || 0;
+  const rawW = Number(savedLayout?.w ?? width) || 1;
+  const normalizedW = Math.min(shouldScaleLegacyDesktop ? rawW * 2 : rawW, cols);
 
-  const withLayout = (item: any, desktopW: number, desktopH: number, tabletW = Math.min(desktopW, 6), mobileW = 4) => ({
-    id: createBentoCellId(),
-    card_style: 'solid',
-    card_radius: 28,
-    card_shadow: 'sm',
-    padding: 32,
-    content_align: 'center',
-    ...item,
-    col_span: desktopW,
-    row_span: desktopH,
-    desktop_span: desktopW,
-    desktop_rows: desktopH,
-    tablet_span: tabletW,
-    mobile_span: mobileW,
-    x: 0,
-    y: maxY,
-    layouts: {
-      desktop: { x: 0, y: maxY, w: desktopW, h: desktopH },
-      tablet: { x: 0, y: maxY, w: tabletW, h: desktopH },
-      mobile: { x: 0, y: maxY, w: mobileW, h: desktopH }
+  return {
+    x: Math.min(shouldScaleLegacyDesktop ? rawX * 2 : rawX, Math.max(cols - normalizedW, 0)),
+    y: Number(savedLayout?.y ?? item.y ?? 0) || 0,
+    w: normalizedW,
+    h: Number(savedLayout?.h ?? height) || 1
+  };
+};
+
+const findFirstFreeBentoPosition = (
+  existingItems: any[],
+  width: number,
+  height: number,
+  cols: number,
+  breakpoint: 'desktop' | 'tablet' | 'mobile'
+) => {
+  const normalizedWidth = Math.min(width, cols);
+  const collides = (
+    candidate: { x: number; y: number; w: number; h: number },
+    existing: { x: number; y: number; w: number; h: number }
+  ) => (
+    candidate.x < existing.x + existing.w &&
+    candidate.x + candidate.w > existing.x &&
+    candidate.y < existing.y + existing.h &&
+    candidate.y + candidate.h > existing.y
+  );
+
+  const occupied = existingItems.map((item) => getBentoPlacementLayout(item, breakpoint, cols));
+
+  for (let y = 0; y < BENTO_MAX_EDITABLE_ROWS; y += 1) {
+    for (let x = 0; x <= cols - normalizedWidth; x += 1) {
+      const candidate = { x, y, w: normalizedWidth, h: height };
+      if (!occupied.some((entry) => collides(candidate, entry))) {
+        return { x, y };
+      }
     }
-  });
+  }
+
+  const maxY = occupied.length > 0 ? Math.max(...occupied.map((entry) => entry.y + entry.h)) : 0;
+  return { x: 0, y: maxY };
+};
+
+const getBentoOccupiedRows = (
+  items: any[],
+  breakpoint: 'desktop' | 'tablet' | 'mobile',
+  cols: number
+) => Math.ceil(items.reduce((maxRows: number, item: any) => {
+  const layout = getBentoPlacementLayout(item, breakpoint, cols);
+  return Math.max(maxRows, layout.y + Math.max(layout.h, 1));
+}, 0));
+
+const normalizeBentoWorkspaceRows = (currentValue: any, items: any[], desktopColumns = BENTO_DESKTOP_COLUMNS) => {
+  const currentRows = typeof currentValue === 'object' && currentValue !== null ? currentValue : {};
+  const nextRows = {
+    ...currentRows,
+    desktop: Math.min(
+      BENTO_MAX_EDITABLE_ROWS,
+      Math.max(BENTO_BASE_VISIBLE_ROWS, getBentoOccupiedRows(items, 'desktop', desktopColumns))
+    ),
+    tablet: Math.min(
+      BENTO_MAX_EDITABLE_ROWS,
+      Math.max(BENTO_BASE_VISIBLE_ROWS, getBentoOccupiedRows(items, 'tablet', BENTO_TABLET_COLUMNS))
+    ),
+    mobile: Math.min(
+      BENTO_MAX_EDITABLE_ROWS,
+      Math.max(BENTO_BASE_VISIBLE_ROWS, getBentoOccupiedRows(items, 'mobile', BENTO_MOBILE_COLUMNS))
+    )
+  };
+
+  return nextRows;
+};
+
+const createBentoPanelElementPreset = (kind: string, existingItems: any[], desktopColumns = BENTO_DESKTOP_COLUMNS) => {
+  const withLayout = (item: any, desktopW: number, desktopH: number, tabletW = Math.min(desktopW, BENTO_TABLET_COLUMNS), mobileW = BENTO_MOBILE_COLUMNS) => {
+    const safeDesktopW = Math.min(desktopW, desktopColumns);
+    const desktopPos = findFirstFreeBentoPosition(existingItems, safeDesktopW, desktopH, desktopColumns, 'desktop');
+    const tabletPos = findFirstFreeBentoPosition(existingItems, tabletW, desktopH, BENTO_TABLET_COLUMNS, 'tablet');
+    const mobilePos = findFirstFreeBentoPosition(existingItems, mobileW, desktopH, BENTO_MOBILE_COLUMNS, 'mobile');
+
+    return {
+      id: createBentoCellId(),
+      card_style: 'solid',
+      card_radius: 28,
+      card_shadow: 'sm',
+      padding: 32,
+      element_padding_y: 20,
+      content_align: 'center',
+      clickActionType: 'none',
+      ...item,
+      col_span: safeDesktopW,
+      row_span: desktopH,
+      desktop_span: safeDesktopW,
+      desktop_rows: desktopH,
+      tablet_span: tabletW,
+      mobile_span: mobileW,
+      x: desktopPos.x,
+      y: desktopPos.y,
+      layouts: {
+        desktop: { x: desktopPos.x, y: desktopPos.y, w: safeDesktopW, h: desktopH, columns: desktopColumns },
+        tablet: { x: tabletPos.x, y: tabletPos.y, w: tabletW, h: desktopH, columns: BENTO_TABLET_COLUMNS },
+        mobile: { x: mobilePos.x, y: mobilePos.y, w: mobileW, h: desktopH, columns: BENTO_MOBILE_COLUMNS }
+      },
+      layout_columns: {
+        desktop: desktopColumns,
+        tablet: BENTO_TABLET_COLUMNS,
+        mobile: BENTO_MOBILE_COLUMNS
+      }
+    };
+  };
 
   switch (kind) {
     case 'visual':
-      return withLayout({ type: 'visual', title: '', description: '', image: '', card_style: 'transparent', padding: 0 }, 3, 2, 3, 4);
+      return withLayout({ type: 'visual', title: '', description: '', image: '', card_style: 'transparent', padding: 0 }, 6, 2, 3, 4);
     case 'button':
-      return withLayout({ type: 'button', title: 'Haz clic aquí', button_text: 'Haz clic aquí', btn_url: '#', card_style: 'transparent', padding: 16 }, 3, 1, 3, 4);
+      return withLayout({ type: 'button', title: 'Haz clic aquí', button_text: 'Haz clic aquí', btn_url: '#', card_style: 'transparent', padding: 16 }, 6, 1, 3, 4);
     case 'icon':
-      return withLayout({ type: 'icon', title: 'Ícono destacado', icon: 'Sparkles', description: '' }, 2, 2, 2, 4);
+      return withLayout({
+        type: 'icon',
+        title: 'Ícono destacado',
+        icon_visual_type: 'icon',
+        icon: 'Sparkles',
+        icon_color: '#2563EB',
+        icon_image: '',
+        icon_image_size: 72,
+        description: 'Describe brevemente este ícono.'
+      }, 4, 2, 2, 4);
     case 'badge':
-      return withLayout({ type: 'badge', title: 'Nuevo', icon: 'Tag', card_style: 'transparent', padding: 12 }, 2, 1, 2, 4);
+      return withLayout({ type: 'badge', title: 'Nuevo', icon: 'Tag', card_style: 'transparent', padding: 12 }, 4, 1, 2, 4);
     case 'metric':
-      return withLayout({ type: 'metric', title: '99+', description: 'Impacto medible', metric_value: '99+', metric_label: 'Impacto', icon: 'BarChart3', accent_color: '#3B82F6' }, 3, 2, 3, 4);
+      return withLayout({ type: 'metric', title: '99+', description: 'Impacto medible', metric_value: '99+', metric_label: 'Impacto', icon: 'BarChart3', accent_color: '#3B82F6' }, 6, 2, 3, 4);
     case 'list':
-      return withLayout({ type: 'list', title: 'Puntos clave', description: '', list_items: ['Primer punto', 'Segundo punto', 'Tercer punto'], icon: 'ListChecks' }, 4, 3, 4, 4);
+      return withLayout({ type: 'list', title: 'Puntos clave', description: '', list_items: ['Primer punto', 'Segundo punto', 'Tercer punto'], icon: 'ListChecks' }, 8, 3, 4, 4);
     case 'accordion':
-      return withLayout({ type: 'accordion', title: 'Ver más detalles', description: 'Contenido desplegable para ampliar esta idea.', icon: 'ChevronDown' }, 4, 2, 4, 4);
+      return withLayout({ type: 'accordion', title: 'Ver más detalles', description: 'Contenido desplegable para ampliar esta idea.', icon: 'ChevronDown' }, 8, 2, 4, 4);
     case 'marquee':
-      return withLayout({ type: 'marquee', title: 'PROMO • NUEVO • 24/7', card_style: 'transparent', padding: 12 }, 8, 1, 6, 4);
+      return withLayout({ type: 'marquee', title: 'PROMO • NUEVO • 24/7', card_style: 'transparent', padding: 12 }, 16, 1, 6, 4);
     case 'card':
-      return withLayout({ type: 'card', title: 'Tarjeta simple', description: 'Combina texto, estilo e imagen de fondo.', icon: 'PanelTop' }, 4, 2, 3, 4);
+      return withLayout({ type: 'card', title: 'Tarjeta simple', description: 'Combina texto, estilo e imagen de fondo.', icon: 'PanelTop' }, 8, 2, 3, 4);
     case 'text':
     default:
-      return withLayout({ type: 'text', text_style: 'heading', title: 'Título del texto', description: 'Escribe aquí tu contenido...', icon: 'Type' }, 4, 2, 3, 4);
+      return withLayout({ type: 'text', text_style: 'heading', title: 'Título del texto', description: 'Escribe aquí tu contenido...', icon: 'Type' }, 8, 2, 3, 4);
   }
+};
+
+const cloneBentoValue = (value: any) => {
+  try {
+    return structuredClone(value);
+  } catch {
+    return JSON.parse(JSON.stringify(value));
+  }
+};
+
+const createDuplicatedBentoItem = (sourceItem: any, existingItems: any[], desktopColumns = BENTO_DESKTOP_COLUMNS) => {
+  const clonedItem = cloneBentoValue(sourceItem);
+  const sourceDesktop = getBentoPlacementLayout(sourceItem, 'desktop', desktopColumns);
+  const sourceTablet = getBentoPlacementLayout(sourceItem, 'tablet', BENTO_TABLET_COLUMNS);
+  const sourceMobile = getBentoPlacementLayout(sourceItem, 'mobile', BENTO_MOBILE_COLUMNS);
+  const resolveDuplicatePosition = (
+    sourceLayout: { x: number; y: number; w: number; h: number },
+    cols: number,
+    breakpoint: 'desktop' | 'tablet' | 'mobile'
+  ) => {
+    const candidateX = Math.min(sourceLayout.x + 1, Math.max(cols - sourceLayout.w, 0));
+    const candidateY = sourceLayout.y + 1;
+    const candidate = { x: candidateX, y: candidateY, w: sourceLayout.w, h: sourceLayout.h };
+    const occupied = existingItems.map((item) => getBentoPlacementLayout(item, breakpoint, cols));
+    const collides = occupied.some((entry) => (
+      candidate.x < entry.x + entry.w &&
+      candidate.x + candidate.w > entry.x &&
+      candidate.y < entry.y + entry.h &&
+      candidate.y + candidate.h > entry.y
+    ));
+
+    return collides
+      ? findFirstFreeBentoPosition(existingItems, sourceLayout.w, sourceLayout.h, cols, breakpoint)
+      : { x: candidateX, y: candidateY };
+  };
+
+  const desktopPos = resolveDuplicatePosition(sourceDesktop, desktopColumns, 'desktop');
+  const tabletPos = resolveDuplicatePosition(sourceTablet, BENTO_TABLET_COLUMNS, 'tablet');
+  const mobilePos = resolveDuplicatePosition(sourceMobile, BENTO_MOBILE_COLUMNS, 'mobile');
+
+  return {
+    ...clonedItem,
+    id: createBentoCellId(),
+    admin_label: clonedItem.admin_label ? `${clonedItem.admin_label} copia` : undefined,
+    x: desktopPos.x,
+    y: desktopPos.y,
+    col_span: sourceDesktop.w,
+    row_span: sourceDesktop.h,
+    desktop_span: sourceDesktop.w,
+    desktop_rows: sourceDesktop.h,
+    tablet_span: sourceTablet.w,
+    mobile_span: sourceMobile.w,
+    layouts: {
+      ...(clonedItem.layouts || {}),
+      desktop: { x: desktopPos.x, y: desktopPos.y, w: sourceDesktop.w, h: sourceDesktop.h, columns: desktopColumns },
+      tablet: { x: tabletPos.x, y: tabletPos.y, w: sourceTablet.w, h: sourceTablet.h, columns: BENTO_TABLET_COLUMNS },
+      mobile: { x: mobilePos.x, y: mobilePos.y, w: sourceMobile.w, h: sourceMobile.h, columns: BENTO_MOBILE_COLUMNS }
+    },
+    layout_columns: {
+      ...(clonedItem.layout_columns || {}),
+      desktop: desktopColumns,
+      tablet: BENTO_TABLET_COLUMNS,
+      mobile: BENTO_MOBILE_COLUMNS
+    }
+  };
 };
 
 interface StructurePanelProps {
@@ -142,6 +330,7 @@ interface StructurePanelProps {
   setEditorState: React.Dispatch<React.SetStateAction<EditorState>>;
   onSettingChange: (elementId: string, settingId: string, value: any) => void;
   onRemoveModule: (moduleId: string) => void;
+  onDuplicateModule: (moduleId: string) => void;
   onMoveModule: (moduleId: string, direction: 'up' | 'down') => void;
   isCollapsed: boolean;
   onToggleCollapse: () => void;
@@ -152,6 +341,7 @@ interface StructurePanelProps {
   isMobile?: boolean;
   activeTab?: string;
   useSplitLayout?: boolean;
+  activeViewport?: 'desktop' | 'tablet' | 'mobile';
 }
 
 export const StructurePanel: React.FC<StructurePanelProps> = ({
@@ -159,6 +349,7 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
   setEditorState,
   onSettingChange,
   onRemoveModule,
+  onDuplicateModule,
   onMoveModule,
   isCollapsed,
   onToggleCollapse,
@@ -168,7 +359,8 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
   trustedCompanyLogos,
   isMobile,
   activeTab = 'constructor',
-  useSplitLayout = false
+  useSplitLayout = false,
+  activeViewport = 'desktop'
 }) => {
   const {
     siteContent,
@@ -182,10 +374,12 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
     selectCompositionElement
   } = useEditorStore();
   const containerRef = React.useRef<HTMLDivElement>(null);
+  const bentoLayerRefs = React.useRef<Record<number, HTMLDivElement | null>>({});
   const [shiningGroup, setShiningGroup] = React.useState<string | null>(null);
   const [expandedBentoItem, setExpandedBentoItem] = React.useState<number | null>(null);
   const [isBentoAddExpanded, setIsBentoAddExpanded] = React.useState(false);
 
+  const autoExpandedBentoModuleRef = React.useRef<string | null>(null);
   const shiningIntervalRef = React.useRef<NodeJS.Timeout | null>(null);
   const shiningTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
@@ -212,8 +406,29 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
   React.useEffect(() => {
     if (selectedBentoCellIndex !== null) {
       setExpandedBentoItem(selectedBentoCellIndex);
+      if (typeof window === 'undefined') return;
+      window.requestAnimationFrame(() => {
+        bentoLayerRefs.current[selectedBentoCellIndex]?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'nearest'
+        });
+      });
     }
   }, [selectedBentoCellIndex]);
+
+  React.useEffect(() => {
+    const activeBentoModule = editorState.addedModules.find(
+      (module) => module.id === editorState.expandedModuleId && module.type === 'bento'
+    );
+    if (!activeBentoModule) return;
+    if (autoExpandedBentoModuleRef.current === activeBentoModule.id) return;
+
+    const bentoItems = editorState.settingsValues[`${activeBentoModule.id}_el_bento_items_items`] || [];
+    if (Array.isArray(bentoItems) && bentoItems.length === 0 && selectedBentoCellIndex === null) {
+      setIsBentoAddExpanded(true);
+      autoExpandedBentoModuleRef.current = activeBentoModule.id;
+    }
+  }, [editorState.addedModules, editorState.expandedModuleId, editorState.settingsValues, selectedBentoCellIndex]);
 
   // Effect to handle shining animation
   React.useEffect(() => {
@@ -589,6 +804,7 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
           const canMoveDown = index < (editorState.addedModules?.length || 0) - 1 && !isHeader && !isMenu;
           const hasMultipleModules = (editorState.addedModules?.length || 0) > 1;
           const hasMenuModule = editorState.addedModules.some(m => m.type === 'navegacion' || m.type === 'menu');
+          const canDuplicateModule = !isMenu && !isFooter && !['navegacion', 'menu', 'footer'].includes(module.type);
           const isMenuEligible =
             !['navegacion', 'menu', 'espaciador', 'footer'].includes(module.type) &&
             !module.id.startsWith('mod_header_1') &&
@@ -688,6 +904,24 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                         <Link size={14} />
                       </button>
                     )}
+
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (canDuplicateModule) {
+                          onDuplicateModule(module.id);
+                        }
+                      }}
+                      disabled={!canDuplicateModule}
+                      className={`p-1.5 rounded-lg transition-all opacity-0 group-hover:opacity-100 ${
+                        canDuplicateModule
+                          ? 'text-text/35 hover:text-primary hover:bg-primary/10'
+                          : 'text-text/15 cursor-not-allowed'
+                      }`}
+                      title={canDuplicateModule ? "Duplicar módulo" : "Este módulo es único"}
+                    >
+                      <Copy size={14} />
+                    </button>
 
                     <button
                       onClick={(e) => {
@@ -842,6 +1076,7 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                                       project={project}
                                       projectColors={projectColors}
                                       title="Editar elemento Bento"
+                                      activeViewport={activeViewport}
                                     />
                                   </div>
                                 )}
@@ -1054,17 +1289,20 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                                 {BENTO_ELEMENT_OPTIONS.map((item) => (
                                   <div
                                     key={item.type}
-                                    draggable={true}
+                                    draggable={false}
                                     unselectable="on"
-                                    onDragStart={(e) => {
-                                      e.dataTransfer.setData("text/plain", "");
-                                      (window as any)._draggingBentoType = item.type;
-                                    }}
                                     onClick={() => {
                                       const bentoItems = editorState.settingsValues[`${module.id}_el_bento_items_items`] || [];
-                                      const newItem = createBentoPanelElementPreset(item.type, bentoItems);
+                                      const desktopColumns = getBentoDesktopColumns(editorState.settingsValues, module.id);
+                                      const newItem = createBentoPanelElementPreset(item.type, bentoItems, desktopColumns);
                                       const newItems = [...bentoItems, newItem];
+                                      const nextWorkspaceRows = normalizeBentoWorkspaceRows(
+                                        editorState.settingsValues[`${module.id}_el_bento_items_workspace_rows`],
+                                        newItems,
+                                        desktopColumns
+                                      );
                                       onSettingChange(`${module.id}_el_bento_items`, 'items', newItems);
+                                      onSettingChange(`${module.id}_el_bento_items`, 'workspace_rows', nextWorkspaceRows);
                                       selectSection(module.id);
                                       setSelectedBentoCellIndex(newItems.length - 1);
                                       setEditorState(prev => ({
@@ -1076,7 +1314,7 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                                         setExpandedBentoItem(newItems.length - 1);
                                       }, 100);
                                     }}
-                                    className="droppable-element flex items-center gap-2 p-2 bg-surface border border-border/50 rounded-xl cursor-pointer hover:border-primary/30 hover:shadow-md transition-all active:scale-95 group"
+                                    className="flex items-center gap-2 p-2 bg-surface border border-border/50 rounded-xl cursor-pointer hover:border-primary/30 hover:shadow-md transition-all active:scale-95 group"
                                     title="Haz clic para añadir"
                                   >
                                     <div className="text-text/40 group-hover:text-primary transition-colors">
@@ -1108,14 +1346,22 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                            return <div className="p-4 border border-dashed border-border rounded-xl text-center text-[10px] text-text/40">No hay capas todavía</div>;
                          }
 
+                         const visibleBentoItems = bentoItems.map((item: any, itemIndex: number) => ({ item, itemIndex }));
+
                          return (
                            <>
-                              {bentoItems.map((item: any, itemIndex: number) => {
+                              {visibleBentoItems.map(({ item, itemIndex }: { item: any; itemIndex: number }) => {
                                 const isItemExpanded = expandedBentoItem === itemIndex;
                                 const elementOption = getBentoElementOption(item.type);
 
                                  return (
-                                  <div key={itemIndex} className="space-y-1">
+                                  <div
+                                    key={item.id || itemIndex}
+                                    ref={(node) => {
+                                      bentoLayerRefs.current[itemIndex] = node;
+                                    }}
+                                    className="space-y-1"
+                                  >
                                     <div
                                       onClick={() => {
                                         const shouldCollapseEditor = isItemExpanded && selectedBentoCellIndex === itemIndex;
@@ -1144,25 +1390,64 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                                           </p>
                                            <p className="text-[9px] text-text/40 uppercase font-medium">{item.type === 'text' ? (item.text_style || 'texto') : elementOption.label}</p>
                                         </div>
-                                        <button
-                                          type="button"
-                                          onClick={(event) => {
-                                            event.stopPropagation();
-                                            const newItems = bentoItems.filter((_: any, idx: number) => idx !== itemIndex);
-                                            onSettingChange(`${module.id}_el_bento_items`, 'items', newItems);
-                                            if (selectedBentoCellIndex === itemIndex) {
-                                              setSelectedBentoCellIndex(null);
-                                            } else if (selectedBentoCellIndex !== null && selectedBentoCellIndex > itemIndex) {
-                                              setSelectedBentoCellIndex(selectedBentoCellIndex - 1);
-                                            }
-                                            setExpandedBentoItem(null);
-                                          }}
-                                          className="rounded-lg p-1.5 text-text/30 transition-colors hover:bg-rose-50 hover:text-rose-500"
-                                          title="Eliminar elemento"
-                                          aria-label="Eliminar elemento"
-                                        >
-                                          <Trash2 size={13} />
-                                        </button>
+                                        <div className="flex shrink-0 items-center gap-1">
+                                          <button
+                                            type="button"
+                                            onClick={(event) => {
+                                              event.stopPropagation();
+                                              const desktopColumns = getBentoDesktopColumns(editorState.settingsValues, module.id);
+                                              const duplicatedItem = createDuplicatedBentoItem(item, bentoItems, desktopColumns);
+                                              const newItems = [...bentoItems, duplicatedItem];
+                                              const duplicatedIndex = newItems.length - 1;
+                                              const nextWorkspaceRows = normalizeBentoWorkspaceRows(
+                                                editorState.settingsValues[`${module.id}_el_bento_items_workspace_rows`],
+                                                newItems,
+                                                desktopColumns
+                                              );
+                                              onSettingChange(`${module.id}_el_bento_items`, 'items', newItems);
+                                              onSettingChange(`${module.id}_el_bento_items`, 'workspace_rows', nextWorkspaceRows);
+                                              selectSection(module.id);
+                                              setSelectedBentoCellIndex(duplicatedIndex);
+                                              setExpandedBentoItem(duplicatedIndex);
+                                              setEditorState(prev => ({
+                                                ...prev,
+                                                expandedModuleId: module.id,
+                                                selectedElementId: `${module.id}_el_bento_items`
+                                              }));
+                                            }}
+                                            className="rounded-lg p-1.5 text-text/30 transition-colors hover:bg-blue-50 hover:text-primary"
+                                            title="Duplicar elemento"
+                                            aria-label="Duplicar elemento"
+                                          >
+                                            <Copy size={13} />
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={(event) => {
+                                              event.stopPropagation();
+                                              const newItems = bentoItems.filter((_: any, idx: number) => idx !== itemIndex);
+                                              const desktopColumns = getBentoDesktopColumns(editorState.settingsValues, module.id);
+                                              const nextWorkspaceRows = normalizeBentoWorkspaceRows(
+                                                editorState.settingsValues[`${module.id}_el_bento_items_workspace_rows`],
+                                                newItems,
+                                                desktopColumns
+                                              );
+                                              onSettingChange(`${module.id}_el_bento_items`, 'items', newItems);
+                                              onSettingChange(`${module.id}_el_bento_items`, 'workspace_rows', nextWorkspaceRows);
+                                              if (selectedBentoCellIndex === itemIndex) {
+                                                setSelectedBentoCellIndex(null);
+                                              } else if (selectedBentoCellIndex !== null && selectedBentoCellIndex > itemIndex) {
+                                                setSelectedBentoCellIndex(selectedBentoCellIndex - 1);
+                                              }
+                                              setExpandedBentoItem(null);
+                                            }}
+                                            className="rounded-lg p-1.5 text-text/30 transition-colors hover:bg-rose-50 hover:text-rose-500"
+                                            title="Eliminar elemento"
+                                            aria-label="Eliminar elemento"
+                                          >
+                                            <Trash2 size={13} />
+                                          </button>
+                                        </div>
                                         <ChevronDown size={14} className={`text-text/20 transition-transform ${isItemExpanded ? 'rotate-180 text-primary' : ''}`} />
                                      </div>
 
@@ -1195,6 +1480,7 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                                                  project={project}
                                                  projectColors={projectColors}
                                                  title="Editar elemento"
+                                                 activeViewport={activeViewport}
                                                  embedded
                                                />
                                              </div>

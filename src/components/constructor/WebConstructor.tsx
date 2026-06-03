@@ -40,6 +40,10 @@ import {
 import { saveWebBuilderSiteDraft, publishWebBuilderSite, getProducts, getCustomers, getTrustedCompanyLogos, normalizeTrustedCompanyLogos, upsertPage, upsertPageSections, logEvolutionRequest, getPageBySiteId, generatePreviewServerSide } from '../../services/dataService';
 import { sendToMother } from '../../services/handshakeService';
 import { ensureActiveSupabaseSession, SupabaseSessionError } from '../../services/supabaseSessionService';
+import {
+  hasActiveSecureConstructorWriteSession,
+  SecureConstructorWriteError
+} from '../../services/secureConstructorWriteApi';
 import { Product, Customer, PageSection, TrustedCompanyLogo } from '../../types/schema';
 import { MOCK_PRODUCTS, MOCK_CUSTOMERS } from '../../constants/mockData';
 import { MainSidebar, ModuleItem } from './MainSidebar';
@@ -358,26 +362,93 @@ const resolveLifecycleStatusFromPage = (
   return 'draft';
 };
 
-const buildPublishedViewerUrl = (siteId?: string | null): string | null => {
-  if (!siteId || typeof window === 'undefined') return null;
-  const url = new URL(window.location.href);
-  url.searchParams.set('mode', 'render');
-  url.searchParams.set('site_id', siteId);
-  url.searchParams.delete('preview');
-  return url.toString();
+const normalizePublishedUrlCandidate = (value: unknown): string | null => {
+  const rawValue = String(value || '').trim();
+  if (!rawValue || rawValue === '#') return null;
+
+  if (/^https?:\/\//i.test(rawValue)) return rawValue;
+  if (/^[a-z0-9.-]+\.[a-z]{2,}(?:\/.*)?$/i.test(rawValue)) return `https://${rawValue}`;
+
+  return null;
 };
 
-const resolvePublishedUrlFromResult = (result: any, fallbackSiteId?: string | null): string | null => {
-  if (!result || typeof result !== 'object') return null;
+const isLocalPublishedViewerUrl = (url: URL) => {
+  const isLocalConstructorHost =
+    url.hostname === 'localhost' ||
+    url.hostname === '127.0.0.1' ||
+    url.hostname === '::1' ||
+    url.hostname === '[::1]';
+
   return (
-    result.publishedUrl ||
-    result.published_url ||
-    result.publicUrl ||
-    result.public_url ||
-    result.url ||
-    result.metadata?.publishedUrl ||
-    result.metadata?.published_url ||
-    buildPublishedViewerUrl(result.siteId || result.site_id || fallbackSiteId)
+    isLocalConstructorHost &&
+    url.port === '3010' &&
+    url.searchParams.get('mode') === 'render' &&
+    Boolean(url.searchParams.get('site_id'))
+  );
+};
+
+const isValidPublishedPublicUrl = (value: unknown): value is string => {
+  const candidate = normalizePublishedUrlCandidate(value);
+  if (!candidate) return false;
+
+  try {
+    const url = new URL(candidate);
+    if (isLocalPublishedViewerUrl(url)) return false;
+
+    const isLocalConstructorHost =
+      url.hostname === 'localhost' ||
+      url.hostname === '127.0.0.1' ||
+      url.hostname === '::1' ||
+      url.hostname === '[::1]';
+    if (isLocalConstructorHost && url.port === '3010') return false;
+
+    const search = url.searchParams;
+    if (search.has('preview') || search.has('launch') || search.has('constructor')) {
+      return false;
+    }
+
+    const mode = String(search.get('mode') || '').toLowerCase();
+    if (mode === 'preview' || mode === 'render') {
+      return false;
+    }
+
+    const urlText = candidate.toLowerCase();
+    if (urlText.includes('constructor')) return false;
+
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+const resolveFirstValidPublishedUrl = (...candidates: unknown[]) => {
+  for (const candidate of candidates) {
+    const normalizedCandidate = normalizePublishedUrlCandidate(candidate);
+    if (normalizedCandidate && isValidPublishedPublicUrl(normalizedCandidate)) {
+      return normalizedCandidate;
+    }
+  }
+  return null;
+};
+
+const resolvePublishedUrlFromResult = (result: any): string | null => {
+  if (!result || typeof result !== 'object') return null;
+  return resolveFirstValidPublishedUrl(
+    result.publishedUrl,
+    result.published_url,
+    result.publicUrl,
+    result.public_url,
+    result.metadata?.publishedUrl,
+    result.metadata?.published_url,
+    result.metadata?.publicUrl,
+    result.metadata?.public_url,
+    result.metadata?.domain,
+    result.metadata?.customDomain,
+    result.metadata?.custom_domain,
+    result.domain,
+    result.customDomain,
+    result.custom_domain,
+    result.url
   );
 };
 
@@ -388,24 +459,31 @@ const resolvePublishedUrlFromPage = (
   const pageAny = page as any;
   const status = String(pageAny.status || '').toLowerCase();
   const hasPublishedVersion = !('status' in pageAny) || status === 'published' || status === 'modified';
-  const explicitPublishedUrl =
-    pageAny.publishedUrl ||
-    pageAny.published_url ||
-    pageAny.publishedSiteUrl ||
-    pageAny.publicUrl ||
-    pageAny.metadata?.publishedUrl ||
-    pageAny.metadata?.published_url ||
-    pageAny.metadata?.publicUrl ||
-    null;
-
-  if (explicitPublishedUrl && hasPublishedVersion) return explicitPublishedUrl;
   if (!hasPublishedVersion) return null;
 
-  return pageAny.url || buildPublishedViewerUrl(pageAny.siteId || pageAny.site_id || pageAny.id);
+  return resolveFirstValidPublishedUrl(
+    pageAny.publishedUrl,
+    pageAny.published_url,
+    pageAny.publishedSiteUrl,
+    pageAny.publicUrl,
+    pageAny.public_url,
+    pageAny.metadata?.publishedUrl,
+    pageAny.metadata?.published_url,
+    pageAny.metadata?.publicUrl,
+    pageAny.metadata?.public_url,
+    pageAny.metadata?.domain,
+    pageAny.metadata?.customDomain,
+    pageAny.metadata?.custom_domain,
+    pageAny.domain,
+    pageAny.customDomain,
+    pageAny.custom_domain,
+    pageAny.url
+  );
 };
 
 const openPublishedUrl = (url: string | null) => {
   if (!url || typeof window === 'undefined') return;
+  if (!isValidPublishedPublicUrl(url)) return;
   window.open(url, '_blank', 'noopener,noreferrer');
 };
 
@@ -475,6 +553,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   const [trustedCompanyLogos, setTrustedCompanyLogos] = useState<TrustedCompanyLogo[]>([]);
   const [moduleToDelete, setModuleToDelete] = useState<WebModule | null>(null);
   const [showPublishModal, setShowPublishModal] = useState(false);
+  const [publishModalName, setPublishModalName] = useState('');
   const [siteName, setSiteName] = useState(() => {
     if (!initialPage) return '';
     return (initialPage as any).siteName || (initialPage as any).title || '';
@@ -526,7 +605,6 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   const [isDraftOperationInProgress, setIsDraftOperationInProgress] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [publishStatus, setPublishStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const [publishModalSuccess, setPublishModalSuccess] = useState(false);
   const [publishedSiteUrl, setPublishedSiteUrl] = useState<string | null>(() => resolvePublishedUrlFromPage(initialPage));
   const [lastPublishedAt, setLastPublishedAt] = useState<string | null>(null);
   const [authNotice, setAuthNotice] = useState<{ type: 'info' | 'error'; message: string; title?: string } | null>(null);
@@ -570,6 +648,41 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       fontHeading: project?.fontFamily || 'Inter'
     };
   }, [project]);
+
+  const projectThemeSeedSignature = React.useMemo(() => [
+    projectThemeSeed.primary,
+    projectThemeSeed.secondary,
+    projectThemeSeed.accent,
+    projectThemeSeed.background,
+    projectThemeSeed.text,
+    projectThemeSeed.muted,
+    projectThemeSeed.border,
+    projectThemeSeed.fontSans,
+    projectThemeSeed.fontHeading
+  ].map((value) => String(value || '').trim().toLowerCase()).join('|'), [projectThemeSeed]);
+
+  const siteThemeSeedSignature = React.useMemo(() => {
+    const theme = (siteContent.theme || {}) as any;
+    return [
+      theme.primaryColor,
+      theme.secondaryColor,
+      theme.accentColor,
+      theme.backgroundColor,
+      theme.textColor,
+      (theme as any).mutedColor,
+      (theme as any).borderColor,
+      theme.fontFamily
+    ].map((value) => String(value || '').trim().toLowerCase()).join('|');
+  }, [
+    siteContent.theme?.primaryColor,
+    siteContent.theme?.secondaryColor,
+    siteContent.theme?.accentColor,
+    siteContent.theme?.backgroundColor,
+    siteContent.theme?.textColor,
+    (siteContent.theme as any)?.mutedColor,
+    (siteContent.theme as any)?.borderColor,
+    siteContent.theme?.fontFamily
+  ]);
 
   const incomingLifecycleStatus = React.useMemo(
     () => resolveLifecycleStatusFromPage(initialPage),
@@ -769,7 +882,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         return defaults.some((candidate) => normalizedCurrent === candidate.toLowerCase());
       };
 
-      updateEditorState((prev) => {
+      const buildSeededProjectSettings = (prev: EditorState) => {
         const nextSettings = { ...prev.settingsValues };
         let changed = false;
 
@@ -839,8 +952,22 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
           });
         });
 
-        return changed ? { ...prev, settingsValues: nextSettings } : prev;
-      });
+        return { changed, nextSettings };
+      };
+
+      const seedEffectSignature = `${projectThemeSeedSignature}|${siteThemeSeedSignature}`;
+      const seededSnapshot = buildSeededProjectSettings(editorStateRef.current);
+
+      if (lastProjectThemeSeedSignatureRef.current !== seedEffectSignature || seededSnapshot.changed) {
+        if (seededSnapshot.changed) {
+          updateEditorState((prev) => {
+            const { changed, nextSettings } = buildSeededProjectSettings(prev);
+            return changed ? { ...prev, settingsValues: nextSettings } : prev;
+          });
+        }
+
+        lastProjectThemeSeedSignatureRef.current = seedEffectSignature;
+      }
 
       const themeDefaults = {
         primaryColor: ['#3b82f6'],
@@ -879,7 +1006,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       if (Object.keys(themeUpdate).length > 0) {
         updateTheme(themeUpdate);
       }
-    }, [project, projectThemeSeed, siteContent.theme, updateTheme]);
+    }, [project, projectThemeSeed, projectThemeSeedSignature, siteThemeSeedSignature, updateTheme]);
 
   // Effect to load from pages table strictly if we only have a siteId (SIP v6.1)
   useEffect(() => {
@@ -972,6 +1099,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   const [autosaveError, setAutosaveError] = useState<string | null>(null);
   const [showUnsavedModal, setShowUnsavedModal] = useState(false);
   const isInitialLoad = useRef(true);
+  const editorStateRef = useRef(editorState);
   const saveInProgressRef = useRef(false);
   const autosaveInProgressRef = useRef(false);
   const publishInProgressRef = useRef(false);
@@ -981,9 +1109,10 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   const activeSavePromiseRef = useRef<Promise<boolean> | null>(null);
   const changeVersionRef = useRef(0);
   const lastSaveChangeVersionRef = useRef(0);
-  const editorStateRef = useRef(editorState);
   const siteNameRef = useRef(siteName);
   const currentStatusRef = useRef(currentStatus);
+  const lastLocalSectionsSignatureRef = useRef<string | null>(null);
+  const lastProjectThemeSeedSignatureRef = useRef<string | null>(null);
   const autosaveIntervalSetting = editorState.settingsValues['global_theme_builder_autosave_interval_ms'];
   const autosaveDisabledByInterval = String(autosaveIntervalSetting).trim().toLowerCase() === AUTOSAVE_DISABLED_VALUE;
   const autosaveEnabled = !autosaveDisabledByInterval && resolveBooleanSetting(
@@ -1166,6 +1295,14 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     return value;
   };
 
+  const getSectionsSyncSignature = (sections: unknown) => {
+    try {
+      return JSON.stringify(sections || []);
+    } catch {
+      return '';
+    }
+  };
+
   const areEditorValuesEquivalent = (a: any, b: any) => {
     if (Object.is(a, b)) return true;
     if (Object.is(normalizeEditorSyncValue(a), normalizeEditorSyncValue(b))) return true;
@@ -1234,8 +1371,9 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     const contract = generateRenderingContract(siteName);
     
     // Solo actualizar si realmente hay cambios para evitar bucles infinitos
-    const currentSectionsHash = JSON.stringify(siteContent.sections);
-    const newSectionsHash = JSON.stringify(contract.sections);
+    const currentSectionsHash = getSectionsSyncSignature(siteContent.sections);
+    const newSectionsHash = getSectionsSyncSignature(contract.sections);
+    lastLocalSectionsSignatureRef.current = newSectionsHash;
     
     if (currentSectionsHash !== newSectionsHash) {
       setSiteContent(contract as any);
@@ -1245,6 +1383,9 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   // Synchronize store settings back to local editorState
   useEffect(() => {
     if (siteContent.sections.length > 0) {
+      const incomingSectionsSignature = getSectionsSyncSignature(siteContent.sections);
+      if (incomingSectionsSignature === lastLocalSectionsSignatureRef.current) return;
+
       setEditorState(prev => {
         const newSettings = { ...prev.settingsValues };
         let changed = false;
@@ -2325,6 +2466,59 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     ...modules.filter(isFooterModuleInstance)
   ];
 
+  const createModuleInstanceId = () => `mod_${crypto.randomUUID()}`;
+
+  const cloneConstructorData = <T,>(value: T): T => {
+    if (value === null || value === undefined) return value;
+    if (typeof structuredClone === 'function') {
+      return structuredClone(value);
+    }
+    return JSON.parse(JSON.stringify(value));
+  };
+
+  const createDuplicatedBentoItemId = () => `bento_cell_${crypto.randomUUID()}`;
+
+  const duplicateBentoItemsWithFreshIds = (items: any) => {
+    if (!Array.isArray(items)) return items;
+    return items.map((item) => {
+      if (!item || typeof item !== 'object') return item;
+      return {
+        ...cloneConstructorData(item),
+        id: createDuplicatedBentoItemId()
+      };
+    });
+  };
+
+  const cloneDuplicatedSettingValue = (key: string, value: any, moduleType: string) => {
+    if (moduleType === 'bento' && key.includes('_el_bento_items_items')) {
+      return duplicateBentoItemsWithFreshIds(value);
+    }
+    return cloneConstructorData(value);
+  };
+
+  const cloneDuplicatedModuleContent = (module: WebModule) => {
+    const clonedContent = cloneConstructorData(module.content);
+    if (module.type !== 'bento' || !clonedContent || typeof clonedContent !== 'object') {
+      return clonedContent;
+    }
+
+    ['items', 'cells'].forEach((key) => {
+      if (Array.isArray(clonedContent[key])) {
+        clonedContent[key] = duplicateBentoItemsWithFreshIds(clonedContent[key]);
+      }
+    });
+
+    if (clonedContent.data && typeof clonedContent.data === 'object') {
+      ['items', 'cells'].forEach((key) => {
+        if (Array.isArray(clonedContent.data[key])) {
+          clonedContent.data[key] = duplicateBentoItemsWithFreshIds(clonedContent.data[key]);
+        }
+      });
+    }
+
+    return clonedContent;
+  };
+
   const addModule = (module: WebModule) => {
     logDebug('Adding module:', module.type);
     const existingMenu = (editorState.addedModules || []).find(isMenuModuleInstance);
@@ -2355,8 +2549,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     }
 
     // Use persistent UUIDs (Solutium Protocol v2.0)
-    const rawId = crypto.randomUUID();
-    const moduleId = `mod_${rawId}`;
+    const moduleId = createModuleInstanceId();
     
     // Prefix element IDs to ensure uniqueness
     const newElements = module.elements.map(el => ({
@@ -2611,6 +2804,90 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     });
   };
 
+  const duplicateModule = (moduleId: string) => {
+    const sourceModule = (editorState.addedModules || []).find(module => module.id === moduleId);
+    if (!sourceModule || isMenuModuleInstance(sourceModule) || isFooterModuleInstance(sourceModule)) {
+      return;
+    }
+
+    const duplicatedModuleId = createModuleInstanceId();
+
+    updateEditorState(prev => {
+      const addedModules = prev.addedModules || [];
+      const sourceIndex = addedModules.findIndex(module => module.id === moduleId);
+      const source = addedModules[sourceIndex];
+      if (sourceIndex === -1 || !source || isMenuModuleInstance(source) || isFooterModuleInstance(source)) {
+        return prev;
+      }
+
+      const duplicatedElements = source.elements.map((element) => {
+        const clonedElement = cloneConstructorData(element);
+        const suffix = element.id.startsWith(`${source.id}_`)
+          ? element.id.slice(source.id.length + 1)
+          : element.id;
+        return {
+          ...clonedElement,
+          id: `${duplicatedModuleId}_${suffix}`
+        };
+      });
+
+      const duplicatedModule: WebModule = {
+        ...cloneConstructorData(source),
+        id: duplicatedModuleId,
+        templateId: source.templateId || source.id,
+        elements: duplicatedElements,
+        content: cloneDuplicatedModuleContent(source)
+      };
+
+      const duplicatedSettingsValues: Record<string, any> = {};
+      Object.entries(prev.settingsValues || {}).forEach(([key, value]) => {
+        if (!key.startsWith(source.id)) return;
+        const duplicatedKey = `${duplicatedModuleId}${key.slice(source.id.length)}`;
+        duplicatedSettingsValues[duplicatedKey] = cloneDuplicatedSettingValue(key, value, source.type);
+      });
+
+      duplicatedSettingsValues[getShowInMenuKey(duplicatedModuleId)] = false;
+
+      const newModules = [...addedModules];
+      let insertIndex = sourceIndex + 1;
+      const footerIndex = addedModules.findIndex(isFooterModuleInstance);
+      if (footerIndex !== -1 && insertIndex > footerIndex) {
+        insertIndex = footerIndex;
+      }
+      newModules.splice(insertIndex, 0, duplicatedModule);
+      const orderedModules = keepFooterModulesLast(newModules);
+
+      let nextState: EditorState = {
+        ...prev,
+        addedModules: orderedModules,
+        expandedModuleId: duplicatedModuleId,
+        selectedElementId: `${duplicatedModuleId}_global`,
+        expandedGroupsByElement: {
+          ...prev.expandedGroupsByElement,
+          [`${duplicatedModuleId}_global`]: null
+        },
+        settingsValues: {
+          ...prev.settingsValues,
+          ...duplicatedSettingsValues
+        },
+        recentlyAddedModuleId: duplicatedModuleId,
+        totalModulesAdded: (prev.totalModulesAdded || 0) + 1
+      };
+
+      if (!isPreviewMode) {
+        const menuModule = orderedModules.find(module => module.type === 'navegacion' || module.type === 'menu');
+        if (menuModule) {
+          nextState = rebuildMenuLinksIfNeeded(nextState, menuModule.id);
+        }
+      }
+
+      return nextState;
+    });
+
+    selectSection(duplicatedModuleId);
+    setMobileTab('structure');
+  };
+
   const confirmRemoveModule = () => {
     if (!moduleToDelete) return;
     
@@ -2682,9 +2959,14 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
 
   const handleSettingChange = (elementOrModuleId: string, settingId: string, value: any) => {
     updateEditorState(prev => {
+      const settingKey = `${elementOrModuleId}_${settingId}`;
+      if (areEditorValuesEquivalent(prev.settingsValues[settingKey], value)) {
+        return prev;
+      }
+
       const nextSettingsValues: Record<string, any> = {
         ...prev.settingsValues,
-        [`${elementOrModuleId}_${settingId}`]: value
+        [settingKey]: value
       };
 
       if (settingId === 'bg_parallax_enabled' && value === true) {
@@ -3106,6 +3388,16 @@ const formatTimestampName = () => {
           const selectedIds = Array.isArray(rawSelectedIds) ? rawSelectedIds.map(String).filter(Boolean) : [];
           const catalogProducts = Array.isArray(products) ? products.filter(Boolean) : [];
           const isManualSelectionMode = ['manual', 'selected', 'selection', 'featured', 'custom'].includes(selectionMode);
+          const snapshotKey = `${module.id}_el_products_items_products`;
+          const previousSnapshotSource =
+            currentState.settingsValues?.[snapshotKey] ||
+            (module as any).content?.products ||
+            (module as any).content?.productos ||
+            (module as any).content?.items ||
+            [];
+          const previousSnapshotProducts = Array.isArray(previousSnapshotSource)
+            ? previousSnapshotSource.filter(Boolean)
+            : [];
           
           content.selectionMode = selectionMode;
           content.productIds = selectedIds;
@@ -3132,6 +3424,26 @@ const formatTimestampName = () => {
             }
           }
 
+          if (finalProducts.length === 0 && previousSnapshotProducts.length > 0) {
+            if (isManualSelectionMode) {
+              const selectedIdSet = new Set(selectedIds);
+              finalProducts = selectedIds.length > 0
+                ? previousSnapshotProducts.filter((product: any) => selectedIdSet.has(String(product?.id)))
+                : [];
+            } else {
+              finalProducts = previousSnapshotProducts as Product[];
+            }
+
+            if (finalProducts.length > 0) {
+              logDebug('[PRODUCTS_CONTRACT_SNAPSHOT_FALLBACK_DEBUG]', {
+                moduleId: module.id,
+                selectionMode,
+                selectedIdsCount: selectedIds.length,
+                previousSnapshotCount: previousSnapshotProducts.length,
+                finalProductsCount: finalProducts.length
+              });
+            }
+          }
 
           if (finalProducts.length > 0) {
             // [PROTOCOL 12.3] DATA NORMALIZATION
@@ -3161,7 +3473,6 @@ const formatTimestampName = () => {
             content.items = normalizedProducts; // Legacy fallback
             
             // Also store in deep settings for hydrationBridge consistency
-            const snapshotKey = `${module.id}_el_products_items_products`;
             settings[snapshotKey] = normalizedProducts;
             
             logDebug('[PRODUCTS_LEGACY_PUBLISH_SNAPSHOT_DEBUG]', {
@@ -3720,7 +4031,9 @@ const formatTimestampName = () => {
     await waitForNextPaint();
     
     try {
-      const sessionState = await ensureActiveSupabaseSession();
+      const sessionState = hasActiveSecureConstructorWriteSession()
+        ? { state: 'active' as const, source: 'secure_launch' as const }
+        : await ensureActiveSupabaseSession();
       if (sessionState.state === 'missing_session' || sessionState.state === 'expired_session') {
         setAuthNotice({
           type: 'error',
@@ -3969,7 +4282,9 @@ const formatTimestampName = () => {
       }
 
       try {
-        const sessionState = await ensureActiveSupabaseSession();
+        const sessionState = hasActiveSecureConstructorWriteSession()
+          ? { state: 'active' as const, source: 'secure_launch' as const }
+          : await ensureActiveSupabaseSession();
         if (sessionState.state === 'missing_session' || sessionState.state === 'expired_session') {
           const sessionMessage = isAutosave
             ? 'Tu sesión expiró. Inicia sesión nuevamente para continuar guardando. Tus cambios siguen en pantalla.'
@@ -4193,7 +4508,12 @@ const formatTimestampName = () => {
         return true;
       } catch (error) {
         console.error(isAutosave ? 'Error autosaving draft:' : 'Error saving draft:', error);
-        if (error instanceof SupabaseSessionError) {
+        if (error instanceof SecureConstructorWriteError) {
+          setAuthNotice({
+            type: 'error',
+            message: error.message
+          });
+        } else if (error instanceof SupabaseSessionError) {
           setAuthNotice({
             type: 'error',
             message: isAutosave
@@ -4207,7 +4527,7 @@ const formatTimestampName = () => {
         } else if (isAutosave) {
           setAutosaveStatus('error');
           setAutosaveError(
-            error instanceof SupabaseSessionError
+            error instanceof SecureConstructorWriteError ? error.message : error instanceof SupabaseSessionError
               ? 'Tu sesión expiró. Inicia sesión nuevamente para continuar guardando.'
               : 'No se pudo guardar automáticamente. Tus cambios siguen en pantalla.'
           );
@@ -4314,24 +4634,24 @@ const formatTimestampName = () => {
   const handleClosePublishModal = () => {
     if (publishStatus === 'loading' || isSaving) return;
     setShowPublishModal(false);
-    setPublishModalSuccess(false);
+    setPublishModalName('');
     if (publishStatus === 'success') {
       setPublishStatus('idle');
     }
   };
 
-  const handlePublish = async () => {
+  const handlePublish = async (requestedPublicName?: string) => {
     if (!projectId || isPreviewMode || publishInProgressRef.current || publishStatus !== 'idle') return;
+    const publicName = typeof requestedPublicName === 'string' ? requestedPublicName.trim() : '';
     
-    if (isDefaultName(siteName)) {
-      setPublishModalSuccess(false);
+    if (currentStatus === 'draft' && !publicName) {
+      setPublishModalName('');
       setShowPublishModal(true);
       return;
     }
 
     publishInProgressRef.current = true;
     setPublishStatus('loading');
-    setPublishModalSuccess(false);
     setPublishedSiteUrl(null);
     setLastPublishedAt(null);
     setIsSaving(true);
@@ -4348,9 +4668,11 @@ const formatTimestampName = () => {
         return;
       }
 
-      const finalSiteName = siteNameRef.current || siteName;
+      const finalSiteName = publicName || siteNameRef.current || siteName;
 
-      const sessionState = await ensureActiveSupabaseSession();
+      const sessionState = hasActiveSecureConstructorWriteSession()
+        ? { state: 'active' as const, source: 'secure_launch' as const }
+        : await ensureActiveSupabaseSession();
       if (sessionState.state === 'missing_session' || sessionState.state === 'expired_session') {
         setAuthNotice({
           type: 'error',
@@ -4498,23 +4820,30 @@ const formatTimestampName = () => {
 
       if (result) {
         const publishedTimestamp = result.updatedAt || result.createdAt || new Date().toISOString();
-        const resolvedPublishedUrl = resolvePublishedUrlFromResult(result, siteId);
+        const resolvedPublishedUrl = resolvePublishedUrlFromResult(result);
+        const publishedDisplayName =
+          (result as any).siteName ||
+          (result as any).site_name ||
+          (actualSite as any)?.siteName ||
+          (actualSite as any)?.site_name ||
+          finalSiteName;
         logDebug('[SIP v6.1] Sitio publicado y sincronizado con Web Engine.');
         setPublishStatus('success');
         setPublishedSiteUrl(resolvedPublishedUrl);
         setLastPublishedAt(publishedTimestamp);
+        setSiteName(publishedDisplayName);
+        siteNameRef.current = publishedDisplayName;
         currentStatusRef.current = 'published';
         setCurrentStatus('published');
         setHasUnsavedChanges(false);
-        if (showPublishModal) {
-          setPublishModalSuccess(true);
-        } else {
-          setShowPublishModal(false);
-        }
+        setShowPublishModal(false);
+        window.setTimeout(() => {
+          setPublishStatus('idle');
+        }, 1000);
 
         sendToMother('SOLUTIUM_PUBLISH', {
           site_id: siteId,
-          site_name: finalSiteName,
+          site_name: publishedDisplayName,
           published_site_id: result.id,
           published_url: resolvedPublishedUrl,
           last_published_at: publishedTimestamp,
@@ -4627,6 +4956,12 @@ const formatTimestampName = () => {
       }
     } catch (error) {
       console.error('Error publishing site:', error);
+      if (error instanceof SecureConstructorWriteError) {
+        setAuthNotice({
+          type: 'error',
+          message: error.message
+        });
+      }
       if (error instanceof SupabaseSessionError) {
         setAuthNotice({
           type: 'error',
@@ -4650,8 +4985,9 @@ const formatTimestampName = () => {
 
   const getPreviewDisableReason = (siteId?: string) => {
     try {
-      return localStorage.getItem(getPreviewDisableKey(siteId))
-        || sessionStorage.getItem(getPreviewDisableKey(siteId));
+      const key = getPreviewDisableKey(siteId);
+      localStorage.removeItem(key);
+      return sessionStorage.getItem(key);
     } catch {
       return null;
     }
@@ -4659,8 +4995,9 @@ const formatTimestampName = () => {
 
   const setPreviewDisableReason = (reason: string, siteId?: string) => {
     try {
-      localStorage.setItem(getPreviewDisableKey(siteId), reason);
-      sessionStorage.setItem(getPreviewDisableKey(siteId), reason);
+      const key = getPreviewDisableKey(siteId);
+      localStorage.removeItem(key);
+      sessionStorage.setItem(key, reason);
     } catch {
       // ignore sessionStorage access issues
     }
@@ -4835,19 +5172,23 @@ const formatTimestampName = () => {
 
     // 2. Normalizar items y asegurar layout básico
     const normalizedItems = schema.items.map((item, idx) => {
+      const itemAny = item as any;
       const colsPerRow = 3;
-      const colWidth = 4;
+      const colWidth = 8;
       const rowHeight = 2;
       
       return {
         ...item,
         id: item.id || `item_${idx}_${Math.random().toString(36).substr(2, 9)}`,
-        x: typeof item.x === 'number' ? item.x : (idx % colsPerRow) * colWidth,
+        x: typeof item.x === 'number' ? Math.min(item.x * 2, 23) : (idx % colsPerRow) * colWidth,
         y: typeof item.y === 'number' ? item.y : Math.floor(idx / colsPerRow) * rowHeight,
         type: item.type || 'icon_text',
         card_style: item.card_style || 'solid',
-        col_span: item.col_span || 4,
-        row_span: item.row_span || 2
+        col_span: item.col_span ? Math.min(item.col_span * 2, 24) : 8,
+        row_span: item.row_span || 2,
+        desktop_span: itemAny.desktop_span ? Math.min(itemAny.desktop_span * 2, 24) : 8,
+        desktop_rows: itemAny.desktop_rows || item.row_span || 2,
+        layout_columns: { ...(itemAny.layout_columns || {}), desktop: 24 }
       };
     });
 
@@ -4890,7 +5231,7 @@ const formatTimestampName = () => {
     Object.values(BENTO_MODULE.globalSettings || {}).forEach(groupSettings => {
       groupSettings.forEach(setting => {
         let val = resolveProjectAwareSettingDefault(setting, setting.defaultValue);
-        if (setting.id === 'columns') val = schema.layout.columns;
+        if (setting.id === 'columns') val = 24;
         if (setting.id === 'gap') val = schema.layout.gap;
         if (setting.id === 'bento_type') val = schema.layout.bento_type || 'mixed_content';
         initialValues[`${moduleId}_global_${setting.id}`] = val;
@@ -4915,17 +5256,36 @@ const formatTimestampName = () => {
 
     // 3. Forzar inserción de items en la clave que BentoModule espera
     const itemsKey = `${moduleId}_el_bento_items_items`;
-    initialValues[itemsKey] = schema.items.map(item => ({
-      ...item,
-      icon: item.icon || 'Sparkles',
-      image: item.image || '',
-      col_span: item.col_span || 4,
-      row_span: item.row_span || 2,
-      card_style: item.card_style || 'solid',
-      button_text: item.button_text || 'Explorar',
-      btn_url: item.btn_url || '#',
-      eyebrow: item.badge || ''
-    }));
+    initialValues[itemsKey] = schema.items.map(item => {
+      const itemAny = item as any;
+      const desktopSpan = itemAny.desktop_span || item.col_span || 8;
+      const desktopRows = itemAny.desktop_rows || item.row_span || 2;
+
+      return {
+        ...item,
+        icon: item.icon || 'Sparkles',
+        image: item.image || '',
+        col_span: item.col_span || 8,
+        row_span: item.row_span || 2,
+        desktop_span: desktopSpan,
+        desktop_rows: desktopRows,
+        layouts: {
+          ...(itemAny.layouts || {}),
+          desktop: {
+            x: item.x || 0,
+            y: item.y || 0,
+            w: desktopSpan,
+            h: desktopRows,
+            columns: 24
+          }
+        },
+        layout_columns: { ...(itemAny.layout_columns || {}), desktop: 24 },
+        card_style: item.card_style || 'solid',
+        button_text: item.button_text || 'Explorar',
+        btn_url: item.btn_url || '#',
+        eyebrow: item.badge || ''
+      };
+    });
 
     const newModule = { 
       ...BENTO_MODULE, 
@@ -5035,6 +5395,7 @@ const formatTimestampName = () => {
                     currentStatus={currentStatus}
                     isNewSite={!initialPage}
                     publishedUrl={publishedSiteUrl}
+                    canOpenPublishedUrl={isValidPublishedPublicUrl(publishedSiteUrl)}
                     onOpenPublished={() => openPublishedUrl(publishedSiteUrl)}
                   />
                 )}
@@ -5220,6 +5581,7 @@ const formatTimestampName = () => {
                         setEditorState={setEditorState} 
                         onSettingChange={handleSettingChange}
                         onRemoveModule={removeModule}
+                        onDuplicateModule={duplicateModule}
                         onMoveModule={moveModule}
                         isCollapsed={false}
                         onToggleCollapse={() => {}}
@@ -5229,6 +5591,7 @@ const formatTimestampName = () => {
                         trustedCompanyLogos={trustedCompanyLogos}
                         isMobile={true}
                         activeTab={activeTab}
+                        activeViewport={viewport}
                       />
                     </div>
                   )}
@@ -5270,6 +5633,7 @@ const formatTimestampName = () => {
                     setEditorState={setEditorState} 
                     onSettingChange={handleSettingChange}
                     onRemoveModule={removeModule}
+                    onDuplicateModule={duplicateModule}
                     onMoveModule={moveModule}
                     isCollapsed={structurePanelCollapsed}
                     onToggleCollapse={() => setStructurePanelCollapsed(!structurePanelCollapsed)}
@@ -5279,9 +5643,10 @@ const formatTimestampName = () => {
                     trustedCompanyLogos={trustedCompanyLogos}
                     activeTab={activeTab}
                     useSplitLayout={useConstructorSplitLayout}
+                    activeViewport={viewport}
                   />
                 )}
-                <div className={`${useConstructorSplitLayout ? 'w-[50vw] flex-none' : 'flex-1'} flex flex-col h-full min-w-0`}>
+                <div className="flex-1 flex flex-col h-full min-w-0">
                   {!isPreviewMode && !isExternalRender && (
                   <TopBar 
                     onSave={handleSaveDraft} 
@@ -5308,6 +5673,7 @@ const formatTimestampName = () => {
                       currentStatus={currentStatus}
                       isNewSite={!initialPage}
                       publishedUrl={publishedSiteUrl}
+                      canOpenPublishedUrl={isValidPublishedPublicUrl(publishedSiteUrl)}
                       onOpenPublished={() => openPublishedUrl(publishedSiteUrl)}
                     />
                   )}
@@ -5525,12 +5891,12 @@ const formatTimestampName = () => {
         {showPublishModal && (
           <PublishModal 
             key="publish-modal"
-            siteName={siteName}
-            setSiteName={updateSiteName}
-            onPublish={handlePublish}
+            siteName={publishModalName}
+            setSiteName={setPublishModalName}
+            onPublish={() => handlePublish(publishModalName)}
             onCancel={handleClosePublishModal}
             isSaving={isSaving}
-            publishStatus={publishModalSuccess ? 'success' : publishStatus}
+            publishStatus={publishStatus}
             publishedUrl={publishedSiteUrl}
             publishedAt={lastPublishedAt}
           />

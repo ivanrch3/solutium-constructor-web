@@ -4,7 +4,11 @@ import {
   Monitor, 
   Tablet, 
   Smartphone, 
-  Minimize 
+  Minimize,
+  ZoomIn,
+  ZoomOut,
+  RotateCcw,
+  Map
 } from 'lucide-react';
 import { EditorState, WebModule } from '../../types/constructor';
 import { Product, Customer, TrustedCompanyLogo } from '../../types/schema';
@@ -101,8 +105,22 @@ export const Canvas: React.FC<CanvasProps> = ({
   const canvasScrollContainerRef = React.useRef<HTMLDivElement>(null);
   const fullscreenRootRef = React.useRef<HTMLDivElement>(null);
   const renderRootRef = React.useRef<HTMLDivElement>(null);
+  const panStartRef = React.useRef({ x: 0, y: 0, scrollLeft: 0, scrollTop: 0 });
   const [canvasViewportWidth, setCanvasViewportWidth] = React.useState(0);
+  const [renderContentWidth, setRenderContentWidth] = React.useState(0);
   const [renderContentHeight, setRenderContentHeight] = React.useState(0);
+  const [userZoom, setUserZoom] = React.useState(1);
+  const [isPanning, setIsPanning] = React.useState(false);
+  const [isMinimapHidden, setIsMinimapHidden] = React.useState(false);
+  const [isMinimapDragging, setIsMinimapDragging] = React.useState(false);
+  const [scrollMetrics, setScrollMetrics] = React.useState({
+    scrollLeft: 0,
+    scrollTop: 0,
+    scrollWidth: 0,
+    scrollHeight: 0,
+    clientWidth: 0,
+    clientHeight: 0
+  });
   const [browserViewportWidth, setBrowserViewportWidth] = React.useState(
     typeof window !== 'undefined' ? window.innerWidth : 1440
   );
@@ -128,13 +146,56 @@ export const Canvas: React.FC<CanvasProps> = ({
   const fullscreenViewportWidth = viewport === 'desktop'
     ? '100%'
     : `min(${viewportWidths[viewport]}, calc(100vw - 48px))`;
+  const isCleanPreviewMode = isPreviewMode || isFullscreen;
+  const showEditorChrome = !isCleanPreviewMode;
   const isDesktopCanvas = viewport === 'desktop';
-  const useFullBleedDesktopCanvas = !isPreviewMode && isDesktopCanvas;
+  const useFullBleedDesktopCanvas = showEditorChrome && isDesktopCanvas;
   const useVirtualDesktopPreview = useFullBleedDesktopCanvas && !isFullscreen;
   const desktopLogicalWidth = Math.max(1200, browserViewportWidth);
   const desktopPreviewScale = useVirtualDesktopPreview && canvasViewportWidth > 0
     ? Math.min(1, canvasViewportWidth / desktopLogicalWidth)
     : 1;
+  const effectivePreviewScale = useVirtualDesktopPreview ? desktopPreviewScale * userZoom : userZoom;
+  const previewBaseWidth = useVirtualDesktopPreview
+    ? desktopLogicalWidth
+    : viewport === 'tablet'
+      ? 768
+      : viewport === 'mobile'
+        ? 375
+        : Math.max(canvasViewportWidth || renderContentWidth || browserViewportWidth, 1);
+  const isUserZoomed = showEditorChrome && userZoom !== 1;
+  const canPanPreview = showEditorChrome && userZoom > 1;
+  const zoomPercent = Math.round(userZoom * 100);
+  const zoomLimitsByViewport = React.useMemo(() => ({
+    desktop: { min: 0.65, max: 2.5 },
+    tablet: { min: 0.75, max: 2 },
+    mobile: { min: 0.85, max: 1.8 }
+  }), []);
+  const zoomLimits = zoomLimitsByViewport[viewport];
+  const minimapWidth = 164;
+  const minimapHeight = 104;
+  const hasMinimapScrollableArea =
+    scrollMetrics.scrollWidth > scrollMetrics.clientWidth + 1 ||
+    scrollMetrics.scrollHeight > scrollMetrics.clientHeight + 1;
+  const showMinimap =
+    showEditorChrome &&
+    !isMinimapHidden &&
+    userZoom > 1 &&
+    hasMinimapScrollableArea &&
+    scrollMetrics.scrollWidth > 0 &&
+    scrollMetrics.scrollHeight > 0;
+  const minimapViewport = React.useMemo(() => {
+    if (!scrollMetrics.scrollWidth || !scrollMetrics.scrollHeight) {
+      return { x: 0, y: 0, width: minimapWidth, height: minimapHeight };
+    }
+
+    return {
+      x: Math.max(0, (scrollMetrics.scrollLeft / scrollMetrics.scrollWidth) * minimapWidth),
+      y: Math.max(0, (scrollMetrics.scrollTop / scrollMetrics.scrollHeight) * minimapHeight),
+      width: Math.min(minimapWidth, Math.max(12, (scrollMetrics.clientWidth / scrollMetrics.scrollWidth) * minimapWidth)),
+      height: Math.min(minimapHeight, Math.max(12, (scrollMetrics.clientHeight / scrollMetrics.scrollHeight) * minimapHeight))
+    };
+  }, [scrollMetrics]);
 
   React.useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -163,12 +224,150 @@ export const Canvas: React.FC<CanvasProps> = ({
     const renderNode = renderRootRef.current;
     if (!renderNode || typeof ResizeObserver === 'undefined') return;
 
-    const updateRenderContentHeight = () => setRenderContentHeight(renderNode.offsetHeight || 0);
-    updateRenderContentHeight();
-    const observer = new ResizeObserver(updateRenderContentHeight);
+    const updateRenderContentSize = () => {
+      setRenderContentWidth(renderNode.offsetWidth || 0);
+      setRenderContentHeight(renderNode.offsetHeight || 0);
+    };
+    updateRenderContentSize();
+    const observer = new ResizeObserver(updateRenderContentSize);
     observer.observe(renderNode);
     return () => observer.disconnect();
   }, [viewport, isFullscreen, isPreviewMode, reloadKey, editorState.addedModules?.length]);
+
+  const updateScrollMetrics = React.useCallback(() => {
+    const node = canvasScrollContainerRef.current;
+    if (!node) return;
+    setScrollMetrics({
+      scrollLeft: node.scrollLeft,
+      scrollTop: node.scrollTop,
+      scrollWidth: node.scrollWidth,
+      scrollHeight: node.scrollHeight,
+      clientWidth: node.clientWidth,
+      clientHeight: node.clientHeight
+    });
+  }, []);
+
+  React.useEffect(() => {
+    updateScrollMetrics();
+  }, [updateScrollMetrics, renderContentWidth, renderContentHeight, userZoom, viewport, isFullscreen]);
+
+  React.useEffect(() => {
+    const node = canvasScrollContainerRef.current;
+    if (!node || !showEditorChrome) return;
+
+    window.requestAnimationFrame(() => {
+      const maxScrollLeft = Math.max(0, node.scrollWidth - node.clientWidth);
+      const maxScrollTop = Math.max(0, node.scrollHeight - node.clientHeight);
+
+      if (userZoom <= 1) {
+        node.scrollLeft = Math.round(maxScrollLeft / 2);
+      } else {
+        node.scrollLeft = Math.min(maxScrollLeft, Math.max(0, node.scrollLeft));
+      }
+
+      node.scrollTop = Math.min(maxScrollTop, Math.max(0, node.scrollTop));
+      updateScrollMetrics();
+    });
+  }, [
+    canvasViewportWidth,
+    renderContentWidth,
+    renderContentHeight,
+    showEditorChrome,
+    updateScrollMetrics,
+    userZoom
+  ]);
+
+  React.useEffect(() => {
+    if (!isUserZoomed) {
+      setIsMinimapHidden(false);
+      setIsPanning(false);
+      const node = canvasScrollContainerRef.current;
+      if (node) {
+        window.requestAnimationFrame(() => {
+          node.scrollLeft = Math.max(0, (node.scrollWidth - node.clientWidth) / 2);
+          updateScrollMetrics();
+        });
+      }
+    }
+  }, [isUserZoomed, updateScrollMetrics]);
+
+  React.useEffect(() => {
+    setUserZoom((currentZoom) => {
+      const clampedZoom = Math.min(zoomLimits.max, Math.max(zoomLimits.min, currentZoom));
+      return clampedZoom === currentZoom ? currentZoom : Number(clampedZoom.toFixed(2));
+    });
+  }, [viewport, zoomLimits.max, zoomLimits.min]);
+
+  const clampZoom = (nextZoom: number) => Math.min(zoomLimits.max, Math.max(zoomLimits.min, Number(nextZoom.toFixed(2))));
+  const setZoomAroundCenter = (nextZoom: number) => {
+    setUserZoom((currentZoom) => {
+      const node = canvasScrollContainerRef.current;
+      const clampedZoom = clampZoom(nextZoom);
+      if (node && currentZoom !== clampedZoom) {
+        const centerXRatio = node.scrollWidth > 0
+          ? (node.scrollLeft + node.clientWidth / 2) / node.scrollWidth
+          : 0.5;
+        const centerYRatio = node.scrollHeight > 0
+          ? (node.scrollTop + node.clientHeight / 2) / node.scrollHeight
+          : 0.5;
+        window.requestAnimationFrame(() => {
+          const maxScrollLeft = Math.max(0, node.scrollWidth - node.clientWidth);
+          const maxScrollTop = Math.max(0, node.scrollHeight - node.clientHeight);
+          node.scrollLeft = Math.min(maxScrollLeft, Math.max(0, centerXRatio * node.scrollWidth - node.clientWidth / 2));
+          node.scrollTop = Math.min(maxScrollTop, Math.max(0, centerYRatio * node.scrollHeight - node.clientHeight / 2));
+          updateScrollMetrics();
+        });
+      }
+      return clampedZoom;
+    });
+  };
+
+  const isPreviewPanBlocked = (target: EventTarget | null) => {
+    if (!(target instanceof HTMLElement)) return true;
+    return Boolean(target.closest(
+      'button, input, textarea, select, a, [contenteditable="true"], [role="button"], .react-resizable-handle, [data-no-preview-pan="true"]'
+    ));
+  };
+
+  const handlePreviewPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!canPanPreview || isPreviewPanBlocked(event.target)) return;
+    const node = canvasScrollContainerRef.current;
+    if (!node) return;
+    panStartRef.current = {
+      x: event.clientX,
+      y: event.clientY,
+      scrollLeft: node.scrollLeft,
+      scrollTop: node.scrollTop
+    };
+    setIsPanning(true);
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+  };
+
+  const handlePreviewPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!isPanning) return;
+    const node = canvasScrollContainerRef.current;
+    if (!node) return;
+    node.scrollLeft = panStartRef.current.scrollLeft - (event.clientX - panStartRef.current.x);
+    node.scrollTop = panStartRef.current.scrollTop - (event.clientY - panStartRef.current.y);
+    updateScrollMetrics();
+    event.preventDefault();
+  };
+
+  const stopPreviewPan = (event?: React.PointerEvent<HTMLDivElement>) => {
+    if (event) event.currentTarget.releasePointerCapture?.(event.pointerId);
+    setIsPanning(false);
+  };
+
+  const moveViewportFromMinimap = (event: React.PointerEvent<HTMLDivElement>) => {
+    const node = canvasScrollContainerRef.current;
+    if (!node) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    const xRatio = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
+    const yRatio = Math.min(1, Math.max(0, (event.clientY - rect.top) / rect.height));
+    node.scrollLeft = Math.max(0, (xRatio * node.scrollWidth) - node.clientWidth / 2);
+    node.scrollTop = Math.max(0, (yRatio * node.scrollHeight) - node.clientHeight / 2);
+    updateScrollMetrics();
+  };
 
   React.useEffect(() => {
     const modulesLength = editorState.addedModules?.length || 0;
@@ -271,18 +470,37 @@ export const Canvas: React.FC<CanvasProps> = ({
     };
   }, [isFullscreen, isPreviewMode, setIsFullscreen]);
 
+  React.useEffect(() => {
+    if (!isFullscreen || isPreviewMode) return;
+
+    const handleFullscreenEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsFullscreen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleFullscreenEscape);
+    return () => window.removeEventListener('keydown', handleFullscreenEscape);
+  }, [isFullscreen, isPreviewMode, setIsFullscreen]);
+
   return (
-    <ParallaxScrollContext.Provider value={isPreviewMode ? null : canvasScrollContainerRef}>
+    <ParallaxScrollContext.Provider value={isCleanPreviewMode ? null : canvasScrollContainerRef}>
       <div
         ref={setCanvasRootRef}
         id="constructor-canvas-scroll-container"
-        className={`flex-1 overflow-y-scroll custom-scrollbar preview-scrollbar transition-all duration-500 ${isFullscreen ? 'fixed inset-0 z-[100]' : ''} ${isPreviewMode ? 'p-0' : ''}`}
+        onScroll={updateScrollMetrics}
+        onPointerDown={handlePreviewPointerDown}
+        onPointerMove={handlePreviewPointerMove}
+        onPointerUp={stopPreviewPan}
+        onPointerLeave={stopPreviewPan}
+        className={`flex-1 ${canPanPreview ? 'overflow-auto' : 'overflow-y-scroll overflow-x-hidden'} custom-scrollbar preview-scrollbar transition-all duration-500 ${isFullscreen ? 'fixed inset-0 z-[120]' : ''} ${isCleanPreviewMode ? 'p-0' : ''}`}
         style={{
           scrollbarGutter: 'stable',
-          backgroundColor: isPreviewMode ? 'var(--builder-surface)' : 'var(--builder-surface-muted)'
+          backgroundColor: isCleanPreviewMode ? 'var(--builder-surface)' : 'var(--builder-surface-muted)',
+          cursor: canPanPreview ? (isPanning ? 'grabbing' : 'grab') : undefined
         }}
       >
-      {isFullscreen && !isPreviewMode && (
+      {false && isFullscreen && !isPreviewMode && (
         <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[110] flex items-center gap-2 bg-surface/80 backdrop-blur-md border border-border/50 p-1.5 rounded-2xl shadow-2xl">
           <div className="flex items-center gap-1 bg-secondary/50 p-1 rounded-xl">
             <button 
@@ -317,38 +535,41 @@ export const Canvas: React.FC<CanvasProps> = ({
         </div>
       )}
       <div
-        className={`flex min-h-full ${useVirtualDesktopPreview ? 'relative justify-start overflow-hidden' : 'justify-center transition-all duration-500'} ${isFullscreen ? (isDesktopCanvas ? 'px-0 pb-0 pt-24' : 'p-6 pt-24') : isPreviewMode ? 'p-0' : isDesktopCanvas ? 'p-0' : 'p-6'}`}
+        className={`flex min-h-full ${useVirtualDesktopPreview ? 'relative justify-start' : 'justify-center transition-all duration-500'} ${isFullscreen ? 'p-0' : isPreviewMode ? 'p-0' : isDesktopCanvas ? 'p-0' : 'p-6'}`}
         style={useVirtualDesktopPreview ? {
-          width: '100%',
-          minHeight: renderContentHeight ? `${Math.ceil(renderContentHeight * desktopPreviewScale)}px` : undefined
-        } : undefined}
+          width: `${Math.ceil(previewBaseWidth * effectivePreviewScale)}px`,
+          minHeight: renderContentHeight ? `${Math.ceil(renderContentHeight * effectivePreviewScale)}px` : undefined
+        } : (showEditorChrome && userZoom !== 1 ? {
+          width: `${Math.ceil(previewBaseWidth * userZoom)}px`,
+          minHeight: renderContentHeight ? `${Math.ceil(renderContentHeight * userZoom)}px` : undefined
+        } : undefined)}
       >
         <div 
           ref={renderRootRef}
           id="constructor-canvas-render"
           data-preview-root="true"
           className={`bg-surface relative @container ${
-            isPreviewMode ? 'w-full max-w-none border-none rounded-none shadow-none' : 
+            isCleanPreviewMode ? 'w-full max-w-none border-none rounded-none shadow-none' :
             useFullBleedDesktopCanvas ? 'w-full max-w-none min-h-full rounded-none border-none shadow-none' : 'transition-all duration-500 ease-in-out rounded-2xl border border-border/50 shadow-2xl'
-          } ${viewport === 'mobile' && !isPreviewMode ? 'rounded-[3rem] border-[8px] border-slate-900 shadow-[0_0_0_2px_rgba(0,0,0,0.1)]' : ''} ${viewport === 'tablet' && !isPreviewMode ? 'rounded-[2rem] border-[12px] border-slate-900 shadow-[0_0_0_2px_rgba(0,0,0,0.1)]' : ''}`}
+          } ${viewport === 'mobile' && showEditorChrome ? 'rounded-[3rem] border-[8px] border-slate-900 shadow-[0_0_0_2px_rgba(0,0,0,0.1)]' : ''} ${viewport === 'tablet' && showEditorChrome ? 'rounded-[2rem] border-[12px] border-slate-900 shadow-[0_0_0_2px_rgba(0,0,0,0.1)]' : ''}`}
           style={{ 
             width: isPreviewMode ? '100%' : (useVirtualDesktopPreview ? `${desktopLogicalWidth}px` : (isFullscreen ? fullscreenViewportWidth : viewportWidths[viewport])),
             maxWidth: isPreviewMode ? 'none' : (useVirtualDesktopPreview ? `${desktopLogicalWidth}px` : (isFullscreen ? (viewport === 'desktop' ? 'none' : viewportWidths[viewport]) : viewport === 'desktop' ? 'none' : viewportWidths[viewport])),
-            minHeight: isPreviewMode ? '100vh' : (isDesktopCanvas ? (isFullscreen ? '100vh' : '100%') : viewport === 'mobile' ? '667px' : '1024px'),
-            transform: useVirtualDesktopPreview ? `scale(${desktopPreviewScale})` : undefined,
-            transformOrigin: useVirtualDesktopPreview ? 'top left' : undefined,
+            minHeight: isCleanPreviewMode ? '100vh' : (isDesktopCanvas ? '100%' : viewport === 'mobile' ? '667px' : '1024px'),
+            transform: showEditorChrome && effectivePreviewScale !== 1 ? `scale(${effectivePreviewScale})` : undefined,
+            transformOrigin: showEditorChrome ? 'top left' : 'top center',
             position: useVirtualDesktopPreview ? 'absolute' : 'relative',
             top: useVirtualDesktopPreview ? 0 : undefined,
             left: useVirtualDesktopPreview ? 0 : undefined
           }}
         >
-          {viewport === 'mobile' && !isPreviewMode && (
+          {viewport === 'mobile' && showEditorChrome && (
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-6 bg-slate-900 rounded-b-2xl z-50 flex items-center justify-center">
               <div className="w-10 h-1 bg-slate-800 rounded-full" />
             </div>
           )}
           <div className="w-full" key={reloadKey}>
-            {(!renderSiteContent.sections || renderSiteContent.sections.length === 0) && !isPreviewMode ? (
+            {(!renderSiteContent.sections || renderSiteContent.sections.length === 0) && showEditorChrome ? (
               <div className="flex flex-col items-center justify-center py-32 px-6 text-center">
                 <div className="w-20 h-20 bg-secondary rounded-3xl flex items-center justify-center mb-6 text-text/20">
                   <PlusCircle size={40} />
@@ -577,7 +798,7 @@ export const Canvas: React.FC<CanvasProps> = ({
                   ...moduleOverrides 
                 };
 
-                if (!isPreviewMode) {
+                if (!isCleanPreviewMode) {
                    logDebug('[CANVAS_SECTION_RENDER_DEBUG]', {
                       moduleId: section.id,
                       type: section.type,
@@ -610,14 +831,14 @@ export const Canvas: React.FC<CanvasProps> = ({
                     id={section.id} 
                     ref={isLast ? lastModuleRef : null} 
                     onClick={(e) => {
-                      if (isPreviewMode) return;
+                      if (isCleanPreviewMode) return;
                       e.stopPropagation();
                       selectSection(section.id);
                     }}
                     className={`w-full group relative outline-none transition-all duration-300 ${isSticky || isFixed ? 'sticky' : 'relative'} ${
-                      (!isPreviewMode && selectedSectionId === section.id) 
+                      (showEditorChrome && selectedSectionId === section.id)
                         ? 'ring-2 ring-blue-500 ring-inset shadow-2xl z-50 cursor-pointer' 
-                        : !isPreviewMode ? 'hover:ring-1 hover:ring-blue-300/50 ring-inset cursor-pointer' : ''
+                        : showEditorChrome ? 'hover:ring-1 hover:ring-blue-300/50 ring-inset cursor-pointer' : ''
                     }`}
                     style={{ 
                       top: isSticky || isFixed ? `${topOffset}px` : undefined,
@@ -625,7 +846,7 @@ export const Canvas: React.FC<CanvasProps> = ({
                     }}
                   >
                     {/* Indicador de Selección */}
-                    {selectedSectionId === section.id && !isPreviewMode && (
+                    {selectedSectionId === section.id && showEditorChrome && (
                       <div className="absolute -left-1 top-0 bottom-0 w-1 bg-blue-500 z-50 rounded-full selection-indicator" />
                     )}
                     {section.type === 'products' && (
@@ -634,7 +855,7 @@ export const Canvas: React.FC<CanvasProps> = ({
                         settingsValues={finalSettings}
                         products={products}
                         isDevMode={isDevMode}
-                        isPreviewMode={isPreviewMode}
+                        isPreviewMode={isCleanPreviewMode}
                       />
                     )}
                     {section.type === 'hero' && (
@@ -643,35 +864,35 @@ export const Canvas: React.FC<CanvasProps> = ({
                         settingsValues={finalSettings}
                         logoUrl={logoUrl}
                         logoWhiteUrl={logoWhiteUrl}
-                        isPreviewMode={isPreviewMode}
+                        isPreviewMode={isCleanPreviewMode}
                       />
                     )}
                     {section.type === 'hero2' && (
                       <Hero2Module 
                         moduleId={section.id}
                         settingsValues={finalSettings}
-                        isPreviewMode={isPreviewMode}
+                        isPreviewMode={isCleanPreviewMode}
                       />
                     )}
                     {section.type === 'features' && (
                       <FeaturesModule 
                         moduleId={section.id}
                         settingsValues={finalSettings}
-                        isPreviewMode={isPreviewMode}
+                        isPreviewMode={isCleanPreviewMode}
                       />
                     )}
                     {section.type === 'about' && (
                       <AboutModule 
                         moduleId={section.id}
                         settingsValues={finalSettings}
-                        isPreviewMode={isPreviewMode}
+                        isPreviewMode={isCleanPreviewMode}
                       />
                     )}
                     {section.type === 'process' && (
                       <ProcessModule 
                         moduleId={section.id}
                         settingsValues={finalSettings}
-                        isPreviewMode={isPreviewMode}
+                        isPreviewMode={isCleanPreviewMode}
                       />
                     )}
                     {section.type === 'gallery' && (
@@ -679,21 +900,21 @@ export const Canvas: React.FC<CanvasProps> = ({
                         moduleId={section.id}
                         settingsValues={finalSettings}
                         content={section.content}
-                        isPreviewMode={isPreviewMode}
+                        isPreviewMode={isCleanPreviewMode}
                       />
                     )}
                     {section.type === 'video' && (
                       <VideoModule 
                         moduleId={section.id}
                         settingsValues={finalSettings}
-                        isPreviewMode={isPreviewMode}
+                        isPreviewMode={isCleanPreviewMode}
                       />
                     )}
                     {section.type === 'testimonials' && (
                       <TestimonialsModule 
                         moduleId={section.id}
                         settingsValues={finalSettings}
-                        isPreviewMode={isPreviewMode}
+                        isPreviewMode={isCleanPreviewMode}
                       />
                     )}
                     {section.type === 'products_showcase' && (
@@ -702,42 +923,42 @@ export const Canvas: React.FC<CanvasProps> = ({
                         content={section.content}
                         settingsValues={finalSettings}
                         products={products}
-                        isActuallyEditor={!isPreviewMode}
+                        isActuallyEditor={!isCleanPreviewMode}
                       />
                     )}
                     {section.type === 'stats' && (
                       <StatsModule 
                         moduleId={section.id}
                         settingsValues={finalSettings}
-                        isPreviewMode={isPreviewMode}
+                        isPreviewMode={isCleanPreviewMode}
                       />
                     )}
                     {section.type === 'team' && (
                       <TeamModule 
                         moduleId={section.id}
                         settingsValues={finalSettings}
-                        isPreviewMode={isPreviewMode}
+                        isPreviewMode={isCleanPreviewMode}
                       />
                     )}
                     {section.type === 'pricing' && (
                       <PricingModule 
                         moduleId={section.id}
                         settingsValues={finalSettings}
-                        isPreviewMode={isPreviewMode}
+                        isPreviewMode={isCleanPreviewMode}
                       />
                     )}
                     {section.type === 'faq' && (
                       <FAQModule 
                         moduleId={section.id}
                         settingsValues={finalSettings}
-                        isPreviewMode={isPreviewMode}
+                        isPreviewMode={isCleanPreviewMode}
                       />
                     )}
                     {section.type === 'contact' && (
                       <ContactModule 
                         moduleId={section.id}
                         settingsValues={finalSettings}
-                        isPreviewMode={isPreviewMode}
+                        isPreviewMode={isCleanPreviewMode}
                       />
                     )}
                     {section.type === 'clients' && (
@@ -746,7 +967,7 @@ export const Canvas: React.FC<CanvasProps> = ({
                         settingsValues={finalSettings}
                         customers={customers}
                         isDevMode={isDevMode}
-                        isPreviewMode={isPreviewMode}
+                        isPreviewMode={isCleanPreviewMode}
                       />
                     )}
                     {section.type === 'trusted_logos' && (
@@ -754,35 +975,35 @@ export const Canvas: React.FC<CanvasProps> = ({
                         moduleId={section.id}
                         settingsValues={finalSettings}
                         companies={trustedCompanyLogos}
-                        isPreviewMode={isPreviewMode}
+                        isPreviewMode={isCleanPreviewMode}
                       />
                     )}
                     {section.type === 'cta' && (
                       <CTAModule 
                         moduleId={section.id}
                         settingsValues={finalSettings}
-                        isPreviewMode={isPreviewMode}
+                        isPreviewMode={isCleanPreviewMode}
                       />
                     )}
                     {section.type === 'dynamic_cards' && (
                       <DynamicCardsModule
                         moduleId={section.id}
                         settingsValues={finalSettings}
-                        isPreviewMode={isPreviewMode}
+                        isPreviewMode={isCleanPreviewMode}
                       />
                     )}
                     {section.type === 'newsletter' && (
                       <NewsletterModule 
                         moduleId={section.id}
                         settingsValues={finalSettings}
-                        isPreviewMode={isPreviewMode}
+                        isPreviewMode={isCleanPreviewMode}
                       />
                     )}
                     {section.type === 'conversion' && (section.templateId === 'mod_header_1' || section.id.startsWith('mod_header_1')) && (
                       <HeaderModule 
                         moduleId={section.id}
                         settingsValues={finalSettings}
-                        isPreviewMode={isPreviewMode}
+                        isPreviewMode={isCleanPreviewMode}
                       />
                     )}
                     {(section.type === 'navegacion' || section.type === 'menu') && (
@@ -791,8 +1012,8 @@ export const Canvas: React.FC<CanvasProps> = ({
                         settingsValues={finalSettings}
                         logoUrl={logoUrl}
                         logoWhiteUrl={logoWhiteUrl}
-                        isPreviewMode={isPreviewMode}
-                        isEditorCanvas={!isPreviewMode}
+                        isPreviewMode={isCleanPreviewMode}
+                        isEditorCanvas={!isCleanPreviewMode}
                         menuMode={resolveMenuMode(section.id, finalSettings)}
                         automaticMenuItems={automaticMenuItems}
                       />
@@ -803,7 +1024,7 @@ export const Canvas: React.FC<CanvasProps> = ({
                         settingsValues={finalSettings}
                         logoUrl={logoUrl}
                         logoWhiteUrl={logoWhiteUrl}
-                        isPreviewMode={isPreviewMode}
+                        isPreviewMode={isCleanPreviewMode}
                       />
                     )}
                     {(section.type === 'navegacion') && (section.templateId === 'mod_footer_1' || section.id.startsWith('mod_footer_1')) && (
@@ -812,14 +1033,14 @@ export const Canvas: React.FC<CanvasProps> = ({
                         settingsValues={finalSettings}
                         logoUrl={logoUrl}
                         logoWhiteUrl={logoWhiteUrl}
-                        isPreviewMode={isPreviewMode}
+                        isPreviewMode={isCleanPreviewMode}
                       />
                     )}
                     {section.type === 'spacer' && (
                       <SpacerModule 
                         moduleId={section.id}
                         settingsValues={finalSettings}
-                        isPreviewMode={isPreviewMode}
+                        isPreviewMode={isCleanPreviewMode}
                       />
                     )}
                     {(section.type === 'bento' || section.templateId === 'mod_bento_1' || section.id.startsWith('mod_bento_1') || (section.type === 'content' && section.templateId === 'mod_bento_1')) && (
@@ -828,7 +1049,9 @@ export const Canvas: React.FC<CanvasProps> = ({
                         settingsValues={finalSettings}
                         content={section.content}
                         onSettingChange={onSettingChange}
-                        isPreviewMode={isPreviewMode}
+                        isPreviewMode={isCleanPreviewMode}
+                        previewScale={effectivePreviewScale}
+                        constructorViewport={viewport}
                         onOpenBentoGenerator={onOpenBentoGenerator}
                       />
                     )}
@@ -837,9 +1060,9 @@ export const Canvas: React.FC<CanvasProps> = ({
                         moduleId={section.id}
                         settingsValues={finalSettings}
                         content={section.content}
-                        isPreviewMode={isPreviewMode}
-                        selectedElementId={selectedSectionId === section.id ? selectedCompositionElementId : null}
-                        onElementSelect={!isPreviewMode ? (elementId) => {
+                        isPreviewMode={isCleanPreviewMode}
+                        selectedElementId={showEditorChrome && selectedSectionId === section.id ? selectedCompositionElementId : null}
+                        onElementSelect={showEditorChrome ? (elementId) => {
                           selectCompositionElement(section.id, elementId);
                         } : undefined}
                       />
@@ -855,7 +1078,7 @@ export const Canvas: React.FC<CanvasProps> = ({
                       <ComparisonModule 
                         moduleId={section.id}
                         settingsValues={finalSettings}
-                        preview={isPreviewMode}
+                        preview={isCleanPreviewMode}
                       />
                     )}
                   </div>
@@ -865,6 +1088,103 @@ export const Canvas: React.FC<CanvasProps> = ({
           </div>
         </div>
       </div>
+      {showEditorChrome && (
+        <div
+          className="fixed bottom-5 right-5 z-[130] flex flex-col items-end gap-3"
+          data-no-preview-pan="true"
+        >
+          {showMinimap && (
+            <div
+              className="rounded-2xl border border-border/60 bg-surface/90 p-2 shadow-xl backdrop-blur-md"
+              data-no-preview-pan="true"
+            >
+              <div className="mb-1 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wider text-text/50">
+                  <Map size={11} />
+                  Mapa
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsMinimapHidden(true)}
+                  className="rounded-md px-1.5 py-0.5 text-[9px] font-bold text-text/35 transition hover:bg-secondary hover:text-text"
+                  title="Ocultar minimapa"
+                  aria-label="Ocultar minimapa"
+                >
+                  ocultar
+                </button>
+              </div>
+              <div
+                className="relative overflow-hidden rounded-xl border border-primary/15 bg-secondary/70"
+                style={{ width: minimapWidth, height: minimapHeight }}
+                onPointerDown={(event) => {
+                  setIsMinimapDragging(true);
+                  event.currentTarget.setPointerCapture?.(event.pointerId);
+                  moveViewportFromMinimap(event);
+                }}
+                onPointerMove={(event) => {
+                  if (isMinimapDragging) moveViewportFromMinimap(event);
+                }}
+                onPointerUp={(event) => {
+                  setIsMinimapDragging(false);
+                  event.currentTarget.releasePointerCapture?.(event.pointerId);
+                }}
+                onPointerLeave={() => setIsMinimapDragging(false)}
+              >
+                <div className="absolute inset-2 rounded-lg border border-text/10 bg-surface/70" />
+                <div
+                  className="absolute rounded-md border-2 border-primary bg-primary/15 shadow-sm"
+                  style={{
+                    left: minimapViewport.x,
+                    top: minimapViewport.y,
+                    width: minimapViewport.width,
+                    height: minimapViewport.height
+                  }}
+                />
+              </div>
+            </div>
+          )}
+          <div className="flex items-center gap-1 rounded-2xl border border-border/60 bg-surface/90 p-1.5 shadow-xl backdrop-blur-md">
+            <button
+              type="button"
+              onClick={() => setZoomAroundCenter(userZoom - 0.1)}
+              className="rounded-xl p-2 text-text/60 transition hover:bg-secondary hover:text-primary disabled:opacity-30"
+              disabled={userZoom <= zoomLimits.min}
+              title="Alejar preview"
+              aria-label="Alejar preview"
+            >
+              <ZoomOut size={15} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setZoomAroundCenter(1)}
+              className="min-w-14 rounded-xl px-2 py-2 text-[10px] font-black text-text/70 transition hover:bg-secondary hover:text-primary"
+              title="Restablecer zoom"
+              aria-label="Restablecer zoom"
+            >
+              {zoomPercent}%
+            </button>
+            <button
+              type="button"
+              onClick={() => setZoomAroundCenter(userZoom + 0.1)}
+              className="rounded-xl p-2 text-text/60 transition hover:bg-secondary hover:text-primary disabled:opacity-30"
+              disabled={userZoom >= zoomLimits.max}
+              title="Acercar preview"
+              aria-label="Acercar preview"
+            >
+              <ZoomIn size={15} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setZoomAroundCenter(1)}
+              className="rounded-xl p-2 text-text/40 transition hover:bg-secondary hover:text-primary"
+              title="Reset 100%"
+              aria-label="Reset 100%"
+            >
+              <RotateCcw size={14} />
+            </button>
+          </div>
+        </div>
+      )}
       </div>
     </ParallaxScrollContext.Provider>
   );

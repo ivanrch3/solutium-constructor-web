@@ -3605,17 +3605,7 @@ export const BENTO_MODULE: WebModule = {
   globalGroups: ['estructura', 'estilo', 'interaccion', 'multimedia'],
   globalSettings: {
     estructura: [
-      { id: 'bento_type', label: 'Especialización (Tipo)', type: 'select', defaultValue: 'mixed_content', options: [
-        { label: 'Contenido Mixto', value: 'mixed_content' },
-        { label: 'Beneficios (Grid)', value: 'benefits_grid' },
-        { label: 'Características Técnicas', value: 'technical_features' },
-        { label: 'Ecosistema de Apps', value: 'apps_ecosystem' },
-        { label: 'Métricas e Impacto', value: 'metrics_impact' },
-        { label: 'Resumen de Proceso', value: 'process_summary' },
-        { label: 'Casos de Uso', value: 'use_cases' },
-        { label: 'Call to Action', value: 'cta_grid' }
-      ] },
-      { id: 'columns', label: 'Columnas Desktop', type: 'range', defaultValue: 12, min: 1, max: 12 },
+      { id: 'columns', label: 'Columnas del lienzo', type: 'range', defaultValue: 24, min: 12, max: 32, step: 1 },
       { id: 'gap', label: 'Espaciado (Gap)', type: 'range', defaultValue: 20, min: 0, max: 100, unit: 'px' },
       { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 40, min: 0, max: 200, unit: 'px' },
       { id: 'max_width', label: 'Ancho Máximo', type: 'range', defaultValue: 1200, min: 800, max: 1600, unit: 'px' }
@@ -3746,7 +3736,17 @@ export const BENTO_MODULE: WebModule = {
           { id: 'trust_note', label: 'Nota de Confianza', type: 'text', defaultValue: '*No requiere tarjeta', showIf: { settingId: 'type', value: 'cta' } },
 
           // Icon/Text / Compact / Feature específicos
+          { id: 'icon_visual_type', label: 'Tipo visual', type: 'select', defaultValue: 'icon', options: [
+            { label: 'Ícono', value: 'icon' },
+            { label: 'Imagen', value: 'image' }
+          ], showIf: { settingId: 'type', value: 'icon' } },
           { id: 'icon', label: 'Icono', type: 'icon', defaultValue: 'Sparkles', showIf: { settingId: 'type', value: ['hero', 'icon_text', 'compact', 'metric', 'feature', 'app_card', 'step', 'icon', 'badge', 'list'], operator: 'includes' } },
+          { id: 'icon_color', label: 'Color del icono', type: 'color', defaultValue: '#2563EB', showIf: { settingId: 'type', value: 'icon' } },
+          { id: 'icon_size', label: 'Tamaño del icono', type: 'range', defaultValue: 32, min: 16, max: 96, unit: 'px', showIf: { settingId: 'type', value: 'icon' } },
+          { id: 'show_icon_bg', label: 'Mostrar fondo del icono', type: 'boolean', defaultValue: true, showIf: { settingId: 'type', value: 'icon' } },
+          { id: 'icon_bg', label: 'Color de fondo del icono', type: 'color', defaultValue: 'rgba(59, 130, 246, 0.1)', showIf: { settingId: 'type', value: 'icon' } },
+          { id: 'icon_image', label: 'Imagen del icono', type: 'image', defaultValue: '', showIf: { settingId: 'type', value: 'icon' } },
+          { id: 'icon_image_size', label: 'Tamaño de imagen', type: 'range', defaultValue: 72, min: 32, max: 180, unit: 'px', showIf: { settingId: 'type', value: 'icon' } },
           { id: 'list_items', label: 'Items de Lista', type: 'textarea', defaultValue: 'Primer punto\nSegundo punto\nTercer punto', showIf: { settingId: 'type', value: 'list' } },
           { id: 'show_description', label: 'Mostrar Descripción', type: 'boolean', defaultValue: true, showIf: { settingId: 'type', value: ['compact', 'icon_text'], operator: 'includes' } },
           
@@ -3756,11 +3756,12 @@ export const BENTO_MODULE: WebModule = {
 
 
           // Estructura (Per item, breakpoint specific labels)
-          { id: 'desktop_span', label: 'Ancho Desktop (Columnas)', type: 'range', defaultValue: 4, min: 1, max: 12 },
+          { id: 'desktop_span', label: 'Ancho Desktop (Columnas)', type: 'range', defaultValue: 8, min: 1, max: 24 },
           { id: 'desktop_rows', label: 'Alto Desktop (Filas)', type: 'range', defaultValue: 2, min: 1, max: 8 },
           { id: 'tablet_span', label: 'Ancho Tablet (Columnas)', type: 'range', defaultValue: 3, min: 1, max: 6 },
           { id: 'mobile_span', label: 'Ancho Móvil (Columnas)', type: 'range', defaultValue: 4, min: 1, max: 4 },
           
+          { id: 'element_padding_y', label: 'Separación vertical del elemento', type: 'range', defaultValue: 20, min: 0, max: 120, unit: 'px', showIf: { settingId: 'type', value: 'icon' } },
           { id: 'padding', label: 'Padding Interno', type: 'range', defaultValue: 32, min: 0, max: 80, unit: 'px' },
           { id: 'align_items', label: 'Alineación Vertical', type: 'select', defaultValue: 'start', options: [
             { label: 'Arriba', value: 'start' },

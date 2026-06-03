@@ -2,27 +2,35 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion } from 'motion/react';
 import * as LucideIcons from 'lucide-react';
-import { ArrowRight, Sparkles, ExternalLink } from 'lucide-react';
+import { ArrowRight, Sparkles, ExternalLink, X } from 'lucide-react';
 import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
 import { TextRenderer } from '../TextRenderer';
 import { ParallaxBackground, useParallaxScrollProgress } from '../ParallaxBackground';
 import { parseNumSafe } from '../utils';
-import { Responsive, WidthProvider } from 'react-grid-layout/legacy';
+import { Responsive } from 'react-grid-layout/legacy';
 import { SectionAnimation } from '../animations/SectionAnimation';
 import { normalizeSectionAnimation } from '../../../constants/moduleAnimations';
 import '/node_modules/react-grid-layout/css/styles.css';
 import '/node_modules/react-resizable/css/styles.css';
 
-const ResponsiveGridLayout = WidthProvider(Responsive);
+const ResponsiveGridLayout = Responsive;
 const BENTO_BREAKPOINT_TO_LAYOUT: Record<string, 'desktop' | 'tablet' | 'mobile'> = {
   lg: 'desktop',
-  md: 'desktop',
+  md: 'tablet',
   sm: 'tablet',
   xs: 'mobile',
   xxs: 'mobile'
 };
 
 const BENTO_BREAKPOINT_ORDER = ['lg', 'md', 'sm', 'xs', 'xxs'];
+const BENTO_DESKTOP_COLUMNS = 24;
+const BENTO_MIN_DESKTOP_COLUMNS = 12;
+const BENTO_MAX_DESKTOP_COLUMNS = 32;
+const BENTO_TABLET_COLUMNS = 6;
+const BENTO_MOBILE_COLUMNS = 4;
+const BENTO_BASE_VISIBLE_ROWS = 7;
+const BENTO_MAX_EDITABLE_ROWS = 240;
+const BENTO_ROW_HEIGHT = 80;
 
 
 const isBentoDebugEnabled = () => {
@@ -49,6 +57,21 @@ const isBentoDebugEnabled = () => {
   }
 };
 
+const getBentoWorkspaceRows = (value: any, breakpoint: 'desktop' | 'tablet' | 'mobile') => {
+  const rawRows = typeof value === 'object' && value !== null ? value[breakpoint] : value;
+  const parsedRows = Number(rawRows);
+  return Number.isFinite(parsedRows) ? parsedRows : BENTO_BASE_VISIBLE_ROWS;
+};
+
+const buildBentoWorkspaceRowsValue = (
+  currentValue: any,
+  breakpoint: 'desktop' | 'tablet' | 'mobile',
+  rows: number
+) => ({
+  ...(typeof currentValue === 'object' && currentValue !== null ? currentValue : {}),
+  [breakpoint]: rows
+});
+
 const createBentoCellId = () => {
   const randomId = globalThis.crypto?.randomUUID?.() || Math.random().toString(36).slice(2);
   return `bento_cell_${randomId}`;
@@ -68,6 +91,76 @@ const getAdaptiveTypography = (priority: string, colSpan: number, rowSpan: numbe
 
 const toBoolean = (value: unknown) => {
   return value === true || value === 'true' || value === 1 || value === '1';
+};
+
+const estimateTextLines = (value: any, charsPerLine: number) => {
+  const text = String(value || '').trim();
+  if (!text) return 0;
+  return Math.max(1, Math.ceil(text.length / Math.max(charsPerLine, 1)));
+};
+
+const getTypographyFontSize = (token: any, fallback: keyof typeof TYPOGRAPHY_SCALE) => {
+  const resolvedToken = token && token !== 'auto' ? token : fallback;
+  return TYPOGRAPHY_SCALE[resolvedToken as keyof typeof TYPOGRAPHY_SCALE]?.fontSize
+    || TYPOGRAPHY_SCALE[fallback]?.fontSize
+    || 16;
+};
+
+const getBentoResponsiveMinRows = (
+  item: any,
+  breakpoint: 'desktop' | 'tablet' | 'mobile',
+  rowHeight: number,
+  rowGap: number
+) => {
+  if (breakpoint === 'desktop') return 1;
+
+  const type = item?.type || 'text';
+  const safeGap = Math.max(Number(rowGap) || 0, 0);
+  let minHeight = rowHeight;
+
+  if (type === 'icon') {
+    const isImage = item.icon_visual_type === 'image';
+    const iconSize = parseNumSafe(item.icon_size, 32);
+    const iconImageSize = parseNumSafe(item.icon_image_size, 72);
+    const visualSize = isImage ? iconImageSize : Math.max(iconSize + 16, 40);
+    const textPadding = parseNumSafe(item.padding, 32);
+    const elementPaddingY = parseNumSafe(item.element_padding_y, 20);
+    const charsPerLine = breakpoint === 'mobile' ? 22 : 34;
+    const titleFontSize = getTypographyFontSize(item.title_size, 't3');
+    const descFontSize = getTypographyFontSize(item.description_size || item.desc_size, 'p');
+    const titleLines = estimateTextLines(item.title, charsPerLine);
+    const descLines = estimateTextLines(item.description, charsPerLine);
+    const titleHeight = titleLines * titleFontSize * 1.25;
+    const descHeight = descLines * descFontSize * 1.45;
+    const textHeight = titleLines || descLines
+      ? titleHeight + descHeight + (titleLines && descLines ? 8 : 0) + (textPadding * 2)
+      : 0;
+
+    minHeight = visualSize + (textHeight ? 12 : 0) + textHeight + (elementPaddingY * 2);
+  } else if (type === 'visual') {
+    minHeight = breakpoint === 'mobile' ? 220 : 260;
+  } else if (type === 'list') {
+    const listItems = Array.isArray(item.list_items)
+      ? item.list_items
+      : String(item.list_items || '').split('\n').filter(Boolean);
+    minHeight = 80 + (listItems.length * 28);
+  } else if (type === 'accordion') {
+    minHeight = 140 + estimateTextLines(item.description, breakpoint === 'mobile' ? 28 : 44) * 20;
+  } else if (type === 'text' || type === 'card') {
+    const charsPerLine = breakpoint === 'mobile' ? 28 : 46;
+    minHeight = 96
+      + (estimateTextLines(item.title, charsPerLine) * 24)
+      + (estimateTextLines(item.description, charsPerLine) * 22)
+      + (parseNumSafe(item.padding, 32) * 2);
+  }
+
+  return Math.max(1, Math.ceil((minHeight + safeGap) / (rowHeight + safeGap)));
+};
+
+const clampBentoDesktopColumns = (value: any) => {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return BENTO_DESKTOP_COLUMNS;
+  return Math.min(BENTO_MAX_DESKTOP_COLUMNS, Math.max(BENTO_MIN_DESKTOP_COLUMNS, Math.round(parsed)));
 };
 
 const resolveThemeColor = (
@@ -96,6 +189,133 @@ const getTypographyStyle = (token: string | undefined, fallback: keyof typeof TY
 
 const getFontWeightValue = (token: string | undefined, fallback: keyof typeof FONT_WEIGHTS) => {
   return FONT_WEIGHTS[(token as keyof typeof FONT_WEIGHTS) || fallback]?.value || FONT_WEIGHTS[fallback].value;
+};
+
+type BentoClickOverlayState = {
+  type: 'image' | 'modal';
+  title?: string;
+  description?: string;
+  imageUrl?: string;
+  ctaText?: string;
+  ctaUrl?: string;
+};
+
+const getBentoClickActionType = (item: any) => String(item?.clickActionType || 'none');
+
+const sanitizeBentoActionUrl = (value: any) => {
+  const rawUrl = String(value || '').trim();
+  if (!rawUrl) return '';
+
+  const lowerUrl = rawUrl.toLowerCase();
+  if (
+    lowerUrl.startsWith('javascript:') ||
+    lowerUrl.startsWith('data:') ||
+    lowerUrl.startsWith('vbscript:')
+  ) {
+    return '';
+  }
+
+  if (
+    lowerUrl.startsWith('http://') ||
+    lowerUrl.startsWith('https://') ||
+    lowerUrl.startsWith('mailto:') ||
+    lowerUrl.startsWith('tel:') ||
+    rawUrl.startsWith('#') ||
+    rawUrl.startsWith('/')
+  ) {
+    return rawUrl;
+  }
+
+  if (lowerUrl.startsWith('www.')) {
+    return `https://${rawUrl}`;
+  }
+
+  return `https://${rawUrl}`;
+};
+
+const normalizeBentoSectionAnchor = (value: any) => {
+  const rawAnchor = String(value || '').trim();
+  if (!rawAnchor) return '';
+  if (rawAnchor.startsWith('#')) return rawAnchor.length > 1 ? rawAnchor : '';
+  return `#${rawAnchor.replace(/\s+/g, '-').replace(/^#+/, '')}`;
+};
+
+const buildBentoWhatsappUrl = (number: any, message: any) => {
+  const cleanNumber = String(number || '').replace(/[^\d]/g, '');
+  if (!cleanNumber) return '';
+  const text = String(message || '').trim();
+  return `https://wa.me/${cleanNumber}${text ? `?text=${encodeURIComponent(text)}` : ''}`;
+};
+
+const buildBentoPhoneUrl = (number: any) => {
+  const cleanNumber = String(number || '').replace(/[^\d+*#]/g, '');
+  return cleanNumber ? `tel:${cleanNumber}` : '';
+};
+
+const buildBentoEmailUrl = (email: any, subject: any, body: any) => {
+  const cleanEmail = String(email || '').trim();
+  if (!cleanEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) return '';
+  const params = new URLSearchParams();
+  const cleanSubject = String(subject || '').trim();
+  const cleanBody = String(body || '').trim();
+  if (cleanSubject) params.set('subject', cleanSubject);
+  if (cleanBody) params.set('body', cleanBody);
+  const queryString = params.toString();
+  return `mailto:${cleanEmail}${queryString ? `?${queryString}` : ''}`;
+};
+
+const openBentoActionUrl = (url: string, target: any = 'new_tab') => {
+  if (!url || typeof window === 'undefined') return;
+  if (target === 'same_tab') {
+    window.location.href = url;
+    return;
+  }
+  window.open(url, '_blank', 'noopener,noreferrer');
+};
+
+const scrollToBentoAnchor = (anchor: string) => {
+  if (!anchor || typeof document === 'undefined' || typeof window === 'undefined') return;
+  let target: Element | null = null;
+  const anchorId = anchor.slice(1);
+  if (anchorId) {
+    target = document.getElementById(anchorId);
+  }
+  if (!target) {
+    try {
+      target = document.querySelector(anchor);
+    } catch {
+      target = null;
+    }
+  }
+
+  if (target) {
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    try {
+      window.history.replaceState(null, '', anchor);
+    } catch {
+      window.location.hash = anchor;
+    }
+  } else {
+    window.location.hash = anchor;
+  }
+};
+
+const hasBentoClickAction = (item: any) => {
+  const actionType = getBentoClickActionType(item);
+  if (actionType === 'none') return false;
+  if (actionType === 'url') return Boolean(sanitizeBentoActionUrl(item?.clickUrl));
+  if (actionType === 'image') return Boolean(sanitizeBentoActionUrl(item?.clickImageUrl || item?.image || item?.card_image));
+  if (actionType === 'modal') {
+    const hasModalText = Boolean(String(item?.clickModalTitle || item?.clickModalDescription || '').trim());
+    const hasModalImage = Boolean(sanitizeBentoActionUrl(item?.clickModalImageUrl));
+    const hasModalCta = Boolean(String(item?.clickModalCtaText || '').trim() && sanitizeBentoActionUrl(item?.clickModalCtaUrl));
+    return hasModalText || hasModalImage || hasModalCta;
+  }
+  if (actionType === 'section') return Boolean(normalizeBentoSectionAnchor(item?.clickSectionAnchor));
+  if (actionType === 'whatsapp') return Boolean(buildBentoWhatsappUrl(item?.clickWhatsappNumber, item?.clickWhatsappMessage));
+  if (actionType === 'phone') return Boolean(buildBentoPhoneUrl(item?.clickPhoneNumber));
+  if (actionType === 'email') return Boolean(buildBentoEmailUrl(item?.clickEmail, item?.clickEmailSubject, item?.clickEmailBody));
+  return false;
 };
 
 const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave }: any) => {
@@ -130,6 +350,16 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave }: a
     accent_color,
     show_description = true,
     content_position = 'center',
+    align_items = 'start',
+    icon_visual_type = 'icon',
+    icon_size,
+    icon_color = '#2563EB',
+    show_icon_bg = true,
+    icon_bg = 'rgba(59, 130, 246, 0.1)',
+    icon_image = '',
+    icon_image_size,
+    element_padding_y,
+    padding,
     text_contrast = 'auto'
   } = item;
 
@@ -154,8 +384,19 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave }: a
   const forcedColor = text_contrast === 'white' ? '#FFFFFF' : text_contrast === 'black' ? '#0F172A' : null;
   const finalTitleColor = forcedColor || resolveThemeColor(title_color, '#0F172A', '#FFFFFF', darkMode);
   const finalDescColor = forcedColor || resolveThemeColor(desc_color, '#64748B', '#94A3B8', darkMode);
-
   const isHero = type === 'hero' || priority === 'hero';
+  const finalIconColor = resolveThemeColor(icon_color, '#2563EB', '#60A5FA', darkMode);
+  const resolvedIconBg = resolveThemeColor(icon_bg, 'rgba(59, 130, 246, 0.1)', 'rgba(96, 165, 250, 0.18)', darkMode);
+  const numericIconSize = parseNumSafe(icon_size, isHero ? 40 : 32);
+  const numericIconImageSize = parseNumSafe(icon_image_size, 72);
+  const numericTextPadding = parseNumSafe(padding, 32);
+  const numericElementPaddingY = parseNumSafe(element_padding_y, 20);
+  const iconFrameSize = Math.max(numericIconSize + 16, 40);
+  const verticalContentClass = {
+    start: 'justify-start',
+    center: 'justify-center',
+    end: 'justify-end'
+  }[align_items as string] || 'justify-start';
 
   const resolvedContentPosition = content_align || content_position;
   const alignClass = {
@@ -329,22 +570,84 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave }: a
       );
 
     case 'icon':
+      const isIconImage = icon_visual_type === 'image';
+      const iconImageSrc = icon_image || image;
+      const visualFrameSize = isIconImage ? numericIconImageSize : iconFrameSize;
       return (
-        <div className="flex flex-col z-10 w-full h-full items-center justify-center gap-3 text-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-primary/10 text-primary">
-            <IconComponent size={32} />
-          </div>
-          {title && (
-            <h3 className="text-base leading-tight" style={{ color: finalTitleColor, fontWeight: finalTitleWeight }}>
-              <InlineEditableText
-                moduleId={moduleId}
-                settingId="title"
-                value={title}
-                tagName="span"
-                isPreviewMode={isPreviewMode}
-                onSave={(val) => onSave('title', val)}
+        <div
+          className={`flex flex-col z-10 w-full h-full items-center ${verticalContentClass} gap-3 text-center`}
+          style={{
+            boxSizing: 'border-box',
+            paddingTop: `${numericElementPaddingY}px`,
+            paddingBottom: `${numericElementPaddingY}px`
+          }}
+        >
+          <div
+            className="flex items-center justify-center overflow-hidden rounded-3xl"
+            style={{
+              width: `${visualFrameSize}px`,
+              height: `${visualFrameSize}px`,
+              backgroundColor: !isIconImage && toBoolean(show_icon_bg) ? resolvedIconBg : 'transparent',
+              color: finalIconColor
+            }}
+          >
+            {isIconImage && iconImageSrc ? (
+              <img
+                src={iconImageSrc}
+                alt=""
+                className="h-full w-full object-contain"
+                referrerPolicy="no-referrer"
               />
-            </h3>
+            ) : (
+              <IconComponent size={numericIconSize} />
+            )}
+          </div>
+          {(title || description) && (
+            <div
+              className="flex w-full max-w-full flex-col items-center gap-2 text-center"
+              style={{
+                boxSizing: 'border-box',
+                padding: `${numericTextPadding}px`
+              }}
+            >
+              {title && (
+                <h3
+                  className="leading-tight"
+                  style={{
+                    color: finalTitleColor,
+                    fontWeight: finalTitleWeight,
+                    fontSize: `${TYPOGRAPHY_SCALE[finalTitleSize as keyof typeof TYPOGRAPHY_SCALE]?.fontSize || 16}px`
+                  }}
+                >
+                  <InlineEditableText
+                    moduleId={moduleId}
+                    settingId="title"
+                    value={title}
+                    tagName="span"
+                    isPreviewMode={isPreviewMode}
+                    onSave={(val) => onSave('title', val)}
+                  />
+                </h3>
+              )}
+              {description && (
+                <p
+                  className="max-w-[220px] leading-snug opacity-70"
+                  style={{
+                    color: finalDescColor,
+                    fontSize: `${TYPOGRAPHY_SCALE[finalDescSize as keyof typeof TYPOGRAPHY_SCALE]?.fontSize || 14}px`
+                  }}
+                >
+                  <InlineEditableText
+                    moduleId={moduleId}
+                    settingId="description"
+                    value={description}
+                    tagName="span"
+                    isPreviewMode={isPreviewMode}
+                    onSave={(val) => onSave('description', val)}
+                  />
+                </p>
+              )}
+            </div>
           )}
         </div>
       );
@@ -908,8 +1211,10 @@ export const BentoModule: React.FC<{
   content?: any;
   onSettingChange?: (id: string, settingId: string, value: any) => void;
   isPreviewMode?: boolean;
+  previewScale?: number;
+  constructorViewport?: 'desktop' | 'tablet' | 'mobile';
   onOpenBentoGenerator?: () => void;
-}> = ({ moduleId, settingsValues, content, onSettingChange, isPreviewMode }) => {
+}> = ({ moduleId, settingsValues, content, onSettingChange, isPreviewMode, previewScale = 1, constructorViewport = 'desktop' }) => {
   useEffect(() => {
     if (!isBentoDebugEnabled()) return;
     logDebug('[BENTO_MODULE_MOUNT_DEBUG]', {
@@ -950,7 +1255,7 @@ export const BentoModule: React.FC<{
   };
 
   // Global Settings
-  const columns = Math.max(1, parseInt(getVal(null, 'columns', 12)) || 12);
+  const columns = clampBentoDesktopColumns(getVal(null, 'columns', BENTO_DESKTOP_COLUMNS));
   const gap = parseNumSafe(getVal(null, 'gap', 20), 20);
   const paddingY = parseNumSafe(getVal(null, 'padding_y', 40), 40);
   const maxWidth = parseNumSafe(getVal(null, 'max_width', 1200), 1200);
@@ -979,6 +1284,14 @@ export const BentoModule: React.FC<{
 
   // --- LAYOUT HELPERS ---
 
+  const clampNumber = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
+
+  const getColumnsForBreakpoint = (breakpoint: string) => {
+    if (breakpoint === 'lg' || breakpoint === 'desktop') return columns;
+    if (breakpoint === 'md' || breakpoint === 'sm' || breakpoint === 'tablet') return BENTO_TABLET_COLUMNS;
+    return BENTO_MOBILE_COLUMNS;
+  };
+
   const normalizeLayoutEntry = (layout: any) => ({
     x: Number(layout?.x) || 0,
     y: Number(layout?.y) || 0,
@@ -986,10 +1299,46 @@ export const BentoModule: React.FC<{
     h: Number(layout?.h) || 1
   });
 
+  const clampLayoutEntry = (layout: any, cols: number) => {
+    const normalized = normalizeLayoutEntry(layout);
+    const w = clampNumber(normalized.w, 1, cols);
+    return {
+      x: clampNumber(normalized.x, 0, Math.max(cols - w, 0)),
+      y: Math.max(normalized.y, 0),
+      w,
+      h: Math.max(normalized.h, 1)
+    };
+  };
+
+  const shouldScaleLegacyDesktopLayout = (item: any, layout: any, cols: number) => {
+    const declaredColumns = Number(layout?.columns || item?.layout_columns?.desktop || item?.layoutColumns?.desktop || 0);
+    return declaredColumns > 0 ? declaredColumns < cols : cols === BENTO_DESKTOP_COLUMNS;
+  };
+
+  const scaleLegacyDesktopLayout = (item: any, layout: any, cols: number) => {
+    const shouldScale = shouldScaleLegacyDesktopLayout(item, layout, cols);
+    const source = normalizeLayoutEntry(layout);
+    return clampLayoutEntry({
+      ...source,
+      x: shouldScale ? source.x * 2 : source.x,
+      w: shouldScale ? source.w * 2 : source.w
+    }, cols);
+  };
+
   const normalizeLayoutEntryWithId = (layout: any) => ({
     i: String(layout?.i ?? ''),
     ...normalizeLayoutEntry(layout)
   });
+
+  const getLayoutItemId = (item: any, index: number) => String(item?.id || index);
+
+  const findItemIndexByLayoutId = (items: any[], layoutId: string) => {
+    const byStableId = items.findIndex((item, index) => getLayoutItemId(item, index) === layoutId);
+    if (byStableId >= 0) return byStableId;
+
+    const numericIndex = Number.parseInt(layoutId, 10);
+    return Number.isInteger(numericIndex) && numericIndex >= 0 && numericIndex < items.length ? numericIndex : -1;
+  };
 
   const areLayoutsEqual = (a: any[] = [], b: any[] = []) => {
     const normalizeLayout = (layout: any[] = []) =>
@@ -1014,10 +1363,182 @@ export const BentoModule: React.FC<{
   };
 
   const getBentoLayoutForBreakpoint = (items: any[], breakpoint: string, cols: number) => {
+    const collides = (
+      candidate: { x: number; y: number; w: number; h: number },
+      existing: { x: number; y: number; w: number; h: number }
+    ) => (
+      candidate.x < existing.x + existing.w &&
+      candidate.x + candidate.w > existing.x &&
+      candidate.y < existing.y + existing.h &&
+      candidate.y + candidate.h > existing.y
+    );
+
+    const packResponsiveLayouts = (
+      entries: Array<{ item: any; index: number; layout: { x: number; y: number; w: number; h: number } }>
+    ) => {
+      if (breakpoint === 'desktop') return null;
+
+      const orderedEntries = [...entries].sort((left, right) => (
+        left.layout.y - right.layout.y ||
+        left.layout.x - right.layout.x ||
+        left.index - right.index
+      ));
+      const packedLayouts = new Map<number, { x: number; y: number; w: number; h: number }>();
+      const occupied: { x: number; y: number; w: number; h: number }[] = [];
+      let mobileY = 0;
+
+      orderedEntries.forEach(({ index, layout }) => {
+        const h = Math.max(layout.h, 1);
+        const w = breakpoint === 'mobile' ? cols : Math.min(Math.max(layout.w, 1), cols);
+
+        if (breakpoint === 'mobile') {
+          const packed = { x: 0, y: mobileY, w, h };
+          packedLayouts.set(index, packed);
+          mobileY += h;
+          return;
+        }
+
+        for (let y = 0; y < BENTO_MAX_EDITABLE_ROWS; y += 1) {
+          let placed = false;
+          for (let x = 0; x <= cols - w; x += 1) {
+            const candidate = { x, y, w, h };
+            if (!occupied.some((entry) => collides(candidate, entry))) {
+              occupied.push(candidate);
+              packedLayouts.set(index, candidate);
+              placed = true;
+              break;
+            }
+          }
+          if (placed) break;
+        }
+      });
+
+      return packedLayouts;
+    };
+
+    const buildCollisionSafeResponsiveLayouts = () => {
+      if (breakpoint === 'desktop') return null;
+
+      const responsiveEntries = items.map((item: any, index: number) => {
+        const savedLayout = item.layouts?.[breakpoint];
+        const fallbackW = breakpoint === 'mobile'
+          ? (item.mobile_span || item.col_span || cols)
+          : (item.tablet_span || item.col_span || Math.ceil(cols / 2));
+        const fallbackH = breakpoint === 'mobile'
+          ? (item.mobile_rows || item.row_span || item.desktop_rows || 2)
+          : (item.desktop_rows || item.row_span || 2);
+        const baseLayout = clampLayoutEntry({
+          x: savedLayout?.x ?? item.x ?? 0,
+          y: savedLayout?.y ?? item.y ?? 0,
+          w: savedLayout?.w ?? fallbackW,
+          h: savedLayout?.h ?? fallbackH
+        }, cols);
+        return {
+          item,
+          index,
+          layout: {
+            ...baseLayout,
+            h: Math.max(
+              baseLayout.h,
+              getBentoResponsiveMinRows(item, breakpoint as 'tablet' | 'mobile', BENTO_ROW_HEIGHT, gap)
+            )
+          }
+        };
+      });
+
+      const hasCollision = responsiveEntries.some((entry, entryIndex) => (
+        responsiveEntries.some((otherEntry, otherIndex) => (
+          entryIndex !== otherIndex && collides(entry.layout, otherEntry.layout)
+        ))
+      ));
+
+      return hasCollision ? packResponsiveLayouts(responsiveEntries) : null;
+    };
+
+    const buildResponsiveFallbackLayouts = () => {
+      if (breakpoint === 'desktop') return null;
+
+      const orderedItems = items
+        .map((item: any, index: number) => {
+          const desktopSource = item.layouts?.desktop || {
+            x: item.x || 0,
+            y: item.y || 0,
+            w: item.desktop_span || item.col_span || 4,
+            h: item.desktop_rows || item.row_span || 2
+          };
+          return {
+            item,
+            index,
+            desktopLayout: scaleLegacyDesktopLayout(item, desktopSource, columns)
+          };
+        })
+        .sort((left, right) => (
+          left.desktopLayout.y - right.desktopLayout.y ||
+          left.desktopLayout.x - right.desktopLayout.x ||
+          left.index - right.index
+        ));
+
+      const fallbackLayouts = new Map<number, { x: number; y: number; w: number; h: number }>();
+      const packedLayouts = packResponsiveLayouts(
+        orderedItems.map(({ item, index }) => {
+          const savedH = breakpoint === 'mobile'
+            ? (item.mobile_rows || item.row_span || item.desktop_rows || 2)
+            : (item.desktop_rows || item.row_span || 2);
+          const h = Math.max(
+            savedH,
+            getBentoResponsiveMinRows(item, breakpoint as 'tablet' | 'mobile', BENTO_ROW_HEIGHT, gap)
+          );
+          const w = breakpoint === 'mobile'
+            ? cols
+            : Math.min(item.tablet_span || item.col_span || Math.ceil(cols / 2), cols);
+          return { item, index, layout: { x: 0, y: 0, w, h } };
+        })
+      );
+
+      packedLayouts?.forEach((layout, index) => {
+        fallbackLayouts.set(index, layout);
+      });
+
+      return fallbackLayouts;
+    };
+
+    const collisionSafeResponsiveLayouts = buildCollisionSafeResponsiveLayouts();
+    const responsiveFallbackLayouts = buildResponsiveFallbackLayouts();
+
     return items.map((item: any, index: number) => {
+      const layoutId = getLayoutItemId(item, index);
+
       // 1. Try saved layouts object
       if (item.layouts && item.layouts[breakpoint]) {
-        return { i: index.toString(), ...item.layouts[breakpoint] };
+        if (collisionSafeResponsiveLayouts?.has(index)) {
+          return {
+            i: layoutId,
+            ...collisionSafeResponsiveLayouts.get(index)
+          };
+        }
+        const savedLayout = item.layouts[breakpoint];
+        const scaledLayout = breakpoint === 'desktop'
+          ? scaleLegacyDesktopLayout(item, savedLayout, cols)
+          : clampLayoutEntry(savedLayout, cols);
+        const responsiveMinRows = getBentoResponsiveMinRows(
+          item,
+          breakpoint as 'desktop' | 'tablet' | 'mobile',
+          BENTO_ROW_HEIGHT,
+          gap
+        );
+        return {
+          i: layoutId,
+          ...savedLayout,
+          ...scaledLayout,
+          h: Math.max(scaledLayout.h, responsiveMinRows)
+        };
+      }
+
+      if (responsiveFallbackLayouts?.has(index)) {
+        return {
+          i: layoutId,
+          ...responsiveFallbackLayouts.get(index)
+        };
       }
 
       // 2. Try legacy / specific span fields
@@ -1028,19 +1549,58 @@ export const BentoModule: React.FC<{
       const h = breakpoint === 'mobile' ? (item.mobile_rows || item.row_span || 2) : 
                 (item.desktop_rows || item.row_span || 2);
 
+      const fallbackLayout = breakpoint === 'desktop'
+        ? scaleLegacyDesktopLayout(item, { x: item.x || 0, y: item.y || 0, w, h }, cols)
+        : clampLayoutEntry({ x: item.x || 0, y: item.y || 0, w, h }, cols);
+      const responsiveMinRows = getBentoResponsiveMinRows(
+        item,
+        breakpoint as 'desktop' | 'tablet' | 'mobile',
+        BENTO_ROW_HEIGHT,
+        gap
+      );
+
       // Simple positional fallback if x/y not set for bp
       return {
-        i: index.toString(),
-        x: item.x || 0,
-        y: item.y || 0,
-        w: Math.min(w, cols),
-        h: h
+        i: layoutId,
+        ...fallbackLayout,
+        h: Math.max(fallbackLayout.h, responsiveMinRows)
       };
     });
   };
 
   const currentBreakpointRef = useRef('lg');
   const lastPersistedLayoutSignatureRef = useRef('');
+  const pendingLayoutRef = useRef<{ currentLayout: readonly any[]; allLayouts?: any } | null>(null);
+  const layoutPersistTimerRef = useRef<number | null>(null);
+  const gridContainerRef = useRef<HTMLDivElement | null>(null);
+  const isInteractingWithLayoutRef = useRef(false);
+  const [gridWidth, setGridWidth] = useState(1280);
+  const normalizedPreviewScale = Number.isFinite(previewScale) && previewScale > 0 ? previewScale : 1;
+  const forcedBreakpoint = constructorViewport === 'desktop'
+    ? 'lg'
+    : constructorViewport === 'tablet'
+      ? 'md'
+      : 'xs';
+
+  useEffect(() => {
+    const node = gridContainerRef.current;
+    if (!node || typeof ResizeObserver === 'undefined') return;
+
+    const updateGridWidth = (width: number) => {
+      const safeWidth = Math.max(1, Math.round(width));
+      setGridWidth((currentWidth) => (currentWidth === safeWidth ? currentWidth : safeWidth));
+    };
+
+    updateGridWidth(node.getBoundingClientRect().width / normalizedPreviewScale);
+
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (entry) updateGridWidth(entry.contentRect.width);
+    });
+
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [normalizedPreviewScale, constructorViewport]);
   
   // Items Data - Robust Normalization
   const getItemsFromMultipleSources = () => {
@@ -1053,16 +1613,18 @@ export const BentoModule: React.FC<{
   };
 
   const rawItems = useMemo(() => getItemsFromMultipleSources(), [settingsValues, moduleId]);
+  const workspaceRowsSettingKey = `${moduleId}_el_bento_items_workspace_rows`;
+  const workspaceRowsSetting = settingsValues[workspaceRowsSettingKey];
 
   const layouts = useMemo(() => ({
     lg: getBentoLayoutForBreakpoint(rawItems, 'desktop', columns),
-    md: getBentoLayoutForBreakpoint(rawItems, 'desktop', columns),
-    sm: getBentoLayoutForBreakpoint(rawItems, 'tablet', 6),
-    xs: getBentoLayoutForBreakpoint(rawItems, 'mobile', 4),
+    md: getBentoLayoutForBreakpoint(rawItems, 'tablet', BENTO_TABLET_COLUMNS),
+    sm: getBentoLayoutForBreakpoint(rawItems, 'tablet', BENTO_TABLET_COLUMNS),
+    xs: getBentoLayoutForBreakpoint(rawItems, 'mobile', BENTO_MOBILE_COLUMNS),
     xxs: getBentoLayoutForBreakpoint(rawItems, 'mobile', 1)
   }), [rawItems, columns]);
 
-  const handleLayoutChange = (currentLayout: any, allLayouts: any) => {
+  const persistLayoutChange = (currentLayout: readonly any[], allLayouts?: any) => {
     if (!onSettingChange || isPreviewMode) return;
     if (!Array.isArray(currentLayout) || currentLayout.length === 0) return;
 
@@ -1070,6 +1632,7 @@ export const BentoModule: React.FC<{
       ? currentBreakpointRef.current
       : BENTO_BREAKPOINT_ORDER.find((breakpoint) => areLayoutsEqual(currentLayout, allLayouts?.[breakpoint])) || currentBreakpointRef.current;
     const currentBP = BENTO_BREAKPOINT_TO_LAYOUT[activeBreakpoint] || 'desktop';
+    const currentCols = getColumnsForBreakpoint(activeBreakpoint);
     const normalizedCurrentLayout = currentLayout.map(normalizeLayoutEntryWithId);
     const currentSignature = JSON.stringify({
       breakpoint: currentBP,
@@ -1084,9 +1647,9 @@ export const BentoModule: React.FC<{
     let changed = false;
 
     normalizedCurrentLayout.forEach((l: any) => {
-      const idx = parseInt(l.i);
+      const idx = findItemIndexByLayoutId(newItems, l.i);
       if (newItems[idx]) {
-        const entry = normalizeLayoutEntry(l);
+        const entry = clampLayoutEntry(l, currentCols);
         const existingLayouts = newItems[idx].layouts || {};
         const existingEntry = existingLayouts[currentBP] ? normalizeLayoutEntry(existingLayouts[currentBP]) : null;
         
@@ -1099,9 +1662,12 @@ export const BentoModule: React.FC<{
         ) {
           newItems[idx] = {
             ...newItems[idx],
-            layouts: { ...existingLayouts, [currentBP]: { x: entry.x, y: entry.y, w: entry.w, h: entry.h } },
+            layouts: { ...existingLayouts, [currentBP]: { x: entry.x, y: entry.y, w: entry.w, h: entry.h, columns: currentCols } },
+            layout_columns: { ...(newItems[idx].layout_columns || {}), [currentBP]: currentCols },
             // Keep legacy synced for desktop compatibility
-            ...(currentBP === 'desktop' ? { x: l.x, y: l.y, col_span: l.w, row_span: l.h } : {})
+            ...(currentBP === 'desktop' ? { x: entry.x, y: entry.y, col_span: entry.w, row_span: entry.h, desktop_span: entry.w, desktop_rows: entry.h } : {}),
+            ...(currentBP === 'tablet' ? { tablet_span: entry.w } : {}),
+            ...(currentBP === 'mobile' ? { mobile_span: entry.w } : {})
           };
           changed = true;
         }
@@ -1111,7 +1677,60 @@ export const BentoModule: React.FC<{
     if (changed) {
       lastPersistedLayoutSignatureRef.current = currentSignature;
       onSettingChange(`${moduleId}_el_bento_items`, 'items', newItems);
+      const nextOccupiedRows = Math.ceil(normalizedCurrentLayout.reduce((maxRows: number, entry: any) => {
+        return Math.max(maxRows, (Number(entry?.y) || 0) + Math.max(Number(entry?.h) || 1, 1));
+      }, 0));
+      const currentWorkspaceRows = getBentoWorkspaceRows(workspaceRowsSetting, currentBP);
+      const nextWorkspaceRows = clampNumber(
+        Math.max(BENTO_BASE_VISIBLE_ROWS, currentWorkspaceRows, nextOccupiedRows),
+        BENTO_BASE_VISIBLE_ROWS,
+        BENTO_MAX_EDITABLE_ROWS
+      );
+      if (nextWorkspaceRows !== currentWorkspaceRows) {
+        onSettingChange(
+          `${moduleId}_el_bento_items`,
+          'workspace_rows',
+          buildBentoWorkspaceRowsValue(workspaceRowsSetting, currentBP, nextWorkspaceRows)
+        );
+      }
     }
+  };
+
+  const commitPendingLayoutChange = (fallbackLayout?: readonly any[]) => {
+    if (layoutPersistTimerRef.current !== null) {
+      window.clearTimeout(layoutPersistTimerRef.current);
+      layoutPersistTimerRef.current = null;
+    }
+
+    const pending = pendingLayoutRef.current;
+    pendingLayoutRef.current = null;
+    persistLayoutChange(pending?.currentLayout || fallbackLayout || [], pending?.allLayouts);
+  };
+
+  const cancelPendingLayoutCommit = () => {
+    if (layoutPersistTimerRef.current !== null) {
+      window.clearTimeout(layoutPersistTimerRef.current);
+      layoutPersistTimerRef.current = null;
+    }
+    pendingLayoutRef.current = null;
+  };
+
+  const schedulePendingLayoutCommit = () => {
+    if (layoutPersistTimerRef.current !== null) {
+      window.clearTimeout(layoutPersistTimerRef.current);
+    }
+
+    layoutPersistTimerRef.current = window.setTimeout(() => {
+      commitPendingLayoutChange();
+    }, 250);
+  };
+
+  const handleLayoutChange = (currentLayout: any, allLayouts: any) => {
+    if (!onSettingChange || isPreviewMode) return;
+    if (!isInteractingWithLayoutRef.current) return;
+    if (!Array.isArray(currentLayout) || currentLayout.length === 0) return;
+    pendingLayoutRef.current = { currentLayout, allLayouts };
+    schedulePendingLayoutCommit();
   };
 
   const handleBreakpointChange = (newBreakpoint: string) => {
@@ -1129,25 +1748,39 @@ export const BentoModule: React.FC<{
     if (!onSettingChange) return;
     
     const type = (window as any)._draggingBentoType || 'text';
-    const currentLayoutKey = BENTO_BREAKPOINT_TO_LAYOUT[currentBreakpointRef.current] || 'desktop';
-    const droppedLayout = normalizeLayoutEntry(item);
+    const currentBreakpoint = forcedBreakpoint;
+    const currentLayoutKey = BENTO_BREAKPOINT_TO_LAYOUT[currentBreakpoint] || 'desktop';
+    const currentCols = getColumnsForBreakpoint(currentBreakpoint);
+    const droppedLayout = clampLayoutEntry(item, currentCols);
+    const defaultDesktopSpan = currentLayoutKey === 'desktop' ? droppedLayout.w : 8;
+    const defaultTabletSpan = currentLayoutKey === 'tablet' ? droppedLayout.w : Math.min(defaultDesktopSpan, BENTO_TABLET_COLUMNS);
+    const defaultMobileSpan = currentLayoutKey === 'mobile' ? droppedLayout.w : BENTO_MOBILE_COLUMNS;
     
     const newItem = {
       id: createBentoCellId(),
       type,
       title: type === 'stat' ? '99+' : (type === 'cta' ? '¡Únete ahora!' : 'Nuevo Bloque'),
       description: 'Personaliza este bloque desde el panel de ajustes.',
-      col_span: item.w,
-      row_span: item.h,
-      x: item.x,
-      y: item.y,
+      col_span: defaultDesktopSpan,
+      row_span: droppedLayout.h,
+      desktop_span: defaultDesktopSpan,
+      desktop_rows: droppedLayout.h,
+      tablet_span: defaultTabletSpan,
+      mobile_span: defaultMobileSpan,
+      x: currentLayoutKey === 'desktop' ? droppedLayout.x : 0,
+      y: currentLayoutKey === 'desktop' ? droppedLayout.y : 0,
       layouts: {
-        [currentLayoutKey]: droppedLayout
+        [currentLayoutKey]: { ...droppedLayout, columns: currentCols }
+      },
+      layout_columns: {
+        [currentLayoutKey]: currentCols
       },
       card_style: 'solid',
       card_radius: 28,
       padding: 32,
+      element_padding_y: 20,
       content_align: 'center',
+      clickActionType: 'none',
       icon: type === 'stat' ? 'Zap' : 'Sparkles',
       button_text: 'Explorar'
     };
@@ -1160,10 +1793,16 @@ export const BentoModule: React.FC<{
 
   const getLayoutEntryForBreakpoint = (item: any, breakpoint: 'desktop' | 'tablet' | 'mobile', colsForBreakpoint: number) => {
     if (item.layouts?.[breakpoint]) {
-      return normalizeLayoutEntry({
-        ...item.layouts[breakpoint],
-        w: Math.min(item.layouts[breakpoint].w || 1, colsForBreakpoint)
-      });
+      const layout = breakpoint === 'desktop'
+        ? scaleLegacyDesktopLayout(item, item.layouts[breakpoint], colsForBreakpoint)
+        : clampLayoutEntry(item.layouts[breakpoint], colsForBreakpoint);
+      return {
+        ...layout,
+        h: Math.max(
+          layout.h,
+          getBentoResponsiveMinRows(item, breakpoint, BENTO_ROW_HEIGHT, gap)
+        )
+      };
     }
 
     const w = breakpoint === 'mobile' ? (item.mobile_span || item.col_span || 4) :
@@ -1172,11 +1811,16 @@ export const BentoModule: React.FC<{
     const h = breakpoint === 'mobile' ? (item.mobile_rows || item.row_span || 2) :
               (item.desktop_rows || item.row_span || 2);
 
+    const layout = breakpoint === 'desktop'
+      ? scaleLegacyDesktopLayout(item, { x: item.x || 0, y: item.y || 0, w, h }, colsForBreakpoint)
+      : clampLayoutEntry({ x: item.x || 0, y: item.y || 0, w, h }, colsForBreakpoint);
+
     return {
-      x: Math.min(item.x || 0, Math.max(colsForBreakpoint - Math.min(w, colsForBreakpoint), 0)),
-      y: item.y || 0,
-      w: Math.min(w, colsForBreakpoint),
-      h
+      ...layout,
+      h: Math.max(
+        layout.h,
+        getBentoResponsiveMinRows(item, breakpoint, BENTO_ROW_HEIGHT, gap)
+      )
     };
   };
 
@@ -1205,7 +1849,120 @@ export const BentoModule: React.FC<{
   const showHeader = headerEyebrow || headerTitle || headerSubtitle;
 
   const shouldShowEmptyState = !isPreviewMode && rawItems.length === 0;
+  const activeLayoutForHeight = layouts[forcedBreakpoint as keyof typeof layouts] || [];
+  const activeLayoutKeyForHeight = BENTO_BREAKPOINT_TO_LAYOUT[forcedBreakpoint] || 'desktop';
+  const occupiedRows = Math.ceil(activeLayoutForHeight.reduce((maxRows: number, item: any) => {
+    return Math.max(maxRows, (Number(item?.y) || 0) + Math.max(Number(item?.h) || 1, 1));
+  }, 0));
+  const storedWorkspaceRows = getBentoWorkspaceRows(workspaceRowsSetting, activeLayoutKeyForHeight);
+  const workspaceRows = clampNumber(
+    Math.max(BENTO_BASE_VISIBLE_ROWS, storedWorkspaceRows, occupiedRows),
+    BENTO_BASE_VISIBLE_ROWS,
+    BENTO_MAX_EDITABLE_ROWS
+  );
+  const visibleEditorRows = shouldShowEmptyState ? BENTO_BASE_VISIBLE_ROWS : workspaceRows;
+  const visibleEditorMinHeight = (visibleEditorRows * BENTO_ROW_HEIGHT) + ((visibleEditorRows - 1) * gap);
   const isSelected = !isPreviewMode && settingsValues.isSelected; // Some canvases pass this
+  const [activeClickOverlay, setActiveClickOverlay] = useState<BentoClickOverlayState | null>(null);
+
+  const executeBentoClickAction = (item: any) => {
+    const actionType = getBentoClickActionType(item);
+    if (actionType === 'none') return;
+
+    if (actionType === 'url') {
+      const url = sanitizeBentoActionUrl(item?.clickUrl);
+      if (url) openBentoActionUrl(url, item?.clickOpenTarget || 'new_tab');
+      return;
+    }
+
+    if (actionType === 'image') {
+      const imageUrl = sanitizeBentoActionUrl(item?.clickImageUrl || item?.image || item?.card_image);
+      if (!imageUrl) return;
+      setActiveClickOverlay({
+        type: 'image',
+        imageUrl,
+        title: item?.clickImageTitle || item?.title,
+        description: item?.clickImageDescription || item?.description
+      });
+      return;
+    }
+
+    if (actionType === 'modal') {
+      if (!hasBentoClickAction(item)) return;
+      setActiveClickOverlay({
+        type: 'modal',
+        title: item?.clickModalTitle || item?.title,
+        description: item?.clickModalDescription || item?.description,
+        imageUrl: sanitizeBentoActionUrl(item?.clickModalImageUrl),
+        ctaText: item?.clickModalCtaText,
+        ctaUrl: sanitizeBentoActionUrl(item?.clickModalCtaUrl)
+      });
+      return;
+    }
+
+    if (actionType === 'section') {
+      const anchor = normalizeBentoSectionAnchor(item?.clickSectionAnchor);
+      if (anchor) scrollToBentoAnchor(anchor);
+      return;
+    }
+
+    if (actionType === 'whatsapp') {
+      const whatsappUrl = buildBentoWhatsappUrl(item?.clickWhatsappNumber, item?.clickWhatsappMessage);
+      if (whatsappUrl) openBentoActionUrl(whatsappUrl, 'new_tab');
+      return;
+    }
+
+    if (actionType === 'phone') {
+      const phoneUrl = buildBentoPhoneUrl(item?.clickPhoneNumber);
+      if (phoneUrl) openBentoActionUrl(phoneUrl, 'same_tab');
+      return;
+    }
+
+    if (actionType === 'email') {
+      const emailUrl = buildBentoEmailUrl(item?.clickEmail, item?.clickEmailSubject, item?.clickEmailBody);
+      if (emailUrl) openBentoActionUrl(emailUrl, 'same_tab');
+    }
+  };
+
+  useEffect(() => {
+    if (!activeClickOverlay) return;
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setActiveClickOverlay(null);
+      }
+    };
+
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [activeClickOverlay]);
+
+  useEffect(() => {
+    if (isPreviewMode || !onSettingChange || rawItems.length === 0 || isInteractingWithLayoutRef.current) return;
+
+    const targetWorkspaceRows = clampNumber(
+      Math.max(BENTO_BASE_VISIBLE_ROWS, occupiedRows),
+      BENTO_BASE_VISIBLE_ROWS,
+      BENTO_MAX_EDITABLE_ROWS
+    );
+
+    if (storedWorkspaceRows !== targetWorkspaceRows) {
+      onSettingChange(
+        `${moduleId}_el_bento_items`,
+        'workspace_rows',
+        buildBentoWorkspaceRowsValue(workspaceRowsSetting, activeLayoutKeyForHeight, targetWorkspaceRows)
+      );
+    }
+  }, [
+    activeLayoutKeyForHeight,
+    isPreviewMode,
+    moduleId,
+    occupiedRows,
+    onSettingChange,
+    rawItems.length,
+    storedWorkspaceRows,
+    workspaceRowsSetting
+  ]);
 
   useEffect(() => {
     if (!isPreviewMode && isBentoDebugEnabled()) {
@@ -1360,11 +2117,11 @@ export const BentoModule: React.FC<{
                 gap: `${gap}px`,
               }}
             >
-              {Array.from({ length: columns * 8 }).map((_, i) => (
+              {Array.from({ length: columns * visibleEditorRows }).map((_, i) => (
                 <div 
                   key={i} 
                   className="border border-primary/30 rounded-[28px]" 
-                  style={{ height: '80px' }}
+                  style={{ height: `${BENTO_ROW_HEIGHT}px` }}
                 />
               ))}
             </div>
@@ -1373,44 +2130,69 @@ export const BentoModule: React.FC<{
 
         {/* Visual editing grid */}
         <div 
+          ref={gridContainerRef}
           className={`w-full transition-all duration-500 relative ${!isPreviewMode ? 'min-h-[400px] border-2 border-dashed border-gray-200 rounded-[40px] hover:border-primary/40' : ''} ${!isPreviewMode && rawItems.length === 0 ? 'bg-blue-50/10 border-blue-200/50' : ''}`} 
           style={{ 
             opacity: 1,
             visibility: 'visible',
-            minHeight: !isPreviewMode ? '400px' : 'auto'
+            minHeight: !isPreviewMode ? `${visibleEditorMinHeight}px` : 'auto'
           }}
         >
-          {/* Editor Label */}
-          {!isPreviewMode && (
-            <div className="absolute -top-3 left-8 z-30 bg-primary text-white text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full shadow-lg">
-              {selectedIndex !== null ? 'Editando elemento' : 'Diseño libre'}
-            </div>
-          )}
-
           <ResponsiveGridLayout
+            key={`bento-grid-${constructorViewport}-${Math.round(normalizedPreviewScale * 1000)}`}
             className="layout w-full relative z-10"
             onBreakpointChange={handleBreakpointChange}
             onWidthChange={(w) => {
               if (isBentoDebugEnabled()) logDebug('[BENTO_WIDTH_CHANGE]', w);
             }}
             layouts={layouts}
-            breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
-            cols={{ lg: columns, md: columns, sm: 6, xs: 4, xxs: 1 }}
-            rowHeight={80}
+            breakpoint={forcedBreakpoint}
+            width={gridWidth}
+            style={{ minHeight: !isPreviewMode ? `${visibleEditorMinHeight}px` : undefined }}
+            breakpoints={{ lg: 992, md: 768, sm: 600, xs: 360, xxs: 0 }}
+            cols={{ lg: columns, md: BENTO_TABLET_COLUMNS, sm: BENTO_TABLET_COLUMNS, xs: BENTO_MOBILE_COLUMNS, xxs: 1 }}
+            rowHeight={BENTO_ROW_HEIGHT}
             margin={[gap, gap]}
             containerPadding={[0, 0]}
-            isDraggable={!isPreviewMode}
+            isDraggable={false}
             isResizable={!isPreviewMode}
-            isDroppable={!isPreviewMode}
+            resizeHandles={isPreviewMode ? [] : ['se']}
+            isDroppable={false}
             onLayoutChange={handleLayoutChange}
-            onDragStart={() => setIsDragging(true)}
-            onDragStop={() => setIsDragging(false)}
-            onResizeStart={() => setIsDragging(true)}
-            onResizeStop={() => setIsDragging(false)}
+            onDragStart={() => {
+              cancelPendingLayoutCommit();
+              isInteractingWithLayoutRef.current = true;
+              setIsDragging(true);
+            }}
+            onDragStop={(layout) => {
+              setIsDragging(false);
+              commitPendingLayoutChange(layout);
+              isInteractingWithLayoutRef.current = false;
+            }}
+            onResizeStart={() => {
+              cancelPendingLayoutCommit();
+              isInteractingWithLayoutRef.current = true;
+              setIsDragging(true);
+            }}
+            onResizeStop={(layout) => {
+              setIsDragging(false);
+              commitPendingLayoutChange(layout);
+              isInteractingWithLayoutRef.current = false;
+            }}
             onDrop={handleDrop}
+            compactType={null}
+            preventCollision={false}
+            allowOverlap={false}
+            isBounded={true}
             useCSSTransforms={true}
-            measureBeforeMount={true}
-            droppingItem={{ i: "__dropping_elem__", w: 4, h: 2, x: 0, y: 0 }}
+            transformScale={normalizedPreviewScale}
+            droppingItem={{
+              i: "__dropping_elem__",
+              w: forcedBreakpoint === 'lg' ? 8 : forcedBreakpoint === 'md' ? 3 : 4,
+              h: 2,
+              x: 0,
+              y: 0
+            }}
           >
             {rawItems.map((item: any, i: number) => {
               const {
@@ -1470,9 +2252,10 @@ export const BentoModule: React.FC<{
                 none: ''
               }[hover_effect as string] || '' : '';
 
-              const isSelected = selectedIndex === i;
-              const rglKey = i.toString();
-              const cellKey = item.id || rglKey;
+              const isSelected = !isPreviewMode && selectedIndex === i;
+              const rglKey = getLayoutItemId(item, i);
+              const cellKey = rglKey;
+              const isCardClickable = isPreviewMode && hasBentoClickAction(item);
 
               return (
                 <div 
@@ -1506,30 +2289,27 @@ export const BentoModule: React.FC<{
                         e.stopPropagation();
                         selectSection(moduleId);
                         setSelectedIndex(i);
+                        return;
+                      }
+                      if (isCardClickable) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        executeBentoClickAction(item);
                       }
                     }}
-                    className={`w-full h-full overflow-hidden transition-all duration-300 group flex flex-col cursor-pointer relative ${shadowClass} ${hoverClass} ${alignClass} ${card_style === 'glass' ? 'backdrop-blur-xl' : ''} ${
-                      isSelected ? 'ring-4 ring-primary ring-offset-4 scale-[1.01] z-50 shadow-2xl' : 'z-10'
+                    className={`w-full h-full overflow-hidden group flex flex-col ${!isPreviewMode || isCardClickable ? 'cursor-pointer' : ''} relative ${isDragging ? 'transition-none' : 'transition-all duration-300'} ${shadowClass} ${hoverClass} ${alignClass} ${card_style === 'glass' ? 'backdrop-blur-xl' : ''} ${
+                      isSelected ? `ring-4 ring-primary ring-offset-4 ${isDragging ? '' : 'scale-[1.01]'} z-50 shadow-2xl` : 'z-10'
                     }`}
                     style={{
                       backgroundColor: specialBg ? undefined : (card_style !== 'gradient' ? finalBg : undefined),
                       backgroundImage: specialBg || (card_style === 'gradient' ? finalBg : undefined),
                       borderRadius: `${card_radius}px`,
                       border: (card_style === 'transparent' || isHeroType) ? 'none' : `1px solid ${resolvedCardBorder}`,
-                      padding: type === 'visual' ? 0 : `${padding}px`,
+                      padding: (type === 'visual' || type === 'icon') ? 0 : `${padding}px`,
                       boxShadow: glowShadow,
                       zIndex: isSelected ? 50 : z_index
                     }}
                   >
-                    {/* Selected Indicator Labels (Only in Constructor) */}
-                    {isSelected && (
-                      <div className="absolute top-4 left-4 z-50 flex items-center gap-2">
-                        <div className="bg-primary text-white text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded shadow-lg">
-                          Editando Bloque: {item.title || 'Nuevo'}
-                        </div>
-                      </div>
-                    )}
-
                     {/* Background Image Logic */}
                     {card_image && type !== 'visual' && (
                       <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
@@ -1597,6 +2377,64 @@ export const BentoModule: React.FC<{
         )}
 
       </div>
+      {isPreviewMode && activeClickOverlay && (
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setActiveClickOverlay(null)}
+        >
+          <div
+            className="relative max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-[28px] bg-white p-4 shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setActiveClickOverlay(null)}
+              className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-black/70 text-white transition hover:bg-black"
+              aria-label="Cerrar"
+            >
+              <X size={18} />
+            </button>
+
+            {activeClickOverlay.imageUrl && (
+              <div className="overflow-hidden rounded-[22px] bg-slate-100">
+                <img
+                  src={activeClickOverlay.imageUrl}
+                  alt={activeClickOverlay.title || 'Imagen ampliada'}
+                  className="max-h-[68vh] w-full object-contain"
+                  referrerPolicy="no-referrer"
+                />
+              </div>
+            )}
+
+            {(activeClickOverlay.title || activeClickOverlay.description || activeClickOverlay.ctaText) && (
+              <div className="space-y-4 px-2 pb-2 pt-5">
+                {activeClickOverlay.title && (
+                  <h3 className="text-2xl font-black leading-tight text-slate-950">
+                    {activeClickOverlay.title}
+                  </h3>
+                )}
+                {activeClickOverlay.description && (
+                  <p className="whitespace-pre-line text-sm leading-7 text-slate-600">
+                    {activeClickOverlay.description}
+                  </p>
+                )}
+                {activeClickOverlay.ctaText && activeClickOverlay.ctaUrl && (
+                  <button
+                    type="button"
+                    onClick={() => openBentoActionUrl(activeClickOverlay.ctaUrl || '', 'new_tab')}
+                    className="inline-flex items-center gap-2 rounded-2xl bg-primary px-5 py-3 text-sm font-black text-white shadow-lg transition hover:brightness-110"
+                  >
+                    {activeClickOverlay.ctaText}
+                    <ExternalLink size={16} />
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
       </section>
     </SectionAnimation>
   );

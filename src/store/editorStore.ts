@@ -55,6 +55,17 @@ export const initialContent: SiteContent = {
   sections: []
 };
 
+const normalizeThemeValue = (value: any) => {
+  if (typeof value === 'string') return value.trim().toLowerCase();
+  return value ?? null;
+};
+
+const areThemeValuesEquivalent = (a: any, b: any) => Object.is(normalizeThemeValue(a), normalizeThemeValue(b));
+
+const hasEffectiveThemeChange = (currentTheme: Record<string, any> = {}, themeUpdate: Record<string, any> = {}) => (
+  Object.entries(themeUpdate).some(([key, value]) => !areThemeValuesEquivalent(currentTheme[key], value))
+);
+
 export const useEditorStore = create<EditorStoreState>((set, get) => ({
   siteContent: initialContent,
   selectedSectionId: null,
@@ -163,6 +174,10 @@ export const useEditorStore = create<EditorStoreState>((set, get) => ({
 
   updateTheme: (themeUpdate) => {
     set((state) => {
+      if (!themeUpdate || !hasEffectiveThemeChange(state.siteContent.theme, themeUpdate)) {
+        return state;
+      }
+
       const newContent = {
         ...state.siteContent,
         theme: { ...state.siteContent.theme, ...themeUpdate }

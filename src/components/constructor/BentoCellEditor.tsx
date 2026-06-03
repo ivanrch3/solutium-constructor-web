@@ -39,6 +39,13 @@ const PILLAR_LABELS: Record<string, string> = {
 };
 
 const PILLARS_ORDER: string[] = ['contenido', 'estructura', 'estilo', 'tipografia', 'multimedia', 'interaccion'];
+const BENTO_DESKTOP_COLUMNS = 24;
+const BENTO_MIN_DESKTOP_COLUMNS = 12;
+const BENTO_MAX_DESKTOP_COLUMNS = 32;
+const BENTO_TABLET_COLUMNS = 6;
+const BENTO_MOBILE_COLUMNS = 4;
+const BENTO_BASE_VISIBLE_ROWS = 7;
+const BENTO_MAX_EDITABLE_ROWS = 240;
 
 const TEXT_STYLE_PRESETS: Record<string, Record<string, any>> = {
   display: { title_size: 't1', title_weight: 'black', description_size: 'p', line_height: 1.05, letter_spacing: -2 },
@@ -48,6 +55,218 @@ const TEXT_STYLE_PRESETS: Record<string, Record<string, any>> = {
   paragraph: { title_size: 'p', title_weight: 'normal', description_size: 'p', line_height: 1.55, letter_spacing: 0 },
   small: { title_size: 's', title_weight: 'normal', description_size: 's', line_height: 1.45, letter_spacing: 0 },
   caption: { title_size: 's', title_weight: 'bold', description_size: 's', line_height: 1.3, letter_spacing: 1 }
+};
+
+const BENTO_CLICK_ACTION_FIELDS = [
+  {
+    label: 'Acción al hacer clic',
+    setting: {
+      id: 'clickActionType',
+      label: 'Acción al hacer clic',
+      type: 'select',
+      defaultValue: 'none',
+      options: [
+        { label: 'Sin acción', value: 'none' },
+        { label: 'Abrir URL', value: 'url' },
+        { label: 'Abrir imagen ampliada', value: 'image' },
+        { label: 'Abrir modal informativo', value: 'modal' },
+        { label: 'Ir a sección', value: 'section' },
+        { label: 'WhatsApp', value: 'whatsapp' },
+        { label: 'Teléfono', value: 'phone' },
+        { label: 'Email', value: 'email' }
+      ],
+      description: 'La acción se aplica a toda la tarjeta en preview limpio y sitio publicado.'
+    }
+  },
+  {
+    label: 'URL',
+    setting: {
+      id: 'clickUrl',
+      label: 'URL',
+      type: 'url',
+      defaultValue: '',
+      placeholder: 'https://...',
+      showIf: { settingId: 'clickActionType', value: 'url' }
+    }
+  },
+  {
+    label: 'Destino',
+    setting: {
+      id: 'clickOpenTarget',
+      label: 'Destino',
+      type: 'select',
+      defaultValue: 'new_tab',
+      options: [
+        { label: 'Nueva pestaña', value: 'new_tab' },
+        { label: 'Misma pestaña', value: 'same_tab' }
+      ],
+      showIf: { settingId: 'clickActionType', value: 'url' }
+    }
+  },
+  {
+    label: 'Imagen ampliada',
+    setting: {
+      id: 'clickImageUrl',
+      label: 'Imagen ampliada',
+      type: 'image',
+      defaultValue: '',
+      showIf: { settingId: 'clickActionType', value: 'image' }
+    }
+  },
+  {
+    label: 'Título de imagen',
+    setting: {
+      id: 'clickImageTitle',
+      label: 'Título de imagen',
+      type: 'text',
+      defaultValue: '',
+      showIf: { settingId: 'clickActionType', value: 'image' }
+    }
+  },
+  {
+    label: 'Descripción de imagen',
+    setting: {
+      id: 'clickImageDescription',
+      label: 'Descripción de imagen',
+      type: 'textarea',
+      rows: 3,
+      defaultValue: '',
+      showIf: { settingId: 'clickActionType', value: 'image' }
+    }
+  },
+  {
+    label: 'Título del modal',
+    setting: {
+      id: 'clickModalTitle',
+      label: 'Título del modal',
+      type: 'text',
+      defaultValue: '',
+      showIf: { settingId: 'clickActionType', value: 'modal' }
+    }
+  },
+  {
+    label: 'Descripción del modal',
+    setting: {
+      id: 'clickModalDescription',
+      label: 'Descripción del modal',
+      type: 'textarea',
+      rows: 4,
+      defaultValue: '',
+      showIf: { settingId: 'clickActionType', value: 'modal' }
+    }
+  },
+  {
+    label: 'Imagen del modal',
+    setting: {
+      id: 'clickModalImageUrl',
+      label: 'Imagen del modal',
+      type: 'image',
+      defaultValue: '',
+      showIf: { settingId: 'clickActionType', value: 'modal' }
+    }
+  },
+  {
+    label: 'Texto CTA',
+    setting: {
+      id: 'clickModalCtaText',
+      label: 'Texto CTA',
+      type: 'text',
+      defaultValue: '',
+      showIf: { settingId: 'clickActionType', value: 'modal' }
+    }
+  },
+  {
+    label: 'URL CTA',
+    setting: {
+      id: 'clickModalCtaUrl',
+      label: 'URL CTA',
+      type: 'url',
+      defaultValue: '',
+      showIf: { settingId: 'clickActionType', value: 'modal' }
+    }
+  },
+  {
+    label: 'Ancla de sección',
+    setting: {
+      id: 'clickSectionAnchor',
+      label: 'Ancla de sección',
+      type: 'text',
+      defaultValue: '',
+      placeholder: '#contacto',
+      showIf: { settingId: 'clickActionType', value: 'section' }
+    }
+  },
+  {
+    label: 'Número de WhatsApp',
+    setting: {
+      id: 'clickWhatsappNumber',
+      label: 'Número de WhatsApp',
+      type: 'text',
+      defaultValue: '',
+      placeholder: '+50688888888',
+      showIf: { settingId: 'clickActionType', value: 'whatsapp' }
+    }
+  },
+  {
+    label: 'Mensaje de WhatsApp',
+    setting: {
+      id: 'clickWhatsappMessage',
+      label: 'Mensaje de WhatsApp',
+      type: 'textarea',
+      rows: 3,
+      defaultValue: '',
+      showIf: { settingId: 'clickActionType', value: 'whatsapp' }
+    }
+  },
+  {
+    label: 'Número de teléfono',
+    setting: {
+      id: 'clickPhoneNumber',
+      label: 'Número de teléfono',
+      type: 'text',
+      defaultValue: '',
+      placeholder: '+50688888888',
+      showIf: { settingId: 'clickActionType', value: 'phone' }
+    }
+  },
+  {
+    label: 'Email',
+    setting: {
+      id: 'clickEmail',
+      label: 'Email',
+      type: 'text',
+      defaultValue: '',
+      placeholder: 'hola@empresa.com',
+      showIf: { settingId: 'clickActionType', value: 'email' }
+    }
+  },
+  {
+    label: 'Asunto',
+    setting: {
+      id: 'clickEmailSubject',
+      label: 'Asunto',
+      type: 'text',
+      defaultValue: '',
+      showIf: { settingId: 'clickActionType', value: 'email' }
+    }
+  },
+  {
+    label: 'Mensaje',
+    setting: {
+      id: 'clickEmailBody',
+      label: 'Mensaje',
+      type: 'textarea',
+      rows: 3,
+      defaultValue: '',
+      showIf: { settingId: 'clickActionType', value: 'email' }
+    }
+  }
+];
+
+const clampBentoDesktopColumns = (value: any) => {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return BENTO_DESKTOP_COLUMNS;
+  return Math.min(BENTO_MAX_DESKTOP_COLUMNS, Math.max(BENTO_MIN_DESKTOP_COLUMNS, Math.round(parsed)));
 };
 
 interface BentoCellEditorProps {
@@ -63,6 +282,7 @@ interface BentoCellEditorProps {
   title?: string;
   onClose?: () => void;
   embedded?: boolean;
+  activeViewport?: 'desktop' | 'tablet' | 'mobile';
 }
 
 export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
@@ -77,7 +297,8 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
   projectColors,
   title = 'Editar elemento',
   onClose,
-  embedded = false
+  embedded = false,
+  activeViewport = 'desktop'
 }) => {
   const [expandedPillars, setExpandedPillars] = React.useState<Record<string, boolean>>({
     contenido: true,
@@ -112,12 +333,212 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
 
   const selectedBentoItem = getSelectedBentoItem();
   const selectedType = selectedBentoItem?.type || 'text';
+  const activeLayoutKey = activeViewport;
+  const desktopColumns = clampBentoDesktopColumns(
+    settingsValues?.[`${selectedSection.id}_global_columns`]
+      ?? selectedSection.settings?.[`${selectedSection.id}_global_columns`]
+      ?? selectedSection.content?.columns
+  );
+  const activeColumns = activeViewport === 'desktop'
+    ? desktopColumns
+    : activeViewport === 'tablet'
+      ? BENTO_TABLET_COLUMNS
+      : BENTO_MOBILE_COLUMNS;
+
+  const clampNumber = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
+  const parseNumber = (value: any, fallback: number) => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : fallback;
+  };
+
+  const getResponsiveMinimumRows = (item: any) => {
+    if (activeLayoutKey === 'desktop') return 1;
+    if (item?.type === 'icon') {
+      const visualSize = item.icon_visual_type === 'image'
+        ? parseNumber(item.icon_image_size, 72)
+        : Math.max(parseNumber(item.icon_size, 32) + 16, 40);
+      const hasText = Boolean(item.title || item.description);
+      const textPadding = parseNumber(item.padding, 32);
+      const elementPaddingY = parseNumber(item.element_padding_y, 20);
+      const estimatedHeight = visualSize + (hasText ? 92 + (textPadding * 2) : 0) + (elementPaddingY * 2);
+      return Math.max(2, Math.ceil(estimatedHeight / 96));
+    }
+    if (item?.type === 'list') return 3;
+    if (item?.type === 'visual') return 3;
+    return 2;
+  };
+
+  const getWorkspaceRows = () => {
+    const workspaceRowsKey = `${selectedSection.id}_el_bento_items_workspace_rows`;
+    const workspaceRowsValue = settingsValues?.[workspaceRowsKey] ?? selectedSection.settings?.[workspaceRowsKey];
+    const rawRows = typeof workspaceRowsValue === 'object' && workspaceRowsValue !== null
+      ? workspaceRowsValue[activeLayoutKey]
+      : workspaceRowsValue;
+    const parsedRows = Number(rawRows);
+    return clampNumber(
+      Number.isFinite(parsedRows) ? parsedRows : BENTO_BASE_VISIBLE_ROWS,
+      BENTO_BASE_VISIBLE_ROWS,
+      BENTO_MAX_EDITABLE_ROWS
+    );
+  };
+
+  const getOccupiedRows = (items: any[]) => Math.ceil(items.reduce((maxRows: number, item: any) => {
+    const layout = getActiveLayout(item);
+    return Math.max(maxRows, layout.y + Math.max(layout.h, 1));
+  }, 0));
+
+  const updateWorkspaceRows = (rows: number) => {
+    const nextRows = clampNumber(rows, BENTO_BASE_VISIBLE_ROWS, BENTO_MAX_EDITABLE_ROWS);
+    const workspaceRowsKey = `${selectedSection.id}_el_bento_items_workspace_rows`;
+    const currentValue = settingsValues?.[workspaceRowsKey] ?? selectedSection.settings?.[workspaceRowsKey];
+    const currentRows = getWorkspaceRows();
+    if (currentRows === nextRows) return;
+
+    const nextValue = {
+      ...(typeof currentValue === 'object' && currentValue !== null ? currentValue : {}),
+      [activeLayoutKey]: nextRows
+    };
+
+    if (onSettingChange) {
+      onSettingChange(`${selectedSection.id}_el_bento_items`, 'workspace_rows', nextValue);
+    } else {
+      updateSectionSettings(selectedSection.id, { [workspaceRowsKey]: nextValue });
+    }
+  };
+
+  const shouldScaleLegacyDesktopLayout = (item: any, layout: any) => {
+    const declaredColumns = Number(layout?.columns || item?.layout_columns?.desktop || item?.layoutColumns?.desktop || 0);
+    return activeLayoutKey === 'desktop'
+      && (declaredColumns > 0 ? declaredColumns < activeColumns : activeColumns === BENTO_DESKTOP_COLUMNS);
+  };
+
+  const getActiveLayout = (item: any) => {
+    const savedLayout = item.layouts?.[activeLayoutKey];
+    const defaultW = activeLayoutKey === 'desktop'
+      ? (item.desktop_span || item.col_span || 8)
+      : activeLayoutKey === 'tablet'
+        ? (item.tablet_span || Math.min(item.col_span || 3, BENTO_TABLET_COLUMNS))
+        : (item.mobile_span || BENTO_MOBILE_COLUMNS);
+    const defaultH = activeLayoutKey === 'mobile'
+      ? (item.mobile_rows || item.row_span || 2)
+      : (item.desktop_rows || item.row_span || 2);
+    const rawLayout = {
+      x: Number(savedLayout?.x ?? item.x ?? 0) || 0,
+      y: Number(savedLayout?.y ?? item.y ?? 0) || 0,
+      w: Number(savedLayout?.w ?? defaultW) || 1,
+      h: Number(savedLayout?.h ?? defaultH) || 1
+    };
+    const scaleLegacyDesktop = savedLayout
+      ? shouldScaleLegacyDesktopLayout(item, savedLayout)
+      : shouldScaleLegacyDesktopLayout(item, rawLayout);
+    const w = clampNumber(scaleLegacyDesktop ? rawLayout.w * 2 : rawLayout.w, 1, activeColumns);
+
+    return {
+      x: clampNumber(scaleLegacyDesktop ? rawLayout.x * 2 : rawLayout.x, 0, Math.max(activeColumns - w, 0)),
+      y: Math.max(rawLayout.y, 0),
+      w,
+      h: Math.max(rawLayout.h, getResponsiveMinimumRows(item))
+    };
+  };
+
+  const layoutsCollide = (
+    candidate: { x: number; y: number; w: number; h: number },
+    existing: { x: number; y: number; w: number; h: number }
+  ) => (
+    candidate.x < existing.x + existing.w &&
+    candidate.x + candidate.w > existing.x &&
+    candidate.y < existing.y + existing.h &&
+    candidate.y + candidate.h > existing.y
+  );
+
+  const moveSelectedCell = (dx: number, dy: number) => {
+    const currentItems = getBentoItems();
+    const currentItem = currentItems[selectedBentoCellIndex];
+    if (!currentItem) return;
+
+    const currentLayout = getActiveLayout(currentItem);
+    const nextLayout = {
+      ...currentLayout,
+      x: clampNumber(currentLayout.x + dx, 0, Math.max(activeColumns - currentLayout.w, 0)),
+      y: Math.max(currentLayout.y + dy, 0)
+    };
+
+    if (nextLayout.x === currentLayout.x && nextLayout.y === currentLayout.y) return;
+
+    const collides = currentItems.some((item: any, index: number) => {
+      if (index === selectedBentoCellIndex) return false;
+      return layoutsCollide(nextLayout, getActiveLayout(item));
+    });
+    if (collides) return;
+
+    const currentWorkspaceRows = getWorkspaceRows();
+    const nextBottom = nextLayout.y + nextLayout.h;
+    if (nextBottom > BENTO_MAX_EDITABLE_ROWS) return;
+
+    const newItems = [...currentItems];
+    const existingLayouts = currentItem.layouts || {};
+    const nextItem = {
+      ...currentItem,
+      layouts: {
+        ...existingLayouts,
+        [activeLayoutKey]: { ...nextLayout, columns: activeColumns }
+      },
+      layout_columns: {
+        ...(currentItem.layout_columns || {}),
+        [activeLayoutKey]: activeColumns
+      },
+      ...(activeLayoutKey === 'desktop'
+        ? {
+          x: nextLayout.x,
+          y: nextLayout.y,
+          col_span: nextLayout.w,
+          row_span: nextLayout.h,
+          desktop_span: nextLayout.w,
+          desktop_rows: nextLayout.h
+        }
+        : {}),
+      ...(activeLayoutKey === 'tablet' ? { tablet_span: nextLayout.w } : {}),
+      ...(activeLayoutKey === 'mobile' ? { mobile_span: nextLayout.w } : {})
+    };
+
+    newItems[selectedBentoCellIndex] = nextItem;
+    if (onSettingChange) {
+      onSettingChange(`${selectedSection.id}_el_bento_items`, 'items', newItems);
+    } else {
+      updateSectionSettings(selectedSection.id, { [`${selectedSection.id}_el_bento_items_items`]: newItems });
+    }
+
+    if (dy > 0 && nextBottom > currentWorkspaceRows) {
+      updateWorkspaceRows(nextBottom);
+    } else if (dy < 0) {
+      updateWorkspaceRows(Math.max(BENTO_BASE_VISIBLE_ROWS, getOccupiedRows(newItems)));
+    }
+  };
+
+  const selectedLayout = selectedBentoItem ? getActiveLayout(selectedBentoItem) : null;
+  const canMoveSelectedCell = (dx: number, dy: number) => {
+    if (!selectedLayout) return false;
+
+    const nextLayout = {
+      ...selectedLayout,
+      x: clampNumber(selectedLayout.x + dx, 0, Math.max(activeColumns - selectedLayout.w, 0)),
+      y: Math.max(selectedLayout.y + dy, 0)
+    };
+
+    if (nextLayout.x === selectedLayout.x && nextLayout.y === selectedLayout.y) return false;
+    if (nextLayout.y + nextLayout.h > BENTO_MAX_EDITABLE_ROWS) return false;
+
+    return !getBentoItems().some((item: any, index: number) => {
+      if (index === selectedBentoCellIndex) return false;
+      return layoutsCollide(nextLayout, getActiveLayout(item));
+    });
+  };
 
   const visibleFieldsByType: Record<string, string[]> = {
     text: ['text_style', 'title', 'description', 'title_size', 'title_weight', 'font_family', 'title_color', 'description_size', 'content_align', 'line_height', 'letter_spacing', 'card_image', 'card_overlay', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'align_items', 'card_style', 'card_bg', 'card_gradient', 'card_radius', 'card_shadow', 'text_contrast'],
     visual: ['image', 'image_fit', 'card_image', 'card_overlay', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'align_items', 'card_style', 'card_bg', 'card_gradient', 'card_radius', 'card_shadow'],
     button: ['button_text', 'btn_url', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'align_items', 'card_style', 'card_bg', 'card_gradient', 'card_image', 'card_overlay', 'card_radius', 'card_shadow'],
-    icon: ['title', 'description', 'icon', 'title_size', 'title_weight', 'title_color', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'align_items', 'card_style', 'card_bg', 'card_gradient', 'card_image', 'card_overlay', 'card_radius', 'card_shadow', 'text_contrast'],
+    icon: ['title', 'description', 'icon_visual_type', 'icon', 'icon_color', 'icon_size', 'show_icon_bg', 'icon_bg', 'icon_image', 'icon_image_size', 'title_size', 'title_weight', 'title_color', 'description_size', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'element_padding_y', 'padding', 'align_items', 'card_style', 'card_bg', 'card_gradient', 'card_image', 'card_overlay', 'card_radius', 'card_shadow', 'text_contrast'],
     badge: ['title', 'icon', 'title_size', 'title_weight', 'title_color', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'align_items', 'card_style', 'card_bg', 'card_gradient', 'card_image', 'card_overlay', 'card_radius', 'card_shadow'],
     metric: ['metric_value', 'metric_prefix', 'metric_suffix', 'metric_label', 'accent_color', 'icon', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'align_items', 'card_style', 'card_bg', 'card_gradient', 'card_image', 'card_overlay', 'card_radius', 'card_shadow'],
     list: ['title', 'list_items', 'icon', 'title_size', 'title_weight', 'title_color', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'align_items', 'card_style', 'card_bg', 'card_gradient', 'card_image', 'card_overlay', 'card_radius', 'card_shadow'],
@@ -128,10 +549,70 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
 
   const shouldShowFieldForType = (field: any) => {
     const visibleFields = visibleFieldsByType[selectedType] || visibleFieldsByType.text;
+    const iconVisualType = selectedBentoItem?.icon_visual_type || 'icon';
+    if (selectedType === 'icon' && iconVisualType === 'image') {
+      if (['icon', 'icon_color', 'icon_size', 'show_icon_bg', 'icon_bg'].includes(field.id)) return false;
+    }
+    if (selectedType === 'icon' && iconVisualType !== 'image' && ['icon_image', 'icon_image_size'].includes(field.id)) return false;
     return visibleFields.includes(field.id);
   };
 
   const settingsByPillar: Record<string, { label: string, setting: any, contextId: string }[]> = {};
+
+  const normalizeFieldForSelectedType = (field: any) => {
+    let nextField = field;
+    if (selectedType === 'icon' && field.id === 'title_size') {
+      nextField = { ...nextField, allowedLevels: ['t1', 't2', 't3'] };
+    }
+    if (selectedType === 'icon' && field.id === 'description_size') {
+      nextField = { ...nextField, allowedLevels: ['t3', 'p', 's'] };
+    }
+    if (selectedType === 'icon' && field.id === 'desktop_span') {
+      nextField = { ...nextField, label: 'Ancho de celda en escritorio', max: desktopColumns, subsection: 'Tamaño de celda', description: 'Ajusta el espacio que ocupa el bloque en el grid; no cambia el tamaño interno del icono o la imagen.' };
+    } else if (field.id === 'desktop_span') {
+      nextField = { ...nextField, max: desktopColumns };
+    }
+    if (selectedType === 'icon' && field.id === 'desktop_rows') {
+      nextField = { ...nextField, label: 'Alto de celda en escritorio', subsection: 'Tamaño de celda', description: 'Ajusta filas de alto de la celda. También puedes usar el resize visual del canvas.' };
+    }
+    if (selectedType === 'icon' && field.id === 'tablet_span') {
+      nextField = { ...nextField, label: 'Ancho de celda en tablet', subsection: 'Tamaño de celda', description: 'Ajusta el ancho del bloque en el grid tablet.' };
+    }
+    if (selectedType === 'icon' && field.id === 'mobile_span') {
+      nextField = { ...nextField, label: 'Ancho de celda en móvil', subsection: 'Tamaño de celda', description: 'Ajusta el ancho del bloque en el grid móvil.' };
+    }
+    if (selectedType === 'icon' && field.id === 'element_padding_y') {
+      nextField = { ...nextField, label: 'Separación vertical del elemento', subsection: 'Espaciado del elemento', description: 'Aire superior e inferior del conjunto visual + textos dentro de la celda.' };
+    }
+    if (selectedType === 'icon' && field.id === 'padding') {
+      nextField = { ...nextField, label: 'Separación interna de textos', description: 'Espacio propio del bloque de título y descripción; no cambia el tamaño ni la posición del visual.' };
+    }
+    if (selectedType === 'icon' && field.id === 'align_items') {
+      nextField = { ...nextField, label: 'Alineación vertical del contenido', description: 'Mueve juntos el visual, título y descripción dentro de una celda alta.' };
+    }
+    if (selectedType === 'icon' && field.id === 'card_style') {
+      nextField = { ...nextField, label: 'Estilo del contenedor', description: 'Cambia el fondo visual de la celda completa, no el icono o imagen interna.' };
+    }
+    if (selectedType === 'icon' && field.id === 'card_bg') {
+      nextField = { ...nextField, label: 'Fondo del contenedor' };
+    }
+    if (selectedType === 'icon' && field.id === 'card_gradient') {
+      nextField = { ...nextField, label: 'Degradado del contenedor' };
+    }
+    if (selectedType === 'icon' && field.id === 'card_image') {
+      nextField = { ...nextField, label: 'Imagen de fondo del contenedor' };
+    }
+    if (selectedType === 'icon' && field.id === 'card_overlay') {
+      nextField = { ...nextField, label: 'Opacidad de imagen de fondo' };
+    }
+    if (selectedType === 'icon' && field.id === 'card_radius') {
+      nextField = { ...nextField, label: 'Redondeo del contenedor' };
+    }
+    if (selectedType === 'icon' && field.id === 'card_shadow') {
+      nextField = { ...nextField, label: 'Sombra del contenedor' };
+    }
+    return nextField;
+  };
 
   moduleDef.elements.forEach((element: any) => {
     if (element.id !== 'el_bento_items' || !element.settings) return;
@@ -144,15 +625,25 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
       (settings as any[]).forEach((setting) => {
         const cellSettings = setting.type === 'repeater' && Array.isArray(setting.fields) ? setting.fields : [setting];
         cellSettings.filter(shouldShowFieldForType).forEach((field: any) => {
+          const normalizedField = normalizeFieldForSelectedType(field);
           settingsByPillar[targetPillar].push({
-            label: field.label,
-            setting: field,
+            label: normalizedField.label,
+            setting: normalizedField,
             contextId: `${selectedSection.id}_${element.id}_${selectedBentoCellIndex}`
           });
         });
       });
     });
   });
+
+  const interactionContextId = `${selectedSection.id}_el_bento_items_${selectedBentoCellIndex}`;
+  if (!settingsByPillar.interaccion) settingsByPillar.interaccion = [];
+  settingsByPillar.interaccion.push(
+    ...BENTO_CLICK_ACTION_FIELDS.map((field) => ({
+      ...field,
+      contextId: interactionContextId
+    }))
+  );
 
   const togglePillar = (pillar: string) => {
     setExpandedPillars(prev => ({ ...prev, [pillar]: !prev[pillar] }));
@@ -205,7 +696,92 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
       const textStylePreset = settingId === 'text_style'
         ? TEXT_STYLE_PRESETS[value as string] || {}
         : {};
-      newItems[index] = { ...newItems[index], [settingId]: value, ...textStylePreset };
+      const currentItem = newItems[index];
+      let nextItem = { ...currentItem, [settingId]: value, ...textStylePreset };
+      const numericValue = Number(value);
+
+      if (Number.isFinite(numericValue) && ['desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span'].includes(settingId)) {
+        const existingLayouts = currentItem.layouts || {};
+        const updateLayoutSize = (
+          breakpoint: 'desktop' | 'tablet' | 'mobile',
+          cols: number,
+          updates: { w?: number; h?: number }
+        ) => {
+          const currentLayout = breakpoint === activeLayoutKey
+            ? getActiveLayout(currentItem)
+            : (() => {
+                const savedLayout = existingLayouts[breakpoint];
+                const fallbackW = breakpoint === 'desktop'
+                  ? (currentItem.desktop_span || currentItem.col_span || 4)
+                  : breakpoint === 'tablet'
+                    ? (currentItem.tablet_span || Math.min(currentItem.col_span || 3, BENTO_TABLET_COLUMNS))
+                    : (currentItem.mobile_span || BENTO_MOBILE_COLUMNS);
+                const fallbackH = breakpoint === 'mobile'
+                  ? (currentItem.mobile_rows || currentItem.row_span || 2)
+                  : (currentItem.desktop_rows || currentItem.row_span || 2);
+                return {
+                  x: Number(savedLayout?.x ?? currentItem.x ?? 0) || 0,
+                  y: Number(savedLayout?.y ?? currentItem.y ?? 0) || 0,
+                  w: Number(savedLayout?.w ?? fallbackW) || 1,
+                  h: Number(savedLayout?.h ?? fallbackH) || 1
+                };
+              })();
+          const nextW = clampNumber(updates.w ?? currentLayout.w, 1, cols);
+          const nextH = Math.max(updates.h ?? currentLayout.h, 1);
+
+          return {
+            x: clampNumber(currentLayout.x, 0, Math.max(cols - nextW, 0)),
+            y: Math.max(currentLayout.y, 0),
+            w: nextW,
+            h: nextH,
+            columns: cols
+          };
+        };
+
+        if (settingId === 'desktop_span') {
+          const layout = updateLayoutSize('desktop', desktopColumns, { w: numericValue });
+          nextItem = {
+            ...nextItem,
+            x: layout.x,
+            y: layout.y,
+            col_span: layout.w,
+            desktop_span: layout.w,
+            layouts: { ...existingLayouts, desktop: layout },
+            layout_columns: { ...(currentItem.layout_columns || {}), desktop: desktopColumns }
+          };
+        }
+        if (settingId === 'desktop_rows') {
+          const layout = updateLayoutSize('desktop', desktopColumns, { h: numericValue });
+          nextItem = {
+            ...nextItem,
+            y: layout.y,
+            row_span: layout.h,
+            desktop_rows: layout.h,
+            layouts: { ...(nextItem.layouts || existingLayouts), desktop: layout },
+            layout_columns: { ...(currentItem.layout_columns || {}), desktop: desktopColumns }
+          };
+        }
+        if (settingId === 'tablet_span') {
+          const layout = updateLayoutSize('tablet', BENTO_TABLET_COLUMNS, { w: numericValue });
+          nextItem = {
+            ...nextItem,
+            tablet_span: layout.w,
+            layouts: { ...existingLayouts, tablet: layout },
+            layout_columns: { ...(currentItem.layout_columns || {}), tablet: BENTO_TABLET_COLUMNS }
+          };
+        }
+        if (settingId === 'mobile_span') {
+          const layout = updateLayoutSize('mobile', BENTO_MOBILE_COLUMNS, { w: numericValue });
+          nextItem = {
+            ...nextItem,
+            mobile_span: layout.w,
+            layouts: { ...existingLayouts, mobile: layout },
+            layout_columns: { ...(currentItem.layout_columns || {}), mobile: BENTO_MOBILE_COLUMNS }
+          };
+        }
+      }
+
+      newItems[index] = nextItem;
       if (onSettingChange) {
         onSettingChange(`${realSectionId}_el_bento_items`, 'items', newItems);
       } else {
@@ -222,7 +798,8 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
       }
       : selectedSection.settings;
     const show = evaluateCondition(setting.showIf, conditionSettings, contextId);
-    if (!show.result) return null;
+    const forceShowButtonField = selectedType === 'button' && ['button_text', 'btn_url'].includes(setting.id);
+    if (!show.result && !forceShowButtonField) return null;
 
     const value = selectedBentoItem && selectedBentoItem[setting.id] !== undefined
       ? selectedBentoItem[setting.id]
@@ -248,6 +825,75 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
       </div>
     );
   };
+
+  const activeViewportLabel = activeViewport === 'desktop'
+    ? 'Desktop'
+    : activeViewport === 'tablet'
+      ? 'Tablet'
+      : 'Móvil';
+
+  const movementControls = selectedLayout && (
+    <div className="rounded-2xl border border-blue-100 bg-blue-50/60 p-3">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-wider text-blue-700">Mover en {activeViewportLabel}</p>
+          <p className="text-[10px] text-blue-500">x {selectedLayout.x} / y {selectedLayout.y}</p>
+        </div>
+        <div className="rounded-lg bg-white px-2 py-1 text-[10px] font-mono font-bold text-blue-600">
+          {activeColumns} cols
+        </div>
+      </div>
+      <div className="mx-auto grid w-28 grid-cols-3 gap-1">
+        <span />
+        <button
+          type="button"
+          onClick={() => moveSelectedCell(0, -1)}
+          disabled={!canMoveSelectedCell(0, -1)}
+          className="flex h-8 items-center justify-center rounded-lg border border-blue-100 bg-white text-blue-600 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-40"
+          title="Mover arriba"
+          aria-label="Mover arriba"
+        >
+          <LucideIcons.ArrowUp size={14} />
+        </button>
+        <span />
+        <button
+          type="button"
+          onClick={() => moveSelectedCell(-1, 0)}
+          disabled={!canMoveSelectedCell(-1, 0)}
+          className="flex h-8 items-center justify-center rounded-lg border border-blue-100 bg-white text-blue-600 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-40"
+          title="Mover izquierda"
+          aria-label="Mover izquierda"
+        >
+          <LucideIcons.ArrowLeft size={14} />
+        </button>
+        <div className="flex h-8 items-center justify-center rounded-lg bg-blue-100 text-[10px] font-black text-blue-700">
+          1
+        </div>
+        <button
+          type="button"
+          onClick={() => moveSelectedCell(1, 0)}
+          disabled={!canMoveSelectedCell(1, 0)}
+          className="flex h-8 items-center justify-center rounded-lg border border-blue-100 bg-white text-blue-600 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-40"
+          title="Mover derecha"
+          aria-label="Mover derecha"
+        >
+          <LucideIcons.ArrowRight size={14} />
+        </button>
+        <span />
+        <button
+          type="button"
+          onClick={() => moveSelectedCell(0, 1)}
+          disabled={!canMoveSelectedCell(0, 1)}
+          className="flex h-8 items-center justify-center rounded-lg border border-blue-100 bg-white text-blue-600 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-40"
+          title="Mover abajo"
+          aria-label="Mover abajo"
+        >
+          <LucideIcons.ArrowDown size={14} />
+        </button>
+        <span />
+      </div>
+    </div>
+  );
 
   return (
     <div className={`flex flex-col h-full bg-white overflow-hidden ${embedded ? '' : 'border-l border-gray-100 shadow-sm'}`}>
@@ -288,6 +934,7 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
       <div className="flex-1 overflow-y-auto custom-scrollbar">
         {embedded ? (
           <div className="space-y-5 p-3">
+            {movementControls}
             {PILLARS_ORDER.map(pillar => {
               const fields = settingsByPillar[pillar];
               if (!fields || fields.length === 0) return null;
@@ -308,7 +955,11 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
             })}
           </div>
         ) : (
-          PILLARS_ORDER.map(pillar => {
+          <>
+          <div className="p-4 pb-2">
+            {movementControls}
+          </div>
+          {PILLARS_ORDER.map(pillar => {
             const fields = settingsByPillar[pillar];
             if (!fields || fields.length === 0) return null;
 
@@ -394,7 +1045,8 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
                 </AnimatePresence>
               </div>
             );
-          })
+          })}
+          </>
         )}
       </div>
       {!embedded && <div className="p-4 border-t border-gray-100 bg-gray-50/30">

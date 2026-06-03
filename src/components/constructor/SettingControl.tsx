@@ -1,5 +1,5 @@
 import { logDebug } from '../../utils/debug';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as LucideIcons from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -151,6 +151,13 @@ const toBooleanSetting = (value: unknown, fallback = false) => {
   if (typeof value === 'string') return ['true', '1', 'yes', 'si'].includes(value.trim().toLowerCase());
   if (typeof value === 'number') return value === 1;
   return Boolean(value);
+};
+
+const dispatchDynamicCardsEditingEvent = (moduleId: string, active: boolean) => {
+  if (!moduleId || typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent('dynamic-cards-editor-focus', {
+    detail: { moduleId, active }
+  }));
 };
 
 const normalizeOptionList = (rawValue: any) => {
@@ -311,10 +318,81 @@ export const SettingControl: React.FC<SettingControlProps> = ({
   const [openRepeaterItems, setOpenRepeaterItems] = useState<Record<string, number | null>>({});
   const [openRepeaterSections, setOpenRepeaterSections] = useState<Record<string, string | null>>({});
   const currentValue = value !== undefined ? value : setting.defaultValue;
+  const dynamicCardsBulletsTimerRef = useRef<number | null>(null);
+  const dynamicCardsCommittedValueRef = useRef(currentValue);
+  const dynamicCardsBulletsEditingRef = useRef(false);
+  const [dynamicCardsDraftValue, setDynamicCardsDraftValue] = useState(currentValue ?? '');
 
   const isDisabled = setting.disabledMessage !== undefined;
   const shouldShowPexels = setting.type === 'image' && !shouldHidePexelsButton(setting, moduleType);
   const preferredOrientation = inferPexelsOrientation(setting, moduleType);
+  const contextModuleId = getModuleIdFromContext(contextId);
+  const shouldPauseDynamicCardsEditing =
+    moduleType === 'dynamic_cards' &&
+    !!contextModuleId &&
+    ['text', 'textarea', 'url'].includes(setting.type || 'text');
+  const shouldBufferDynamicCardsBullets =
+    moduleType === 'dynamic_cards' &&
+    !!contextModuleId &&
+    setting.id === 'bullets' &&
+    setting.type === 'textarea';
+
+  useEffect(() => {
+    dynamicCardsCommittedValueRef.current = currentValue;
+    if (shouldBufferDynamicCardsBullets && !dynamicCardsBulletsEditingRef.current) {
+      setDynamicCardsDraftValue(currentValue ?? '');
+    }
+  }, [currentValue, shouldBufferDynamicCardsBullets]);
+
+  useEffect(() => () => {
+    if (dynamicCardsBulletsTimerRef.current !== null) {
+      window.clearTimeout(dynamicCardsBulletsTimerRef.current);
+      dynamicCardsBulletsTimerRef.current = null;
+    }
+  }, []);
+
+  const clearDynamicCardsBulletsTimer = () => {
+    if (dynamicCardsBulletsTimerRef.current !== null) {
+      window.clearTimeout(dynamicCardsBulletsTimerRef.current);
+      dynamicCardsBulletsTimerRef.current = null;
+    }
+  };
+
+  const commitDynamicCardsBullets = (nextValue: string) => {
+    clearDynamicCardsBulletsTimer();
+    if (dynamicCardsCommittedValueRef.current === nextValue) return;
+    dynamicCardsCommittedValueRef.current = nextValue;
+    onChange(nextValue);
+  };
+
+  const scheduleDynamicCardsBulletsCommit = (nextValue: string) => {
+    if (!shouldBufferDynamicCardsBullets) {
+      onChange(nextValue);
+      return;
+    }
+    clearDynamicCardsBulletsTimer();
+    dynamicCardsBulletsTimerRef.current = window.setTimeout(() => {
+      commitDynamicCardsBullets(nextValue);
+    }, 180);
+  };
+
+  const dynamicCardsEditingHandlers = shouldPauseDynamicCardsEditing
+    ? {
+      onFocus: () => {
+        if (shouldBufferDynamicCardsBullets) {
+          dynamicCardsBulletsEditingRef.current = true;
+        }
+        dispatchDynamicCardsEditingEvent(contextModuleId, true);
+      },
+      onBlur: () => {
+        if (shouldBufferDynamicCardsBullets) {
+          commitDynamicCardsBullets(String(dynamicCardsDraftValue ?? ''));
+          dynamicCardsBulletsEditingRef.current = false;
+        }
+        dispatchDynamicCardsEditingEvent(contextModuleId, false);
+      }
+    }
+    : {};
 
   const resolveDynamicOptions = (targetSetting: SettingDefinition, targetValue: any = currentValue) => {
     if (!targetSetting.dynamicOptionsFrom) {
@@ -1363,9 +1441,17 @@ export const SettingControl: React.FC<SettingControlProps> = ({
             {isDisabled && <span className="text-[8px] font-bold text-red-500/60 italic">{setting.disabledMessage}</span>}
           </div>
           <textarea 
-            value={currentValue} 
+            value={shouldBufferDynamicCardsBullets ? dynamicCardsDraftValue : currentValue}
             disabled={isDisabled}
-            onChange={(e) => onChange(e.target.value)}
+            onChange={(e) => {
+              if (shouldBufferDynamicCardsBullets) {
+                setDynamicCardsDraftValue(e.target.value);
+                scheduleDynamicCardsBulletsCommit(e.target.value);
+                return;
+              }
+              onChange(e.target.value);
+            }}
+            {...dynamicCardsEditingHandlers}
             rows={textareaRows}
             className="w-full p-2 border border-border rounded-xl text-[10px] font-medium focus:outline-none focus:border-primary/30 bg-surface resize-none" 
             style={{ minHeight: `${Math.max(textareaRows, 3) * 22}px` }}
@@ -1385,6 +1471,7 @@ export const SettingControl: React.FC<SettingControlProps> = ({
             value={currentValue} 
             disabled={isDisabled}
             onChange={(e) => onChange(e.target.value)}
+            {...dynamicCardsEditingHandlers}
             className="w-full p-1.5 border border-border rounded-md text-[10px] font-medium focus:outline-none focus:border-primary/30 bg-surface" 
           />
         </div>

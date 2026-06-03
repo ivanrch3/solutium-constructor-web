@@ -508,7 +508,16 @@ export const Viewer: React.FC<ViewerProps> = ({
             let skippedSupabaseFetch = false;
 
             if (isPublishedViewer) {
-              if (catalogProducts.length > 0) {
+              if (Array.isArray(snapshotProducts) && snapshotProducts.length > 0) {
+                finalProducts = snapshotProducts
+                  .filter(Boolean)
+                  .map((product: any, index: number) => ({
+                    ...product,
+                    id: String(product?.id || `published_product_${index}`),
+                    name: String(product?.name || `Producto ${index + 1}`)
+                  }));
+                resolutionSource = "published_snapshot";
+              } else if (catalogProducts.length > 0) {
                 const manualIdsSource = Array.isArray(explicitSelectedProductIds) && explicitSelectedProductIds.length > 0
                   ? explicitSelectedProductIds
                   : (Array.isArray(snapshotProducts) ? snapshotProducts.map((product: any) => product?.id).filter(Boolean) : []);

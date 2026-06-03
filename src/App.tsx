@@ -24,9 +24,48 @@ import { BrandColorsInput, normalizeProjectBrandColors } from './utils/projectTh
 
 type View = 'dashboard' | 'selection-method' | 'form' | 'generator' | 'constructor' | 'viewer';
 
-const CONSTRUCTOR_WEB_LOGO_URL = 'https://nyc3.digitaloceanspaces.com/solutium-space/988cd339-a2c7-4951-b944-998d32dc349b-solutium-constructor-web-imagotipo.png';
 const PREVENTIVE_SUPABASE_REFRESH_INTERVAL_MS = 10 * 60 * 1000;
 const PREVENTIVE_SUPABASE_REFRESH_THROTTLE_MS = 30 * 1000;
+
+const AbstractLoadingIndicator: React.FC<{ label?: string; compact?: boolean }> = ({ label = 'Preparando experiencia', compact = false }) => (
+  <div className="flex flex-col items-center gap-5" role="status" aria-live="polite" aria-label={label}>
+    <style>{`
+      @keyframes cw-flow-line {
+        0% { transform: translateX(-45%) scaleX(0.55); opacity: 0.38; }
+        45% { opacity: 1; }
+        100% { transform: translateX(45%) scaleX(0.55); opacity: 0.38; }
+      }
+      @keyframes cw-hex-breathe {
+        0%, 100% { transform: translateY(0) rotate(0deg); opacity: 0.45; }
+        50% { transform: translateY(-8px) rotate(18deg); opacity: 0.95; }
+      }
+    `}</style>
+    <div className={`relative ${compact ? 'h-12 w-40' : 'h-16 w-56'}`}>
+      <div className="absolute left-1/2 top-1/2 h-px w-full -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-full bg-slate-200">
+        <div
+          className="h-full w-2/3 rounded-full"
+          style={{
+            background: 'linear-gradient(90deg, transparent 0%, #A000F3 18%, #502FB6 52%, #005E79 86%, transparent 100%)',
+            animation: 'cw-flow-line 1.75s ease-in-out infinite alternate'
+          }}
+        />
+      </div>
+      {[0, 1, 2].map((item) => (
+        <div
+          key={item}
+          className="absolute top-1/2 h-5 w-5 -translate-y-1/2"
+          style={{
+            left: `${22 + item * 28}%`,
+            clipPath: 'polygon(25% 5%, 75% 5%, 100% 50%, 75% 95%, 25% 95%, 0 50%)',
+            background: item === 0 ? '#A000F3' : item === 1 ? '#502FB6' : '#005E79',
+            animation: `cw-hex-breathe 1.8s ease-in-out ${item * 0.18}s infinite`
+          }}
+        />
+      ))}
+    </div>
+    <span className="sr-only">{label}</span>
+  </div>
+);
 
 const decodeJwtPayload = (token?: string | null): any | null => {
   if (!token || token === 'placeholder-token') return null;
@@ -537,13 +576,13 @@ const AppContent: React.FC = () => {
   const [secureTrustedLogos, setSecureTrustedLogos] = useState<TrustedCompanyLogo[]>([]);
   const [hasSecureConstructorCatalogContext, setHasSecureConstructorCatalogContext] = useState(false);
   const [pagesLoadError, setPagesLoadError] = useState<string | null>(null);
+  const [pagesLoading, setPagesLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('home');
   const [currentView, setCurrentView] = useState<View>('dashboard');
   const [selectedMethod, setSelectedMethod] = useState<CreationMethod | null>(null);
   const [formData, setFormData] = useState<ProjectFormData | null>(null);
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const [selectedPage, setSelectedPage] = useState<WebBuilderSite | PublishedSite | null>(null);
-  const [loadingLogoError, setLoadingLogoError] = useState(false);
   const [urlLogo, setUrlLogo] = useState<string | null>(null);
   const [urlLogoWhite, setUrlLogoWhite] = useState<string | null>(null);
   const loadingMessages = React.useMemo(() => ([
@@ -788,8 +827,15 @@ const AppContent: React.FC = () => {
 
   const refreshData = async (fProjectId?: string) => {
     const idToUse = fProjectId || projectId;
-    if (!idToUse) return [];
+    if (!idToUse) {
+      setPagesLoading(false);
+      return [];
+    }
 
+    setPagesLoading(true);
+    setPagesLoadError(null);
+
+    try {
     const secureLaunchPayload = secureLaunchPayloadRef.current;
     const usingSecureLaunch = Boolean(secureLaunchPayload);
     const safeCache = readSafeHandshakeCache();
@@ -1017,6 +1063,9 @@ const AppContent: React.FC = () => {
         pagesHttpStatus: error?.status || error?.statusCode || null
       });
       return [];
+    }
+    } finally {
+      setPagesLoading(false);
     }
   };
 
@@ -1617,9 +1666,7 @@ const AppContent: React.FC = () => {
     if (isPublicRenderMode) {
       return (
         <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-white">
-          <div className="flex items-center justify-center" aria-label="Cargando sitio">
-            <div className="h-10 w-10 rounded-full border-[3px] border-slate-200 border-t-slate-500 animate-spin" />
-          </div>
+          <AbstractLoadingIndicator label="Cargando sitio" compact />
         </div>
       );
     }
@@ -1645,19 +1692,7 @@ const AppContent: React.FC = () => {
               }}
               className="flex items-center justify-center"
             >
-              {loadingLogoError ? (
-                <div className="flex h-24 w-24 items-center justify-center rounded-[28px] bg-white shadow-[0_20px_45px_rgba(15,23,42,0.08)] ring-1 ring-slate-200/80">
-                  <div className="h-14 w-14 rounded-[18px] bg-gradient-to-br from-[#FF8A1E] to-[#F97316]" />
-                </div>
-              ) : (
-                <img
-                  src={CONSTRUCTOR_WEB_LOGO_URL}
-                  alt="Constructor Web"
-                  className="h-24 w-auto object-contain drop-shadow-[0_20px_45px_rgba(15,23,42,0.08)]"
-                  referrerPolicy="no-referrer"
-                  onError={() => setLoadingLogoError(true)}
-                />
-              )}
+              <AbstractLoadingIndicator label={loadingMessages[loadingMessageIndex]} />
             </motion.div>
             
             {/* Círculo de Carga animado */}
@@ -1707,6 +1742,7 @@ const AppContent: React.FC = () => {
             assets={assets} 
             pages={pages}
             pagesLoadError={pagesLoadError}
+            pagesLoading={pagesLoading}
             onNewPage={() => {
               setSelectedPage(null);
               handleNewPage();

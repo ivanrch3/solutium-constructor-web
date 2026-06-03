@@ -55,15 +55,20 @@ export const Viewer: React.FC<ViewerProps> = ({
   const [catalogProducts, setCatalogProducts] = useState<Product[]>(secureCatalogProducts);
   const queryParams = new URLSearchParams(window.location.search);
   const effectiveProjectId = site.projectId || (site as any).project_id || (site as any).satellite_id;
+  const isPublicRenderMode =
+    queryParams.get('mode') === 'render' ||
+    queryParams.get('external_render') === 'true' ||
+    queryParams.get('published') === 'true';
   
   // [SIP v12.5] Robust Editor Detection
-  const isConstructorMode = (
+  const isConstructorMode = !isPublicRenderMode && (
     (queryParams.get('mode') === 'constructor' || queryParams.get('renderMode') === 'editor') ||
     (!!window.name && window.name.includes('supabase_url') && window.name.includes('session_token')) ||
     (window.location.hostname.includes('localhost') && !queryParams.get('siteId'))
   );
   
   const isPublishedViewer = !isConstructorMode && !!site.siteId;
+  const showBackControl = Boolean(onBack) && !isPublicRenderMode;
 
   useEffect(() => {
     (window as any).__SOLUTIUM_READ_ONLY_RENDER__ = true;
@@ -155,7 +160,7 @@ export const Viewer: React.FC<ViewerProps> = ({
           <p className="text-text/60 mb-8 leading-relaxed">
             Este sitio ha sido deshabilitado por el administrador. Por favor, contacta con soporte si crees que esto es un error.
           </p>
-          {onBack && (
+          {showBackControl && (
             <button 
               onClick={onBack}
               className="px-6 py-3 bg-primary text-white font-bold rounded-xl shadow-lg shadow-primary/20 hover:opacity-90 transition-all"
@@ -690,7 +695,7 @@ export const Viewer: React.FC<ViewerProps> = ({
         }
       })}
 
-      {onBack && (
+      {showBackControl && (
         <button 
           onClick={onBack}
           className="fixed bottom-8 right-8 bg-surface/80 backdrop-blur-md border border-border p-3 rounded-full shadow-xl hover:bg-surface transition-all z-50 text-text/60 hover:text-primary"

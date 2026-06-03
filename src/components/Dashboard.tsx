@@ -9,6 +9,7 @@ interface DashboardProps {
   assets: Asset[];
   pages: (WebBuilderSite | PublishedSite)[];
   pagesLoadError?: string | null;
+  pagesLoading?: boolean;
   onNewPage: () => void;
   onSelectAsset: (asset: Asset) => void;
   onSelectPage: (page: WebBuilderSite | PublishedSite) => void;
@@ -31,6 +32,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   assets, 
   pages, 
   pagesLoadError,
+  pagesLoading = false,
   onNewPage, 
   onSelectAsset, 
   onSelectPage, 
@@ -249,6 +251,21 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     </div>
                   );
                 })}
+              </div>
+            ) : pagesLoading ? (
+              <div className="h-full border-2 border-dashed border-border/70 bg-white/60 rounded-2xl flex flex-col justify-center gap-4 px-6">
+                <div className="flex items-center gap-4">
+                  <div className="h-14 w-14 rounded-2xl bg-slate-200/80 animate-pulse" />
+                  <div className="flex-1 space-y-3">
+                    <div className="h-4 w-2/3 rounded-full bg-slate-200/80 animate-pulse" />
+                    <div className="h-3 w-1/2 rounded-full bg-slate-200/60 animate-pulse" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="h-20 rounded-2xl bg-slate-200/60 animate-pulse" />
+                  <div className="h-20 rounded-2xl bg-slate-200/50 animate-pulse" />
+                  <div className="h-20 rounded-2xl bg-slate-200/40 animate-pulse" />
+                </div>
               </div>
             ) : pagesLoadError ? (
               <div className="h-full border-2 border-dashed border-amber-200 bg-amber-50/70 rounded-2xl flex flex-col items-center justify-center text-amber-800 space-y-3 px-6 text-center">

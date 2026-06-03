@@ -1581,6 +1581,13 @@ export const BentoModule: React.FC<{
     : constructorViewport === 'tablet'
       ? 'md'
       : 'xs';
+  const isPublicRenderMode = isPreviewMode && (
+    window.location.search.includes('mode=render') ||
+    window.location.search.includes('external_render=true') ||
+    window.location.search.includes('published=true')
+  );
+  const [activeBreakpoint, setActiveBreakpoint] = useState(forcedBreakpoint);
+  const effectiveBreakpoint = isPublicRenderMode ? activeBreakpoint : forcedBreakpoint;
 
   useEffect(() => {
     const node = gridContainerRef.current;
@@ -1736,6 +1743,7 @@ export const BentoModule: React.FC<{
   const handleBreakpointChange = (newBreakpoint: string) => {
     if (currentBreakpointRef.current === newBreakpoint) return;
     currentBreakpointRef.current = newBreakpoint;
+    setActiveBreakpoint(newBreakpoint);
     if (isBentoDebugEnabled()) logDebug('[BENTO_BP_CHANGE]', newBreakpoint);
   };
 
@@ -1849,8 +1857,8 @@ export const BentoModule: React.FC<{
   const showHeader = headerEyebrow || headerTitle || headerSubtitle;
 
   const shouldShowEmptyState = !isPreviewMode && rawItems.length === 0;
-  const activeLayoutForHeight = layouts[forcedBreakpoint as keyof typeof layouts] || [];
-  const activeLayoutKeyForHeight = BENTO_BREAKPOINT_TO_LAYOUT[forcedBreakpoint] || 'desktop';
+  const activeLayoutForHeight = layouts[effectiveBreakpoint as keyof typeof layouts] || [];
+  const activeLayoutKeyForHeight = BENTO_BREAKPOINT_TO_LAYOUT[effectiveBreakpoint] || 'desktop';
   const occupiedRows = Math.ceil(activeLayoutForHeight.reduce((maxRows: number, item: any) => {
     return Math.max(maxRows, (Number(item?.y) || 0) + Math.max(Number(item?.h) || 1, 1));
   }, 0));
@@ -2139,14 +2147,14 @@ export const BentoModule: React.FC<{
           }}
         >
           <ResponsiveGridLayout
-            key={`bento-grid-${constructorViewport}-${Math.round(normalizedPreviewScale * 1000)}`}
+            key={`bento-grid-${isPublicRenderMode ? 'public' : constructorViewport}-${Math.round(normalizedPreviewScale * 1000)}`}
             className="layout w-full relative z-10"
             onBreakpointChange={handleBreakpointChange}
             onWidthChange={(w) => {
               if (isBentoDebugEnabled()) logDebug('[BENTO_WIDTH_CHANGE]', w);
             }}
             layouts={layouts}
-            breakpoint={forcedBreakpoint}
+            breakpoint={isPublicRenderMode ? undefined : forcedBreakpoint}
             width={gridWidth}
             style={{ minHeight: !isPreviewMode ? `${visibleEditorMinHeight}px` : undefined }}
             breakpoints={{ lg: 992, md: 768, sm: 600, xs: 360, xxs: 0 }}
@@ -2188,7 +2196,7 @@ export const BentoModule: React.FC<{
             transformScale={normalizedPreviewScale}
             droppingItem={{
               i: "__dropping_elem__",
-              w: forcedBreakpoint === 'lg' ? 8 : forcedBreakpoint === 'md' ? 3 : 4,
+              w: effectiveBreakpoint === 'lg' ? 8 : effectiveBreakpoint === 'md' ? 3 : 4,
               h: 2,
               x: 0,
               y: 0

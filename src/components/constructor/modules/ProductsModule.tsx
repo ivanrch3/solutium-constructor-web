@@ -89,7 +89,12 @@ export const ProductsModule: React.FC<{
 
   const gridRef = React.useRef<HTMLDivElement>(null);
 
-  const isInConstructorEnvironment = (
+  const isPublicRenderMode =
+    window.location.search.includes('mode=render') ||
+    window.location.search.includes('external_render=true') ||
+    window.location.search.includes('published=true');
+
+  const isInConstructorEnvironment = !isPublicRenderMode && (
     window.location.search.includes('mode=constructor') || 
     window.location.search.includes('renderMode=editor') ||
     (!!window.name && (window.name.includes('supabase_url') || window.name.includes('projectId'))) ||
@@ -97,10 +102,10 @@ export const ProductsModule: React.FC<{
     window.location.hostname.includes('ais-dev-') 
   );
 
-  const isActuallyEditor = (isPreviewMode === true) || (
+  const isActuallyEditor = !isPublicRenderMode && ((isPreviewMode === true) || (
     (window.location.search.includes('mode=constructor') || window.location.search.includes('renderMode=editor')) &&
     (window.location.hostname.includes('localhost') || window.location.hostname.includes('ais-dev-'))
-  );
+  ));
   const isPublishedViewer = !isActuallyEditor;
 
   // [FASE 1] Función Única de Resolución Forense para Editor
@@ -340,7 +345,7 @@ export const ProductsModule: React.FC<{
     })
       .map(normalizeRenderableProduct)
       .filter((product) => Boolean(product.id));
-  }, [products, selectedProductIds, selectionTouched, selectionMode, isDevMode, isPreviewMode, isActuallyEditor, isPublishedViewer, moduleId, settingsValues]);
+  }, [products, selectedProductIds, selectionTouched, selectionMode, isDevMode, isPreviewMode, isActuallyEditor, isPublishedViewer, moduleId, settingsValues, forceSnapshotRender]);
 
   const categories = useMemo(() => {
     const cats = new Set(allDisplayProducts.map(p => p?.category).filter(Boolean));
@@ -547,7 +552,7 @@ export const ProductsModule: React.FC<{
     } as React.CSSProperties;
   };
 
-  if ((!products || products.length === 0) && !isActuallyEditor) {
+  if (filteredProducts.length === 0 && !isActuallyEditor) {
     return null;
   }
 

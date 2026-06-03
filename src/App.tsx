@@ -18,7 +18,7 @@ import { AIGenerationOverlay } from './components/constructor/AIGenerationOverla
 import { useEditorStore } from './store/editorStore';
 import { Viewer } from './components/Viewer';
 import { logDebug } from './utils/debug';
-import { Profile, Project, Asset, WebBuilderSite, PublishedSite } from './types/schema';
+import { Profile, Project, Asset, WebBuilderSite, PublishedSite, Product, Customer, TrustedCompanyLogo } from './types/schema';
 import { getAssets } from './services/dataService';
 import { BrandColorsInput, normalizeProjectBrandColors } from './utils/projectTheme';
 
@@ -217,6 +217,108 @@ const normalizeIncomingProject = (
     createdAt: rawProject.createdAt || rawProject.created_at || null,
     updatedAt: rawProject.updatedAt || rawProject.updated_at || null
   } as Project;
+};
+
+const normalizeSecureProduct = (rawProduct: any): Product | null => {
+  if (!rawProduct || typeof rawProduct !== 'object') return null;
+  const id = rawProduct.id || rawProduct.productId || rawProduct.product_id || rawProduct.uuid;
+  const name = rawProduct.name || rawProduct.title || rawProduct.productName || rawProduct.product_name;
+  if (!id || !name) return null;
+
+  const imageUrl = rawProduct.imageUrl || rawProduct.image_url || rawProduct.thumbnailUrl || rawProduct.thumbnail_url || rawProduct.image;
+  const priceValue = rawProduct.price ?? rawProduct.priceReference ?? rawProduct.price_reference;
+  const parsedPrice = Number(priceValue);
+
+  return {
+    ...rawProduct,
+    id: String(id),
+    name: String(name),
+    title: rawProduct.title || String(name),
+    description: rawProduct.description || rawProduct.summary || '',
+    category: rawProduct.category || rawProduct.type || '',
+    price: Number.isFinite(parsedPrice) ? parsedPrice : undefined,
+    type: rawProduct.type || rawProduct.category || undefined,
+    status: rawProduct.status || (rawProduct.active === false ? 'inactive' : 'active'),
+    active: rawProduct.active !== false,
+    imageUrl: imageUrl || '',
+    image_url: imageUrl || '',
+    badgeText: rawProduct.badgeText || rawProduct.badge_text || '',
+    ratingAverage: Number(rawProduct.ratingAverage ?? rawProduct.rating_average) || undefined,
+    emoji: rawProduct.emoji || '',
+    updatedAt: rawProduct.updatedAt || rawProduct.updated_at || null
+  } as Product;
+};
+
+const normalizeSecureProducts = (...sources: any[][]) => {
+  const deduped = new Map<string, Product>();
+  sources.flat().forEach((rawProduct) => {
+    const product = normalizeSecureProduct(rawProduct);
+    if (product) deduped.set(String(product.id), product);
+  });
+  return Array.from(deduped.values());
+};
+
+const normalizeSecureCustomerLogo = (rawLogo: any): Customer | null => {
+  if (!rawLogo || typeof rawLogo !== 'object') return null;
+  const id = rawLogo.id || rawLogo.customerId || rawLogo.customer_id || rawLogo.company_id || rawLogo.businessId || rawLogo.business_id;
+  const companyName = rawLogo.companyName || rawLogo.company_name || rawLogo.company || rawLogo.name;
+  const logoUrl = rawLogo.logoUrl || rawLogo.logo_url || rawLogo.companyLogoUrl || rawLogo.company_logo_url;
+  if (!id || !companyName || !logoUrl) return null;
+
+  return {
+    ...rawLogo,
+    id: String(id),
+    name: String(rawLogo.name || companyName),
+    company: String(companyName),
+    companyName: String(companyName),
+    companyLogoUrl: String(logoUrl),
+    logoUrl: String(logoUrl),
+    logo_url: String(logoUrl),
+    status: rawLogo.status || (rawLogo.active === false ? 'inactive' : 'active'),
+    active: rawLogo.active !== false,
+    updatedAt: rawLogo.updatedAt || rawLogo.updated_at || null
+  } as Customer;
+};
+
+const normalizeSecureTrustedLogo = (rawLogo: any): TrustedCompanyLogo | null => {
+  if (!rawLogo || typeof rawLogo !== 'object') return null;
+  const companyId = rawLogo.company_id || rawLogo.companyId || rawLogo.id || rawLogo.businessId || rawLogo.business_id;
+  const name = rawLogo.name || rawLogo.companyName || rawLogo.company_name || rawLogo.company;
+  const logoUrl = rawLogo.logo_url || rawLogo.logoUrl || rawLogo.companyLogoUrl || rawLogo.company_logo_url;
+  if (!companyId || !name || !logoUrl) return null;
+
+  return {
+    ...rawLogo,
+    company_id: String(companyId),
+    id: String(rawLogo.id || companyId),
+    name: String(name),
+    companyName: String(name),
+    logo_url: String(logoUrl),
+    logoUrl: String(logoUrl),
+    status: rawLogo.status || (rawLogo.active === false ? 'inactive' : 'active'),
+    active: rawLogo.active !== false,
+    updatedAt: rawLogo.updatedAt || rawLogo.updated_at || null,
+    website_url: rawLogo.website_url || rawLogo.websiteUrl || rawLogo.website || undefined,
+    alt: rawLogo.alt || `${name} logo`
+  } as TrustedCompanyLogo;
+};
+
+const normalizeSecureLogoSources = (...sources: any[][]) => {
+  const customers = new Map<string, Customer>();
+  const trustedLogos = new Map<string, TrustedCompanyLogo>();
+
+  sources.flat().forEach((rawLogo) => {
+    const customer = normalizeSecureCustomerLogo(rawLogo);
+    if (customer) customers.set(String(customer.id), customer);
+
+    const trustedLogo = normalizeSecureTrustedLogo(rawLogo);
+    if (trustedLogo) trustedLogos.set(String(trustedLogo.company_id), trustedLogo);
+  });
+
+  return {
+    customers: Array.from(customers.values()),
+    trustedLogos: Array.from(trustedLogos.values())
+  };
 };
 
 const summarizeLaunchPayload = (payload: any) => ({
@@ -430,6 +532,10 @@ const AppContent: React.FC = () => {
   const [project, setProject] = useState<Project | null>(null);
   const [assets, setAssets] = useState<Asset[]>([]);
   const [pages, setPages] = useState<(WebBuilderSite | PublishedSite)[]>([]);
+  const [secureCatalogProducts, setSecureCatalogProducts] = useState<Product[]>([]);
+  const [secureCatalogCustomers, setSecureCatalogCustomers] = useState<Customer[]>([]);
+  const [secureTrustedLogos, setSecureTrustedLogos] = useState<TrustedCompanyLogo[]>([]);
+  const [hasSecureConstructorCatalogContext, setHasSecureConstructorCatalogContext] = useState(false);
   const [pagesLoadError, setPagesLoadError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('home');
   const [currentView, setCurrentView] = useState<View>('dashboard');
@@ -731,6 +837,13 @@ const AppContent: React.FC = () => {
       pagesErrorMessage
     });
 
+    if (!usingSecureLaunch && hasSecureConstructorCatalogContext) {
+      setSecureCatalogProducts([]);
+      setSecureCatalogCustomers([]);
+      setSecureTrustedLogos([]);
+      setHasSecureConstructorCatalogContext(false);
+    }
+
     if (usingSecureLaunch) {
       if (!launchAccessToken) {
         const message = 'El Constructor recibio el proyecto, pero no tiene una API autorizada para leer las paginas existentes.';
@@ -757,6 +870,11 @@ const AppContent: React.FC = () => {
         webBuilderSitesCount: contextResult.webBuilderSites?.length || 0,
         publishedSitesCount: contextResult.publishedSites?.length || 0,
         assetsCount: contextResult.assets?.length || 0,
+        productsCount: contextResult.products?.length || 0,
+        catalogProductsCount: contextResult.catalogProducts?.length || 0,
+        trustedLogosCount: contextResult.trustedLogos?.length || 0,
+        customersCount: contextResult.customers?.length || 0,
+        clientsCount: contextResult.clients?.length || 0,
         hasProjectContact: Boolean(contextResult.projectContact),
         hasProjectBranding: Boolean(contextResult.projectBranding)
       });
@@ -779,6 +897,15 @@ const AppContent: React.FC = () => {
       const contextAssets = contextResult.assets || [];
       const contextDrafts = contextResult.webBuilderSites || [];
       const contextPublished = contextResult.publishedSites || [];
+      const contextProducts = normalizeSecureProducts(
+        contextResult.products || [],
+        contextResult.catalogProducts || []
+      );
+      const contextLogos = normalizeSecureLogoSources(
+        contextResult.trustedLogos || [],
+        contextResult.customers || [],
+        contextResult.clients || []
+      );
       const allPages = mergePagesByCurrentLifecycle(contextDrafts as WebBuilderSite[], contextPublished as PublishedSite[]);
       if (secureLaunchPayloadRef.current) {
         secureLaunchPayloadRef.current = {
@@ -811,12 +938,18 @@ const AppContent: React.FC = () => {
       }
 
       setAssets(contextAssets as Asset[]);
+      setSecureCatalogProducts(contextProducts);
+      setSecureCatalogCustomers(contextLogos.customers);
+      setSecureTrustedLogos(contextLogos.trustedLogos);
+      setHasSecureConstructorCatalogContext(true);
       setPagesLoadError(null);
       setPages(allPages);
       logDebug('[PAGES_LOAD_DIAGNOSTIC]', {
         ...pageDiagnosticsBase,
         pagesSource: 'api',
         pagesResultCount: allPages.length,
+        productsResultCount: contextProducts.length,
+        trustedLogosResultCount: contextLogos.trustedLogos.length,
         pagesErrorMessage: null,
         pagesHttpStatus: contextResult.httpStatus || null
       });
@@ -1666,6 +1799,10 @@ const AppContent: React.FC = () => {
             project={project}
             initialPage={selectedPage}
             creationMethod={selectedMethod}
+            secureProducts={secureCatalogProducts}
+            secureCustomers={secureCatalogCustomers}
+            secureTrustedCompanyLogos={secureTrustedLogos}
+            useSecureCatalogContext={hasSecureConstructorCatalogContext}
           />
         );
       case 'viewer':
@@ -1689,6 +1826,10 @@ const AppContent: React.FC = () => {
               setSelectedPage(null);
               setCurrentView('dashboard');
             }}
+            catalogProducts={secureCatalogProducts}
+            catalogCustomers={secureCatalogCustomers}
+            trustedCompanyLogos={secureTrustedLogos}
+            useSecureCatalogContext={hasSecureConstructorCatalogContext}
           />
         );
       default:

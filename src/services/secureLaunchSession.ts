@@ -177,6 +177,11 @@ export interface ConstructorContextResult {
   webBuilderSites?: any[];
   publishedSites?: any[];
   assets?: any[];
+  products?: any[];
+  catalogProducts?: any[];
+  trustedLogos?: any[];
+  customers?: any[];
+  clients?: any[];
   projectContact?: Record<string, any> | null;
   projectBranding?: Record<string, any> | null;
   httpStatus?: number;
@@ -222,6 +227,11 @@ export const fetchConstructorContext = async ({
       webBuilderSites: Array.isArray(result.webBuilderSites) ? result.webBuilderSites : [],
       publishedSites: Array.isArray(result.publishedSites) ? result.publishedSites : [],
       assets: Array.isArray(result.assets) ? result.assets : [],
+      products: Array.isArray(result.products) ? result.products : [],
+      catalogProducts: Array.isArray(result.catalogProducts) ? result.catalogProducts : [],
+      trustedLogos: Array.isArray(result.trustedLogos) ? result.trustedLogos : [],
+      customers: Array.isArray(result.customers) ? result.customers : [],
+      clients: Array.isArray(result.clients) ? result.clients : [],
       projectContact: result.projectContact || null,
       projectBranding: result.projectBranding || null
     };

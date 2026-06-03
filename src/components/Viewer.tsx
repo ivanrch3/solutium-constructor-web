@@ -31,17 +31,28 @@ import { AlertCircle } from 'lucide-react';
 import { logDebug } from '../utils/debug';
 import { bridgeModuleContent } from '../utils/hydrationBridge';
 import { getProducts } from '../services/dataService';
-import { Product, TrustedCompanyLogo } from '../types/schema';
+import { Customer, Product, TrustedCompanyLogo } from '../types/schema';
 import { buildAutomaticMenuItems, resolveMenuMode } from '../utils/menuNavigation';
 import { buildProjectThemeCssVariables, normalizeProjectBrandColors } from '../utils/projectTheme';
 
 interface ViewerProps {
   site: PublishedSite;
   onBack?: () => void;
+  catalogProducts?: Product[];
+  catalogCustomers?: Customer[];
+  trustedCompanyLogos?: TrustedCompanyLogo[];
+  useSecureCatalogContext?: boolean;
 }
 
-export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
-  const [catalogProducts, setCatalogProducts] = useState<Product[]>([]);
+export const Viewer: React.FC<ViewerProps> = ({
+  site,
+  onBack,
+  catalogProducts: secureCatalogProducts = [],
+  catalogCustomers: secureCatalogCustomers = [],
+  trustedCompanyLogos: secureTrustedCompanyLogos = [],
+  useSecureCatalogContext = false
+}) => {
+  const [catalogProducts, setCatalogProducts] = useState<Product[]>(secureCatalogProducts);
   const queryParams = new URLSearchParams(window.location.search);
   const effectiveProjectId = site.projectId || (site as any).project_id || (site as any).satellite_id;
   
@@ -113,6 +124,14 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
       timestamp: new Date().toISOString()
     });
 
+    if (useSecureCatalogContext) {
+      setCatalogProducts(Array.isArray(secureCatalogProducts) ? secureCatalogProducts : []);
+      logDebug('[VIEWER_SECURE_CATALOG_CONTEXT_APPLIED]', {
+        productsCount: secureCatalogProducts?.length || 0
+      });
+      return;
+    }
+
     if (effectiveProjectId) {
       logDebug('[VIEWER_DB_FETCH] Buscando productos del catálogo del proyecto:', effectiveProjectId);
       getProducts(0, 100, effectiveProjectId).then(products => {
@@ -122,7 +141,7 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
         console.warn('[VIEWER_DB_FETCH] Error cargando catálogo:', err);
       });
     }
-  }, [effectiveProjectId, isConstructorMode]);
+  }, [effectiveProjectId, isConstructorMode, secureCatalogProducts, useSecureCatalogContext]);
 
   // SIP v5.0: Respect the Master Switch
   if (site.isActive === false) {
@@ -590,7 +609,14 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
           case 'comparative':
             return <ComparisonModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} preview={true} />;
           case 'clients':
-            return <ClientsModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} customers={[]} />;
+            return (
+              <ClientsModule
+                key={moduleId}
+                moduleId={moduleId}
+                settingsValues={finalSettingsValues}
+                customers={useSecureCatalogContext ? secureCatalogCustomers : []}
+              />
+            );
           case 'trusted_logos':
             const trustedLogosSnapshot =
               (Array.isArray(section.content?.companies) ? section.content.companies : null) ||
@@ -605,7 +631,7 @@ export const Viewer: React.FC<ViewerProps> = ({ site, onBack }) => {
                 key={moduleId}
                 moduleId={moduleId}
                 settingsValues={finalSettingsValues}
-                companies={[]}
+                companies={useSecureCatalogContext ? secureTrustedCompanyLogos : []}
                 snapshotCompanies={trustedLogosSnapshot as TrustedCompanyLogo[]}
                 isPreviewMode={isConstructorMode}
               />

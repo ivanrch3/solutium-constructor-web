@@ -224,6 +224,11 @@ const TEMPORARY_SAVE_INTERVAL_OPTIONS = [1, 3, 10] as const;
 const DEFAULT_TEMPORARY_SAVE_INTERVAL_MINUTES = 3;
 const TEMPORARY_SAVE_INTERVAL_STORAGE_KEY = 'solutium_constructor_temporary_save_interval_minutes';
 const TEMPORARY_SAVE_NOTICE_STORAGE_KEY = 'solutium_constructor_temporary_save_notice_enabled';
+const EXPIRED_SESSION_NOTICE_TITLE = 'Sesión expirada';
+const EXPIRED_SESSION_SAVE_NOTICE = 'Tu sesión expiró. Inicia sesión nuevamente para guardar. Cambios protegidos localmente.';
+const EXPIRED_SESSION_AUTOSAVE_NOTICE = 'Tu sesión expiró. Inicia sesión nuevamente para continuar guardando. Cambios protegidos localmente.';
+const UPDATED_SESSION_SAVE_NOTICE = 'Sesión actualizada. Guardando cambios...';
+const UPDATED_SESSION_AUTOSAVE_NOTICE = 'Sesión actualizada. Guardando automáticamente...';
 
 const resolveBooleanSetting = (value: any, fallback: boolean): boolean => {
   if (value === undefined || value === null) return fallback;
@@ -4521,10 +4526,8 @@ const formatTimestampName = () => {
           : await ensureActiveSupabaseSession();
         if (sessionState.state === 'missing_session' || sessionState.state === 'expired_session') {
           persistLocalDraftSnapshot({ showNotice: false });
-          const sessionMessage = isAutosave
-            ? 'Tu sesiÃƒÂ³n expirÃƒÂ³. Inicia sesiÃƒÂ³n nuevamente para continuar guardando. Cambios protegidos localmente.'
-            : 'Tu sesiÃƒÂ³n expirÃƒÂ³. Inicia sesiÃƒÂ³n nuevamente para guardar. Cambios protegidos localmente.';
-          setAuthNotice({ type: 'error', message: sessionMessage });
+          const sessionMessage = isAutosave ? EXPIRED_SESSION_AUTOSAVE_NOTICE : EXPIRED_SESSION_SAVE_NOTICE;
+          setAuthNotice({ type: 'error', title: EXPIRED_SESSION_NOTICE_TITLE, message: sessionMessage });
           if (isInteractiveManualSave) {
             setSaveStatus('error');
           } else if (isAutosave) {
@@ -4537,9 +4540,7 @@ const formatTimestampName = () => {
         if (sessionState.state === 'refreshed' && !silent) {
           setAuthNotice({
             type: 'info',
-            message: isAutosave
-              ? 'SesiÃƒÂ³n actualizada. Guardando automÃƒÂ¡ticamente...'
-              : 'SesiÃƒÂ³n actualizada. Guardando cambios...'
+            message: isAutosave ? UPDATED_SESSION_AUTOSAVE_NOTICE : UPDATED_SESSION_SAVE_NOTICE
           });
         }
 
@@ -4752,16 +4753,17 @@ const formatTimestampName = () => {
         console.error(isAutosave ? 'Error autosaving draft:' : 'Error saving draft:', error);
         persistLocalDraftSnapshot({ showNotice: false });
         if (error instanceof SecureConstructorWriteError) {
+          const isExpiredSecureWrite = error.status === 401 || error.status === 403 || error.code === 'LAUNCH_ACCESS_TOKEN_MISSING';
           setAuthNotice({
             type: 'error',
-            message: `${error.message} Cambios protegidos localmente.`
+            title: isExpiredSecureWrite ? EXPIRED_SESSION_NOTICE_TITLE : undefined,
+            message: isExpiredSecureWrite ? EXPIRED_SESSION_SAVE_NOTICE : `${error.message} Cambios protegidos localmente.`
           });
         } else if (error instanceof SupabaseSessionError) {
           setAuthNotice({
             type: 'error',
-            message: isAutosave
-              ? 'Tu sesiÃƒÂ³n expirÃƒÂ³. Inicia sesiÃƒÂ³n nuevamente para continuar guardando. Cambios protegidos localmente.'
-              : 'Tu sesiÃƒÂ³n expirÃƒÂ³. Inicia sesiÃƒÂ³n nuevamente para guardar. Cambios protegidos localmente.'
+            title: EXPIRED_SESSION_NOTICE_TITLE,
+            message: isAutosave ? EXPIRED_SESSION_AUTOSAVE_NOTICE : EXPIRED_SESSION_SAVE_NOTICE
           });
         }
         if (isInteractiveManualSave) {
@@ -4769,11 +4771,16 @@ const formatTimestampName = () => {
           setTimeout(() => setSaveStatus('idle'), 3000);
         } else if (isAutosave) {
           setAutosaveStatus('error');
-          setAutosaveError(
-            error instanceof SecureConstructorWriteError ? error.message : error instanceof SupabaseSessionError
-              ? 'Tu sesiÃƒÂ³n expirÃƒÂ³. Cambios protegidos localmente.'
-              : 'No se pudo guardar automÃƒÂ¡ticamente. Cambios protegidos localmente.'
-          );
+          const isExpiredSecureWrite = error instanceof SecureConstructorWriteError
+            && (error.status === 401 || error.status === 403 || error.code === 'LAUNCH_ACCESS_TOKEN_MISSING');
+          const autosaveFailureMessage = isExpiredSecureWrite
+            ? EXPIRED_SESSION_AUTOSAVE_NOTICE
+            : error instanceof SecureConstructorWriteError
+              ? error.message
+              : error instanceof SupabaseSessionError
+                ? 'Tu sesión expiró. Cambios protegidos localmente.'
+                : 'No se pudo guardar automáticamente. Cambios protegidos localmente.';
+          setAutosaveError(autosaveFailureMessage);
         }
         return false;
       } finally {
@@ -5617,6 +5624,8 @@ const formatTimestampName = () => {
                     autosaveError={autosaveError}
                     lastAutosavedAt={lastAutosavedAt}
                     showAutosaveIndicator={false}
+                    authNotice={authNotice}
+                    onDismissAuthNotice={() => setAuthNotice(null)}
                     currentStatus={currentStatus}
                     isNewSite={!initialPage}
                     publishedUrl={publishedSiteUrl}
@@ -5898,6 +5907,8 @@ const formatTimestampName = () => {
                       autosaveError={autosaveError}
                       lastAutosavedAt={lastAutosavedAt}
                       showAutosaveIndicator={false}
+                      authNotice={authNotice}
+                      onDismissAuthNotice={() => setAuthNotice(null)}
                       currentStatus={currentStatus}
                       isNewSite={!initialPage}
                       publishedUrl={publishedSiteUrl}
@@ -6036,45 +6047,6 @@ const formatTimestampName = () => {
           />
         )}
       </AnimatePresence>
-
-      {authNotice && (
-        <motion.div
-          initial={{ opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 20 }}
-          className={`fixed bottom-8 right-8 z-[110] max-w-md w-[90vw] rounded-2xl border p-4 shadow-2xl ${
-            authNotice.type === 'error'
-              ? 'bg-white border-amber-200'
-              : 'bg-white border-blue-200'
-          }`}
-        >
-          <div className="flex items-start gap-3">
-            <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
-              authNotice.type === 'error' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'
-            }`}>
-              {authNotice.type === 'error' ? <LucideIcons.AlertTriangle size={18} /> : <LucideIcons.RefreshCw size={18} />}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className={`text-sm font-bold ${
-                authNotice.type === 'error' ? 'text-amber-900' : 'text-blue-900'
-              }`}>
-                {authNotice.title || (authNotice.type === 'error' ? 'SesiÃƒÂ³n expirada' : 'SesiÃƒÂ³n actualizada')}
-              </p>
-              <p className={`text-xs leading-relaxed ${
-                authNotice.type === 'error' ? 'text-amber-800' : 'text-blue-800'
-              }`}>
-                {authNotice.message}
-              </p>
-            </div>
-            <button
-              onClick={() => setAuthNotice(null)}
-              className="rounded-lg p-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
-            >
-              <LucideIcons.X size={16} />
-            </button>
-          </div>
-        </motion.div>
-      )}
 
       {previewWarning && (
         <motion.div

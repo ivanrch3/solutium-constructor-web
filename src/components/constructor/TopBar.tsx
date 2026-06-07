@@ -11,9 +11,17 @@ import {
   X, 
   Save, 
   Send,
-  ExternalLink
+  ExternalLink,
+  AlertTriangle,
+  RefreshCw
 } from 'lucide-react';
 import { motion } from 'motion/react';
+
+type TopBarAuthNotice = {
+  type: 'info' | 'error';
+  title?: string;
+  message: string;
+};
 
 interface TopBarProps {
   onSave: () => void;
@@ -42,6 +50,8 @@ interface TopBarProps {
   autosaveError?: string | null;
   lastAutosavedAt?: Date | null;
   showAutosaveIndicator?: boolean;
+  authNotice?: TopBarAuthNotice | null;
+  onDismissAuthNotice?: () => void;
 }
 
 export const TopBar: React.FC<TopBarProps> = ({ 
@@ -69,7 +79,9 @@ export const TopBar: React.FC<TopBarProps> = ({
   autosaveStatus = 'idle',
   autosaveError = null,
   lastAutosavedAt = null,
-  showAutosaveIndicator = true
+  showAutosaveIndicator = true,
+  authNotice = null,
+  onDismissAuthNotice
 }) => {
   const canSave = saveStatus === 'idle' && !isSaving && !isDraftOperationInProgress && hasUnsavedChanges;
   const isPublishBlocked =
@@ -159,7 +171,7 @@ export const TopBar: React.FC<TopBarProps> = ({
     </div>
 
     {/* Right Section: Actions */}
-    <div className="flex items-center justify-end gap-2 md:gap-4">
+    <div className="relative flex items-center justify-end gap-2 md:gap-4">
       <div className="flex items-center gap-2 md:gap-3 border-r border-border/60 pr-2 md:pr-4">
         {!isMobile && (
           <div className="flex items-center gap-1">
@@ -242,6 +254,46 @@ export const TopBar: React.FC<TopBarProps> = ({
           </motion.button>
         )}
       </div>
+      {authNotice && (
+        <motion.div
+          initial={{ opacity: 0, y: -6 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -6 }}
+          className={`absolute right-0 top-[calc(100%+0.5rem)] z-30 w-[min(92vw,420px)] rounded-xl border p-3 shadow-xl ${
+            authNotice.type === 'error'
+              ? 'border-amber-200 bg-amber-50 text-amber-900'
+              : 'border-blue-200 bg-blue-50 text-blue-900'
+          }`}
+          role={authNotice.type === 'error' ? 'alert' : 'status'}
+        >
+          <div className="flex items-start gap-2.5">
+            <div className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${
+              authNotice.type === 'error' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'
+            }`}>
+              {authNotice.type === 'error' ? <AlertTriangle size={15} /> : <RefreshCw size={15} />}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-bold">
+                {authNotice.title || (authNotice.type === 'error' ? 'Sesión expirada' : 'Sesión actualizada')}
+              </p>
+              <p className="mt-0.5 text-[11px] leading-snug">
+                {authNotice.message}
+              </p>
+            </div>
+            {onDismissAuthNotice && (
+              <button
+                type="button"
+                onClick={onDismissAuthNotice}
+                className="rounded-md p-1 text-current/55 transition-colors hover:bg-white/70 hover:text-current"
+                aria-label="Cerrar aviso de sesión"
+                title="Cerrar aviso de sesión"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+        </motion.div>
+      )}
     </div>
   </div>
   );

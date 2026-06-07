@@ -257,7 +257,16 @@ export const MENU_MODULE: WebModule = {
         { id: 'font_weight', label: 'Grosor', type: 'font_weight', defaultValue: 'extrabold', showIf: { settingId: 'logo_type', value: 'text' } },
         { id: 'text_color', label: 'Color de Texto', type: 'color', defaultValue: '#0F172A', showIf: { settingId: 'logo_type', value: 'text' } }
       ],
-      estilo: [], interaccion: []
+      estilo: [],
+      interaccion: [
+        { id: 'logo_link_type', label: 'Destino del logo', type: 'select', defaultValue: 'home', options: [
+          { label: 'Inicio de la página', value: 'home' },
+          { label: 'Sección del sitio', value: 'section' },
+          { label: 'URL externa', value: 'external' }
+        ] },
+        { id: 'logo_target_section_id', label: 'Sección destino', type: 'select', defaultValue: '', dynamicOptionsSource: 'siteSections', preserveCurrentOption: true, fallbackOptions: [{ label: 'Selecciona una sección', value: '' }], showIf: { settingId: 'logo_link_type', value: 'section' } },
+        { id: 'logo_external_url', label: 'URL externa', type: 'url', defaultValue: '', placeholder: 'https://solutium.app', showIf: { settingId: 'logo_link_type', value: 'external' } }
+      ]
     }},
     { id: 'el_menu_items', name: 'Lista de Enlaces', type: 'text', groups: ['contenido', 'tipografia', 'multimedia'], settings: {
       contenido: [
@@ -2761,9 +2770,9 @@ export const DYNAMIC_CARDS_MODULE: WebModule = {
       { id: 'global_overlay_opacity', label: 'Opacidad overlay', type: 'range', defaultValue: 25, min: 0, max: 90, unit: '%', subsection: 'Overlay' }
     ],
     estructura: [
-      { id: 'height_desktop', label: 'Altura desktop', type: 'range', defaultValue: 560, min: 360, max: 800, unit: 'px' },
-      { id: 'height_tablet', label: 'Altura tablet', type: 'range', defaultValue: 480, min: 320, max: 700, unit: 'px' },
-      { id: 'height_mobile', label: 'Altura móvil', type: 'range', defaultValue: 420, min: 300, max: 620, unit: 'px' }
+      { id: 'height_desktop', label: 'Altura desktop', type: 'range', defaultValue: 560, min: 200, max: 800, unit: 'px' },
+      { id: 'height_tablet', label: 'Altura tablet', type: 'range', defaultValue: 480, min: 200, max: 700, unit: 'px' },
+      { id: 'height_mobile', label: 'Altura móvil', type: 'range', defaultValue: 420, min: 200, max: 620, unit: 'px' }
     ],
     interaccion: [
       { id: 'navigation_mode', label: 'Modo de navegacion', type: 'select', defaultValue: 'auto_dots', options: [

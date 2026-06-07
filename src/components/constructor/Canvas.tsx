@@ -506,6 +506,7 @@ export const Canvas: React.FC<CanvasProps> = ({
           cursor: canPanPreview ? (isPanning ? 'grabbing' : 'grab') : undefined
         }}
       >
+      <div id="top" />
       {false && isFullscreen && !isPreviewMode && (
         <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[110] flex items-center gap-2 bg-surface/80 backdrop-blur-md border border-border/50 p-1.5 rounded-2xl shadow-2xl">
           <div className="flex items-center gap-1 bg-secondary/50 p-1 rounded-xl">

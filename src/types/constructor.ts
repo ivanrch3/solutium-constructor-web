@@ -24,6 +24,7 @@ export interface SettingDefinition {
   dynamicOptionsExclude?: any[];
   preserveCurrentOption?: boolean;
   fallbackOptions?: { label: string; value: any }[];
+  dynamicOptionsSource?: 'siteSections';
   min?: number;
   max?: number;
   step?: number;

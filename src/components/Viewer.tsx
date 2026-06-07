@@ -287,6 +287,7 @@ export const Viewer: React.FC<ViewerProps> = ({
 
   return (
     <div 
+      id="top"
       className="min-h-screen bg-surface @container"
       style={{ 
         ...buildProjectThemeCssVariables(resolvedTheme),

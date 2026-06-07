@@ -359,9 +359,9 @@ export const DynamicCardsModule: React.FC<{
 
   const navigationMode = getVal(null, 'navigation_mode', 'auto_dots');
   const intervalSeconds = parseNumSafe(getVal(null, 'interval_seconds', 5), 5);
-  const heightDesktop = clampRange(getVal(null, 'height_desktop', 560), 560, 360, 800);
-  const heightTablet = clampRange(getVal(null, 'height_tablet', 480), 480, 320, 700);
-  const heightMobile = clampRange(getVal(null, 'height_mobile', 420), 420, 300, 620);
+  const heightDesktop = clampRange(getVal(null, 'height_desktop', 560), 560, 200, 800);
+  const heightTablet = clampRange(getVal(null, 'height_tablet', 480), 480, 200, 700);
+  const heightMobile = clampRange(getVal(null, 'height_mobile', 420), 420, 200, 620);
   const useGlobalTextStyles = toBoolean(getVal(null, 'use_global_text_styles', true), true);
   const globalTitleSize = parseNumSafe(getVal(null, 'global_title_size', 54), 54);
   const globalTitleWeight = getVal(null, 'global_title_weight', 'black');

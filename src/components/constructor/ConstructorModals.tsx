@@ -130,10 +130,10 @@ export const DeleteConfirmationModal: React.FC<{
         <div className="w-16 h-16 bg-error/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
           <Trash2 className="text-error w-8 h-8" />
         </div>
-        <h3 className="text-xl font-bold text-text mb-2 font-sans">Â¿Eliminar mÃ³dulo?</h3>
+        <h3 className="text-xl font-bold text-text mb-2 font-sans">¿Eliminar módulo?</h3>
         <p className="text-text/60 text-sm leading-relaxed mb-8">
-          EstÃ¡s a punto de eliminar el mÃ³dulo <span className="font-bold text-text/80">"{moduleName}"</span>.
-          Esta acciÃ³n no se puede deshacer.
+          Estás a punto de eliminar el módulo <span className="font-bold text-text/80">"{moduleName}"</span>.
+          Esta acción no se puede deshacer.
         </p>
         <div className="flex gap-3">
           <button

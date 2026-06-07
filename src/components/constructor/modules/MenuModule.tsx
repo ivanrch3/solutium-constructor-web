@@ -8,9 +8,16 @@ import { logDebug } from '../../../utils/debug';
 import { SectionAnimation } from '../animations/SectionAnimation';
 import { normalizeSectionAnimation } from '../../../constants/moduleAnimations';
 import { MODULE_INFO } from '../registry';
-import { MenuMode, dedupeMenuLinks, normalizeSectionAnchorId, resolveMenuMode } from '../../../utils/menuNavigation';
+import { MenuMode, dedupeMenuLinks, normalizeSectionAnchorId, resolveMenuMode, resolveSectionHref } from '../../../utils/menuNavigation';
 
 const toBoolean = (value: unknown) => value === true || value === 'true' || value === 1 || value === '1';
+
+const normalizeExternalHref = (value: unknown) => {
+  const rawUrl = String(value || '').trim();
+  if (!rawUrl) return '#top';
+  if (/^(https?:|mailto:|tel:|#|\/)/i.test(rawUrl)) return rawUrl;
+  return `https://${rawUrl}`;
+};
 
 const resolveThemeColor = (
   value: string | undefined,
@@ -77,6 +84,18 @@ export const MenuModule: React.FC<{
   const rawLogoColor = getVal(`${moduleId}_el_menu_logo`, 'text_color', '#0F172A');
   const logoFontSize = getVal(`${moduleId}_el_menu_logo`, 'font_size', 't3');
   const logoFontWeight = getVal(`${moduleId}_el_menu_logo`, 'font_weight', 'bold');
+  const logoLinkType = getVal(`${moduleId}_el_menu_logo`, 'logo_link_type', 'home');
+  const logoTargetSectionId = getVal(`${moduleId}_el_menu_logo`, 'logo_target_section_id', '');
+  const logoExternalUrl = getVal(`${moduleId}_el_menu_logo`, 'logo_external_url', '');
+  const logoHref = (() => {
+    if (logoLinkType === 'section' && logoTargetSectionId) {
+      return resolveSectionHref(String(logoTargetSectionId));
+    }
+    if (logoLinkType === 'external') {
+      return normalizeExternalHref(logoExternalUrl);
+    }
+    return '#top';
+  })();
 
   // Element: Items
   const resolvedMenuMode = menuModeProp || resolveMenuMode(moduleId, settingsValues);
@@ -385,6 +404,40 @@ export const MenuModule: React.FC<{
     });
   };
 
+  const handleInternalAnchorClick = (href: string, fallbackTargetId?: string) => {
+    const targetId = href.substring(1);
+    const target =
+      document.getElementById(targetId) ||
+      document.getElementById(normalizeSectionAnchorId(fallbackTargetId || targetId));
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setActiveSectionId(target.id);
+      return true;
+    }
+    if (targetId === 'top') {
+      const scrollParent = navRef.current?.closest('#constructor-canvas-scroll-container') as HTMLElement | null;
+      if (scrollParent) {
+        scrollParent.scrollTo({ top: 0, behavior: 'smooth' });
+      } else {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+      setActiveSectionId('top');
+      return true;
+    }
+    return false;
+  };
+
+  const handleLogoClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    if (!isPreviewMode && logoType === 'text') {
+      event.preventDefault();
+      return;
+    }
+    if (!logoHref.startsWith('#')) return;
+    event.preventDefault();
+    handleInternalAnchorClick(logoHref, logoTargetSectionId);
+    if (isMobileMenuOpen) setIsMobileMenuOpen(false);
+  };
+
     return (
       <SectionAnimation animation={sectionAnimation} speed={globalThemeSectionAnimationSpeed}>
         <div className="w-full @container">
@@ -395,7 +448,12 @@ export const MenuModule: React.FC<{
             style={{ gap: `${gap}px` }}
           >
           {/* Logo */}
-          <div className="flex-shrink-0">
+          <a
+            href={logoHref}
+            onClick={handleLogoClick}
+            className="flex-shrink-0"
+            aria-label="Ir al destino del logo"
+          >
             {logoType === 'image' && activeLogo ? (
               <img 
                 src={activeLogo} 
@@ -422,7 +480,7 @@ export const MenuModule: React.FC<{
                 />
               </span>
             )}
-          </div>
+          </a>
 
           {/* Links Logic */}
           <div className={`flex flex-1 items-center gap-6 ${desktopHamburger ? 'justify-end' : (layout === 'horizontal' ? alignmentClasses[align as keyof typeof alignmentClasses] : 'flex-col items-center')}`}>

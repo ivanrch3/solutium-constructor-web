@@ -1227,6 +1227,7 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                                                         contextId={prefix}
                                                         moduleType={module.type}
                                                         settingsValues={editorState.settingsValues}
+                                                        availableModules={editorState.addedModules}
                                                       />
                                                     </React.Fragment>
                                                   );

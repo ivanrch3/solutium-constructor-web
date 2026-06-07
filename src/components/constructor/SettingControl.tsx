@@ -21,7 +21,7 @@ import {
   ShoppingBag,
   Users
 } from 'lucide-react';
-import { SettingDefinition } from '../../types/constructor';
+import { SettingDefinition, WebModule } from '../../types/constructor';
 import { Product, Customer, TrustedCompanyLogo } from '../../types/schema';
 import { syncAsset } from '../../services/assetService';
 import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../constants/typography';
@@ -43,6 +43,7 @@ interface SettingControlProps {
   contextId?: string;
   moduleType?: string;
   settingsValues?: Record<string, any>;
+  availableModules?: WebModule[];
 }
 
 // --- REFACTORED COLOR PICKER COMPONENTS ---
@@ -310,7 +311,8 @@ export const SettingControl: React.FC<SettingControlProps> = ({
   project,
   contextId,
   moduleType,
-  settingsValues
+  settingsValues,
+  availableModules = []
 }) => {
   const [isUploading, setIsUploading] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
@@ -395,6 +397,33 @@ export const SettingControl: React.FC<SettingControlProps> = ({
     : {};
 
   const resolveDynamicOptions = (targetSetting: SettingDefinition, targetValue: any = currentValue) => {
+    if (targetSetting.dynamicOptionsSource === 'siteSections') {
+      const options = (availableModules || [])
+        .filter((module) => {
+          if (!module?.id) return false;
+          if (module.id === contextModuleId) return false;
+          return !['menu', 'navegacion', 'header', 'footer', 'spacer', 'espaciador'].includes(module.type);
+        })
+        .map((module) => ({
+          label: module.name || module.type || module.id,
+          value: module.id
+        }));
+
+      const baseOptions = options.length > 0
+        ? [{ label: 'Selecciona una sección', value: '' }, ...options]
+        : (targetSetting.fallbackOptions || [{ label: 'No hay secciones disponibles', value: '' }]);
+      const currentString = String(targetValue || '').trim();
+      if (
+        targetSetting.preserveCurrentOption &&
+        currentString &&
+        !baseOptions.some((option) => String(option.value) === currentString)
+      ) {
+        return [{ label: `${currentString} (actual)`, value: currentString }, ...baseOptions];
+      }
+
+      return baseOptions;
+    }
+
     if (!targetSetting.dynamicOptionsFrom) {
       return targetSetting.options || [];
     }
@@ -1125,6 +1154,7 @@ export const SettingControl: React.FC<SettingControlProps> = ({
           contextId={contextId}
           moduleType={moduleType}
           settingsValues={settingsValues}
+          availableModules={availableModules}
           onChange={(val) => {
             const newItems = [...items];
             let updatedItem = { ...item, [field.id]: val };
@@ -1514,8 +1544,9 @@ export const SettingControl: React.FC<SettingControlProps> = ({
             {isDisabled && <span className="text-[8px] font-bold text-red-500/60 italic">{setting.disabledMessage}</span>}
           </div>
           <input 
-            type="text" 
+            type={setting.type === 'url' ? 'url' : 'text'}
             value={currentValue} 
+            placeholder={setting.placeholder}
             disabled={isDisabled}
             onChange={(e) => onChange(e.target.value)}
             {...dynamicCardsEditingHandlers}

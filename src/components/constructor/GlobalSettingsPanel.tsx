@@ -1,11 +1,11 @@
-import React from 'react';
+﻿import React from 'react';
 import * as LucideIcons from 'lucide-react';
-import { 
-  Palette, 
-  Type, 
-  Maximize, 
-  ShieldCheck, 
-  Globe, 
+import {
+  Palette,
+  Type,
+  Maximize,
+  ShieldCheck,
+  Globe,
   Smartphone,
   ChevronRight,
   Sparkles,
@@ -30,20 +30,45 @@ interface GlobalSettingsPanelProps {
   projectId: string | null;
   isSidebarMode?: boolean;
   onBack?: () => void;
+  siteName?: string;
+  onSiteNameChange?: (name: string) => void;
 }
 
-export const GlobalSettingsPanel: React.FC<GlobalSettingsPanelProps> = ({ 
+const TEMPORARY_SAVE_INTERVAL_STORAGE_KEY = 'solutium_constructor_temporary_save_interval_minutes';
+const TEMPORARY_SAVE_NOTICE_STORAGE_KEY = 'solutium_constructor_temporary_save_notice_enabled';
+const VALID_TEMPORARY_SAVE_INTERVALS = new Set([1, 3, 10]);
+
+const normalizeTemporarySaveInterval = (value: any) => {
+  const numericValue = Number(value);
+  return VALID_TEMPORARY_SAVE_INTERVALS.has(numericValue) ? numericValue : 3;
+};
+
+const normalizeBooleanPreference = (value: any, fallback: boolean) => {
+  if (value === undefined || value === null) return fallback;
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === 'true') return true;
+    if (normalized === 'false') return false;
+  }
+  return Boolean(value);
+};
+
+export const GlobalSettingsPanel: React.FC<GlobalSettingsPanelProps> = ({
   view = 'settings',
-  settingsValues, 
+  settingsValues,
   onSettingChange,
   project,
   projectId,
   isSidebarMode = false,
-  onBack
+  onBack,
+  siteName,
+  onSiteNameChange
 }) => {
   const { siteContent, updateTheme, selectedSectionId } = useEditorStore();
   const theme = siteContent.theme;
   const [activeInternalTab, setActiveInternalTab] = React.useState<'seo' | 'marketing' | 'conversion' | 'style'>('style');
+  const [backupSettingsSavedNotice, setBackupSettingsSavedNotice] = React.useState(false);
 
   const selectedSection = selectedSectionId
     ? siteContent.sections.find((section) => section.id === selectedSectionId)
@@ -63,43 +88,55 @@ export const GlobalSettingsPanel: React.FC<GlobalSettingsPanelProps> = ({
   );
 
   const getVal = (settingId: string, defaultValue: any) => {
-    return settingsValues[`global_theme_${settingId}`] !== undefined 
-      ? settingsValues[`global_theme_${settingId}`] 
+    return settingsValues[`global_theme_${settingId}`] !== undefined
+      ? settingsValues[`global_theme_${settingId}`]
       : defaultValue;
   };
 
   const handleThemeChange = (settingId: string, value: any) => {
     onSettingChange('global', `theme_${settingId}`, value);
-
-    if (settingId === 'builder_autosave_interval_ms') {
-      onSettingChange('global', 'theme_builder_autosave_enabled', value !== 'disabled');
-    }
-
-    if (settingId === 'builder_autosave_enabled') {
-      const currentInterval = settingsValues.global_theme_builder_autosave_interval_ms;
-      if (value === false) {
-        onSettingChange('global', 'theme_builder_autosave_interval_ms', 'disabled');
-      } else if (String(currentInterval).trim().toLowerCase() === 'disabled') {
-        onSettingChange('global', 'theme_builder_autosave_interval_ms', 180000);
-      }
+    if (
+      settingId === 'builder_temporary_save_interval_minutes' ||
+      settingId === 'builder_temporary_save_notice_enabled'
+    ) {
+      setBackupSettingsSavedNotice(false);
     }
 
     // Also update store theme for immediate access in modules
     updateTheme({ [settingId]: value });
   };
 
+  const handleSaveTemporaryBackupSettings = () => {
+    try {
+      const interval = normalizeTemporarySaveInterval(
+        getVal('builder_temporary_save_interval_minutes', 3)
+      );
+      const noticeEnabled = normalizeBooleanPreference(getVal('builder_temporary_save_notice_enabled', true), true);
+
+      window.localStorage.setItem(TEMPORARY_SAVE_INTERVAL_STORAGE_KEY, String(interval));
+      window.localStorage.setItem(TEMPORARY_SAVE_NOTICE_STORAGE_KEY, String(noticeEnabled));
+      onSettingChange('global', 'theme_builder_temporary_save_interval_minutes', interval);
+      onSettingChange('global', 'theme_builder_temporary_save_notice_enabled', noticeEnabled);
+      setBackupSettingsSavedNotice(true);
+      window.setTimeout(() => setBackupSettingsSavedNotice(false), 3000);
+    } catch (error) {
+      console.warn('[LOCAL_DRAFT_SNAPSHOT] Unable to persist temporary backup settings:', error);
+      setBackupSettingsSavedNotice(false);
+    }
+  };
+
   const animations = [
     { id: 'fade-in', label: 'Fade In', desc: 'Sutil', icon: <LucideIcons.Eye size={18} /> },
-    { id: 'slide-up', label: 'Slide Up', desc: 'Rápida', icon: <LucideIcons.ArrowUp size={18} /> },
+    { id: 'slide-up', label: 'Slide Up', desc: 'RÃ¡pida', icon: <LucideIcons.ArrowUp size={18} /> },
     { id: 'slide-down', label: 'Slide Down', desc: 'Fluida', icon: <LucideIcons.ArrowDown size={18} /> },
     { id: 'scale-up', label: 'Scale Up', desc: 'Impactante', icon: <LucideIcons.Maximize size={18} /> },
     { id: 'zoom-in', label: 'Zoom In', desc: 'Llamativa', icon: <LucideIcons.Search size={18} /> },
     { id: 'flip', label: 'Flip', desc: 'Atrevida', icon: <LucideIcons.RotateCw size={18} /> },
     { id: 'blur-in', label: 'Blur In', desc: 'Elegante', icon: <LucideIcons.Cloud size={18} /> },
     { id: 'bounce', label: 'Bounce', desc: 'Divertida', icon: <LucideIcons.Activity size={18} /> },
-    { id: 'stagger', label: 'Stagger', desc: 'Rítmica', icon: <LucideIcons.Layers size={18} /> },
+    { id: 'stagger', label: 'Stagger', desc: 'RÃ­tmica', icon: <LucideIcons.Layers size={18} /> },
     { id: 'skew', label: 'Skew', desc: 'Moderna', icon: <LucideIcons.Zap size={18} /> },
-    { id: 'rotate', label: 'Rotate', desc: 'Dinámica', icon: <LucideIcons.RefreshCw size={18} /> },
+    { id: 'rotate', label: 'Rotate', desc: 'DinÃ¡mica', icon: <LucideIcons.RefreshCw size={18} /> },
     { id: 'focus', label: 'Focus', desc: 'Precisa', icon: <LucideIcons.Target size={18} /> },
   ];
 
@@ -124,8 +161,8 @@ export const GlobalSettingsPanel: React.FC<GlobalSettingsPanelProps> = ({
     <button
       onClick={onClick}
       className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all border-2 text-sm font-bold ${
-        active 
-          ? 'bg-primary border-primary text-white shadow-lg shadow-primary/20 scale-105 z-10' 
+        active
+          ? 'bg-primary border-primary text-white shadow-lg shadow-primary/20 scale-105 z-10'
           : 'bg-white border-slate-100 text-slate-400 hover:border-slate-200 hover:text-slate-600'
       }`}
     >
@@ -143,22 +180,22 @@ export const GlobalSettingsPanel: React.FC<GlobalSettingsPanelProps> = ({
           <h3 className="text-lg font-black tracking-tight">Estrategia de SEO & Visibilidad</h3>
         </div>
         <p className="text-sm text-blue-800/70 font-medium">
-          Controlamos cada aspecto técnico para garantizar que tu sitio escale posiciones en los motores de búsqueda de forma orgánica.
+          Controlamos cada aspecto tÃ©cnico para garantizar que tu sitio escale posiciones en los motores de bÃºsqueda de forma orgÃ¡nica.
         </p>
       </div>
 
       <div className="space-y-3">
-        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block mb-4">Checklist de Implementación SEO</label>
+        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block mb-4">Checklist de ImplementaciÃ³n SEO</label>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <ChecklistItem title="Configuración de Meta Títulos dinámicos" checked />
-          <ChecklistItem title="Meta Descripciones optimizadas por página" checked />
-          <ChecklistItem title="Sitemap.xml automatizado (vía Genoma)" checked />
+          <ChecklistItem title="ConfiguraciÃ³n de Meta TÃ­tulos dinÃ¡micos" checked />
+          <ChecklistItem title="Meta Descripciones optimizadas por pÃ¡gina" checked />
+          <ChecklistItem title="Sitemap.xml automatizado (vÃ­a Genoma)" checked />
           <ChecklistItem title="Robots.txt personalizable" checked />
           <ChecklistItem title="Marcado de Datos Estructurados (Schema.org)" />
-          <ChecklistItem title="Atributos ALT automáticos (AI Engine)" />
-          <ChecklistItem title="Gestión de Slugs y URLs amigables" checked />
-          <ChecklistItem title="Etiquetas Canonical automáticas" />
-          <ChecklistItem title="Compresión Activa de Imágenes (Punto de Crítica)" checked />
+          <ChecklistItem title="Atributos ALT automÃ¡ticos (AI Engine)" />
+          <ChecklistItem title="GestiÃ³n de Slugs y URLs amigables" checked />
+          <ChecklistItem title="Etiquetas Canonical automÃ¡ticas" />
+          <ChecklistItem title="CompresiÃ³n Activa de ImÃ¡genes (Punto de CrÃ­tica)" checked />
           <ChecklistItem title="Lazy Loading nativo para Core Web Vitals" checked />
         </div>
       </div>
@@ -174,20 +211,20 @@ export const GlobalSettingsPanel: React.FC<GlobalSettingsPanelProps> = ({
           <h3 className="text-lg font-black tracking-tight">Marketing, Tracking & Datos</h3>
         </div>
         <p className="text-sm text-purple-800/70 font-medium">
-          Mide cada interacción del usuario para optimizar tus presupuestos publicitarios y entender el comportamiento de tu audiencia.
+          Mide cada interacciÃ³n del usuario para optimizar tus presupuestos publicitarios y entender el comportamiento de tu audiencia.
         </p>
       </div>
 
       <div className="space-y-3">
-        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block mb-4">Medición y Píxeles</label>
+        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block mb-4">MediciÃ³n y PÃ­xeles</label>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <ChecklistItem title="Inyección de Meta Pixel (Eventos Estándar)" checked />
+          <ChecklistItem title="InyecciÃ³n de Meta Pixel (Eventos EstÃ¡ndar)" checked />
           <ChecklistItem title="Google Analytics 4 (Handshake ID)" checked />
           <ChecklistItem title="Contenedor Google Tag Manager" />
           <ChecklistItem title="API de Conversiones (CAPI) Server-side" />
-          <ChecklistItem title="Verificación de Dominio DNS" checked />
+          <ChecklistItem title="VerificaciÃ³n de Dominio DNS" checked />
           <ChecklistItem title="Seguimiento de Conversiones Personalizadas" />
-          <ChecklistItem title="Parámetros UTM dinámicos para Campañas" />
+          <ChecklistItem title="ParÃ¡metros UTM dinÃ¡micos para CampaÃ±as" />
           <ChecklistItem title="Retargeting Activo de Visitantes" />
         </div>
       </div>
@@ -200,24 +237,24 @@ export const GlobalSettingsPanel: React.FC<GlobalSettingsPanelProps> = ({
       <div className="p-6 bg-emerald-50 rounded-3xl border border-emerald-100 space-y-3">
         <div className="flex items-center gap-3 text-emerald-700">
           <Sparkles size={24} />
-          <h3 className="text-lg font-black tracking-tight">Conversión & Funnels</h3>
+          <h3 className="text-lg font-black tracking-tight">ConversiÃ³n & Funnels</h3>
         </div>
         <p className="text-sm text-emerald-800/70 font-medium">
-          Transforma visitantes en leads calificados mediante flujos de conversión optimizados y herramientas de persuasión.
+          Transforma visitantes en leads calificados mediante flujos de conversiÃ³n optimizados y herramientas de persuasiÃ³n.
         </p>
       </div>
 
       <div className="space-y-3">
-        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block mb-4">Optimización de Resultados</label>
+        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block mb-4">OptimizaciÃ³n de Resultados</label>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <ChecklistItem title="Integración Nativa con CRM (Hubspot/Solutium)" />
-          <ChecklistItem title="Captura de Leads vía Webhooks seguros" checked />
-          <ChecklistItem title="Pop-ups de Exit Intent dinámicos" />
-          <ChecklistItem title="Pruebas A/B de Títulos y Botones" />
+          <ChecklistItem title="IntegraciÃ³n Nativa con CRM (Hubspot/Solutium)" />
+          <ChecklistItem title="Captura de Leads vÃ­a Webhooks seguros" checked />
+          <ChecklistItem title="Pop-ups de Exit Intent dinÃ¡micos" />
+          <ChecklistItem title="Pruebas A/B de TÃ­tulos y Botones" />
           <ChecklistItem title="Chat Directo con Agentes (WhatsApp/Intercom)" checked />
-          <ChecklistItem title="Mapas de Calor y Grabación de Sesiones" />
-          <ChecklistItem title="Validación de Formularios en tiempo real" checked />
-          <ChecklistItem title="Encuestas de Satisfacción Post-Conversión" />
+          <ChecklistItem title="Mapas de Calor y GrabaciÃ³n de Sesiones" />
+          <ChecklistItem title="ValidaciÃ³n de Formularios en tiempo real" checked />
+          <ChecklistItem title="Encuestas de SatisfacciÃ³n Post-ConversiÃ³n" />
         </div>
       </div>
     </div>
@@ -230,7 +267,7 @@ export const GlobalSettingsPanel: React.FC<GlobalSettingsPanelProps> = ({
           <div className="flex flex-col space-y-2">
             <h2 className="text-3xl font-black text-slate-900 tracking-tight flex items-center gap-3">
               <Palette className="text-primary w-8 h-8" />
-              Configuración de Estilo Global
+              ConfiguraciÃ³n de Estilo Global
             </h2>
             <p className="text-slate-500 font-medium">Controla el comportamiento visual avanzado de tu sitio web.</p>
           </div>
@@ -243,15 +280,15 @@ export const GlobalSettingsPanel: React.FC<GlobalSettingsPanelProps> = ({
             </div>
             <div className="flex-1">
               <h3 className={`${isSidebarMode ? 'text-xs' : 'text-sm'} font-bold text-slate-900`}>Modo Oscuro Alternado</h3>
-              {!isSidebarMode && <p className="text-[10px] text-slate-500 font-medium">Alterna módulos entre claro y oscuro automáticamente.</p>}
+              {!isSidebarMode && <p className="text-[10px] text-slate-500 font-medium">Alterna mÃ³dulos entre claro y oscuro automÃ¡ticamente.</p>}
             </div>
             <SettingControl
               setting={{ id: 'alternatingDarkMode', type: 'boolean', label: '', defaultValue: false }}
               value={theme.alternatingDarkMode || false}
               onChange={(val) => {
-                updateTheme({ 
+                updateTheme({
                   alternatingDarkMode: val,
-                  alternatingThemeMode: val ? false : theme.alternatingThemeMode 
+                  alternatingThemeMode: val ? false : theme.alternatingThemeMode
                 });
                 onSettingChange('global', 'theme_alternatingDarkMode', val);
                 if (val) onSettingChange('global', 'theme_alternatingThemeMode', false);
@@ -272,7 +309,7 @@ export const GlobalSettingsPanel: React.FC<GlobalSettingsPanelProps> = ({
               setting={{ id: 'alternatingThemeMode', type: 'boolean', label: '', defaultValue: false }}
               value={theme.alternatingThemeMode || false}
               onChange={(val) => {
-                updateTheme({ 
+                updateTheme({
                   alternatingThemeMode: val,
                   alternatingDarkMode: val ? false : theme.alternatingDarkMode
                 });
@@ -284,7 +321,7 @@ export const GlobalSettingsPanel: React.FC<GlobalSettingsPanelProps> = ({
           </div>
 
           {(theme.alternatingDarkMode || theme.alternatingThemeMode) && (
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               className="px-2"
@@ -296,24 +333,24 @@ export const GlobalSettingsPanel: React.FC<GlobalSettingsPanelProps> = ({
                   onSettingChange('global', 'theme_invertedAlternatingMode', newVal);
                 }}
                 className={`w-full flex items-center justify-center gap-2 py-2 px-4 rounded-xl border border-slate-200 text-[10px] font-bold uppercase tracking-wider transition-all ${
-                  theme.invertedAlternatingMode 
-                    ? 'bg-primary text-white border-primary shadow-lg shadow-primary/20' 
+                  theme.invertedAlternatingMode
+                    ? 'bg-primary text-white border-primary shadow-lg shadow-primary/20'
                     : 'bg-white text-slate-500 hover:border-primary/20 hover:text-primary'
                 }`}
               >
                 <LucideIcons.RefreshCw size={14} className={theme.invertedAlternatingMode ? 'animate-spin-slow' : ''} />
-                Invertir Orden de Módulos
+                Invertir Orden de MÃ³dulos
               </button>
             </motion.div>
           )}
 
           {theme.alternatingThemeMode && (
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               className={`${isSidebarMode ? 'p-4 rounded-2xl' : 'p-6 rounded-[2rem]'} bg-slate-50 border border-slate-100 space-y-3`}
             >
-              <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Personalizar color del patrón</label>
+              <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Personalizar color del patrÃ³n</label>
               <SettingControl
                 setting={{ id: 'themeBackgroundColor', type: 'color', label: 'Color de Fondo Oscuro', defaultValue: theme.secondaryColor }}
                 value={theme.themeBackgroundColor || theme.secondaryColor}
@@ -331,7 +368,7 @@ export const GlobalSettingsPanel: React.FC<GlobalSettingsPanelProps> = ({
         <div className={`${isSidebarMode ? 'p-4 rounded-xl' : 'p-6 rounded-2xl'} bg-amber-50 border border-amber-100 flex items-start gap-3`}>
           <LucideIcons.AlertCircle className="text-amber-500 shrink-0 mt-0.5" size={isSidebarMode ? 16 : 20} />
           <p className={`${isSidebarMode ? 'text-[10px]' : 'text-xs'} text-amber-800 font-medium leading-relaxed`}>
-            <span className="font-bold">Prioridad Visual:</span> Estas configuraciones forzarán un patrón visual rítmico, sobrescribiendo ajustes individuales.
+            <span className="font-bold">Prioridad Visual:</span> Estas configuraciones forzarÃ¡n un patrÃ³n visual rÃ­tmico, sobrescribiendo ajustes individuales.
           </p>
         </div>
       </div>
@@ -453,14 +490,14 @@ export const GlobalSettingsPanel: React.FC<GlobalSettingsPanelProps> = ({
               <Sparkles className="text-primary w-8 h-8" />
               Animaciones Globales
             </h2>
-            <p className="text-slate-500 font-medium">Define el comportamiento inicial de los módulos al cargar.</p>
+            <p className="text-slate-500 font-medium">Define el comportamiento inicial de los mÃ³dulos al cargar.</p>
           </div>
         )}
 
         <div className={`grid ${isSidebarMode ? 'grid-cols-1' : 'grid-cols-2'} gap-3 mb-6`}>
           {[
-            { id: 'recommended', label: 'Recomendado', desc: 'Basado en estándares', icon: <LucideIcons.CheckCircle2 size={18} /> },
-            { id: 'random', label: 'Aleatorio', desc: 'Mezcla dinámica', icon: <LucideIcons.Dice5 size={18} /> },
+            { id: 'recommended', label: 'Recomendado', desc: 'Basado en estÃ¡ndares', icon: <LucideIcons.CheckCircle2 size={18} /> },
+            { id: 'random', label: 'Aleatorio', desc: 'Mezcla dinÃ¡mica', icon: <LucideIcons.Dice5 size={18} /> },
           ].map((opt) => (
             <button
               key={opt.id}
@@ -469,8 +506,8 @@ export const GlobalSettingsPanel: React.FC<GlobalSettingsPanelProps> = ({
                 onSettingChange('global', 'theme_globalAnimationType', opt.id);
               }}
               className={`flex items-center gap-3 ${isSidebarMode ? 'p-3 rounded-xl' : 'p-4 rounded-2xl shadow-lg shadow-primary/20'} border transition-all text-left ${
-                theme.globalAnimationType === opt.id 
-                  ? 'bg-primary text-white border-primary' 
+                theme.globalAnimationType === opt.id
+                  ? 'bg-primary text-white border-primary'
                   : 'bg-white border-slate-100 text-slate-500 hover:border-primary/20'
               }`}
             >
@@ -521,7 +558,7 @@ export const GlobalSettingsPanel: React.FC<GlobalSettingsPanelProps> = ({
         <div className="pt-4 border-t border-slate-100 flex items-center gap-2 justify-center">
             <LucideIcons.Info size={12} className="text-slate-300" />
             <span className="text-[9px] text-slate-400 font-medium italic">
-                Cambio automático en tiempo real.
+                Cambio automÃ¡tico en tiempo real.
             </span>
         </div>
       </div>
@@ -550,7 +587,7 @@ export const GlobalSettingsPanel: React.FC<GlobalSettingsPanelProps> = ({
           label: 'Color Primario',
           type: 'color',
           defaultValue: project?.brandColors?.primary || '#3B82F6',
-          description: 'Botones principales, acentos y llamadas a la acción.'
+          description: 'Botones principales, acentos y llamadas a la acciÃ³n.'
         },
         {
           id: 'secondary_color',
@@ -584,8 +621,8 @@ export const GlobalSettingsPanel: React.FC<GlobalSettingsPanelProps> = ({
     },
     {
       id: 'typography',
-      title: 'Tipografía Maestra',
-      description: 'Selecciona las fuentes que darán voz a tu contenido.',
+      title: 'TipografÃ­a Maestra',
+      description: 'Selecciona las fuentes que darÃ¡n voz a tu contenido.',
       icon: <Type className="w-5 h-5" />,
       settings: [
         {
@@ -604,7 +641,7 @@ export const GlobalSettingsPanel: React.FC<GlobalSettingsPanelProps> = ({
         },
         {
           id: 'font_heading',
-          label: 'Fuente de Títulos',
+          label: 'Fuente de TÃ­tulos',
           type: 'select',
           defaultValue: 'Inter',
           options: [
@@ -620,7 +657,7 @@ export const GlobalSettingsPanel: React.FC<GlobalSettingsPanelProps> = ({
     {
       id: 'layout',
       title: 'Estructura & Bordes',
-      description: 'Ajusta la redondez y densidad del diseño.',
+      description: 'Ajusta la redondez y densidad del diseÃ±o.',
       icon: <Layout className="w-5 h-5" />,
       settings: [
         {
@@ -645,13 +682,12 @@ export const GlobalSettingsPanel: React.FC<GlobalSettingsPanelProps> = ({
     },
     {
       id: 'autosave',
-      title: 'Guardado AutomÃ¡tico',
       description: 'Guarda el borrador en segundo plano para reducir el riesgo de perder cambios.',
       icon: <Save className="w-5 h-5" />,
       settings: [
         {
           id: 'builder_autosave_enabled',
-          label: 'Activar guardado automÃ¡tico',
+          label: 'Activar guardado automático',
           type: 'boolean',
           defaultValue: true,
           description: 'Mantiene el borrador protegido con guardados silenciosos en segundo plano.'
@@ -669,14 +705,33 @@ export const GlobalSettingsPanel: React.FC<GlobalSettingsPanelProps> = ({
             { label: '5 minutos', value: 300000 },
             { label: '10 minutos', value: 600000 }
           ],
-          description: 'El guardado automÃ¡tico solo corre si detecta cambios sin guardar.'
+          description: 'El guardado automático solo corre si detecta cambios sin guardar.'
         },
         {
           id: 'builder_autosave_show_indicator',
           label: 'Mostrar estado en la barra superior',
           type: 'boolean',
           defaultValue: true,
-          description: 'Muestra mensajes discretos del guardado automÃ¡tico en la barra superior.'
+          description: 'Muestra mensajes discretos del guardado automático en la barra superior.'
+        },
+        {
+          id: 'builder_temporary_save_notice_enabled',
+          label: 'Mostrar aviso de guardado temporal',
+          type: 'boolean',
+          defaultValue: true,
+          description: 'Muestra un aviso breve cuando los cambios quedan protegidos localmente.'
+        },
+        {
+          id: 'builder_temporary_save_interval_minutes',
+          label: 'Frecuencia del respaldo temporal',
+          type: 'select',
+          defaultValue: 3,
+          options: [
+            { label: 'Cada 1 minuto', value: 1 },
+            { label: 'Cada 3 minutos', value: 3 },
+            { label: 'Cada 10 minutos', value: 10 }
+          ],
+          description: 'El respaldo temporal se guarda solo en este navegador. Para conservar los cambios definitivamente, presione Guardar.'
         }
       ]
     }
@@ -685,10 +740,17 @@ export const GlobalSettingsPanel: React.FC<GlobalSettingsPanelProps> = ({
   const normalizedSections = sections.map((section) => {
     if (section.id !== 'autosave') return section;
 
+    const legacyRemoteAutosaveSettings = new Set([
+      'builder_autosave_enabled',
+      'builder_autosave_interval_ms',
+      'builder_autosave_show_indicator'
+    ]);
+
     return {
       ...section,
-      title: 'Guardado Automático',
-      settings: section.settings.map((setting: any) => {
+      title: 'Respaldo temporal local',
+      description: 'Protege cambios en este navegador hasta que presiones Guardar.',
+      settings: section.settings.filter((setting: any) => !legacyRemoteAutosaveSettings.has(setting.id)).map((setting: any) => {
         if (setting.id === 'builder_autosave_enabled') {
           return { ...setting, label: 'Activar guardado automático' };
         }
@@ -696,7 +758,7 @@ export const GlobalSettingsPanel: React.FC<GlobalSettingsPanelProps> = ({
         if (setting.id === 'builder_autosave_interval_ms') {
           return {
             ...setting,
-            description: 'Elige Desactivado para pausar el guardado automático sin afectar el guardado manual.'
+            description: 'Elige Desactivado para pausar el guardado automÃ¡tico sin afectar el guardado manual.'
           };
         }
 
@@ -731,37 +793,55 @@ export const GlobalSettingsPanel: React.FC<GlobalSettingsPanelProps> = ({
             <Settings className="text-primary w-8 h-8" />
             Centro de Control Global
           </h2>
-          <p className="text-slate-500 font-medium">Gestiona la identidad visual y las capacidades estratégicas de tu ecosistema digital.</p>
+          <p className="text-slate-500 font-medium">Gestiona la identidad visual y las capacidades estratÃ©gicas de tu ecosistema digital.</p>
         </div>
 
+        {onSiteNameChange && (
+          <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+            <label className="mb-2 block text-xs font-black uppercase tracking-widest text-slate-400">
+              Nombre
+            </label>
+            <input
+              type="text"
+              value={siteName || ''}
+              onChange={(event) => onSiteNameChange(event.target.value)}
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-800 outline-none transition-all focus:border-primary/40 focus:bg-white focus:ring-2 focus:ring-primary/10"
+              placeholder="Nombre del sitio"
+            />
+            <p className="mt-2 text-[10px] font-medium text-slate-400">
+              Este nombre se guarda con el sitio al presionar Guardar.
+            </p>
+          </div>
+        )}
+
         <div className="flex flex-wrap gap-2 p-1 bg-slate-50 rounded-2xl border border-slate-100 self-start">
-          <TabButton 
-            id="style" 
-            label="Estilo" 
-            icon={Palette} 
-            active={activeInternalTab === 'style'} 
-            onClick={() => setActiveInternalTab('style')} 
+          <TabButton
+            id="style"
+            label="Estilo"
+            icon={Palette}
+            active={activeInternalTab === 'style'}
+            onClick={() => setActiveInternalTab('style')}
           />
-          <TabButton 
-            id="seo" 
-            label="SEO" 
-            icon={Globe} 
-            active={activeInternalTab === 'seo'} 
-            onClick={() => setActiveInternalTab('seo')} 
+          <TabButton
+            id="seo"
+            label="SEO"
+            icon={Globe}
+            active={activeInternalTab === 'seo'}
+            onClick={() => setActiveInternalTab('seo')}
           />
-          <TabButton 
-            id="marketing" 
-            label="Marketing" 
-            icon={MousePointer2} 
-            active={activeInternalTab === 'marketing'} 
-            onClick={() => setActiveInternalTab('marketing')} 
+          <TabButton
+            id="marketing"
+            label="Marketing"
+            icon={MousePointer2}
+            active={activeInternalTab === 'marketing'}
+            onClick={() => setActiveInternalTab('marketing')}
           />
-          <TabButton 
-            id="conversion" 
-            label="Conversión" 
-            icon={Sparkles} 
-            active={activeInternalTab === 'conversion'} 
-            onClick={() => setActiveInternalTab('conversion')} 
+          <TabButton
+            id="conversion"
+            label="ConversiÃ³n"
+            icon={Sparkles}
+            active={activeInternalTab === 'conversion'}
+            onClick={() => setActiveInternalTab('conversion')}
           />
         </div>
       </div>
@@ -775,7 +855,7 @@ export const GlobalSettingsPanel: React.FC<GlobalSettingsPanelProps> = ({
         {activeInternalTab === 'seo' && renderSEOView()}
         {activeInternalTab === 'marketing' && renderMarketingView()}
         {activeInternalTab === 'conversion' && renderConversionView()}
-        
+
         {activeInternalTab === 'style' && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-1 space-y-4">
@@ -785,37 +865,37 @@ export const GlobalSettingsPanel: React.FC<GlobalSettingsPanelProps> = ({
                   Visualizador de Marca
                 </h3>
                 <div className="space-y-3">
-                  <div 
+                  <div
                     className="h-20 rounded-2xl flex items-center justify-center text-white font-bold p-4 text-center text-xs"
-                    style={{ 
+                    style={{
                       backgroundColor: getVal('primary_color', project?.brandColors?.primary || '#3B82F6'),
                       borderRadius: `${parseNumSafe(getVal('radius', 12), 12)}px`
                     }}
                   >
-                    Botón Principal
+                    BotÃ³n Principal
                   </div>
                   <div className="flex gap-2">
-                    <div 
+                    <div
                       className="flex-1 h-10 rounded-xl border border-slate-200"
                       style={{ backgroundColor: getVal('secondary_color', '#F1F5F9'), borderRadius: `${parseNumSafe(getVal('radius', 12), 12) * 0.8}px` }}
                     />
-                    <div 
+                    <div
                       className="flex-1 h-10 rounded-xl"
                       style={{ backgroundColor: getVal('accent_color', '#7C3AED'), borderRadius: `${parseNumSafe(getVal('radius', 12), 12) * 0.8}px` }}
                     />
                   </div>
                   <div className="pt-2">
-                    <p 
+                    <p
                       className="text-lg font-bold"
                       style={{ fontFamily: getVal('font_heading', 'Inter'), color: getVal('text_color', '#0F172A') }}
                     >
-                      Título de Ejemplo
+                      TÃ­tulo de Ejemplo
                     </p>
-                    <p 
+                    <p
                       className="text-xs text-slate-400 mt-1"
                       style={{ fontFamily: getVal('font_sans', 'Inter') }}
                     >
-                      Este es un ejemplo de cómo se verá el cuerpo de texto en tu sitio web.
+                      Este es un ejemplo de cÃ³mo se verÃ¡ el cuerpo de texto en tu sitio web.
                     </p>
                   </div>
                 </div>
@@ -859,10 +939,23 @@ export const GlobalSettingsPanel: React.FC<GlobalSettingsPanelProps> = ({
                   {section.id === 'autosave' && (
                     <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 [&_p:last-child]:hidden">
                       <p className="text-[11px] text-slate-500 font-medium leading-relaxed">
-                        El guardado automático no publica la página ni genera preview. Solo guarda el borrador y su estructura para reducir el riesgo de pérdida de cambios.
+                        El respaldo temporal local no publica la página ni persiste cambios finales en la base de datos. Presiona Guardar para conservarlos remotamente.
                       </p>
+                      <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <button
+                          type="button"
+                          onClick={handleSaveTemporaryBackupSettings}
+                          className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-primary/20 transition-all hover:opacity-90"
+                        >
+                          <Save size={14} />
+                          Guardar ajustes de respaldo
+                        </button>
+                        <span className={`text-[11px] font-bold transition-opacity ${backupSettingsSavedNotice ? 'text-emerald-600 opacity-100' : 'text-slate-400 opacity-0'}`}>
+                          Ajustes de respaldo guardados.
+                        </span>
+                      </div>
                       <p className="text-[11px] text-slate-500 font-medium leading-relaxed">
-                        El guardado automÃ¡tico no publica la pÃ¡gina ni genera preview. Solo guarda el borrador y su estructura para reducir riesgo de pÃ©rdida de cambios.
+                        El guardado automático no publica la página ni genera preview. Solo guarda el borrador y su estructura para reducir riesgo de pérdida de cambios.
                       </p>
                     </div>
                   )}

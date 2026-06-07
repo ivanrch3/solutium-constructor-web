@@ -229,6 +229,8 @@ export interface PublishedSite {
   previewImagePath?: string;
   previewImageUpdatedAt?: string;
   previewImageHash?: string;
+  publicUrl?: string | null;
+  publishedUrl?: string | null;
 }
 
 export interface Asset {

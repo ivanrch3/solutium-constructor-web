@@ -1,20 +1,20 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import * as LucideIcons from 'lucide-react';
-import { 
-  Monitor, 
-  PlusCircle, 
+import {
+  Monitor,
+  PlusCircle,
   Database,
-  Layout, 
-  Type, 
-  Layers, 
-  Eye, 
-  Smartphone, 
+  Layout,
+  Type,
+  Layers,
+  Eye,
+  Smartphone,
   Tablet,
-  RotateCcw, 
-  Plus, 
+  RotateCcw,
+  Plus,
   Mail,
   Users,
-  Trash2, 
+  Trash2,
   CheckCircle2,
   FileText,
   User,
@@ -28,12 +28,12 @@ import { DataTab } from '../DataTab';
 import { Project, RenderingContract, WebBuilderSite, PublishedSite, Page } from '../../types/schema';
 import { WebModule, EditorState } from '../../types/constructor';
 import * as registryModules from './registry';
-import { 
+import {
   MODULE_INFO,
-  HEADER_MODULE, MENU_MODULE, FOOTER_MODULE, SPACER_MODULE, 
-  PRODUCTS_MODULE, HERO_MODULE, HERO2_MODULE, FEATURES_MODULE, ABOUT_MODULE, 
-  PROCESS_MODULE, GALLERY_MODULE, VIDEO_MODULE, TESTIMONIALS_MODULE, 
-  STATS_MODULE, NEWSLETTER_MODULE, CONTACT_MODULE, TEAM_MODULE, 
+  HEADER_MODULE, MENU_MODULE, FOOTER_MODULE, SPACER_MODULE,
+  PRODUCTS_MODULE, HERO_MODULE, HERO2_MODULE, FEATURES_MODULE, ABOUT_MODULE,
+  PROCESS_MODULE, GALLERY_MODULE, VIDEO_MODULE, TESTIMONIALS_MODULE,
+  STATS_MODULE, NEWSLETTER_MODULE, CONTACT_MODULE, TEAM_MODULE,
   CTA_MODULE, DYNAMIC_CARDS_MODULE, PRICING_MODULE, FAQ_MODULE, TRUSTED_LOGOS_MODULE,
   BENTO_MODULE, COMPARISON_MODULE, COMPOSITION_SECTION_MODULE
 } from './registry';
@@ -44,6 +44,12 @@ import {
   hasActiveSecureConstructorWriteSession,
   SecureConstructorWriteError
 } from '../../services/secureConstructorWriteApi';
+import {
+  LocalDraftSnapshot,
+  readLocalDraftSnapshot,
+  removeLocalDraftSnapshot,
+  saveLocalDraftSnapshot
+} from '../../services/localDraftSnapshotService';
 import { Product, Customer, PageSection, TrustedCompanyLogo } from '../../types/schema';
 import { MOCK_PRODUCTS, MOCK_CUSTOMERS } from '../../constants/mockData';
 import { MainSidebar, ModuleItem } from './MainSidebar';
@@ -52,10 +58,10 @@ import { TopBar } from './TopBar';
 import { Canvas } from './Canvas';
 import { GlobalSettingsPanel } from './GlobalSettingsPanel';
 import { normalizeSocialUrl, getIconForPlatform, resolveFooterSocialLinks, FOOTER_DEFAULTS } from '../../utils/socialUtils';
-import { 
-  MobileBottomNav, 
-  UnsavedChangesModal, 
-  DeleteConfirmationModal, 
+import {
+  MobileBottomNav,
+  UnsavedChangesModal,
+  DeleteConfirmationModal,
   PublishModal,
   AIPagePlanModal,
   AIGenerationModal,
@@ -84,6 +90,8 @@ import {
   getShowInMenuKey,
   isMenuEligibleModule,
   isUtilityMenuModule,
+  mergeAutomaticMenuItemsWithExisting,
+  resolveSectionHref,
   resolveMenuMode,
   resolveShowInMenuState
 } from '../../utils/menuNavigation';
@@ -141,11 +149,11 @@ const ReferenceDebugFloatingPanel: React.FC<{ debug: ReferenceDebugInfo; onClose
     <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 18 }} className="fixed bottom-6 right-6 z-[2400] max-h-[78vh] w-[min(760px,calc(100vw-2rem))] overflow-hidden rounded-3xl border border-blue-200 bg-white shadow-2xl">
       <div className="flex items-center justify-between border-b border-blue-100 bg-blue-50 px-5 py-4">
         <div>
-          <p className="text-[11px] font-black uppercase tracking-widest text-blue-700">Diagnóstico IA</p>
-          <p className="text-sm font-black text-slate-900">Último diagnóstico de generación IA</p>
+          <p className="text-[11px] font-black uppercase tracking-widest text-blue-700">DiagnÃƒÆ’Ã‚Â³stico IA</p>
+          <p className="text-sm font-black text-slate-900">ÃƒÆ’Ã…Â¡ltimo diagnÃƒÆ’Ã‚Â³stico de generaciÃƒÆ’Ã‚Â³n IA</p>
         </div>
         <div className="flex items-center gap-2">
-          <button type="button" onClick={copyDebug} className="rounded-xl bg-blue-600 px-3 py-2 text-[11px] font-black uppercase tracking-widest text-white transition hover:bg-blue-700">{copied ? 'Copiado' : 'Copiar diagnóstico'}</button>
+          <button type="button" onClick={copyDebug} className="rounded-xl bg-blue-600 px-3 py-2 text-[11px] font-black uppercase tracking-widest text-white transition hover:bg-blue-700">{copied ? 'Copiado' : 'Copiar diagnÃƒÆ’Ã‚Â³stico'}</button>
           <button type="button" onClick={onClose} className="rounded-xl p-2 text-slate-400 transition hover:bg-white hover:text-slate-700"><LucideIcons.X size={18} /></button>
         </div>
       </div>
@@ -153,11 +161,11 @@ const ReferenceDebugFloatingPanel: React.FC<{ debug: ReferenceDebugInfo; onClose
         <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
           <div className="rounded-2xl bg-slate-50 p-3"><p className="font-black text-blue-700">visualScanUsed</p><p>{String(debug.visualScanUsed)}</p></div>
           <div className="rounded-2xl bg-slate-50 p-3"><p className="font-black text-blue-700">fallbackDomUsed</p><p>{String(debug.fallbackDomUsed)}</p></div>
-          <div className="rounded-2xl bg-slate-50 p-3"><p className="font-black text-blue-700">fallbackReason</p><p className="break-words">{debug.fallbackReason || '—'}</p></div>
+          <div className="rounded-2xl bg-slate-50 p-3"><p className="font-black text-blue-700">fallbackReason</p><p className="break-words">{debug.fallbackReason || 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â'}</p></div>
           <div className="rounded-2xl bg-slate-50 p-3"><p className="font-black text-blue-700">secciones</p><p>{debug.sections?.length || 0}</p></div>
         </div>
 
-        {debug.screenshot && <div className="rounded-2xl bg-slate-50 p-3"><p className="font-black text-blue-700">Visual scan</p><p>{debug.screenshot.width || '—'}x{debug.screenshot.height || '—'} · captured {debug.screenshot.capturedHeight || '—'} · stored {String(Boolean(debug.screenshot.stored))}</p></div>}
+        {debug.screenshot && <div className="rounded-2xl bg-slate-50 p-3"><p className="font-black text-blue-700">Visual scan</p><p>{debug.screenshot.width || 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â'}x{debug.screenshot.height || 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â'} Ãƒâ€šÃ‚Â· captured {debug.screenshot.capturedHeight || 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â'} Ãƒâ€šÃ‚Â· stored {String(Boolean(debug.screenshot.stored))}</p></div>}
 
         {debug.generation && <div className="grid grid-cols-2 gap-2 md:grid-cols-4">{Object.entries(debug.generation).map(([key, value]) => <div key={key} className="rounded-2xl bg-slate-50 p-3"><p className="font-black text-blue-700">{key}</p><p>{String(value)}</p></div>)}</div>}
 
@@ -165,8 +173,8 @@ const ReferenceDebugFloatingPanel: React.FC<{ debug: ReferenceDebugInfo; onClose
           <div className="overflow-x-auto rounded-2xl bg-slate-50 p-3">
             <p className="mb-2 font-black text-blue-700">Secciones detectadas</p>
             <table className="min-w-full text-left text-[11px]">
-              <thead><tr className="text-blue-700"><th className="pr-3">Sección</th><th className="pr-3">layout</th><th className="pr-3">roleHint</th><th className="pr-3">media</th><th className="pr-3">confidence</th><th className="pr-3">queryHint</th></tr></thead>
-              <tbody>{debug.sections.map(section => <tr key={`${section.index}-${section.layout}`}><td className="pr-3 font-bold">{section.index}</td><td className="pr-3">{section.layout}</td><td className="pr-3">{section.roleHint}</td><td className="pr-3">{String(section.media)}</td><td className="pr-3">{typeof section.confidence === 'number' ? Math.round(section.confidence * 100) + '%' : '—'}</td><td className="pr-3">{section.queryHint || '—'}</td></tr>)}</tbody>
+              <thead><tr className="text-blue-700"><th className="pr-3">SecciÃƒÆ’Ã‚Â³n</th><th className="pr-3">layout</th><th className="pr-3">roleHint</th><th className="pr-3">media</th><th className="pr-3">confidence</th><th className="pr-3">queryHint</th></tr></thead>
+              <tbody>{debug.sections.map(section => <tr key={`${section.index}-${section.layout}`}><td className="pr-3 font-bold">{section.index}</td><td className="pr-3">{section.layout}</td><td className="pr-3">{section.roleHint}</td><td className="pr-3">{String(section.media)}</td><td className="pr-3">{typeof section.confidence === 'number' ? Math.round(section.confidence * 100) + '%' : 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â'}</td><td className="pr-3">{section.queryHint || 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â'}</td></tr>)}</tbody>
             </table>
           </div>
         )}
@@ -175,7 +183,7 @@ const ReferenceDebugFloatingPanel: React.FC<{ debug: ReferenceDebugInfo; onClose
           <div className="overflow-x-auto rounded-2xl bg-slate-50 p-3">
             <p className="mb-2 font-black text-blue-700">Schema summary</p>
             <table className="min-w-full text-left text-[11px]">
-              <thead><tr className="text-blue-700"><th className="pr-3">Sección</th><th className="pr-3">module</th><th className="pr-3">layoutInput</th><th className="pr-3">layoutOutput</th><th className="pr-3">preserved</th><th className="pr-3">cols in/out</th><th className="pr-3">media in</th><th className="pr-3">media reason</th><th className="pr-3">intención</th><th className="pr-3">elements</th><th className="pr-3">types</th><th className="pr-3">img</th><th className="pr-3">cards</th><th className="pr-3">btn</th><th className="pr-3">source</th><th className="pr-3">query</th><th className="pr-3">warning</th></tr></thead>
+              <thead><tr className="text-blue-700"><th className="pr-3">SecciÃƒÆ’Ã‚Â³n</th><th className="pr-3">module</th><th className="pr-3">layoutInput</th><th className="pr-3">layoutOutput</th><th className="pr-3">preserved</th><th className="pr-3">cols in/out</th><th className="pr-3">media in</th><th className="pr-3">media reason</th><th className="pr-3">intenciÃƒÆ’Ã‚Â³n</th><th className="pr-3">elements</th><th className="pr-3">types</th><th className="pr-3">img</th><th className="pr-3">cards</th><th className="pr-3">btn</th><th className="pr-3">source</th><th className="pr-3">query</th><th className="pr-3">warning</th></tr></thead>
               <tbody>{debug.schemaSummary.map(row => <tr key={`${row.section}-${row.moduleType}`}><td className="pr-3 font-bold">{row.section}</td><td className="pr-3">{row.moduleType}</td><td className="pr-3">{row.layoutInput || row.layout || '?'}</td><td className="pr-3">{row.layoutOutput || '?'}</td><td className="pr-3">{typeof row.layoutPreserved === 'boolean' ? String(row.layoutPreserved) : '?'}</td><td className="pr-3">{row.columnsInputCount ?? '?'} / {row.columnsRenderedCount ?? '?'}</td><td className="pr-3">{row.mediaElementsInputCount ?? '?'}</td><td className="pr-3">{row.mediaRenderReason || '?'}</td><td className="pr-3">{row.normalizedIntent || '?'}</td><td className="pr-3">{row.elements}</td><td className="pr-3">{row.elementTypes.join(', ')}</td><td className="pr-3">{row.imageCount}</td><td className="pr-3">{row.cardCount}</td><td className="pr-3">{row.buttonCount}</td><td className="pr-3">{row.source}</td><td className="pr-3">{row.queryUsed || '?'}</td><td className="pr-3">{row.warning || '?'}</td></tr>)}</tbody>
             </table>
           </div>
@@ -185,8 +193,8 @@ const ReferenceDebugFloatingPanel: React.FC<{ debug: ReferenceDebugInfo; onClose
           <div className="overflow-x-auto rounded-2xl bg-slate-50 p-3">
             <p className="mb-2 font-black text-blue-700">Pexels / placeholders</p>
             <table className="min-w-full text-left text-[11px]">
-              <thead><tr className="text-blue-700"><th className="pr-3">Sección</th><th className="pr-3">source</th><th className="pr-3">found</th><th className="pr-3">query</th><th className="pr-3">candidate</th><th className="pr-3">usedUrls</th><th className="pr-3">photographer</th><th className="pr-3">reused</th></tr></thead>
-              <tbody>{debug.pexels.map(row => <tr key={`${row.section}-${row.query || row.source}`}><td className="pr-3 font-bold">{row.section}</td><td className="pr-3">{row.source}</td><td className="pr-3">{String(row.found)}</td><td className="pr-3">{row.queryUsed || row.query || '—'}</td><td className="pr-3">{typeof row.candidateIndex === 'number' ? row.candidateIndex + 1 : '—'}</td><td className="pr-3">{row.usedImageUrlsCount || '—'}</td><td className="pr-3">{row.photographer || '—'}</td><td className="pr-3">{row.reusedCount && row.reusedCount > 1 ? row.reusedCount : '—'}</td></tr>)}</tbody>
+              <thead><tr className="text-blue-700"><th className="pr-3">SecciÃƒÆ’Ã‚Â³n</th><th className="pr-3">source</th><th className="pr-3">found</th><th className="pr-3">query</th><th className="pr-3">candidate</th><th className="pr-3">usedUrls</th><th className="pr-3">photographer</th><th className="pr-3">reused</th></tr></thead>
+              <tbody>{debug.pexels.map(row => <tr key={`${row.section}-${row.query || row.source}`}><td className="pr-3 font-bold">{row.section}</td><td className="pr-3">{row.source}</td><td className="pr-3">{String(row.found)}</td><td className="pr-3">{row.queryUsed || row.query || 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â'}</td><td className="pr-3">{typeof row.candidateIndex === 'number' ? row.candidateIndex + 1 : 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â'}</td><td className="pr-3">{row.usedImageUrlsCount || 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â'}</td><td className="pr-3">{row.photographer || 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â'}</td><td className="pr-3">{row.reusedCount && row.reusedCount > 1 ? row.reusedCount : 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â'}</td></tr>)}</tbody>
             </table>
           </div>
         )}
@@ -200,20 +208,22 @@ const ReferenceDebugFloatingPanel: React.FC<{ debug: ReferenceDebugInfo; onClose
 // --- CONSTANTS ---
 const MASTER_DICTIONARY = {
   modules: [
-    'hero', 'hero2', 'features', 'about', 'process', 'gallery', 'video', 'testimonials', 
+    'hero', 'hero2', 'features', 'about', 'process', 'gallery', 'video', 'testimonials',
     'stats', 'newsletter', 'contact', 'team', 'cta', 'dynamic_cards', 'pricing', 'faq', 'clients', 'trusted_logos',
     'bento', 'comparative', 'header', 'menu', 'footer', 'spacer', 'products'
   ],
   styles: [
-    'border_radius', 'box_shadow', 'font_family', 'button_styles', 
+    'border_radius', 'box_shadow', 'font_family', 'button_styles',
     'bg_type', 'dark_mode', 'primary_color', 'accent_color', 'text_color',
     'title_mode', 'rotating_enabled', 'rotating_fixed', 'rotating_options', 'rotating_speed', 'rotating_anim', 'rotating_color', 'rotating_gradient'
   ]
 };
 
 const AUTOSAVE_DISABLED_VALUE = 'disabled';
-const AUTOSAVE_INTERVAL_OPTIONS = [60000, 120000, 180000, 300000, 600000] as const;
-const DEFAULT_AUTOSAVE_INTERVAL_MS = 180000;
+const TEMPORARY_SAVE_INTERVAL_OPTIONS = [1, 3, 10] as const;
+const DEFAULT_TEMPORARY_SAVE_INTERVAL_MINUTES = 3;
+const TEMPORARY_SAVE_INTERVAL_STORAGE_KEY = 'solutium_constructor_temporary_save_interval_minutes';
+const TEMPORARY_SAVE_NOTICE_STORAGE_KEY = 'solutium_constructor_temporary_save_notice_enabled';
 
 const resolveBooleanSetting = (value: any, fallback: boolean): boolean => {
   if (value === undefined || value === null) return fallback;
@@ -226,11 +236,35 @@ const resolveBooleanSetting = (value: any, fallback: boolean): boolean => {
   return Boolean(value);
 };
 
-const resolveAutosaveInterval = (value: any): number => {
+const resolveTemporarySaveIntervalMinutes = (value: any): number => {
   const numericValue = Number(value);
-  return AUTOSAVE_INTERVAL_OPTIONS.includes(numericValue as typeof AUTOSAVE_INTERVAL_OPTIONS[number])
+  return TEMPORARY_SAVE_INTERVAL_OPTIONS.includes(numericValue as typeof TEMPORARY_SAVE_INTERVAL_OPTIONS[number])
     ? numericValue
-    : DEFAULT_AUTOSAVE_INTERVAL_MS;
+    : DEFAULT_TEMPORARY_SAVE_INTERVAL_MINUTES;
+};
+
+const readLocalTemporarySavePreferences = (): Record<string, any> => {
+  if (typeof window === 'undefined') return {};
+
+  const preferences: Record<string, any> = {};
+
+  try {
+    const storedInterval = window.localStorage.getItem(TEMPORARY_SAVE_INTERVAL_STORAGE_KEY);
+    if (storedInterval !== null) {
+      preferences.global_theme_builder_temporary_save_interval_minutes =
+        resolveTemporarySaveIntervalMinutes(storedInterval);
+    }
+
+    const storedNotice = window.localStorage.getItem(TEMPORARY_SAVE_NOTICE_STORAGE_KEY);
+    if (storedNotice !== null) {
+      preferences.global_theme_builder_temporary_save_notice_enabled =
+        resolveBooleanSetting(storedNotice, true);
+    }
+  } catch (error) {
+    console.warn('[LOCAL_DRAFT_SNAPSHOT] Unable to read temporary save preferences:', error);
+  }
+
+  return preferences;
 };
 
 // --- HELPERS ---
@@ -262,14 +296,14 @@ const isProjectTextAccentSetting = (settingId: string, label?: string) => {
 
 const checkDictionarySync = async (contract: RenderingContract): Promise<void> => {
   const unknowns: any[] = [];
-  
+
   contract.sections.forEach(section => {
     // 1. Check Module Type
-    const baseType = section.type.split('_')[0]; 
+    const baseType = section.type.split('_')[0];
     if (!MASTER_DICTIONARY.modules.includes(baseType as any)) {
       unknowns.push({ type: 'module', value: section.type, id: section.id });
     }
-    
+
     // 2. Check Styles
     if (section.styles) {
       Object.keys(section.styles).forEach(styleKey => {
@@ -487,10 +521,10 @@ const openPublishedUrl = (url: string | null) => {
   window.open(url, '_blank', 'noopener,noreferrer');
 };
 
-export const WebConstructor: React.FC<WebConstructorProps> = ({ 
-  onBackToDashboard, 
+export const WebConstructor: React.FC<WebConstructorProps> = ({
+  onBackToDashboard,
   onCancelOnboarding,
-  projectId, 
+  projectId,
   appId,
   currentUserId,
   logoUrl,
@@ -503,11 +537,11 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   secureTrustedCompanyLogos = [],
   useSecureCatalogContext = false
 }) => {
-  const { 
-    siteContent, 
-    selectedSectionId, 
-    selectSection, 
-    undo, 
+  const {
+    siteContent,
+    selectedSectionId,
+    selectSection,
+    undo,
     redo,
     setSiteContent,
     updateTheme,
@@ -529,7 +563,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     if (initialPage && 'content' in initialPage && (initialPage as any).content) {
       setSiteContent((initialPage as any).content);
     } else if (initialPage && 'contentDraft' in initialPage && initialPage.contentDraft) {
-      // SIP v7.4: Ensure that if we have a draft, we also have a valid siteContent 
+      // SIP v7.4: Ensure that if we have a draft, we also have a valid siteContent
       // for the Canvas to render during the first 1.5s (before standard sync kicks in)
       const draft = initialPage.contentDraft;
     } else if (!initialPage) {
@@ -561,13 +595,24 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   const assetDisplayName = (siteName || (initialPage as any)?.siteName || (initialPage as any)?.title || 'Activo sin nombre').trim();
 
   const [currentSiteId] = useState(() => {
-    // 1. Si estamos editando una página existente (Borrador o Publicada), usamos su siteId.
+    // 1. Si estamos editando una pÃƒÆ’Ã‚Â¡gina existente (Borrador o Publicada), usamos su siteId.
     if (initialPage && (initialPage as any).siteId) return (initialPage as any).siteId;
     if (initialPage && (initialPage as any).web_builder_site_id) return (initialPage as any).web_builder_site_id;
-    
-    // 2. Si es una página NUEVA, generamos un ID único para que sea independiente.
+
+    // 2. Si es una pÃƒÆ’Ã‚Â¡gina NUEVA, generamos un ID ÃƒÆ’Ã‚Âºnico para que sea independiente.
     return crypto.randomUUID();
   });
+
+  const localSnapshotPageId = React.useMemo(() => {
+    const page = initialPage as any;
+    return page?.page_id || page?.pageId || page?.id || null;
+  }, [initialPage]);
+
+  const localSnapshotIdentity = React.useMemo(() => ({
+    projectId,
+    siteId: currentSiteId,
+    pageId: localSnapshotPageId
+  }), [currentSiteId, localSnapshotPageId, projectId]);
 
   useEffect(() => {
     // Synchronize IDs with window for evolution logging fallbacks
@@ -575,12 +620,12 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     (window as any).PROJECT_ID = projectId;
     (window as any).WEB_BUILDER_SITE_ID = initialPage?.id;
     (window as any).SITE_ID = currentSiteId;
-    
+
     // Also provide as objects for more robust fallbacks
     (window as any).currentProject = { id: projectId };
     (window as any).currentSite = { id: initialPage?.id, site_id: currentSiteId };
     (window as any).webBuilderSite = { id: initialPage?.id };
-    
+
     // [CONSTRUCTOR_RUNTIME_VERSION]
     logDebug('[CONSTRUCTOR_RUNTIME_VERSION]', {
       version: "footer-social-resolution-v3",
@@ -718,8 +763,9 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
 
     return rawValue;
   }, [getThemePaletteForDefaults]);
-  
+
   const [editorState, setEditorState] = useState<EditorState>(() => {
+    const localTemporarySavePreferences = readLocalTemporarySavePreferences();
     const defaultState: EditorState = {
         addedModules: [],
         expandedModuleId: null,
@@ -737,25 +783,28 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
           'global_theme_font_heading': projectThemeSeed.fontHeading,
           'global_theme_radius': 12,
           'global_theme_container_width': 1400,
-          'global_theme_builder_autosave_enabled': true,
-          'global_theme_builder_autosave_interval_ms': DEFAULT_AUTOSAVE_INTERVAL_MS,
-          'global_theme_builder_autosave_show_indicator': true
+          'global_theme_builder_autosave_enabled': false,
+          'global_theme_builder_autosave_interval_ms': AUTOSAVE_DISABLED_VALUE,
+          'global_theme_builder_autosave_show_indicator': false,
+          'global_theme_builder_temporary_save_notice_enabled': true,
+          'global_theme_builder_temporary_save_interval_minutes': DEFAULT_TEMPORARY_SAVE_INTERVAL_MINUTES,
+          ...localTemporarySavePreferences
         },
       recentlyAddedModuleId: null,
       totalModulesAdded: 0
     };
 
     const site = initialPage as any;
-    const isValidDraft = site?.contentDraft && 
-                         Array.isArray(site.contentDraft.addedModules) && 
-                         site.contentDraft.settingsValues && 
+    const isValidDraft = site?.contentDraft &&
+                         Array.isArray(site.contentDraft.addedModules) &&
+                         site.contentDraft.settingsValues &&
                          typeof site.contentDraft.settingsValues === 'object';
 
     // 1. PRIORIDAD: contentDraft (Tabla web_builder_sites) - SIP v7.1
     if (isValidDraft) {
       const draft = site.contentDraft;
       const addedModules = draft.addedModules;
-      
+
       const hydrated = {
         ...defaultState,
         ...draft,
@@ -763,7 +812,8 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         expandedGroupsByElement: draft.expandedGroupsByElement || {},
         settingsValues: {
           ...defaultState.settingsValues,
-          ...(draft.settingsValues || {})
+          ...(draft.settingsValues || {}),
+          ...localTemporarySavePreferences
         },
         totalModulesAdded: draft.totalModulesAdded !== undefined ? draft.totalModulesAdded : addedModules.length
       };
@@ -775,12 +825,12 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     if (site?.metadata?.editor_state) {
       const draft = site.metadata.editor_state as any;
       const addedModules = Array.isArray(draft.addedModules) ? draft.addedModules : [];
-      
+
       const hydrated = {
         ...defaultState,
         ...draft,
         addedModules,
-        settingsValues: { ...defaultState.settingsValues, ...(draft.settingsValues || {}) }
+        settingsValues: { ...defaultState.settingsValues, ...(draft.settingsValues || {}), ...localTemporarySavePreferences }
       };
 
       logDebug('[CONSTRUCTOR_HYDRATION_SOURCE]', {
@@ -796,7 +846,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       return hydrated;
     }
 
-    // 3. TERCERA PRIORIDAD: Reconstrucción desde Contrato (PublishedSite sin draft)
+    // 3. TERCERA PRIORIDAD: ReconstrucciÃƒÆ’Ã‚Â³n desde Contrato (PublishedSite sin draft)
     if (site?.content) {
       const contract = site.content as RenderingContract;
       if (contract.sections && Array.isArray(contract.sections)) {
@@ -804,11 +854,11 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         const reconstructedSettings: Record<string, any> = { ...defaultState.settingsValues };
 
         contract.sections.forEach(section => {
-          // Reconstruir módulo con fidelidad de tipos (SIP v7.0)
+          // Reconstruir mÃƒÆ’Ã‚Â³dulo con fidelidad de tipos (SIP v7.0)
           reconstructedModules.push({
             id: section.id,
             type: section.type || section.tipo,
-            name: (section as any).name || section.type || section.tipo || 'Módulo',
+            name: (section as any).name || section.type || section.tipo || 'MÃƒÆ’Ã‚Â³dulo',
             elements: [],
             globalGroups: [],
             globalSettings: {}
@@ -818,7 +868,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
           const prefix = section.id;
           const sectionSettings = section.settings || {};
           const seededDeepValues: Record<string, any> = {};
-          
+
           if (section.settings) {
             Object.entries(section.settings).forEach(([k, v]) => {
               const key = k.startsWith(prefix) ? k : `${prefix}_${k}`;
@@ -1022,16 +1072,16 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     };
     loadFromPagesTable();
   }, [initialPage]);
-  
+
   // AI Generation State
   const [onboardingFinished, setOnboardingFinished] = useState(() => {
-    // Si ya hay módulos, el onboarding terminó
+    // Si ya hay mÃƒÆ’Ã‚Â³dulos, el onboarding terminÃƒÆ’Ã‚Â³
     if ((initialPage && !!(initialPage as any).contentDraft) || (editorState.addedModules && editorState.addedModules.length > 0)) {
       return true;
     }
     // Si elegimos "scratch", no queremos onboarding
     if (creationMethod === 'scratch') return true;
-    
+
     return false;
   });
   const [showAIInitialForm, setShowAIInitialForm] = useState(() => {
@@ -1054,10 +1104,10 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   });
   const [showReferenceDebugPanel, setShowReferenceDebugPanel] = useState(false);
   const aiSteps = [
-    "Diseñando estructura por industria...",
+    "DiseÃƒÆ’Ã‚Â±ando estructura por industria...",
     "Redactando contenido persuasivo...",
     "Sincronizando paleta de marca y estilo...",
-    "Curando imágenes de stock y activos..."
+    "Curando imÃƒÆ’Ã‚Â¡genes de stock y activos..."
   ];
 
   // --- [PHASE 3D.5.2] Secure AI Generation States ---
@@ -1097,14 +1147,19 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   const [autosaveStatus, setAutosaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [lastAutosavedAt, setLastAutosavedAt] = useState<Date | null>(null);
   const [autosaveError, setAutosaveError] = useState<string | null>(null);
+  const [localSnapshotPending, setLocalSnapshotPending] = useState(false);
+  const [localSnapshotError, setLocalSnapshotError] = useState<string | null>(null);
+  const [localSnapshotToRestore, setLocalSnapshotToRestore] = useState<LocalDraftSnapshot | null>(null);
+  const [showTemporarySaveNotice, setShowTemporarySaveNotice] = useState(false);
   const [showUnsavedModal, setShowUnsavedModal] = useState(false);
   const isInitialLoad = useRef(true);
   const editorStateRef = useRef(editorState);
   const saveInProgressRef = useRef(false);
   const autosaveInProgressRef = useRef(false);
   const publishInProgressRef = useRef(false);
+  const temporarySaveNoticeTimerRef = useRef<number | null>(null);
+  const localSnapshotDirtyRef = useRef(false);
   const pendingChangesDuringSaveRef = useRef(false);
-  const autosaveActivationNoticeShownRef = useRef(false);
   const lastSaveSourceRef = useRef<'manual' | 'autosave' | 'prepublish' | null>(null);
   const activeSavePromiseRef = useRef<Promise<boolean> | null>(null);
   const changeVersionRef = useRef(0);
@@ -1119,13 +1174,14 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     editorState.settingsValues['global_theme_builder_autosave_enabled'],
     true
   );
-  const autosaveIntervalMs = resolveAutosaveInterval(
-    autosaveIntervalSetting
-  );
-  const autosaveShowIndicator = resolveBooleanSetting(
-    editorState.settingsValues['global_theme_builder_autosave_show_indicator'],
+  const temporarySaveNoticeEnabled = resolveBooleanSetting(
+    editorState.settingsValues['global_theme_builder_temporary_save_notice_enabled'],
     true
   );
+  const temporarySaveIntervalMinutes = resolveTemporarySaveIntervalMinutes(
+    editorState.settingsValues['global_theme_builder_temporary_save_interval_minutes']
+  );
+  const temporarySaveIntervalMs = temporarySaveIntervalMinutes * 60_000;
 
   // Mark initial load as finished after a short delay to allow sync effects to run
   useEffect(() => {
@@ -1153,23 +1209,127 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     currentStatusRef.current = currentStatus;
   }, [currentStatus]);
 
+
   useEffect(() => {
     if (autosaveEnabled) return;
     setAutosaveStatus('idle');
     setAutosaveError(null);
   }, [autosaveEnabled]);
 
-  useEffect(() => {
-    if (autosaveActivationNoticeShownRef.current) return;
-    if (!autosaveEnabled || isPreviewMode || isExternalRender || !projectId) return;
+  const showLocalDraftSavedNotice = useCallback(() => {
+    if (!temporarySaveNoticeEnabled || isPreviewMode || isExternalRender) return;
 
-    autosaveActivationNoticeShownRef.current = true;
-    setAuthNotice({
-      type: 'info',
-      title: 'Autoguardado activado',
-      message: 'Autoguardado activado. Puedes configurarlo en Ajustes.'
+    if (temporarySaveNoticeTimerRef.current) {
+      window.clearTimeout(temporarySaveNoticeTimerRef.current);
+    }
+
+    setShowTemporarySaveNotice(true);
+    temporarySaveNoticeTimerRef.current = window.setTimeout(() => {
+      temporarySaveNoticeTimerRef.current = null;
+      setShowTemporarySaveNotice(false);
+    }, 3000);
+  }, [isExternalRender, isPreviewMode, temporarySaveNoticeEnabled]);
+
+  useEffect(() => {
+    if (temporarySaveNoticeEnabled) return;
+
+    if (temporarySaveNoticeTimerRef.current) {
+      window.clearTimeout(temporarySaveNoticeTimerRef.current);
+      temporarySaveNoticeTimerRef.current = null;
+    }
+
+    setShowTemporarySaveNotice(false);
+  }, [temporarySaveNoticeEnabled]);
+
+  const persistLocalDraftSnapshot = useCallback((options?: { showNotice?: boolean }) => {
+    const result = saveLocalDraftSnapshot(localSnapshotIdentity, {
+      siteName: siteNameRef.current,
+      currentStatus: currentStatusRef.current,
+      editorState: editorStateRef.current
     });
-  }, [autosaveEnabled, isExternalRender, isPreviewMode, projectId]);
+
+    if (result.saved) {
+      localSnapshotDirtyRef.current = false;
+      setLocalSnapshotPending(true);
+      setLocalSnapshotError(null);
+      if (options?.showNotice) {
+        showLocalDraftSavedNotice();
+      }
+      return true;
+    }
+
+    if (result.error) {
+      setLocalSnapshotError(result.error);
+      console.warn('[LOCAL_DRAFT_SNAPSHOT] Unable to persist local draft snapshot:', {
+        error: result.error,
+        sizeBytes: result.sizeBytes || null
+      });
+    }
+
+    return false;
+  }, [localSnapshotIdentity, showLocalDraftSavedNotice]);
+
+  const clearLocalDraftSnapshot = useCallback(() => {
+    localSnapshotDirtyRef.current = false;
+    removeLocalDraftSnapshot(localSnapshotIdentity);
+    setLocalSnapshotPending(false);
+    setLocalSnapshotError(null);
+    setLocalSnapshotToRestore(null);
+  }, [localSnapshotIdentity]);
+
+  useEffect(() => {
+    const snapshot = readLocalDraftSnapshot(localSnapshotIdentity);
+    if (snapshot) {
+      setLocalSnapshotPending(true);
+      setLocalSnapshotToRestore(snapshot);
+    } else {
+      setLocalSnapshotPending(false);
+      setLocalSnapshotToRestore(null);
+    }
+  }, [localSnapshotIdentity]);
+
+
+  useEffect(() => {
+    if (!hasUnsavedChanges && !localSnapshotPending) return;
+
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (localSnapshotDirtyRef.current) {
+        persistLocalDraftSnapshot({ showNotice: false });
+      }
+      event.preventDefault();
+      event.returnValue = '';
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hasUnsavedChanges, localSnapshotPending, persistLocalDraftSnapshot]);
+
+  useEffect(() => {
+    if (isPreviewMode || isExternalRender || !projectId || !currentSiteId) return;
+
+    const intervalId = window.setInterval(() => {
+      if (!hasUnsavedChanges) return;
+      if (!localSnapshotDirtyRef.current) return;
+
+      persistLocalDraftSnapshot({ showNotice: true });
+    }, temporarySaveIntervalMs);
+
+    return () => window.clearInterval(intervalId);
+  }, [
+    currentSiteId,
+    hasUnsavedChanges,
+    isExternalRender,
+    isPreviewMode,
+    persistLocalDraftSnapshot,
+    projectId,
+    temporarySaveIntervalMs
+  ]);
+
+  useEffect(() => () => {
+    if (temporarySaveNoticeTimerRef.current) {
+      window.clearTimeout(temporarySaveNoticeTimerRef.current);
+    }
+  }, []);
 
   const markUnsavedChanges = useCallback(() => {
     changeVersionRef.current += 1;
@@ -1181,6 +1341,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     setPublishStatus('idle');
     setAutosaveStatus('idle');
     setAutosaveError(null);
+    localSnapshotDirtyRef.current = true;
   }, []);
 
   // Apply Global Theme to CSS Variables
@@ -1195,7 +1356,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       siteRoot.style.setProperty(key, value);
     });
     siteRoot.style.setProperty('--card-color', themeTokens.background);
-    
+
     // Apply Typography
     const fontSans = editorState.settingsValues['global_theme_font_sans'] ?? projectThemeSeed.fontSans;
     const fontHeading = editorState.settingsValues['global_theme_font_heading'] ?? projectThemeSeed.fontHeading;
@@ -1214,11 +1375,11 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         document.head.appendChild(link);
       }
     });
-    
+
     // Apply Layout
     siteRoot.style.setProperty('--radius', `${editorState.settingsValues['global_theme_radius'] ?? 12}px`);
     siteRoot.style.setProperty('--max-width', `${editorState.settingsValues['global_theme_container_width'] ?? 1400}px`);
-    
+
   }, [editorState.settingsValues, projectThemeSeed]);
 
   // [PRODUCTS_SELECTION_STATE_AUDIT]
@@ -1229,7 +1390,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         const selectKey = `${moduleId}_el_products_config_select_products`;
         const contentProducts = section.content?.products || (section.content as any)?.productos;
         const snapshotKey = `${moduleId}_el_products_items_products`;
-        
+
         logDebug('[PRODUCTS_SELECTION_STATE_AFTER_UPDATE_DEBUG]', {
           moduleId,
           sectionId: section.id,
@@ -1303,6 +1464,14 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     }
   };
 
+  const getSiteContentSyncSignature = (content: unknown) => {
+    try {
+      return JSON.stringify(content || {});
+    } catch {
+      return '';
+    }
+  };
+
   const areEditorValuesEquivalent = (a: any, b: any) => {
     if (Object.is(a, b)) return true;
     if (Object.is(normalizeEditorSyncValue(a), normalizeEditorSyncValue(b))) return true;
@@ -1363,19 +1532,47 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     }
   };
 
+  const handleRestoreLocalSnapshot = () => {
+    if (!localSnapshotToRestore) return;
+
+    editorStateRef.current = localSnapshotToRestore.editorState;
+    setEditorState(localSnapshotToRestore.editorState);
+    siteNameRef.current = localSnapshotToRestore.siteName || siteNameRef.current;
+    setSiteName(localSnapshotToRestore.siteName || siteNameRef.current);
+
+    if (localSnapshotToRestore.currentStatus) {
+      currentStatusRef.current = localSnapshotToRestore.currentStatus;
+      setCurrentStatus(localSnapshotToRestore.currentStatus);
+    }
+
+    setHasUnsavedChanges(true);
+    setLocalSnapshotPending(true);
+    setLocalSnapshotToRestore(null);
+    setAuthNotice({
+      type: 'info',
+      title: 'Cambios locales restaurados',
+      message: 'Restauramos el respaldo local. Guarda manualmente para sincronizarlo con Solutium.'
+    });
+  };
+
+  const handleDiscardLocalSnapshot = () => {
+    clearLocalDraftSnapshot();
+  };
+
   // Synchronize local editorState TO store siteContent whenever it changes
   useEffect(() => {
     if (isInitialLoad.current && (!editorState.addedModules || editorState.addedModules.length === 0)) return;
-    
+
     // Generar el contrato de renderizado (SiteContent)
     const contract = generateRenderingContract(siteName);
-    
-    // Solo actualizar si realmente hay cambios para evitar bucles infinitos
-    const currentSectionsHash = getSectionsSyncSignature(siteContent.sections);
+
+    // Solo actualizar si realmente hay cambios para evitar bucles infinitos.
+    const currentContentHash = getSiteContentSyncSignature(siteContent);
+    const newContentHash = getSiteContentSyncSignature(contract);
     const newSectionsHash = getSectionsSyncSignature(contract.sections);
     lastLocalSectionsSignatureRef.current = newSectionsHash;
-    
-    if (currentSectionsHash !== newSectionsHash) {
+
+    if (currentContentHash !== newContentHash) {
       setSiteContent(contract as any);
     }
   }, [editorState.addedModules, editorState.settingsValues, siteName]);
@@ -1389,7 +1586,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       setEditorState(prev => {
         const newSettings = { ...prev.settingsValues };
         let changed = false;
-        
+
         siteContent.sections.forEach(section => {
           Object.entries(section.settings).forEach(([key, val]) => {
             const moduleId = section.id;
@@ -1419,7 +1616,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   // If the footer has empty placeholders and the project has real socials, update the editable state
   useEffect(() => {
     if (!project || !project.socials) return;
-    
+
     const footerModules = editorState.addedModules.filter(m => m.type === 'footer' || m.id.startsWith('mod_footer'));
     if (footerModules.length === 0) return;
 
@@ -1429,23 +1626,23 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     footerModules.forEach(module => {
       const socialKey = `${module.id}_el_footer_social_social_links`;
       const currentSocials = getPlainValue(editorState.settingsValues[socialKey]);
-      
+
       // We only auto-update if the current state is EXACTLY the default placeholder state
       // or if it's empty/missing
-      const isPlaceholderState = !currentSocials || 
-        !Array.isArray(currentSocials) || 
+      const isPlaceholderState = !currentSocials ||
+        !Array.isArray(currentSocials) ||
         currentSocials.length === 0 ||
-        (currentSocials.length === 3 && 
+        (currentSocials.length === 3 &&
          currentSocials.every(s => !s.url || s.url === '' || s.url === '#'));
 
       if (isPlaceholderState) {
         const resolved = resolveFooterSocialLinks(undefined, project.socials, { debug: true, moduleId: module.id });
-        
+
         // Only update if we resolved something real (not more placeholders)
         const hasRealSocials = resolved.some(s => s.url && s.url !== '');
-        
+
         if (hasRealSocials) {
-          logDebug(`[SIP v12.0] Sincronizando redes de perfil para módulo ${module.id}`);
+          logDebug(`[SIP v12.0] Sincronizando redes de perfil para mÃƒÆ’Ã‚Â³dulo ${module.id}`);
           newSettings[socialKey] = resolved;
           totalChanged = true;
         }
@@ -1472,18 +1669,18 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     updateEditorState(prev => {
       let changed = false;
       const newState = { ...prev };
-      
+
       if (storeSelectedSectionId !== prev.expandedModuleId) {
         newState.expandedModuleId = storeSelectedSectionId;
         changed = true;
-        
+
         // Auto-switch to constructor tab if selecting a section while in design tabs
         if (storeSelectedSectionId && (activeTab === 'design-style' || activeTab === 'design-animations')) {
           setActiveTab('constructor');
           setMobileTab('structure');
         }
       }
-      
+
       if (storeSelectedElementId !== prev.selectedElementId) {
         newState.selectedElementId = storeSelectedElementId;
         changed = true;
@@ -1682,7 +1879,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       if (intent === 'feature_grid' || intent === 'benefits_grid') return 'ingredientes frescos para batidos';
       if (intent === 'social_proof') return 'clientes satisfechos tomando batidos';
       if (intent === 'final_cta') return 'promociones de bebidas naturales';
-      return sectionIndex % 2 === 0 ? 'menú de batidos naturales' : 'frutas frescas y bebidas saludables';
+      return sectionIndex % 2 === 0 ? 'menÃƒÆ’Ã‚Âº de batidos naturales' : 'frutas frescas y bebidas saludables';
     }
     if (lowerBusiness.includes('crm') || lowerBusiness.includes('software')) {
       if (intent === 'hero_visual') return 'business dashboard team workflow';
@@ -1727,7 +1924,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
           sectionLayoutBlueprint: {
             id: existingBlueprint.id || `visual-${visualSection.index}`,
             sectionIndex: existingBlueprint.sectionIndex || visualSection.index,
-            displayName: existingBlueprint.displayName || `Sección ${visualSection.index}`,
+            displayName: existingBlueprint.displayName || `SecciÃƒÆ’Ã‚Â³n ${visualSection.index}`,
             roleHint: existingBlueprint.roleHint || visualSection.roleHint || 'generic',
             layout: {
               ...existingLayout,
@@ -1760,24 +1957,24 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
           id: `reference-visual-${visualSection.index}`,
           moduleType: 'composition_section',
           preset: null,
-          title: `Sección ${visualSection.index}`,
-          purpose: `Sección visual detectada con layout ${visualSection.layout}.`,
+          title: `SecciÃƒÆ’Ã‚Â³n ${visualSection.index}`,
+          purpose: `SecciÃƒÆ’Ã‚Â³n visual detectada con layout ${visualSection.layout}.`,
           content: {
             businessType,
-            eyebrow: `Sección ${visualSection.index}`,
-            title: `Sección ${visualSection.index}`,
+            eyebrow: `SecciÃƒÆ’Ã‚Â³n ${visualSection.index}`,
+            title: `SecciÃƒÆ’Ã‚Â³n ${visualSection.index}`,
             description: 'Bloque editable inspirado en la estructura visual detectada, con contenido propio del negocio.',
-            cta: String(plan.sections[0]?.content?.cta || 'Solicitar información'),
+            cta: String(plan.sections[0]?.content?.cta || 'Solicitar informaciÃƒÆ’Ã‚Â³n'),
             items: [
               'Beneficio editable para el cliente',
               'Detalle visual adaptado al negocio',
-              'Acción clara y fácil de entender',
+              'AcciÃƒÆ’Ã‚Â³n clara y fÃƒÆ’Ã‚Â¡cil de entender',
               'Elemento de confianza'
             ],
             sectionLayoutBlueprint: {
               id: `visual-${visualSection.index}`,
               sectionIndex: visualSection.index,
-              displayName: `Sección ${visualSection.index}`,
+              displayName: `SecciÃƒÆ’Ã‚Â³n ${visualSection.index}`,
               roleHint: visualSection.roleHint || 'generic',
               layout: { type: visualSection.layout || 'unknown', columns: visualSection.columns },
               background: { style: visualSection.index === detectedSectionsCount ? 'dark' : 'white' },
@@ -1801,7 +1998,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
 
     const droppedSections = visualBlueprints
       .filter(visualSection => !sourceSections.some(section => Number((section.content as any)?.sectionLayoutBlueprint?.sectionIndex || (section.content as any)?.sectionBlueprint?.order || 0) === visualSection.index))
-      .map(visualSection => ({ section: visualSection.index, dropReason: 'No se generó módulo ni sección sintética para este blueprint visual.' }));
+      .map(visualSection => ({ section: visualSection.index, dropReason: 'No se generÃƒÆ’Ã‚Â³ mÃƒÆ’Ã‚Â³dulo ni secciÃƒÆ’Ã‚Â³n sintÃƒÆ’Ã‚Â©tica para este blueprint visual.' }));
     const usedImageUrls = new Set<string>();
     const enrichedSections: AIPagePlan['sections'] = [];
     const previousIntents: NormalizedVisualSectionIntent[] = [];
@@ -1895,7 +2092,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       enrichedSections.push({
         ...section,
         moduleType: 'composition_section',
-        title: `Sección ${index + 1}`,
+        title: `SecciÃƒÆ’Ã‚Â³n ${index + 1}`,
         content: {
           ...section.content,
           businessType,
@@ -2033,7 +2230,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       },
       warnings: [
         ...(plan.warnings || []),
-        'Se generaron schemas de Módulo Maestro por sección desde blueprints visuales; Pexels se usó solo para imágenes relacionadas al negocio cuando estuvo disponible.'
+        'Se generaron schemas de MÃƒÆ’Ã‚Â³dulo Maestro por secciÃƒÆ’Ã‚Â³n desde blueprints visuales; Pexels se usÃƒÆ’Ã‚Â³ solo para imÃƒÆ’Ã‚Â¡genes relacionadas al negocio cuando estuvo disponible.'
       ]
     };
   };
@@ -2167,7 +2364,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     // [PHASE 3D.5.2] INTERCEPTAMOS EL FLUJO PARA USAR EL ENDPOINT SEGURO
     setMotherAIBrief(data);
     setIsMotherAIConfirmationOpen(true);
-    
+
     // Generar key persistente para este intento
     const key = `web-landing-${projectId || 'anon'}-${Date.now()}`;
     setActiveIdempotencyKey(key);
@@ -2215,10 +2412,10 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
           reason: "dry-run must be 100% local",
           actionSlug: 'web_ai_generate_landing'
         });
-        
-        // Simular un pequeño delay para feedback visual
+
+        // Simular un pequeÃƒÆ’Ã‚Â±o delay para feedback visual
         await new Promise(resolve => setTimeout(resolve, 1500));
-        
+
         response = generateLandingDryRunLocal({
           businessName: motherAIBrief.name,
           industry: motherAIBrief.industry
@@ -2243,7 +2440,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       clearInterval(stepInterval);
 
       if (!response.success) {
-        throw new Error(response.error || 'La generación con IA falló.');
+        throw new Error(response.error || 'La generaciÃƒÆ’Ã‚Â³n con IA fallÃƒÆ’Ã‚Â³.');
       }
 
       if (isDryRun) {
@@ -2262,21 +2459,21 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
 
       const backendPage = response.data?.page;
       if (!backendPage || !Array.isArray(backendPage.sections) || backendPage.sections.length === 0) {
-        throw new Error("El servidor no devolvió secciones válidas.");
+        throw new Error("El servidor no devolviÃƒÆ’Ã‚Â³ secciones vÃƒÆ’Ã‚Â¡lidas.");
       }
 
-      // [PROTOCOL 13.1] HIDRATACIÓN DESDE BACKEND SEGURO
+      // [PROTOCOL 13.1] HIDRATACIÃƒÆ’Ã¢â‚¬Å“N DESDE BACKEND SEGURO
       updateEditorState(prev => {
         let newSettings = { ...prev.settingsValues };
         const newAddedModules: WebModule[] = [];
-        
+
         backendPage.sections.forEach((sec: any) => {
-          const baseModule = Object.values(registryModules).find((m: any) => 
+          const baseModule = Object.values(registryModules).find((m: any) =>
             (m as any).id === sec.type || (m as any).id === sec.moduleId
           ) as WebModule;
-          
+
           if (!baseModule) {
-            console.warn(`[AI_HYDRATION] Módulo no reconocido: ${sec.type}`);
+            console.warn(`[AI_HYDRATION] MÃƒÆ’Ã‚Â³dulo no reconocido: ${sec.type}`);
             return;
           }
 
@@ -2284,7 +2481,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
           const moduleElements = baseModule.elements.map(el => {
             const elId = `${moduleId}_${el.id}`;
             const backendElements = sec.elements || [];
-            const backendEl = backendElements.find((be: any) => 
+            const backendEl = backendElements.find((be: any) =>
               be.id === el.id || be.id === el.id.replace('el_', '')
             );
 
@@ -2313,7 +2510,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
 
         return {
           ...prev,
-          addedModules: newAddedModules, 
+          addedModules: newAddedModules,
           settingsValues: newSettings,
           totalModulesAdded: newAddedModules.length
         };
@@ -2322,7 +2519,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       // [FASE 6] Corregir mapeo de costo para soportar totalConsumed
       const usageData = response.usage as any;
       const cost = usageData?.costCredits || usageData?.total_consumed || usageData?.totalConsumed || 15;
-      
+
       setAiUsageSuccess({
         costCredits: cost,
         totalTokens: response.usage?.totalTokens || 0,
@@ -2341,7 +2538,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
 
     } catch (err: any) {
       console.error('[AI_GENERATION_ERROR]', err);
-      setAiError(err.message || 'Error en la generación segura.');
+      setAiError(err.message || 'Error en la generaciÃƒÆ’Ã‚Â³n segura.');
       setIsGeneratingAI(false);
     } finally {
       isRunningRef.current = false;
@@ -2372,7 +2569,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       const generationPromise = generateSite(context);
       setHasStartedAI(true);
       setOnboardingFinished(true); // Persistir que ya terminamos el onboarding
-      
+
       setTimeout(() => setAiGenerationStep(1), 2000);
       setTimeout(() => setAiGenerationStep(2), 5000);
       setTimeout(() => setAiGenerationStep(3), 8000);
@@ -2381,7 +2578,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
 
       updateEditorState(prev => {
         let newSettings = { ...prev.settingsValues };
-        
+
         newSettings['global_theme_primary_color'] = result.theme.primaryColor;
         newSettings['global_theme_accent_color'] = result.theme.accentColor;
         newSettings['global_theme_background_color'] = result.theme.backgroundColor;
@@ -2391,7 +2588,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         newSettings['global_theme_radius'] = parseInt(result.theme.borderRadius);
 
         const newAddedModules: WebModule[] = [];
-        
+
         result.sections.forEach((sec, idx) => {
           const baseModule = Object.values(registryModules).find((m: any) => (m as any).id === sec.moduleId) as WebModule;
           if (!baseModule) return;
@@ -2440,7 +2637,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     } catch (error: any) {
       console.error("Error en Solutium AI Engine:", error);
       setIsGeneratingAI(false);
-      setAiError(error.message || "No se pudo generar el sitio. Por favor, verifica tu conexión o las API Keys en Staging.");
+      setAiError(error.message || "No se pudo generar el sitio. Por favor, verifica tu conexiÃƒÆ’Ã‚Â³n o las API Keys en Staging.");
     }
   };
 
@@ -2550,15 +2747,15 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
 
     // Use persistent UUIDs (Solutium Protocol v2.0)
     const moduleId = createModuleInstanceId();
-    
+
     // Prefix element IDs to ensure uniqueness
     const newElements = module.elements.map(el => ({
       ...el,
       id: `${moduleId}_${el.id}`
     }));
 
-    const newModule = { 
-      ...module, 
+    const newModule = {
+      ...module,
       id: moduleId,
       templateId: module.id,
       elements: newElements
@@ -2566,18 +2763,18 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
 
     // Initialize default values for all settings in the module
     const initialValues: Record<string, any> = {};
-    
+
     // Global settings
     if (module.globalSettings) {
       Object.values(module.globalSettings).forEach(groupSettings => {
         groupSettings.forEach(setting => {
           let val = resolveProjectAwareSettingDefault(setting, setting.defaultValue);
-          
+
           // Custom logic for specific settings
           if (setting.id === 'logo_text' && project?.name) {
             val = project.name.toUpperCase();
           }
-          
+
           if (setting.type === 'product_selection') {
             const availableProducts = (products?.length || 0) > 0 ? products : (projectId === 'dev-project-id' ? MOCK_PRODUCTS : []);
             if ((availableProducts?.length || 0) > 0) {
@@ -2609,7 +2806,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         Object.values(element.settings).forEach(groupSettings => {
           groupSettings.forEach(setting => {
             let val = resolveProjectAwareSettingDefault(setting, setting.defaultValue);
-            
+
             // Custom logic for specific settings
             if ((setting.id === 'logo_text' || setting.id === 'brand_name') && project?.name) {
               val = project.name.toUpperCase();
@@ -2658,7 +2855,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
                 val = project?.industry || `Servicios profesionales de ${project?.name}`;
               }
               if (setting.id === 'copyright' && project?.name) {
-                val = `© ${new Date().getFullYear()} ${project.name}. Todos los derechos reservados.`;
+                val = `Ãƒâ€šÃ‚Â© ${new Date().getFullYear()} ${project.name}. Todos los derechos reservados.`;
               }
             }
 
@@ -2680,7 +2877,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     updateEditorState(prev => {
       const addedModules = prev.addedModules || [];
       let newModules = [...addedModules];
-      
+
       if (isMenuModuleInstance(module)) {
         // Top, but below header if exists
         const headerIndex = addedModules.findIndex(m => m.id.startsWith('mod_header_1'));
@@ -2774,9 +2971,9 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       const addedModules = prev.addedModules || [];
       const index = addedModules.findIndex(m => m.id === moduleId);
       if (index === -1) return prev;
-      
+
       const module = addedModules[index];
-      
+
       // Restriction: Header cannot move down, Menu cannot move at all, Footer cannot move up
       if (module.id.startsWith('mod_header_1') && direction === 'down') return prev;
       if (module.id.startsWith('mod_menu_1')) return prev;
@@ -2784,7 +2981,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
 
       const newModules = [...addedModules];
       const targetIndex = direction === 'up' ? index - 1 : index + 1;
-      
+
       if (targetIndex < 0 || targetIndex >= newModules.length) return prev;
 
       const targetModule = addedModules[targetIndex];
@@ -2792,11 +2989,11 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       // Restriction: Cannot move a module above Header or Menu, or below Footer
       if (direction === 'up' && (targetModule.id.startsWith('mod_header_1') || targetModule.id.startsWith('mod_menu_1'))) return prev;
       if (direction === 'down' && isFooterModuleInstance(targetModule)) return prev;
-      
+
       const temp = newModules[index];
       newModules[index] = newModules[targetIndex];
       newModules[targetIndex] = temp;
-      
+
       return {
         ...prev,
         addedModules: newModules
@@ -2890,11 +3087,11 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
 
   const confirmRemoveModule = () => {
     if (!moduleToDelete) return;
-    
+
     const moduleId = moduleToDelete.id;
     updateEditorState(prev => {
       const newModules = prev.addedModules.filter(m => m.id !== moduleId);
-      
+
       // Clean up settings for this module
       const newSettingsValues = { ...prev.settingsValues };
       Object.keys(newSettingsValues).forEach(key => {
@@ -2932,13 +3129,14 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     const autoAnchors = new Set(
       (state.addedModules || [])
         .filter((module) => isMenuEligibleModule(module))
-        .map((module) => `#${module.id}`)
+        .flatMap((module) => [`#${module.id}`, resolveSectionHref(module.id)])
     );
 
     const manualLinks = currentLinks.filter((link) => {
       if (!link || typeof link !== 'object') return false;
       if (link.is_title) return true;
-      const url = String(link.url || '').trim();
+      if (link.source === 'auto') return false;
+      const url = String(link.href || link.url || '').trim();
       if (!url.startsWith('#')) return true;
       return !autoAnchors.has(url);
     });
@@ -2947,19 +3145,44 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       modules: state.addedModules || [],
       settingsValues: state.settingsValues
     });
+    const mergedVisibleLinks = mergeAutomaticMenuItemsWithExisting(visibleLinks, currentLinks);
 
     return {
       ...state,
       settingsValues: {
         ...state.settingsValues,
-        [menuLinksKey]: dedupeMenuLinks([...visibleLinks, ...manualLinks])
+        [menuLinksKey]: dedupeMenuLinks([...mergedVisibleLinks, ...manualLinks])
       }
     };
   };
 
   const handleSettingChange = (elementOrModuleId: string, settingId: string, value: any) => {
+    const settingKey = `${elementOrModuleId}_${settingId}`;
+    const isTemporaryBackupPreference =
+      elementOrModuleId === 'global' &&
+      (
+        settingId === 'theme_builder_temporary_save_interval_minutes' ||
+        settingId === 'theme_builder_temporary_save_notice_enabled'
+      );
+
+    if (isTemporaryBackupPreference) {
+      setEditorState(prev => {
+        if (areEditorValuesEquivalent(prev.settingsValues[settingKey], value)) return prev;
+
+        const next = {
+          ...prev,
+          settingsValues: {
+            ...prev.settingsValues,
+            [settingKey]: value
+          }
+        };
+        editorStateRef.current = next;
+        return next;
+      });
+      return;
+    }
+
     updateEditorState(prev => {
-      const settingKey = `${elementOrModuleId}_${settingId}`;
       if (areEditorValuesEquivalent(prev.settingsValues[settingKey], value)) {
         return prev;
       }
@@ -3050,12 +3273,12 @@ const migrateEditorStateToUUIDs = (state: any): any => {
       const oldId = mod.id;
       const newId = crypto.randomUUID();
       changed = true;
-      
+
       const updatedMod = { ...mod, id: newId };
       updatedMod.elements = (mod.elements || []).map((el: any) => {
         const oldElId = el.id;
         const newElId = el.id.replace(oldId, newId);
-        
+
         Object.keys(newSettings).forEach(key => {
           if (key.startsWith(oldElId)) {
             const newKey = key.replace(oldElId, newElId);
@@ -3063,7 +3286,7 @@ const migrateEditorStateToUUIDs = (state: any): any => {
             delete newSettings[key];
           }
         });
-        
+
         return { ...el, id: newElId };
       });
 
@@ -3109,16 +3332,16 @@ const formatTimestampName = () => {
     const yy = now.getFullYear().toString().slice(-2);
     const mm = (now.getMonth() + 1).toString().padStart(2, '0');
     const dd = now.getDate().toString().padStart(2, '0');
-    
+
     let hours = now.getHours();
     const ampm = hours >= 12 ? 'pm' : 'am';
     hours = hours % 12;
     hours = hours ? hours : 12;
     const hh = hours.toString().padStart(2, '0');
-    
+
     const min = now.getMinutes().toString().padStart(2, '0');
     const ss = now.getSeconds().toString().padStart(2, '0');
-    
+
     return `${yy}-${mm}-${dd}_${hh}-${min}-${ss}-${ampm}`;
   };
 
@@ -3131,13 +3354,20 @@ const formatTimestampName = () => {
   };
 
   const handleSaveAndExit = async () => {
-    await handleSaveDraft();
+    const saved = await handleSaveDraft();
+    if (!saved) return;
+    setShowUnsavedModal(false);
     onBackToDashboard();
   };
 
   const handleExitWithoutSaving = () => {
+    if (localSnapshotDirtyRef.current) {
+      persistLocalDraftSnapshot({ showNotice: false });
+    }
+    setShowUnsavedModal(false);
     onBackToDashboard();
   };
+
 
   const generateRenderingContract = (finalSiteName: string, stateToUse?: any): RenderingContract => {
     const currentState = stateToUse || editorState;
@@ -3149,7 +3379,7 @@ const formatTimestampName = () => {
     const getVal = (moduleId: string, elementId: string | null, settingId: string, defaultValue: any) => {
       const key = elementId ? `${moduleId}_${elementId}_${settingId}` : `${moduleId}_global_${settingId}`;
       const rawValue = currentState.settingsValues[key] !== undefined ? currentState.settingsValues[key] : defaultValue;
-      
+
       // Clean value: If it's an object with a 'value' property (editor metadata), extract just the value
       if (rawValue && typeof rawValue === 'object' && 'value' in rawValue && !Array.isArray(rawValue)) {
         return rawValue.value;
@@ -3157,11 +3387,11 @@ const formatTimestampName = () => {
       return rawValue;
     };
 
-    // --- ORDEN DE SERIALIZACIÓN BIT-A-BIT (PROTOCOLO SOLUTIUM v2.3) ---
+    // --- ORDEN DE SERIALIZACIÃƒÆ’Ã¢â‚¬Å“N BIT-A-BIT (PROTOCOLO SOLUTIUM v2.3) ---
     const atomicTransform = (key: string, value: any) => {
       const result: Record<string, any> = {};
-      
-      // 1. Colometría Detallada (Standard --sv-)
+
+      // 1. ColometrÃƒÆ’Ã‚Â­a Detallada (Standard --sv-)
       if (typeof value === 'string' && (value.startsWith('#') || value.startsWith('rgba') || value.startsWith('rgb') || value.includes('var('))) {
         const varName = value.includes('var(') ? value.match(/var\(([^)]+)\)/)?.[1] : `--sv-${key.replace(/_/g, '-')}`;
         result[`${key}_hex`] = value.startsWith('#') ? value : null;
@@ -3172,7 +3402,7 @@ const formatTimestampName = () => {
         return result;
       }
 
-      // 2. Dimensiones Bit-a-Bit con Unidad Explícita
+      // 2. Dimensiones Bit-a-Bit con Unidad ExplÃƒÆ’Ã‚Â­cita
       const dimensionKeys = ['radius', 'gap', 'padding', 'width', 'height', 'thickness', 'size', 'margin', 'offset', 'letter_spacing', 'line_height', 'blur', 'spread'];
       if (typeof value === 'number' && dimensionKeys.some(dk => key.includes(dk))) {
         let unit = 'px';
@@ -3180,7 +3410,7 @@ const formatTimestampName = () => {
         else if (key.includes('vh')) unit = 'vh';
         else if (key.includes('vw')) unit = 'vw';
         else if (key.includes('%')) unit = '%';
-        
+
         result[key] = `${value}${unit}`;
         result[`${key}_val`] = value;
         result[`${key}_unit`] = unit;
@@ -3199,7 +3429,7 @@ const formatTimestampName = () => {
         };
       }
 
-      // 4. Tipografía Obligatoria & Booleans
+      // 4. TipografÃƒÆ’Ã‚Â­a Obligatoria & Booleans
       result[key] = value;
       return result;
     };
@@ -3255,8 +3485,8 @@ const formatTimestampName = () => {
 
             // Remove module ID prefix
             const relativeKey = key.replace(`${module.id}_`, '');
-            
-            // Remove secondary technical prefixes like "el_hero_", "el_contact_", etc. 
+
+            // Remove secondary technical prefixes like "el_hero_", "el_contact_", etc.
             // for INTERNAL detection logic (not for storage)
             // Apply Atomic Transform using the FULL relative key to preserve fidelity
             const atomicValues = atomicTransform(relativeKey, value);
@@ -3266,17 +3496,17 @@ const formatTimestampName = () => {
             const isEyebrowText = relativeKey.endsWith('_eyebrow') && !relativeKey.includes('_color') && !relativeKey.includes('_bg');
             const isTitleText = (relativeKey.endsWith('_title') || relativeKey.endsWith('_texto_principal')) && !relativeKey.includes('_color') && !relativeKey.includes('_size') && !relativeKey.includes('_weight') && !relativeKey.includes('_highlight');
             const isSubtitleText = (relativeKey.endsWith('_subtitle') || relativeKey.endsWith('_texto_secundario')) && !relativeKey.includes('_color') && !relativeKey.includes('_size') && !relativeKey.includes('_weight') && !relativeKey.includes('_highlight');
-            
+
             const isPrimaryCtaText = relativeKey.endsWith('_primary_text') || relativeKey.endsWith('_cta_text');
             const isPrimaryCtaUrl = relativeKey.endsWith('_primary_url') || relativeKey.endsWith('_cta_url');
             const isSecondaryCtaText = relativeKey.endsWith('_secondary_text');
             const isSecondaryCtaUrl = relativeKey.endsWith('_secondary_url');
 
             const isImageField = (relativeKey.endsWith('_image') || relativeKey.endsWith('_image_url') || relativeKey.endsWith('_img')) && !isPrimaryCtaUrl && !isSecondaryCtaUrl;
-            
+
             // Map legacy cleanKey for other detections
             const cleanKey = relativeKey.replace(/^el_[a-zA-Z0-9]+_/, '').replace(/^global_/, '');
-            
+
             // Rotating Text Detection (Solutium Protocol)
             const isRotatingFixed = cleanKey === 'rotating_fixed' || cleanKey === 'texto_base' || cleanKey.endsWith('_rotating_fixed');
             const isRotatingOptions = cleanKey === 'rotating_options' || cleanKey === 'rotating_items' || cleanKey === 'rotating_words' || cleanKey === 'palabras_efecto' || cleanKey.endsWith('_rotating_options');
@@ -3327,7 +3557,7 @@ const formatTimestampName = () => {
             } else if (isRotatingSpeed) {
               content.intervalo_ms = parseInt(String(value)) || 3000;
             }
-            
+
             // Allocation to Styles/Settings & Audit Specs (Solutium Protocol v2.3)
             // Note: Colors and styles should ALWAYS go to settings, even if they contain text-like keywords
             if (!isContentField || isPrimaryCtaUrl || isPrimaryCtaText || isEyebrowText || isImageField || isRotatingOptions || isRotatingFixed || isTitleMode || isRotatingEnabled || isRotatingSpeed) {
@@ -3354,7 +3584,7 @@ const formatTimestampName = () => {
                 const targetSelector = cleanKey.includes('text') ? '.title-element' : '.module-container';
                 audit_specs[targetSelector] = { ...audit_specs[targetSelector], ...atomicValues };
               }
-              
+
               // Directiva v1.5: Everything not explicitly forbidden goes to settings
               const forbiddenKeys = ['label', 'defaultValue', 'min', 'max', 'showIf', 'options', 'unit', 'step'];
               if (!forbiddenKeys.includes(cleanKey)) {
@@ -3377,7 +3607,9 @@ const formatTimestampName = () => {
           );
 
           settings['global_menu_mode'] = menuMode;
-          settings['el_menu_items_links'] = menuMode === 'manual' ? manualLinks : automaticMenuItems;
+          settings['el_menu_items_links'] = menuMode === 'manual'
+            ? manualLinks
+            : mergeAutomaticMenuItemsWithExisting(automaticMenuItems, manualLinks);
         }
 
         // Specific overrides for modules that have multiple items (like products/clients)
@@ -3398,13 +3630,13 @@ const formatTimestampName = () => {
           const previousSnapshotProducts = Array.isArray(previousSnapshotSource)
             ? previousSnapshotSource.filter(Boolean)
             : [];
-          
+
           content.selectionMode = selectionMode;
           content.productIds = selectedIds;
 
           // [PROTOCOL 12.1] ATOMIC SNAPSHOT: Resolve real products for the published contract
           let finalProducts: Product[] = [];
-          
+
           if (catalogProducts.length > 0) {
             if (isManualSelectionMode) {
               if (selectedIds.length > 0) {
@@ -3471,10 +3703,10 @@ const formatTimestampName = () => {
             content.products = normalizedProducts;
             content.productos = normalizedProducts; // Legacy fallback
             content.items = normalizedProducts; // Legacy fallback
-            
+
             // Also store in deep settings for hydrationBridge consistency
             settings[snapshotKey] = normalizedProducts;
-            
+
             logDebug('[PRODUCTS_LEGACY_PUBLISH_SNAPSHOT_DEBUG]', {
               sectionId: module.id,
               moduleId: module.id,
@@ -3491,7 +3723,7 @@ const formatTimestampName = () => {
               hasContentProducts: !!content.products,
               hasSettingsSnapshot: !!settings[snapshotKey]
             });
-            
+
             logDebug('[PRODUCTS_PUBLISH_SNAPSHOT_FINAL_CONTRACT_DEBUG]', {
               sectionId: module.id,
               moduleId: module.id,
@@ -3503,7 +3735,7 @@ const formatTimestampName = () => {
               finalSettingsKeys: Object.keys(settings).filter(k => k.startsWith(module.id)),
               productsPreview: normalizedProducts.slice(0, 2).map(p => p.name)
             });
-            
+
             logDebug('[PRODUCTS_PUBLISH_SNAPSHOT_FINAL_CONTRACT_DEBUG_V2]', {
               sectionId: module.id,
               moduleId: module.id,
@@ -3528,9 +3760,9 @@ const formatTimestampName = () => {
         if (module.type === 'products_showcase') {
           const selectKey = `${module.id}_el_products_showcase_config_select_products`;
           const selectedIds = currentState.settingsValues[selectKey] || null;
-          
+
           let snapshot: Product[] = [];
-          
+
           // Debug logs for selection state
           logDebug('[PRODUCTS_SHOWCASE_V2_SELECTION_DEBUG]', {
             moduleId: module.id,
@@ -3556,7 +3788,7 @@ const formatTimestampName = () => {
               const rawRefPrice = (p as any).priceReference;
               const priceNum = typeof rawPrice === 'string' ? parseFloat(rawPrice.replace(/[^\d.,-]/g, '').replace(',', '.')) : rawPrice;
               const refPriceNum = typeof rawRefPrice === 'string' ? parseFloat(rawRefPrice.replace(/[^\d.,-]/g, '').replace(',', '.')) : rawRefPrice;
-              
+
               return {
                 ...p,
                 id: String(p.id || `prod_v2_${idx}`),
@@ -3566,17 +3798,17 @@ const formatTimestampName = () => {
               };
             });
 
-            // Inyectar snapshot en múltiples lugares para redundancia total
+            // Inyectar snapshot en mÃƒÆ’Ã‚Âºltiples lugares para redundancia total
             content.products = normalizedSnapshot;
             content.items = normalizedSnapshot;
             content.productos = normalizedSnapshot;
             content.selectedProductIds = normalizedSnapshot.map(p => p.id);
-            
-            // También en settings para hidratación delegada
+
+            // TambiÃƒÆ’Ã‚Â©n en settings para hidrataciÃƒÆ’Ã‚Â³n delegada
             const itemsKey = `${module.id}_el_products_showcase_items_products`;
             settings[itemsKey] = normalizedSnapshot;
             settings.productsSnapshot = normalizedSnapshot;
-            
+
             // Preserve selection key in settings
             settings[selectKey] = normalizedSnapshot.map(p => p.id);
 
@@ -3591,7 +3823,7 @@ const formatTimestampName = () => {
         if (module.type === 'clients') {
           const selectedIds = getVal(module.id, null, 'select_customers', []);
           content.customerIds = selectedIds;
-          
+
           let finalCustomers: Customer[] = [];
           if (Array.isArray(customers) && customers.length > 0 && Array.isArray(selectedIds)) {
             finalCustomers = customers.filter(c => selectedIds.includes(c.id));
@@ -3692,7 +3924,7 @@ const formatTimestampName = () => {
             if (Array.isArray(d)) return !cleanVal || d.includes(cleanVal);
             return !cleanVal || cleanVal === d;
           };
-          
+
           // Enrichment logic - Contact/Bio
           const currentBio = currentState.settingsValues[`${module.id}_el_footer_brand_bio`];
           if (isDefault(currentBio, defaults.bio)) {
@@ -3701,7 +3933,7 @@ const formatTimestampName = () => {
             content.brand = { ...(content.brand || {}), bio: bioVal, description: bioVal };
             settings[`${module.id}_el_footer_brand_bio`] = bioVal;
           }
-          
+
           const currentEmailVal = currentState.settingsValues[`${module.id}_el_footer_contact_email`];
           if (isDefault(currentEmailVal, defaults.email) && project?.email) {
             content.contacto = { ...(content.contacto || {}), email: project.email };
@@ -3709,7 +3941,7 @@ const formatTimestampName = () => {
             settings[`${module.id}_el_footer_contact_email`] = project.email;
             settings[`${module.id}_el_footer_contact_show_contact`] = true;
           }
-          
+
           const currentPhoneVal = currentState.settingsValues[`${module.id}_el_footer_contact_phone`];
           if (isDefault(currentPhoneVal, defaults.phone) && project?.whatsapp) {
             content.contacto = { ...(content.contacto || {}), telefono: project.whatsapp };
@@ -3717,7 +3949,7 @@ const formatTimestampName = () => {
             settings[`${module.id}_el_footer_contact_phone`] = project.whatsapp;
             settings[`${module.id}_el_footer_contact_show_contact`] = true;
           }
-          
+
           const currentAddressVal = currentState.settingsValues[`${module.id}_el_footer_contact_address`];
           if (isDefault(currentAddressVal, defaults.address) && project?.address) {
             content.contacto = { ...(content.contacto || {}), direccion: project.address };
@@ -3725,25 +3957,25 @@ const formatTimestampName = () => {
             settings[`${module.id}_el_footer_contact_address`] = project.address;
             settings[`${module.id}_el_footer_contact_show_contact`] = true;
           }
-          
+
           const currentCopyVal = currentState.settingsValues[`${module.id}_el_footer_bottom_copyright`];
           if (isDefault(currentCopyVal, defaults.copyright)) {
-            const copyVal = `© ${new Date().getFullYear()} ${project?.name || 'Solutium'}. Todos los derechos reservados.`;
+            const copyVal = `Ãƒâ€šÃ‚Â© ${new Date().getFullYear()} ${project?.name || 'Solutium'}. Todos los derechos reservados.`;
             content.copyright = copyVal;
             settings[`${module.id}_el_footer_bottom_copyright`] = copyVal;
           }
-          
+
           // Social links enrichment logic
           const currentSocials = getPlainValue(currentState.settingsValues[`${module.id}_el_footer_social_social_links`]);
           const resolvedSocials = resolveFooterSocialLinks(currentSocials, project?.socials);
-          
+
           settings[`${module.id}_el_footer_social_social_links`] = resolvedSocials;
           content.redes_sociales = resolvedSocials;
 
           // BRAND LOGO Enrichment - Prioritize manual, then project, then default
           const currentLogo = getPlainValue(currentState.settingsValues[`${module.id}_el_footer_brand_logo_img`]);
           const isLogoDefaultValue = isDefault(currentLogo, defaults.logos);
-          
+
           if (isLogoDefaultValue && project?.logoUrl) {
             content.logo_url = project.logoUrl;
             content.brand = { ...(content.brand || {}), logo: project.logoUrl, logo_url: project.logoUrl };
@@ -3781,7 +4013,7 @@ const formatTimestampName = () => {
           const contactDefaults = {
             email: 'hola@tuempresa.com',
             phone: '+34 900 000 000',
-            address: 'Calle Innovación 123, Madrid, España',
+            address: 'Calle InnovaciÃƒÆ’Ã‚Â³n 123, Madrid, EspaÃƒÆ’Ã‚Â±a',
             whatsappNumber: ''
           };
 
@@ -3866,7 +4098,7 @@ const formatTimestampName = () => {
         if (isDynamic) {
           const rawBase = content.texto_base || '';
           const marcador = '%ROTATIVO%';
-          
+
           content.config = {
             texto_base: rawBase.includes(marcador) ? rawBase : `${rawBase} ${marcador}`,
             palabras_efecto: content.palabras_efecto || [],
@@ -3896,6 +4128,11 @@ const formatTimestampName = () => {
           settingsOptions: settings.el_hero_typography_rotating_options,
           settingsSpeed: settings.el_hero_typography_rotating_speed
         });
+
+        const anchorId = resolveSectionHref(module.id).slice(1);
+        content.anchorId = anchorId;
+        content.htmlId = anchorId;
+        settings.anchorId = anchorId;
 
         return {
           id: module.id,
@@ -3927,7 +4164,7 @@ const formatTimestampName = () => {
     cssBlock += `  --foreground-color: ${textColor};\n`;
     cssBlock += `  --border-color: ${borderColor};\n`;
     cssBlock += `}\n`;
-    
+
     sections.forEach(section => {
       const { id, styles, content } = section;
       cssBlock += `\n/* Section ${id} Styles */\n`;
@@ -3953,7 +4190,7 @@ const formatTimestampName = () => {
         cssBlock += `  display: inline-block;\n`;
         cssBlock += `}\n`;
       }
-      
+
       // Button styles nesting (simplified)
       if (styles['button-styles'] && typeof styles['button-styles'] === 'object') {
         cssBlock += `#section-${id} button {\n`;
@@ -4010,13 +4247,13 @@ const formatTimestampName = () => {
     [editorState, siteName, project, products, customers, trustedCompanyLogos]
   );
 
-  const handleSaveDraft = async (forcedStatus?: 'draft' | 'published' | 'modified') => {
-    if (!projectId || isPreviewMode) return;
+  const handleSaveDraft = async (forcedStatus?: 'draft' | 'published' | 'modified'): Promise<boolean> => {
+    if (!projectId || isPreviewMode) return false;
     if (saveInProgressRef.current && activeSavePromiseRef.current) {
       const activeSaveResult = await activeSavePromiseRef.current;
-      if (!activeSaveResult) return;
+      if (!activeSaveResult) return false;
     }
-    await performDraftSave({
+    return performDraftSave({
       source: 'manual',
       skipPreview: false,
       silent: false,
@@ -4029,7 +4266,7 @@ const formatTimestampName = () => {
     setIsSaving(true);
     setAuthNotice(null);
     await waitForNextPaint();
-    
+
     try {
       const sessionState = hasActiveSecureConstructorWriteSession()
         ? { state: 'active' as const, source: 'secure_launch' as const }
@@ -4037,7 +4274,7 @@ const formatTimestampName = () => {
       if (sessionState.state === 'missing_session' || sessionState.state === 'expired_session') {
         setAuthNotice({
           type: 'error',
-          message: 'Tu sesión expiró. Inicia sesión nuevamente para guardar. Tus cambios siguen en pantalla.'
+          message: 'Tu sesiÃƒÂ³n expirÃƒÂ³. Inicia sesiÃƒÂ³n nuevamente para guardar. Tus cambios siguen en pantalla.'
         });
         setSaveStatus('error');
         return;
@@ -4046,7 +4283,7 @@ const formatTimestampName = () => {
       if (sessionState.state === 'refreshed') {
         setAuthNotice({
           type: 'info',
-          message: 'Sesión actualizada. Guardando cambios...'
+          message: 'SesiÃƒÂ³n actualizada. Guardando cambios...'
         });
       }
 
@@ -4073,9 +4310,6 @@ const formatTimestampName = () => {
         newStatus = 'modified';
       }
 
-      // PROTOCOLO v5.2: DB Compatibility mapping for 'modified' status
-      const dbStatus = (newStatus === 'modified') ? 'published' : newStatus;
-
       // 1. Update basic site info with editor state (SIP v6.2)
       const siteData: Partial<WebBuilderSite> = {
         projectId,
@@ -4084,16 +4318,16 @@ const formatTimestampName = () => {
         siteId: siteId,
         siteName: finalSiteName,
         name: finalSiteName,
-        contentDraft: activeState, 
-        status: dbStatus as any
+        contentDraft: activeState,
+        status: newStatus
       };
 
       if (initialPage && 'id' in initialPage) {
         siteData.id = initialPage.id;
       }
-      
+
       const result = await saveWebBuilderSiteDraft(siteData);
-      
+
       if (!result) {
         throw new Error('Error al guardar el borrador base');
       }
@@ -4106,13 +4340,13 @@ const formatTimestampName = () => {
       // We store the RenderingContract in 'content' and EditorState in 'metadata'
       const savedPage = await upsertPage({
         project_id: projectId,
-        web_builder_site_id: result.id, 
+        web_builder_site_id: result.id,
         slug: 'index',
         title: finalSiteName,
         content: contract,
         status: newStatus === 'published' || newStatus === 'modified' ? 'published' : 'draft',
-        metadata: { 
-          origin_app: 'Constructor Web', 
+        metadata: {
+          origin_app: 'Constructor Web',
           version: '2.3-Atomic',
           editor_state: activeState // Use migrated state
         }
@@ -4127,7 +4361,7 @@ const formatTimestampName = () => {
           content_json: section.content,
           styles_json: { ...section.styles, ...section.settings },
           order_index: idx,
-          metadata: { 
+          metadata: {
             version: '2.3-Atomic',
             audit_specs: section.audit_specs,
             config_hash: section.config_hash
@@ -4184,9 +4418,9 @@ const formatTimestampName = () => {
                 preview_image_updated_at: previewResult.preview_image_updated_at
               });
 
-              logDebug('[PREVIEW_CAPTURE_DEBUG] Server-side preview generated (Save):', { 
-                siteId, 
-                url: previewResult.preview_image_url 
+              logDebug('[PREVIEW_CAPTURE_DEBUG] Server-side preview generated (Save):', {
+                siteId,
+                url: previewResult.preview_image_url
               });
               setPreviewStatus('success');
             } else {
@@ -4233,7 +4467,7 @@ const formatTimestampName = () => {
       if (error instanceof SupabaseSessionError) {
         setAuthNotice({
           type: 'error',
-          message: 'Tu sesión expiró. Inicia sesión nuevamente para guardar. Tus cambios siguen en pantalla.'
+          message: 'Tu sesiÃƒÂ³n expirÃƒÂ³. Inicia sesiÃƒÂ³n nuevamente para guardar. Tus cambios siguen en pantalla.'
         });
       }
       setSaveStatus('error');
@@ -4286,9 +4520,10 @@ const formatTimestampName = () => {
           ? { state: 'active' as const, source: 'secure_launch' as const }
           : await ensureActiveSupabaseSession();
         if (sessionState.state === 'missing_session' || sessionState.state === 'expired_session') {
+          persistLocalDraftSnapshot({ showNotice: false });
           const sessionMessage = isAutosave
-            ? 'Tu sesión expiró. Inicia sesión nuevamente para continuar guardando. Tus cambios siguen en pantalla.'
-            : 'Tu sesión expiró. Inicia sesión nuevamente para guardar. Tus cambios siguen en pantalla.';
+            ? 'Tu sesiÃƒÂ³n expirÃƒÂ³. Inicia sesiÃƒÂ³n nuevamente para continuar guardando. Cambios protegidos localmente.'
+            : 'Tu sesiÃƒÂ³n expirÃƒÂ³. Inicia sesiÃƒÂ³n nuevamente para guardar. Cambios protegidos localmente.';
           setAuthNotice({ type: 'error', message: sessionMessage });
           if (isInteractiveManualSave) {
             setSaveStatus('error');
@@ -4303,8 +4538,8 @@ const formatTimestampName = () => {
           setAuthNotice({
             type: 'info',
             message: isAutosave
-              ? 'Sesión actualizada. Guardando automáticamente...'
-              : 'Sesión actualizada. Guardando cambios...'
+              ? 'SesiÃƒÂ³n actualizada. Guardando automÃƒÂ¡ticamente...'
+              : 'SesiÃƒÂ³n actualizada. Guardando cambios...'
           });
         }
 
@@ -4336,8 +4571,6 @@ const formatTimestampName = () => {
           newStatus = 'modified';
         }
 
-        const dbStatus = (newStatus === 'modified') ? 'published' : newStatus;
-
         const siteData: Partial<WebBuilderSite> = {
           projectId,
           appId: appId || '11111111-1111-1111-1111-111111111111',
@@ -4346,7 +4579,7 @@ const formatTimestampName = () => {
           siteName: finalSiteName,
           name: finalSiteName,
           contentDraft: activeState,
-          status: dbStatus as any
+          status: newStatus
         };
 
         if (initialPage && 'id' in initialPage) {
@@ -4375,6 +4608,10 @@ const formatTimestampName = () => {
           }
         });
 
+        if (!savedPage?.id) {
+          throw new Error('Error al sincronizar la pÃƒÂ¡gina del borrador');
+        }
+
         if (savedPage && savedPage.id) {
           const pageSections: Partial<PageSection>[] = contract.sections.map((section: any, idx) => ({
             id: isUUID(section.id) ? section.id : undefined,
@@ -4389,7 +4626,10 @@ const formatTimestampName = () => {
               config_hash: section.config_hash
             }
           }));
-          await upsertPageSections(savedPage.id!, pageSections);
+          const savedSections = await upsertPageSections(savedPage.id!, pageSections);
+          if (pageSections.length > 0 && savedSections.length === 0) {
+            throw new Error('Error al sincronizar las secciones del borrador');
+          }
         }
 
         logDebug(`[SIP v6.1] Cambios sincronizados en tabla 'pages' (Status: ${newStatus}, Source: ${source})`);
@@ -4406,8 +4646,10 @@ const formatTimestampName = () => {
         if (!hadChangesDuringSave) {
           setHasUnsavedChanges(false);
           lastSaveChangeVersionRef.current = changeVersionAtSaveStart;
+          clearLocalDraftSnapshot();
         } else {
           setHasUnsavedChanges(true);
+          persistLocalDraftSnapshot({ showNotice: false });
         }
 
         currentStatusRef.current = newStatus;
@@ -4508,17 +4750,18 @@ const formatTimestampName = () => {
         return true;
       } catch (error) {
         console.error(isAutosave ? 'Error autosaving draft:' : 'Error saving draft:', error);
+        persistLocalDraftSnapshot({ showNotice: false });
         if (error instanceof SecureConstructorWriteError) {
           setAuthNotice({
             type: 'error',
-            message: error.message
+            message: `${error.message} Cambios protegidos localmente.`
           });
         } else if (error instanceof SupabaseSessionError) {
           setAuthNotice({
             type: 'error',
             message: isAutosave
-              ? 'Tu sesión expiró. Inicia sesión nuevamente para continuar guardando. Tus cambios siguen en pantalla.'
-              : 'Tu sesión expiró. Inicia sesión nuevamente para guardar. Tus cambios siguen en pantalla.'
+              ? 'Tu sesiÃƒÂ³n expirÃƒÂ³. Inicia sesiÃƒÂ³n nuevamente para continuar guardando. Cambios protegidos localmente.'
+              : 'Tu sesiÃƒÂ³n expirÃƒÂ³. Inicia sesiÃƒÂ³n nuevamente para guardar. Cambios protegidos localmente.'
           });
         }
         if (isInteractiveManualSave) {
@@ -4528,8 +4771,8 @@ const formatTimestampName = () => {
           setAutosaveStatus('error');
           setAutosaveError(
             error instanceof SecureConstructorWriteError ? error.message : error instanceof SupabaseSessionError
-              ? 'Tu sesión expiró. Inicia sesión nuevamente para continuar guardando.'
-              : 'No se pudo guardar automáticamente. Tus cambios siguen en pantalla.'
+              ? 'Tu sesiÃƒÂ³n expirÃƒÂ³. Cambios protegidos localmente.'
+              : 'No se pudo guardar automÃƒÂ¡ticamente. Cambios protegidos localmente.'
           );
         }
         return false;
@@ -4549,6 +4792,7 @@ const formatTimestampName = () => {
     return promise;
   }, [
     appId,
+    clearLocalDraftSnapshot,
     currentSiteId,
     currentStatus,
     currentUserId,
@@ -4556,6 +4800,7 @@ const formatTimestampName = () => {
     generateRenderingContract,
     initialPage,
     isPreviewMode,
+    persistLocalDraftSnapshot,
     projectId,
     siteName
   ]);
@@ -4591,37 +4836,6 @@ const formatTimestampName = () => {
     return timestampRegex.test(name) || name === 'Mi Sitio Web';
   };
 
-  useEffect(() => {
-    if (!autosaveEnabled) return;
-    if (isPreviewMode || isExternalRender || !projectId || !currentSiteId) return;
-
-    const intervalId = window.setInterval(() => {
-      if (!hasUnsavedChanges) return;
-      if (saveInProgressRef.current || autosaveInProgressRef.current) return;
-      if (publishInProgressRef.current) return;
-      if (isSaving || publishStatus === 'loading') return;
-
-      void performDraftSave({
-        source: 'autosave',
-        skipPreview: true,
-        silent: true
-      });
-    }, autosaveIntervalMs);
-
-    return () => window.clearInterval(intervalId);
-  }, [
-    autosaveEnabled,
-    autosaveIntervalMs,
-    currentSiteId,
-    hasUnsavedChanges,
-    isExternalRender,
-    isPreviewMode,
-    isSaving,
-    performDraftSave,
-    projectId,
-    publishStatus
-  ]);
-
   const handleCloseOnboarding = () => {
     setShowAIInitialForm(false);
     if (onCancelOnboarding) {
@@ -4643,7 +4857,7 @@ const formatTimestampName = () => {
   const handlePublish = async (requestedPublicName?: string) => {
     if (!projectId || isPreviewMode || publishInProgressRef.current || publishStatus !== 'idle') return;
     const publicName = typeof requestedPublicName === 'string' ? requestedPublicName.trim() : '';
-    
+
     if (currentStatus === 'draft' && !publicName) {
       setPublishModalName('');
       setShowPublishModal(true);
@@ -4676,7 +4890,7 @@ const formatTimestampName = () => {
       if (sessionState.state === 'missing_session' || sessionState.state === 'expired_session') {
         setAuthNotice({
           type: 'error',
-          message: 'Tu sesión expiró. Inicia sesión nuevamente para publicar. Tus cambios siguen en pantalla.'
+          message: 'Tu sesiÃƒÂ³n expirÃƒÂ³. Inicia sesiÃƒÂ³n nuevamente para publicar. Tus cambios siguen en pantalla.'
         });
         setPublishStatus('error');
         return;
@@ -4685,7 +4899,7 @@ const formatTimestampName = () => {
       if (sessionState.state === 'refreshed') {
         setAuthNotice({
           type: 'info',
-          message: 'Sesión actualizada. Publicando cambios...'
+          message: 'SesiÃƒÂ³n actualizada. Publicando cambios...'
         });
       }
 
@@ -4783,7 +4997,7 @@ const formatTimestampName = () => {
         });
 
       const result = await publishWebBuilderSite(publishData);
-      
+
       // 3. UPSERT to pages table (SIP v6.1 - Engine Sync)
       const savedPage = await upsertPage({
         project_id: projectId,
@@ -4792,9 +5006,9 @@ const formatTimestampName = () => {
         title: finalSiteName,
         content: contract,
         status: 'published',
-        metadata: { 
-          origin_app: 'Constructor Web', 
-          version: '2.3-Atomic', 
+        metadata: {
+          origin_app: 'Constructor Web',
+          version: '2.3-Atomic',
           published_at: new Date().toISOString(),
           editor_state: activeState // Use migrated state
         }
@@ -4809,7 +5023,7 @@ const formatTimestampName = () => {
           content_json: section.content,
           styles_json: { ...section.styles, ...section.settings },
           order_index: idx,
-          metadata: { 
+          metadata: {
             version: '2.3-Atomic',
             audit_specs: section.audit_specs,
             config_hash: section.config_hash
@@ -4858,10 +5072,10 @@ const formatTimestampName = () => {
         // --- BACKGROUND TASK: Generate Server-Side Preview automatically on publish ---
         (async () => {
           if (isGeneratingPreview) return;
-          
+
           try {
             const webBuilderSiteId = actualSite.id || initialPage?.id || (window as any).WEB_BUILDER_SITE_ID;
-            
+
             if (!projectId || !siteId || !webBuilderSiteId) {
               console.warn('[AUTO_PREVIEW_ON_PUBLISH_SKIPPED] Missing IDs for preview generation', { project_id: projectId, site_id: siteId, web_builder_site_id: webBuilderSiteId });
               return;
@@ -4870,7 +5084,7 @@ const formatTimestampName = () => {
             setIsGeneratingPreview(true);
             setPreviewWarning(null);
             setPreviewStatus('loading');
-            
+
             // [AUTO_PREVIEW_ON_PUBLISH_REQUEST_DEBUG]
             logDebug('[AUTO_PREVIEW_ON_PUBLISH_REQUEST_DEBUG]', {
               trigger: "publish",
@@ -4930,7 +5144,7 @@ const formatTimestampName = () => {
           } catch (pError: any) {
             // [AUTO_PREVIEW_ON_PUBLISH_WARNING]
             const wasCorsLikeFailure = pError?.message === 'Failed to fetch' || (pError instanceof TypeError && pError.message.includes('fetch'));
-            
+
             console.warn('[AUTO_PREVIEW_ON_PUBLISH_WARNING]', {
               message: pError?.message,
               status: pError?.status,
@@ -4938,12 +5152,12 @@ const formatTimestampName = () => {
               trigger: "publish",
               stack: pError?.stack?.substring(0, 300)
             });
-            
-            logDebug('[AUTO_PREVIEW_ON_PUBLISH_ERROR]', { 
+
+            logDebug('[AUTO_PREVIEW_ON_PUBLISH_ERROR]', {
               message: pError.message,
               wasCors: wasCorsLikeFailure
             });
-            
+
             setPreviewWarning('Sitio publicado, pero no se pudo actualizar la vista previa.');
             setPreviewStatus('error');
             setTimeout(() => setPreviewStatus('idle'), 5000);
@@ -4965,7 +5179,7 @@ const formatTimestampName = () => {
       if (error instanceof SupabaseSessionError) {
         setAuthNotice({
           type: 'error',
-          message: 'Tu sesión expiró. Inicia sesión nuevamente para publicar. Tus cambios siguen en pantalla.'
+          message: 'Tu sesiÃƒÂ³n expirÃƒÂ³. Inicia sesiÃƒÂ³n nuevamente para publicar. Tus cambios siguen en pantalla.'
         });
       }
       setPublishStatus('error');
@@ -5069,7 +5283,7 @@ const formatTimestampName = () => {
     if (projectId && currentSiteId) {
       const shouldAutoCapture = sessionStorage.getItem(`auto_capture_${currentSiteId}`) === 'true';
       if (shouldAutoCapture) {
-        logDebug(`[AUTO_CAPTURE] Detectada bandera para sitio: ${currentSiteId}. Iniciando captura automática...`);
+        logDebug(`[AUTO_CAPTURE] Detectada bandera para sitio: ${currentSiteId}. Iniciando captura automÃƒÆ’Ã‚Â¡tica...`);
         sessionStorage.removeItem(`auto_capture_${currentSiteId}`);
         // Esperamos un momento a que el canvas se hidrate completamente
         setTimeout(() => {
@@ -5092,7 +5306,7 @@ const formatTimestampName = () => {
     setIsGeneratingPreview(true);
     try {
       const webBuilderSiteId = initialPage?.id || (window as any).WEB_BUILDER_SITE_ID;
-      
+
       const result = await generatePreviewServerSide({
         project_id: projectId,
         site_id: currentSiteId,
@@ -5138,7 +5352,7 @@ const formatTimestampName = () => {
       }
     } catch (error: any) {
       console.warn('Manual preview update failed:', error);
-      setPreviewWarning('No se pudo actualizar la vista previa. El borrador/publicación no se modifica.');
+      setPreviewWarning('No se pudo actualizar la vista previa. El borrador/publicaciÃƒÆ’Ã‚Â³n no se modifica.');
       setPreviewStatus('error');
     } finally {
       setIsGeneratingPreview(false);
@@ -5147,36 +5361,36 @@ const formatTimestampName = () => {
   };
 
   const normalizeBentoSchema = (schema: BentoSchema, prompt: string) => {
-    // 1. Limpiar el título (quitar prefijos comunes de prompts)
+    // 1. Limpiar el tÃƒÆ’Ã‚Â­tulo (quitar prefijos comunes de prompts)
     let cleanTitle = schema.header.title || prompt;
     const prefixes = [
-      /crea (una|un|la|el|información sobre|sección de|página de)\s+/i,
-      /genera (una|un|la|el|información sobre)\s+/i,
-      /haz (una|un|la|el|información sobre)\s+/i,
-      /muéstrame (por qué|cómo|qué)\s+/i,
-      /muestra (por qué|cómo|qué)\s+/i,
-      /información que muestre\s+/i
+      /crea (una|un|la|el|informaciÃƒÆ’Ã‚Â³n sobre|secciÃƒÆ’Ã‚Â³n de|pÃƒÆ’Ã‚Â¡gina de)\s+/i,
+      /genera (una|un|la|el|informaciÃƒÆ’Ã‚Â³n sobre)\s+/i,
+      /haz (una|un|la|el|informaciÃƒÆ’Ã‚Â³n sobre)\s+/i,
+      /muÃƒÆ’Ã‚Â©strame (por quÃƒÆ’Ã‚Â©|cÃƒÆ’Ã‚Â³mo|quÃƒÆ’Ã‚Â©)\s+/i,
+      /muestra (por quÃƒÆ’Ã‚Â©|cÃƒÆ’Ã‚Â³mo|quÃƒÆ’Ã‚Â©)\s+/i,
+      /informaciÃƒÆ’Ã‚Â³n que muestre\s+/i
     ];
-    
+
     prefixes.forEach(p => {
       cleanTitle = cleanTitle.replace(p, '');
     });
-    
-    // Capitalización
+
+    // CapitalizaciÃƒÆ’Ã‚Â³n
     cleanTitle = cleanTitle.trim();
     if (cleanTitle) {
       cleanTitle = cleanTitle.charAt(0).toUpperCase() + cleanTitle.slice(1);
     } else {
-      cleanTitle = "Solución Personalizada";
+      cleanTitle = "SoluciÃƒÆ’Ã‚Â³n Personalizada";
     }
 
-    // 2. Normalizar items y asegurar layout básico
+    // 2. Normalizar items y asegurar layout bÃƒÆ’Ã‚Â¡sico
     const normalizedItems = schema.items.map((item, idx) => {
       const itemAny = item as any;
       const colsPerRow = 3;
       const colWidth = 8;
       const rowHeight = 2;
-      
+
       return {
         ...item,
         id: item.id || `item_${idx}_${Math.random().toString(36).substr(2, 9)}`,
@@ -5206,11 +5420,11 @@ const formatTimestampName = () => {
     // Intentar obtener el prompt actual del textarea si es posible
     const promptValue = (document.querySelector('textarea[placeholder*="SaaS"]') as HTMLTextAreaElement)?.value || "";
     const schema = normalizeBentoSchema(rawSchema, promptValue);
-    
+
     const rawId = crypto.randomUUID();
     const sectionId = `section_${rawId}`;
-    const moduleId = sectionId; 
-    
+    const moduleId = sectionId;
+
     logDebug('[BENTO_GENERATED_SCHEMA_DEBUG]', {
       originalTitle: rawSchema.header.title,
       cleanTitle: schema.header.title,
@@ -5254,7 +5468,7 @@ const formatTimestampName = () => {
       });
     });
 
-    // 3. Forzar inserción de items en la clave que BentoModule espera
+    // 3. Forzar inserciÃƒÆ’Ã‚Â³n de items en la clave que BentoModule espera
     const itemsKey = `${moduleId}_el_bento_items_items`;
     initialValues[itemsKey] = schema.items.map(item => {
       const itemAny = item as any;
@@ -5287,12 +5501,12 @@ const formatTimestampName = () => {
       };
     });
 
-    const newModule = { 
-      ...BENTO_MODULE, 
+    const newModule = {
+      ...BENTO_MODULE,
       id: moduleId,
       templateId: 'mod_bento_1',
       elements: newElements,
-      name: 'Bento / Composición IA',
+      name: 'Bento / ComposiciÃƒÆ’Ã‚Â³n IA',
       // Redundancia solicitada por el usuario
       content: {
         title: schema.header.title,
@@ -5325,10 +5539,10 @@ const formatTimestampName = () => {
     });
 
     setShowBentoPrompt(false);
-    
-    // 4. Sincronización manual con el store de renderizado (opcional pero seguro)
-    // createRenderingContract se disparará vía useEffect al cambiar editorState
-    
+
+    // 4. SincronizaciÃƒÆ’Ã‚Â³n manual con el store de renderizado (opcional pero seguro)
+    // createRenderingContract se dispararÃƒÆ’Ã‚Â¡ vÃƒÆ’Ã‚Â­a useEffect al cambiar editorState
+
     // Auto-select and scroll
     setTimeout(() => {
       selectSection(sectionId);
@@ -5336,7 +5550,7 @@ const formatTimestampName = () => {
       if (el) {
         el.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
-      
+
       logDebug('[BENTO_INSERT_RESULT_DEBUG]', {
         sectionId,
         itemsRendered: document.querySelectorAll(`[id^="${sectionId}"]`).length > 0
@@ -5345,15 +5559,26 @@ const formatTimestampName = () => {
   };
 
   const useConstructorSplitLayout = Boolean(!isMobile && !isPreviewMode && !isExternalRender);
+  const renderTemporarySaveNotice = () => {
+    if (!showTemporarySaveNotice || isPreviewMode || isExternalRender) return null;
+
+    return (
+      <div className="pointer-events-none absolute inset-x-0 bottom-5 z-40 flex justify-center px-4">
+        <div className="max-w-[min(92vw,420px)] rounded-full border border-blue-100 bg-white/95 px-4 py-2 text-center text-xs font-semibold text-slate-700 shadow-lg shadow-slate-900/10">
+          Cambios guardados temporalmente. Guarda para conservarlos.
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className={`h-screen w-screen flex overflow-hidden bg-surface font-sans antialiased ${(isPreviewMode || isExternalRender) ? 'p-0' : ''}`}>
       {/* Desktop Sidebar */}
       {!isMobile && !isPreviewMode && !isExternalRender && (
-        <MainSidebar 
-          activeTab={activeTab} 
-          onTabChange={setActiveTab} 
-          onBackToDashboard={onBackToDashboard} 
+        <MainSidebar
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          onBackToDashboard={onBackToDashboard}
           logoUrl={logoUrl}
           logoWhiteUrl={logoWhiteUrl}
           project={project}
@@ -5362,7 +5587,7 @@ const formatTimestampName = () => {
           onLogoClick={handleLogoClick}
         />
       )}
-      
+
       <div className="flex-1 flex flex-col h-full overflow-hidden">
         {(activeTab === 'constructor' || activeTab === 'design-style' || activeTab === 'design-animations') && (
           <div className="flex flex-1 h-full overflow-hidden relative">
@@ -5370,9 +5595,9 @@ const formatTimestampName = () => {
             {isMobile ? (
               <div className="flex flex-col flex-1 h-full overflow-hidden pb-[80px]">
                 {!isPreviewMode && !isExternalRender && (
-                  <TopBar 
-                    onSave={handleSaveDraft} 
-                    onPublish={handlePublish} 
+                  <TopBar
+                    onSave={handleSaveDraft}
+                    onPublish={handlePublish}
                     logoUrl={logoUrl}
                     assetName={assetDisplayName}
                     viewport={viewport}
@@ -5388,10 +5613,10 @@ const formatTimestampName = () => {
                     hasUnsavedChanges={hasUnsavedChanges}
                     isSaving={isSaving}
                     isDraftOperationInProgress={isDraftOperationInProgress}
-                    autosaveStatus={autosaveEnabled ? autosaveStatus : 'disabled'}
+                    autosaveStatus="idle"
                     autosaveError={autosaveError}
                     lastAutosavedAt={lastAutosavedAt}
-                    showAutosaveIndicator={autosaveShowIndicator}
+                    showAutosaveIndicator={false}
                     currentStatus={currentStatus}
                     isNewSite={!initialPage}
                     publishedUrl={publishedSiteUrl}
@@ -5399,36 +5624,36 @@ const formatTimestampName = () => {
                     onOpenPublished={() => openPublishedUrl(publishedSiteUrl)}
                   />
                 )}
-                
+
                 <div className="flex-1 overflow-hidden relative">
                   {(activeTab === 'constructor' && mobileTab === 'constructor' && !isPreviewMode && !isExternalRender) && (
                     <div className="h-full overflow-y-auto bg-sidebar-bg custom-scrollbar">
                       <div className="p-6 md:p-10 flex flex-col items-center">
-                        <h3 className="text-xl md:text-2xl font-black text-sidebar-foreground uppercase tracking-[0.1em] mb-12 text-center px-2">Catálogo de Módulos</h3>
-                        
+                        <h3 className="text-xl md:text-2xl font-black text-sidebar-foreground uppercase tracking-[0.1em] mb-12 text-center px-2">CatÃƒÆ’Ã‚Â¡logo de MÃƒÆ’Ã‚Â³dulos</h3>
+
                         <div className="w-full">
                           {isMobile ? (
                             /* MOBILE/TABLET VIEW: Accordion + Centered */
                             <div className="flex flex-col items-center px-6 py-10">
-                              <h3 className="text-xl md:text-2xl font-black text-sidebar-foreground uppercase tracking-[0.1em] mb-12 text-center px-2">Catálogo de Módulos</h3>
+                              <h3 className="text-xl md:text-2xl font-black text-sidebar-foreground uppercase tracking-[0.1em] mb-12 text-center px-2">CatÃƒÆ’Ã‚Â¡logo de MÃƒÆ’Ã‚Â³dulos</h3>
                               <div className="w-full max-w-[200px] space-y-1 mb-4">
-                                <ModuleItem icon={React.createElement(MODULE_INFO.menu.icon, { size: 18 })} label="Menú" onClick={() => addModule(MENU_MODULE)} />
+                                <ModuleItem icon={React.createElement(MODULE_INFO.menu.icon, { size: 18 })} label="MenÃƒÆ’Ã‚Âº" onClick={() => addModule(MENU_MODULE)} />
                               </div>
                               <div className="w-full max-w-md border-t border-sidebar-foreground/10 mb-4" />
                               <div className="w-full max-w-md space-y-4">
                                 {[
                                   { id: 'content', label: 'Contenido', modules: [
-                                    { icon: MODULE_INFO.features.icon, label: "Características", mod: FEATURES_MODULE },
+                                    { icon: MODULE_INFO.features.icon, label: "CaracterÃƒÆ’Ã‚Â­sticas", mod: FEATURES_MODULE },
                                     { icon: MODULE_INFO.team.icon, label: "Equipo", mod: TEAM_MODULE },
-                                    { icon: MODULE_INFO.stats.icon, label: "Estadísticas", mod: STATS_MODULE },
+                                    { icon: MODULE_INFO.stats.icon, label: "EstadÃƒÆ’Ã‚Â­sticas", mod: STATS_MODULE },
                                     { icon: MODULE_INFO.hero.icon, label: "Portada", mod: HERO_MODULE },
                                     { icon: MODULE_INFO.hero2.icon, label: "Portada Solutium", mod: HERO2_MODULE },
                                     { icon: MODULE_INFO.process.icon, label: "Proceso", mod: PROCESS_MODULE },
                                     { icon: MODULE_INFO.about.icon, label: "Sobre Nosotros", mod: ABOUT_MODULE }
                                   ]},
-                                  { id: 'conversion', label: 'Conversión', modules: [
+                                  { id: 'conversion', label: 'ConversiÃƒÆ’Ã‚Â³n', modules: [
                                     { icon: MODULE_INFO.cta.icon, label: "Call to Action", mod: CTA_MODULE },
-                                    { icon: MODULE_INFO.dynamic_cards.icon, label: "Tarjetas dinámicas", mod: DYNAMIC_CARDS_MODULE },
+                                    { icon: MODULE_INFO.dynamic_cards.icon, label: "Tarjetas dinÃƒÆ’Ã‚Â¡micas", mod: DYNAMIC_CARDS_MODULE },
                                     { icon: MODULE_INFO.contact.icon, label: "Contacto", mod: CONTACT_MODULE },
                                     { icon: MODULE_INFO.newsletter.icon, label: "Newsletter", mod: NEWSLETTER_MODULE },
                                     { icon: MODULE_INFO.pricing.icon, label: "Planes", mod: PRICING_MODULE },
@@ -5442,12 +5667,12 @@ const formatTimestampName = () => {
                                   ]},
                                   { id: 'multimedia', label: 'Multimedia', modules: [
                                     { icon: MODULE_INFO.comparative.icon, label: "Comparativo", mod: COMPARISON_MODULE },
-                                    { icon: MODULE_INFO.gallery.icon, label: "Galería", mod: GALLERY_MODULE },
+                                    { icon: MODULE_INFO.gallery.icon, label: "GalerÃƒÆ’Ã‚Â­a", mod: GALLERY_MODULE },
                                     { icon: MODULE_INFO.video.icon, label: "Video", mod: VIDEO_MODULE }
                                   ]}
                                 ].map((cat) => (
                                   <div key={cat.id} className="border-b border-sidebar-foreground/5 last:border-0 pb-4">
-                                    <button 
+                                    <button
                                       onClick={() => setActiveModuleCategory(activeModuleCategory === cat.id ? null : cat.id)}
                                       className="w-full py-4 flex flex-col items-center justify-center group transition-all"
                                     >
@@ -5456,7 +5681,7 @@ const formatTimestampName = () => {
                                       </span>
                                       <div className={`w-8 h-1 bg-primary mt-2 rounded-full transition-all duration-300 ${activeModuleCategory === cat.id ? 'opacity-100 scale-x-100' : 'opacity-0 scale-x-0 group-hover:opacity-40 group-hover:scale-x-50'}`} />
                                     </button>
-                                    
+
                                     <AnimatePresence>
                                       {activeModuleCategory === cat.id && (
                                         <motion.div
@@ -5469,11 +5694,11 @@ const formatTimestampName = () => {
                                           <div className="flex flex-col items-center pt-4 pb-6">
                                             <div className="w-full max-w-[200px] space-y-1">
                                               {cat.modules.map((m, idx) => (
-                                                <ModuleItem 
+                                                <ModuleItem
                                                   key={`cat-mod-${cat.id}-${idx}`}
-                                                  icon={React.createElement(m.icon, { size: 18 })} 
-                                                  label={m.label} 
-                                                  onClick={() => addModule(m.mod)} 
+                                                  icon={React.createElement(m.icon, { size: 18 })}
+                                                  label={m.label}
+                                                  onClick={() => addModule(m.mod)}
                                                 />
                                               ))}
                                             </div>
@@ -5485,8 +5710,8 @@ const formatTimestampName = () => {
                                 ))}
                                 <div className="border-t border-sidebar-foreground/10 pt-4">
                                   <div className="mx-auto w-full max-w-[200px] space-y-1">
-                                  <ModuleItem icon={React.createElement(MODULE_INFO.bento.icon, { size: 18 })} label="Diseño libre" onClick={() => addModule(BENTO_MODULE)} />
-                                  <ModuleItem icon={React.createElement(MODULE_INFO.footer.icon, { size: 18 })} label="Pie de página" onClick={() => addModule(FOOTER_MODULE)} />
+                                  <ModuleItem icon={React.createElement(MODULE_INFO.bento.icon, { size: 18 })} label="DiseÃƒÆ’Ã‚Â±o libre" onClick={() => addModule(BENTO_MODULE)} />
+                                  <ModuleItem icon={React.createElement(MODULE_INFO.footer.icon, { size: 18 })} label="Pie de pÃƒÆ’Ã‚Â¡gina" onClick={() => addModule(FOOTER_MODULE)} />
                                   <ModuleItem icon={React.createElement(MODULE_INFO.spacer.icon, { size: 18 })} label="Espaciadores" onClick={() => addModule(SPACER_MODULE)} />
                                   </div>
                                 </div>
@@ -5495,20 +5720,20 @@ const formatTimestampName = () => {
                           ) : (
                             /* DESKTOP VIEW: Original List Alignment */
                             <div className="p-6">
-                              <h3 className="text-[10px] font-bold text-sidebar-foreground/40 uppercase tracking-[0.2em] mb-8 text-left px-2">Catálogo de Módulos</h3>
-                              
+                              <h3 className="text-[10px] font-bold text-sidebar-foreground/40 uppercase tracking-[0.2em] mb-8 text-left px-2">CatÃƒÆ’Ã‚Â¡logo de MÃƒÆ’Ã‚Â³dulos</h3>
+
                               <div className="grid grid-cols-2 gap-8">
                                 <div className="space-y-8">
                                   <div className="space-y-1">
-                                    <ModuleItem icon={React.createElement(MODULE_INFO.menu.icon, { size: 18 })} label="Menú" onClick={() => addModule(MENU_MODULE)} />
+                                    <ModuleItem icon={React.createElement(MODULE_INFO.menu.icon, { size: 18 })} label="MenÃƒÆ’Ã‚Âº" onClick={() => addModule(MENU_MODULE)} />
                                   </div>
 
                                   <div className="space-y-4">
                                     <h4 className="text-[9px] font-black text-primary uppercase tracking-widest px-2">Contenido</h4>
                                     <div className="space-y-1">
-                                      <ModuleItem icon={React.createElement(MODULE_INFO.features.icon, { size: 18 })} label="Características" onClick={() => addModule(FEATURES_MODULE)} />
+                                      <ModuleItem icon={React.createElement(MODULE_INFO.features.icon, { size: 18 })} label="CaracterÃƒÆ’Ã‚Â­sticas" onClick={() => addModule(FEATURES_MODULE)} />
                                       <ModuleItem icon={React.createElement(MODULE_INFO.team.icon, { size: 18 })} label="Equipo" onClick={() => addModule(TEAM_MODULE)} />
-                                      <ModuleItem icon={React.createElement(MODULE_INFO.stats.icon, { size: 18 })} label="Estadísticas" onClick={() => addModule(STATS_MODULE)} />
+                                      <ModuleItem icon={React.createElement(MODULE_INFO.stats.icon, { size: 18 })} label="EstadÃƒÆ’Ã‚Â­sticas" onClick={() => addModule(STATS_MODULE)} />
                                       <ModuleItem icon={React.createElement(MODULE_INFO.hero.icon, { size: 18 })} label="Portada" onClick={() => addModule(HERO_MODULE)} />
                                       <ModuleItem icon={React.createElement(MODULE_INFO.hero2.icon, { size: 18 })} label="Portada Solutium" onClick={() => addModule(HERO2_MODULE)} />
                                       <ModuleItem icon={React.createElement(MODULE_INFO.process.icon, { size: 18 })} label="Proceso" onClick={() => addModule(PROCESS_MODULE)} />
@@ -5517,10 +5742,10 @@ const formatTimestampName = () => {
                                   </div>
 
                                   <div className="space-y-4">
-                                    <h4 className="text-[9px] font-black text-primary uppercase tracking-widest px-2">Conversión</h4>
+                                    <h4 className="text-[9px] font-black text-primary uppercase tracking-widest px-2">ConversiÃƒÆ’Ã‚Â³n</h4>
                                     <div className="space-y-1">
                                       <ModuleItem icon={React.createElement(MODULE_INFO.cta.icon, { size: 18 })} label="Call to Action" onClick={() => addModule(CTA_MODULE)} />
-                                      <ModuleItem icon={React.createElement(MODULE_INFO.dynamic_cards.icon, { size: 18 })} label="Tarjetas dinámicas" onClick={() => addModule(DYNAMIC_CARDS_MODULE)} />
+                                      <ModuleItem icon={React.createElement(MODULE_INFO.dynamic_cards.icon, { size: 18 })} label="Tarjetas dinÃƒÆ’Ã‚Â¡micas" onClick={() => addModule(DYNAMIC_CARDS_MODULE)} />
                                       <ModuleItem icon={React.createElement(MODULE_INFO.contact.icon, { size: 18 })} label="Contacto" onClick={() => addModule(CONTACT_MODULE)} />
                                       <ModuleItem icon={React.createElement(MODULE_INFO.newsletter.icon, { size: 18 })} label="Newsletter" onClick={() => addModule(NEWSLETTER_MODULE)} />
                                       <ModuleItem icon={React.createElement(MODULE_INFO.pricing.icon, { size: 18 })} label="Planes" onClick={() => addModule(PRICING_MODULE)} />
@@ -5544,15 +5769,15 @@ const formatTimestampName = () => {
                                     <h4 className="text-[9px] font-black text-primary uppercase tracking-widest px-2">Multimedia</h4>
                                     <div className="space-y-1">
                                       <ModuleItem icon={React.createElement(MODULE_INFO.comparative.icon, { size: 18 })} label="Comparativo" onClick={() => addModule(COMPARISON_MODULE)} />
-                                      <ModuleItem icon={React.createElement(MODULE_INFO.gallery.icon, { size: 18 })} label="Galería" onClick={() => addModule(GALLERY_MODULE)} />
+                                      <ModuleItem icon={React.createElement(MODULE_INFO.gallery.icon, { size: 18 })} label="GalerÃƒÆ’Ã‚Â­a" onClick={() => addModule(GALLERY_MODULE)} />
                                       <ModuleItem icon={React.createElement(MODULE_INFO.video.icon, { size: 18 })} label="Video" onClick={() => addModule(VIDEO_MODULE)} />
                                     </div>
                                   </div>
                                 </div>
                               </div>
                               <div className="mt-8 border-t border-sidebar-foreground/10 pt-4 space-y-1">
-                                <ModuleItem icon={React.createElement(MODULE_INFO.bento.icon, { size: 18 })} label="Diseño libre" onClick={() => addModule(BENTO_MODULE)} />
-                                <ModuleItem icon={React.createElement(MODULE_INFO.footer.icon, { size: 18 })} label="Pie de página" onClick={() => addModule(FOOTER_MODULE)} />
+                                <ModuleItem icon={React.createElement(MODULE_INFO.bento.icon, { size: 18 })} label="DiseÃƒÆ’Ã‚Â±o libre" onClick={() => addModule(BENTO_MODULE)} />
+                                <ModuleItem icon={React.createElement(MODULE_INFO.footer.icon, { size: 18 })} label="Pie de pÃƒÆ’Ã‚Â¡gina" onClick={() => addModule(FOOTER_MODULE)} />
                                 <ModuleItem icon={React.createElement(MODULE_INFO.spacer.icon, { size: 18 })} label="Espaciadores" onClick={() => addModule(SPACER_MODULE)} />
                               </div>
                             </div>
@@ -5564,21 +5789,23 @@ const formatTimestampName = () => {
 
                   {(activeTab === 'design-style' || activeTab === 'design-animations') && (
                     <div className="h-full overflow-auto bg-slate-50">
-                      <GlobalSettingsPanel 
+                      <GlobalSettingsPanel
                         view={activeTab as any}
                         settingsValues={editorState.settingsValues}
                         onSettingChange={handleSettingChange}
                         project={project}
                         projectId={projectId}
+                        siteName={siteName}
+                        onSiteNameChange={updateSiteName}
                       />
                     </div>
                   )}
-                  
+
                   {mobileTab === 'structure' && (
                     <div className="h-full overflow-hidden bg-surface">
-                      <StructurePanel 
-                        editorState={editorState} 
-                        setEditorState={setEditorState} 
+                      <StructurePanel
+                        editorState={editorState}
+                        setEditorState={setEditorState}
                         onSettingChange={handleSettingChange}
                         onRemoveModule={removeModule}
                         onDuplicateModule={duplicateModule}
@@ -5595,12 +5822,12 @@ const formatTimestampName = () => {
                       />
                     </div>
                   )}
-                  
+
                   {mobileTab === 'preview' || isPreviewMode || isExternalRender ? (
-                    <div className="h-full overflow-hidden" onClickCapture={handlePreviewClick}>
-                      <Canvas 
-                        editorState={editorState} 
-                        onAddModule={addModule} 
+                    <div className="relative h-full overflow-hidden" onClickCapture={handlePreviewClick}>
+                      <Canvas
+                        editorState={editorState}
+                        onAddModule={addModule}
                         products={products}
                         customers={customers}
                         trustedCompanyLogos={trustedCompanyLogos}
@@ -5618,19 +5845,20 @@ const formatTimestampName = () => {
                         onOpenBentoGenerator={() => setShowBentoPrompt(true)}
                         onRecentlyAddedModuleSettled={handleRecentlyAddedModuleSettled}
                       />
+                      {renderTemporarySaveNotice()}
                     </div>
                   ) : null}
                 </div>
-                
+
                 {!isPreviewMode && !isExternalRender && <MobileBottomNav activeTab={mobileTab} onTabChange={handleMobileTabChange} />}
               </div>
             ) : (
               /* Desktop Layout */
               <>
                 {!isPreviewMode && !isExternalRender && (
-                  <StructurePanel 
-                    editorState={editorState} 
-                    setEditorState={setEditorState} 
+                  <StructurePanel
+                    editorState={editorState}
+                    setEditorState={setEditorState}
                     onSettingChange={handleSettingChange}
                     onRemoveModule={removeModule}
                     onDuplicateModule={duplicateModule}
@@ -5648,9 +5876,9 @@ const formatTimestampName = () => {
                 )}
                 <div className="flex-1 flex flex-col h-full min-w-0">
                   {!isPreviewMode && !isExternalRender && (
-                  <TopBar 
-                    onSave={handleSaveDraft} 
-                    onPublish={handlePublish} 
+                  <TopBar
+                    onSave={handleSaveDraft}
+                    onPublish={handlePublish}
                     logoUrl={logoUrl}
                     assetName={assetDisplayName}
                     viewport={viewport}
@@ -5666,10 +5894,10 @@ const formatTimestampName = () => {
                     hasUnsavedChanges={hasUnsavedChanges}
                       isSaving={isSaving}
                       isDraftOperationInProgress={isDraftOperationInProgress}
-                      autosaveStatus={autosaveEnabled ? autosaveStatus : 'disabled'}
+                      autosaveStatus="idle"
                       autosaveError={autosaveError}
                       lastAutosavedAt={lastAutosavedAt}
-                      showAutosaveIndicator={autosaveShowIndicator}
+                      showAutosaveIndicator={false}
                       currentStatus={currentStatus}
                       isNewSite={!initialPage}
                       publishedUrl={publishedSiteUrl}
@@ -5678,10 +5906,10 @@ const formatTimestampName = () => {
                     />
                   )}
                   <div className="flex-1 flex overflow-hidden">
-                    <div className="flex-1 flex flex-col h-full overflow-hidden" onClickCapture={handlePreviewClick}>
-                      <Canvas 
-                        editorState={editorState} 
-                        onAddModule={addModule} 
+                    <div className="relative flex-1 flex flex-col h-full overflow-hidden" onClickCapture={handlePreviewClick}>
+                      <Canvas
+                        editorState={editorState}
+                        onAddModule={addModule}
                         products={products}
                         customers={customers}
                         trustedCompanyLogos={trustedCompanyLogos}
@@ -5700,18 +5928,60 @@ const formatTimestampName = () => {
                         onOpenBentoGenerator={() => setShowBentoPrompt(true)}
                         onRecentlyAddedModuleSettled={handleRecentlyAddedModuleSettled}
                       />
+                      {renderTemporarySaveNotice()}
                     </div>
                   </div>
                 </div>
               </>
             )}
-            
+
             {showUnsavedModal && (
-              <UnsavedChangesModal 
+              <UnsavedChangesModal
                 onCancel={() => setShowUnsavedModal(false)}
                 onSaveAndExit={handleSaveAndExit}
                 onExitWithoutSaving={handleExitWithoutSaving}
               />
+            )}
+
+
+            {localSnapshotToRestore && (
+              <div className="fixed inset-0 bg-black/45 backdrop-blur-sm flex items-center justify-center z-[10000] p-6">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.96, y: 16 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  className="bg-surface rounded-2xl p-7 max-w-lg w-full shadow-2xl border border-border"
+                >
+                  <div className="flex flex-col text-center items-center">
+                    <div className="w-12 h-12 bg-blue-500/10 rounded-2xl flex items-center justify-center mb-5">
+                      <LucideIcons.ShieldCheck className="w-6 h-6 text-blue-600" />
+                    </div>
+                    <h2 className="text-xl font-bold text-text mb-3">Encontramos cambios locales no guardados.</h2>
+                    <p className="text-sm text-text/60 leading-relaxed mb-2">
+                      Puedes restaurarlos para continuar editando o descartarlos si ya no los necesitas.
+                    </p>
+                    <p className="hidden">
+                      Encontramos cambios locales no guardados de esta pÃƒÂ¡gina. Puedes restaurarlos o descartar el respaldo local.
+                    </p>
+                    <p className="text-[11px] text-text/40 mb-7">
+                      Respaldo: {new Date(localSnapshotToRestore.updatedAt).toLocaleString()}
+                    </p>
+                    <div className="flex flex-col gap-3 w-full">
+                      <button
+                        onClick={handleRestoreLocalSnapshot}
+                        className="w-full py-3 bg-primary text-white font-bold rounded-xl shadow-lg shadow-primary/20 hover:opacity-90 transition-all"
+                      >
+                        Restaurar cambios
+                      </button>
+                      <button
+                        onClick={handleDiscardLocalSnapshot}
+                        className="w-full py-3 bg-secondary text-text/70 font-bold rounded-xl hover:bg-border/40 transition-all"
+                      >
+                        Descartar respaldo
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              </div>
             )}
           </div>
         )}
@@ -5720,8 +5990,8 @@ const formatTimestampName = () => {
           <div className="flex-1 h-full overflow-auto bg-secondary">
             <div className="p-8">
               <div className="flex flex-col mb-8">
-                <h2 className="text-3xl font-bold text-text">Gestión de Datos</h2>
-                <p className="text-sm text-text/40 font-medium">Administra la información de tu proyecto de forma profesional.</p>
+                <h2 className="text-3xl font-bold text-text">GestiÃƒÆ’Ã‚Â³n de Datos</h2>
+                <p className="text-sm text-text/40 font-medium">Administra la informaciÃƒÆ’Ã‚Â³n de tu proyecto de forma profesional.</p>
               </div>
               <DataTab projectId={projectId || ''} currentUserId={currentUserId || ''} />
             </div>
@@ -5730,12 +6000,14 @@ const formatTimestampName = () => {
 
         {activeTab === 'settings' && (
           <div className="flex-1 h-full overflow-auto bg-slate-50 relative">
-            <GlobalSettingsPanel 
+            <GlobalSettingsPanel
               view={activeTab}
               settingsValues={editorState.settingsValues}
               onSettingChange={handleSettingChange}
               project={project}
               projectId={projectId}
+              siteName={siteName}
+              onSiteNameChange={updateSiteName}
               onBack={() => setActiveTab('constructor')}
             />
           </div>
@@ -5752,7 +6024,7 @@ const formatTimestampName = () => {
           className="fixed bottom-6 right-6 z-[2300] flex items-center gap-2 rounded-2xl border border-blue-200 bg-white px-4 py-3 text-xs font-black uppercase tracking-widest text-blue-700 shadow-2xl transition hover:bg-blue-50"
         >
           <Sparkles size={16} />
-          Diagnóstico IA
+          DiagnÃƒÆ’Ã‚Â³stico IA
         </motion.button>
       )}
 
@@ -5786,7 +6058,7 @@ const formatTimestampName = () => {
               <p className={`text-sm font-bold ${
                 authNotice.type === 'error' ? 'text-amber-900' : 'text-blue-900'
               }`}>
-                {authNotice.title || (authNotice.type === 'error' ? 'Sesión expirada' : 'Sesión actualizada')}
+                {authNotice.title || (authNotice.type === 'error' ? 'SesiÃƒÂ³n expirada' : 'SesiÃƒÂ³n actualizada')}
               </p>
               <p className={`text-xs leading-relaxed ${
                 authNotice.type === 'error' ? 'text-amber-800' : 'text-blue-800'
@@ -5831,7 +6103,7 @@ const formatTimestampName = () => {
 
       {/* AI Error Alert */}
       {aiError && (
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 50 }}
           animate={{ opacity: 1, y: 0 }}
           className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100] bg-white border border-red-200 p-6 rounded-2xl shadow-2xl flex flex-col gap-4 max-w-md w-[90vw]"
@@ -5844,7 +6116,7 @@ const formatTimestampName = () => {
               <p className="text-sm font-bold text-red-900">Error en el motor de IA</p>
               <p className="text-xs text-red-700 leading-relaxed">{aiError}</p>
             </div>
-            <button 
+            <button
               onClick={() => {
                 setAiError(null);
                 setShowAIInitialForm(true);
@@ -5873,7 +6145,7 @@ const formatTimestampName = () => {
           />
         )}
         {isGeneratingAI && !showAIInitialForm && (
-          <AIGenerationModal 
+          <AIGenerationModal
             key="ai-generation-modal"
             currentStep={aiGenerationStep}
             steps={aiSteps}
@@ -5881,7 +6153,7 @@ const formatTimestampName = () => {
           />
         )}
         {moduleToDelete && (
-          <DeleteConfirmationModal 
+          <DeleteConfirmationModal
             key={`delete-module-${moduleToDelete.id}`}
             moduleName={moduleToDelete.name}
             onConfirm={confirmRemoveModule}
@@ -5889,7 +6161,7 @@ const formatTimestampName = () => {
           />
         )}
         {showPublishModal && (
-          <PublishModal 
+          <PublishModal
             key="publish-modal"
             siteName={publishModalName}
             setSiteName={setPublishModalName}
@@ -5903,7 +6175,7 @@ const formatTimestampName = () => {
         )}
 
         {/* [PHASE 3D.5.2] Secure AI Flow Modals */}
-        <MotherAIPageConfirmationModal 
+        <MotherAIPageConfirmationModal
           key="mother-ai-confirmation-modal"
           isOpen={isMotherAIConfirmationOpen}
           onClose={() => setIsMotherAIConfirmationOpen(false)}
@@ -5920,7 +6192,7 @@ const formatTimestampName = () => {
         />
 
         {aiUsageSuccess && (
-          <AIUsageSuccessModal 
+          <AIUsageSuccessModal
             key="ai-usage-success-modal"
             isOpen={!!aiUsageSuccess}
             onClose={() => setAiUsageSuccess(null)}
@@ -5929,7 +6201,7 @@ const formatTimestampName = () => {
         )}
 
         {showBentoPrompt && (
-          <BentoPromptGenerator 
+          <BentoPromptGenerator
             key="bento-prompt-modal"
             onInsert={handleBentoPromptInsert}
             onClose={() => setShowBentoPrompt(false)}

@@ -1104,12 +1104,18 @@ export const SettingControl: React.FC<SettingControlProps> = ({
         return undefined;
       };
       const renderRepeaterField = (field: SettingDefinition, item: any, index: number) => (
+        (() => {
+          const fieldValue = field.id === 'icon'
+            ? (item.icon ?? item.iconName ?? item.iconId ?? '')
+            : item[field.id];
+
+          return (
         <SettingControl
           key={field.id}
           setting={getDynamicCardsLockMessage(field)
             ? { ...field, disabledMessage: getDynamicCardsLockMessage(field) }
             : field}
-          value={item[field.id]}
+          value={fieldValue}
           projectId={projectId}
           products={products}
           customers={customers}
@@ -1122,6 +1128,45 @@ export const SettingControl: React.FC<SettingControlProps> = ({
           onChange={(val) => {
             const newItems = [...items];
             let updatedItem = { ...item, [field.id]: val };
+            const isMenuLinksRepeater = setting.id === 'links' && (moduleType === 'menu' || moduleType === 'navegacion');
+
+            if (isMenuLinksRepeater) {
+              if (field.id === 'label') {
+                updatedItem.customLabel = true;
+                updatedItem.isCustomized = true;
+              }
+
+              if (field.id === 'icon') {
+                updatedItem.icon = val;
+                updatedItem.customIcon = true;
+                updatedItem.isCustomized = true;
+              }
+
+              if (field.id === 'badge') {
+                updatedItem.customBadge = true;
+                updatedItem.isCustomized = true;
+              }
+
+              if (field.id === 'url') {
+                const nextUrl = String(val || '').trim();
+                updatedItem.url = nextUrl;
+                updatedItem.href = nextUrl;
+                updatedItem.isCustomized = true;
+
+                if (nextUrl.startsWith('#')) {
+                  const normalizedTarget = nextUrl
+                    .replace(/^#/, '')
+                    .replace(/^section-/, '');
+                  updatedItem.targetSectionId = normalizedTarget || updatedItem.targetSectionId;
+                  updatedItem.moduleId = normalizedTarget || updatedItem.moduleId;
+                  updatedItem.type = 'internal';
+                } else {
+                  updatedItem.targetSectionId = undefined;
+                  updatedItem.type = 'external';
+                  updatedItem.source = 'manual';
+                }
+              }
+            }
 
             // SIP v11.4: Special logic for social platform dependency
             if (field.id === 'platform') {
@@ -1142,6 +1187,8 @@ export const SettingControl: React.FC<SettingControlProps> = ({
             onChange(newItems);
           }}
         />
+          );
+        })()
       );
       return (
         <div className="space-y-3">

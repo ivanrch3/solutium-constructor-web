@@ -74,6 +74,7 @@ export const getLaunchTokenFromUrl = () => {
 
 const LAUNCH_ACCESS_TOKEN_STORAGE_KEY = 'solutium_constructor_launch_access_token';
 const LAUNCH_ACCESS_EXPIRES_AT_STORAGE_KEY = 'solutium_constructor_launch_access_expires_at';
+const LAUNCH_PAYLOAD_STORAGE_KEY = 'solutium_constructor_launch_payload';
 
 const readSessionStorage = (key: string) => {
   try {
@@ -99,6 +100,62 @@ const removeSessionStorage = (key: string) => {
   }
 };
 
+const sanitizeLaunchPayloadForStorage = (
+  payload: SecureLaunchSessionPayload | null | undefined
+): SecureLaunchSessionPayload | null => {
+  if (!payload) return null;
+
+  const { access: _access, ...rest } = payload;
+  return {
+    ...rest,
+    access: {
+      contract_version: payload.access?.contract_version || null
+    }
+  };
+};
+
+export const clearLaunchTokenFromUrl = () => {
+  try {
+    const url = new URL(window.location.href);
+    let changed = false;
+
+    if (url.searchParams.has('launch_token')) {
+      url.searchParams.delete('launch_token');
+      changed = true;
+    }
+
+    if (url.hash) {
+      const hashValue = url.hash.startsWith('#') ? url.hash.slice(1) : url.hash;
+      const queryStart = hashValue.indexOf('?');
+
+      if (queryStart >= 0) {
+        const hashPath = hashValue.slice(0, queryStart);
+        const hashParams = new URLSearchParams(hashValue.slice(queryStart + 1));
+        if (hashParams.has('launch_token')) {
+          hashParams.delete('launch_token');
+          const nextHashQuery = hashParams.toString();
+          url.hash = nextHashQuery ? `${hashPath}?${nextHashQuery}` : hashPath;
+          changed = true;
+        }
+      } else if (hashValue.includes('=')) {
+        const hashParams = new URLSearchParams(hashValue);
+        if (hashParams.has('launch_token')) {
+          hashParams.delete('launch_token');
+          const nextHashQuery = hashParams.toString();
+          url.hash = nextHashQuery ? `#${nextHashQuery}` : '';
+          changed = true;
+        }
+      }
+    }
+
+    if (changed) {
+      window.history.replaceState(window.history.state, document.title, url.toString());
+    }
+  } catch {
+    // URL cleanup is best-effort; secure launch restoration does not depend on it.
+  }
+};
+
 export const isLaunchAccessExpired = (expiresAt?: string | null, bufferMs = 0) => {
   if (!expiresAt) return false;
   const expiresAtMs = Date.parse(expiresAt);
@@ -109,6 +166,7 @@ export const isLaunchAccessExpired = (expiresAt?: string | null, bufferMs = 0) =
 export const clearStoredLaunchAccessSession = () => {
   removeSessionStorage(LAUNCH_ACCESS_TOKEN_STORAGE_KEY);
   removeSessionStorage(LAUNCH_ACCESS_EXPIRES_AT_STORAGE_KEY);
+  removeSessionStorage(LAUNCH_PAYLOAD_STORAGE_KEY);
   try {
     delete (window as any).SOLUTIUM_CONSTRUCTOR_LAUNCH_ACCESS;
   } catch {
@@ -129,6 +187,11 @@ export const storeLaunchAccessSession = (payload: SecureLaunchSessionPayload | n
     writeSessionStorage(LAUNCH_ACCESS_EXPIRES_AT_STORAGE_KEY, expiresAt);
   }
 
+  const safePayload = sanitizeLaunchPayloadForStorage(payload);
+  if (safePayload) {
+    writeSessionStorage(LAUNCH_PAYLOAD_STORAGE_KEY, JSON.stringify(safePayload));
+  }
+
   try {
     (window as any).SOLUTIUM_CONSTRUCTOR_LAUNCH_ACCESS = {
       token,
@@ -136,6 +199,28 @@ export const storeLaunchAccessSession = (payload: SecureLaunchSessionPayload | n
     };
   } catch {
     // noop
+  }
+};
+
+export const getStoredSecureLaunchPayload = (): SecureLaunchSessionPayload | null => {
+  const storedSession = getStoredLaunchAccessSession();
+  if (!storedSession.active || !storedSession.token) return null;
+
+  try {
+    const raw = readSessionStorage(LAUNCH_PAYLOAD_STORAGE_KEY);
+    const payload = raw ? JSON.parse(raw) as SecureLaunchSessionPayload : null;
+    if (!payload) return null;
+
+    return {
+      ...payload,
+      access: {
+        ...(payload.access || {}),
+        launch_access_token: storedSession.token,
+        expires_at: storedSession.expiresAt || null
+      }
+    };
+  } catch {
+    return null;
   }
 };
 

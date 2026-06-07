@@ -5,8 +5,8 @@ import { configService } from './services/configService';
 import { getSupabase, getSupabaseConfig, initSupabase } from './services/supabaseClient';
 import { captureAuthToken } from './services/authTokenProvider';
 import { ensureActiveSupabaseSession } from './services/supabaseSessionService';
-import { consumeSecureLaunchSession, fetchConstructorContext, getAppMadreBaseUrl, getLaunchTokenFromUrl, type SecureLaunchSessionPayload } from './services/secureLaunchSession';
-import { getProfile, getProject, getWebBuilderSites, getPublishedSites, renameWebBuilderSite } from './services/dataService';
+import { clearLaunchTokenFromUrl, consumeSecureLaunchSession, fetchConstructorContext, getAppMadreBaseUrl, getLaunchTokenFromUrl, getStoredLaunchAccessSession, getStoredSecureLaunchPayload, type SecureLaunchSessionPayload } from './services/secureLaunchSession';
+import { getProfile, getProject, getWebBuilderSites, getPublishedSites } from './services/dataService';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { Sidebar } from './components/Sidebar';
 import { DataTab } from './components/DataTab';
@@ -26,46 +26,69 @@ type View = 'dashboard' | 'selection-method' | 'form' | 'generator' | 'construct
 
 const PREVENTIVE_SUPABASE_REFRESH_INTERVAL_MS = 10 * 60 * 1000;
 const PREVENTIVE_SUPABASE_REFRESH_THROTTLE_MS = 30 * 1000;
+const CONSTRUCTOR_LOGO_URL = 'https://nyc3.digitaloceanspaces.com/solutium-space/988cd339-a2c7-4951-b944-998d32dc349b-solutium-constructor-web-imagotipo.png';
+const CONSTRUCTOR_TAB_CHANNEL = 'solutium_constructor_tabs';
+const CONSTRUCTOR_ACTIVE_TAB_STORAGE_KEY = 'solutium_constructor_active_tab';
+const CONSTRUCTOR_TAB_ID_STORAGE_KEY = 'solutium_constructor_tab_id';
+const CONSTRUCTOR_TAB_ACTIVE_MS = 15_000;
+const CONSTRUCTOR_TAB_STALE_MS = 30_000;
+const CONSTRUCTOR_TAB_HEARTBEAT_MS = 4_000;
+const CONSTRUCTOR_TAB_CLEANUP_INTERVAL_MS = 30_000;
 
 const AbstractLoadingIndicator: React.FC<{ label?: string; compact?: boolean }> = ({ label = 'Preparando experiencia', compact = false }) => (
-  <div className="flex flex-col items-center gap-5" role="status" aria-live="polite" aria-label={label}>
-    <style>{`
-      @keyframes cw-flow-line {
-        0% { transform: translateX(-45%) scaleX(0.55); opacity: 0.38; }
-        45% { opacity: 1; }
-        100% { transform: translateX(45%) scaleX(0.55); opacity: 0.38; }
-      }
-      @keyframes cw-hex-breathe {
-        0%, 100% { transform: translateY(0) rotate(0deg); opacity: 0.45; }
-        50% { transform: translateY(-8px) rotate(18deg); opacity: 0.95; }
-      }
-    `}</style>
-    <div className={`relative ${compact ? 'h-12 w-40' : 'h-16 w-56'}`}>
-      <div className="absolute left-1/2 top-1/2 h-px w-full -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-full bg-slate-200">
-        <div
-          className="h-full w-2/3 rounded-full"
-          style={{
-            background: 'linear-gradient(90deg, transparent 0%, #A000F3 18%, #502FB6 52%, #005E79 86%, transparent 100%)',
-            animation: 'cw-flow-line 1.75s ease-in-out infinite alternate'
-          }}
-        />
-      </div>
-      {[0, 1, 2].map((item) => (
-        <div
-          key={item}
-          className="absolute top-1/2 h-5 w-5 -translate-y-1/2"
-          style={{
-            left: `${22 + item * 28}%`,
-            clipPath: 'polygon(25% 5%, 75% 5%, 100% 50%, 75% 95%, 25% 95%, 0 50%)',
-            background: item === 0 ? '#A000F3' : item === 1 ? '#502FB6' : '#005E79',
-            animation: `cw-hex-breathe 1.8s ease-in-out ${item * 0.18}s infinite`
-          }}
-        />
-      ))}
-    </div>
+  <div className="flex flex-col items-center gap-4" role="status" aria-live="polite" aria-label={label}>
+    <img
+      src={CONSTRUCTOR_LOGO_URL}
+      alt="Solutium Constructor Web"
+      className={`${compact ? 'h-12 max-w-[180px]' : 'h-20 max-w-[260px]'} w-auto object-contain`}
+      referrerPolicy="no-referrer"
+    />
+    <div
+      className={`${compact ? 'h-5 w-5' : 'h-6 w-6'} animate-spin rounded-full border-2 border-slate-200 border-t-primary`}
+      aria-hidden="true"
+    />
     <span className="sr-only">{label}</span>
   </div>
 );
+
+const createConstructorTabId = () => (
+  typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(16).slice(2)}`
+);
+
+const getOrCreateConstructorTabId = () => {
+  try {
+    const existing = window.sessionStorage.getItem(CONSTRUCTOR_TAB_ID_STORAGE_KEY);
+    if (existing) return existing;
+
+    const next = createConstructorTabId();
+    window.sessionStorage.setItem(CONSTRUCTOR_TAB_ID_STORAGE_KEY, next);
+    return next;
+  } catch {
+    return createConstructorTabId();
+  }
+};
+
+const cleanupStaleConstructorActiveTab = (currentTabId?: string) => {
+  try {
+    const raw = window.localStorage.getItem(CONSTRUCTOR_ACTIVE_TAB_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    const lastSeenAt = Number(parsed?.lastSeenAt || parsed?.updatedAt || 0);
+    const isCurrentOwner = parsed?.tabId === currentTabId;
+    const isStale = !lastSeenAt || Date.now() - lastSeenAt > CONSTRUCTOR_TAB_STALE_MS;
+
+    if (!parsed?.tabId || (!isCurrentOwner && isStale)) {
+      window.localStorage.removeItem(CONSTRUCTOR_ACTIVE_TAB_STORAGE_KEY);
+      return true;
+    }
+  } catch {
+    window.localStorage.removeItem(CONSTRUCTOR_ACTIVE_TAB_STORAGE_KEY);
+    return true;
+  }
+
+  return false;
+};
 
 const decodeJwtPayload = (token?: string | null): any | null => {
   if (!token || token === 'placeholder-token') return null;
@@ -455,12 +478,19 @@ const normalizeSecureLaunchPayloadForHandshake = (payload: SecureLaunchSessionPa
 };
 const normalizeDraftLifecycleStatus = (
   rawStatus: unknown,
-  hasActivePublishedVersion: boolean
+  publishedUpdatedAt?: string | null,
+  draftUpdatedAt?: string | null
 ): 'draft' | 'published' | 'modified' => {
   const normalized = String(rawStatus || '').trim().toLowerCase();
 
-  if (hasActivePublishedVersion) {
-    return normalized === 'draft' ? 'draft' : 'modified';
+  if (publishedUpdatedAt) {
+    const publishedTime = new Date(publishedUpdatedAt).getTime();
+    const draftTime = new Date(draftUpdatedAt || 0).getTime();
+    if (normalized === 'modified') return 'modified';
+    if (Number.isFinite(draftTime) && Number.isFinite(publishedTime)) {
+      return draftTime > publishedTime + 1000 ? 'modified' : 'published';
+    }
+    return 'published';
   }
 
   if (normalized === 'published' || normalized === 'modified' || normalized === 'unpublished') {
@@ -468,6 +498,19 @@ const normalizeDraftLifecycleStatus = (
   }
 
   return 'draft';
+};
+
+const resolvePublishedLifecycleTimestamp = (site?: PublishedSite | WebBuilderSite | null): string | null => {
+  const metadata = (site as any)?.metadata || {};
+  return (
+    (site as any)?.updatedAt ||
+    metadata.last_published_at ||
+    metadata.lastPublishedAt ||
+    metadata.published_at ||
+    metadata.publishedAt ||
+    (site as any)?.createdAt ||
+    null
+  );
 };
 
 const mergePagesByCurrentLifecycle = (
@@ -486,7 +529,11 @@ const mergePagesByCurrentLifecycle = (
     if (!site.siteId) return;
 
     const existingPublished = sitesMap.get(site.siteId);
-    const status = normalizeDraftLifecycleStatus(site.status, Boolean(existingPublished));
+    const status = normalizeDraftLifecycleStatus(
+      site.status,
+      resolvePublishedLifecycleTimestamp(existingPublished),
+      site.updatedAt || null
+    );
     sitesMap.set(site.siteId, {
       ...existingPublished,
       ...site,
@@ -600,6 +647,13 @@ const AppContent: React.FC = () => {
   const handshakeStartedRef = useRef(false);
   const launchStartedAtRef = useRef(new Date());
   const secureLaunchPayloadRef = useRef<SecureLaunchSessionPayload | null>(null);
+  const constructorTabIdRef = useRef(getOrCreateConstructorTabId());
+  const [constructorTabConflict, setConstructorTabConflict] = useState<{ tabId: string; updatedAt: number } | null>(null);
+  const [constructorTabReplaced, setConstructorTabReplaced] = useState(false);
+  const [constructorTabCancelled, setConstructorTabCancelled] = useState(false);
+  const constructorTabConflictRef = useRef<{ tabId: string; updatedAt: number } | null>(null);
+  const constructorTabReplacedRef = useRef(false);
+  const constructorTabCancelledRef = useRef(false);
 
   const welcomeSessionInfo = React.useMemo(() => {
     const safeCache = readSafeHandshakeCache();
@@ -695,6 +749,177 @@ const AppContent: React.FC = () => {
 
     return () => window.clearInterval(interval);
   }, [isHandshakeComplete, loadingMessages]);
+
+  useEffect(() => {
+    constructorTabConflictRef.current = constructorTabConflict;
+  }, [constructorTabConflict]);
+
+  useEffect(() => {
+    constructorTabReplacedRef.current = constructorTabReplaced;
+  }, [constructorTabReplaced]);
+
+  useEffect(() => {
+    constructorTabCancelledRef.current = constructorTabCancelled;
+  }, [constructorTabCancelled]);
+
+  useEffect(() => {
+    if (!isHandshakeComplete || isPublicRenderMode || !projectId) return;
+
+    const tabId = constructorTabIdRef.current;
+    const channel = typeof BroadcastChannel !== 'undefined'
+      ? new BroadcastChannel(CONSTRUCTOR_TAB_CHANNEL)
+      : null;
+    let conflictConfirmedByBroadcast = false;
+    let probeTimer: number | null = null;
+
+    cleanupStaleConstructorActiveTab(tabId);
+
+    const readActiveTab = () => {
+      try {
+        const raw = window.localStorage.getItem(CONSTRUCTOR_ACTIVE_TAB_STORAGE_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw) as { tabId?: string; lastSeenAt?: number; updatedAt?: number };
+        const updatedAt = Number(parsed.lastSeenAt || parsed.updatedAt || 0);
+        if (!parsed.tabId || parsed.tabId === tabId) return null;
+        if (!updatedAt || Date.now() - updatedAt > CONSTRUCTOR_TAB_ACTIVE_MS) {
+          window.localStorage.removeItem(CONSTRUCTOR_ACTIVE_TAB_STORAGE_KEY);
+          return null;
+        }
+        return { tabId: parsed.tabId, updatedAt };
+      } catch {
+        return null;
+      }
+    };
+
+    const writeHeartbeat = () => {
+      if (constructorTabConflictRef.current || constructorTabReplacedRef.current || constructorTabCancelledRef.current) return;
+
+      try {
+        const raw = window.localStorage.getItem(CONSTRUCTOR_ACTIVE_TAB_STORAGE_KEY);
+        const previous = raw ? JSON.parse(raw) : null;
+        const now = Date.now();
+        const page = selectedPage as any;
+
+        window.localStorage.setItem(CONSTRUCTOR_ACTIVE_TAB_STORAGE_KEY, JSON.stringify({
+          tabId,
+          projectId: projectId || null,
+          siteId: page?.siteId || page?.site_id || null,
+          pageId: page?.id || page?.pageId || page?.page_id || null,
+          createdAt: Number(previous?.createdAt || now),
+          lastSeenAt: now,
+          updatedAt: now,
+          title: page?.siteName || page?.site_name || page?.name || 'Constructor Solutium'
+        }));
+      } catch (error) {
+        console.warn('[CONSTRUCTOR_TAB] Unable to write root heartbeat:', error);
+      }
+    };
+
+    const handleMessage = (event: MessageEvent) => {
+      const message = event.data || {};
+      if (message.tabId === tabId) return;
+
+      if (message.type === 'tab-probe') {
+        if (message.targetTabId && message.targetTabId !== tabId) return;
+        channel?.postMessage({
+          type: 'tab-alive',
+          tabId,
+          targetTabId: message.tabId,
+          updatedAt: Date.now()
+        });
+        return;
+      }
+
+      if (message.type === 'tab-alive') {
+        if (message.targetTabId !== tabId) return;
+        conflictConfirmedByBroadcast = true;
+        setConstructorTabConflict({
+          tabId: message.tabId,
+          updatedAt: Number(message.updatedAt || Date.now())
+        });
+        return;
+      }
+
+      if (message.type === 'tab-replaced') {
+        if (message.replacedTabId && message.replacedTabId !== tabId) return;
+        setConstructorTabConflict(null);
+        setConstructorTabReplaced(true);
+        return;
+      }
+
+    };
+
+    channel?.addEventListener('message', handleMessage);
+
+    const activeTab = readActiveTab();
+    if (activeTab) {
+      if (channel) {
+        channel.postMessage({
+          type: 'tab-probe',
+          tabId,
+          targetTabId: activeTab.tabId,
+          updatedAt: Date.now()
+        });
+        probeTimer = window.setTimeout(() => {
+          if (conflictConfirmedByBroadcast || constructorTabConflictRef.current || constructorTabReplacedRef.current) return;
+          try {
+            const raw = window.localStorage.getItem(CONSTRUCTOR_ACTIVE_TAB_STORAGE_KEY);
+            const parsed = raw ? JSON.parse(raw) : null;
+            if (parsed?.tabId === activeTab.tabId) {
+              window.localStorage.removeItem(CONSTRUCTOR_ACTIVE_TAB_STORAGE_KEY);
+            }
+          } catch {
+            // Best-effort stale cleanup.
+          }
+          writeHeartbeat();
+        }, 900);
+      } else {
+        setConstructorTabConflict(activeTab);
+      }
+    } else {
+      writeHeartbeat();
+    }
+
+    const heartbeatId = window.setInterval(writeHeartbeat, CONSTRUCTOR_TAB_HEARTBEAT_MS);
+    const cleanupId = window.setInterval(() => cleanupStaleConstructorActiveTab(tabId), CONSTRUCTOR_TAB_CLEANUP_INTERVAL_MS);
+
+    const removeCurrentTabIfOwner = () => {
+      try {
+        const raw = window.localStorage.getItem(CONSTRUCTOR_ACTIVE_TAB_STORAGE_KEY);
+        const parsed = raw ? JSON.parse(raw) : null;
+        if (parsed?.tabId === tabId) {
+          window.localStorage.removeItem(CONSTRUCTOR_ACTIVE_TAB_STORAGE_KEY);
+        }
+      } catch {
+        // Best-effort cleanup.
+      }
+    };
+
+    const handlePageExit = () => {
+      channel?.postMessage({ type: 'tab-closing', tabId });
+      removeCurrentTabIfOwner();
+    };
+
+    const handleVisibilityChange = () => {
+      cleanupStaleConstructorActiveTab(tabId);
+    };
+
+    window.addEventListener('pagehide', handlePageExit);
+    window.addEventListener('beforeunload', handlePageExit);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.clearInterval(heartbeatId);
+      window.clearInterval(cleanupId);
+      if (probeTimer) window.clearTimeout(probeTimer);
+      window.removeEventListener('pagehide', handlePageExit);
+      window.removeEventListener('beforeunload', handlePageExit);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      channel?.removeEventListener('message', handleMessage);
+      channel?.close();
+      removeCurrentTabIfOwner();
+    };
+  }, [currentView, isHandshakeComplete, isPublicRenderMode, projectId, selectedPage]);
 
   useEffect(() => {
     if (!isHandshakeComplete || isPublicRenderMode) return;
@@ -1390,8 +1615,12 @@ const AppContent: React.FC = () => {
     // 1. Recover basic session if URL params are missing
     const params = new URLSearchParams(window.location.search);
     const hasInitParams = params.get('satellite_id') || params.get('site_id');
+    const hasSecureLaunchToken = Boolean(getLaunchTokenFromUrl());
+    const hasStoredSecureLaunchSession = Boolean(
+      getStoredLaunchAccessSession().active && getStoredSecureLaunchPayload()
+    );
     
-    if (!hasInitParams) {
+    if (!hasInitParams && !hasSecureLaunchToken && !hasStoredSecureLaunchSession) {
       try {
         const saved = localStorage.getItem('solutium_session_v2');
         if (saved) {
@@ -1549,6 +1778,21 @@ const AppContent: React.FC = () => {
     if (handshakeStartedRef.current) return;
     handshakeStartedRef.current = true;
     const launchToken = getLaunchTokenFromUrl();
+    const storedSecureLaunchPayload = getStoredSecureLaunchPayload();
+
+    if (storedSecureLaunchPayload) {
+      logDebug('[SECURE_LAUNCH] Restaurando sesion segura vigente desde sessionStorage.', {
+        launchMode: 'secure',
+        restoreSource: 'sessionStorage',
+        hasLaunchTokenInUrl: Boolean(launchToken),
+        secureProjectId: getSecureLaunchProjectId(storedSecureLaunchPayload),
+        secureUserId: getSecureLaunchUserId(storedSecureLaunchPayload),
+        launchAccessExpiresAt: storedSecureLaunchPayload.access?.expires_at || null
+      });
+      clearLaunchTokenFromUrl();
+      void processSecureLaunch(storedSecureLaunchPayload);
+      return;
+    }
 
     if (!launchToken) {
       logDebug('[SECURE_LAUNCH] Launcher mode:', {
@@ -1586,6 +1830,7 @@ const AppContent: React.FC = () => {
         if (isLocalDev) {
           (window as any).SOLUTIUM_LAUNCH_DEBUG = safeLaunchDebug;
         }
+        clearLaunchTokenFromUrl();
         await processSecureLaunch(result.payload);
         return;
       }
@@ -1623,20 +1868,13 @@ const AppContent: React.FC = () => {
     setCurrentView('constructor');
   };
 
-  const handleRenamePage = async (siteId: string, newName: string) => {
+  const refreshPages = async () => {
     if (!projectId) return;
-    const success = await renameWebBuilderSite(projectId, siteId, newName);
-    if (success) {
-      // Refresh pages
-      const [drafts, published] = await Promise.all([
-        getWebBuilderSites(projectId),
-        getPublishedSites(projectId)
-      ]);
-      
-      const allPages = mergePagesByCurrentLifecycle(drafts, published);
-      
-      setPages(allPages);
-    }
+    const [drafts, published] = await Promise.all([
+      getWebBuilderSites(projectId),
+      getPublishedSites(projectId)
+    ]);
+    setPages(mergePagesByCurrentLifecycle(drafts, published));
   };
 
   const handleFormSubmit = (data: ProjectFormData) => {
@@ -1646,6 +1884,58 @@ const AppContent: React.FC = () => {
     } else {
       setCurrentView('constructor');
     }
+  };
+
+  const activateThisConstructorTab = () => {
+    const tabId = constructorTabIdRef.current;
+    const replacedTabId = constructorTabConflict?.tabId || null;
+    const now = Date.now();
+    const page = selectedPage as any;
+
+    try {
+      window.localStorage.setItem(CONSTRUCTOR_ACTIVE_TAB_STORAGE_KEY, JSON.stringify({
+        tabId,
+        projectId: projectId || null,
+        siteId: page?.siteId || page?.site_id || null,
+        pageId: page?.id || page?.pageId || page?.page_id || null,
+        createdAt: now,
+        lastSeenAt: now,
+        updatedAt: now,
+        title: page?.siteName || page?.site_name || page?.name || 'Constructor Solutium',
+        replacedBy: tabId
+      }));
+    } catch (error) {
+      console.warn('[CONSTRUCTOR_TAB] Unable to activate root tab:', error);
+    }
+
+    if (typeof BroadcastChannel !== 'undefined') {
+      const channel = new BroadcastChannel(CONSTRUCTOR_TAB_CHANNEL);
+      channel.postMessage({
+        type: 'tab-replaced',
+        tabId,
+        replacedTabId
+      });
+      channel.close();
+    }
+
+    setConstructorTabCancelled(false);
+    setConstructorTabReplaced(false);
+    setConstructorTabConflict(null);
+  };
+
+  const cancelThisConstructorTab = () => {
+    const tabId = constructorTabIdRef.current;
+    try {
+      const raw = window.localStorage.getItem(CONSTRUCTOR_ACTIVE_TAB_STORAGE_KEY);
+      const parsed = raw ? JSON.parse(raw) : null;
+      if (parsed?.tabId === tabId) {
+        window.localStorage.removeItem(CONSTRUCTOR_ACTIVE_TAB_STORAGE_KEY);
+      }
+    } catch {
+      // Best-effort cleanup only.
+    }
+    setConstructorTabConflict(null);
+    setConstructorTabCancelled(true);
   };
 
   if (!isHandshakeComplete) {
@@ -1734,6 +2024,19 @@ const AppContent: React.FC = () => {
     );
   }
 
+  if (constructorTabCancelled) {
+    return (
+      <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center p-6 font-sans">
+        <div className="max-w-md rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-xl">
+          <h1 className="text-xl font-black text-slate-900">Constructor abierto en otra pestaña</h1>
+          <p className="mt-3 text-sm leading-6 text-slate-600">
+            Esta pestaña no tomó control. La sesión activa se mantiene sin cambios.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   const renderView = () => {
     switch (currentView) {
       case 'dashboard':
@@ -1756,7 +2059,6 @@ const AppContent: React.FC = () => {
                 setCurrentView('constructor');
               }
             }}
-            onRenamePage={handleRenamePage}
             sessionInfo={welcomeSessionInfo}
             onRequestMotherContext={() => {
               sendToMother('SOLUTIUM_GET_CONFIG', { source: 'constructor_dashboard' });
@@ -1876,6 +2178,56 @@ const AppContent: React.FC = () => {
   return (
     <div className="min-h-screen bg-background text-text">
       {renderView()}
+      {constructorTabConflict && (
+        <div className="fixed inset-0 z-[11000] flex items-center justify-center bg-black/45 p-6 backdrop-blur-sm">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: 16 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-7 text-center shadow-2xl"
+          >
+            <div className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500/10">
+              <span className="text-xl font-black text-amber-600">!</span>
+            </div>
+            <h2 className="mb-3 text-xl font-bold text-slate-900">Constructor abierto en otra pestaña</h2>
+            <p className="mb-7 text-sm leading-relaxed text-slate-600">
+              Si continúas aquí, la otra sesión se cerrará. Los cambios no guardados en esa pestaña podrían perderse.
+            </p>
+            <div className="flex flex-col gap-3">
+              <button
+                type="button"
+                onClick={activateThisConstructorTab}
+                className="w-full rounded-xl bg-primary px-4 py-3 text-sm font-bold text-white shadow-lg shadow-primary/20 transition-all hover:opacity-90"
+              >
+                Usar esta pestaña
+              </button>
+              <button
+                type="button"
+                onClick={cancelThisConstructorTab}
+                className="w-full py-2 text-sm font-bold text-slate-400 transition-all hover:text-slate-700"
+              >
+                Cancelar
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+      {constructorTabReplaced && (
+        <div className="fixed inset-0 z-[11000] flex items-center justify-center bg-black/45 p-6 backdrop-blur-sm">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: 16 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-7 text-center shadow-2xl"
+          >
+            <div className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-500/10">
+              <span className="text-xl font-black text-blue-600">i</span>
+            </div>
+            <h2 className="mb-3 text-xl font-bold text-slate-900">Sesión reemplazada</h2>
+            <p className="mb-7 text-sm leading-relaxed text-slate-600">
+              Esta sesión fue reemplazada por otra pestaña.
+            </p>
+          </motion.div>
+        </div>
+      )}
       <AIGenerationOverlay />
     </div>
   );

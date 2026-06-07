@@ -8,7 +8,7 @@ import { logDebug } from '../../../utils/debug';
 import { SectionAnimation } from '../animations/SectionAnimation';
 import { normalizeSectionAnimation } from '../../../constants/moduleAnimations';
 import { MODULE_INFO } from '../registry';
-import { MenuMode, dedupeMenuLinks, resolveMenuMode } from '../../../utils/menuNavigation';
+import { MenuMode, dedupeMenuLinks, normalizeSectionAnchorId, resolveMenuMode } from '../../../utils/menuNavigation';
 
 const toBoolean = (value: unknown) => value === true || value === 'true' || value === 1 || value === '1';
 
@@ -137,10 +137,11 @@ export const MenuModule: React.FC<{
       });
     }, options);
 
-    // Observe all modules except navigation modules itself
-    const modules = document.querySelectorAll('[id^="mod_"]');
+    // Observe section anchors instead of array indexes so menu links survive reordering.
+    const modules = document.querySelectorAll('[data-module-id]');
     modules.forEach(m => {
-      if (!m.id.includes('menu') && !m.id.includes('header') && !m.id.includes('footer')) {
+      const moduleId = m.getAttribute('data-module-id') || m.id;
+      if (!moduleId.includes('menu') && !moduleId.includes('header') && !moduleId.includes('footer')) {
         observer.observe(m);
       }
     });
@@ -297,7 +298,9 @@ export const MenuModule: React.FC<{
   const renderLinks = (isMobile: boolean = false, linkList: any[] = links) => {
     return linkList.map((link: any, idx: number) => {
       const isTitle = link.is_title;
-      const isActive = link.url === `#${activeSectionId}`;
+      const linkHref = String(link.href || link.url || '#').trim() || '#';
+      const iconKey = link.icon || link.iconName || link.iconId || '';
+      const isActive = linkHref === `#${activeSectionId}`;
       
       if (isTitle) {
         return (
@@ -316,16 +319,18 @@ export const MenuModule: React.FC<{
       return (
         <motion.a
           key={idx}
-          href={link.url}
+          href={linkHref}
           whileHover={hoverScale && !isMobile ? { scale: 1.05 } : {}}
           onClick={(e) => {
-            if (link.url?.startsWith('#')) {
+            if (linkHref.startsWith('#')) {
               e.preventDefault();
-              const targetId = link.url.substring(1);
-              const target = document.getElementById(targetId);
+              const targetId = linkHref.substring(1);
+              const target =
+                document.getElementById(targetId) ||
+                document.getElementById(normalizeSectionAnchorId(link.targetSectionId || link.moduleId || targetId));
               if (target) {
                 target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                setActiveSectionId(targetId);
+                setActiveSectionId(target.id);
               }
             }
             if (isMobile) setIsMobileMenuOpen(false);
@@ -349,12 +354,12 @@ export const MenuModule: React.FC<{
           )}
 
           <div className="relative flex items-center gap-2.5 z-10 w-full">
-            {showIcons && link.icon && (
+            {showIcons && iconKey && (
               <span 
                 className={`${isActive ? 'opacity-100' : 'opacity-70 group-hover:opacity-100'} transition-opacity`}
                 style={{ color: isActive ? activeColor : 'inherit' }}
               >
-                {getIcon(link.icon)}
+                {getIcon(iconKey)}
               </span>
             )}
             <span className="flex-1">{link.label}</span>

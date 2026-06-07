@@ -32,7 +32,7 @@ import { logDebug } from '../utils/debug';
 import { bridgeModuleContent } from '../utils/hydrationBridge';
 import { getProducts } from '../services/dataService';
 import { Customer, Product, TrustedCompanyLogo } from '../types/schema';
-import { buildAutomaticMenuItems, resolveMenuMode } from '../utils/menuNavigation';
+import { buildAutomaticMenuItems, mergeAutomaticMenuItemsWithExisting, normalizeSectionAnchorId, resolveMenuMode } from '../utils/menuNavigation';
 import { buildProjectThemeCssVariables, normalizeProjectBrandColors } from '../utils/projectTheme';
 
 interface ViewerProps {
@@ -209,15 +209,21 @@ export const Viewer: React.FC<ViewerProps> = ({
     [sections]
   );
   const automaticMenuItems = React.useMemo(
-    () =>
-      buildAutomaticMenuItems({
+    () => {
+      const baseItems = buildAutomaticMenuItems({
         modules: sections.map((section: any) => ({
           id: section.id,
           type: section.type || section.tipo || '',
           name: section.name || section.label || section.type || section.tipo || section.id
         })),
         settingsValues: aggregatedSectionSettings
-      }),
+      });
+      const menuSection = sections.find((section: any) => section.type === 'menu' || section.type === 'navegacion' || section.tipo === 'menu' || section.tipo === 'navegacion');
+      const existingLinks = menuSection
+        ? aggregatedSectionSettings?.[`${menuSection.id}_el_menu_items_links`] || []
+        : [];
+      return mergeAutomaticMenuItemsWithExisting(baseItems, existingLinks);
+    },
     [aggregatedSectionSettings, sections]
   );
 
@@ -376,6 +382,7 @@ export const Viewer: React.FC<ViewerProps> = ({
           });
         }
 
+        const renderedSection = (() => {
         switch (normalizedType) {
           case 'header':
           case 'conversion':
@@ -693,6 +700,15 @@ export const Viewer: React.FC<ViewerProps> = ({
           default:
             return null;
         }
+        })();
+
+        if (!renderedSection) return null;
+
+        return (
+          <div key={moduleId} id={normalizeSectionAnchorId(moduleId)} data-module-id={moduleId}>
+            {renderedSection}
+          </div>
+        );
       })}
 
       {showBackControl && (

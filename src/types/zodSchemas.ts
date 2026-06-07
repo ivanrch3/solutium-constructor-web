@@ -141,6 +141,8 @@ export const webBuilderSiteSchema = z.object({
   previewImagePath: z.string().optional().nullable(),
   previewImageUpdatedAt: z.string().optional().nullable(),
   previewImageHash: z.string().optional().nullable(),
+  publicUrl: z.string().optional().nullable(),
+  publishedUrl: z.string().optional().nullable(),
 });
 
 export const publishedSiteSchema = z.object({
@@ -158,6 +160,8 @@ export const publishedSiteSchema = z.object({
   previewImagePath: z.string().optional().nullable(),
   previewImageUpdatedAt: z.string().optional().nullable(),
   previewImageHash: z.string().optional().nullable(),
+  publicUrl: z.string().optional().nullable(),
+  publishedUrl: z.string().optional().nullable(),
 });
 
 export const assetSchema = z.object({

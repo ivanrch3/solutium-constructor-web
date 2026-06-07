@@ -46,7 +46,7 @@ import { CompositionSectionModule } from './modules/CompositionSectionModule';
 import { ParallaxScrollContext } from './ParallaxBackground';
 
 import { normalizeSocialUrl, getIconForPlatform, resolveFooterSocialLinks, FOOTER_DEFAULTS } from '../../utils/socialUtils';
-import { buildAutomaticMenuItems, resolveMenuMode } from '../../utils/menuNavigation';
+import { buildAutomaticMenuItems, mergeAutomaticMenuItemsWithExisting, normalizeSectionAnchorId, resolveMenuMode } from '../../utils/menuNavigation';
 
 interface CanvasProps {
   editorState: EditorState;
@@ -135,11 +135,17 @@ export const Canvas: React.FC<CanvasProps> = ({
     mobile: '375px'
   };
   const automaticMenuItems = React.useMemo(
-    () =>
-      buildAutomaticMenuItems({
+    () => {
+      const baseItems = buildAutomaticMenuItems({
         modules: editorState.addedModules || [],
         settingsValues: editorState.settingsValues || {}
-      }),
+      });
+      const menuModule = (editorState.addedModules || []).find((module) => module.type === 'navegacion' || module.type === 'menu');
+      const existingLinks = menuModule
+        ? editorState.settingsValues?.[`${menuModule.id}_el_menu_items_links`] || []
+        : [];
+      return mergeAutomaticMenuItemsWithExisting(baseItems, existingLinks);
+    },
     [editorState.addedModules, editorState.settingsValues]
   );
 
@@ -828,7 +834,8 @@ export const Canvas: React.FC<CanvasProps> = ({
                 return (
                   <div 
                     key={section.id} 
-                    id={section.id} 
+                    id={normalizeSectionAnchorId(section.id)}
+                    data-module-id={section.id}
                     ref={isLast ? lastModuleRef : null} 
                     onClick={(e) => {
                       if (isCleanPreviewMode) return;

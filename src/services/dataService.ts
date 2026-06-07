@@ -691,6 +691,8 @@ export const publishWebBuilderSite = async (site: Partial<PublishedSite>): Promi
       previewImagePath: data.preview_image_path,
       previewImageUpdatedAt: data.preview_image_updated_at,
       previewImageHash: data.preview_image_hash,
+      publicUrl: data.public_url || data.publicUrl || null,
+      publishedUrl: data.published_url || data.publishedUrl || data.public_url || null,
     };
 
     return validateData(publishedSiteSchema, mapped, 'publishWebBuilderSite');
@@ -735,6 +737,8 @@ export const getWebBuilderSites = async (projectId: string): Promise<WebBuilderS
       previewImagePath: item.preview_image_path,
       previewImageUpdatedAt: item.preview_image_updated_at,
       previewImageHash: item.preview_image_hash,
+      publicUrl: item.public_url || item.publicUrl || null,
+      publishedUrl: item.published_url || item.publishedUrl || item.public_url || null,
     }));
 
     return mappedData
@@ -819,6 +823,145 @@ export const renameWebBuilderSite = async (projectId: string, siteId: string, ne
     return true;
   } catch (err) {
     console.error('Error in renameWebBuilderSite:', err);
+    return false;
+  }
+};
+
+export const deleteWebBuilderSite = async (
+  projectId: string,
+  siteId: string,
+  expectedStatus: 'draft'
+): Promise<boolean> => {
+  const logDeleteError = (
+    table: string,
+    operation: string,
+    error: any,
+    filters: Record<string, unknown>
+  ) => {
+    console.error('[DataService] Draft delete failed:', {
+      table,
+      operation,
+      code: error?.code || null,
+      message: error?.message || String(error),
+      details: error?.details || null,
+      hint: error?.hint || null,
+      filters
+    });
+  };
+
+  try {
+    const supabase = getSupabase();
+    if (!supabase) return false;
+    if (expectedStatus !== 'draft') return false;
+
+    const { data: draftRows, error: draftLookupError } = await supabase
+      .from('web_builder_sites')
+      .select('id,status')
+      .eq('project_id', projectId)
+      .eq('site_id', siteId)
+      .limit(1);
+
+    if (draftLookupError) {
+      logDeleteError('web_builder_sites', 'lookup_draft', draftLookupError, { projectId, siteId });
+      throw draftLookupError;
+    }
+    const draftRow = draftRows?.[0];
+    if (!draftRow || String(draftRow.status || '').trim().toLowerCase() !== 'draft') {
+      console.warn('[DataService] Refusing to delete non-draft site from Constructor:', {
+        projectId,
+        siteId,
+        status: draftRow?.status || null
+      });
+      return false;
+    }
+
+    const { data: publishedRows, error: publishedLookupError } = await supabase
+      .from('published_sites')
+      .select('id')
+      .eq('project_id', projectId)
+      .eq('site_id', siteId)
+      .eq('is_active', true)
+      .limit(1);
+
+    if (publishedLookupError) {
+      logDeleteError('published_sites', 'lookup_active_publication', publishedLookupError, {
+        projectId,
+        siteId,
+        is_active: true
+      });
+      throw publishedLookupError;
+    }
+    if (publishedRows && publishedRows.length > 0) {
+      console.warn('[DataService] Refusing to delete published site from Constructor:', { projectId, siteId });
+      return false;
+    }
+
+    const { data: pageRows, error: pageLookupError } = await supabase
+      .from('pages')
+      .select('id')
+      .eq('project_id', projectId)
+      .eq('web_builder_site_id', draftRow.id);
+
+    if (pageLookupError) {
+      logDeleteError('pages', 'lookup_related_pages', pageLookupError, {
+        projectId,
+        web_builder_site_id: draftRow.id
+      });
+      throw pageLookupError;
+    }
+    const pageIds = (pageRows || []).map((page: any) => page.id).filter(Boolean);
+
+    if (pageIds.length > 0) {
+      const { error: sectionsDeleteError } = await supabase
+        .from('page_sections')
+        .delete()
+        .in('page_id', pageIds);
+
+      if (sectionsDeleteError) {
+        logDeleteError('page_sections', 'delete_related_sections', sectionsDeleteError, {
+          page_id: pageIds
+        });
+        throw sectionsDeleteError;
+      }
+
+      const { error: pagesDeleteError } = await supabase
+        .from('pages')
+        .delete()
+        .in('id', pageIds);
+
+      if (pagesDeleteError) {
+        logDeleteError('pages', 'delete_related_pages', pagesDeleteError, {
+          id: pageIds,
+          projectId,
+          web_builder_site_id: draftRow.id
+        });
+        throw pagesDeleteError;
+      }
+    }
+
+    const { data: deletedRows, error: draftError } = await supabase
+      .from('web_builder_sites')
+      .delete()
+      .eq('project_id', projectId)
+      .eq('site_id', siteId)
+      .select('id');
+
+    if (draftError) {
+      logDeleteError('web_builder_sites', 'delete_draft', draftError, { projectId, siteId });
+      throw draftError;
+    }
+    if (!deletedRows || deletedRows.length === 0) {
+      console.warn('[DataService] Draft delete affected 0 rows:', {
+        table: 'web_builder_sites',
+        operation: 'delete_draft',
+        filters: { projectId, siteId }
+      });
+      return false;
+    }
+
+    return true;
+  } catch (err) {
+    console.error('Error in deleteWebBuilderSite:', err);
     return false;
   }
 };

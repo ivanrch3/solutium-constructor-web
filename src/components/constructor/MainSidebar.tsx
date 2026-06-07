@@ -48,7 +48,7 @@ import {
   COMPARISON_MODULE
 } from './registry';
 
-const CONSTRUCTOR_WEB_LOGO_URL = 'https://nyc3.digitaloceanspaces.com/solutium-space/58fbbd99-7b4c-4f13-a77c-7e484b52506b-solutium-constructor-web-imagotipo-blanco.png';
+const CONSTRUCTOR_WEB_LOGO_URL = 'https://nyc3.digitaloceanspaces.com/solutium-space/988cd339-a2c7-4951-b944-998d32dc349b-solutium-constructor-web-imagotipo.png';
 
 interface SidebarItemProps {
   icon: React.ReactNode;
@@ -60,13 +60,13 @@ interface SidebarItemProps {
 const SidebarItem: React.FC<SidebarItemProps> = ({ icon, label, active, onClick }) => (
   <button
     onClick={onClick}
-    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+    className={`group w-full flex items-center gap-3 px-4 py-3 rounded-xl border transition-all ${
       active
-        ? 'bg-primary text-white shadow-lg shadow-primary/20 font-bold'
-        : 'text-sidebar-foreground/80 hover:text-sidebar-foreground hover:bg-sidebar-foreground/5'
+        ? 'border-primary/20 bg-primary/10 text-primary font-bold shadow-sm'
+        : 'border-transparent text-slate-600 hover:text-primary hover:bg-primary/5'
     }`}
   >
-    <div className={active ? 'text-white' : 'text-sidebar-foreground/60'}>{icon}</div>
+    <div className={active ? 'text-primary' : 'text-slate-500 group-hover:text-primary'}>{icon}</div>
     <span className="text-base">{label}</span>
   </button>
 );
@@ -74,9 +74,9 @@ const SidebarItem: React.FC<SidebarItemProps> = ({ icon, label, active, onClick 
 export const ModuleItem = ({ icon, label, onClick }: { icon: React.ReactNode, label: string, onClick?: () => void }) => (
   <button
     onClick={onClick}
-    className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sidebar-foreground/80 hover:text-sidebar-foreground hover:bg-sidebar-foreground/5 transition-all group text-left"
+    className="group w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-slate-600 hover:text-primary hover:bg-primary/5 transition-all text-left"
   >
-    <div className="text-sidebar-foreground/60 group-hover:text-sidebar-foreground transition-colors shrink-0">{icon}</div>
+    <div className="text-slate-500 group-hover:text-primary transition-colors shrink-0">{icon}</div>
     <span className="text-sm font-medium flex-1 text-left">{label}</span>
   </button>
 );
@@ -124,7 +124,7 @@ export const MainSidebar: React.FC<MainSidebarProps> = ({
   const displayLogo = CONSTRUCTOR_WEB_LOGO_URL;
 
   return (
-    <div className="w-64 bg-sidebar-bg flex flex-col z-40 h-full border-r border-sidebar-border">
+    <div className="w-64 bg-white flex flex-col z-40 h-full border-r border-slate-200">
       {/* Logo Section */}
       <div className="p-6">
         <div
@@ -133,11 +133,11 @@ export const MainSidebar: React.FC<MainSidebarProps> = ({
         >
           <div className="h-14 w-full flex items-center justify-center relative">
             {displayLogo ? (
-              <img src={displayLogo} alt="Constructor Web" className="h-full max-w-[180px] w-auto object-contain" referrerPolicy="no-referrer" />
+              <img src={displayLogo} alt="Solutium Constructor Web" className="h-full max-w-[180px] w-auto object-contain" referrerPolicy="no-referrer" />
             ) : (
-              <FileText className="text-sidebar-foreground/40 w-10 h-10" />
+            <FileText className="text-slate-400 w-10 h-10" />
             )}
-            <div className="absolute inset-0 bg-sidebar-foreground/5 opacity-0 group-hover:opacity-100 rounded-xl transition-opacity" />
+            <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 rounded-xl transition-opacity" />
           </div>
         </div>
       </div>
@@ -153,8 +153,8 @@ export const MainSidebar: React.FC<MainSidebarProps> = ({
             }}
             className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all ${
               expandedSection === 'constructor'
-                ? 'text-sidebar-foreground font-bold'
-                : 'text-sidebar-foreground/80 hover:text-sidebar-foreground'
+                ? 'text-slate-900 font-bold bg-slate-50'
+                : 'text-slate-600 hover:text-primary hover:bg-primary/5'
             }`}
           >
             <div className="flex items-center gap-3">
@@ -175,14 +175,14 @@ export const MainSidebar: React.FC<MainSidebarProps> = ({
                 />
               </div>
 
-              <div className="mx-4 border-t border-sidebar-foreground/10" />
+              <div className="mx-4 border-t border-slate-200" />
 
               {/* CONTENIDO */}
               <div className="space-y-2">
                 <button
                   onClick={() => toggleCategory('contenido')}
                   className={`w-full flex items-center justify-between px-4 py-1 text-xs uppercase tracking-widest transition-all ${
-                    expandedCategory === 'contenido' ? 'font-bold text-sidebar-foreground' : 'font-normal text-sidebar-foreground/80'
+                    expandedCategory === 'contenido' ? 'font-bold text-slate-900' : 'font-semibold text-slate-500 hover:text-primary'
                   }`}
                 >
                   Contenido
@@ -206,7 +206,7 @@ export const MainSidebar: React.FC<MainSidebarProps> = ({
                 <button
                   onClick={() => toggleCategory('conversion')}
                   className={`w-full flex items-center justify-between px-4 py-1 text-xs uppercase tracking-widest transition-all ${
-                    expandedCategory === 'conversion' ? 'font-bold text-sidebar-foreground' : 'font-normal text-sidebar-foreground/80'
+                    expandedCategory === 'conversion' ? 'font-bold text-slate-900' : 'font-semibold text-slate-500 hover:text-primary'
                   }`}
                 >
                   Conversión
@@ -230,7 +230,7 @@ export const MainSidebar: React.FC<MainSidebarProps> = ({
                 <button
                   onClick={() => toggleCategory('social')}
                   className={`w-full flex items-center justify-between px-4 py-1 text-xs uppercase tracking-widest transition-all ${
-                    expandedCategory === 'social' ? 'font-bold text-sidebar-foreground' : 'font-normal text-sidebar-foreground/80'
+                    expandedCategory === 'social' ? 'font-bold text-slate-900' : 'font-semibold text-slate-500 hover:text-primary'
                   }`}
                 >
                   Social
@@ -250,7 +250,7 @@ export const MainSidebar: React.FC<MainSidebarProps> = ({
                 <button
                   onClick={() => toggleCategory('multimedia')}
                   className={`w-full flex items-center justify-between px-4 py-1 text-xs uppercase tracking-widest transition-all ${
-                    expandedCategory === 'multimedia' ? 'font-bold text-sidebar-foreground' : 'font-normal text-sidebar-foreground/80'
+                    expandedCategory === 'multimedia' ? 'font-bold text-slate-900' : 'font-semibold text-slate-500 hover:text-primary'
                   }`}
                 >
                   Multimedia
@@ -265,7 +265,7 @@ export const MainSidebar: React.FC<MainSidebarProps> = ({
                 )}
               </div>
 
-              <div className="mx-4 border-t border-sidebar-foreground/10" />
+              <div className="mx-4 border-t border-slate-200" />
 
               <div className="space-y-0.5 px-2">
                 <ModuleItem icon={React.createElement(MODULE_INFO.bento.icon, { size: 18 })} label="Diseño libre" onClick={() => onAddModule(BENTO_MODULE)} />
@@ -280,7 +280,7 @@ export const MainSidebar: React.FC<MainSidebarProps> = ({
           <button
             onClick={() => toggleSection('diseno')}
             className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all ${
-              expandedSection === 'diseno' ? 'text-sidebar-foreground font-bold' : 'text-sidebar-foreground/80 hover:text-sidebar-foreground'
+              expandedSection === 'diseno' ? 'text-slate-900 font-bold bg-slate-50' : 'text-slate-600 hover:text-primary hover:bg-primary/5'
             }`}
           >
             <div className="flex items-center gap-3">
@@ -316,20 +316,20 @@ export const MainSidebar: React.FC<MainSidebarProps> = ({
       </div>
 
       {/* User Profile Section */}
-      <div className="p-6 border-t border-sidebar-border bg-sidebar-foreground/5">
+      <div className="p-6 border-t border-slate-200 bg-slate-50">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-sidebar-foreground/10 rounded-xl flex items-center justify-center overflow-hidden">
+          <div className="w-10 h-10 bg-white border border-slate-200 rounded-xl flex items-center justify-center overflow-hidden">
             {project?.projectIconUrl ? (
               <img src={project.projectIconUrl} alt="Project Icon" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
             ) : (
-              <User className="text-sidebar-foreground w-5 h-5" />
+              <User className="text-slate-500 w-5 h-5" />
             )}
           </div>
           <div className="flex flex-col">
-            <span className="text-base font-bold text-sidebar-foreground leading-none truncate max-w-[160px]">
+            <span className="text-base font-bold text-slate-800 leading-none truncate max-w-[160px]">
               {project?.name || 'Proyecto'}
             </span>
-            <span className="text-xs text-sidebar-foreground/40 font-normal mt-1 tracking-wider">Proyecto Activo</span>
+            <span className="text-xs text-slate-500 font-normal mt-1 tracking-wider">Proyecto Activo</span>
           </div>
         </div>
       </div>

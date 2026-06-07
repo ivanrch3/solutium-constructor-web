@@ -66,6 +66,15 @@ const hasEffectiveThemeChange = (currentTheme: Record<string, any> = {}, themeUp
   Object.entries(themeUpdate).some(([key, value]) => !areThemeValuesEquivalent(currentTheme[key], value))
 );
 
+const createSiteContentSignature = (content: SiteContent | null | undefined) => {
+  if (!content) return '';
+  try {
+    return JSON.stringify(content);
+  } catch {
+    return '';
+  }
+};
+
 export const useEditorStore = create<EditorStoreState>((set, get) => ({
   siteContent: initialContent,
   selectedSectionId: null,
@@ -151,6 +160,9 @@ export const useEditorStore = create<EditorStoreState>((set, get) => ({
 
   setSiteContent: (content) => {
     set((state) => {
+      if (createSiteContentSignature(state.siteContent) === createSiteContentSignature(content)) {
+        return state;
+      }
       const { history, historyIndex } = state;
       const newHistory = history.slice(0, historyIndex + 1);
       newHistory.push(content);

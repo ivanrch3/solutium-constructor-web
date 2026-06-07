@@ -1,11 +1,11 @@
-import React from 'react';
-import { 
-  Plus, 
-  Layers, 
-  Eye, 
-  HelpCircle, 
-  Save, 
-  Trash2, 
+﻿import React from 'react';
+import {
+  Plus,
+  Layers,
+  Eye,
+  HelpCircle,
+  Save,
+  Trash2,
   Send,
   Sparkles,
   Check,
@@ -16,15 +16,15 @@ import { motion, AnimatePresence } from 'motion/react';
 import { AIPageGenerationBrief, AIPagePlan, AIPageTone, AIPageType, ReferenceDebugInfo, ReferenceUrlAnalysis } from '../../types/ai';
 
 // MobileBottomNav Component
-export const MobileBottomNav = ({ 
-  activeTab, 
-  onTabChange 
-}: { 
-  activeTab: 'constructor' | 'structure' | 'preview', 
-  onTabChange: (tab: 'constructor' | 'structure' | 'preview') => void 
+export const MobileBottomNav = ({
+  activeTab,
+  onTabChange
+}: {
+  activeTab: 'constructor' | 'structure' | 'preview',
+  onTabChange: (tab: 'constructor' | 'structure' | 'preview') => void
 }) => (
   <div className="fixed bottom-0 left-0 right-0 h-[80px] bg-surface border-t border-border/60 flex items-center justify-around px-4 z-[60] pb-safe shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
-    <button 
+    <button
       onClick={() => onTabChange('constructor')}
       className={`flex flex-col items-center gap-1.5 transition-all ${activeTab === 'constructor' ? 'text-primary' : 'text-text/40'}`}
     >
@@ -33,7 +33,7 @@ export const MobileBottomNav = ({
       </div>
       <span className="text-[10px] font-bold uppercase tracking-wider">Constructor</span>
     </button>
-    <button 
+    <button
       onClick={() => onTabChange('structure')}
       className={`flex flex-col items-center gap-1.5 transition-all ${activeTab === 'structure' ? 'text-primary' : 'text-text/40'}`}
     >
@@ -42,7 +42,7 @@ export const MobileBottomNav = ({
       </div>
       <span className="text-[10px] font-bold uppercase tracking-wider">Estructura</span>
     </button>
-    <button 
+    <button
       onClick={() => onTabChange('preview')}
       className={`flex flex-col items-center gap-1.5 transition-all ${activeTab === 'preview' ? 'text-primary' : 'text-text/40'}`}
     >
@@ -55,17 +55,17 @@ export const MobileBottomNav = ({
 );
 
 // UnsavedChangesModal Component
-export const UnsavedChangesModal = ({ 
-  onCancel, 
-  onSaveAndExit, 
-  onExitWithoutSaving 
-}: { 
-  onCancel: () => void, 
-  onSaveAndExit: () => void, 
-  onExitWithoutSaving: () => void 
+export const UnsavedChangesModal = ({
+  onCancel,
+  onSaveAndExit,
+  onExitWithoutSaving
+}: {
+  onCancel: () => void,
+  onSaveAndExit: () => void,
+  onExitWithoutSaving: () => void
 }) => (
   <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[2000] p-6">
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, scale: 0.95, y: 20 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
       className="bg-surface rounded-3xl p-8 max-w-md w-full shadow-2xl border border-border"
@@ -74,31 +74,31 @@ export const UnsavedChangesModal = ({
         <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mb-6">
           <HelpCircle className="w-8 h-8 text-amber-600" />
         </div>
-        <h2 className="text-2xl font-bold text-text mb-3">Cambios sin guardar</h2>
+        <h2 className="text-2xl font-bold text-text mb-3">&iquest;Salir sin guardar?</h2>
         <p className="text-text/60 mb-8 leading-relaxed">
-          Tienes cambios en el diseño que no han sido guardados. ¿Qué deseas hacer antes de salir?
+          Tiene cambios pendientes. Puede guardarlos antes de salir o salir sin conservarlos definitivamente.
         </p>
-        
+
         <div className="flex flex-col gap-3 w-full">
-          <button 
+          <button
             onClick={onSaveAndExit}
             className="w-full py-3.5 bg-primary text-white font-bold rounded-xl shadow-lg shadow-primary/20 hover:opacity-90 transition-all flex items-center justify-center gap-2"
           >
             <Save size={18} />
-            Guardar cambios y salir
+            Guardar
           </button>
-          <button 
+          <button
             onClick={onExitWithoutSaving}
-            className="w-full py-3.5 bg-secondary text-text/80 font-bold rounded-xl hover:bg-border/40 transition-all flex items-center justify-center gap-2"
+            className="w-full py-3.5 bg-amber-500/10 text-amber-700 font-bold rounded-xl hover:bg-amber-500/15 transition-all flex items-center justify-center gap-2"
           >
             <Trash2 size={18} />
             Salir sin guardar
           </button>
-          <button 
+          <button
             onClick={onCancel}
             className="w-full py-3.5 text-text/40 font-bold hover:text-text/60 transition-all"
           >
-            Cancelar y seguir editando
+            Cancelar
           </button>
         </div>
       </div>
@@ -107,20 +107,20 @@ export const UnsavedChangesModal = ({
 );
 
 // DeleteConfirmationModal Component
-export const DeleteConfirmationModal: React.FC<{ 
-  moduleName: string, 
-  onConfirm: () => void, 
-  onCancel: () => void 
+export const DeleteConfirmationModal: React.FC<{
+  moduleName: string,
+  onConfirm: () => void,
+  onCancel: () => void
 }> = ({ moduleName, onConfirm, onCancel }) => (
   <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4">
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       onClick={onCancel}
       className="absolute inset-0 bg-text/40 backdrop-blur-sm"
     />
-    <motion.div 
+    <motion.div
       initial={{ scale: 0.9, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
       exit={{ scale: 0.9, opacity: 0 }}
@@ -130,19 +130,19 @@ export const DeleteConfirmationModal: React.FC<{
         <div className="w-16 h-16 bg-error/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
           <Trash2 className="text-error w-8 h-8" />
         </div>
-        <h3 className="text-xl font-bold text-text mb-2 font-sans">¿Eliminar módulo?</h3>
+        <h3 className="text-xl font-bold text-text mb-2 font-sans">Â¿Eliminar mÃ³dulo?</h3>
         <p className="text-text/60 text-sm leading-relaxed mb-8">
-          Estás a punto de eliminar el módulo <span className="font-bold text-text/80">"{moduleName}"</span>. 
-          Esta acción no se puede deshacer.
+          EstÃ¡s a punto de eliminar el mÃ³dulo <span className="font-bold text-text/80">"{moduleName}"</span>.
+          Esta acciÃ³n no se puede deshacer.
         </p>
         <div className="flex gap-3">
-          <button 
+          <button
             onClick={onCancel}
             className="flex-1 py-3 px-4 bg-secondary hover:bg-secondary/80 text-text/60 font-bold rounded-xl transition-all"
           >
             Cancelar
           </button>
-          <button 
+          <button
             onClick={onConfirm}
             className="flex-1 py-3 px-4 bg-error hover:bg-error/90 text-white font-bold rounded-xl shadow-lg shadow-error/20 transition-all"
           >
@@ -166,7 +166,7 @@ export const PublishModal: React.FC<{
   publishedAt?: string | null
 }> = ({ siteName, setSiteName, onPublish, onCancel, isSaving, publishStatus = 'idle', publishedUrl, publishedAt }) => (
   <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4">
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -175,7 +175,7 @@ export const PublishModal: React.FC<{
       }}
       className="absolute inset-0 bg-text/40 backdrop-blur-sm"
     />
-    <motion.div 
+    <motion.div
       initial={{ scale: 0.9, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
       exit={{ scale: 0.9, opacity: 0 }}
@@ -221,11 +221,11 @@ export const PublishModal: React.FC<{
       <p className="text-sm text-text/60 mb-6 leading-relaxed">
         Asigna un nombre a tu página para identificarla en tu panel de Solutium.
       </p>
-      
+
       <div className="space-y-4 mb-8">
         <div className="space-y-2">
           <label className="text-[10px] font-bold text-text/40 uppercase tracking-wider">Nombre de la Página</label>
-          <input 
+          <input
             type="text"
             value={siteName}
             onChange={(e) => setSiteName(e.target.value)}
@@ -237,14 +237,14 @@ export const PublishModal: React.FC<{
       </div>
 
       <div className="flex gap-3">
-        <button 
+        <button
           onClick={onCancel}
           disabled={isSaving}
           className="flex-1 px-6 py-3 bg-secondary hover:bg-secondary/80 text-text font-bold rounded-2xl transition-all disabled:cursor-not-allowed disabled:opacity-50"
         >
           Cancelar
         </button>
-        <button 
+        <button
           onClick={onPublish}
           disabled={!siteName || isSaving}
           className="flex-1 px-6 py-3 bg-primary hover:bg-primary/90 text-white font-bold rounded-2xl shadow-lg shadow-primary/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
@@ -346,19 +346,19 @@ const getSectionPatternLabel = (value?: string | null) => {
 
 const getSectionIntentLabel = (role?: string | null) => {
   const labels: Record<string, string> = {
-    hero: 'Presentación principal',
-    product_showcase: 'Demostración visual de producto',
+    hero: 'PresentaciÃ³n principal',
+    product_showcase: 'DemostraciÃ³n visual de producto',
     features: 'Beneficios o capacidades',
     services: 'Oferta o soluciones',
     process: 'Proceso o pasos',
     trust: 'Confianza y prueba social',
     testimonials: 'Prueba social',
     faq: 'Ayuda o preguntas frecuentes',
-    contact: 'Contacto o conversión',
-    cta: 'Llamado a la acción',
-    pricing: 'Comparación de opciones',
+    contact: 'Contacto o conversiÃ³n',
+    cta: 'Llamado a la acciÃ³n',
+    pricing: 'ComparaciÃ³n de opciones',
     comparison: 'Comparativa',
-    gallery: 'Galería visual',
+    gallery: 'GalerÃ­a visual',
     about: 'Contexto de marca'
   };
   return labels[String(role || '').toLowerCase()] || 'Bloque estructural detectado';
@@ -414,7 +414,7 @@ const ReferenceDebugPanel: React.FC<{ debug?: ReferenceDebugInfo | null; warning
   return (
     <details className="rounded-2xl border border-blue-200 bg-blue-50/80 p-4 text-xs text-blue-950" open>
       <summary className="cursor-pointer text-[11px] font-black uppercase tracking-widest text-blue-700">
-        Diagnóstico técnico
+        DiagnÃ³stico tÃ©cnico
       </summary>
       <div className="mt-3 space-y-3">
         <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
@@ -428,7 +428,7 @@ const ReferenceDebugPanel: React.FC<{ debug?: ReferenceDebugInfo | null; warning
           </div>
           <div className="rounded-xl bg-white p-3">
             <p className="font-black text-blue-700">fallbackReason</p>
-            <p className="break-words">{debug.fallbackReason || '—'}</p>
+            <p className="break-words">{debug.fallbackReason || 'â€”'}</p>
           </div>
           <div className="rounded-xl bg-white p-3">
             <p className="font-black text-blue-700">secciones</p>
@@ -440,7 +440,7 @@ const ReferenceDebugPanel: React.FC<{ debug?: ReferenceDebugInfo | null; warning
           <div className="rounded-xl bg-white p-3">
             <p className="font-black text-blue-700">Screenshot</p>
             <p>
-              {debug.screenshot.width || '—'}x{debug.screenshot.height || '—'} · captured {debug.screenshot.capturedHeight || '—'} · stored {String(Boolean(debug.screenshot.stored))}
+              {debug.screenshot.width || 'â€”'}x{debug.screenshot.height || 'â€”'} Â· captured {debug.screenshot.capturedHeight || 'â€”'} Â· stored {String(Boolean(debug.screenshot.stored))}
             </p>
           </div>
         )}
@@ -451,7 +451,7 @@ const ReferenceDebugPanel: React.FC<{ debug?: ReferenceDebugInfo | null; warning
             <table className="min-w-full text-left text-[11px]">
               <thead className="text-blue-700">
                 <tr>
-                  <th className="pr-3">Sección</th>
+                  <th className="pr-3">SecciÃ³n</th>
                   <th className="pr-3">layout</th>
                   <th className="pr-3">roleHint</th>
                   <th className="pr-3">media</th>
@@ -466,8 +466,8 @@ const ReferenceDebugPanel: React.FC<{ debug?: ReferenceDebugInfo | null; warning
                     <td className="pr-3">{section.layout}</td>
                     <td className="pr-3">{section.roleHint}</td>
                     <td className="pr-3">{String(section.media)}</td>
-                    <td className="pr-3">{typeof section.confidence === 'number' ? Math.round(section.confidence * 100) + '%' : '—'}</td>
-                    <td className="pr-3">{section.queryHint || '—'}</td>
+                    <td className="pr-3">{typeof section.confidence === 'number' ? Math.round(section.confidence * 100) + '%' : 'â€”'}</td>
+                    <td className="pr-3">{section.queryHint || 'â€”'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -492,7 +492,7 @@ const ReferenceDebugPanel: React.FC<{ debug?: ReferenceDebugInfo | null; warning
             <table className="min-w-full text-left text-[11px]">
               <thead className="text-blue-700">
                 <tr>
-                  <th className="pr-3">Sección</th>
+                  <th className="pr-3">SecciÃ³n</th>
                   <th className="pr-3">source</th>
                   <th className="pr-3">found</th>
                   <th className="pr-3">query</th>
@@ -507,10 +507,10 @@ const ReferenceDebugPanel: React.FC<{ debug?: ReferenceDebugInfo | null; warning
                     <td className="pr-3 font-bold">{row.section}</td>
                     <td className="pr-3">{row.source}</td>
                     <td className="pr-3">{String(row.found)}</td>
-                    <td className="pr-3">{row.queryUsed || row.query || '—'}</td>
-                    <td className="pr-3">{typeof row.candidateIndex === 'number' ? row.candidateIndex + 1 : '—'}</td>
-                    <td className="pr-3">{row.usedImageUrlsCount || '—'}</td>
-                    <td className="pr-3">{row.photographer || '—'}</td>
+                    <td className="pr-3">{row.queryUsed || row.query || 'â€”'}</td>
+                    <td className="pr-3">{typeof row.candidateIndex === 'number' ? row.candidateIndex + 1 : 'â€”'}</td>
+                    <td className="pr-3">{row.usedImageUrlsCount || 'â€”'}</td>
+                    <td className="pr-3">{row.photographer || 'â€”'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -600,7 +600,7 @@ export const AIPagePlanModal: React.FC<{
     }
     : isGeneratingReferencePlan
       ? {
-        title: 'CREANDO PÁGINA',
+        title: 'CREANDO PÃGINA',
         steps: REFERENCE_CREATION_STEPS
       }
       : {
@@ -649,7 +649,7 @@ export const AIPagePlanModal: React.FC<{
         instructions: referenceInstructions
       });
     } catch (error: any) {
-      setReferenceError(error?.message || 'No se pudo generar la página desde esta estructura.');
+      setReferenceError(error?.message || 'No se pudo generar la pÃ¡gina desde esta estructura.');
       setReferenceErrorStage('generation');
     } finally {
       setIsGeneratingReferencePlan(false);
@@ -668,7 +668,7 @@ export const AIPagePlanModal: React.FC<{
         <div className="shrink-0 flex items-center justify-between border-b border-border/60 px-6 py-5">
           <div>
             <p className="text-[10px] font-black uppercase tracking-widest text-primary">Crear con IA</p>
-            <h2 className="text-xl font-black text-text">Generar página editable</h2>
+            <h2 className="text-xl font-black text-text">Generar pÃ¡gina editable</h2>
           </div>
           <button
             onClick={onCancel}
@@ -706,14 +706,14 @@ export const AIPagePlanModal: React.FC<{
               </p>
               <p className="mt-1 text-xs leading-relaxed text-text/60">
                 {isAIPagePlanBrokerConfigured()
-                  ? 'Esta generación usa App Madre, valida el AIPagePlan y puede consumir créditos IA reales.'
+                  ? 'Esta generaciÃ³n usa App Madre, valida el AIPagePlan y puede consumir crÃ©ditos IA reales.'
                   : 'Esta fase crea un pagePlan compatible con el Constructor. No llama APIs externas ni genera HTML libre.'}
               </p>
             </div>
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <label className="space-y-2">
-                <span className="text-xs font-black uppercase tracking-widest text-text/45">Tipo de página</span>
+                <span className="text-xs font-black uppercase tracking-widest text-text/45">Tipo de pÃ¡gina</span>
                 <select
                   value={brief.pageType}
                   onChange={(event) => updateBrief({ pageType: event.target.value as AIPageType })}
@@ -737,7 +737,7 @@ export const AIPagePlanModal: React.FC<{
             </div>
 
             <label className="space-y-2 block">
-              <span className="text-xs font-black uppercase tracking-widest text-text/45">Objetivo de la página</span>
+              <span className="text-xs font-black uppercase tracking-widest text-text/45">Objetivo de la pÃ¡gina</span>
               <select
                 value={brief.pageGoal}
                 onChange={(event) => updateBrief({ pageGoal: event.target.value })}
@@ -754,7 +754,7 @@ export const AIPagePlanModal: React.FC<{
               <textarea
                 value={brief.instructions}
                 onChange={(event) => updateBrief({ instructions: event.target.value })}
-                placeholder="Describe que quieres que tenga la página..."
+                placeholder="Describe que quieres que tenga la pÃ¡gina..."
                 rows={5}
                 className="w-full resize-none rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text outline-none focus:border-primary"
               />
@@ -779,7 +779,7 @@ export const AIPagePlanModal: React.FC<{
                 <input
                   value={brief.primaryCta}
                   onChange={(event) => updateBrief({ primaryCta: event.target.value })}
-                  placeholder="Solicitar información, Agendar cita..."
+                  placeholder="Solicitar informaciÃ³n, Agendar cita..."
                   className="w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text outline-none focus:border-primary"
                 />
               </label>
@@ -792,7 +792,7 @@ export const AIPagePlanModal: React.FC<{
                 className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-6 py-4 text-sm font-black uppercase tracking-widest text-white shadow-lg shadow-primary/20 transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45"
               >
                 {isGenerating ? <div className="h-5 w-5 rounded-full border-2 border-white/30 border-t-white animate-spin" /> : <Sparkles size={18} />}
-                {plan ? 'Regenerar página' : 'Generar página'}
+                {plan ? 'Regenerar pÃ¡gina' : 'Generar pÃ¡gina'}
               </button>
             </StickyActionFooter>
           </div> : <div className="min-h-0 space-y-5 overflow-y-auto p-6 pb-28">
@@ -802,7 +802,7 @@ export const AIPagePlanModal: React.FC<{
                 La URL se usara como guia estructural. Solutium creara una version nueva con secciones editables, textos propios y recursos visuales adaptados a tu negocio.
               </p>
               <p className="mt-3 text-[11px] font-black uppercase tracking-widest text-amber-700">
-                Analizar referencia: {REFERENCE_ANALYSIS_CREDITS} Créditos IA · Crear página: {REFERENCE_PAGE_PLAN_CREDITS} Créditos IA
+                Analizar referencia: {REFERENCE_ANALYSIS_CREDITS} CrÃ©ditos IA Â· Crear pÃ¡gina: {REFERENCE_PAGE_PLAN_CREDITS} CrÃ©ditos IA
               </p>
             </div>
 
@@ -826,7 +826,7 @@ export const AIPagePlanModal: React.FC<{
                   className="w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text outline-none focus:border-primary"
                 />
                 {!isReferenceBusinessTypeValid && (
-                  <p className="text-[11px] font-bold text-amber-700">Indica el tipo de negocio para adaptar los textos e imágenes de la página generada.</p>
+                  <p className="text-[11px] font-bold text-amber-700">Indica el tipo de negocio para adaptar los textos e imÃ¡genes de la pÃ¡gina generada.</p>
                 )}
               </label>
 
@@ -835,7 +835,7 @@ export const AIPagePlanModal: React.FC<{
                 <input
                   value={referenceCta}
                   onChange={(event) => setReferenceCta(event.target.value)}
-                  placeholder="Solicitar información"
+                  placeholder="Solicitar informaciÃ³n"
                   className="w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text outline-none focus:border-primary"
                 />
               </label>
@@ -868,7 +868,7 @@ export const AIPagePlanModal: React.FC<{
             </label>
 
             <label className="space-y-2 block">
-              <span className="text-xs font-black uppercase tracking-widest text-text/45">Instrucciones adicionales para la página</span>
+              <span className="text-xs font-black uppercase tracking-widest text-text/45">Instrucciones adicionales para la pÃ¡gina</span>
               <textarea
                 value={referenceInstructions}
                 onChange={(event) => setReferenceInstructions(event.target.value)}
@@ -881,7 +881,7 @@ export const AIPagePlanModal: React.FC<{
             {isAnalyzingReference && (
               <ReferenceWorkingState
                 title="Escaneando visualmente la referencia..."
-                description="Renderizamos la página para detectar estructura real sin copiar textos, imágenes, logos ni código."
+                description="Renderizamos la pÃ¡gina para detectar estructura real sin copiar textos, imÃ¡genes, logos ni cÃ³digo."
               />
             )}
 
@@ -892,7 +892,7 @@ export const AIPagePlanModal: React.FC<{
                 className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-6 py-4 text-sm font-black uppercase tracking-widest text-white shadow-lg shadow-primary/20 transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45"
               >
                 {isAnalyzingReference ? <div className="h-5 w-5 rounded-full border-2 border-white/30 border-t-white animate-spin" /> : <Sparkles size={18} />}
-                {isAnalyzingReference ? 'Analizando referencia...' : `Analizar referencia · ${REFERENCE_ANALYSIS_CREDITS} Créditos IA`}
+                {isAnalyzingReference ? 'Analizando referencia...' : `Analizar referencia Â· ${REFERENCE_ANALYSIS_CREDITS} CrÃ©ditos IA`}
               </button>
             </StickyActionFooter>
           </div>}
@@ -911,7 +911,7 @@ export const AIPagePlanModal: React.FC<{
                 )}
                 {isGeneratingReferencePlan && (
                   <ReferenceWorkingState
-                    title="Generando página editable desde la referencia..."
+                    title="Generando pÃ¡gina editable desde la referencia..."
                     description="Estamos transformando la estructura detectada en secciones editables de Solutium."
                   />
                 )}
@@ -952,7 +952,7 @@ export const AIPagePlanModal: React.FC<{
                         </div>
                       )}
                       {typeof referenceAnalysis.estimatedCredits === 'number' && referenceAnalysis.estimatedCredits > 0 && (
-                        <p className="mt-3 text-[11px] font-bold text-text/45">Créditos estimados: {referenceAnalysis.estimatedCredits}</p>
+                        <p className="mt-3 text-[11px] font-bold text-text/45">CrÃ©ditos estimados: {referenceAnalysis.estimatedCredits}</p>
                       )}
                     </div>
                     {referenceAnalysis.warnings.length > 0 && (
@@ -960,7 +960,7 @@ export const AIPagePlanModal: React.FC<{
                         <p className="text-xs font-black uppercase tracking-widest text-amber-700">Advertencias</p>
                         <ul className="mt-2 space-y-1 text-xs leading-relaxed text-amber-800">
                           {referenceAnalysis.warnings.slice(0, 5).map((warning, index) => (
-                            <li key={`${warning}-${index}`}>â€¢ {warning}</li>
+                            <li key={`${warning}-${index}`}>Ã¢â‚¬Â¢ {warning}</li>
                           ))}
                         </ul>
                       </div>
@@ -977,12 +977,12 @@ export const AIPagePlanModal: React.FC<{
                           <div className="flex items-start gap-3">
                             <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-xs font-black text-primary">{index + 1}</span>
                             <div className="min-w-0">
-                              <p className="text-sm font-black text-text">Sección {index + 1}</p>
+                              <p className="text-sm font-black text-text">SecciÃ³n {index + 1}</p>
                               <p className="mt-1 text-[11px] font-bold uppercase tracking-wider text-text/40">
-                                Patrón detectado: {getSectionPatternLabel(referenceAnalysis.sectionLayoutBlueprints?.[index]?.layout?.type || section.layoutPattern)}
+                                PatrÃ³n detectado: {getSectionPatternLabel(referenceAnalysis.sectionLayoutBlueprints?.[index]?.layout?.type || section.layoutPattern)}
                               </p>
                               <p className="mt-1 text-[11px] font-bold uppercase tracking-wider text-text/40">
-                                Intención visual: {getSectionIntentLabel(section.detectedRole)}
+                                IntenciÃ³n visual: {getSectionIntentLabel(section.detectedRole)}
                               </p>
                               <p className="mt-1 text-[11px] font-bold uppercase tracking-wider text-text/40">
                                 Elementos detectados: {(referenceAnalysis.sectionLayoutBlueprints?.[index]?.layout?.columns || [])
@@ -1005,7 +1005,7 @@ export const AIPagePlanModal: React.FC<{
                     <div className="rounded-2xl border border-primary/15 bg-primary/5 p-4">
                       <p className="text-xs font-black uppercase tracking-widest text-primary">Antes de generar</p>
                       <p className="mt-1 text-xs leading-relaxed text-text/60">
-                        La página sera una version nueva inspirada en la estructura de la referencia. No se copiaran textos, imágenes, logos ni código.
+                        La pÃ¡gina sera una version nueva inspirada en la estructura de la referencia. No se copiaran textos, imÃ¡genes, logos ni cÃ³digo.
                       </p>
                     </div>
                     <StickyActionFooter>
@@ -1015,7 +1015,7 @@ export const AIPagePlanModal: React.FC<{
                         className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-3 text-xs font-black uppercase tracking-widest text-white shadow-lg shadow-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         {isGeneratingReferencePlan ? <div className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" /> : <Sparkles size={15} />}
-                        {isGeneratingReferencePlan ? 'Creando página editable...' : `Crear página desde esta referencia · ${REFERENCE_PAGE_PLAN_CREDITS} Créditos IA`}
+                        {isGeneratingReferencePlan ? 'Creando pÃ¡gina editable...' : `Crear pÃ¡gina desde esta referencia Â· ${REFERENCE_PAGE_PLAN_CREDITS} CrÃ©ditos IA`}
                       </button>
                     </StickyActionFooter>
                   </>
@@ -1026,7 +1026,7 @@ export const AIPagePlanModal: React.FC<{
             {!plan ? (
               <div className="mt-5 rounded-2xl border border-dashed border-border bg-surface/70 p-8 text-center">
                 <Sparkles className="mx-auto mb-4 text-text/25" size={30} />
-                <p className="text-sm font-bold text-text/50">Completa el formulario para generar el plan de página.</p>
+                <p className="text-sm font-bold text-text/50">Completa el formulario para generar el plan de pÃ¡gina.</p>
               </div>
             ) : (
               <div className="mt-5 space-y-4">
@@ -1038,7 +1038,7 @@ export const AIPagePlanModal: React.FC<{
                   </p>
                   {typeof plan.estimatedCredits === 'number' && plan.estimatedCredits > 0 && (
                     <p className="mt-2 text-[11px] font-bold text-text/45">
-                      Créditos estimados: {plan.estimatedCredits}
+                      CrÃ©ditos estimados: {plan.estimatedCredits}
                     </p>
                   )}
                 </div>
@@ -1048,7 +1048,7 @@ export const AIPagePlanModal: React.FC<{
                     <p className="text-xs font-black uppercase tracking-widest text-amber-700">Advertencias</p>
                     <ul className="mt-2 space-y-1 text-xs leading-relaxed text-amber-800">
                       {plan.warnings.slice(0, 4).map((warning, index) => (
-                        <li key={`${warning}-${index}`}>â€¢ {warning}</li>
+                        <li key={`${warning}-${index}`}>Ã¢â‚¬Â¢ {warning}</li>
                       ))}
                     </ul>
                   </div>
@@ -1062,7 +1062,7 @@ export const AIPagePlanModal: React.FC<{
                         <div className="min-w-0">
                           <p className="text-sm font-black text-text">{section.title}</p>
                           <p className="mt-1 text-[11px] font-bold uppercase tracking-wider text-text/40">
-                            {section.moduleType}{section.preset ? ` · ${section.preset}` : ''}
+                            {section.moduleType}{section.preset ? ` Â· ${section.preset}` : ''}
                           </p>
                           <p className="mt-2 text-xs leading-relaxed text-text/55">{section.purpose}</p>
                         </div>
@@ -1112,12 +1112,12 @@ export const AIGenerationModal: React.FC<{
   onCancel: () => void
 }> = ({ currentStep, steps, onCancel }) => (
   <div className="fixed inset-0 z-[2100] flex items-center justify-center p-4">
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       className="absolute inset-0 bg-text/80 backdrop-blur-md"
     />
-    <motion.div 
+    <motion.div
       initial={{ scale: 0.9, opacity: 0, y: 20 }}
       animate={{ scale: 1, opacity: 1, y: 0 }}
       className="relative w-full max-w-lg bg-surface rounded-[2.5rem] p-10 shadow-3xl text-center overflow-hidden"
@@ -1130,30 +1130,30 @@ export const AIGenerationModal: React.FC<{
         <div className="w-24 h-24 bg-gradient-to-br from-primary to-accent rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-2xl animate-pulse">
           <Sparkles className="text-white w-12 h-12" />
         </div>
-        
+
         <h2 className="text-3xl font-black text-text mb-4 tracking-tight">
           Solutium <span className="text-primary italic">AI Engine</span>
         </h2>
-        
+
         <p className="text-text/60 mb-10 max-w-sm mx-auto leading-relaxed">
-          Nuestra inteligencia artificial está esculpiendo tu sitio web profesional basándose en tu visión.
+          Nuestra inteligencia artificial estÃ¡ esculpiendo tu sitio web profesional basÃ¡ndose en tu visiÃ³n.
         </p>
 
         <div className="space-y-4 mb-10">
           {steps.map((step, idx) => {
             const isCompleted = idx < currentStep;
             const isCurrent = idx === currentStep;
-            
+
             return (
-              <div 
+              <div
                 key={idx}
                 className={`flex items-center gap-4 p-4 rounded-2xl transition-all duration-500 border ${
-                  isCurrent ? 'bg-primary/5 border-primary/20 shadow-sm' : 
+                  isCurrent ? 'bg-primary/5 border-primary/20 shadow-sm' :
                   isCompleted ? 'bg-success/5 border-success/10' : 'bg-transparent border-transparent opacity-30'
                 }`}
               >
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${
-                  isCompleted ? 'bg-success text-white' : 
+                  isCompleted ? 'bg-success text-white' :
                   isCurrent ? 'bg-primary text-white animate-bounce' : 'bg-secondary text-text/40'
                 }`}>
                   {isCompleted ? <Check className="w-5 h-5" /> : idx + 1}
@@ -1163,12 +1163,12 @@ export const AIGenerationModal: React.FC<{
                     {step}
                   </p>
                   {isCurrent && (
-                    <motion.div 
+                    <motion.div
                       className="h-1 bg-primary/20 rounded-full mt-2 overflow-hidden"
                       initial={{ width: 0 }}
                       animate={{ width: '100%' }}
                     >
-                      <motion.div 
+                      <motion.div
                         className="h-full bg-primary"
                         animate={{ x: ['-100%', '100%'] }}
                         transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
@@ -1181,11 +1181,11 @@ export const AIGenerationModal: React.FC<{
           })}
         </div>
 
-        <button 
+        <button
           onClick={onCancel}
           className="text-[10px] font-black uppercase tracking-widest text-text/30 hover:text-error transition-all duration-300"
         >
-          Interrumpir generación
+          Interrumpir generaciÃ³n
         </button>
       </div>
     </motion.div>
@@ -1210,14 +1210,14 @@ export const MotherAIPageConfirmationModal: React.FC<{
   <AnimatePresence>
     {isOpen && (
       <div className="fixed inset-0 z-[2200] flex items-center justify-center p-4">
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
           className="absolute inset-0 bg-black/60 backdrop-blur-md"
         />
-        <motion.div 
+        <motion.div
           initial={{ scale: 0.9, opacity: 0, y: 20 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.9, opacity: 0, y: 20 }}
@@ -1227,15 +1227,15 @@ export const MotherAIPageConfirmationModal: React.FC<{
             <div className={`w-20 h-20 rounded-3xl flex items-center justify-center mb-6 shadow-2xl ${isDryRun ? 'bg-secondary text-text/40' : 'bg-primary text-white'}`}>
               <Sparkles className="w-10 h-10" />
             </div>
-            
+
             <h2 className="text-3xl font-black text-text mb-2 tracking-tight">
               Generar sitio con <span className="text-primary italic">Solutium AI</span>
             </h2>
-            
+
             <p className="text-text/60 mb-8 max-w-md">
-              {isDryRun 
-                ? "Modo Vista Previa: Verás qué se enviaría a la IA sin consumir créditos reales."
-                : `Esta acción generará una landing completa y consumirá ${costCredits} créditos del proyecto.`}
+              {isDryRun
+                ? "Modo Vista Previa: VerÃ¡s quÃ© se enviarÃ­a a la IA sin consumir crÃ©ditos reales."
+                : `Esta acciÃ³n generarÃ¡ una landing completa y consumirÃ¡ ${costCredits} crÃ©ditos del proyecto.`}
             </p>
 
             <div className="w-full bg-secondary/50 rounded-3xl p-6 mb-8 text-left space-y-4 border border-border/30">
@@ -1263,32 +1263,32 @@ export const MotherAIPageConfirmationModal: React.FC<{
                   </div>
                   <div className="text-left">
                     <p className="text-xs font-black uppercase tracking-tighter">Costo Estimado</p>
-                    <p className="text-lg font-black text-primary leading-none">{isDryRun ? 0 : costCredits} Créditos</p>
+                    <p className="text-lg font-black text-primary leading-none">{isDryRun ? 0 : costCredits} CrÃ©ditos</p>
                   </div>
                 </div>
-                
-                <button 
+
+                <button
                   onClick={onToggleDryRun}
                   className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${isDryRun ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-secondary text-text/40 hover:bg-secondary/80'}`}
                 >
-                  {isDryRun ? "Simulación: ON" : "Activar Dry-run"}
+                  {isDryRun ? "SimulaciÃ³n: ON" : "Activar Dry-run"}
                 </button>
               </div>
 
               <div className="flex gap-3">
-                <button 
+                <button
                   onClick={onClose}
                   disabled={isGenerating}
                   className="flex-1 py-4 bg-secondary text-text/60 font-black uppercase tracking-widest rounded-2xl hover:bg-border/40 transition-all border border-border/10"
                 >
                   Cancelar
                 </button>
-                <button 
+                <button
                   onClick={onConfirm}
                   disabled={isGenerating}
                   className={`flex-1 py-4 text-white font-black uppercase tracking-widest rounded-2xl shadow-xl transition-all flex items-center justify-center gap-2 ${
-                    isDryRun 
-                      ? 'bg-solutium-dark shadow-black/10' 
+                    isDryRun
+                      ? 'bg-solutium-dark shadow-black/10'
                       : 'bg-primary shadow-primary/30 hover:opacity-90'
                   }`}
                 >
@@ -1303,7 +1303,7 @@ export const MotherAIPageConfirmationModal: React.FC<{
                 </button>
               </div>
             </div>
-            
+
             {!isDryRun && (
               <p className="mt-4 text-[9px] font-black uppercase tracking-widest text-text/20">
                 * El cobro se realiza al recibir la respuesta exitosa de la IA.
@@ -1329,14 +1329,14 @@ export const AIUsageSuccessModal: React.FC<{
   <AnimatePresence>
     {isOpen && (
       <div className="fixed inset-0 z-[2300] flex items-center justify-center p-4">
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
           className="absolute inset-0 bg-primary/20 backdrop-blur-xl"
         />
-        <motion.div 
+        <motion.div
           initial={{ scale: 0.9, opacity: 0, y: 100 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.9, opacity: 0, y: 20 }}
@@ -1349,16 +1349,16 @@ export const AIUsageSuccessModal: React.FC<{
               <Check className="text-white w-10 h-10" strokeWidth={3} />
             )}
           </div>
-          
+
           <h2 className="text-2xl font-black text-text mb-2 tracking-tight">
-            {usage.isDryRun ? 'Simulación Exitosa' : '¡Página Generada!'}
+            {usage.isDryRun ? 'SimulaciÃ³n Exitosa' : 'Â¡PÃ¡gina Generada!'}
           </h2>
           <p className="text-text/60 mb-8 text-sm">
-            {usage.isDryRun 
-              ? 'Has completado el dry-run local. No se han consumido créditos reales.' 
+            {usage.isDryRun
+              ? 'Has completado el dry-run local. No se han consumido crÃ©ditos reales.'
               : 'Tu sitio ha sido construido exitosamente por el motor de IA.'}
           </p>
-          
+
           <div className="bg-secondary/50 rounded-2xl p-4 mb-8 grid grid-cols-2 gap-4 border border-border/40">
             <div className="text-left">
               <span className="text-[9px] font-black uppercase text-text/30">Costo {usage.isDryRun ? 'Est.' : ''}</span>
@@ -1377,18 +1377,18 @@ export const AIUsageSuccessModal: React.FC<{
                <p className="text-[10px] font-black uppercase text-primary tracking-widest">Estado: Simulador Local</p>
             </div>
           )}
-          
-          <button 
+
+          <button
             onClick={onClose}
             className={`w-full py-4 font-black uppercase tracking-widest rounded-2xl shadow-lg transition-all ${
-              usage.isDryRun 
-                ? 'bg-secondary text-text/60 hover:bg-border/40' 
+              usage.isDryRun
+                ? 'bg-secondary text-text/60 hover:bg-border/40'
                 : 'bg-primary text-white shadow-primary/20 hover:opacity-90'
             }`}
           >
-            {usage.isDryRun ? 'Cerrar Simulación' : 'Ver mi sitio'}
+            {usage.isDryRun ? 'Cerrar SimulaciÃ³n' : 'Ver mi sitio'}
           </button>
-          
+
           <p className="mt-4 text-[9px] font-medium text-text/20">
             {usage.isDryRun ? 'Modo: DRY-RUN / PREVIEW' : `Ref: ${usage.aiUsageLogId}`}
           </p>

@@ -169,8 +169,9 @@ export const Canvas: React.FC<CanvasProps> = ({
       : viewport === 'mobile'
         ? 375
         : Math.max(canvasViewportWidth || renderContentWidth || browserViewportWidth, 1);
-  const isUserZoomed = showEditorChrome && userZoom !== 1;
-  const canPanPreview = showEditorChrome && userZoom > 1;
+  const canUsePreviewZoom = showEditorChrome || (isFullscreen && !isPreviewMode);
+  const isUserZoomed = canUsePreviewZoom && userZoom !== 1;
+  const canPanPreview = canUsePreviewZoom && userZoom > 1;
   const zoomPercent = Math.round(userZoom * 100);
   const zoomLimitsByViewport = React.useMemo(() => ({
     desktop: { min: 0.65, max: 2.5 },
@@ -184,7 +185,7 @@ export const Canvas: React.FC<CanvasProps> = ({
     scrollMetrics.scrollWidth > scrollMetrics.clientWidth + 1 ||
     scrollMetrics.scrollHeight > scrollMetrics.clientHeight + 1;
   const showMinimap =
-    showEditorChrome &&
+    canUsePreviewZoom &&
     !isMinimapHidden &&
     userZoom > 1 &&
     hasMinimapScrollableArea &&
@@ -259,7 +260,7 @@ export const Canvas: React.FC<CanvasProps> = ({
 
   React.useEffect(() => {
     const node = canvasScrollContainerRef.current;
-    if (!node || !showEditorChrome) return;
+    if (!node || !canUsePreviewZoom) return;
 
     window.requestAnimationFrame(() => {
       const maxScrollLeft = Math.max(0, node.scrollWidth - node.clientWidth);
@@ -278,7 +279,7 @@ export const Canvas: React.FC<CanvasProps> = ({
     canvasViewportWidth,
     renderContentWidth,
     renderContentHeight,
-    showEditorChrome,
+    canUsePreviewZoom,
     updateScrollMetrics,
     userZoom
   ]);
@@ -453,28 +454,15 @@ export const Canvas: React.FC<CanvasProps> = ({
   }, [editorState.expandedModuleId]);
 
   React.useEffect(() => {
-    const target = fullscreenRootRef.current;
-    if (!target || isPreviewMode) return;
+    if (!isFullscreen || isPreviewMode) return;
 
-    const syncFullscreenState = () => {
-      const isActuallyFullscreen = document.fullscreenElement === target;
-      if (isFullscreen !== isActuallyFullscreen) {
-        setIsFullscreen(isActuallyFullscreen);
-      }
-    };
-
-    document.addEventListener('fullscreenchange', syncFullscreenState);
-
-    if (isFullscreen && document.fullscreenElement !== target) {
-      target.requestFullscreen?.().catch(() => {});
-    } else if (!isFullscreen && document.fullscreenElement === target) {
-      document.exitFullscreen?.().catch(() => {});
-    }
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
 
     return () => {
-      document.removeEventListener('fullscreenchange', syncFullscreenState);
+      document.body.style.overflow = previousOverflow;
     };
-  }, [isFullscreen, isPreviewMode, setIsFullscreen]);
+  }, [isFullscreen, isPreviewMode]);
 
   React.useEffect(() => {
     if (!isFullscreen || isPreviewMode) return;
@@ -499,7 +487,7 @@ export const Canvas: React.FC<CanvasProps> = ({
         onPointerMove={handlePreviewPointerMove}
         onPointerUp={stopPreviewPan}
         onPointerLeave={stopPreviewPan}
-        className={`flex-1 ${canPanPreview ? 'overflow-auto' : 'overflow-y-scroll overflow-x-hidden'} custom-scrollbar preview-scrollbar transition-all duration-500 ${isFullscreen ? 'fixed inset-0 z-[120]' : ''} ${isCleanPreviewMode ? 'p-0' : ''}`}
+        className={`flex-1 ${canPanPreview ? 'overflow-auto' : 'overflow-y-scroll overflow-x-hidden'} custom-scrollbar preview-scrollbar transition-all duration-500 ${isFullscreen ? 'fixed inset-0 z-[120] bg-surface' : ''} ${isCleanPreviewMode ? 'p-0' : ''}`}
         style={{
           scrollbarGutter: 'stable',
           backgroundColor: isCleanPreviewMode ? 'var(--builder-surface)' : 'var(--builder-surface-muted)',
@@ -507,46 +495,54 @@ export const Canvas: React.FC<CanvasProps> = ({
         }}
       >
       <div id="top" />
-      {false && isFullscreen && !isPreviewMode && (
-        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[110] flex items-center gap-2 bg-surface/80 backdrop-blur-md border border-border/50 p-1.5 rounded-2xl shadow-2xl">
+      {isFullscreen && !isPreviewMode && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[140] flex items-center gap-2 rounded-2xl border border-border/60 bg-surface/90 p-1.5 shadow-2xl backdrop-blur-md">
           <div className="flex items-center gap-1 bg-secondary/50 p-1 rounded-xl">
-            <button 
+            <button
+              type="button"
               onClick={() => setViewport('desktop')}
               className={`p-2 rounded-lg transition-all ${viewport === 'desktop' ? 'text-primary bg-surface shadow-sm' : 'text-text/40 hover:text-primary'}`}
-              title="Escritorio"
+              title="Vista escritorio"
+              aria-label="Vista escritorio"
             >
               <Monitor size={16} />
             </button>
-            <button 
+            <button
+              type="button"
               onClick={() => setViewport('tablet')}
               className={`p-2 rounded-lg transition-all ${viewport === 'tablet' ? 'text-primary bg-surface shadow-sm' : 'text-text/40 hover:text-primary'}`}
-              title="Tablet"
+              title="Vista tablet"
+              aria-label="Vista tablet"
             >
               <Tablet size={16} />
             </button>
-            <button 
+            <button
+              type="button"
               onClick={() => setViewport('mobile')}
               className={`p-2 rounded-lg transition-all ${viewport === 'mobile' ? 'text-primary bg-surface shadow-sm' : 'text-text/40 hover:text-primary'}`}
-              title="Móvil"
+              title="Vista móvil"
+              aria-label="Vista móvil"
             >
               <Smartphone size={16} />
             </button>
           </div>
-          <button 
+          <button
+            type="button"
             onClick={() => setIsFullscreen(false)}
-            className="p-2 text-text/40 hover:text-rose-500 transition-all"
-            title="Salir de Pantalla Completa"
+            className="rounded-xl p-2 text-text/50 transition-all hover:bg-secondary hover:text-rose-500"
+            title="Salir de pantalla completa"
+            aria-label="Salir de pantalla completa"
           >
             <Minimize size={18} />
           </button>
         </div>
       )}
       <div
-        className={`flex min-h-full ${useVirtualDesktopPreview ? 'relative justify-start' : 'justify-center transition-all duration-500'} ${isFullscreen ? 'p-0' : isPreviewMode ? 'p-0' : isDesktopCanvas ? 'p-0' : 'p-6'}`}
+        className={`flex min-h-full ${useVirtualDesktopPreview ? 'relative justify-start' : 'justify-center transition-all duration-500'} ${isFullscreen ? 'px-4 pb-6 pt-20' : isPreviewMode ? 'p-0' : isDesktopCanvas ? 'p-0' : 'p-6'}`}
         style={useVirtualDesktopPreview ? {
           width: `${Math.ceil(previewBaseWidth * effectivePreviewScale)}px`,
           minHeight: renderContentHeight ? `${Math.ceil(renderContentHeight * effectivePreviewScale)}px` : undefined
-        } : (showEditorChrome && userZoom !== 1 ? {
+        } : (canUsePreviewZoom && userZoom !== 1 ? {
           width: `${Math.ceil(previewBaseWidth * userZoom)}px`,
           minHeight: renderContentHeight ? `${Math.ceil(renderContentHeight * userZoom)}px` : undefined
         } : undefined)}
@@ -563,8 +559,8 @@ export const Canvas: React.FC<CanvasProps> = ({
             width: isPreviewMode ? '100%' : (useVirtualDesktopPreview ? `${desktopLogicalWidth}px` : (isFullscreen ? fullscreenViewportWidth : viewportWidths[viewport])),
             maxWidth: isPreviewMode ? 'none' : (useVirtualDesktopPreview ? `${desktopLogicalWidth}px` : (isFullscreen ? (viewport === 'desktop' ? 'none' : viewportWidths[viewport]) : viewport === 'desktop' ? 'none' : viewportWidths[viewport])),
             minHeight: isCleanPreviewMode ? '100vh' : (isDesktopCanvas ? '100%' : viewport === 'mobile' ? '667px' : '1024px'),
-            transform: showEditorChrome && effectivePreviewScale !== 1 ? `scale(${effectivePreviewScale})` : undefined,
-            transformOrigin: showEditorChrome ? 'top left' : 'top center',
+            transform: canUsePreviewZoom && effectivePreviewScale !== 1 ? `scale(${effectivePreviewScale})` : undefined,
+            transformOrigin: canUsePreviewZoom ? 'top left' : 'top center',
             position: useVirtualDesktopPreview ? 'absolute' : 'relative',
             top: useVirtualDesktopPreview ? 0 : undefined,
             left: useVirtualDesktopPreview ? 0 : undefined
@@ -1096,7 +1092,7 @@ export const Canvas: React.FC<CanvasProps> = ({
           </div>
         </div>
       </div>
-      {showEditorChrome && (
+      {canUsePreviewZoom && (
         <div
           className="fixed bottom-5 right-5 z-[130] flex flex-col items-end gap-3"
           data-no-preview-pan="true"

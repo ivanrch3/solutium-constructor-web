@@ -81,6 +81,26 @@ const BENTO_TABLET_COLUMNS = 6;
 const BENTO_MOBILE_COLUMNS = 4;
 const BENTO_BASE_VISIBLE_ROWS = 7;
 const BENTO_MAX_EDITABLE_ROWS = 240;
+const DEFAULT_SETTING_GROUP_ORDER = Object.keys(GROUP_LABELS) as SettingGroupType[];
+
+const uniqueSettingGroups = (groups: SettingGroupType[]) => Array.from(new Set(groups));
+
+const getOrderedSettingGroups = (module: WebModule, element: ModuleElement): SettingGroupType[] => {
+  const hasModuleGlobalOrder = element.type === 'global' && !!module.globalGroups?.length;
+
+  if (!hasModuleGlobalOrder) {
+    return DEFAULT_SETTING_GROUP_ORDER;
+  }
+
+  const globalGroupsWithSettings = DEFAULT_SETTING_GROUP_ORDER.filter(
+    (group) => !!module.globalSettings?.[group]?.length
+  );
+
+  return uniqueSettingGroups([
+    ...module.globalGroups,
+    ...globalGroupsWithSettings
+  ]);
+};
 
 const clampBentoDesktopColumns = (value: any) => {
   const parsed = Number(value);
@@ -1104,23 +1124,27 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                                   );
                                 })()}
 
-                                {!(isBentoItemsElement && selectedBentoCellIndex !== null) && (Object.keys(GROUP_LABELS) as SettingGroupType[]).map(group => {
+                                {!(isBentoItemsElement && selectedBentoCellIndex !== null) && getOrderedSettingGroups(module, element).map(group => {
                                   if (module.type === 'dynamic_cards' && element.id.endsWith('_el_dynamic_cards_cards')) return null;
-                                  const isAvailable = element.groups.includes(group);
                                   const hasSettings = element.type === 'global'
                                     ? !!module.globalSettings?.[group]?.length
                                     : !!element.settings?.[group]?.length;
+                                  const isAvailable = element.type === 'global'
+                                    ? element.groups.includes(group) || hasSettings
+                                    : element.groups.includes(group);
 
                                   if (!isAvailable || !hasSettings) return null;
 
                                   const isGroupExpanded = editorState.expandedGroupsByElement[element.id] === group;
                                   const isShining = shiningGroup === group;
                                   const dynamicCardsGlobalGroupLabels: Partial<Record<SettingGroupType, string>> = {
-                                    contenido: 'Textos',
+                                    title: 'Texto principal',
+                                    subtitle: 'Texto secundario',
+                                    description: 'Viñetas',
+                                    estilo: 'CTA',
                                     multimedia: 'Fondo',
-                                    estilo: 'Animaciones',
                                     estructura: 'Altura',
-                                    interaccion: 'Navegación'
+                                    interaccion: 'Avanzado'
                                   };
                                   const groupLabel = module.type === 'dynamic_cards' && element.type === 'global'
                                     ? dynamicCardsGlobalGroupLabels[group] || GROUP_LABELS[group]

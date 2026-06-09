@@ -154,6 +154,125 @@ const toBooleanSetting = (value: unknown, fallback = false) => {
   return Boolean(value);
 };
 
+type DynamicCardControlledElement = 'primaryText' | 'secondaryText' | 'bullets' | 'cta' | 'background';
+type DynamicCardGlobalFlagId =
+  | 'use_global_primary_text_styles'
+  | 'use_global_secondary_text_styles'
+  | 'use_global_bullets_styles'
+  | 'use_global_cta_styles'
+  | 'use_global_card_background';
+
+const dynamicCardPrimaryTextGlobalFields = new Set([
+  'titleSize', 'titleWeight', 'titleColor', 'titleAlign', 'titleLineHeight', 'titleLetterSpacing',
+  'titleEnterAnimation', 'titleExitAnimation', 'titleEntryDuration', 'titleVisibleDuration', 'titleExitDuration'
+]);
+
+const dynamicCardSecondaryTextGlobalFields = new Set([
+  'bodySize', 'bodyWeight', 'bodyColor', 'bodyAlign',
+  'bodyEnterAnimation', 'bodyExitAnimation', 'bodyEntryDuration', 'bodyVisibleDuration', 'bodyExitDuration'
+]);
+
+const dynamicCardBulletsGlobalFields = new Set([
+  'bulletColor'
+]);
+
+const dynamicCardCtaGlobalFields = new Set([
+  'ctaSize', 'ctaStyle', 'ctaPosition', 'ctaColor',
+  'ctaAnimation', 'ctaExitAnimation', 'ctaEntryDuration', 'ctaVisibleDuration', 'ctaExitDuration'
+]);
+
+const dynamicCardBackgroundGlobalFields = new Set([
+  'backgroundType', 'bgColor', 'gradientFrom', 'gradientTo', 'gradientDirection',
+  'bgImage', 'overlayEnabled', 'overlayColor', 'overlayOpacity', 'imageFit', 'imagePosition',
+  'effect', 'effectSpeed', 'effectDensity', 'effectDirection',
+]);
+
+const dynamicCardGlobalControlMessages: Record<DynamicCardGlobalFlagId, string> = {
+  use_global_primary_text_styles: 'Texto principal controlado por configuración global. Desactive el uso global de este elemento para editarlo aquí.',
+  use_global_secondary_text_styles: 'Texto secundario controlado por configuración global. Desactive el uso global de este elemento para editarlo aquí.',
+  use_global_bullets_styles: 'Viñetas controladas por configuración global. Desactive el uso global de este elemento para editarlo aquí.',
+  use_global_cta_styles: 'CTA controlado por configuración global. Desactive el uso global de este elemento para editarlo aquí.',
+  use_global_card_background: 'Fondo controlado por configuración global. Desactive el uso global de este elemento para editarlo aquí.'
+};
+
+const getDynamicCardGlobalControlForField = (settingId: string): {
+  globalFlagId: DynamicCardGlobalFlagId;
+  controlledElement: DynamicCardControlledElement;
+  legacyFlagId?: 'use_global_text_styles' | 'use_global_background' | 'use_global_effect';
+} | null => {
+  if (dynamicCardPrimaryTextGlobalFields.has(settingId)) {
+    return { globalFlagId: 'use_global_primary_text_styles', controlledElement: 'primaryText', legacyFlagId: 'use_global_text_styles' };
+  }
+  if (dynamicCardSecondaryTextGlobalFields.has(settingId)) {
+    return { globalFlagId: 'use_global_secondary_text_styles', controlledElement: 'secondaryText', legacyFlagId: 'use_global_text_styles' };
+  }
+  if (dynamicCardBulletsGlobalFields.has(settingId)) {
+    return { globalFlagId: 'use_global_bullets_styles', controlledElement: 'bullets', legacyFlagId: 'use_global_text_styles' };
+  }
+  if (dynamicCardCtaGlobalFields.has(settingId)) {
+    return { globalFlagId: 'use_global_cta_styles', controlledElement: 'cta', legacyFlagId: 'use_global_text_styles' };
+  }
+  if (dynamicCardBackgroundGlobalFields.has(settingId)) {
+    return { globalFlagId: 'use_global_card_background', controlledElement: 'background', legacyFlagId: 'use_global_background' };
+  }
+  return null;
+};
+
+const isExplicitTrueSetting = (value: unknown) => (
+  value === true ||
+  value === 1 ||
+  (typeof value === 'string' && value.trim().toLowerCase() === 'true')
+);
+
+const resolveDynamicCardGlobalControlState = ({
+  settingId,
+  contextId,
+  moduleId,
+  moduleType,
+  settingsValues,
+  isRepeaterItem
+}: {
+  settingId: string;
+  contextId?: string;
+  moduleId?: string;
+  moduleType?: string;
+  settingsValues?: Record<string, any>;
+  isRepeaterItem: boolean;
+}) => {
+  if (moduleType !== 'dynamic_cards' || !isRepeaterItem) {
+    return {
+      controlledByGlobal: false,
+      globalFlagId: null as DynamicCardGlobalFlagId | null,
+      controlledElement: null as DynamicCardControlledElement | null,
+      reason: null as string | null
+    };
+  }
+
+  const control = getDynamicCardGlobalControlForField(settingId);
+  if (!control || !moduleId || !contextId || !contextId.includes('_el_dynamic_cards_cards')) {
+    return {
+      controlledByGlobal: false,
+      globalFlagId: control?.globalFlagId || null,
+      controlledElement: control?.controlledElement || null,
+      reason: null as string | null
+    };
+  }
+
+  const globalFlagValue = settingsValues?.[`${moduleId}_global_${control.globalFlagId}`];
+  const legacyFlagValue = control.legacyFlagId
+    ? settingsValues?.[`${moduleId}_global_${control.legacyFlagId}`]
+    : undefined;
+  const controlledByGlobal = isExplicitTrueSetting(globalFlagValue);
+  const controlledByLegacyGlobal = globalFlagValue === undefined && isExplicitTrueSetting(legacyFlagValue);
+
+  return {
+    controlledByGlobal: controlledByGlobal || controlledByLegacyGlobal,
+    globalFlagId: control.globalFlagId,
+    controlledElement: control.controlledElement,
+    reason: controlledByGlobal || controlledByLegacyGlobal ? dynamicCardGlobalControlMessages[control.globalFlagId] : null
+  };
+};
+
 const dispatchDynamicCardsEditingEvent = (moduleId: string, active: boolean) => {
   if (!moduleId || typeof window === 'undefined') return;
   window.dispatchEvent(new CustomEvent('dynamic-cards-editor-focus', {
@@ -1109,28 +1228,15 @@ export const SettingControl: React.FC<SettingControlProps> = ({
       const shouldUseFieldSections = !!setting.useFieldSections && sectionEntries.length > 1;
       const moduleId = getModuleIdFromContext(contextId);
       const repeaterStateKey = `${contextId || 'root'}_${setting.id}`;
-      const isDynamicCardsAnimationLocked = moduleType === 'dynamic_cards' &&
-        toBooleanSetting(settingsValues?.[`${moduleId}_global_use_global_effect`], true);
-      const isDynamicCardsTextLocked = moduleType === 'dynamic_cards' &&
-        toBooleanSetting(settingsValues?.[`${moduleId}_global_use_global_text_styles`], true);
-      const isDynamicCardsBackgroundLocked = moduleType === 'dynamic_cards' &&
-        toBooleanSetting(settingsValues?.[`${moduleId}_global_use_global_background`], true);
-      const dynamicCardsAnimationLockMessage = 'Las animaciones por tarjeta están deshabilitadas porque se está usando la configuración global. Desactiva \'Usar animaciones globales\' en Configuración Global para personalizarlas por tarjeta.';
-      const dynamicCardsTextLockMessage = 'Los estilos de texto por tarjeta están deshabilitados porque se está usando la configuración global. Desactiva \'Usar estilos de texto globales\' en Configuración Global para personalizarlos por tarjeta.';
-      const dynamicCardsBackgroundLockMessage = 'El fondo por tarjeta está deshabilitado porque se está usando el fondo global. Desactiva \'Usar fondo global\' en Configuración Global para personalizarlo por tarjeta.';
-      const dynamicCardsTextStyleFields = new Set([
-        'titleSize', 'titleWeight', 'titleColor', 'titleAlign', 'titleLineHeight', 'titleLetterSpacing',
-        'bulletIcon', 'bodySize', 'bodyWeight', 'bodyColor', 'bodyAlign', 'ctaSize', 'ctaColor'
-      ]);
-      const dynamicCardsBackgroundFields = new Set([
-        'backgroundType', 'bgColor', 'gradientFrom', 'gradientTo', 'gradientDirection',
-        'bgImage', 'overlayEnabled', 'overlayColor', 'overlayOpacity', 'imageFit', 'imagePosition'
-      ]);
       const getDynamicCardsLockMessage = (field: SettingDefinition) => {
-        if (isDynamicCardsAnimationLocked && field.subsection === 'Animaciones') return dynamicCardsAnimationLockMessage;
-        if (isDynamicCardsBackgroundLocked && dynamicCardsBackgroundFields.has(field.id)) return dynamicCardsBackgroundLockMessage;
-        if (isDynamicCardsTextLocked && dynamicCardsTextStyleFields.has(field.id)) return dynamicCardsTextLockMessage;
-        return undefined;
+        return resolveDynamicCardGlobalControlState({
+          settingId: field.id,
+          contextId,
+          moduleId,
+          moduleType,
+          settingsValues,
+          isRepeaterItem: setting.id === 'cards'
+        }).reason || undefined;
       };
       const renderRepeaterField = (field: SettingDefinition, item: any, index: number) => (
         (() => {
@@ -1284,10 +1390,11 @@ export const SettingControl: React.FC<SettingControlProps> = ({
                   {shouldUseFieldSections
                     ? sectionEntries.map(([sectionName, fields]) => {
                       const isSectionOpen = openRepeaterSections[itemSectionKey] === sectionName;
-                      const showTextLockMessage = isDynamicCardsTextLocked && sectionName === 'Textos';
-                      const showCtaTextLockMessage = isDynamicCardsTextLocked && sectionName === 'CTA';
-                      const showBackgroundLockMessage = isDynamicCardsBackgroundLocked && sectionName === 'Fondo';
-                      const showAnimationLockMessage = isDynamicCardsAnimationLocked && sectionName === 'Animaciones';
+                      const dynamicCardsSectionLockMessages = Array.from(new Set(
+                        fields
+                          .map((field) => getDynamicCardsLockMessage(field))
+                          .filter(Boolean) as string[]
+                      ));
 
                       return (
                       <details key={sectionName} className="overflow-hidden rounded-lg border border-border/40 bg-surface/80" open={isSectionOpen}>
@@ -1304,21 +1411,11 @@ export const SettingControl: React.FC<SettingControlProps> = ({
                           {sectionName}
                         </summary>
                         <div className="space-y-3 border-t border-border/30 p-3">
-                          {(showTextLockMessage || showCtaTextLockMessage) && (
-                            <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[10px] font-semibold leading-relaxed text-amber-800">
-                              {dynamicCardsTextLockMessage}
+                          {dynamicCardsSectionLockMessages.map((message) => (
+                            <div key={message} className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[10px] font-semibold leading-relaxed text-amber-800">
+                              {message}
                             </div>
-                          )}
-                          {showBackgroundLockMessage && (
-                            <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[10px] font-semibold leading-relaxed text-amber-800">
-                              {dynamicCardsBackgroundLockMessage}
-                            </div>
-                          )}
-                          {showAnimationLockMessage && (
-                            <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[10px] font-semibold leading-relaxed text-amber-800">
-                              {dynamicCardsAnimationLockMessage}
-                            </div>
-                          )}
+                          ))}
                           {fields.map(field => renderRepeaterField(field, item, index))}
                         </div>
                       </details>

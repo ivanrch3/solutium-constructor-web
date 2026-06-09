@@ -21,6 +21,7 @@ type DynamicCard = {
   effectSpeed?: string;
   effectDensity?: string;
   effectDirection?: 'ltr' | 'rtl';
+  showPrimaryText?: boolean;
   titleText?: string;
   titleSize?: number;
   titleWeight?: string;
@@ -35,8 +36,10 @@ type DynamicCard = {
   titleExitDuration?: number;
   bodyText?: string;
   showBody?: boolean;
+  showBullets?: boolean;
   bullets?: string;
   bulletIcon?: string;
+  bulletColor?: string;
   bodySize?: number;
   bodyWeight?: string;
   bodyColor?: string;
@@ -77,6 +80,7 @@ const DEFAULT_CARD: DynamicCard = {
   effectSpeed: 'fast',
   effectDensity: 'medium',
   effectDirection: 'ltr',
+  showPrimaryText: true,
   titleText: 'Impulsa tu negocio',
   titleSize: 54,
   titleWeight: 'black',
@@ -91,8 +95,10 @@ const DEFAULT_CARD: DynamicCard = {
   titleExitDuration: 0.35,
   bodyText: 'Crea experiencias dinámicas con movimiento, velocidad y alto impacto visual.',
   showBody: true,
+  showBullets: true,
   bullets: 'Movimiento fluido\nFondos personalizables\nCTA por tarjeta',
   bulletIcon: 'Zap',
+  bulletColor: 'var(--primary-color, #2563EB)',
   bodySize: 18,
   bodyWeight: 'medium',
   bodyColor: '#E2E8F0',
@@ -354,32 +360,45 @@ export const DynamicCardsModule: React.FC<{
     const key = elementId ? `${elementId}_${settingId}` : `${moduleId}_global_${settingId}`;
     return settingsValues[key] !== undefined ? settingsValues[key] : defaultValue;
   };
+  const getGlobalBool = (settingId: string, legacySettingId: string | null, defaultValue: boolean) => {
+    const value = settingsValues[`${moduleId}_global_${settingId}`];
+    if (value !== undefined) return toBoolean(value, false);
+    if (legacySettingId) {
+      const legacyValue = settingsValues[`${moduleId}_global_${legacySettingId}`];
+      if (legacyValue !== undefined) return toBoolean(legacyValue, false);
+    }
+    return defaultValue;
+  };
   const clampRange = (value: unknown, fallback: number, min: number, max: number) =>
     Math.min(max, Math.max(min, parseNumSafe(value, fallback)));
 
   const navigationMode = getVal(null, 'navigation_mode', 'auto_dots');
   const intervalSeconds = parseNumSafe(getVal(null, 'interval_seconds', 5), 5);
-  const heightDesktop = clampRange(getVal(null, 'height_desktop', 560), 560, 200, 800);
-  const heightTablet = clampRange(getVal(null, 'height_tablet', 480), 480, 200, 700);
-  const heightMobile = clampRange(getVal(null, 'height_mobile', 420), 420, 200, 620);
-  const useGlobalTextStyles = toBoolean(getVal(null, 'use_global_text_styles', true), true);
+  const heightDesktop = clampRange(getVal(null, 'height_desktop', 560), 560, 160, 800);
+  const heightTablet = clampRange(getVal(null, 'height_tablet', 480), 480, 120, 700);
+  const heightMobile = clampRange(getVal(null, 'height_mobile', 420), 420, 80, 620);
+  const useGlobalPrimaryTextStyles = getGlobalBool('use_global_primary_text_styles', 'use_global_text_styles', true);
   const globalTitleSize = parseNumSafe(getVal(null, 'global_title_size', 54), 54);
   const globalTitleWeight = getVal(null, 'global_title_weight', 'black');
   const globalTitleColor = getVal(null, 'global_title_color', '#FFFFFF');
   const globalTitleAlign = getVal(null, 'global_title_align', 'center') as DynamicCard['titleAlign'];
   const globalTitleLineHeight = parseNumSafe(getVal(null, 'global_title_line_height', 0.98), 0.98);
   const globalTitleLetterSpacing = parseNumSafe(getVal(null, 'global_title_letter_spacing', 0), 0);
+  const useGlobalSecondaryTextStyles = getGlobalBool('use_global_secondary_text_styles', 'use_global_text_styles', true);
   const globalBodySize = parseNumSafe(getVal(null, 'global_body_size', 18), 18);
   const globalBodyWeight = getVal(null, 'global_body_weight', 'medium');
   const globalBodyColor = getVal(null, 'global_body_color', '#E2E8F0');
   const globalBodyAlign = getVal(null, 'global_body_align', 'center') as DynamicCard['bodyAlign'];
   const globalBodyLineHeight = parseNumSafe(getVal(null, 'global_body_line_height', 1.55), 1.55);
-  const globalBulletIcon = getVal(null, 'global_bullet_icon', 'Zap');
+  const useGlobalBulletsStyles = getGlobalBool('use_global_bullets_styles', 'use_global_text_styles', true);
   const globalBulletColor = getVal(null, 'global_bullet_color', 'var(--primary-color, #2563EB)');
+  const useGlobalCtaStyles = getGlobalBool('use_global_cta_styles', 'use_global_text_styles', true);
   const globalCtaSize = getVal(null, 'global_cta_size', 'md') as DynamicCard['ctaSize'];
+  const globalCtaStyle = getVal(null, 'global_cta_style', 'solid') as DynamicCard['ctaStyle'];
+  const globalCtaPosition = getVal(null, 'global_cta_position', 'center') as DynamicCard['ctaPosition'];
   const globalCtaWeight = getVal(null, 'global_cta_weight', 'black');
   const globalCtaColor = getVal(null, 'global_cta_color', 'var(--primary-color, #2563EB)');
-  const useGlobalBackground = toBoolean(getVal(null, 'use_global_background', true), true);
+  const useGlobalBackground = getGlobalBool('use_global_card_background', 'use_global_background', true);
   const globalBackgroundType = getVal(null, 'global_background_type', 'gradient') as DynamicCard['backgroundType'];
   const globalBgColor = getVal(null, 'global_bg_color', '#0F172A');
   const globalGradientFrom = getVal(null, 'global_gradient_from', '#0F172A');
@@ -391,7 +410,7 @@ export const DynamicCardsModule: React.FC<{
   const globalOverlayEnabled = toBoolean(getVal(null, 'global_overlay_enabled', true), true);
   const globalOverlayColor = getVal(null, 'global_overlay_color', '#020617');
   const globalOverlayOpacity = parseNumSafe(getVal(null, 'global_overlay_opacity', 25), 25);
-  const useGlobalEffect = toBoolean(getVal(null, 'use_global_effect', true), true);
+  const useGlobalEffect = useGlobalBackground || getGlobalBool('use_global_card_background', 'use_global_effect', false);
   const globalEffect = getVal(null, 'global_effect', 'speed_lines');
   const globalSpeed = getVal(null, 'global_speed', 'fast');
   const globalDensity = getVal(null, 'global_density', 'medium');
@@ -449,21 +468,21 @@ export const DynamicCardsModule: React.FC<{
   const speed = useGlobalEffect ? globalSpeed : activeCard.effectSpeed || globalSpeed;
   const density = useGlobalEffect ? globalDensity : activeCard.effectDensity || globalDensity;
   const direction = useGlobalEffect ? globalDirection : activeCard.effectDirection || globalDirection;
-  const titleEnter = isMobile && reduceMotionMobile ? 'fade' : (useGlobalEffect ? globalTitleEnter : activeCard.titleEnterAnimation);
-  const titleExit = isMobile && reduceMotionMobile ? 'fade' : (useGlobalEffect ? globalTitleExit : activeCard.titleExitAnimation);
-  const bodyEnter = isMobile && reduceMotionMobile ? 'fade' : (useGlobalEffect ? globalBodyEnter : activeCard.bodyEnterAnimation);
-  const bodyExit = isMobile && reduceMotionMobile ? 'fade' : (useGlobalEffect ? globalBodyExit : activeCard.bodyExitAnimation);
-  const ctaEnter = isMobile && reduceMotionMobile ? 'fade' : (useGlobalEffect ? globalCtaEnter : activeCard.ctaAnimation || bodyEnter);
-  const ctaExit = isMobile && reduceMotionMobile ? 'fade' : (useGlobalEffect ? globalCtaExit : activeCard.ctaExitAnimation || bodyExit);
-  const titleEntryDuration = useGlobalEffect ? globalTitleEntryDuration : parseNumSafe(activeCard.titleEntryDuration, entryDuration);
-  const titleVisibleDuration = useGlobalEffect ? globalTitleVisibleDuration : parseNumSafe(activeCard.titleVisibleDuration, visibleDuration);
-  const titleExitDuration = useGlobalEffect ? globalTitleExitDuration : parseNumSafe(activeCard.titleExitDuration, exitDuration);
-  const bodyEntryDuration = useGlobalEffect ? globalBodyEntryDuration : parseNumSafe(activeCard.bodyEntryDuration, entryDuration);
-  const bodyVisibleDuration = useGlobalEffect ? globalBodyVisibleDuration : parseNumSafe(activeCard.bodyVisibleDuration, visibleDuration);
-  const bodyExitDuration = useGlobalEffect ? globalBodyExitDuration : parseNumSafe(activeCard.bodyExitDuration, exitDuration);
-  const ctaEntryDuration = useGlobalEffect ? globalCtaEntryDuration : parseNumSafe(activeCard.ctaEntryDuration, entryDuration);
-  const ctaVisibleDuration = useGlobalEffect ? globalCtaVisibleDuration : parseNumSafe(activeCard.ctaVisibleDuration, visibleDuration);
-  const ctaExitDuration = useGlobalEffect ? globalCtaExitDuration : parseNumSafe(activeCard.ctaExitDuration, exitDuration);
+  const titleEnter = isMobile && reduceMotionMobile ? 'fade' : (useGlobalPrimaryTextStyles ? globalTitleEnter : activeCard.titleEnterAnimation);
+  const titleExit = isMobile && reduceMotionMobile ? 'fade' : (useGlobalPrimaryTextStyles ? globalTitleExit : activeCard.titleExitAnimation);
+  const bodyEnter = isMobile && reduceMotionMobile ? 'fade' : (useGlobalSecondaryTextStyles ? globalBodyEnter : activeCard.bodyEnterAnimation);
+  const bodyExit = isMobile && reduceMotionMobile ? 'fade' : (useGlobalSecondaryTextStyles ? globalBodyExit : activeCard.bodyExitAnimation);
+  const ctaEnter = isMobile && reduceMotionMobile ? 'fade' : (useGlobalCtaStyles ? globalCtaEnter : activeCard.ctaAnimation || bodyEnter);
+  const ctaExit = isMobile && reduceMotionMobile ? 'fade' : (useGlobalCtaStyles ? globalCtaExit : activeCard.ctaExitAnimation || bodyExit);
+  const titleEntryDuration = useGlobalPrimaryTextStyles ? globalTitleEntryDuration : parseNumSafe(activeCard.titleEntryDuration, entryDuration);
+  const titleVisibleDuration = useGlobalPrimaryTextStyles ? globalTitleVisibleDuration : parseNumSafe(activeCard.titleVisibleDuration, visibleDuration);
+  const titleExitDuration = useGlobalPrimaryTextStyles ? globalTitleExitDuration : parseNumSafe(activeCard.titleExitDuration, exitDuration);
+  const bodyEntryDuration = useGlobalSecondaryTextStyles ? globalBodyEntryDuration : parseNumSafe(activeCard.bodyEntryDuration, entryDuration);
+  const bodyVisibleDuration = useGlobalSecondaryTextStyles ? globalBodyVisibleDuration : parseNumSafe(activeCard.bodyVisibleDuration, visibleDuration);
+  const bodyExitDuration = useGlobalSecondaryTextStyles ? globalBodyExitDuration : parseNumSafe(activeCard.bodyExitDuration, exitDuration);
+  const ctaEntryDuration = useGlobalCtaStyles ? globalCtaEntryDuration : parseNumSafe(activeCard.ctaEntryDuration, entryDuration);
+  const ctaVisibleDuration = useGlobalCtaStyles ? globalCtaVisibleDuration : parseNumSafe(activeCard.ctaVisibleDuration, visibleDuration);
+  const ctaExitDuration = useGlobalCtaStyles ? globalCtaExitDuration : parseNumSafe(activeCard.ctaExitDuration, exitDuration);
   const contentEntryDuration = Math.max(titleEntryDuration, bodyEntryDuration, ctaEntryDuration);
   const contentExitDuration = Math.max(titleExitDuration, bodyExitDuration, ctaExitDuration);
   const coordinatedInterval = Math.max(
@@ -649,22 +668,24 @@ export const DynamicCardsModule: React.FC<{
     stageStyle.background = `linear-gradient(${backgroundConfig.gradientDirection || '135deg'}, ${backgroundConfig.gradientFrom || '#0F172A'} 0%, ${backgroundConfig.gradientTo || 'var(--primary-color, #2563EB)'} 100%)`;
   }
 
-  const titleSize = useGlobalTextStyles ? globalTitleSize : parseNumSafe(activeCard.titleSize, 54);
-  const titleWeight = useGlobalTextStyles ? globalTitleWeight : activeCard.titleWeight;
-  const titleColor = useGlobalTextStyles ? globalTitleColor : activeCard.titleColor || '#FFFFFF';
-  const titleAlign = (useGlobalTextStyles ? globalTitleAlign : activeCard.titleAlign) || 'center';
-  const titleLineHeight = useGlobalTextStyles ? globalTitleLineHeight : parseNumSafe(activeCard.titleLineHeight, 0.98);
-  const titleLetterSpacing = useGlobalTextStyles ? globalTitleLetterSpacing : parseNumSafe(activeCard.titleLetterSpacing, 0);
-  const bodySize = useGlobalTextStyles ? globalBodySize : parseNumSafe(activeCard.bodySize, 18);
-  const bodyWeight = useGlobalTextStyles ? globalBodyWeight : activeCard.bodyWeight;
-  const bodyColor = useGlobalTextStyles ? globalBodyColor : activeCard.bodyColor || '#E2E8F0';
-  const bodyAlign = (useGlobalTextStyles ? globalBodyAlign : activeCard.bodyAlign) || 'center';
-  const bodyLineHeight = useGlobalTextStyles ? globalBodyLineHeight : 1.55;
-  const bulletIconName = useGlobalTextStyles ? globalBulletIcon : activeCard.bulletIcon || 'Zap';
-  const bulletColor = useGlobalTextStyles ? globalBulletColor : activeCard.ctaColor || 'var(--primary-color, #2563EB)';
-  const ctaSize = useGlobalTextStyles ? globalCtaSize : activeCard.ctaSize || 'md';
-  const ctaWeight = useGlobalTextStyles ? globalCtaWeight : 'black';
-  const ctaColor = useGlobalTextStyles ? globalCtaColor : activeCard.ctaColor || 'var(--primary-color, #2563EB)';
+  const titleSize = useGlobalPrimaryTextStyles ? globalTitleSize : parseNumSafe(activeCard.titleSize, 54);
+  const titleWeight = useGlobalPrimaryTextStyles ? globalTitleWeight : activeCard.titleWeight;
+  const titleColor = useGlobalPrimaryTextStyles ? globalTitleColor : activeCard.titleColor || '#FFFFFF';
+  const titleAlign = (useGlobalPrimaryTextStyles ? globalTitleAlign : activeCard.titleAlign) || 'center';
+  const titleLineHeight = useGlobalPrimaryTextStyles ? globalTitleLineHeight : parseNumSafe(activeCard.titleLineHeight, 0.98);
+  const titleLetterSpacing = useGlobalPrimaryTextStyles ? globalTitleLetterSpacing : parseNumSafe(activeCard.titleLetterSpacing, 0);
+  const bodySize = useGlobalSecondaryTextStyles ? globalBodySize : parseNumSafe(activeCard.bodySize, 18);
+  const bodyWeight = useGlobalSecondaryTextStyles ? globalBodyWeight : activeCard.bodyWeight;
+  const bodyColor = useGlobalSecondaryTextStyles ? globalBodyColor : activeCard.bodyColor || '#E2E8F0';
+  const bodyAlign = (useGlobalSecondaryTextStyles ? globalBodyAlign : activeCard.bodyAlign) || 'center';
+  const bodyLineHeight = useGlobalSecondaryTextStyles ? globalBodyLineHeight : 1.55;
+  const bulletIconName = activeCard.bulletIcon || 'Zap';
+  const bulletColor = useGlobalBulletsStyles ? globalBulletColor : activeCard.bulletColor || 'var(--primary-color, #2563EB)';
+  const ctaSize = useGlobalCtaStyles ? globalCtaSize : activeCard.ctaSize || 'md';
+  const effectiveCtaStyle = useGlobalCtaStyles ? globalCtaStyle : activeCard.ctaStyle || 'solid';
+  const effectiveCtaPosition = useGlobalCtaStyles ? globalCtaPosition : activeCard.ctaPosition || 'center';
+  const ctaWeight = useGlobalCtaStyles ? globalCtaWeight : 'black';
+  const ctaColor = useGlobalCtaStyles ? globalCtaColor : activeCard.ctaColor || 'var(--primary-color, #2563EB)';
 
   const titleStyle: React.CSSProperties = {
     color: titleColor,
@@ -693,9 +714,12 @@ export const DynamicCardsModule: React.FC<{
       .filter(Boolean)
       .slice(0, 5)
   ), [activeCard.bullets]);
-  const showBody = activeCard.showBody !== false && (String(activeCard.bodyText || '').trim() !== '' || bullets.length > 0);
+  const showTitle = activeCard.showPrimaryText !== false && String(activeCard.titleText || '').trim() !== '';
+  const showBody = activeCard.showBody !== false && String(activeCard.bodyText || '').trim() !== '';
+  const showBullets = activeCard.showBullets !== false && bullets.length > 0;
   const showCta = activeCard.ctaEnabled !== false;
-  const contentBlockCount = 1 + (showBody ? 1 : 0) + (showCta ? 1 : 0);
+  const showBodyBlock = showBody || showBullets;
+  const contentBlockCount = Math.max(1, (showTitle ? 1 : 0) + (showBodyBlock ? 1 : 0) + (showCta ? 1 : 0));
   const effectiveTitleAlign = contentBlockCount === 1 ? 'center' : titleAlign;
   const effectiveTitleStyle: React.CSSProperties = {
     ...titleStyle,
@@ -703,7 +727,7 @@ export const DynamicCardsModule: React.FC<{
   };
   const BulletIcon = (LucideIcons as any)[bulletIconName || 'Zap'] || LucideIcons.Zap;
   const ctaHref = String(activeCard.ctaUrl || '#').trim() || '#';
-  const ctaPosition = normalizeCtaPosition(activeCard.ctaPosition);
+  const ctaPosition = normalizeCtaPosition(effectiveCtaPosition);
   const titleBlockClass = effectiveTitleAlign === 'right' ? 'self-end' : effectiveTitleAlign === 'left' ? 'self-start' : 'self-center';
   const bodyBlockClass = bodyAlign === 'right' ? 'self-center text-right' : bodyAlign === 'left' ? 'self-center text-left' : 'self-center text-center';
   const bulletJustifyClass = bodyAlign === 'right' ? 'justify-items-end' : bodyAlign === 'left' ? 'justify-items-start' : 'justify-items-center';
@@ -714,18 +738,18 @@ export const DynamicCardsModule: React.FC<{
       : 'justify-start';
   const ctaBaseClass = `${CTA_SIZE_CLASS[ctaSize || 'md']} inline-flex items-center justify-center gap-2 rounded-full transition-transform hover:scale-[1.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70`;
   const ctaStyle: React.CSSProperties = {
-    color: activeCard.ctaStyle === 'solid' ? '#FFFFFF' : ctaColor,
-    background: activeCard.ctaStyle === 'solid'
+    color: effectiveCtaStyle === 'solid' ? '#FFFFFF' : ctaColor,
+    background: effectiveCtaStyle === 'solid'
       ? ctaColor
-      : activeCard.ctaStyle === 'glass'
+      : effectiveCtaStyle === 'glass'
         ? 'rgba(255,255,255,0.16)'
         : 'transparent',
-    border: activeCard.ctaStyle === 'outline'
+    border: effectiveCtaStyle === 'outline'
       ? `1px solid ${ctaColor || '#FFFFFF'}`
-      : activeCard.ctaStyle === 'glass'
+      : effectiveCtaStyle === 'glass'
         ? '1px solid rgba(255,255,255,0.28)'
         : '1px solid transparent',
-    backdropFilter: activeCard.ctaStyle === 'glass' ? 'blur(14px)' : undefined,
+    backdropFilter: effectiveCtaStyle === 'glass' ? 'blur(14px)' : undefined,
     fontWeight: getWeight(ctaWeight)
   };
 
@@ -893,25 +917,29 @@ export const DynamicCardsModule: React.FC<{
           key={cardContentKey}
           className={`dynamic-cards-content dc-blocks-${contentBlockCount} h-full w-full px-6 py-7 @md:px-12 @md:py-10 @5xl:px-16 @5xl:py-12`}
         >
-            <div
-              className={`dynamic-cards-title ${titleBlockClass}`}
-              style={titleAnimation}
-            >
-              <h2 style={effectiveTitleStyle}>
-                <span>{activeCard.titleText || ''}</span>
-              </h2>
-            </div>
+            {showTitle && (
+              <div
+                className={`dynamic-cards-title ${titleBlockClass}`}
+                style={titleAnimation}
+              >
+                <h2 style={effectiveTitleStyle}>
+                  <span>{activeCard.titleText || ''}</span>
+                </h2>
+              </div>
+            )}
 
-            {showBody && (
+            {showBodyBlock && (
             <div
               className={`dynamic-cards-body ${bodyBlockClass}`}
               style={bodyAnimation}
             >
-              <p style={bodyStyle}>
-                <span>{activeCard.bodyText || ''}</span>
-              </p>
+              {showBody && (
+                <p style={bodyStyle}>
+                  <span>{activeCard.bodyText || ''}</span>
+                </p>
+              )}
 
-              {bullets.length > 0 && (
+              {showBullets && (
                 <ul className={`dynamic-cards-bullets grid ${bulletJustifyClass}`}>
                   {bullets.map((bullet, index) => (
                     <li key={`${bullet}-${index}`} className={`dynamic-cards-bullet flex max-w-full items-start gap-2 text-sm @md:text-base ${bodyAlign === 'center' ? 'justify-center' : ''}`} style={{ color: bodyColor }}>

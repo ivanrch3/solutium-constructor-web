@@ -34,6 +34,7 @@ import { getProducts } from '../services/dataService';
 import { Customer, Product, TrustedCompanyLogo } from '../types/schema';
 import { buildAutomaticMenuItems, mergeAutomaticMenuItemsWithExisting, normalizeSectionAnchorId, resolveMenuMode } from '../utils/menuNavigation';
 import { buildProjectThemeCssVariables, normalizeProjectBrandColors } from '../utils/projectTheme';
+import { appendReferralParamToSolutiumUrl, extractReferralCodeFromSearch } from '../utils/referralLinks';
 
 interface ViewerProps {
   site: PublishedSite;
@@ -81,6 +82,43 @@ export const Viewer: React.FC<ViewerProps> = ({
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (!isPublishedViewer || typeof document === 'undefined') return;
+
+    const referralCode = extractReferralCodeFromSearch(window.location.search);
+    if (!referralCode) return;
+
+    const syncReferralLinks = () => {
+      const anchors = document.querySelectorAll<HTMLAnchorElement>('a[href]');
+      anchors.forEach((anchor) => {
+        const currentHref = anchor.getAttribute('href');
+        if (!currentHref) return;
+
+        const nextHref = appendReferralParamToSolutiumUrl(currentHref, referralCode, window.location.origin);
+        if (nextHref && nextHref !== currentHref) {
+          anchor.setAttribute('href', nextHref);
+        }
+      });
+    };
+
+    syncReferralLinks();
+
+    const observer = new MutationObserver(() => {
+      syncReferralLinks();
+    });
+
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['href']
+    });
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [isPublishedViewer, site.siteId]);
 
   useEffect(() => {
     // [SATELLITE_PRODUCTS_PAYLOAD_RECEIVE_DEBUG] (FASE 3)

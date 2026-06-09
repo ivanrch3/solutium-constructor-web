@@ -10,6 +10,7 @@ import { parseNumSafe } from '../utils';
 import { Responsive } from 'react-grid-layout/legacy';
 import { SectionAnimation } from '../animations/SectionAnimation';
 import { normalizeSectionAnimation } from '../../../constants/moduleAnimations';
+import { appendReferralParamToSolutiumUrl, extractReferralCodeFromSearch } from '../../../utils/referralLinks';
 import '/node_modules/react-grid-layout/css/styles.css';
 import '/node_modules/react-resizable/css/styles.css';
 
@@ -266,11 +267,16 @@ const buildBentoEmailUrl = (email: any, subject: any, body: any) => {
 
 const openBentoActionUrl = (url: string, target: any = 'new_tab') => {
   if (!url || typeof window === 'undefined') return;
+  const referralCode = extractReferralCodeFromSearch(window.location.search);
+  const resolvedUrl = referralCode
+    ? appendReferralParamToSolutiumUrl(url, referralCode, window.location.origin)
+    : url;
+
   if (target === 'same_tab') {
-    window.location.href = url;
+    window.location.href = resolvedUrl;
     return;
   }
-  window.open(url, '_blank', 'noopener,noreferrer');
+  window.open(resolvedUrl, '_blank', 'noopener,noreferrer');
 };
 
 const scrollToBentoAnchor = (anchor: string) => {

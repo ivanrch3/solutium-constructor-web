@@ -272,7 +272,7 @@ export const getAppMadreBaseUrl = () => {
   }
 
   const isLocalConstructor = ['localhost', '127.0.0.1'].includes(window.location.hostname);
-  return normalizeAppMadreBaseUrl(isLocalConstructor ? 'http://localhost:3000' : 'https://solutium.app');
+  return normalizeAppMadreBaseUrl(isLocalConstructor ? 'http://localhost:3000' : 'https://app.solutium.app');
 };
 
 const consumeSecureLaunchSessionNetwork = async (

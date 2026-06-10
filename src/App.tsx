@@ -567,14 +567,14 @@ const getMotherApiBaseUrl = () => {
   const envUrl =
     import.meta.env.VITE_APP_MADRE_API_URL ||
     import.meta.env.VITE_API_BASE_URL ||
-    'https://solutium.app';
+    'https://app.solutium.app';
 
   return String(envUrl).replace(/\/$/, '');
 };
 
 const fetchPublishedSiteById = async (siteId: string) => {
   const configuredBaseUrl = getMotherApiBaseUrl();
-  const productionBaseUrl = 'https://solutium.app';
+  const productionBaseUrl = 'https://app.solutium.app';
   const isProductionConstructor =
     typeof window !== 'undefined' && window.location.hostname === 'constructor.solutium.app';
   const baseUrls = isProductionConstructor

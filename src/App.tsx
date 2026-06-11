@@ -11,7 +11,7 @@ import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { Sidebar } from './components/Sidebar';
 import { DataTab } from './components/DataTab';
 import { Dashboard } from './components/Dashboard';
-import { MethodSelection, CreationMethod } from './components/MethodSelection';
+import { AI_PAGE_GENERATOR_ENABLED, MethodSelection, CreationMethod } from './components/MethodSelection';
 import { ProjectForm, ProjectFormData } from './components/ProjectForm';
 import { WebConstructor } from './components/constructor/WebConstructor';
 import { AIGenerationOverlay } from './components/constructor/AIGenerationOverlay';
@@ -1856,6 +1856,12 @@ const AppContent: React.FC = () => {
   };
 
   const handleSelectMethod = (method: CreationMethod) => {
+    if (method === 'ai' && !AI_PAGE_GENERATOR_ENABLED) {
+      setSelectedMethod(null);
+      setCurrentView('selection-method');
+      return;
+    }
+
     setSelectedPage(null);
     setSelectedAsset(null);
     setSelectedMethod(method);
@@ -1879,7 +1885,7 @@ const AppContent: React.FC = () => {
 
   const handleFormSubmit = (data: ProjectFormData) => {
     setFormData(data);
-    if (selectedMethod === 'ai') {
+    if (selectedMethod === 'ai' && AI_PAGE_GENERATOR_ENABLED) {
       setCurrentView('generator');
     } else {
       setCurrentView('constructor');
@@ -2092,7 +2098,7 @@ const AppContent: React.FC = () => {
               onSubmit={handleFormSubmit}
               onCancel={() => setCurrentView('selection-method')}
               onSkip={() => {
-                if (selectedMethod === 'ai') {
+                if (selectedMethod === 'ai' && AI_PAGE_GENERATOR_ENABLED) {
                   setCurrentView('generator');
                 } else {
                   setCurrentView('constructor');

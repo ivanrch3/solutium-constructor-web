@@ -18,12 +18,12 @@ interface RotatingTextProps {
 }
 
 interface RotatingMetric {
-  fontScale: number;
+  fontSizePx: number | null;
   fontWeight: number | null;
 }
 
 const DEFAULT_METRIC: RotatingMetric = {
-  fontScale: 1,
+  fontSizePx: null,
   fontWeight: null
 };
 
@@ -46,6 +46,7 @@ export const RotatingText: React.FC<RotatingTextProps> = ({
   const [sharedMetric, setSharedMetric] = useState<RotatingMetric>(DEFAULT_METRIC);
   const lineRef = useRef<HTMLSpanElement>(null);
   const measureRef = useRef<HTMLSpanElement>(null);
+  const activeOptionRef = useRef<HTMLSpanElement>(null);
   const measureFrameRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -107,7 +108,7 @@ export const RotatingText: React.FC<RotatingTextProps> = ({
     };
 
     const roundMetric = (metric: RotatingMetric): RotatingMetric => ({
-      fontScale: Math.round(metric.fontScale * 1000) / 1000,
+      fontSizePx: metric.fontSizePx === null ? null : Math.round(metric.fontSizePx * 100) / 100,
       fontWeight: metric.fontWeight
     });
 
@@ -118,7 +119,9 @@ export const RotatingText: React.FC<RotatingTextProps> = ({
       const computedStyle = window.getComputedStyle(container);
       const baseWeight = Number.parseInt(computedStyle.fontWeight, 10);
       const safeBaseWeight = Number.isFinite(baseWeight) ? baseWeight : 800;
-      const minimumScale = 0.5;
+      const baseFontSize = Number.parseFloat(computedStyle.fontSize);
+      const safeBaseFontSize = Number.isFinite(baseFontSize) ? baseFontSize : 16;
+      const minimumFontSize = 12;
 
       measure.style.fontFamily = computedStyle.fontFamily;
       measure.style.fontStyle = computedStyle.fontStyle;
@@ -153,16 +156,22 @@ export const RotatingText: React.FC<RotatingTextProps> = ({
         for (const candidate of weightCandidates) {
           measure.style.fontWeight = String(candidate);
           measuredWidth = measure.scrollWidth;
+          const nextFontSizePx = Math.max(
+            minimumFontSize,
+            Math.min(safeBaseFontSize, safeBaseFontSize * (availableWidth / measuredWidth))
+          );
           const candidateMetric: RotatingMetric = {
-            fontScale: Math.max(minimumScale, Math.min(1, availableWidth / measuredWidth)),
+            fontSizePx: nextFontSizePx,
             fontWeight: candidate === safeBaseWeight ? null : candidate
           };
 
           const candidateWeightValue = candidateMetric.fontWeight ?? safeBaseWeight;
           const bestWeightValue = bestMetricForOption.fontWeight ?? safeBaseWeight;
-          const isBetterScale = candidateMetric.fontScale > bestMetricForOption.fontScale + 0.005;
+          const candidateScale = candidateMetric.fontSizePx / safeBaseFontSize;
+          const bestScale = (bestMetricForOption.fontSizePx ?? safeBaseFontSize) / safeBaseFontSize;
+          const isBetterScale = candidateScale > bestScale + 0.005;
           const isBetterWeight =
-            Math.abs(candidateMetric.fontScale - bestMetricForOption.fontScale) <= 0.005 &&
+            Math.abs(candidateScale - bestScale) <= 0.005 &&
             candidateWeightValue > bestWeightValue;
 
           if (isBetterScale || isBetterWeight) {
@@ -170,10 +179,12 @@ export const RotatingText: React.FC<RotatingTextProps> = ({
           }
         }
 
+        const bestScale = (bestMetricForOption.fontSizePx ?? safeBaseFontSize) / safeBaseFontSize;
+        const currentScale = (nextMetric.fontSizePx ?? safeBaseFontSize) / safeBaseFontSize;
         const shouldReplaceSharedMetric =
-          bestMetricForOption.fontScale < nextMetric.fontScale - 0.005 ||
+          bestScale < currentScale - 0.005 ||
           (
-            Math.abs(bestMetricForOption.fontScale - nextMetric.fontScale) <= 0.005 &&
+            Math.abs(bestScale - currentScale) <= 0.005 &&
             (bestMetricForOption.fontWeight ?? safeBaseWeight) < (nextMetric.fontWeight ?? safeBaseWeight)
           );
 
@@ -185,7 +196,7 @@ export const RotatingText: React.FC<RotatingTextProps> = ({
       const roundedMetric = roundMetric(nextMetric);
       setSharedMetric((prev) => {
         if (
-          prev.fontScale === roundedMetric.fontScale &&
+          prev.fontSizePx === roundedMetric.fontSizePx &&
           prev.fontWeight === roundedMetric.fontWeight
         ) {
           return prev;
@@ -249,6 +260,49 @@ export const RotatingText: React.FC<RotatingTextProps> = ({
     };
   }, [metricsSignature]);
 
+  useLayoutEffect(() => {
+    const container = lineRef.current;
+    const activeOption = activeOptionRef.current;
+    if (!container || !activeOption) return;
+
+    let frameId = requestAnimationFrame(() => {
+      const availableWidth = Math.max(container.clientWidth, container.getBoundingClientRect().width) - 2;
+      if (!Number.isFinite(availableWidth) || availableWidth <= 0) return;
+
+      const optionWidth = activeOption.scrollWidth;
+      if (!Number.isFinite(optionWidth) || optionWidth <= availableWidth + 1.5) return;
+
+      const computedStyle = window.getComputedStyle(activeOption);
+      const currentFontSize = Number.parseFloat(computedStyle.fontSize);
+      const safeCurrentFontSize = Number.isFinite(currentFontSize)
+        ? currentFontSize
+        : (sharedMetric.fontSizePx ?? 16);
+      const nextFontSizePx = Math.max(
+        12,
+        Math.floor((safeCurrentFontSize * (availableWidth / optionWidth)) * 100) / 100
+      );
+
+      if (!Number.isFinite(nextFontSizePx) || safeCurrentFontSize - nextFontSizePx < 1) {
+        return;
+      }
+
+      setSharedMetric((prev) => {
+        const previousFontSize = prev.fontSizePx ?? safeCurrentFontSize;
+        if (previousFontSize - nextFontSizePx < 0.5) {
+          return prev;
+        }
+        return {
+          ...prev,
+          fontSizePx: nextFontSizePx
+        };
+      });
+    });
+
+    return () => {
+      cancelAnimationFrame(frameId);
+    };
+  }, [currentOptionValue, index, sharedMetric.fontSizePx]);
+
   const isCentered = align === 'center';
   const lineAlignmentClass = isCentered ? 'items-center text-center' : align === 'right' ? 'items-end text-right' : 'items-start text-left';
   const dynamicLineMaxWidth = '100%';
@@ -282,6 +336,7 @@ export const RotatingText: React.FC<RotatingTextProps> = ({
 
       <span
         ref={lineRef}
+        data-solutium-rotating-line="true"
         className="relative block w-full max-w-full overflow-visible py-[0.1em] -my-[0.1em] min-h-[1.2em]"
         style={{ maxWidth: dynamicLineMaxWidth }}
       >
@@ -313,6 +368,7 @@ export const RotatingText: React.FC<RotatingTextProps> = ({
               onSaveOption={onSaveOption}
               style={textStyle}
               metric={currentMetric}
+              optionRef={activeOptionRef}
               setIsPaused={setIsPaused}
             />
           </motion.span>
@@ -328,24 +384,31 @@ const RotatingOption: React.FC<{
   moduleId?: string;
   isPreviewMode: boolean;
   onSaveOption?: (index: number, val: string) => void;
+  optionRef?: React.RefObject<HTMLSpanElement | null>;
   style: React.CSSProperties;
   metric: RotatingMetric;
   setIsPaused: (paused: boolean) => void;
-}> = ({ value, index, moduleId, isPreviewMode, onSaveOption, style, metric, setIsPaused }) => {
+}> = ({ value, index, moduleId, isPreviewMode, onSaveOption, optionRef, style, metric, setIsPaused }) => {
   const dynamicStyle: React.CSSProperties = {
     ...style,
     lineHeight: 1.1,
-    maxWidth: '100%',
     display: 'inline-block',
-    fontSize: metric.fontScale < 1 ? `${metric.fontScale}em` : 'inherit',
+    fontSize: metric.fontSizePx ? `${metric.fontSizePx}px` : 'inherit',
     fontWeight: metric.fontWeight ?? style.fontWeight,
-    whiteSpace: 'nowrap'
+    whiteSpace: 'nowrap',
+    maxWidth: 'none',
+    overflow: 'visible',
+    textOverflow: 'clip',
+    wordBreak: 'normal',
+    overflowWrap: 'normal'
   };
 
   return (
     <span
+      ref={optionRef}
+      data-solutium-rotating-option="true"
       style={dynamicStyle}
-      className="inline-block max-w-full whitespace-nowrap"
+      className="inline-block whitespace-nowrap"
     >
       {moduleId ? (
         <InlineEditableText
@@ -360,7 +423,7 @@ const RotatingOption: React.FC<{
           }}
           style={dynamicStyle}
           tagName="span"
-          className="inline-block max-w-full whitespace-nowrap"
+          className="inline-block whitespace-nowrap"
           onClick={() => setIsPaused(true)}
         />
       ) : (

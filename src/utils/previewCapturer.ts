@@ -330,11 +330,10 @@ export const capturePreview = async (
       }
     });
 
-    // Específico para RotatingText: Buscar el primer item y forzar su visibilidad
-    const rotatingContainers = clone.querySelectorAll('.relative.inline-block.overflow-hidden, .relative.inline-flex.overflow-hidden');
+    // Específico para RotatingText: Buscar la línea activa y forzar visibilidad estable
+    const rotatingContainers = clone.querySelectorAll('[data-solutium-rotating-line="true"]');
     rotatingContainers.forEach(container => {
-      // Intentar encontrar el motion.span dentro
-      const spans = container.querySelectorAll('span');
+      const spans = container.querySelectorAll('[data-solutium-rotating-option="true"], span');
       spans.forEach(span => {
         const s = span as HTMLElement;
         s.style.opacity = '1';

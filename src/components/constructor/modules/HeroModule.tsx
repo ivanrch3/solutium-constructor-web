@@ -447,14 +447,21 @@ export const HeroModule: React.FC<{
   const renderContent = (forcedAlign?: 'left' | 'center' | 'right') => {
     const inheritedAlign = forcedAlign || 'left';
     const finalAlign = typographyAlign === 'inherit' ? inheritedAlign : typographyAlign;
-    const titleWidthClass = layout === 'center' || layout === 'full_bg'
-      ? 'max-w-[13ch] sm:max-w-[14ch]'
-      : 'max-w-[12ch] sm:max-w-[13ch] lg:max-w-[14ch]';
+    const isDynamicTitle = rotatingEnabled && rotatingOptions.length > 0;
+    const titleWidthClass = isDynamicTitle
+      ? 'max-w-full'
+      : layout === 'center' || layout === 'full_bg'
+        ? 'max-w-[13ch] sm:max-w-[14ch]'
+        : 'max-w-[12ch] sm:max-w-[13ch] lg:max-w-[14ch]';
     const subtitleWidthClass = layout === 'center' || layout === 'full_bg'
       ? 'max-w-[34ch]'
       : 'max-w-[40ch]';
     const proofTextWidthClass = 'max-w-[28ch]';
     const ctaTextClass = 'text-center whitespace-normal break-words [overflow-wrap:anywhere] leading-tight';
+    const contentOverflowClass = isDynamicTitle ? 'overflow-visible' : 'overflow-hidden';
+    const titleClassName = isDynamicTitle
+      ? `leading-[1.1] tracking-tight w-full ${titleWidthClass} overflow-visible`
+      : `leading-[1.1] tracking-tight w-full break-words [overflow-wrap:anywhere] ${titleWidthClass}`;
     
     return (
       <motion.div 
@@ -462,7 +469,7 @@ export const HeroModule: React.FC<{
           finalAlign === 'center' ? 'items-center text-center mx-auto' : 
           finalAlign === 'right' ? 'items-end text-right ml-auto' : 
           'items-start text-left mr-auto'
-        } gap-6 max-w-3xl overflow-hidden`}
+        } gap-6 max-w-3xl ${contentOverflowClass}`}
         style={{ marginBottom: `${typographyMarginB}px` }}
       >
       {eyebrow && (
@@ -479,11 +486,11 @@ export const HeroModule: React.FC<{
       )}
       
       <motion.h1 
-        className={`leading-[1.1] tracking-tight w-full break-words [overflow-wrap:anywhere] ${titleWidthClass}`}
+        className={titleClassName}
         style={{ 
           ...getTypographyStyle(titleSize, titleWeight),
           color: titleColor,
-          textWrap: 'balance'
+          ...(isDynamicTitle ? {} : { textWrap: 'balance' as const })
         }}
       >
         {rotatingEnabled && rotatingOptions.length > 0 ? (

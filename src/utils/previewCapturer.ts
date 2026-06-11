@@ -15,7 +15,6 @@ const TRUSTED_DOMAINS = [
   'nyc3.digitaloceanspaces.com',
   'solutium.app',
   'solutium-constructor-web-g9777.ondigitalocean.app',
-  'solutium-app-maestra-ld25z.ondigitalocean.app',
   'ondigitalocean.app',
   'digitaloceanspaces.com'
 ];

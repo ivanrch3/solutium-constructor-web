@@ -402,7 +402,7 @@ export const DataTab: React.FC<DataTabProps> = ({ projectId, currentUserId }) =>
                     {isStaging && (
                       <div className="mt-2 p-3 bg-blue-50 border border-blue-100 rounded-lg text-blue-700">
                         <p className="text-[10px] font-bold uppercase mb-1">Recomendación Staging:</p>
-                        <p className="text-[10px] leading-tight">Usa: <code className="bg-white/50 px-1">https://solutium-app-maestra-ld25z.ondigitalocean.app</code></p>
+                        <p className="text-[10px] leading-tight">Usa: <code className="bg-white/50 px-1">https://app.solutium.app</code></p>
                       </div>
                     )}
                   </div>

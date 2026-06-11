@@ -27,8 +27,6 @@ const DEFAULT_METRIC: RotatingMetric = {
   fontWeight: null
 };
 
-const getOptionKey = (value: string, index: number) => `${index}::${value}`;
-
 export const RotatingText: React.FC<RotatingTextProps> = ({
   fixedText,
   options,
@@ -45,7 +43,7 @@ export const RotatingText: React.FC<RotatingTextProps> = ({
 }) => {
   const [index, setIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
-  const [metrics, setMetrics] = useState<Record<string, RotatingMetric>>({});
+  const [sharedMetric, setSharedMetric] = useState<RotatingMetric>(DEFAULT_METRIC);
   const lineRef = useRef<HTMLSpanElement>(null);
   const measureRef = useRef<HTMLSpanElement>(null);
   const measureFrameRef = useRef<number | null>(null);
@@ -86,7 +84,6 @@ export const RotatingText: React.FC<RotatingTextProps> = ({
 
   const currentVariant = variants[animationType] || variants.fade;
   const currentOptionValue = options[index] || '';
-  const currentOptionKey = getOptionKey(currentOptionValue, index);
 
   const isSafeGradient = gradient && !String(gradient).includes('NaN');
   const textStyle: React.CSSProperties = {
@@ -105,19 +102,14 @@ export const RotatingText: React.FC<RotatingTextProps> = ({
     if (!container || !measure) return;
 
     const getAvailableWidth = () => {
-      const heading = container.closest('h1, h2, h3, h4, h5, h6') as HTMLElement | null;
-      const widthCandidates = [
-        container,
-        container.parentElement,
-        heading
-      ].filter(Boolean) as HTMLElement[];
-
-      const measuredWidths = widthCandidates
-        .map((element) => Math.max(element.clientWidth, element.getBoundingClientRect().width))
-        .filter((width) => Number.isFinite(width) && width > 0);
-
-      return measuredWidths.length > 0 ? Math.max(...measuredWidths) - 2 : 0;
+      const width = Math.max(container.clientWidth, container.getBoundingClientRect().width);
+      return Number.isFinite(width) && width > 0 ? width - 2 : 0;
     };
+
+    const roundMetric = (metric: RotatingMetric): RotatingMetric => ({
+      fontScale: Math.round(metric.fontScale * 1000) / 1000,
+      fontWeight: metric.fontWeight
+    });
 
     const computeMetrics = () => {
       const availableWidth = getAvailableWidth();
@@ -126,6 +118,7 @@ export const RotatingText: React.FC<RotatingTextProps> = ({
       const computedStyle = window.getComputedStyle(container);
       const baseWeight = Number.parseInt(computedStyle.fontWeight, 10);
       const safeBaseWeight = Number.isFinite(baseWeight) ? baseWeight : 800;
+      const minimumScale = 0.5;
 
       measure.style.fontFamily = computedStyle.fontFamily;
       measure.style.fontStyle = computedStyle.fontStyle;
@@ -134,28 +127,21 @@ export const RotatingText: React.FC<RotatingTextProps> = ({
       measure.style.fontKerning = computedStyle.fontKerning;
       measure.style.letterSpacing = computedStyle.letterSpacing;
       measure.style.textTransform = computedStyle.textTransform;
-      const nextMetrics: Record<string, RotatingMetric> = {};
+      measure.style.whiteSpace = 'nowrap';
+      measure.style.display = 'inline-block';
 
-      options.forEach((option, optionIndex) => {
-        const key = getOptionKey(option, optionIndex);
-        const isSingleWord = !/\s/.test(String(option || '').trim());
+      let nextMetric: RotatingMetric = DEFAULT_METRIC;
 
-        if (!option || !isSingleWord) {
-          nextMetrics[key] = DEFAULT_METRIC;
-          return;
-        }
+      options.forEach((option) => {
+        const safeOption = String(option || '').trim();
+        if (!safeOption) return;
 
+        let bestMetricForOption: RotatingMetric = DEFAULT_METRIC;
         measure.textContent = option;
         measure.style.fontSize = '1em';
         measure.style.fontWeight = String(safeBaseWeight);
 
         let measuredWidth = measure.scrollWidth;
-
-        if (measuredWidth <= availableWidth) {
-          nextMetrics[key] = DEFAULT_METRIC;
-          return;
-        }
-
         const weightCandidates = [safeBaseWeight, ...Array.from(
           new Set(
             [safeBaseWeight - 100, safeBaseWeight - 200, safeBaseWeight - 300, safeBaseWeight - 400, 700, 600, 500].filter(
@@ -164,55 +150,47 @@ export const RotatingText: React.FC<RotatingTextProps> = ({
           )
         )];
 
-        let bestMetric: RotatingMetric = {
-          fontScale: Math.max(0.64, Math.min(1, availableWidth / measuredWidth)),
-          fontWeight: null
-        };
-
         for (const candidate of weightCandidates) {
           measure.style.fontWeight = String(candidate);
           measuredWidth = measure.scrollWidth;
           const candidateMetric: RotatingMetric = {
-            fontScale: Math.max(0.64, Math.min(1, availableWidth / measuredWidth)),
+            fontScale: Math.max(minimumScale, Math.min(1, availableWidth / measuredWidth)),
             fontWeight: candidate === safeBaseWeight ? null : candidate
           };
 
           const candidateWeightValue = candidateMetric.fontWeight ?? safeBaseWeight;
-          const bestWeightValue = bestMetric.fontWeight ?? safeBaseWeight;
-          const isBetterScale = candidateMetric.fontScale > bestMetric.fontScale + 0.005;
+          const bestWeightValue = bestMetricForOption.fontWeight ?? safeBaseWeight;
+          const isBetterScale = candidateMetric.fontScale > bestMetricForOption.fontScale + 0.005;
           const isBetterWeight =
-            Math.abs(candidateMetric.fontScale - bestMetric.fontScale) <= 0.005 &&
+            Math.abs(candidateMetric.fontScale - bestMetricForOption.fontScale) <= 0.005 &&
             candidateWeightValue > bestWeightValue;
 
           if (isBetterScale || isBetterWeight) {
-            bestMetric = candidateMetric;
+            bestMetricForOption = candidateMetric;
           }
         }
 
-        nextMetrics[key] = bestMetric;
+        const shouldReplaceSharedMetric =
+          bestMetricForOption.fontScale < nextMetric.fontScale - 0.005 ||
+          (
+            Math.abs(bestMetricForOption.fontScale - nextMetric.fontScale) <= 0.005 &&
+            (bestMetricForOption.fontWeight ?? safeBaseWeight) < (nextMetric.fontWeight ?? safeBaseWeight)
+          );
+
+        if (shouldReplaceSharedMetric) {
+          nextMetric = bestMetricForOption;
+        }
       });
 
-      setMetrics((prev) => {
-        const prevKeys = Object.keys(prev);
-        const nextKeys = Object.keys(nextMetrics);
-
-        if (prevKeys.length !== nextKeys.length) {
-          return nextMetrics;
+      const roundedMetric = roundMetric(nextMetric);
+      setSharedMetric((prev) => {
+        if (
+          prev.fontScale === roundedMetric.fontScale &&
+          prev.fontWeight === roundedMetric.fontWeight
+        ) {
+          return prev;
         }
-
-        for (const key of nextKeys) {
-          const previousMetric = prev[key];
-          const nextMetric = nextMetrics[key];
-          if (
-            !previousMetric ||
-            previousMetric.fontScale !== nextMetric.fontScale ||
-            previousMetric.fontWeight !== nextMetric.fontWeight
-          ) {
-            return nextMetrics;
-          }
-        }
-
-        return prev;
+        return roundedMetric;
       });
     };
 
@@ -274,7 +252,7 @@ export const RotatingText: React.FC<RotatingTextProps> = ({
   const isCentered = align === 'center';
   const lineAlignmentClass = isCentered ? 'items-center text-center' : align === 'right' ? 'items-end text-right' : 'items-start text-left';
   const dynamicLineMaxWidth = '100%';
-  const currentMetric = metrics[currentOptionKey] || DEFAULT_METRIC;
+  const currentMetric = sharedMetric;
 
   return (
     <span
@@ -294,7 +272,7 @@ export const RotatingText: React.FC<RotatingTextProps> = ({
               isPreviewMode={isPreviewMode}
               onSave={onSaveFixed}
               tagName="span"
-              className="block w-full max-w-full break-words [overflow-wrap:anywhere]"
+            className="block w-full max-w-full break-words [overflow-wrap:anywhere]"
             />
           ) : (
             <span className="block w-full max-w-full break-words [overflow-wrap:anywhere]">{fixedText}</span>
@@ -325,7 +303,7 @@ export const RotatingText: React.FC<RotatingTextProps> = ({
             animate={currentVariant.animate}
             exit={currentVariant.exit}
             transition={{ duration: 0.5, ease: 'easeOut' }}
-            className="block w-full max-w-full whitespace-normal break-words [overflow-wrap:anywhere] align-baseline"
+            className="block w-full max-w-full whitespace-nowrap align-baseline"
           >
             <RotatingOption
               value={currentOptionValue}
@@ -354,20 +332,20 @@ const RotatingOption: React.FC<{
   metric: RotatingMetric;
   setIsPaused: (paused: boolean) => void;
 }> = ({ value, index, moduleId, isPreviewMode, onSaveOption, style, metric, setIsPaused }) => {
-  const isSingleWord = !/\s/.test(String(value || '').trim());
   const dynamicStyle: React.CSSProperties = {
     ...style,
     lineHeight: 1.1,
     maxWidth: '100%',
     display: 'inline-block',
     fontSize: metric.fontScale < 1 ? `${metric.fontScale}em` : 'inherit',
-    fontWeight: metric.fontWeight ?? style.fontWeight
+    fontWeight: metric.fontWeight ?? style.fontWeight,
+    whiteSpace: 'nowrap'
   };
 
   return (
     <span
       style={dynamicStyle}
-      className={`inline-block max-w-full ${isSingleWord ? 'whitespace-nowrap' : 'whitespace-normal break-words [overflow-wrap:anywhere]'}`}
+      className="inline-block max-w-full whitespace-nowrap"
     >
       {moduleId ? (
         <InlineEditableText
@@ -382,7 +360,7 @@ const RotatingOption: React.FC<{
           }}
           style={dynamicStyle}
           tagName="span"
-          className={`inline-block max-w-full ${isSingleWord ? 'whitespace-nowrap' : 'whitespace-normal break-words [overflow-wrap:anywhere]'}`}
+          className="inline-block max-w-full whitespace-nowrap"
           onClick={() => setIsPaused(true)}
         />
       ) : (

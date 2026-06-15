@@ -62,7 +62,10 @@ export const syncAsset = async (
 
     logDebug(`[AssetService] Subida a App Madre exitosa: ${public_url}`);
 
-    // 2. Preparar datos para la tabla assets de Supabase
+    // 2. Preparar datos para la tabla assets de Supabase.
+    // El backend de App Madre ya registra el asset en la tabla `assets` como
+    // parte del upload. Este bloque queda como sincronizacion auxiliar para
+    // contextos donde el cliente Supabase del Constructor esta disponible.
     const assetName = assetDisplayName 
       ? `${type.charAt(0).toUpperCase() + type.slice(1)}: ${assetDisplayName}` 
       : `${type}: ${entity.id}`;
@@ -85,19 +88,26 @@ export const syncAsset = async (
       updated_at: new Date().toISOString()
     };
 
-    // 3. Registrar en Supabase
+    // 3. Registrar en Supabase (best-effort).
     const supabase = getSupabase();
-    if (!supabase) throw new Error('Supabase no inicializado');
-
-    logDebug('[AssetService] Registrando en Supabase:', assetData);
-    const { error } = await supabase.from('assets').upsert(assetData);
-
-    if (error) {
-      console.error('[AssetService] Error en upsert de Supabase:', error);
-      throw error;
+    if (!supabase) {
+      logDebug('[AssetService] Supabase no inicializado; se conserva el resultado persistido por App Madre.');
+      return { url: public_url, storagePath: storage_path };
     }
 
-    logDebug('[AssetService] Registro en Supabase exitoso');
+    try {
+      logDebug('[AssetService] Registrando en Supabase:', assetData);
+      const { error } = await supabase.from('assets').upsert(assetData);
+
+      if (error) {
+        console.warn('[AssetService] Error en upsert auxiliar de Supabase. Se conserva el asset persistido por App Madre.', error);
+      } else {
+        logDebug('[AssetService] Registro auxiliar en Supabase exitoso');
+      }
+    } catch (syncError) {
+      console.warn('[AssetService] Fallo la sincronizacion auxiliar en Supabase. Se conserva el asset persistido por App Madre.', syncError);
+    }
+
     return { url: public_url, storagePath: storage_path };
   } catch (error: any) {
     console.error('Error detallado en syncAsset:', error);

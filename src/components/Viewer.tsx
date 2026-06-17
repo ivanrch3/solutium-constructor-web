@@ -13,6 +13,7 @@ import { TeamModule } from './constructor/modules/TeamModule';
 import { PricingModule } from './constructor/modules/PricingModule';
 import { FAQModule } from './constructor/modules/FAQModule';
 import { ContactModule } from './constructor/modules/ContactModule';
+import { GeniusWebWaModule } from './constructor/modules/GeniusWebWaModule';
 import { ProductsModule } from './constructor/modules/ProductsModule';
 import { ClientsModule } from './constructor/modules/ClientsModule';
 import { TrustedLogosModule } from './constructor/modules/TrustedLogosModule';
@@ -466,6 +467,15 @@ export const Viewer: React.FC<ViewerProps> = ({
             return <FAQModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} />;
           case 'contact':
             return <ContactModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} />;
+          case 'genius_web_wa':
+            return (
+              <GeniusWebWaModule
+                key={moduleId}
+                moduleId={moduleId}
+                settingsValues={finalSettingsValues}
+                renderMode={isConstructorMode ? 'preview' : 'live'}
+              />
+            );
           case 'products':
           case 'product_grid':
           case 'product':

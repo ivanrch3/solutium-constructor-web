@@ -586,6 +586,39 @@ const MODULE_ADAPTERS: Record<string, ModuleBridgeAdapter> = {
       'dark_mode': 'global_dark_mode'
     }
   },
+  genius_web_wa: {
+    contentToSettings: {
+      'title': 'el_genius_web_wa_content_title',
+      'titulo': 'el_genius_web_wa_content_title',
+      'subtitle': 'el_genius_web_wa_content_subtitle',
+      'subtitulo': 'el_genius_web_wa_content_subtitle',
+      'button_text': 'el_genius_web_wa_content_button_text',
+      'boton_texto': 'el_genius_web_wa_content_button_text',
+      'default_message': 'el_genius_web_wa_content_default_message',
+      'mensaje': 'el_genius_web_wa_content_default_message',
+      'message': 'el_genius_web_wa_content_default_message',
+      'phone_number': 'el_genius_web_wa_config_phone_number',
+      'phoneNumber': 'el_genius_web_wa_config_phone_number',
+      'telefono': 'el_genius_web_wa_config_phone_number',
+      'whatsapp_number': 'el_genius_web_wa_config_phone_number',
+      'show_icon': 'el_genius_web_wa_config_show_icon',
+      'showIcon': 'el_genius_web_wa_config_show_icon'
+    },
+    settingsToDeep: {
+      'enabled': 'global_enabled',
+      'display_mode': 'global_display_mode',
+      'displayMode': 'global_display_mode',
+      'position': 'global_position',
+      'dark_mode': 'global_dark_mode',
+      'darkMode': 'global_dark_mode',
+      'max_width': 'global_max_width',
+      'maxWidth': 'global_max_width',
+      'padding_y': 'global_padding_y',
+      'paddingY': 'global_padding_y',
+      'border_radius': 'global_border_radius',
+      'borderRadius': 'global_border_radius'
+    }
+  },
   spacer: {
     contentToSettings: {
       'height': 'global_height_desktop',

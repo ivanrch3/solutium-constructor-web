@@ -31,6 +31,7 @@ import { TeamModule } from './modules/TeamModule';
 import { PricingModule } from './modules/PricingModule';
 import { FAQModule } from './modules/FAQModule';
 import { ContactModule } from './modules/ContactModule';
+import { GeniusWebWaModule } from './modules/GeniusWebWaModule';
 import { ClientsModule } from './modules/ClientsModule';
 import { TrustedLogosModule } from './modules/TrustedLogosModule';
 import { CTAModule } from './modules/CTAModule';
@@ -965,6 +966,13 @@ export const Canvas: React.FC<CanvasProps> = ({
                         isPreviewMode={isCleanPreviewMode}
                       />
                     )}
+                    {section.type === 'genius_web_wa' && (
+                      <GeniusWebWaModule
+                        moduleId={section.id}
+                        settingsValues={finalSettings}
+                        renderMode={isCleanPreviewMode ? 'preview' : 'editor'}
+                      />
+                    )}
                     {section.type === 'clients' && (
                       <ClientsModule 
                         moduleId={section.id}
@@ -1072,7 +1080,7 @@ export const Canvas: React.FC<CanvasProps> = ({
                       />
                     )}
                     {/* Fallback debug for unrendered modules */}
-                    {!['products', 'products_showcase', 'hero', 'hero2', 'features', 'about', 'process', 'gallery', 'video', 'testimonials', 'stats', 'team', 'pricing', 'faq', 'contact', 'clients', 'trusted_logos', 'cta', 'dynamic_cards', 'newsletter', 'conversion', 'navegacion', 'menu', 'footer', 'spacer', 'bento', 'composition_section', 'comparative'].includes(section.type) && (
+                    {!['products', 'products_showcase', 'hero', 'hero2', 'features', 'about', 'process', 'gallery', 'video', 'testimonials', 'stats', 'team', 'pricing', 'faq', 'contact', 'genius_web_wa', 'clients', 'trusted_logos', 'cta', 'dynamic_cards', 'newsletter', 'conversion', 'navegacion', 'menu', 'footer', 'spacer', 'bento', 'composition_section', 'comparative'].includes(section.type) && (
                       <div className="p-8 border-2 border-dashed border-rose-200 rounded-2xl bg-rose-50 text-rose-500 text-center">
                         <p className="font-bold">Módulo no reconocido: {section.type}</p>
                         <p className="text-xs opacity-60">ID: {section.id} | Template: {section.templateId}</p>

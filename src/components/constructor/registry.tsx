@@ -2706,6 +2706,89 @@ export const CTA_MODULE: WebModule = {
   ]
 };
 
+export const GENIUS_WEB_WA_MODULE: WebModule = {
+  id: 'mod_genius_web_wa_1',
+  type: 'genius_web_wa',
+  iconKey: 'genius_web_wa',
+  name: 'Genius Web-WA',
+  globalGroups: ['contenido', 'estructura', 'estilo', 'interaccion'],
+  globalSettings: {
+    contenido: [
+      { id: 'enabled', label: 'Habilitado', type: 'boolean', defaultValue: true }
+    ],
+    estructura: [
+      { id: 'display_mode', label: 'Modo de Visualizacion', type: 'select', defaultValue: 'inline', options: [
+        { label: 'Insertado', value: 'inline' },
+        { label: 'Flotante', value: 'floating' }
+      ]},
+      { id: 'position', label: 'Posicion', type: 'select', defaultValue: 'bottom-right', options: [
+        { label: 'Abajo a la derecha', value: 'bottom-right' },
+        { label: 'Abajo a la izquierda', value: 'bottom-left' }
+      ], showIf: { settingId: 'display_mode', value: 'floating' }},
+      { id: 'max_width', label: 'Ancho Maximo', type: 'range', defaultValue: 1120, min: 640, max: 1440, unit: 'px', showIf: { settingId: 'display_mode', value: 'inline' }},
+      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 56, min: 24, max: 200, unit: 'px', showIf: { settingId: 'display_mode', value: 'inline' }},
+      { id: 'border_radius', label: 'Redondeo de Tarjeta', type: 'range', defaultValue: 24, min: 0, max: 48, showIf: { settingId: 'display_mode', value: 'inline' }}
+    ],
+    estilo: [
+      { id: 'dark_mode', label: 'Modo Oscuro', type: 'boolean', defaultValue: false },
+      { id: 'bg_color', label: 'Fondo de Seccion', type: 'color', defaultValue: '#F8FAFC', showIf: { settingId: 'display_mode', value: 'inline' }},
+      { id: 'entrance_anim', label: 'Animacion de Entrada', type: 'select', defaultValue: 'fade-up', options: [
+        { label: 'Fade Up', value: 'fade-up' },
+        { label: 'Fade In', value: 'fade-in' },
+        { label: 'Slide Up', value: 'slide-up' },
+        { label: 'Zoom In', value: 'zoom-in' },
+        { label: 'Sin animacion', value: 'none' }
+      ]}
+    ],
+    interaccion: [],
+    tipografia: [], multimedia: []
+  },
+  elements: [
+    { id: 'el_genius_web_wa_content', name: 'Contenido', type: 'content', groups: ['contenido', 'tipografia', 'estructura'], settings: {
+      contenido: [
+        { id: 'title', label: 'Titulo', type: 'text', defaultValue: 'Conversa con Genius' },
+        { id: 'subtitle', label: 'Subtitulo', type: 'text', defaultValue: 'Estamos listos para ayudarte por WhatsApp' },
+        { id: 'button_text', label: 'Texto del Boton', type: 'text', defaultValue: 'Abrir WhatsApp' },
+        { id: 'default_message', label: 'Mensaje Inicial', type: 'textarea', rows: 3, defaultValue: 'Hola, necesito ayuda con...' }
+      ],
+      tipografia: [
+        { id: 'title_size', label: 'Tamano Titulo', type: 'typography_size', defaultValue: 't3', allowedLevels: ['t1', 't2', 't3', 'p'] },
+        { id: 'title_weight', label: 'Peso Titulo', type: 'font_weight', defaultValue: 'extrabold' },
+        { id: 'subtitle_size', label: 'Tamano Subtitulo', type: 'typography_size', defaultValue: 'p', allowedLevels: ['t3', 'p', 's'] },
+        { id: 'subtitle_weight', label: 'Peso Subtitulo', type: 'font_weight', defaultValue: 'normal' }
+      ],
+      estructura: [
+        { id: 'text_align', label: 'Alineacion', type: 'select', defaultValue: 'left', options: [
+          { label: 'Izquierda', value: 'left' },
+          { label: 'Centro', value: 'center' },
+          { label: 'Derecha', value: 'right' }
+        ], showIf: { settingId: 'display_mode', value: 'inline' }}
+      ],
+      estilo: [], multimedia: [], interaccion: []
+    }},
+    { id: 'el_genius_web_wa_config', name: 'Configuracion', type: 'content', groups: ['contenido', 'interaccion'], settings: {
+      contenido: [
+        { id: 'phone_number', label: 'Numero de WhatsApp', type: 'text', defaultValue: '' }
+      ],
+      interaccion: [
+        { id: 'show_icon', label: 'Mostrar Icono', type: 'boolean', defaultValue: true }
+      ],
+      estructura: [], estilo: [], tipografia: [], multimedia: []
+    }},
+    { id: 'el_genius_web_wa_style', name: 'Estilo', type: 'style', groups: ['estilo'], settings: {
+      estilo: [
+        { id: 'card_bg', label: 'Fondo de Tarjeta', type: 'color', defaultValue: '#FFFFFF', showIf: { settingId: 'display_mode', value: 'inline' }},
+        { id: 'primary_color', label: 'Color del Boton', type: 'color', defaultValue: '#25D366' },
+        { id: 'text_color', label: 'Color de Texto del Boton', type: 'color', defaultValue: '#FFFFFF' },
+        { id: 'title_color', label: 'Color del Titulo', type: 'color', defaultValue: '#0F172A', showIf: { settingId: 'display_mode', value: 'inline' }},
+        { id: 'subtitle_color', label: 'Color del Subtitulo', type: 'color', defaultValue: '#475569', showIf: { settingId: 'display_mode', value: 'inline' }},
+        { id: 'button_radius', label: 'Redondeo del Boton', type: 'range', defaultValue: 999, min: 0, max: 999 }
+      ],
+      contenido: [], estructura: [], tipografia: [], multimedia: [], interaccion: []
+    }}
+  ]
+};
+
 export const DYNAMIC_CARDS_MODULE: WebModule = {
   id: 'mod_dynamic_cards_1',
   type: 'dynamic_cards',
@@ -3982,6 +4065,7 @@ export const MODULE_INFO: Record<string, {
   stats: { label: 'Estadísticas', icon: BarChart3 },
   newsletter: { label: 'Newsletter', icon: Send },
   contact: { label: 'Contacto', icon: PhoneCall },
+  genius_web_wa: { label: 'Genius Web-WA', icon: MessageSquare },
   team: { label: 'Equipo', icon: Users2 },
   cta: { label: 'Call to Action', icon: MousePointerClick },
   dynamic_cards: { label: 'Tarjetas dinámicas', icon: Zap },

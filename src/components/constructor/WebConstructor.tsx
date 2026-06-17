@@ -34,7 +34,7 @@ import {
   PRODUCTS_MODULE, HERO_MODULE, HERO2_MODULE, FEATURES_MODULE, ABOUT_MODULE,
   PROCESS_MODULE, GALLERY_MODULE, VIDEO_MODULE, TESTIMONIALS_MODULE,
   STATS_MODULE, NEWSLETTER_MODULE, CONTACT_MODULE, TEAM_MODULE,
-  CTA_MODULE, DYNAMIC_CARDS_MODULE, PRICING_MODULE, FAQ_MODULE, TRUSTED_LOGOS_MODULE,
+  CTA_MODULE, DYNAMIC_CARDS_MODULE, PRICING_MODULE, FAQ_MODULE, TRUSTED_LOGOS_MODULE, GENIUS_WEB_WA_MODULE,
   BENTO_MODULE, COMPARISON_MODULE, COMPOSITION_SECTION_MODULE
 } from './registry';
 import { saveWebBuilderSiteDraft, publishWebBuilderSite, getProducts, getCustomers, getTrustedCompanyLogos, normalizeTrustedCompanyLogos, upsertPage, upsertPageSections, logEvolutionRequest, getPageBySiteId, generatePreviewServerSide } from '../../services/dataService';
@@ -209,7 +209,7 @@ const ReferenceDebugFloatingPanel: React.FC<{ debug: ReferenceDebugInfo; onClose
 const MASTER_DICTIONARY = {
   modules: [
     'hero', 'hero2', 'features', 'about', 'process', 'gallery', 'video', 'testimonials',
-    'stats', 'newsletter', 'contact', 'team', 'cta', 'dynamic_cards', 'pricing', 'faq', 'clients', 'trusted_logos',
+    'stats', 'newsletter', 'contact', 'genius_web_wa', 'team', 'cta', 'dynamic_cards', 'pricing', 'faq', 'clients', 'trusted_logos',
     'bento', 'comparative', 'header', 'menu', 'footer', 'spacer', 'products'
   ],
   styles: [
@@ -217,6 +217,33 @@ const MASTER_DICTIONARY = {
     'bg_type', 'dark_mode', 'primary_color', 'accent_color', 'text_color',
     'title_mode', 'rotating_enabled', 'rotating_fixed', 'rotating_options', 'rotating_speed', 'rotating_anim', 'rotating_color', 'rotating_gradient'
   ]
+};
+
+const resolveRegistryModuleDefinition = (
+  moduleType?: string | null,
+  templateId?: string | null
+): WebModule | null => {
+  const candidates = [moduleType, templateId].filter(
+    (value): value is string => typeof value === 'string' && value.trim() !== ''
+  );
+
+  if (candidates.length === 0) return null;
+
+  const registryValues = Object.values(registryModules).filter(
+    (entry): entry is WebModule =>
+      Boolean(entry) &&
+      typeof entry === 'object' &&
+      'type' in entry &&
+      'id' in entry &&
+      'elements' in entry &&
+      'globalGroups' in entry
+  );
+
+  return (
+    registryValues.find((module) =>
+      candidates.some((candidate) => module.type === candidate || module.id === candidate || module.templateId === candidate)
+    ) || null
+  );
 };
 
 const AUTOSAVE_DISABLED_VALUE = 'disabled';
@@ -896,11 +923,29 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
           }
         });
 
+        const enrichedReconstructedModules = reconstructedModules.map((module) => {
+          const baseModule = resolveRegistryModuleDefinition(
+            module.type || null,
+            (module as any).templateId || null
+          );
+
+          if (!baseModule) return module;
+
+          return {
+            ...baseModule,
+            ...module,
+            templateId: (module as any).templateId || baseModule.id,
+            elements: baseModule.elements || [],
+            globalGroups: baseModule.globalGroups || [],
+            globalSettings: baseModule.globalSettings || {}
+          };
+        });
+
         const hydrated = {
           ...defaultState,
-          addedModules: reconstructedModules,
+          addedModules: enrichedReconstructedModules,
           settingsValues: reconstructedSettings,
-          totalModulesAdded: reconstructedModules.length
+          totalModulesAdded: enrichedReconstructedModules.length
         };
 
         logDebug('[CONSTRUCTOR_HYDRATION_SOURCE]', {
@@ -1708,6 +1753,8 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     switch (section.moduleType) {
       case 'contact':
         return CONTACT_MODULE;
+      case 'genius_web_wa':
+        return GENIUS_WEB_WA_MODULE;
       case 'faq':
         return FAQ_MODULE;
       case 'testimonials':
@@ -2473,9 +2520,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         const newAddedModules: WebModule[] = [];
 
         backendPage.sections.forEach((sec: any) => {
-          const baseModule = Object.values(registryModules).find((m: any) =>
-            (m as any).id === sec.type || (m as any).id === sec.moduleId
-          ) as WebModule;
+          const baseModule = resolveRegistryModuleDefinition(sec.type, sec.moduleId);
 
           if (!baseModule) {
             console.warn(`[AI_HYDRATION] MÃƒÆ’Ã‚Â³dulo no reconocido: ${sec.type}`);
@@ -2595,7 +2640,9 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         const newAddedModules: WebModule[] = [];
 
         result.sections.forEach((sec, idx) => {
-          const baseModule = Object.values(registryModules).find((m: any) => (m as any).id === sec.moduleId) as WebModule;
+          const rawSectionModuleType = 'moduleType' in sec ? sec.moduleType : null;
+          const sectionModuleType = typeof rawSectionModuleType === 'string' ? rawSectionModuleType : null;
+          const baseModule = resolveRegistryModuleDefinition(sectionModuleType, sec.moduleId);
           if (!baseModule) return;
 
           // Use persistent UUIDs (Solutium Protocol v2.0)
@@ -5664,6 +5711,7 @@ const formatTimestampName = () => {
                                     { icon: MODULE_INFO.cta.icon, label: "Call to Action", mod: CTA_MODULE },
                                     { icon: MODULE_INFO.dynamic_cards.icon, label: "Tarjetas dinÃƒÆ’Ã‚Â¡micas", mod: DYNAMIC_CARDS_MODULE },
                                     { icon: MODULE_INFO.contact.icon, label: "Contacto", mod: CONTACT_MODULE },
+                                    { icon: MODULE_INFO.genius_web_wa.icon, label: "Genius Web-WA", mod: GENIUS_WEB_WA_MODULE },
                                     { icon: MODULE_INFO.newsletter.icon, label: "Newsletter", mod: NEWSLETTER_MODULE },
                                     { icon: MODULE_INFO.pricing.icon, label: "Planes", mod: PRICING_MODULE },
                                     { icon: MODULE_INFO.header.icon, label: "Publicidad", mod: HEADER_MODULE },
@@ -5756,6 +5804,7 @@ const formatTimestampName = () => {
                                       <ModuleItem icon={React.createElement(MODULE_INFO.cta.icon, { size: 18 })} label="Call to Action" onClick={() => addModule(CTA_MODULE)} />
                                       <ModuleItem icon={React.createElement(MODULE_INFO.dynamic_cards.icon, { size: 18 })} label="Tarjetas dinÃƒÆ’Ã‚Â¡micas" onClick={() => addModule(DYNAMIC_CARDS_MODULE)} />
                                       <ModuleItem icon={React.createElement(MODULE_INFO.contact.icon, { size: 18 })} label="Contacto" onClick={() => addModule(CONTACT_MODULE)} />
+                                      <ModuleItem icon={React.createElement(MODULE_INFO.genius_web_wa.icon, { size: 18 })} label="Genius Web-WA" onClick={() => addModule(GENIUS_WEB_WA_MODULE)} />
                                       <ModuleItem icon={React.createElement(MODULE_INFO.newsletter.icon, { size: 18 })} label="Newsletter" onClick={() => addModule(NEWSLETTER_MODULE)} />
                                       <ModuleItem icon={React.createElement(MODULE_INFO.pricing.icon, { size: 18 })} label="Planes" onClick={() => addModule(PRICING_MODULE)} />
                                       <ModuleItem icon={React.createElement(MODULE_INFO.header.icon, { size: 18 })} label="Publicidad" onClick={() => addModule(HEADER_MODULE)} />

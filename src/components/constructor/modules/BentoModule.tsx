@@ -2393,59 +2393,79 @@ export const BentoModule: React.FC<{
       </div>
       {isPreviewMode && activeClickOverlay && (
         <div
-          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-[9999] overflow-y-auto bg-black/70 p-3 backdrop-blur-sm sm:p-6"
           role="dialog"
           aria-modal="true"
           onClick={() => setActiveClickOverlay(null)}
         >
-          <div
-            className="relative max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-[28px] bg-white p-4 shadow-2xl"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <button
-              type="button"
-              onClick={() => setActiveClickOverlay(null)}
-              className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-black/70 text-white transition hover:bg-black"
-              aria-label="Cerrar"
+          <div className="flex min-h-full items-start justify-center">
+            <div
+              className={
+                activeClickOverlay.type === 'image'
+                  ? 'relative w-full max-w-5xl py-12 sm:py-16'
+                  : 'relative my-auto w-full max-w-3xl rounded-[28px] bg-white p-4 shadow-2xl'
+              }
+              onClick={(event) => event.stopPropagation()}
             >
-              <X size={18} />
-            </button>
+              <button
+                type="button"
+                onClick={() => setActiveClickOverlay(null)}
+                className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-black/70 text-white transition hover:bg-black"
+                aria-label="Cerrar"
+              >
+                <X size={18} />
+              </button>
 
-            {activeClickOverlay.imageUrl && (
-              <div className="overflow-hidden rounded-[22px] bg-slate-100">
-                <img
-                  src={activeClickOverlay.imageUrl}
-                  alt={activeClickOverlay.title || 'Imagen ampliada'}
-                  className="max-h-[68vh] w-full object-contain"
-                  referrerPolicy="no-referrer"
-                />
-              </div>
-            )}
+              {activeClickOverlay.imageUrl && (
+                <div
+                  className={
+                    activeClickOverlay.type === 'image'
+                      ? 'flex justify-center'
+                      : 'overflow-hidden rounded-[22px] bg-slate-100'
+                  }
+                >
+                  <img
+                    src={activeClickOverlay.imageUrl}
+                    alt={activeClickOverlay.title || 'Imagen ampliada'}
+                    className={
+                      activeClickOverlay.type === 'image'
+                        ? 'block h-auto max-w-full rounded-[22px] object-contain shadow-2xl'
+                        : 'max-h-[68vh] w-full object-contain'
+                    }
+                    referrerPolicy="no-referrer"
+                  />
+                </div>
+              )}
 
-            {(activeClickOverlay.title || activeClickOverlay.description || activeClickOverlay.ctaText) && (
-              <div className="space-y-4 px-2 pb-2 pt-5">
-                {activeClickOverlay.title && (
-                  <h3 className="text-2xl font-black leading-tight text-slate-950">
-                    {activeClickOverlay.title}
-                  </h3>
-                )}
-                {activeClickOverlay.description && (
-                  <p className="whitespace-pre-line text-sm leading-7 text-slate-600">
-                    {activeClickOverlay.description}
-                  </p>
-                )}
-                {activeClickOverlay.ctaText && activeClickOverlay.ctaUrl && (
-                  <button
-                    type="button"
-                    onClick={() => openBentoActionUrl(activeClickOverlay.ctaUrl || '', 'new_tab')}
-                    className="inline-flex items-center gap-2 rounded-2xl bg-primary px-5 py-3 text-sm font-black text-white shadow-lg transition hover:brightness-110"
-                  >
-                    {activeClickOverlay.ctaText}
-                    <ExternalLink size={16} />
-                  </button>
-                )}
-              </div>
-            )}
+              {activeClickOverlay.type !== 'image' && (
+                <>
+                  {(activeClickOverlay.title || activeClickOverlay.description || activeClickOverlay.ctaText) && (
+                    <div className="space-y-4 px-2 pb-2 pt-5">
+                      {activeClickOverlay.title && (
+                        <h3 className="text-2xl font-black leading-tight text-slate-950">
+                          {activeClickOverlay.title}
+                        </h3>
+                      )}
+                      {activeClickOverlay.description && (
+                        <p className="whitespace-pre-line text-sm leading-7 text-slate-600">
+                          {activeClickOverlay.description}
+                        </p>
+                      )}
+                      {activeClickOverlay.ctaText && activeClickOverlay.ctaUrl && (
+                        <button
+                          type="button"
+                          onClick={() => openBentoActionUrl(activeClickOverlay.ctaUrl || '', 'new_tab')}
+                          className="inline-flex items-center gap-2 rounded-2xl bg-primary px-5 py-3 text-sm font-black text-white shadow-lg transition hover:brightness-110"
+                        >
+                          {activeClickOverlay.ctaText}
+                          <ExternalLink size={16} />
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}

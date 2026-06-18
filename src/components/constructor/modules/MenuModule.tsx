@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import * as LucideIcons from 'lucide-react';
-import { Menu as HamburgerIcon, X as CloseIcon, Info, Sparkles, Link } from 'lucide-react';
+import { Menu as HamburgerIcon, X as CloseIcon } from 'lucide-react';
 import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
 import { InlineEditableText } from '../InlineEditableText';
 import { logDebug } from '../../../utils/debug';
@@ -40,11 +40,13 @@ export const MenuModule: React.FC<{
   isPreviewMode?: boolean,
   isEditorCanvas?: boolean,
   menuMode?: MenuMode,
-  automaticMenuItems?: any[]
-}> = ({ moduleId, settingsValues, logoUrl, logoWhiteUrl, isPreviewMode = false, isEditorCanvas = false, menuMode: menuModeProp, automaticMenuItems = [] }) => {
+  automaticMenuItems?: any[],
+  stackedTopOffset?: number
+}> = ({ moduleId, settingsValues, logoUrl, logoWhiteUrl, isPreviewMode = false, isEditorCanvas = false, menuMode: menuModeProp, automaticMenuItems = [], stackedTopOffset = 0 }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [menuContainerWidth, setMenuContainerWidth] = useState(0);
   const navRef = useRef<HTMLElement | null>(null);
+  const shellRef = useRef<HTMLDivElement | null>(null);
 
   const getVal = (elementId: string | null, settingId: string, defaultValue: any) => {
     const key = elementId ? `${elementId}_${settingId}` : `${moduleId}_global_${settingId}`;
@@ -182,23 +184,25 @@ export const MenuModule: React.FC<{
   const isFloating = isSticky || isFixed;
   const fallbackMenuHeight = Math.max(56, paddingY * 2 + 40);
   const [menuHeight, setMenuHeight] = useState(fallbackMenuHeight);
-  const isMobileMenuViewport = menuContainerWidth > 0 && menuContainerWidth < 520;
-  const isTabletMenuViewport = menuContainerWidth >= 520 && menuContainerWidth < 1024;
-  const visibleLinkLimit = isMobileMenuViewport ? 0 : isTabletMenuViewport ? 3 : 7;
-  const forceHamburgerMenu = desktopHamburger || visibleLinkLimit === 0;
+  const hasMeasuredViewport = menuContainerWidth > 0;
+  const isTabletOrMobileViewport = hasMeasuredViewport
+    ? menuContainerWidth < 1024
+    : (typeof window !== 'undefined' ? window.innerWidth < 1024 : false);
+  const visibleLinkLimit = desktopHamburger || isTabletOrMobileViewport ? 0 : 7;
+  const forceHamburgerMenu = desktopHamburger || isTabletOrMobileViewport;
   const visibleLinks = forceHamburgerMenu ? [] : links.slice(0, visibleLinkLimit);
   const overflowLinks = forceHamburgerMenu ? links : links.slice(visibleLinkLimit);
   const hasOverflowLinks = overflowLinks.length > 0;
   const dropdownLinks = forceHamburgerMenu ? links : overflowLinks;
   const editorTopOffset = isEditorCanvas ? 60 : 0;
-  const usesEditorFixedSimulation = isEditorCanvas && isFixed;
-  const effectivePosition: React.CSSProperties['position'] = usesEditorFixedSimulation
-    ? 'relative'
-    : isFixed
-      ? 'fixed'
-      : isSticky
-        ? 'sticky'
-        : 'relative';
+  const effectivePosition: React.CSSProperties['position'] = isFixed
+    ? 'fixed'
+    : isSticky
+      ? 'sticky'
+      : 'relative';
+  const canOpenOverlayMenu = forceHamburgerMenu || hasOverflowLinks;
+  const menuPanelId = `${moduleId}-mobile-menu-panel`;
+  const topOffset = editorTopOffset + stackedTopOffset;
 
   const resolvedBgColor = resolveThemeColor(rawBgColor, 'transparent', '#0F172A', darkMode);
   const bgColor = (isFloating && resolvedBgColor === 'transparent') 
@@ -264,6 +268,48 @@ export const MenuModule: React.FC<{
     return () => observer.disconnect();
   }, [paddingY, layout, desktopHamburger, links.length, logoWidth, activeLogo, logoText]);
 
+  useEffect(() => {
+    if (!canOpenOverlayMenu && isMobileMenuOpen) {
+      setIsMobileMenuOpen(false);
+    }
+  }, [canOpenOverlayMenu, isMobileMenuOpen]);
+
+  useEffect(() => {
+    if (!isMobileMenuOpen) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsMobileMenuOpen(false);
+      }
+    };
+
+    const handlePointerDown = (event: MouseEvent | TouchEvent) => {
+      const target = event.target as Node | null;
+      if (!target || !shellRef.current) return;
+      if (!shellRef.current.contains(target)) {
+        setIsMobileMenuOpen(false);
+      }
+    };
+
+    const handleNavigationStateChange = () => {
+      setIsMobileMenuOpen(false);
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('hashchange', handleNavigationStateChange);
+    window.addEventListener('popstate', handleNavigationStateChange);
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('touchstart', handlePointerDown);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('hashchange', handleNavigationStateChange);
+      window.removeEventListener('popstate', handleNavigationStateChange);
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('touchstart', handlePointerDown);
+    };
+  }, [isMobileMenuOpen]);
+
   const getIcon = (iconName: string) => {
     const moduleIcon = (MODULE_INFO as any)?.[iconName]?.icon;
     if (moduleIcon) {
@@ -305,16 +351,20 @@ export const MenuModule: React.FC<{
       : `${borderRadius}px`,
     paddingTop: `${paddingY}px`,
     paddingBottom: `${paddingY}px`,
-    position: effectivePosition,
-    top: effectivePosition === 'sticky' || effectivePosition === 'fixed' ? editorTopOffset : 'auto',
-    left: isFixed && !usesEditorFixedSimulation ? 0 : undefined,
-    right: isFixed && !usesEditorFixedSimulation ? 0 : undefined,
     width: '100%',
-    zIndex: usesEditorFixedSimulation ? 1 : 1000,
     borderBottom: isFloating ? `1px solid ${borderColor}` : 'none'
   };
 
-  const renderLinks = (isMobile: boolean = false, linkList: any[] = links) => {
+  const shellStyle: React.CSSProperties = {
+    position: effectivePosition,
+    top: effectivePosition === 'sticky' || effectivePosition === 'fixed' ? topOffset : undefined,
+    left: effectivePosition === 'fixed' ? 0 : undefined,
+    right: effectivePosition === 'fixed' ? 0 : undefined,
+    width: '100%',
+    zIndex: effectivePosition === 'relative' ? 1 : 1000
+  };
+
+  const renderLinks = (shouldCloseOverlay: boolean = false, linkList: any[] = links) => {
     return linkList.map((link: any, idx: number) => {
       const isTitle = link.is_title;
       const linkHref = String(link.href || link.url || '#').trim() || '#';
@@ -339,7 +389,7 @@ export const MenuModule: React.FC<{
         <motion.a
           key={idx}
           href={linkHref}
-          whileHover={hoverScale && !isMobile ? { scale: 1.05 } : {}}
+          whileHover={hoverScale && !shouldCloseOverlay ? { scale: 1.05 } : {}}
           onClick={(e) => {
             if (linkHref.startsWith('#')) {
               e.preventDefault();
@@ -352,9 +402,9 @@ export const MenuModule: React.FC<{
                 setActiveSectionId(target.id);
               }
             }
-            if (isMobile) setIsMobileMenuOpen(false);
+            if (shouldCloseOverlay) setIsMobileMenuOpen(false);
           }}
-          className={`relative flex items-center gap-3 px-4 py-2.5 transition-all group no-underline w-full @md:w-auto`}
+          className="relative flex w-full items-center gap-3 px-4 py-2.5 transition-all group no-underline"
           style={{ 
             fontSize: `${TYPOGRAPHY_SCALE[fontSize as keyof typeof TYPOGRAPHY_SCALE]?.fontSize || 15}px`,
             fontWeight: isActive ? 800 : (FONT_WEIGHTS[fontWeight as keyof typeof FONT_WEIGHTS]?.value || 500),
@@ -363,7 +413,7 @@ export const MenuModule: React.FC<{
         >
           {(hoverStyle === 'pill' || isActive) && (
             <motion.span 
-              className={`absolute inset-0 transition-all duration-300 ${isActive ? 'opacity-100' : (isMobile ? 'opacity-0' : 'opacity-0 group-hover:opacity-100')}`}
+              className={`absolute inset-0 transition-all duration-300 ${isActive ? 'opacity-100' : (shouldCloseOverlay ? 'opacity-0' : 'opacity-0 group-hover:opacity-100')}`}
               style={{ 
                 backgroundColor: isActive ? 'transparent' : hoverBg, 
                 borderRadius: '12px',
@@ -439,8 +489,9 @@ export const MenuModule: React.FC<{
   };
 
     return (
-      <SectionAnimation animation={sectionAnimation} speed={globalThemeSectionAnimationSpeed}>
+      <SectionAnimation animation={sectionAnimation} speed={globalThemeSectionAnimationSpeed} disabled={isFloating}>
         <div className="w-full @container">
+        <div ref={shellRef} className="relative w-full" style={shellStyle}>
         <nav ref={navRef} className={`w-full transition-all duration-300 ${isFloating ? 'shadow-sm' : ''}`} style={navStyle}>
           <motion.div 
             {...animProps}
@@ -483,66 +534,60 @@ export const MenuModule: React.FC<{
           </a>
 
           {/* Links Logic */}
-          <div className={`flex flex-1 items-center gap-6 ${desktopHamburger ? 'justify-end' : (layout === 'horizontal' ? alignmentClasses[align as keyof typeof alignmentClasses] : 'flex-col items-center')}`}>
-            {desktopHamburger ? (
-              /* Forced Hamburger (Desktop/Tablet/Mobile) */
-              <div className="flex items-center">
+          <div className={`flex flex-1 items-center gap-6 ${forceHamburgerMenu ? 'justify-end' : (layout === 'horizontal' ? alignmentClasses[align as keyof typeof alignmentClasses] : 'flex-col items-center')}`}>
+            {forceHamburgerMenu ? (
+              <div className="ml-auto flex items-center justify-end">
                 <button 
+                  type="button"
                   onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                  className="p-2 rounded-full hover:bg-black/5 transition-colors"
+                  className="rounded-full p-2 transition-colors hover:bg-black/5"
                   style={{ color: textColor }}
+                  aria-label={isMobileMenuOpen ? 'Cerrar menú de navegación' : 'Abrir menú de navegación'}
+                  aria-expanded={isMobileMenuOpen}
+                  aria-controls={menuPanelId}
                 >
                   {isMobileMenuOpen ? <CloseIcon size={24} /> : <HamburgerIcon size={24} />}
                 </button>
               </div>
             ) : (
-              /* Responsive Logic (Links on Desktop, Hamburger on Mobile) */
-              <>
-                <div className={`hidden @md:flex md:flex items-center gap-4 ${linkListAlignmentClass}`}>
-                  {renderLinks(false, visibleLinks)}
-                  {hasOverflowLinks && (
-                    <button 
-                      onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                      className="p-2 rounded-full hover:bg-black/5 transition-colors"
-                      style={{ color: textColor }}
-                      aria-label="Abrir menú de navegación"
-                    >
-                      {isMobileMenuOpen ? <CloseIcon size={24} /> : <HamburgerIcon size={24} />}
-                    </button>
-                  )}
-                </div>
-                
-                <div className="@md:hidden md:hidden flex items-center">
+              <div className={`flex items-center gap-4 ${linkListAlignmentClass}`}>
+                {renderLinks(false, visibleLinks)}
+                {hasOverflowLinks && (
                   <button 
+                    type="button"
                     onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                    className="p-2 rounded-full hover:bg-black/5 transition-colors"
+                    className="rounded-full p-2 transition-colors hover:bg-black/5"
                     style={{ color: textColor }}
+                    aria-label={isMobileMenuOpen ? 'Cerrar menú de navegación' : 'Abrir menú de navegación'}
+                    aria-expanded={isMobileMenuOpen}
+                    aria-controls={menuPanelId}
                   >
                     {isMobileMenuOpen ? <CloseIcon size={24} /> : <HamburgerIcon size={24} />}
                   </button>
-                </div>
-              </>
+                )}
+              </div>
             )}
           </div>
         </motion.div>
 
         {/* Mobile menu and Desktop hamburger menu content */}
         <AnimatePresence>
-          {isMobileMenuOpen && (
+          {isMobileMenuOpen && canOpenOverlayMenu && (
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: -20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: -20 }}
-              className="absolute top-full left-4 right-4 mt-2 p-6 rounded-3xl shadow-2xl z-[1001] border overflow-hidden"
+              id={menuPanelId}
+              className="absolute left-0 right-0 top-full mt-2 overflow-hidden rounded-3xl border shadow-2xl z-[1001]"
               style={{ 
                 backgroundColor: darkMode ? '#1E293B' : '#FFFFFF',
                 borderColor: borderColor
               }}
             >
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center justify-between mb-4 border-b pb-4 border-border/50">
+              <div className="flex max-h-[min(70vh,32rem)] flex-col gap-2 overflow-y-auto p-6">
+                <div className="mb-4 flex items-center justify-between border-b pb-4 border-border/50">
                    <span className="text-[10px] font-black uppercase tracking-widest opacity-40">Navegación</span>
-                   <button onClick={() => setIsMobileMenuOpen(false)} className="p-1 hover:bg-black/5 rounded-lg transition-colors">
+                   <button type="button" onClick={() => setIsMobileMenuOpen(false)} className="rounded-lg p-1 transition-colors hover:bg-black/5">
                      <CloseIcon size={16} style={{ color: textColor }} />
                    </button>
                 </div>
@@ -552,11 +597,12 @@ export const MenuModule: React.FC<{
           )}
         </AnimatePresence>
       </nav>
-      {isFixed && !usesEditorFixedSimulation && (
+      </div>
+      {isFixed && (
         <div
           aria-hidden="true"
           className="w-full shrink-0"
-          style={{ height: `${(menuHeight || fallbackMenuHeight) + editorTopOffset}px` }}
+          style={{ height: `${menuHeight || fallbackMenuHeight}px` }}
         />
       )}
         </div>

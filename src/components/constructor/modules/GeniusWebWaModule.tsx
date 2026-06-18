@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { AlertCircle, MessageCircle, MessageSquare } from 'lucide-react';
+import { AlertCircle, MessageSquare } from 'lucide-react';
 import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
 import { TextRenderer } from '../TextRenderer';
 import { InlineEditableText } from '../InlineEditableText';
@@ -17,6 +17,24 @@ type GeniusWebWaModuleProps = {
   settingsValues: Record<string, any>;
   renderMode?: RenderMode;
 };
+
+const WHATSAPP_GREEN = '#25D366';
+const WHATSAPP_ACTION_LABEL = 'Enviar mensaje por WhatsApp';
+
+const WhatsAppIcon: React.FC<{ size?: number; className?: string }> = ({ size = 24, className }) => (
+  <svg
+    viewBox="0 0 32 32"
+    fill="currentColor"
+    aria-hidden="true"
+    focusable="false"
+    width={size}
+    height={size}
+    className={className}
+  >
+    <path d="M19.11 17.33c-.27-.14-1.57-.77-1.81-.86-.24-.09-.42-.14-.6.14-.18.27-.69.86-.84 1.04-.16.18-.31.2-.58.07-.27-.14-1.12-.41-2.13-1.31-.79-.7-1.32-1.56-1.47-1.82-.16-.27-.02-.41.12-.55.12-.12.27-.31.4-.47.13-.16.18-.27.27-.45.09-.18.04-.34-.02-.47-.07-.14-.6-1.45-.82-1.99-.22-.52-.44-.45-.6-.46h-.51c-.18 0-.47.07-.72.34-.25.27-.95.93-.95 2.26 0 1.33.97 2.62 1.1 2.8.13.18 1.9 2.9 4.6 4.06.64.28 1.14.44 1.54.56.65.21 1.24.18 1.71.11.52-.08 1.57-.64 1.79-1.26.22-.61.22-1.13.16-1.24-.07-.11-.25-.18-.52-.32Z" />
+    <path d="M16.01 3.2c-7.07 0-12.8 5.72-12.8 12.78 0 2.26.59 4.47 1.71 6.4L3.1 28.8l6.58-1.72a12.78 12.78 0 0 0 6.33 1.67h.01c7.06 0 12.78-5.72 12.78-12.79 0-3.42-1.33-6.63-3.75-9.04A12.68 12.68 0 0 0 16.01 3.2Zm0 23.39h-.01a10.6 10.6 0 0 1-5.4-1.48l-.39-.23-3.9 1.02 1.04-3.8-.25-.39a10.58 10.58 0 0 1-1.63-5.66c0-5.85 4.77-10.61 10.63-10.61 2.83 0 5.49 1.1 7.49 3.11a10.54 10.54 0 0 1 3.11 7.5c0 5.86-4.76 10.62-10.61 10.62Z" />
+  </svg>
+);
 
 const normalizePhoneNumber = (value: unknown) => {
   if (typeof value !== 'string' && typeof value !== 'number') return '';
@@ -96,7 +114,7 @@ export const GeniusWebWaModule: React.FC<GeniusWebWaModuleProps> = ({
   const buttonText = getVal(
     `${moduleId}_el_genius_web_wa_content`,
     'button_text',
-    'Abrir WhatsApp'
+    'Enviar mensaje'
   );
   const defaultMessage = getVal(
     `${moduleId}_el_genius_web_wa_content`,
@@ -114,7 +132,7 @@ export const GeniusWebWaModule: React.FC<GeniusWebWaModuleProps> = ({
 
   const bgColor = getVal(null, 'bg_color', darkMode ? '#0F172A' : '#F8FAFC');
   const cardBg = getVal(`${moduleId}_el_genius_web_wa_style`, 'card_bg', darkMode ? '#111827' : '#FFFFFF');
-  const primaryColor = getVal(`${moduleId}_el_genius_web_wa_style`, 'primary_color', '#25D366');
+  const primaryColor = getVal(`${moduleId}_el_genius_web_wa_style`, 'primary_color', WHATSAPP_GREEN);
   const textColor = getVal(`${moduleId}_el_genius_web_wa_style`, 'text_color', '#FFFFFF');
   const titleColor = getVal(`${moduleId}_el_genius_web_wa_style`, 'title_color', darkMode ? '#FFFFFF' : '#0F172A');
   const subtitleColor = getVal(
@@ -154,9 +172,9 @@ export const GeniusWebWaModule: React.FC<GeniusWebWaModuleProps> = ({
     </div>
   ) : null;
 
-  const actionLabel = (
+  const inlineActionLabel = (
     <>
-      {showIcon && <MessageCircle size={20} className="shrink-0" />}
+      {showIcon && <WhatsAppIcon size={20} className="shrink-0" />}
       <InlineEditableText
         moduleId={moduleId}
         elementId={`${moduleId}_el_genius_web_wa_content`}
@@ -168,11 +186,17 @@ export const GeniusWebWaModule: React.FC<GeniusWebWaModuleProps> = ({
     </>
   );
 
-  const renderAction = (className: string, style: React.CSSProperties) => {
+  const renderInlineAction = (className: string, style: React.CSSProperties) => {
     if (!waUrl) {
       return (
-        <div className={className} style={{ ...style, opacity: 0.72 }} aria-disabled="true">
-          {actionLabel}
+        <div
+          className={className}
+          style={{ ...style, opacity: 0.72 }}
+          aria-disabled="true"
+          aria-label={WHATSAPP_ACTION_LABEL}
+          title={WHATSAPP_ACTION_LABEL}
+        >
+          {inlineActionLabel}
         </div>
       );
     }
@@ -186,8 +210,44 @@ export const GeniusWebWaModule: React.FC<GeniusWebWaModuleProps> = ({
         whileTap={{ scale: 0.98 }}
         className={className}
         style={style}
+        aria-label={WHATSAPP_ACTION_LABEL}
+        title={WHATSAPP_ACTION_LABEL}
       >
-        {actionLabel}
+        {inlineActionLabel}
+      </motion.a>
+    );
+  };
+
+  const renderFloatingAction = () => {
+    const floatingCommonProps = {
+      className:
+        'flex h-[60px] w-[60px] items-center justify-center rounded-full shadow-[0_18px_40px_rgba(37,211,102,0.28)] transition-all focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#25D366]/35',
+      style: {
+        backgroundColor: WHATSAPP_GREEN,
+        color: '#FFFFFF'
+      } as React.CSSProperties,
+      'aria-label': WHATSAPP_ACTION_LABEL,
+      title: WHATSAPP_ACTION_LABEL
+    };
+
+    if (!waUrl) {
+      return (
+        <div {...floatingCommonProps} style={{ ...floatingCommonProps.style, opacity: 0.72 }} aria-disabled="true">
+          <WhatsAppIcon size={28} />
+        </div>
+      );
+    }
+
+    return (
+      <motion.a
+        href={waUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        whileHover={{ y: -2, scale: 1.03 }}
+        whileTap={{ scale: 0.97 }}
+        {...floatingCommonProps}
+      >
+        <WhatsAppIcon size={28} />
       </motion.a>
     );
   };
@@ -259,7 +319,7 @@ export const GeniusWebWaModule: React.FC<GeniusWebWaModuleProps> = ({
               {pendingNotice}
             </div>
 
-            {renderAction(
+            {renderInlineAction(
               'inline-flex min-h-[52px] w-full items-center justify-center gap-3 px-5 py-4 text-center text-sm font-black transition-all @md:w-auto @md:px-6',
               {
                 backgroundColor: primaryColor,
@@ -308,19 +368,7 @@ export const GeniusWebWaModule: React.FC<GeniusWebWaModuleProps> = ({
     >
       {!enabled ? null : (
         <div className="flex flex-col gap-3">
-          <div
-            className="rounded-full border border-slate-200 bg-white p-2 shadow-[0_18px_40px_rgba(15,23,42,0.18)]"
-            style={{ borderRadius: `${buttonRadius}px` }}
-          >
-            {renderAction(
-              'flex min-h-[56px] items-center gap-3 rounded-full px-3 py-2 font-bold text-slate-900 transition-all',
-              {
-                backgroundColor: '#FFFFFF',
-                color: '#0F172A',
-                borderRadius: `${buttonRadius}px`
-              }
-            )}
-          </div>
+          {renderFloatingAction()}
           {pendingNotice}
         </div>
       )}

@@ -44,7 +44,7 @@ export const MenuModule: React.FC<{
   stackedTopOffset?: number
 }> = ({ moduleId, settingsValues, logoUrl, logoWhiteUrl, isPreviewMode = false, isEditorCanvas = false, menuMode: menuModeProp, automaticMenuItems = [], stackedTopOffset = 0 }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [menuContainerWidth, setMenuContainerWidth] = useState(0);
+  const [menuContainerWidth, setMenuContainerWidth] = useState<number | null>(null);
   const navRef = useRef<HTMLElement | null>(null);
   const shellRef = useRef<HTMLDivElement | null>(null);
 
@@ -184,10 +184,8 @@ export const MenuModule: React.FC<{
   const isFloating = isSticky || isFixed;
   const fallbackMenuHeight = Math.max(56, paddingY * 2 + 40);
   const [menuHeight, setMenuHeight] = useState(fallbackMenuHeight);
-  const hasMeasuredViewport = menuContainerWidth > 0;
-  const isTabletOrMobileViewport = hasMeasuredViewport
-    ? menuContainerWidth < 1024
-    : (typeof window !== 'undefined' ? window.innerWidth < 1024 : false);
+  const hasMeasuredViewport = typeof menuContainerWidth === 'number' && menuContainerWidth > 0;
+  const isTabletOrMobileViewport = hasMeasuredViewport ? menuContainerWidth < 1024 : true;
   const visibleLinkLimit = desktopHamburger || isTabletOrMobileViewport ? 0 : 7;
   const forceHamburgerMenu = desktopHamburger || isTabletOrMobileViewport;
   const visibleLinks = forceHamburgerMenu ? [] : links.slice(0, visibleLinkLimit);

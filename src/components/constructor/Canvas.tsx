@@ -170,7 +170,7 @@ export const Canvas: React.FC<CanvasProps> = ({
       : viewport === 'mobile'
         ? 375
         : Math.max(canvasViewportWidth || renderContentWidth || browserViewportWidth, 1);
-  const canUsePreviewZoom = showEditorChrome || (isFullscreen && !isPreviewMode);
+  const canUsePreviewZoom = viewport === 'desktop' && (showEditorChrome || (isFullscreen && !isPreviewMode));
   const isUserZoomed = canUsePreviewZoom && userZoom !== 1;
   const canPanPreview = canUsePreviewZoom && userZoom > 1;
   const zoomPercent = Math.round(userZoom * 100);

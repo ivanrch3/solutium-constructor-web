@@ -2748,7 +2748,7 @@ export const GENIUS_WEB_WA_MODULE: WebModule = {
       contenido: [
         { id: 'title', label: 'Titulo', type: 'text', defaultValue: 'Conversa con Genius' },
         { id: 'subtitle', label: 'Subtitulo', type: 'text', defaultValue: 'Estamos listos para ayudarte por WhatsApp' },
-        { id: 'button_text', label: 'Texto del Boton', type: 'text', defaultValue: 'Abrir WhatsApp' },
+        { id: 'button_text', label: 'Texto del Boton', type: 'text', defaultValue: 'Enviar mensaje' },
         { id: 'default_message', label: 'Mensaje Inicial', type: 'textarea', rows: 3, defaultValue: 'Hola, necesito ayuda con...' }
       ],
       tipografia: [

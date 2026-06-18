@@ -266,6 +266,57 @@ export const Viewer: React.FC<ViewerProps> = ({
     [aggregatedSectionSettings, sections]
   );
 
+  const resolveFloatingPosition = React.useCallback((section: any) => {
+    const moduleId = section?.id;
+    if (!moduleId) return 'relative';
+    const rawPosition =
+      aggregatedSectionSettings?.[`${moduleId}_global_position`] ??
+      section?.settings?.[`${moduleId}_global_position`];
+    const rawSticky =
+      aggregatedSectionSettings?.[`${moduleId}_global_sticky`] ??
+      section?.settings?.[`${moduleId}_global_sticky`];
+
+    if (rawPosition === 'fixed') return 'fixed';
+    if (rawPosition === 'sticky') return 'sticky';
+    if (rawPosition === 'standard' || rawPosition === 'static' || rawPosition === 'normal') return 'relative';
+    if (rawSticky === true || rawSticky === 'true') return 'sticky';
+    return 'relative';
+  }, [aggregatedSectionSettings]);
+
+  const estimateFloatingSectionHeight = React.useCallback((section: any) => {
+    const moduleId = section?.id;
+    if (!moduleId) return 0;
+
+    if (section?.type === 'conversion' || section?.type === 'header') {
+      const showMarquee = aggregatedSectionSettings?.[`${moduleId}_el_header_marquee_show_marquee`] ?? true;
+      const showReg = aggregatedSectionSettings?.[`${moduleId}_el_header_quick_reg_show_reg`] ?? false;
+      const showActions = aggregatedSectionSettings?.[`${moduleId}_el_header_actions_show_actions`] ?? true;
+      const primaryUrl = aggregatedSectionSettings?.[`${moduleId}_el_header_actions_primary_url`] || '';
+      const secondaryUrl = aggregatedSectionSettings?.[`${moduleId}_el_header_actions_secondary_url`] || '';
+      const hasButtons = showActions && (primaryUrl !== '' || secondaryUrl !== '');
+      const hasContent = showReg || hasButtons;
+      const layoutType = aggregatedSectionSettings?.[`${moduleId}_global_layout_type`] || 'standard';
+      const isCompact = layoutType === 'compact';
+
+      let height = 0;
+      if (showMarquee) height += 32;
+      if (hasContent) {
+        const py = isCompact ? 12 : 20;
+        const contentHeight = isCompact ? 34 : 38;
+        height += (py * 2) + contentHeight + 1;
+      }
+      return height;
+    }
+
+    if (section?.type === 'menu' || section?.type === 'navegacion') {
+      const pyValue = aggregatedSectionSettings?.[`${moduleId}_global_padding_y`];
+      const py = (typeof pyValue === 'number' ? pyValue : parseFloat(pyValue)) || 20;
+      return (Number.isNaN(py) ? 20 : py * 2) + 40;
+    }
+
+    return 0;
+  }, [aggregatedSectionSettings]);
+
   useEffect(() => {
     if (window.location.search.includes('debug=products') || window.location.search.includes('debug_render=true')) {
       logDebug('[PUBLISHED_SECTIONS_EXTRACTION_DEBUG]', {
@@ -339,6 +390,13 @@ export const Viewer: React.FC<ViewerProps> = ({
         const type = section.type || section.tipo; 
         const settings = section.settings || {};
         const content = section.content || {};
+        const stackedTopOffset = sections.slice(0, index).reduce((total, previousSection) => {
+          const previousPosition = resolveFloatingPosition(previousSection);
+          if (previousPosition === 'sticky' || previousPosition === 'fixed') {
+            return total + estimateFloatingSectionHeight(previousSection);
+          }
+          return total;
+        }, 0);
 
         if (!moduleId) {
           console.warn('⚠️ [VIEWER] Saltando sección sin ID.');
@@ -729,6 +787,7 @@ export const Viewer: React.FC<ViewerProps> = ({
                 settingsValues={finalSettingsValues}
                 menuMode={resolveMenuMode(moduleId, finalSettingsValues)}
                 automaticMenuItems={automaticMenuItems}
+                stackedTopOffset={stackedTopOffset}
               />
             );
           case 'footer':

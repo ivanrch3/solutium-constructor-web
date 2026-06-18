@@ -587,6 +587,12 @@ export const Canvas: React.FC<CanvasProps> = ({
               (renderSiteContent.sections || []).map((section, index) => {
                 const isLast = index === (renderSiteContent.sections?.length || 0) - 1;
                 
+                const isMenuSection =
+                  section.type === 'navegacion' ||
+                  section.type === 'menu' ||
+                  (section as any).tipo === 'navegacion' ||
+                  (section as any).tipo === 'menu';
+
                 // Determine if this module wrapper should be sticky/fixed
                 const modulePos =
                   editorState.settingsValues?.[`${section.id}_global_position`] ??
@@ -597,6 +603,7 @@ export const Canvas: React.FC<CanvasProps> = ({
                 const hasExplicitPosition = modulePos !== undefined && modulePos !== null && modulePos !== '';
                 const isSticky = modulePos === 'sticky' || (!hasExplicitPosition && menuSticky === true);
                 const isFixed = modulePos === 'fixed';
+                const wrapperHandlesFloating = !isMenuSection && (isSticky || isFixed);
 
                 // Calculate cumulative top offset for stacking floating modules
                 let topOffset = 0;
@@ -840,14 +847,14 @@ export const Canvas: React.FC<CanvasProps> = ({
                       e.stopPropagation();
                       selectSection(section.id);
                     }}
-                    className={`w-full group relative outline-none transition-all duration-300 ${isSticky || isFixed ? 'sticky' : 'relative'} ${
+                    className={`w-full group relative outline-none transition-all duration-300 ${wrapperHandlesFloating ? 'sticky' : 'relative'} ${
                       (showEditorChrome && selectedSectionId === section.id)
                         ? 'ring-2 ring-blue-500 ring-inset shadow-2xl z-50 cursor-pointer' 
                         : showEditorChrome ? 'hover:ring-1 hover:ring-blue-300/50 ring-inset cursor-pointer' : ''
                     }`}
                     style={{ 
-                      top: isSticky || isFixed ? `${topOffset}px` : undefined,
-                      zIndex: isSticky || isFixed ? stackingZIndex : (selectedSectionId === section.id ? 50 : 1)
+                      top: wrapperHandlesFloating ? `${topOffset}px` : undefined,
+                      zIndex: wrapperHandlesFloating ? stackingZIndex : (selectedSectionId === section.id ? 50 : 1)
                     }}
                   >
                     {/* Indicador de Selección */}
@@ -1028,6 +1035,7 @@ export const Canvas: React.FC<CanvasProps> = ({
                         isEditorCanvas={!isCleanPreviewMode}
                         menuMode={resolveMenuMode(section.id, finalSettings)}
                         automaticMenuItems={automaticMenuItems}
+                        stackedTopOffset={topOffset}
                       />
                     )}
                     {(section.type === 'footer') && (

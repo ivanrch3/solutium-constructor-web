@@ -1154,10 +1154,10 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   });
   const [showReferenceDebugPanel, setShowReferenceDebugPanel] = useState(false);
   const aiSteps = [
-    "DiseÃƒÆ’Ã‚Â±ando estructura por industria...",
+    "Diseñando estructura por industria...",
     "Redactando contenido persuasivo...",
     "Sincronizando paleta de marca y estilo...",
-    "Curando imÃƒÆ’Ã‚Â¡genes de stock y activos..."
+    "Curando imágenes de stock y activos..."
   ];
 
   // --- [PHASE 3D.5.2] Secure AI Generation States ---
@@ -5681,35 +5681,35 @@ const formatTimestampName = () => {
                   />
                 )}
 
-                <div className="flex-1 overflow-hidden relative">
+                <div className="relative flex-1 min-h-0 overflow-hidden">
                   {(activeTab === 'constructor' && mobileTab === 'constructor' && !isPreviewMode && !isExternalRender) && (
                     <div className="h-full overflow-y-auto bg-sidebar-bg custom-scrollbar">
                       <div className="p-6 md:p-10 flex flex-col items-center">
-                        <h3 className="text-xl md:text-2xl font-black text-sidebar-foreground uppercase tracking-[0.1em] mb-12 text-center px-2">CatÃƒÆ’Ã‚Â¡logo de MÃƒÆ’Ã‚Â³dulos</h3>
+                        <h3 className="text-xl md:text-2xl font-black text-sidebar-foreground uppercase tracking-[0.1em] mb-12 text-center px-2">Catálogo de Módulos</h3>
 
                         <div className="w-full">
                           {isMobile ? (
                             /* MOBILE/TABLET VIEW: Accordion + Centered */
                             <div className="flex flex-col items-center px-6 py-10">
-                              <h3 className="text-xl md:text-2xl font-black text-sidebar-foreground uppercase tracking-[0.1em] mb-12 text-center px-2">CatÃƒÆ’Ã‚Â¡logo de MÃƒÆ’Ã‚Â³dulos</h3>
+                              <h3 className="text-xl md:text-2xl font-black text-sidebar-foreground uppercase tracking-[0.1em] mb-12 text-center px-2">Catálogo de Módulos</h3>
                               <div className="w-full max-w-[200px] space-y-1 mb-4">
-                                <ModuleItem icon={React.createElement(MODULE_INFO.menu.icon, { size: 18 })} label="MenÃƒÆ’Ã‚Âº" onClick={() => addModule(MENU_MODULE)} />
+                                <ModuleItem icon={React.createElement(MODULE_INFO.menu.icon, { size: 18 })} label="Menú" onClick={() => addModule(MENU_MODULE)} />
                               </div>
                               <div className="w-full max-w-md border-t border-sidebar-foreground/10 mb-4" />
                               <div className="w-full max-w-md space-y-4">
                                 {[
                                   { id: 'content', label: 'Contenido', modules: [
-                                    { icon: MODULE_INFO.features.icon, label: "CaracterÃƒÆ’Ã‚Â­sticas", mod: FEATURES_MODULE },
+                                    { icon: MODULE_INFO.features.icon, label: "Características", mod: FEATURES_MODULE },
                                     { icon: MODULE_INFO.team.icon, label: "Equipo", mod: TEAM_MODULE },
-                                    { icon: MODULE_INFO.stats.icon, label: "EstadÃƒÆ’Ã‚Â­sticas", mod: STATS_MODULE },
+                                    { icon: MODULE_INFO.stats.icon, label: "Estadísticas", mod: STATS_MODULE },
                                     { icon: MODULE_INFO.hero.icon, label: "Portada", mod: HERO_MODULE },
                                     { icon: MODULE_INFO.hero2.icon, label: "Portada Solutium", mod: HERO2_MODULE },
                                     { icon: MODULE_INFO.process.icon, label: "Proceso", mod: PROCESS_MODULE },
                                     { icon: MODULE_INFO.about.icon, label: "Sobre Nosotros", mod: ABOUT_MODULE }
                                   ]},
-                                  { id: 'conversion', label: 'ConversiÃƒÆ’Ã‚Â³n', modules: [
+                                  { id: 'conversion', label: 'Conversión', modules: [
                                     { icon: MODULE_INFO.cta.icon, label: "Call to Action", mod: CTA_MODULE },
-                                    { icon: MODULE_INFO.dynamic_cards.icon, label: "Tarjetas dinÃƒÆ’Ã‚Â¡micas", mod: DYNAMIC_CARDS_MODULE },
+                                    { icon: MODULE_INFO.dynamic_cards.icon, label: "Tarjetas dinámicas", mod: DYNAMIC_CARDS_MODULE },
                                     { icon: MODULE_INFO.contact.icon, label: "Contacto", mod: CONTACT_MODULE },
                                     { icon: MODULE_INFO.genius_web_wa.icon, label: "Genius Web-WA", mod: GENIUS_WEB_WA_MODULE },
                                     { icon: MODULE_INFO.newsletter.icon, label: "Newsletter", mod: NEWSLETTER_MODULE },
@@ -5724,7 +5724,7 @@ const formatTimestampName = () => {
                                   ]},
                                   { id: 'multimedia', label: 'Multimedia', modules: [
                                     { icon: MODULE_INFO.comparative.icon, label: "Comparativo", mod: COMPARISON_MODULE },
-                                    { icon: MODULE_INFO.gallery.icon, label: "GalerÃƒÆ’Ã‚Â­a", mod: GALLERY_MODULE },
+                                    { icon: MODULE_INFO.gallery.icon, label: "Galería", mod: GALLERY_MODULE },
                                     { icon: MODULE_INFO.video.icon, label: "Video", mod: VIDEO_MODULE }
                                   ]}
                                 ].map((cat) => (
@@ -5767,8 +5767,8 @@ const formatTimestampName = () => {
                                 ))}
                                 <div className="border-t border-sidebar-foreground/10 pt-4">
                                   <div className="mx-auto w-full max-w-[200px] space-y-1">
-                                  <ModuleItem icon={React.createElement(MODULE_INFO.bento.icon, { size: 18 })} label="DiseÃƒÆ’Ã‚Â±o libre" onClick={() => addModule(BENTO_MODULE)} />
-                                  <ModuleItem icon={React.createElement(MODULE_INFO.footer.icon, { size: 18 })} label="Pie de pÃƒÆ’Ã‚Â¡gina" onClick={() => addModule(FOOTER_MODULE)} />
+                                  <ModuleItem icon={React.createElement(MODULE_INFO.bento.icon, { size: 18 })} label="Diseño libre" onClick={() => addModule(BENTO_MODULE)} />
+                                  <ModuleItem icon={React.createElement(MODULE_INFO.footer.icon, { size: 18 })} label="Pie de página" onClick={() => addModule(FOOTER_MODULE)} />
                                   <ModuleItem icon={React.createElement(MODULE_INFO.spacer.icon, { size: 18 })} label="Espaciadores" onClick={() => addModule(SPACER_MODULE)} />
                                   </div>
                                 </div>
@@ -5777,20 +5777,20 @@ const formatTimestampName = () => {
                           ) : (
                             /* DESKTOP VIEW: Original List Alignment */
                             <div className="p-6">
-                              <h3 className="text-[10px] font-bold text-sidebar-foreground/40 uppercase tracking-[0.2em] mb-8 text-left px-2">CatÃƒÆ’Ã‚Â¡logo de MÃƒÆ’Ã‚Â³dulos</h3>
+                              <h3 className="text-[10px] font-bold text-sidebar-foreground/40 uppercase tracking-[0.2em] mb-8 text-left px-2">Catálogo de Módulos</h3>
 
                               <div className="grid grid-cols-2 gap-8">
                                 <div className="space-y-8">
                                   <div className="space-y-1">
-                                    <ModuleItem icon={React.createElement(MODULE_INFO.menu.icon, { size: 18 })} label="MenÃƒÆ’Ã‚Âº" onClick={() => addModule(MENU_MODULE)} />
+                                    <ModuleItem icon={React.createElement(MODULE_INFO.menu.icon, { size: 18 })} label="Menú" onClick={() => addModule(MENU_MODULE)} />
                                   </div>
 
                                   <div className="space-y-4">
                                     <h4 className="text-[9px] font-black text-primary uppercase tracking-widest px-2">Contenido</h4>
                                     <div className="space-y-1">
-                                      <ModuleItem icon={React.createElement(MODULE_INFO.features.icon, { size: 18 })} label="CaracterÃƒÆ’Ã‚Â­sticas" onClick={() => addModule(FEATURES_MODULE)} />
+                                      <ModuleItem icon={React.createElement(MODULE_INFO.features.icon, { size: 18 })} label="Características" onClick={() => addModule(FEATURES_MODULE)} />
                                       <ModuleItem icon={React.createElement(MODULE_INFO.team.icon, { size: 18 })} label="Equipo" onClick={() => addModule(TEAM_MODULE)} />
-                                      <ModuleItem icon={React.createElement(MODULE_INFO.stats.icon, { size: 18 })} label="EstadÃƒÆ’Ã‚Â­sticas" onClick={() => addModule(STATS_MODULE)} />
+                                      <ModuleItem icon={React.createElement(MODULE_INFO.stats.icon, { size: 18 })} label="Estadísticas" onClick={() => addModule(STATS_MODULE)} />
                                       <ModuleItem icon={React.createElement(MODULE_INFO.hero.icon, { size: 18 })} label="Portada" onClick={() => addModule(HERO_MODULE)} />
                                       <ModuleItem icon={React.createElement(MODULE_INFO.hero2.icon, { size: 18 })} label="Portada Solutium" onClick={() => addModule(HERO2_MODULE)} />
                                       <ModuleItem icon={React.createElement(MODULE_INFO.process.icon, { size: 18 })} label="Proceso" onClick={() => addModule(PROCESS_MODULE)} />
@@ -5799,10 +5799,10 @@ const formatTimestampName = () => {
                                   </div>
 
                                   <div className="space-y-4">
-                                    <h4 className="text-[9px] font-black text-primary uppercase tracking-widest px-2">ConversiÃƒÆ’Ã‚Â³n</h4>
+                                    <h4 className="text-[9px] font-black text-primary uppercase tracking-widest px-2">Conversión</h4>
                                     <div className="space-y-1">
                                       <ModuleItem icon={React.createElement(MODULE_INFO.cta.icon, { size: 18 })} label="Call to Action" onClick={() => addModule(CTA_MODULE)} />
-                                      <ModuleItem icon={React.createElement(MODULE_INFO.dynamic_cards.icon, { size: 18 })} label="Tarjetas dinÃƒÆ’Ã‚Â¡micas" onClick={() => addModule(DYNAMIC_CARDS_MODULE)} />
+                                      <ModuleItem icon={React.createElement(MODULE_INFO.dynamic_cards.icon, { size: 18 })} label="Tarjetas dinámicas" onClick={() => addModule(DYNAMIC_CARDS_MODULE)} />
                                       <ModuleItem icon={React.createElement(MODULE_INFO.contact.icon, { size: 18 })} label="Contacto" onClick={() => addModule(CONTACT_MODULE)} />
                                       <ModuleItem icon={React.createElement(MODULE_INFO.genius_web_wa.icon, { size: 18 })} label="Genius Web-WA" onClick={() => addModule(GENIUS_WEB_WA_MODULE)} />
                                       <ModuleItem icon={React.createElement(MODULE_INFO.newsletter.icon, { size: 18 })} label="Newsletter" onClick={() => addModule(NEWSLETTER_MODULE)} />
@@ -5827,15 +5827,15 @@ const formatTimestampName = () => {
                                     <h4 className="text-[9px] font-black text-primary uppercase tracking-widest px-2">Multimedia</h4>
                                     <div className="space-y-1">
                                       <ModuleItem icon={React.createElement(MODULE_INFO.comparative.icon, { size: 18 })} label="Comparativo" onClick={() => addModule(COMPARISON_MODULE)} />
-                                      <ModuleItem icon={React.createElement(MODULE_INFO.gallery.icon, { size: 18 })} label="GalerÃƒÆ’Ã‚Â­a" onClick={() => addModule(GALLERY_MODULE)} />
+                                      <ModuleItem icon={React.createElement(MODULE_INFO.gallery.icon, { size: 18 })} label="Galería" onClick={() => addModule(GALLERY_MODULE)} />
                                       <ModuleItem icon={React.createElement(MODULE_INFO.video.icon, { size: 18 })} label="Video" onClick={() => addModule(VIDEO_MODULE)} />
                                     </div>
                                   </div>
                                 </div>
                               </div>
                               <div className="mt-8 border-t border-sidebar-foreground/10 pt-4 space-y-1">
-                                <ModuleItem icon={React.createElement(MODULE_INFO.bento.icon, { size: 18 })} label="DiseÃƒÆ’Ã‚Â±o libre" onClick={() => addModule(BENTO_MODULE)} />
-                                <ModuleItem icon={React.createElement(MODULE_INFO.footer.icon, { size: 18 })} label="Pie de pÃƒÆ’Ã‚Â¡gina" onClick={() => addModule(FOOTER_MODULE)} />
+                                <ModuleItem icon={React.createElement(MODULE_INFO.bento.icon, { size: 18 })} label="Diseño libre" onClick={() => addModule(BENTO_MODULE)} />
+                                <ModuleItem icon={React.createElement(MODULE_INFO.footer.icon, { size: 18 })} label="Pie de página" onClick={() => addModule(FOOTER_MODULE)} />
                                 <ModuleItem icon={React.createElement(MODULE_INFO.spacer.icon, { size: 18 })} label="Espaciadores" onClick={() => addModule(SPACER_MODULE)} />
                               </div>
                             </div>
@@ -5882,7 +5882,7 @@ const formatTimestampName = () => {
                   )}
 
                   {mobileTab === 'preview' || isPreviewMode || isExternalRender ? (
-                    <div className="relative h-full overflow-hidden" onClickCapture={handlePreviewClick}>
+                    <div className="relative flex h-full min-h-0 flex-col overflow-hidden" onClickCapture={handlePreviewClick}>
                       <Canvas
                         editorState={editorState}
                         onAddModule={addModule}

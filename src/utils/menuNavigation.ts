@@ -7,6 +7,7 @@ type ModuleLike = {
   type: string;
   iconKey?: string;
   name?: string;
+  templateId?: string;
 };
 
 type MenuItemLike = {
@@ -41,6 +42,94 @@ export const isUtilityMenuModule = (module: ModuleLike) =>
   module.id.startsWith('mod_header_1') ||
   module.id.startsWith('mod_menu_1') ||
   module.id.startsWith('mod_footer_1');
+
+export const isMenuModuleLike = (module?: ModuleLike | null) => Boolean(
+  module && (
+    module.type === 'menu' ||
+    module.type === 'navegacion' ||
+    module.templateId === 'mod_menu_1' ||
+    module.id === 'mod_menu_1' ||
+    module.id.startsWith('mod_menu_1')
+  )
+);
+
+export const isHeaderModuleLike = (module?: ModuleLike | null) => Boolean(
+  module && (
+    module.type === 'header' ||
+    module.type === 'conversion' ||
+    module.templateId === 'mod_header_1' ||
+    module.id === 'mod_header_1' ||
+    module.id.startsWith('mod_header_1')
+  )
+);
+
+export const isFooterModuleLike = (module?: ModuleLike | null) => Boolean(
+  module && (
+    module.type === 'footer' ||
+    module.templateId === 'mod_footer_1' ||
+    module.id === 'mod_footer_1' ||
+    module.id.startsWith('mod_footer_1')
+  )
+);
+
+export const normalizeMenuPositionValue = (rawPosition: unknown, rawSticky?: unknown): 'relative' | 'fixed' => {
+  const normalizedPosition = String(rawPosition || '').trim().toLowerCase();
+  if (normalizedPosition === 'fixed' || normalizedPosition === 'sticky') return 'fixed';
+  if (
+    normalizedPosition === 'relative' ||
+    normalizedPosition === 'standard' ||
+    normalizedPosition === 'static' ||
+    normalizedPosition === 'normal'
+  ) {
+    return 'relative';
+  }
+  if (rawSticky === true || rawSticky === 'true' || rawSticky === 1 || rawSticky === '1') {
+    return 'fixed';
+  }
+  return 'relative';
+};
+
+export const normalizeHeaderPositionValue = (rawPosition: unknown, rawSticky?: unknown): 'relative' | 'fixed' => {
+  const normalizedPosition = String(rawPosition || '').trim().toLowerCase();
+  if (normalizedPosition === 'fixed' || normalizedPosition === 'sticky') return 'fixed';
+  if (
+    normalizedPosition === 'relative' ||
+    normalizedPosition === 'standard' ||
+    normalizedPosition === 'static' ||
+    normalizedPosition === 'normal'
+  ) {
+    return 'relative';
+  }
+  if (rawSticky === true || rawSticky === 'true' || rawSticky === 1 || rawSticky === '1') {
+    return 'fixed';
+  }
+  return 'relative';
+};
+
+export const normalizeMenuFirstOrder = <T extends ModuleLike>(modules: T[]) => {
+  const list = Array.isArray(modules) ? modules : [];
+  const firstMenuIndex = list.findIndex((module) => isMenuModuleLike(module));
+  if (firstMenuIndex <= 0) return list;
+
+  const firstMenu = list[firstMenuIndex];
+  return [
+    firstMenu,
+    ...list.slice(0, firstMenuIndex),
+    ...list.slice(firstMenuIndex + 1)
+  ];
+};
+
+export const normalizeConstructorModuleOrder = <T extends ModuleLike>(modules: T[]) => {
+  const ordered = normalizeMenuFirstOrder(modules);
+  const footerModules = ordered.filter((module) => isFooterModuleLike(module));
+  if (footerModules.length === 0) return ordered;
+  const normalized = [
+    ...ordered.filter((module) => !isFooterModuleLike(module)),
+    ...footerModules
+  ];
+  const changed = normalized.length !== ordered.length || normalized.some((module, index) => module !== ordered[index]);
+  return changed ? normalized : ordered;
+};
 
 export const isMenuEligibleModule = (module: ModuleLike) =>
   !isUtilityMenuModule(module) &&

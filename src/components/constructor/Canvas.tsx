@@ -47,7 +47,17 @@ import { CompositionSectionModule } from './modules/CompositionSectionModule';
 import { ParallaxScrollContext } from './ParallaxBackground';
 
 import { normalizeSocialUrl, getIconForPlatform, resolveFooterSocialLinks, FOOTER_DEFAULTS } from '../../utils/socialUtils';
-import { buildAutomaticMenuItems, mergeAutomaticMenuItemsWithExisting, normalizeSectionAnchorId, resolveMenuMode } from '../../utils/menuNavigation';
+import {
+  buildAutomaticMenuItems,
+  isHeaderModuleLike,
+  isMenuModuleLike,
+  mergeAutomaticMenuItemsWithExisting,
+  normalizeConstructorModuleOrder,
+  normalizeHeaderPositionValue,
+  normalizeMenuPositionValue,
+  normalizeSectionAnchorId,
+  resolveMenuMode
+} from '../../utils/menuNavigation';
 
 interface CanvasProps {
   editorState: EditorState;
@@ -100,6 +110,10 @@ export const Canvas: React.FC<CanvasProps> = ({
     selectCompositionElement
   } = useEditorStore();
   const renderSiteContent = siteContentOverride || siteContent;
+  const orderedSections = React.useMemo(
+    () => normalizeConstructorModuleOrder(((renderSiteContent?.sections) || []) as any[]),
+    [renderSiteContent?.sections]
+  );
 
   const lastModuleRef = React.useRef<HTMLDivElement>(null);
   const prevModulesLength = React.useRef(editorState.addedModules?.length || 0);
@@ -110,6 +124,7 @@ export const Canvas: React.FC<CanvasProps> = ({
   const [canvasViewportWidth, setCanvasViewportWidth] = React.useState(0);
   const [renderContentWidth, setRenderContentWidth] = React.useState(0);
   const [renderContentHeight, setRenderContentHeight] = React.useState(0);
+  const [measuredSectionHeights, setMeasuredSectionHeights] = React.useState<Record<string, number>>({});
   const [userZoom, setUserZoom] = React.useState(1);
   const [isPanning, setIsPanning] = React.useState(false);
   const [isMinimapHidden, setIsMinimapHidden] = React.useState(false);
@@ -135,6 +150,7 @@ export const Canvas: React.FC<CanvasProps> = ({
     tablet: '768px',
     mobile: '375px'
   };
+  const isFullscreenPreview = isFullscreen && !isPreviewMode;
   const automaticMenuItems = React.useMemo(
     () => {
       const baseItems = buildAutomaticMenuItems({
@@ -150,9 +166,6 @@ export const Canvas: React.FC<CanvasProps> = ({
     [editorState.addedModules, editorState.settingsValues]
   );
 
-  const fullscreenViewportWidth = viewport === 'desktop'
-    ? '100%'
-    : `min(${viewportWidths[viewport]}, calc(100vw - 48px))`;
   const isCleanPreviewMode = isPreviewMode || isFullscreen;
   const showEditorChrome = !isCleanPreviewMode;
   const isDesktopCanvas = viewport === 'desktop';
@@ -173,6 +186,16 @@ export const Canvas: React.FC<CanvasProps> = ({
     : 1;
   const effectivePreviewScale = useVirtualDesktopPreview ? desktopPreviewScale * userZoom : userZoom;
   const targetResponsiveWidth = viewport === 'tablet' ? 768 : 375;
+  const fullscreenResponsiveViewportWidth = Math.max(
+    1,
+    Math.min(
+      targetResponsiveWidth,
+      Math.max(0, canvasViewportWidth - 32)
+    )
+  );
+  const fullscreenViewportWidth = viewport === 'desktop'
+    ? '100%'
+    : `${fullscreenResponsiveViewportWidth}px`;
   const effectiveResponsiveViewportWidth = isDesktopCanvas
     ? 0
     : Math.max(
@@ -259,6 +282,53 @@ export const Canvas: React.FC<CanvasProps> = ({
     observer.observe(renderNode);
     return () => observer.disconnect();
   }, [viewport, isFullscreen, isPreviewMode, reloadKey, editorState.addedModules?.length]);
+
+  const updateMeasuredSectionHeights = React.useCallback(() => {
+    const root = renderRootRef.current;
+    if (!root) return;
+
+    const nextHeights: Record<string, number> = {};
+    root.querySelectorAll<HTMLElement>('[data-module-id]').forEach((node) => {
+      const moduleId = node.dataset.moduleId;
+      if (!moduleId) return;
+      const measuredHeight = Math.round(node.getBoundingClientRect().height);
+      if (measuredHeight > 0) {
+        nextHeights[moduleId] = measuredHeight;
+      }
+    });
+
+    setMeasuredSectionHeights((previousHeights) => {
+      const previousKeys = Object.keys(previousHeights);
+      const nextKeys = Object.keys(nextHeights);
+      if (
+        previousKeys.length === nextKeys.length &&
+        nextKeys.every((key) => previousHeights[key] === nextHeights[key])
+      ) {
+        return previousHeights;
+      }
+      return nextHeights;
+    });
+  }, []);
+
+  React.useLayoutEffect(() => {
+    updateMeasuredSectionHeights();
+  }, [updateMeasuredSectionHeights, orderedSections, viewport, isFullscreen, isPreviewMode, reloadKey, editorState.settingsValues]);
+
+  React.useEffect(() => {
+    const root = renderRootRef.current;
+    if (!root || typeof ResizeObserver === 'undefined') return;
+
+    updateMeasuredSectionHeights();
+
+    const observer = new ResizeObserver(() => {
+      updateMeasuredSectionHeights();
+    });
+
+    observer.observe(root);
+    root.querySelectorAll<HTMLElement>('[data-module-id]').forEach((node) => observer.observe(node));
+
+    return () => observer.disconnect();
+  }, [updateMeasuredSectionHeights, orderedSections, viewport, isFullscreen, isPreviewMode]);
 
   const updateScrollMetrics = React.useCallback(() => {
     const node = canvasScrollContainerRef.current;
@@ -514,9 +584,10 @@ export const Canvas: React.FC<CanvasProps> = ({
         }}
       >
       <div id="top" />
-      {isFullscreen && !isPreviewMode && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[140] flex items-center gap-2 rounded-2xl border border-border/60 bg-surface/90 p-1.5 shadow-2xl backdrop-blur-md">
-          <div className="flex items-center gap-1 bg-secondary/50 p-1 rounded-xl">
+      {isFullscreenPreview && (
+        <div className="sticky top-0 z-[140] flex justify-center border-b border-border/50 bg-surface/95 px-4 py-4 backdrop-blur-xl">
+          <div className="flex items-center gap-2 rounded-2xl border border-border/60 bg-surface/90 p-1.5 shadow-xl">
+            <div className="flex items-center gap-1 rounded-xl bg-secondary/50 p-1">
             <button
               type="button"
               onClick={() => setViewport('desktop')}
@@ -544,20 +615,21 @@ export const Canvas: React.FC<CanvasProps> = ({
             >
               <Smartphone size={16} />
             </button>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsFullscreen(false)}
+              className="rounded-xl p-2 text-text/50 transition-all hover:bg-secondary hover:text-rose-500"
+              title="Salir de pantalla completa"
+              aria-label="Salir de pantalla completa"
+            >
+              <Minimize size={18} />
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={() => setIsFullscreen(false)}
-            className="rounded-xl p-2 text-text/50 transition-all hover:bg-secondary hover:text-rose-500"
-            title="Salir de pantalla completa"
-            aria-label="Salir de pantalla completa"
-          >
-            <Minimize size={18} />
-          </button>
         </div>
       )}
       <div
-        className={`flex min-h-full ${useVirtualDesktopPreview ? 'relative justify-start' : 'justify-center transition-all duration-500'} ${isFullscreen ? 'px-4 pb-6 pt-20' : isPreviewMode ? 'p-0' : isDesktopCanvas ? 'p-0' : ''}`}
+        className={`flex min-h-full ${useVirtualDesktopPreview ? 'relative justify-start' : 'justify-center transition-all duration-500'} ${isFullscreen ? 'px-4 pb-6 pt-4' : isPreviewMode ? 'p-0' : isDesktopCanvas ? 'p-0' : ''}`}
         style={useVirtualDesktopPreview ? {
           width: `${Math.ceil(previewBaseWidth * effectivePreviewScale)}px`,
           minHeight: renderContentHeight ? `${Math.ceil(renderContentHeight * effectivePreviewScale)}px` : undefined
@@ -593,12 +665,12 @@ export const Canvas: React.FC<CanvasProps> = ({
               useVirtualDesktopPreview
                 ? `${desktopLogicalWidth}px`
                 : isFullscreen
-                  ? (viewport === 'desktop' ? 'none' : viewportWidths[viewport])
+                  ? (viewport === 'desktop' ? 'none' : fullscreenViewportWidth)
                   : viewport === 'desktop'
                     ? 'none'
                     : `${effectiveResponsiveViewportWidth}px`
             ),
-            minHeight: isCleanPreviewMode ? '100vh' : (isDesktopCanvas ? '100%' : viewport === 'mobile' ? '667px' : '1024px'),
+            minHeight: isFullscreenPreview ? '100%' : (isCleanPreviewMode ? '100vh' : (isDesktopCanvas ? '100%' : viewport === 'mobile' ? '667px' : '1024px')),
             transform: canUsePreviewZoom && effectivePreviewScale !== 1 ? `scale(${effectivePreviewScale})` : undefined,
             transformOrigin: canUsePreviewZoom ? 'top left' : 'top center',
             position: useVirtualDesktopPreview ? 'absolute' : 'relative',
@@ -613,7 +685,7 @@ export const Canvas: React.FC<CanvasProps> = ({
             </div>
           )}
           <div className="w-full" key={reloadKey}>
-            {(!renderSiteContent.sections || renderSiteContent.sections.length === 0) && showEditorChrome ? (
+            {(!orderedSections || orderedSections.length === 0) && showEditorChrome ? (
               <div className="flex flex-col items-center justify-center py-32 px-6 text-center">
                 <div className="w-20 h-20 bg-secondary rounded-3xl flex items-center justify-center mb-6 text-text/20">
                   <PlusCircle size={40} />
@@ -624,14 +696,11 @@ export const Canvas: React.FC<CanvasProps> = ({
                 </p>
               </div>
             ) : (
-              (renderSiteContent.sections || []).map((section, index) => {
-                const isLast = index === (renderSiteContent.sections?.length || 0) - 1;
+              orderedSections.map((section, index) => {
+                const isLast = index === orderedSections.length - 1;
                 
-                const isMenuSection =
-                  section.type === 'navegacion' ||
-                  section.type === 'menu' ||
-                  (section as any).tipo === 'navegacion' ||
-                  (section as any).tipo === 'menu';
+                const isMenuSection = isMenuModuleLike(section as any);
+                const isHeaderSection = isHeaderModuleLike(section as any);
 
                 // Determine if this module wrapper should be sticky/fixed
                 const modulePos =
@@ -640,55 +709,50 @@ export const Canvas: React.FC<CanvasProps> = ({
                 const menuSticky =
                   editorState.settingsValues?.[`${section.id}_global_sticky`] ??
                   section.settings[`${section.id}_global_sticky`];
+                const normalizedMenuPosition = isMenuSection
+                  ? normalizeMenuPositionValue(modulePos, menuSticky)
+                  : null;
+                const normalizedHeaderPosition = isHeaderSection
+                  ? normalizeHeaderPositionValue(modulePos, menuSticky)
+                  : null;
                 const hasExplicitPosition = modulePos !== undefined && modulePos !== null && modulePos !== '';
-                const isSticky = modulePos === 'sticky' || (!hasExplicitPosition && menuSticky === true);
-                const isFixed = modulePos === 'fixed';
-                const wrapperHandlesFloating = !isMenuSection && (isSticky || isFixed);
+                const isSticky = isMenuSection
+                  ? normalizedMenuPosition === 'fixed'
+                  : isHeaderSection
+                    ? normalizedHeaderPosition === 'fixed'
+                  : modulePos === 'sticky' || (!hasExplicitPosition && menuSticky === true);
+                const isFixed = isMenuSection
+                  ? normalizedMenuPosition === 'fixed'
+                  : isHeaderSection
+                    ? normalizedHeaderPosition === 'fixed'
+                  : modulePos === 'fixed';
+                const wrapperHandlesFloating = isMenuSection
+                  ? normalizedMenuPosition === 'fixed'
+                  : isHeaderSection
+                    ? normalizedHeaderPosition === 'fixed'
+                  : (isSticky || isFixed);
 
                 // Calculate cumulative top offset for stacking floating modules
                 let topOffset = 0;
-                if (isSticky || isFixed) {
+                if (wrapperHandlesFloating) {
                   for (let i = 0; i < index; i++) {
-                    const prev = renderSiteContent.sections[i];
+                    const prev = orderedSections[i];
                     const prevPos =
                       editorState.settingsValues?.[`${prev.id}_global_position`] ??
                       prev.settings[`${prev.id}_global_position`];
                     const prevSticky =
                       editorState.settingsValues?.[`${prev.id}_global_sticky`] ??
                       prev.settings[`${prev.id}_global_sticky`];
-                    const isPrevFloating = prevPos === 'sticky' || prevPos === 'fixed' || prevSticky === true;
+                    const isPrevMenu = isMenuModuleLike(prev as any);
+                    const isPrevHeader = isHeaderModuleLike(prev as any);
+                    const isPrevFloating = isPrevMenu
+                      ? normalizeMenuPositionValue(prevPos, prevSticky) === 'fixed'
+                      : isPrevHeader
+                        ? normalizeHeaderPositionValue(prevPos, prevSticky) === 'fixed'
+                      : prevPos === 'sticky' || prevPos === 'fixed' || prevSticky === true;
                     
                     if (isPrevFloating) {
-                      if (prev.type === 'conversion' || prev.type === 'header') {
-                        const showMarquee = prev.settings[`${prev.id}_el_header_marquee_show_marquee`] ?? true;
-                        const showReg = prev.settings[`${prev.id}_el_header_quick_reg_show_reg`] ?? false;
-                        const showActions = prev.settings[`${prev.id}_el_header_actions_show_actions`] ?? true;
-                        
-                        // Determine if content actually renders (Sync with HeaderModule.tsx)
-                        const primaryUrl = prev.settings[`${prev.id}_el_header_actions_primary_url`] || '';
-                        const secondaryUrl = prev.settings[`${prev.id}_el_header_actions_secondary_url`] || '';
-                        const hasPrimary = primaryUrl !== '';
-                        const hasSecondary = secondaryUrl !== '';
-                        const hasButtons = showActions && (hasPrimary || hasSecondary);
-                        const hasContent = showReg || hasButtons;
-                        
-                        const layoutType = prev.settings[`${prev.id}_global_layout_type`] || 'standard';
-                        const isCompact = layoutType === 'compact';
-                        
-                        let h = 0;
-                        if (showMarquee) h += 32; // Marquee (py-2 = 16px + font-size approx 16px)
-                        if (hasContent) {
-                          const py = isCompact ? 12 : 20;
-                          const contentH = isCompact ? 34 : 38; // Measured base height of buttons/form
-                          h += (py * 2) + contentH + 1; // Content + paddings + bottom border
-                        }
-                        
-                        topOffset += h;
-                      } else if (prev.type === 'navegacion' || prev.type === 'menu') {
-                        const pyValue = prev.settings[`${prev.id}_global_padding_y`];
-                        const py = (typeof pyValue === 'number' ? pyValue : parseFloat(pyValue)) || 20;
-                        topOffset += (isNaN(py) ? 20 : py * 2) + 40;
-                      }
+                      topOffset += measuredSectionHeights[prev.id] || 0;
                     }
                   }
                 }
@@ -1073,6 +1137,8 @@ export const Canvas: React.FC<CanvasProps> = ({
                         logoWhiteUrl={logoWhiteUrl}
                         isPreviewMode={isCleanPreviewMode}
                         isEditorCanvas={!isCleanPreviewMode}
+                        isFullscreenPreview={isFullscreenPreview}
+                        constructorViewport={viewport}
                         menuMode={resolveMenuMode(section.id, finalSettings)}
                         automaticMenuItems={automaticMenuItems}
                         stackedTopOffset={topOffset}

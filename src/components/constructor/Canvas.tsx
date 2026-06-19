@@ -158,17 +158,35 @@ export const Canvas: React.FC<CanvasProps> = ({
   const isDesktopCanvas = viewport === 'desktop';
   const useFullBleedDesktopCanvas = showEditorChrome && isDesktopCanvas;
   const useVirtualDesktopPreview = useFullBleedDesktopCanvas && !isFullscreen;
+  const isEmbeddedResponsivePreview = showEditorChrome && !isDesktopCanvas && !isFullscreen;
+  const responsiveFramePaddingX = isEmbeddedResponsivePreview
+    ? (browserViewportWidth < 640 ? 8 : browserViewportWidth < 1024 ? 12 : 24)
+    : 0;
+  const responsiveFramePaddingY = isEmbeddedResponsivePreview
+    ? (browserViewportWidth < 640 ? 12 : 16)
+    : 0;
+  const responsiveFrameWidth = Math.max(0, canvasViewportWidth - (responsiveFramePaddingX * 2));
+  const shouldFillResponsiveWidth = isEmbeddedResponsivePreview && browserViewportWidth < 1024;
   const desktopLogicalWidth = Math.max(1200, browserViewportWidth);
   const desktopPreviewScale = useVirtualDesktopPreview && canvasViewportWidth > 0
     ? Math.min(1, canvasViewportWidth / desktopLogicalWidth)
     : 1;
   const effectivePreviewScale = useVirtualDesktopPreview ? desktopPreviewScale * userZoom : userZoom;
+  const targetResponsiveWidth = viewport === 'tablet' ? 768 : 375;
+  const effectiveResponsiveViewportWidth = isDesktopCanvas
+    ? 0
+    : Math.max(
+        1,
+        shouldFillResponsiveWidth
+          ? (responsiveFrameWidth || targetResponsiveWidth)
+          : Math.min(targetResponsiveWidth, responsiveFrameWidth || targetResponsiveWidth)
+      );
   const previewBaseWidth = useVirtualDesktopPreview
     ? desktopLogicalWidth
     : viewport === 'tablet'
-      ? 768
+      ? effectiveResponsiveViewportWidth || 768
       : viewport === 'mobile'
-        ? 375
+        ? effectiveResponsiveViewportWidth || 375
         : Math.max(canvasViewportWidth || renderContentWidth || browserViewportWidth, 1);
   const canUsePreviewZoom = viewport === 'desktop' && (showEditorChrome || (isFullscreen && !isPreviewMode));
   const isUserZoomed = canUsePreviewZoom && userZoom !== 1;
@@ -539,14 +557,19 @@ export const Canvas: React.FC<CanvasProps> = ({
         </div>
       )}
       <div
-        className={`flex min-h-full ${useVirtualDesktopPreview ? 'relative justify-start' : 'justify-center transition-all duration-500'} ${isFullscreen ? 'px-4 pb-6 pt-20' : isPreviewMode ? 'p-0' : isDesktopCanvas ? 'p-0' : 'p-6'}`}
+        className={`flex min-h-full ${useVirtualDesktopPreview ? 'relative justify-start' : 'justify-center transition-all duration-500'} ${isFullscreen ? 'px-4 pb-6 pt-20' : isPreviewMode ? 'p-0' : isDesktopCanvas ? 'p-0' : ''}`}
         style={useVirtualDesktopPreview ? {
           width: `${Math.ceil(previewBaseWidth * effectivePreviewScale)}px`,
           minHeight: renderContentHeight ? `${Math.ceil(renderContentHeight * effectivePreviewScale)}px` : undefined
         } : (canUsePreviewZoom && userZoom !== 1 ? {
           width: `${Math.ceil(previewBaseWidth * userZoom)}px`,
           minHeight: renderContentHeight ? `${Math.ceil(renderContentHeight * userZoom)}px` : undefined
-        } : undefined)}
+        } : {
+          paddingLeft: responsiveFramePaddingX ? `${responsiveFramePaddingX}px` : undefined,
+          paddingRight: responsiveFramePaddingX ? `${responsiveFramePaddingX}px` : undefined,
+          paddingTop: responsiveFramePaddingY ? `${responsiveFramePaddingY}px` : undefined,
+          paddingBottom: responsiveFramePaddingY ? `${responsiveFramePaddingY}px` : undefined
+        })}
       >
         <div 
           ref={renderRootRef}
@@ -557,14 +580,31 @@ export const Canvas: React.FC<CanvasProps> = ({
             useFullBleedDesktopCanvas ? 'w-full max-w-none min-h-full rounded-none border-none shadow-none' : 'transition-all duration-500 ease-in-out rounded-2xl border border-border/50 shadow-2xl'
           } ${viewport === 'mobile' && showEditorChrome ? 'rounded-[3rem] border-[8px] border-slate-900 shadow-[0_0_0_2px_rgba(0,0,0,0.1)]' : ''} ${viewport === 'tablet' && showEditorChrome ? 'rounded-[2rem] border-[12px] border-slate-900 shadow-[0_0_0_2px_rgba(0,0,0,0.1)]' : ''}`}
           style={{ 
-            width: isPreviewMode ? '100%' : (useVirtualDesktopPreview ? `${desktopLogicalWidth}px` : (isFullscreen ? fullscreenViewportWidth : viewportWidths[viewport])),
-            maxWidth: isPreviewMode ? 'none' : (useVirtualDesktopPreview ? `${desktopLogicalWidth}px` : (isFullscreen ? (viewport === 'desktop' ? 'none' : viewportWidths[viewport]) : viewport === 'desktop' ? 'none' : viewportWidths[viewport])),
+            width: isPreviewMode ? '100%' : (
+              useVirtualDesktopPreview
+                ? `${desktopLogicalWidth}px`
+                : isFullscreen
+                  ? fullscreenViewportWidth
+                  : viewport === 'desktop'
+                    ? viewportWidths[viewport]
+                    : `${effectiveResponsiveViewportWidth}px`
+            ),
+            maxWidth: isPreviewMode ? 'none' : (
+              useVirtualDesktopPreview
+                ? `${desktopLogicalWidth}px`
+                : isFullscreen
+                  ? (viewport === 'desktop' ? 'none' : viewportWidths[viewport])
+                  : viewport === 'desktop'
+                    ? 'none'
+                    : `${effectiveResponsiveViewportWidth}px`
+            ),
             minHeight: isCleanPreviewMode ? '100vh' : (isDesktopCanvas ? '100%' : viewport === 'mobile' ? '667px' : '1024px'),
             transform: canUsePreviewZoom && effectivePreviewScale !== 1 ? `scale(${effectivePreviewScale})` : undefined,
             transformOrigin: canUsePreviewZoom ? 'top left' : 'top center',
             position: useVirtualDesktopPreview ? 'absolute' : 'relative',
             top: useVirtualDesktopPreview ? 0 : undefined,
-            left: useVirtualDesktopPreview ? 0 : undefined
+            left: useVirtualDesktopPreview ? 0 : undefined,
+            boxSizing: 'border-box'
           }}
         >
           {viewport === 'mobile' && showEditorChrome && (

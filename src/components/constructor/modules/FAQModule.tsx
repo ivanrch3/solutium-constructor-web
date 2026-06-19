@@ -275,16 +275,16 @@ export const FAQModule: React.FC<{
       >
         <button
           onClick={() => toggleItem(index)}
-          className="w-full px-7 py-6 flex items-center justify-between gap-4 text-left group"
+          className="group flex w-full min-w-0 items-center justify-between gap-4 px-7 py-6 text-left"
         >
-          <div className="flex items-center gap-4">
+          <div className="flex min-w-0 items-center gap-4">
             {showItemIcons && faq.icon && (
               <div className={`p-2.5 rounded-xl transition-colors ${isOpen ? 'bg-primary/10 text-primary' : 'bg-slate-100 text-slate-400'}`}>
                 <IconRenderer name={faq.icon} size={20} />
               </div>
             )}
             <span 
-              className="leading-tight transition-colors"
+              className="min-w-0 break-words leading-tight transition-colors"
               style={{ 
                 fontSize: `${TYPOGRAPHY_SCALE[qSize as keyof typeof TYPOGRAPHY_SCALE]?.fontSize || 18}px`, 
                 fontWeight: FONT_WEIGHTS[qWeight as keyof typeof FONT_WEIGHTS]?.value || 800,
@@ -322,7 +322,7 @@ export const FAQModule: React.FC<{
                   <div className={`mb-6 border-t ${dividerStyle === 'dots' ? 'border-dotted' : 'border-solid'}`} style={{ borderTopColor: borderColor }} />
                 )}
                 <div 
-                  className="prose prose-slate max-w-none"
+                  className="prose prose-slate max-w-none break-words"
                   style={{ 
                     fontSize: `${TYPOGRAPHY_SCALE[aSize as keyof typeof TYPOGRAPHY_SCALE]?.fontSize || 16}px`, 
                     fontWeight: FONT_WEIGHTS[aWeight as keyof typeof FONT_WEIGHTS]?.value || 400,

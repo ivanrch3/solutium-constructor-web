@@ -219,10 +219,10 @@ export const HeaderModule: React.FC<{
 
       {showContent && (
         <header className="w-full flex items-center" style={headerStyle}>
-          <div className={`mx-auto px-6 w-full flex items-center ${layoutType === 'standard' ? 'justify-center gap-12' : 'justify-between gap-8'}`} style={{ maxWidth: '1400px' }}>
+          <div className={`mx-auto flex w-full min-w-0 flex-wrap items-center px-4 sm:px-6 ${layoutType === 'standard' ? 'justify-center gap-x-8 gap-y-4 @lg:gap-x-12' : 'justify-between gap-x-6 gap-y-4 @lg:gap-x-8'}`} style={{ maxWidth: '1400px' }}>
             
             {/* Registro / Centro */}
-            <div className={`flex items-center ${layoutType === 'split' ? 'flex-1 justify-start' : ''}`}>
+            <div className={`flex min-w-0 items-center ${layoutType === 'split' ? 'flex-1 justify-start' : ''}`}>
             {showReg && (
               <form 
                 onSubmit={handleSubscribe}
@@ -231,7 +231,7 @@ export const HeaderModule: React.FC<{
                     ? 'bg-white/10 border-white/20' 
                     : 'bg-black/5 border-black/10'
                 } ${isSubscribed ? 'ring-2 ring-green-500/50' : ''}`}
-                style={{ maxWidth: `${regWidth}px`, width: '100%' }}
+                style={{ maxWidth: `min(${regWidth}px, 100%)`, width: '100%' }}
               >
                 <input 
                   type="email" 
@@ -265,9 +265,9 @@ export const HeaderModule: React.FC<{
           </div>
 
           {/* Actions */}
-          <div className="flex items-center gap-3 z-10">
+          <div className="z-10 flex min-w-0 items-center gap-3">
             {showActions && (
-              <div className="hidden @md:flex items-center gap-3">
+              <div className="hidden min-w-0 flex-wrap items-center gap-3 @md:flex">
                 {hasPrimary && (
                   <motion.a
                     href={primaryUrl}

@@ -193,11 +193,13 @@ export const MenuModule: React.FC<{
   const hasOverflowLinks = overflowLinks.length > 0;
   const dropdownLinks = forceHamburgerMenu ? links : overflowLinks;
   const editorTopOffset = isEditorCanvas ? 60 : 0;
-  const effectivePosition: React.CSSProperties['position'] = isFixed
-    ? 'fixed'
-    : isSticky
-      ? 'sticky'
-      : 'relative';
+  const effectivePosition: React.CSSProperties['position'] = isEditorCanvas && isFixed
+    ? 'sticky'
+    : isFixed
+      ? 'fixed'
+      : isSticky
+        ? 'sticky'
+        : 'relative';
   const canOpenOverlayMenu = forceHamburgerMenu || hasOverflowLinks;
   const menuPanelId = `${moduleId}-mobile-menu-panel`;
   const topOffset = editorTopOffset + stackedTopOffset;
@@ -489,18 +491,18 @@ export const MenuModule: React.FC<{
     return (
       <SectionAnimation animation={sectionAnimation} speed={globalThemeSectionAnimationSpeed} disabled={isFloating}>
         <div className="w-full @container">
-        <div ref={shellRef} className="relative w-full" style={shellStyle}>
+        <div ref={shellRef} className="relative w-full min-w-0" style={shellStyle}>
         <nav ref={navRef} className={`w-full transition-all duration-300 ${isFloating ? 'shadow-sm' : ''}`} style={navStyle}>
           <motion.div 
             {...animProps}
-            className={`${containerClasses[layout as keyof typeof containerClasses]} w-full max-w-7xl mx-auto px-6 flex items-center gap-8 ${invertOrder && layout === 'horizontal' ? 'flex-row-reverse' : ''} ${layout === 'vertical' ? alignmentClasses[align as keyof typeof alignmentClasses] : ''}`}
+            className={`${containerClasses[layout as keyof typeof containerClasses]} mx-auto flex w-full min-w-0 max-w-7xl items-center gap-8 px-4 sm:px-6 ${invertOrder && layout === 'horizontal' ? 'flex-row-reverse' : ''} ${layout === 'vertical' ? alignmentClasses[align as keyof typeof alignmentClasses] : ''}`}
             style={{ gap: `${gap}px` }}
           >
           {/* Logo */}
           <a
             href={logoHref}
             onClick={handleLogoClick}
-            className="flex-shrink-0"
+            className="min-w-0 flex-shrink-0"
             aria-label="Ir al destino del logo"
           >
             {logoType === 'image' && activeLogo ? (
@@ -532,7 +534,7 @@ export const MenuModule: React.FC<{
           </a>
 
           {/* Links Logic */}
-          <div className={`flex flex-1 items-center gap-6 ${forceHamburgerMenu ? 'justify-end' : (layout === 'horizontal' ? alignmentClasses[align as keyof typeof alignmentClasses] : 'flex-col items-center')}`}>
+          <div className={`flex min-w-0 flex-1 items-center gap-4 sm:gap-6 ${forceHamburgerMenu ? 'justify-end' : (layout === 'horizontal' ? alignmentClasses[align as keyof typeof alignmentClasses] : 'flex-col items-center')}`}>
             {forceHamburgerMenu ? (
               <div className="ml-auto flex items-center justify-end">
                 <button 
@@ -548,7 +550,7 @@ export const MenuModule: React.FC<{
                 </button>
               </div>
             ) : (
-              <div className={`flex items-center gap-4 ${linkListAlignmentClass}`}>
+              <div className={`flex min-w-0 items-center gap-4 ${linkListAlignmentClass}`}>
                 {renderLinks(false, visibleLinks)}
                 {hasOverflowLinks && (
                   <button 
@@ -576,10 +578,11 @@ export const MenuModule: React.FC<{
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: -20 }}
               id={menuPanelId}
-              className="absolute left-0 right-0 top-full mt-2 overflow-hidden rounded-3xl border shadow-2xl z-[1001]"
+              className="absolute left-0 right-0 top-full z-[1001] mt-2 overflow-hidden rounded-3xl border shadow-2xl"
               style={{ 
                 backgroundColor: darkMode ? '#1E293B' : '#FFFFFF',
-                borderColor: borderColor
+                borderColor: borderColor,
+                maxWidth: '100%'
               }}
             >
               <div className="flex max-h-[min(70vh,32rem)] flex-col gap-2 overflow-y-auto p-6">

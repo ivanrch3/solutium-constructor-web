@@ -33,7 +33,17 @@ import { logDebug } from '../utils/debug';
 import { bridgeModuleContent } from '../utils/hydrationBridge';
 import { getProducts } from '../services/dataService';
 import { Customer, Product, TrustedCompanyLogo } from '../types/schema';
-import { buildAutomaticMenuItems, mergeAutomaticMenuItemsWithExisting, normalizeSectionAnchorId, resolveMenuMode } from '../utils/menuNavigation';
+import {
+  buildAutomaticMenuItems,
+  isHeaderModuleLike,
+  isMenuModuleLike,
+  mergeAutomaticMenuItemsWithExisting,
+  normalizeConstructorModuleOrder,
+  normalizeHeaderPositionValue,
+  normalizeMenuPositionValue,
+  normalizeSectionAnchorId,
+  resolveMenuMode
+} from '../utils/menuNavigation';
 import { buildProjectThemeCssVariables, normalizeProjectBrandColors } from '../utils/projectTheme';
 import { appendReferralParamToSolutiumUrl, extractReferralCodeFromSearch } from '../utils/referralLinks';
 
@@ -55,6 +65,8 @@ export const Viewer: React.FC<ViewerProps> = ({
   useSecureCatalogContext = false
 }) => {
   const [catalogProducts, setCatalogProducts] = useState<Product[]>(secureCatalogProducts);
+  const [measuredSectionHeights, setMeasuredSectionHeights] = useState<Record<string, number>>({});
+  const viewerRootRef = React.useRef<HTMLDivElement>(null);
   const queryParams = new URLSearchParams(window.location.search);
   const effectiveProjectId = site.projectId || (site as any).project_id || (site as any).satellite_id;
   const isPublicRenderMode =
@@ -276,6 +288,14 @@ export const Viewer: React.FC<ViewerProps> = ({
       aggregatedSectionSettings?.[`${moduleId}_global_sticky`] ??
       section?.settings?.[`${moduleId}_global_sticky`];
 
+    if (isMenuModuleLike(section)) {
+      return normalizeMenuPositionValue(rawPosition, rawSticky);
+    }
+
+    if (isHeaderModuleLike(section)) {
+      return normalizeHeaderPositionValue(rawPosition, rawSticky);
+    }
+
     if (rawPosition === 'fixed') return 'fixed';
     if (rawPosition === 'sticky') return 'sticky';
     if (rawPosition === 'standard' || rawPosition === 'static' || rawPosition === 'normal') return 'relative';
@@ -283,39 +303,57 @@ export const Viewer: React.FC<ViewerProps> = ({
     return 'relative';
   }, [aggregatedSectionSettings]);
 
-  const estimateFloatingSectionHeight = React.useCallback((section: any) => {
-    const moduleId = section?.id;
-    if (!moduleId) return 0;
+  const orderedSections = React.useMemo(
+    () => normalizeConstructorModuleOrder(sections as any[]),
+    [sections]
+  );
 
-    if (section?.type === 'conversion' || section?.type === 'header') {
-      const showMarquee = aggregatedSectionSettings?.[`${moduleId}_el_header_marquee_show_marquee`] ?? true;
-      const showReg = aggregatedSectionSettings?.[`${moduleId}_el_header_quick_reg_show_reg`] ?? false;
-      const showActions = aggregatedSectionSettings?.[`${moduleId}_el_header_actions_show_actions`] ?? true;
-      const primaryUrl = aggregatedSectionSettings?.[`${moduleId}_el_header_actions_primary_url`] || '';
-      const secondaryUrl = aggregatedSectionSettings?.[`${moduleId}_el_header_actions_secondary_url`] || '';
-      const hasButtons = showActions && (primaryUrl !== '' || secondaryUrl !== '');
-      const hasContent = showReg || hasButtons;
-      const layoutType = aggregatedSectionSettings?.[`${moduleId}_global_layout_type`] || 'standard';
-      const isCompact = layoutType === 'compact';
+  const updateMeasuredSectionHeights = React.useCallback(() => {
+    const root = viewerRootRef.current;
+    if (!root) return;
 
-      let height = 0;
-      if (showMarquee) height += 32;
-      if (hasContent) {
-        const py = isCompact ? 12 : 20;
-        const contentHeight = isCompact ? 34 : 38;
-        height += (py * 2) + contentHeight + 1;
+    const nextHeights: Record<string, number> = {};
+    root.querySelectorAll<HTMLElement>('[data-module-id]').forEach((node) => {
+      const moduleId = node.dataset.moduleId;
+      if (!moduleId) return;
+      const measuredHeight = Math.round(node.getBoundingClientRect().height);
+      if (measuredHeight > 0) {
+        nextHeights[moduleId] = measuredHeight;
       }
-      return height;
-    }
+    });
 
-    if (section?.type === 'menu' || section?.type === 'navegacion') {
-      const pyValue = aggregatedSectionSettings?.[`${moduleId}_global_padding_y`];
-      const py = (typeof pyValue === 'number' ? pyValue : parseFloat(pyValue)) || 20;
-      return (Number.isNaN(py) ? 20 : py * 2) + 40;
-    }
+    setMeasuredSectionHeights((previousHeights) => {
+      const previousKeys = Object.keys(previousHeights);
+      const nextKeys = Object.keys(nextHeights);
+      if (
+        previousKeys.length === nextKeys.length &&
+        nextKeys.every((key) => previousHeights[key] === nextHeights[key])
+      ) {
+        return previousHeights;
+      }
+      return nextHeights;
+    });
+  }, []);
 
-    return 0;
-  }, [aggregatedSectionSettings]);
+  React.useLayoutEffect(() => {
+    updateMeasuredSectionHeights();
+  }, [updateMeasuredSectionHeights, orderedSections, aggregatedSectionSettings]);
+
+  useEffect(() => {
+    const root = viewerRootRef.current;
+    if (!root || typeof ResizeObserver === 'undefined') return;
+
+    updateMeasuredSectionHeights();
+
+    const observer = new ResizeObserver(() => {
+      updateMeasuredSectionHeights();
+    });
+
+    observer.observe(root);
+    root.querySelectorAll<HTMLElement>('[data-module-id]').forEach((node) => observer.observe(node));
+
+    return () => observer.disconnect();
+  }, [updateMeasuredSectionHeights, orderedSections]);
 
   useEffect(() => {
     if (window.location.search.includes('debug=products') || window.location.search.includes('debug_render=true')) {
@@ -329,7 +367,7 @@ export const Viewer: React.FC<ViewerProps> = ({
     }
   }, [content, sections.length]);
 
-  if (!content || (sections.length === 0 && !isConstructorMode)) {
+  if (!content || (orderedSections.length === 0 && !isConstructorMode)) {
     const isDebug = window.location.search.includes('debug=products') || window.location.search.includes('debug_render=true');
     console.error('❌ [VIEWER] Error de Integridad o Secciones Vacías.', {
       hasContent: !!content,
@@ -378,22 +416,23 @@ export const Viewer: React.FC<ViewerProps> = ({
   return (
     <div 
       id="top"
+      ref={viewerRootRef}
       className="min-h-screen bg-surface @container"
       style={{ 
         ...buildProjectThemeCssVariables(resolvedTheme),
         fontFamily: theme.fontFamily || 'sans-serif'
       } as React.CSSProperties}
     >
-      {sections.map((section, index) => {
+      {orderedSections.map((section, index) => {
         const moduleId = section.id;
         // SOP: Fallback entre 'type' y 'tipo' para máxima compatibilidad
         const type = section.type || section.tipo; 
         const settings = section.settings || {};
         const content = section.content || {};
-        const stackedTopOffset = sections.slice(0, index).reduce((total, previousSection) => {
+        const stackedTopOffset = orderedSections.slice(0, index).reduce((total, previousSection) => {
           const previousPosition = resolveFloatingPosition(previousSection);
           if (previousPosition === 'sticky' || previousPosition === 'fixed') {
-            return total + estimateFloatingSectionHeight(previousSection);
+            return total + (measuredSectionHeights[previousSection.id] || 0);
           }
           return total;
         }, 0);
@@ -812,8 +851,20 @@ export const Viewer: React.FC<ViewerProps> = ({
 
         if (!renderedSection) return null;
 
+        const floatingPosition = resolveFloatingPosition(section);
+        const isFloatingHeader = isHeaderModuleLike(section as any) && floatingPosition === 'fixed';
+
         return (
-          <div key={moduleId} id={normalizeSectionAnchorId(moduleId)} data-module-id={moduleId}>
+          <div
+            key={moduleId}
+            id={normalizeSectionAnchorId(moduleId)}
+            data-module-id={moduleId}
+            className={isFloatingHeader ? 'sticky' : 'relative'}
+            style={{
+              top: isFloatingHeader ? `${stackedTopOffset}px` : undefined,
+              zIndex: isFloatingHeader ? 110 - index : undefined
+            }}
+          >
             {renderedSection}
           </div>
         );

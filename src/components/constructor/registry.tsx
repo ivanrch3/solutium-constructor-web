@@ -101,10 +101,9 @@ export const HEADER_MODULE: WebModule = {
   globalGroups: ['estructura', 'estilo', 'interaccion'],
   globalSettings: {
     estructura: [
-      { id: 'position', label: 'Posición', type: 'select', defaultValue: 'sticky', options: [
-        { label: 'Fijo al Scroll (Sticky)', value: 'sticky' },
-        { label: 'Fijo Superior (Fixed)', value: 'fixed' },
-        { label: 'Estático', value: 'static' }
+      { id: 'position', label: 'Posición', type: 'select', defaultValue: 'relative', options: [
+        { label: 'Móvil', value: 'relative' },
+        { label: 'Fijo', value: 'fixed' }
       ]},
       { id: 'layout_type', label: 'Distribución', type: 'select', defaultValue: 'standard', options: [
         { label: 'Estándar (Centro - Acciones)', value: 'standard' },
@@ -209,9 +208,8 @@ export const MENU_MODULE: WebModule = {
   globalSettings: {
     estructura: [
       { id: 'position', label: 'Posición', type: 'select', defaultValue: 'relative', options: [
-        { label: 'Estándar (Sigue el scroll)', value: 'relative' },
-        { label: 'Fijo al scroll (Sticky)', value: 'sticky' },
-        { label: 'Fijo al tope (Fixed)', value: 'fixed' }
+        { label: 'Móvil', value: 'relative' },
+        { label: 'Fijo', value: 'fixed' }
       ]},
       { id: 'layout', label: 'Diseño', type: 'select', defaultValue: 'horizontal', options: [
         { label: 'Horizontal (Barra)', value: 'horizontal' },

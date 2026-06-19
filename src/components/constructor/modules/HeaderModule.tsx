@@ -5,6 +5,7 @@ import * as LucideIcons from 'lucide-react';
 import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
 import { SectionAnimation } from '../animations/SectionAnimation';
 import { normalizeSectionAnimation } from '../../../constants/moduleAnimations';
+import { normalizeHeaderPositionValue } from '../../../utils/menuNavigation';
 
 const toBoolean = (value: unknown) => value === true || value === 'true' || value === 1 || value === '1';
 
@@ -45,7 +46,11 @@ export const HeaderModule: React.FC<{
   }, []);
 
   // Global Settings
-  const position = getVal(null, 'position', 'sticky');
+  const sticky = getVal(null, 'sticky', false);
+  const position = normalizeHeaderPositionValue(
+    getVal(null, 'position', sticky ? 'sticky' : 'relative'),
+    sticky
+  );
   const layoutType = getVal(null, 'layout_type', 'standard');
   const darkMode = toBoolean(getVal(null, 'dark_mode', false));
   const bgType = getVal(null, 'bg_type', 'glass');

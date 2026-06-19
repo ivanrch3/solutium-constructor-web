@@ -88,9 +88,14 @@ import {
   dedupeMenuLinks,
   getMenuModeKey,
   getShowInMenuKey,
+  isFooterModuleLike,
+  isHeaderModuleLike,
+  isMenuModuleLike,
   isMenuEligibleModule,
   isUtilityMenuModule,
   mergeAutomaticMenuItemsWithExisting,
+  normalizeConstructorModuleOrder,
+  normalizeHeaderPositionValue,
   resolveSectionHref,
   resolveMenuMode,
   resolveShowInMenuState
@@ -244,6 +249,70 @@ const resolveRegistryModuleDefinition = (
       candidates.some((candidate) => module.type === candidate || module.id === candidate || module.templateId === candidate)
     ) || null
   );
+};
+
+const syncModulesWithRegistryDefinitions = (modules: WebModule[] = []): WebModule[] => {
+  let changed = false;
+
+  const syncedModules = (Array.isArray(modules) ? modules : []).map((module) => {
+    const baseModule = resolveRegistryModuleDefinition(
+      module?.type || null,
+      (module as any)?.templateId || null
+    );
+
+    if (!baseModule) return module;
+
+    const nextModule: WebModule = {
+      ...baseModule,
+      ...module,
+      templateId: (module as any)?.templateId || baseModule.id,
+      elements: baseModule.elements || [],
+      globalGroups: baseModule.globalGroups || [],
+      globalSettings: baseModule.globalSettings || {}
+    };
+
+    if (
+      nextModule !== module &&
+      (
+        nextModule.templateId !== (module as any)?.templateId ||
+        nextModule.elements !== module.elements ||
+        nextModule.globalGroups !== module.globalGroups ||
+        nextModule.globalSettings !== module.globalSettings
+      )
+    ) {
+      changed = true;
+    }
+
+    return nextModule;
+  });
+
+  return changed ? syncedModules : modules;
+};
+
+const normalizeConstructorSettingsValues = (
+  settingsValues: Record<string, any> = {},
+  modules: WebModule[] = []
+) => {
+  const nextSettings = { ...(settingsValues || {}) };
+  let changed = false;
+
+  for (const module of Array.isArray(modules) ? modules : []) {
+    if (!isHeaderModuleLike(module as any)) continue;
+
+    const positionKey = `${module.id}_global_position`;
+    const stickyKey = `${module.id}_global_sticky`;
+    const normalizedPosition = normalizeHeaderPositionValue(
+      nextSettings[positionKey],
+      nextSettings[stickyKey]
+    );
+
+    if (nextSettings[positionKey] !== normalizedPosition) {
+      nextSettings[positionKey] = normalizedPosition;
+      changed = true;
+    }
+  }
+
+  return changed ? nextSettings : settingsValues;
 };
 
 const AUTOSAVE_DISABLED_VALUE = 'disabled';
@@ -835,7 +904,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     // 1. PRIORIDAD: contentDraft (Tabla web_builder_sites) - SIP v7.1
     if (isValidDraft) {
       const draft = site.contentDraft;
-      const addedModules = draft.addedModules;
+      const addedModules = syncModulesWithRegistryDefinitions(draft.addedModules);
 
       const hydrated = {
         ...defaultState,
@@ -850,19 +919,26 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         totalModulesAdded: draft.totalModulesAdded !== undefined ? draft.totalModulesAdded : addedModules.length
       };
 
+      hydrated.settingsValues = normalizeConstructorSettingsValues(hydrated.settingsValues, addedModules);
+
       return hydrated;
     }
 
     // 2. SEGUNDA PRIORIDAD: metadata.editor_state (Fallback App Madre)
     if (site?.metadata?.editor_state) {
       const draft = site.metadata.editor_state as any;
-      const addedModules = Array.isArray(draft.addedModules) ? draft.addedModules : [];
+      const addedModules = syncModulesWithRegistryDefinitions(
+        Array.isArray(draft.addedModules) ? draft.addedModules : []
+      );
 
       const hydrated = {
         ...defaultState,
         ...draft,
         addedModules,
-        settingsValues: { ...defaultState.settingsValues, ...(draft.settingsValues || {}), ...localTemporarySavePreferences }
+        settingsValues: normalizeConstructorSettingsValues(
+          { ...defaultState.settingsValues, ...(draft.settingsValues || {}), ...localTemporarySavePreferences },
+          addedModules
+        )
       };
 
       logDebug('[CONSTRUCTOR_HYDRATION_SOURCE]', {
@@ -923,28 +999,15 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
           }
         });
 
-        const enrichedReconstructedModules = reconstructedModules.map((module) => {
-          const baseModule = resolveRegistryModuleDefinition(
-            module.type || null,
-            (module as any).templateId || null
-          );
-
-          if (!baseModule) return module;
-
-          return {
-            ...baseModule,
-            ...module,
-            templateId: (module as any).templateId || baseModule.id,
-            elements: baseModule.elements || [],
-            globalGroups: baseModule.globalGroups || [],
-            globalSettings: baseModule.globalSettings || {}
-          };
-        });
+        const enrichedReconstructedModules = syncModulesWithRegistryDefinitions(reconstructedModules);
 
         const hydrated = {
           ...defaultState,
           addedModules: enrichedReconstructedModules,
-          settingsValues: reconstructedSettings,
+          settingsValues: normalizeConstructorSettingsValues(
+            reconstructedSettings,
+            enrichedReconstructedModules
+          ),
           totalModulesAdded: enrichedReconstructedModules.length
         };
 
@@ -1556,7 +1619,19 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   const updateEditorState = (updater: (prev: EditorState) => EditorState) => {
     setEditorState(prev => {
       const proposedNext = updater(prev);
-      const next = proposedNext === prev || areEditorStatesEquivalent(proposedNext, prev) ? prev : proposedNext;
+      const normalizedNext = proposedNext?.addedModules
+        ? {
+            ...proposedNext,
+            addedModules: normalizeConstructorModuleOrder(
+              syncModulesWithRegistryDefinitions(proposedNext.addedModules)
+            ),
+            settingsValues: normalizeConstructorSettingsValues(
+              proposedNext.settingsValues,
+              proposedNext.addedModules
+            )
+          }
+        : proposedNext;
+      const next = normalizedNext === prev || areEditorStatesEquivalent(normalizedNext, prev) ? prev : normalizedNext;
       if (next !== prev) {
         editorStateRef.current = next;
       }
@@ -1573,6 +1648,26 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       return next;
     });
   };
+
+  useEffect(() => {
+    if (!editorState.addedModules?.length) return;
+
+    const normalizedModules = normalizeConstructorModuleOrder(
+      syncModulesWithRegistryDefinitions(editorState.addedModules)
+    );
+    if (normalizedModules === editorState.addedModules) return;
+
+    setEditorState(prev => {
+      if (!prev.addedModules?.length) return prev;
+      const reordered = normalizeConstructorModuleOrder(
+        syncModulesWithRegistryDefinitions(prev.addedModules)
+      );
+      if (reordered === prev.addedModules) return prev;
+      const next = { ...prev, addedModules: reordered };
+      editorStateRef.current = next;
+      return next;
+    });
+  }, [editorState.addedModules]);
 
   const updateSiteName = (name: string) => {
     siteNameRef.current = name;
@@ -2693,27 +2788,11 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     }
   };
 
-  const isFooterModuleInstance = (module?: Partial<WebModule> | null) => (
-    module?.type === 'footer' ||
-    module?.templateId === 'mod_footer_1' ||
-    module?.id === 'mod_footer_1' ||
-    Boolean(module?.id?.startsWith('mod_footer_1'))
-  );
+  const isFooterModuleInstance = (module?: Partial<WebModule> | null) => isFooterModuleLike(module as any);
 
   const isMenuModuleInstance = (module?: Partial<WebModule> | null) => (
-    !isFooterModuleInstance(module) && (
-      module?.type === 'menu' ||
-      module?.type === 'navegacion' ||
-      module?.templateId === 'mod_menu_1' ||
-      module?.id === 'mod_menu_1' ||
-      Boolean(module?.id?.startsWith('mod_menu_1'))
-    )
+    !isFooterModuleInstance(module) && isMenuModuleLike(module as any)
   );
-
-  const keepFooterModulesLast = (modules: WebModule[]) => [
-    ...modules.filter(module => !isFooterModuleInstance(module)),
-    ...modules.filter(isFooterModuleInstance)
-  ];
 
   const createModuleInstanceId = () => `mod_${crypto.randomUUID()}`;
 
@@ -2931,13 +3010,8 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       let newModules = [...addedModules];
 
       if (isMenuModuleInstance(module)) {
-        // Top, but below header if exists
-        const headerIndex = addedModules.findIndex(m => m.id.startsWith('mod_header_1'));
-        if (headerIndex !== -1) {
-          newModules.splice(headerIndex + 1, 0, newModule);
-        } else {
-          newModules = [newModule, ...addedModules];
-        }
+        // Menu is always the first module on the page.
+        newModules = [newModule, ...addedModules];
       } else if (isFooterModuleInstance(module)) {
         // Always at the end
         newModules = [...addedModules.filter(m => !isFooterModuleInstance(m)), newModule];
@@ -2950,7 +3024,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
           newModules = [...addedModules, newModule];
         }
       }
-      newModules = keepFooterModulesLast(newModules);
+      newModules = normalizeConstructorModuleOrder(newModules);
 
       const isUtilityModule = isUtilityMenuModule(module);
 
@@ -3026,8 +3100,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
 
       const module = addedModules[index];
 
-      // Restriction: Header cannot move down, Menu cannot move at all, Footer cannot move up
-      if (module.id.startsWith('mod_header_1') && direction === 'down') return prev;
+      // Restriction: Menu cannot move at all, Footer cannot move up
       if (module.id.startsWith('mod_menu_1')) return prev;
       if (isFooterModuleInstance(module) && direction === 'up') return prev;
 
@@ -3038,17 +3111,18 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
 
       const targetModule = addedModules[targetIndex];
 
-      // Restriction: Cannot move a module above Header or Menu, or below Footer
-      if (direction === 'up' && (targetModule.id.startsWith('mod_header_1') || targetModule.id.startsWith('mod_menu_1'))) return prev;
+      // Restriction: Cannot move a module above Menu, or below Footer
+      if (direction === 'up' && targetModule.id.startsWith('mod_menu_1')) return prev;
       if (direction === 'down' && isFooterModuleInstance(targetModule)) return prev;
 
       const temp = newModules[index];
       newModules[index] = newModules[targetIndex];
       newModules[targetIndex] = temp;
+      const orderedModules = normalizeConstructorModuleOrder(newModules);
 
       return {
         ...prev,
-        addedModules: newModules
+        addedModules: orderedModules
       };
     });
   };
@@ -3104,7 +3178,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         insertIndex = footerIndex;
       }
       newModules.splice(insertIndex, 0, duplicatedModule);
-      const orderedModules = keepFooterModulesLast(newModules);
+      const orderedModules = normalizeConstructorModuleOrder(newModules);
 
       let nextState: EditorState = {
         ...prev,
@@ -3142,7 +3216,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
 
     const moduleId = moduleToDelete.id;
     updateEditorState(prev => {
-      const newModules = prev.addedModules.filter(m => m.id !== moduleId);
+      const newModules = normalizeConstructorModuleOrder(prev.addedModules.filter(m => m.id !== moduleId));
 
       // Clean up settings for this module
       const newSettingsValues = { ...prev.settingsValues };
@@ -5582,7 +5656,7 @@ const formatTimestampName = () => {
       let newModulesList = [...addedModules];
       if (footerIndex !== -1) newModulesList.splice(footerIndex, 0, newModule);
       else newModulesList.push(newModule);
-      newModulesList = keepFooterModulesLast(newModulesList);
+      newModulesList = normalizeConstructorModuleOrder(newModulesList);
       return {
         ...prev,
         addedModules: newModulesList,

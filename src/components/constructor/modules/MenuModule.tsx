@@ -8,7 +8,14 @@ import { logDebug } from '../../../utils/debug';
 import { SectionAnimation } from '../animations/SectionAnimation';
 import { normalizeSectionAnimation } from '../../../constants/moduleAnimations';
 import { MODULE_INFO } from '../registry';
-import { MenuMode, dedupeMenuLinks, normalizeSectionAnchorId, resolveMenuMode, resolveSectionHref } from '../../../utils/menuNavigation';
+import {
+  MenuMode,
+  dedupeMenuLinks,
+  normalizeMenuPositionValue,
+  normalizeSectionAnchorId,
+  resolveMenuMode,
+  resolveSectionHref
+} from '../../../utils/menuNavigation';
 
 const toBoolean = (value: unknown) => value === true || value === 'true' || value === 1 || value === '1';
 
@@ -39,10 +46,24 @@ export const MenuModule: React.FC<{
   logoWhiteUrl?: string | null,
   isPreviewMode?: boolean,
   isEditorCanvas?: boolean,
+  isFullscreenPreview?: boolean,
+  constructorViewport?: 'desktop' | 'tablet' | 'mobile',
   menuMode?: MenuMode,
   automaticMenuItems?: any[],
   stackedTopOffset?: number
-}> = ({ moduleId, settingsValues, logoUrl, logoWhiteUrl, isPreviewMode = false, isEditorCanvas = false, menuMode: menuModeProp, automaticMenuItems = [], stackedTopOffset = 0 }) => {
+}> = ({
+  moduleId,
+  settingsValues,
+  logoUrl,
+  logoWhiteUrl,
+  isPreviewMode = false,
+  isEditorCanvas = false,
+  isFullscreenPreview = false,
+  constructorViewport,
+  menuMode: menuModeProp,
+  automaticMenuItems = [],
+  stackedTopOffset = 0
+}) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [menuContainerWidth, setMenuContainerWidth] = useState<number | null>(null);
   const navRef = useRef<HTMLElement | null>(null);
@@ -67,9 +88,7 @@ export const MenuModule: React.FC<{
   // Global Settings
   const sticky = getVal(null, 'sticky', false);
   const rawPosition = getVal(null, 'position', sticky ? 'sticky' : 'relative');
-  const position = rawPosition === 'standard' || rawPosition === 'static' || rawPosition === 'normal'
-    ? 'relative'
-    : rawPosition;
+  const position = normalizeMenuPositionValue(rawPosition, sticky);
   const rawLayout = getVal(null, 'layout', 'horizontal');
   const layout = rawLayout === 'vertical' ? 'vertical' : 'horizontal';
   const desktopHamburger = toBoolean(getVal(null, 'desktop_hamburger', false));
@@ -179,30 +198,34 @@ export const MenuModule: React.FC<{
   const darkMode = toBoolean(getVal(null, 'dark_mode', false));
   const rawBgColor = getVal(null, 'bg_color', 'transparent');
   const glassEffect = getVal(null, 'glass_effect', false);
-  const isSticky = position === 'sticky';
   const isFixed = position === 'fixed';
-  const isFloating = isSticky || isFixed;
+  const isFloating = isFixed;
   const fallbackMenuHeight = Math.max(56, paddingY * 2 + 40);
   const [menuHeight, setMenuHeight] = useState(fallbackMenuHeight);
   const hasMeasuredViewport = typeof menuContainerWidth === 'number' && menuContainerWidth > 0;
-  const isTabletOrMobileViewport = hasMeasuredViewport ? menuContainerWidth < 1024 : true;
+  const shouldUseConstructorViewport =
+    isFullscreenPreview &&
+    (constructorViewport === 'tablet' || constructorViewport === 'mobile');
+  const isTabletOrMobileViewport = shouldUseConstructorViewport
+    ? true
+    : hasMeasuredViewport
+      ? menuContainerWidth < 1024
+      : true;
   const visibleLinkLimit = desktopHamburger || isTabletOrMobileViewport ? 0 : 7;
   const forceHamburgerMenu = desktopHamburger || isTabletOrMobileViewport;
   const visibleLinks = forceHamburgerMenu ? [] : links.slice(0, visibleLinkLimit);
   const overflowLinks = forceHamburgerMenu ? links : links.slice(visibleLinkLimit);
   const hasOverflowLinks = overflowLinks.length > 0;
   const dropdownLinks = forceHamburgerMenu ? links : overflowLinks;
-  const editorTopOffset = isEditorCanvas ? 60 : 0;
-  const effectivePosition: React.CSSProperties['position'] = isEditorCanvas && isFixed
-    ? 'sticky'
+  const isCanvasPreview = isPreviewMode || isEditorCanvas;
+  const effectivePosition: React.CSSProperties['position'] = isCanvasPreview
+    ? 'relative'
     : isFixed
       ? 'fixed'
-      : isSticky
-        ? 'sticky'
-        : 'relative';
+      : 'relative';
   const canOpenOverlayMenu = forceHamburgerMenu || hasOverflowLinks;
   const menuPanelId = `${moduleId}-mobile-menu-panel`;
-  const topOffset = editorTopOffset + stackedTopOffset;
+  const topOffset = !isCanvasPreview && isFixed ? stackedTopOffset : 0;
 
   const resolvedBgColor = resolveThemeColor(rawBgColor, 'transparent', '#0F172A', darkMode);
   const bgColor = (isFloating && resolvedBgColor === 'transparent') 
@@ -357,12 +380,14 @@ export const MenuModule: React.FC<{
 
   const shellStyle: React.CSSProperties = {
     position: effectivePosition,
-    top: effectivePosition === 'sticky' || effectivePosition === 'fixed' ? topOffset : undefined,
+    top: effectivePosition === 'fixed' ? topOffset : undefined,
     left: effectivePosition === 'fixed' ? 0 : undefined,
     right: effectivePosition === 'fixed' ? 0 : undefined,
     width: '100%',
     zIndex: effectivePosition === 'relative' ? 1 : 1000
   };
+
+  const needsSpacer = isFixed && !isCanvasPreview;
 
   const renderLinks = (shouldCloseOverlay: boolean = false, linkList: any[] = links) => {
     return linkList.map((link: any, idx: number) => {
@@ -489,7 +514,7 @@ export const MenuModule: React.FC<{
   };
 
     return (
-      <SectionAnimation animation={sectionAnimation} speed={globalThemeSectionAnimationSpeed} disabled={isFloating}>
+      <SectionAnimation animation={sectionAnimation} speed={globalThemeSectionAnimationSpeed} disabled={true}>
         <div className="w-full @container">
         <div ref={shellRef} className="relative w-full min-w-0" style={shellStyle}>
         <nav ref={navRef} className={`w-full transition-all duration-300 ${isFloating ? 'shadow-sm' : ''}`} style={navStyle}>
@@ -599,7 +624,7 @@ export const MenuModule: React.FC<{
         </AnimatePresence>
       </nav>
       </div>
-      {isFixed && (
+      {needsSpacer && (
         <div
           aria-hidden="true"
           className="w-full shrink-0"

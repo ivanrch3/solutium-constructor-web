@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import React, { useState } from 'react';
+import { motion } from 'motion/react';
 import * as LucideIcons from 'lucide-react';
 import { Check, X, ShieldCheck, Zap, Clock, CreditCard } from 'lucide-react';
 import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
@@ -7,52 +7,8 @@ import { TextRenderer } from '../TextRenderer';
 import { SectionAnimation } from '../animations/SectionAnimation';
 import { parseNumSafe } from '../utils';
 
-const AnimatedPrice: React.FC<{ value: number, color: string, size: string, weight: string }> = ({ value, color, size, weight }) => {
-  const [displayValue, setDisplayValue] = useState(value);
-
-  useEffect(() => {
-    let start = displayValue;
-    const end = value;
-    if (start === end) return;
-
-    const duration = 600;
-    const startTime = performance.now();
-
-    const animate = (currentTime: number) => {
-      const elapsed = currentTime - startTime;
-      const progress = Math.min(elapsed / duration, 1);
-      const easeOutExpo = 1 - Math.pow(2, -10 * progress);
-      
-      const current = Math.floor(start + (end - start) * easeOutExpo);
-      setDisplayValue(current);
-
-      if (progress < 1) {
-        requestAnimationFrame(animate);
-      }
-    };
-
-    requestAnimationFrame(animate);
-  }, [value]);
-
-  const fontSize = TYPOGRAPHY_SCALE[size as keyof typeof TYPOGRAPHY_SCALE]?.fontSize || 48;
-  const fontWeightValue = FONT_WEIGHTS[weight as keyof typeof FONT_WEIGHTS]?.value || 900;
-
-  return (
-    <span
-      style={{ 
-        fontSize: `${fontSize}px`, 
-        fontWeight: fontWeightValue,
-        color: color 
-      }}
-    >
-      {displayValue}
-    </span>
-  );
-};
-
 import { InlineEditableText } from '../InlineEditableText';
 import { useEditorStore } from '../../../store/editorStore';
-import { logDebug } from '../../../utils/debug';
 import { normalizeSectionAnimation } from '../../../constants/moduleAnimations';
 
 const toBoolean = (value: unknown) => {
@@ -72,6 +28,24 @@ const resolveThemeColor = (
   if (!safeValue || safeValue.toLowerCase() === safeLight) return darkDefault;
   return safeValue;
 };
+
+function normalizePriceValue(value: unknown): string {
+  if (value === null || value === undefined) return '0';
+
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? String(value) : '0';
+  }
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) return '0';
+    const numericValue = Number(trimmed);
+    return Number.isFinite(numericValue) ? String(numericValue) : '0';
+  }
+
+  const numericValue = Number(String(value).trim());
+  return Number.isFinite(numericValue) ? String(numericValue) : '0';
+}
 
 export const PricingModule: React.FC<{ 
   moduleId: string, 
@@ -183,16 +157,6 @@ export const PricingModule: React.FC<{
   ]);
 
   const plansSettings = settingsValues[`${moduleId}_el_pricing_plans_plans`] || settingsValues[`${moduleId}_global_plans`];
-  
-  logDebug('[PRICING_PLANS_SOURCE_DEBUG]', {
-    moduleId,
-    directPlans: settingsValues[`${moduleId}_el_pricing_plans_plans`],
-    globalPlans: settingsValues[`${moduleId}_global_plans`],
-    selectedPlans: plansSettings,
-    directFirstPlan: settingsValues[`${moduleId}_el_pricing_plans_plans`]?.[0],
-    globalFirstPlan: settingsValues[`${moduleId}_global_plans`]?.[0],
-    selectedFirstPlan: plansSettings?.[0]
-  });
 
   const plans = plansSettings || [
     {
@@ -227,30 +191,6 @@ export const PricingModule: React.FC<{
       highlight: false
     }
   ];
-
-  const rawHeaderTitle = settingsValues?.[`${moduleId}_el_pricing_header_title`];
-  const rawPlans = settingsValues?.[`${moduleId}_global_plans`];
-  const rawColumns = settingsValues?.[`${moduleId}_global_columns`];
-  const rawLayout = settingsValues?.[`${moduleId}_global_layout`];
-  const rawGap = settingsValues?.[`${moduleId}_global_gap`];
-
-  logDebug('[PRICING_RENDER_DEBUG]', {
-    moduleId,
-    title: headerTitle,
-    subtitle: headerSubtitle,
-    eyebrow: headerEyebrow,
-    plansCount: plans?.length,
-    firstPlan: plans?.[0],
-    highlightedPlan: plans?.find((p: any) => p.highlight || p.highlighted || p.featured)?.name,
-    columns,
-    gap,
-    rawHeaderTitle: settingsValues?.[`${moduleId}_el_pricing_header_title`],
-    rawHeaderSubtitle: settingsValues?.[`${moduleId}_el_pricing_header_subtitle`],
-    rawHeaderEyebrow: settingsValues?.[`${moduleId}_el_pricing_header_eyebrow`],
-    rawPlans: settingsValues?.[`${moduleId}_global_plans`],
-    rawColumns: settingsValues?.[`${moduleId}_global_columns`],
-    rawGap: settingsValues?.[`${moduleId}_global_gap`]
-  });
 
   const getTypographyStyle = (sizeToken: string, weightToken: string, alignToken?: string) => {
     const size = TYPOGRAPHY_SCALE[sizeToken as keyof typeof TYPOGRAPHY_SCALE] || TYPOGRAPHY_SCALE.p;
@@ -419,6 +359,11 @@ export const PricingModule: React.FC<{
             const planFeatures = typeof plan.features === 'string' 
               ? plan.features.split(/\n|,|;/).filter((f: string) => f.trim() !== '')
               : Array.isArray(plan.features) ? plan.features : [];
+            const rawDisplayedPrice = isYearly ? plan.yearlyPrice : plan.monthlyPrice;
+            const displayedPrice = normalizePriceValue(rawDisplayedPrice);
+            const displayedPeriod = isYearly ? '/a\u00f1o' : '/mes';
+            const priceFontSize = TYPOGRAPHY_SCALE[priceSize as keyof typeof TYPOGRAPHY_SCALE]?.fontSize || 48;
+            const priceFontWeight = FONT_WEIGHTS[priceWeight as keyof typeof FONT_WEIGHTS]?.value || 800;
 
             return (
               <motion.div
@@ -492,29 +437,32 @@ export const PricingModule: React.FC<{
                   </p>
                 </div>
 
-                <div className="mb-8 flex items-baseline gap-1.5">
+                <div className="mb-8 inline-flex max-w-full items-baseline gap-1.5 whitespace-nowrap">
                   <span 
                     className="text-slate-400" 
                     style={{ 
-                      fontSize: `${(TYPOGRAPHY_SCALE[priceSize as keyof typeof TYPOGRAPHY_SCALE]?.fontSize || 48) * 0.5}px`,
-                      fontWeight: FONT_WEIGHTS[priceWeight as keyof typeof FONT_WEIGHTS]?.value || 800 
+                      fontSize: `${priceFontSize * 0.5}px`,
+                      fontWeight: priceFontWeight
                     }}
                   >
                     {currencySymbol}
                   </span>
-                  <AnimatedPrice 
-                    value={isYearly ? plan.yearlyPrice : plan.monthlyPrice} 
-                    color={priceColor} 
-                    size={priceSize} 
-                    weight={priceWeight} 
-                  />
+                  <span
+                    style={{
+                      fontSize: `${priceFontSize}px`,
+                      fontWeight: priceFontWeight,
+                      color: priceColor
+                    }}
+                  >
+                    {displayedPrice}
+                  </span>
                   <span 
                     className="text-slate-400 font-bold"
                     style={{
-                      fontSize: `${Math.max(14, (TYPOGRAPHY_SCALE[priceSize as keyof typeof TYPOGRAPHY_SCALE]?.fontSize || 48) * 0.3)}px`
+                      fontSize: `${Math.max(14, priceFontSize * 0.3)}px`
                     }}
                   >
-                    /mes
+                    {displayedPeriod}
                   </span>
                 </div>
 

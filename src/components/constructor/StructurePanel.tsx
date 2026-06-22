@@ -399,6 +399,18 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
   const [expandedBentoItem, setExpandedBentoItem] = React.useState<number | null>(null);
   const [isBentoAddExpanded, setIsBentoAddExpanded] = React.useState(false);
 
+  const resolveElementSettingsPrefix = React.useCallback((moduleId: string, elementId: string) => {
+    if (!moduleId || !elementId) return elementId;
+    if (elementId.startsWith(`${moduleId}_`)) return elementId;
+    if (elementId.startsWith('el_')) return `${moduleId}_${elementId}`;
+    return elementId;
+  }, []);
+
+  const isDynamicCardsRepeaterElement = React.useCallback((moduleId: string, elementId: string) => {
+    const resolvedElementId = resolveElementSettingsPrefix(moduleId, elementId);
+    return resolvedElementId.endsWith('_el_dynamic_cards_cards');
+  }, [resolveElementSettingsPrefix]);
+
   const autoExpandedBentoModuleRef = React.useRef<string | null>(null);
   const shiningIntervalRef = React.useRef<NodeJS.Timeout | null>(null);
   const shiningTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
@@ -1101,22 +1113,23 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                                   </div>
                                 )}
 
-                                {module.type === 'dynamic_cards' && element.id.endsWith('_el_dynamic_cards_cards') && (() => {
+                                {module.type === 'dynamic_cards' && isDynamicCardsRepeaterElement(module.id, element.id) && (() => {
                                   const cardsSetting = element.settings?.contenido?.find((setting) => setting.id === 'cards');
                                   if (!cardsSetting) return null;
+                                  const prefix = resolveElementSettingsPrefix(module.id, element.id);
 
                                   return (
                                     <div className="rounded-lg border border-border/30 bg-surface p-3 shadow-sm">
                                       <SettingControl
                                         setting={cardsSetting}
-                                        value={editorState.settingsValues[`${element.id}_${cardsSetting.id}`]}
-                                        onChange={(val) => onSettingChange(element.id, cardsSetting.id, val)}
+                                        value={editorState.settingsValues[`${prefix}_${cardsSetting.id}`]}
+                                        onChange={(val) => onSettingChange(prefix, cardsSetting.id, val)}
                                         projectId={projectId}
                                         products={products}
                                         customers={customers}
                                         trustedCompanyLogos={trustedCompanyLogos}
                                         projectColors={projectColors}
-                                        contextId={element.id}
+                                        contextId={prefix}
                                         moduleType={module.type}
                                         settingsValues={editorState.settingsValues}
                                       />
@@ -1125,7 +1138,7 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                                 })()}
 
                                 {!(isBentoItemsElement && selectedBentoCellIndex !== null) && getOrderedSettingGroups(module, element).map(group => {
-                                  if (module.type === 'dynamic_cards' && element.id.endsWith('_el_dynamic_cards_cards')) return null;
+                                  if (module.type === 'dynamic_cards' && isDynamicCardsRepeaterElement(module.id, element.id)) return null;
                                   const hasSettings = element.type === 'global'
                                     ? !!module.globalSettings?.[group]?.length
                                     : !!element.settings?.[group]?.length;
@@ -1187,14 +1200,18 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                                             <div className="p-3 pt-0 space-y-4 border-t border-border/30 mt-1">
                                               {/* DYNAMIC SETTINGS FOR EACH GROUP */}
                                               {(() => {
-                                                const evaluateCondition = (condition: any, currentSettings: Record<string, any>, prefix: string) => {
+                                                const evaluateCondition = (
+                                                  condition: any,
+                                                  currentSettings: Record<string, any>,
+                                                  prefix: string,
+                                                  moduleId: string
+                                                ) => {
                                                   if (!condition) return { result: true };
 
                                                   // Try with prefix first (element-specific), then without (global/module-wide)
                                                   let val = currentSettings[`${prefix}_${condition.settingId}`];
                                                   if (val === undefined) {
-                                                    // Fallback to global setting of the same module if prefix is element-based
-                                                    const modulePrefix = prefix.split('_').slice(0, 3).join('_') + '_global';
+                                                    const modulePrefix = `${moduleId}_global`;
                                                     val = currentSettings[`${modulePrefix}_${condition.settingId}`];
                                                   }
 
@@ -1216,11 +1233,11 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                                                   : element.settings?.[group];
 
                                                 return settingsToRender?.map((setting, settingIndex) => {
-                                                  const prefix = element.id;
-                                                  const show = evaluateCondition(setting.showIf, editorState.settingsValues, prefix);
+                                                  const prefix = resolveElementSettingsPrefix(module.id, element.id);
+                                                  const show = evaluateCondition(setting.showIf, editorState.settingsValues, prefix, module.id);
                                                   if (!show.result) return null;
 
-                                                  const disabled = evaluateCondition(setting.disabledIf, editorState.settingsValues, prefix);
+                                                  const disabled = evaluateCondition(setting.disabledIf, editorState.settingsValues, prefix, module.id);
                                                   const finalSetting = {
                                                     ...setting,
                                                     disabledMessage: !disabled.result ? undefined : (disabled.message || setting.disabledMessage)

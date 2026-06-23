@@ -10,6 +10,10 @@ import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
 import { TextRenderer } from '../TextRenderer';
 import { InlineEditableText } from '../InlineEditableText';
 import { useEditorStore } from '../../../store/editorStore';
+import {
+  normalizeSelectedProductIds,
+  resolveProductsForSelection
+} from '../../../utils/productsSelection';
 
 const toBoolean = (value: unknown) => value === true || value === 'true' || value === 1 || value === '1';
 
@@ -167,25 +171,20 @@ export const ProductsModule: React.FC<{
 
     if (isEditor) {
       if (selectionMode === 'manual') {
-        const selectedIdsArray = Array.isArray(selectedProductIds) ? selectedProductIds : [];
-        const isExplicitlyEmpty = (selectedIdsArray.length === 0 && (selectedProductIds !== undefined && selectedProductIds !== null)) || (selectionTouched && selectedIdsArray.length === 0);
+        const selectedIdsArray = normalizeSelectedProductIds(selectedProductIds);
+        results = resolveProductsForSelection({
+          selectionMode,
+          selectedIds: selectedIdsArray,
+          availableProducts: catalogProducts
+        });
 
-        if (isExplicitlyEmpty) {
-          results = [];
-          sourceUsed = 'manual_selection_empty_explicit';
-          reason = 'User explicitly deselected everything';
-          ignoredSources.push('snapshot', 'catalog_full', 'content.products');
-        } else if (selectedIdsArray.length > 0) {
-          const searchIds = selectedIdsArray.map(id => String(id));
-          results = catalogProducts.filter(p => searchIds.includes(String(p.id)));
+        if (selectedIdsArray.length > 0) {
           sourceUsed = 'manual_selection_filtered';
           reason = `Filtered ${results.length} products from catalog of ${catalogProducts.length}`;
           ignoredSources.push('snapshot');
         } else {
-          // Case where selectedProductIds is null/undefined AND not touched (initial state)
-          results = catalogProducts;
           sourceUsed = 'manual_selection_all_default';
-          reason = 'No selection defined yet, showing all';
+          reason = 'Manual mode without explicit selection resolves to full catalog';
         }
       } else {
         // Auto mode in editor

@@ -100,6 +100,11 @@ import {
   resolveMenuMode,
   resolveShowInMenuState
 } from '../../utils/menuNavigation';
+import {
+  isManualProductsSelectionMode,
+  normalizeSelectedProductIds,
+  resolveProductsForSelection
+} from '../../utils/productsSelection';
 import { applySectionVariety, buildMasterModuleSchemaFromSectionBlueprint, normalizeVisualSectionIntent, NormalizedVisualSectionIntent } from '../../utils/masterModuleSchemaBuilder';
 import { bridgeModuleContent } from '../../utils/hydrationBridge';
 import { cloneCompositionPresetSchema, CompositionPresetId } from './modules/compositionPresets';
@@ -154,11 +159,11 @@ const ReferenceDebugFloatingPanel: React.FC<{ debug: ReferenceDebugInfo; onClose
     <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 18 }} className="fixed bottom-6 right-6 z-[2400] max-h-[78vh] w-[min(760px,calc(100vw-2rem))] overflow-hidden rounded-3xl border border-blue-200 bg-white shadow-2xl">
       <div className="flex items-center justify-between border-b border-blue-100 bg-blue-50 px-5 py-4">
         <div>
-          <p className="text-[11px] font-black uppercase tracking-widest text-blue-700">DiagnÃƒÆ’Ã‚Â³stico IA</p>
-          <p className="text-sm font-black text-slate-900">ÃƒÆ’Ã…Â¡ltimo diagnÃƒÆ’Ã‚Â³stico de generaciÃƒÆ’Ã‚Â³n IA</p>
+          <p className="text-[11px] font-black uppercase tracking-widest text-blue-700">Diagnóstico IA</p>
+          <p className="text-sm font-black text-slate-900">Último diagnóstico de generación IA</p>
         </div>
         <div className="flex items-center gap-2">
-          <button type="button" onClick={copyDebug} className="rounded-xl bg-blue-600 px-3 py-2 text-[11px] font-black uppercase tracking-widest text-white transition hover:bg-blue-700">{copied ? 'Copiado' : 'Copiar diagnÃƒÆ’Ã‚Â³stico'}</button>
+          <button type="button" onClick={copyDebug} className="rounded-xl bg-blue-600 px-3 py-2 text-[11px] font-black uppercase tracking-widest text-white transition hover:bg-blue-700">{copied ? 'Copiado' : 'Copiar diagnóstico'}</button>
           <button type="button" onClick={onClose} className="rounded-xl p-2 text-slate-400 transition hover:bg-white hover:text-slate-700"><LucideIcons.X size={18} /></button>
         </div>
       </div>
@@ -178,7 +183,7 @@ const ReferenceDebugFloatingPanel: React.FC<{ debug: ReferenceDebugInfo; onClose
           <div className="overflow-x-auto rounded-2xl bg-slate-50 p-3">
             <p className="mb-2 font-black text-blue-700">Secciones detectadas</p>
             <table className="min-w-full text-left text-[11px]">
-              <thead><tr className="text-blue-700"><th className="pr-3">SecciÃƒÆ’Ã‚Â³n</th><th className="pr-3">layout</th><th className="pr-3">roleHint</th><th className="pr-3">media</th><th className="pr-3">confidence</th><th className="pr-3">queryHint</th></tr></thead>
+              <thead><tr className="text-blue-700"><th className="pr-3">Sección</th><th className="pr-3">layout</th><th className="pr-3">roleHint</th><th className="pr-3">media</th><th className="pr-3">confidence</th><th className="pr-3">queryHint</th></tr></thead>
               <tbody>{debug.sections.map(section => <tr key={`${section.index}-${section.layout}`}><td className="pr-3 font-bold">{section.index}</td><td className="pr-3">{section.layout}</td><td className="pr-3">{section.roleHint}</td><td className="pr-3">{String(section.media)}</td><td className="pr-3">{typeof section.confidence === 'number' ? Math.round(section.confidence * 100) + '%' : 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â'}</td><td className="pr-3">{section.queryHint || 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â'}</td></tr>)}</tbody>
             </table>
           </div>
@@ -188,7 +193,7 @@ const ReferenceDebugFloatingPanel: React.FC<{ debug: ReferenceDebugInfo; onClose
           <div className="overflow-x-auto rounded-2xl bg-slate-50 p-3">
             <p className="mb-2 font-black text-blue-700">Schema summary</p>
             <table className="min-w-full text-left text-[11px]">
-              <thead><tr className="text-blue-700"><th className="pr-3">SecciÃƒÆ’Ã‚Â³n</th><th className="pr-3">module</th><th className="pr-3">layoutInput</th><th className="pr-3">layoutOutput</th><th className="pr-3">preserved</th><th className="pr-3">cols in/out</th><th className="pr-3">media in</th><th className="pr-3">media reason</th><th className="pr-3">intenciÃƒÆ’Ã‚Â³n</th><th className="pr-3">elements</th><th className="pr-3">types</th><th className="pr-3">img</th><th className="pr-3">cards</th><th className="pr-3">btn</th><th className="pr-3">source</th><th className="pr-3">query</th><th className="pr-3">warning</th></tr></thead>
+              <thead><tr className="text-blue-700"><th className="pr-3">Sección</th><th className="pr-3">module</th><th className="pr-3">layoutInput</th><th className="pr-3">layoutOutput</th><th className="pr-3">preserved</th><th className="pr-3">cols in/out</th><th className="pr-3">media in</th><th className="pr-3">media reason</th><th className="pr-3">intención</th><th className="pr-3">elements</th><th className="pr-3">types</th><th className="pr-3">img</th><th className="pr-3">cards</th><th className="pr-3">btn</th><th className="pr-3">source</th><th className="pr-3">query</th><th className="pr-3">warning</th></tr></thead>
               <tbody>{debug.schemaSummary.map(row => <tr key={`${row.section}-${row.moduleType}`}><td className="pr-3 font-bold">{row.section}</td><td className="pr-3">{row.moduleType}</td><td className="pr-3">{row.layoutInput || row.layout || '?'}</td><td className="pr-3">{row.layoutOutput || '?'}</td><td className="pr-3">{typeof row.layoutPreserved === 'boolean' ? String(row.layoutPreserved) : '?'}</td><td className="pr-3">{row.columnsInputCount ?? '?'} / {row.columnsRenderedCount ?? '?'}</td><td className="pr-3">{row.mediaElementsInputCount ?? '?'}</td><td className="pr-3">{row.mediaRenderReason || '?'}</td><td className="pr-3">{row.normalizedIntent || '?'}</td><td className="pr-3">{row.elements}</td><td className="pr-3">{row.elementTypes.join(', ')}</td><td className="pr-3">{row.imageCount}</td><td className="pr-3">{row.cardCount}</td><td className="pr-3">{row.buttonCount}</td><td className="pr-3">{row.source}</td><td className="pr-3">{row.queryUsed || '?'}</td><td className="pr-3">{row.warning || '?'}</td></tr>)}</tbody>
             </table>
           </div>
@@ -198,7 +203,7 @@ const ReferenceDebugFloatingPanel: React.FC<{ debug: ReferenceDebugInfo; onClose
           <div className="overflow-x-auto rounded-2xl bg-slate-50 p-3">
             <p className="mb-2 font-black text-blue-700">Pexels / placeholders</p>
             <table className="min-w-full text-left text-[11px]">
-              <thead><tr className="text-blue-700"><th className="pr-3">SecciÃƒÆ’Ã‚Â³n</th><th className="pr-3">source</th><th className="pr-3">found</th><th className="pr-3">query</th><th className="pr-3">candidate</th><th className="pr-3">usedUrls</th><th className="pr-3">photographer</th><th className="pr-3">reused</th></tr></thead>
+              <thead><tr className="text-blue-700"><th className="pr-3">Sección</th><th className="pr-3">source</th><th className="pr-3">found</th><th className="pr-3">query</th><th className="pr-3">candidate</th><th className="pr-3">usedUrls</th><th className="pr-3">photographer</th><th className="pr-3">reused</th></tr></thead>
               <tbody>{debug.pexels.map(row => <tr key={`${row.section}-${row.query || row.source}`}><td className="pr-3 font-bold">{row.section}</td><td className="pr-3">{row.source}</td><td className="pr-3">{String(row.found)}</td><td className="pr-3">{row.queryUsed || row.query || 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â'}</td><td className="pr-3">{typeof row.candidateIndex === 'number' ? row.candidateIndex + 1 : 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â'}</td><td className="pr-3">{row.usedImageUrlsCount || 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â'}</td><td className="pr-3">{row.photographer || 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â'}</td><td className="pr-3">{row.reusedCount && row.reusedCount > 1 ? row.reusedCount : 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â'}</td></tr>)}</tbody>
             </table>
           </div>
@@ -696,11 +701,11 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   const assetDisplayName = (siteName || (initialPage as any)?.siteName || (initialPage as any)?.title || 'Activo sin nombre').trim();
 
   const [currentSiteId] = useState(() => {
-    // 1. Si estamos editando una pÃƒÆ’Ã‚Â¡gina existente (Borrador o Publicada), usamos su siteId.
+    // 1. Si estamos editando una página existente (Borrador o Publicada), usamos su siteId.
     if (initialPage && (initialPage as any).siteId) return (initialPage as any).siteId;
     if (initialPage && (initialPage as any).web_builder_site_id) return (initialPage as any).web_builder_site_id;
 
-    // 2. Si es una pÃƒÆ’Ã‚Â¡gina NUEVA, generamos un ID ÃƒÆ’Ã‚Âºnico para que sea independiente.
+    // 2. Si es una página NUEVA, generamos un ID ÃƒÆ’Ã‚Âºnico para que sea independiente.
     return crypto.randomUUID();
   });
 
@@ -954,7 +959,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       return hydrated;
     }
 
-    // 3. TERCERA PRIORIDAD: ReconstrucciÃƒÆ’Ã‚Â³n desde Contrato (PublishedSite sin draft)
+    // 3. TERCERA PRIORIDAD: Reconstrucción desde Contrato (PublishedSite sin draft)
     if (site?.content) {
       const contract = site.content as RenderingContract;
       if (contract.sections && Array.isArray(contract.sections)) {
@@ -962,11 +967,11 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         const reconstructedSettings: Record<string, any> = { ...defaultState.settingsValues };
 
         contract.sections.forEach(section => {
-          // Reconstruir mÃƒÆ’Ã‚Â³dulo con fidelidad de tipos (SIP v7.0)
+          // Reconstruir módulo con fidelidad de tipos (SIP v7.0)
           reconstructedModules.push({
             id: section.id,
             type: section.type || section.tipo,
-            name: (section as any).name || section.type || section.tipo || 'MÃƒÆ’Ã‚Â³dulo',
+            name: (section as any).name || section.type || section.tipo || 'Módulo',
             elements: [],
             globalGroups: [],
             globalSettings: {}
@@ -1188,7 +1193,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
 
   // AI Generation State
   const [onboardingFinished, setOnboardingFinished] = useState(() => {
-    // Si ya hay mÃƒÆ’Ã‚Â³dulos, el onboarding terminÃƒÆ’Ã‚Â³
+    // Si ya hay módulos, el onboarding terminó
     if ((initialPage && !!(initialPage as any).contentDraft) || (editorState.addedModules && editorState.addedModules.length > 0)) {
       return true;
     }
@@ -1787,7 +1792,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         const hasRealSocials = resolved.some(s => s.url && s.url !== '');
 
         if (hasRealSocials) {
-          logDebug(`[SIP v12.0] Sincronizando redes de perfil para mÃƒÆ’Ã‚Â³dulo ${module.id}`);
+          logDebug(`[SIP v12.0] Sincronizando redes de perfil para módulo ${module.id}`);
           newSettings[socialKey] = resolved;
           totalChanged = true;
         }
@@ -2071,7 +2076,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
           sectionLayoutBlueprint: {
             id: existingBlueprint.id || `visual-${visualSection.index}`,
             sectionIndex: existingBlueprint.sectionIndex || visualSection.index,
-            displayName: existingBlueprint.displayName || `SecciÃƒÆ’Ã‚Â³n ${visualSection.index}`,
+            displayName: existingBlueprint.displayName || `Sección ${visualSection.index}`,
             roleHint: existingBlueprint.roleHint || visualSection.roleHint || 'generic',
             layout: {
               ...existingLayout,
@@ -2104,24 +2109,24 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
           id: `reference-visual-${visualSection.index}`,
           moduleType: 'composition_section',
           preset: null,
-          title: `SecciÃƒÆ’Ã‚Â³n ${visualSection.index}`,
-          purpose: `SecciÃƒÆ’Ã‚Â³n visual detectada con layout ${visualSection.layout}.`,
+          title: `Sección ${visualSection.index}`,
+          purpose: `Sección visual detectada con layout ${visualSection.layout}.`,
           content: {
             businessType,
-            eyebrow: `SecciÃƒÆ’Ã‚Â³n ${visualSection.index}`,
-            title: `SecciÃƒÆ’Ã‚Â³n ${visualSection.index}`,
+            eyebrow: `Sección ${visualSection.index}`,
+            title: `Sección ${visualSection.index}`,
             description: 'Bloque editable inspirado en la estructura visual detectada, con contenido propio del negocio.',
-            cta: String(plan.sections[0]?.content?.cta || 'Solicitar informaciÃƒÆ’Ã‚Â³n'),
+            cta: String(plan.sections[0]?.content?.cta || 'Solicitar información'),
             items: [
               'Beneficio editable para el cliente',
               'Detalle visual adaptado al negocio',
-              'AcciÃƒÆ’Ã‚Â³n clara y fÃƒÆ’Ã‚Â¡cil de entender',
+              'Acción clara y fácil de entender',
               'Elemento de confianza'
             ],
             sectionLayoutBlueprint: {
               id: `visual-${visualSection.index}`,
               sectionIndex: visualSection.index,
-              displayName: `SecciÃƒÆ’Ã‚Â³n ${visualSection.index}`,
+              displayName: `Sección ${visualSection.index}`,
               roleHint: visualSection.roleHint || 'generic',
               layout: { type: visualSection.layout || 'unknown', columns: visualSection.columns },
               background: { style: visualSection.index === detectedSectionsCount ? 'dark' : 'white' },
@@ -2145,7 +2150,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
 
     const droppedSections = visualBlueprints
       .filter(visualSection => !sourceSections.some(section => Number((section.content as any)?.sectionLayoutBlueprint?.sectionIndex || (section.content as any)?.sectionBlueprint?.order || 0) === visualSection.index))
-      .map(visualSection => ({ section: visualSection.index, dropReason: 'No se generÃƒÆ’Ã‚Â³ mÃƒÆ’Ã‚Â³dulo ni secciÃƒÆ’Ã‚Â³n sintÃƒÆ’Ã‚Â©tica para este blueprint visual.' }));
+      .map(visualSection => ({ section: visualSection.index, dropReason: 'No se generó módulo ni sección sintética para este blueprint visual.' }));
     const usedImageUrls = new Set<string>();
     const enrichedSections: AIPagePlan['sections'] = [];
     const previousIntents: NormalizedVisualSectionIntent[] = [];
@@ -2239,7 +2244,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       enrichedSections.push({
         ...section,
         moduleType: 'composition_section',
-        title: `SecciÃƒÆ’Ã‚Â³n ${index + 1}`,
+        title: `Sección ${index + 1}`,
         content: {
           ...section.content,
           businessType,
@@ -2377,7 +2382,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       },
       warnings: [
         ...(plan.warnings || []),
-        'Se generaron schemas de MÃƒÆ’Ã‚Â³dulo Maestro por secciÃƒÆ’Ã‚Â³n desde blueprints visuales; Pexels se usÃƒÆ’Ã‚Â³ solo para imÃƒÆ’Ã‚Â¡genes relacionadas al negocio cuando estuvo disponible.'
+        'Se generaron schemas de Módulo Maestro por sección desde blueprints visuales; Pexels se usó solo para imágenes relacionadas al negocio cuando estuvo disponible.'
       ]
     };
   };
@@ -2587,7 +2592,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       clearInterval(stepInterval);
 
       if (!response.success) {
-        throw new Error(response.error || 'La generaciÃƒÆ’Ã‚Â³n con IA fallÃƒÆ’Ã‚Â³.');
+        throw new Error(response.error || 'La generación con IA falló.');
       }
 
       if (isDryRun) {
@@ -2606,7 +2611,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
 
       const backendPage = response.data?.page;
       if (!backendPage || !Array.isArray(backendPage.sections) || backendPage.sections.length === 0) {
-        throw new Error("El servidor no devolviÃƒÆ’Ã‚Â³ secciones vÃƒÆ’Ã‚Â¡lidas.");
+        throw new Error("El servidor no devolvió secciones válidas.");
       }
 
       // [PROTOCOL 13.1] HIDRATACIÃƒÆ’Ã¢â‚¬Å“N DESDE BACKEND SEGURO
@@ -2618,7 +2623,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
           const baseModule = resolveRegistryModuleDefinition(sec.type, sec.moduleId);
 
           if (!baseModule) {
-            console.warn(`[AI_HYDRATION] MÃƒÆ’Ã‚Â³dulo no reconocido: ${sec.type}`);
+            console.warn(`[AI_HYDRATION] Módulo no reconocido: ${sec.type}`);
             return;
           }
 
@@ -2683,7 +2688,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
 
     } catch (err: any) {
       console.error('[AI_GENERATION_ERROR]', err);
-      setAiError(err.message || 'Error en la generaciÃƒÆ’Ã‚Â³n segura.');
+      setAiError(err.message || 'Error en la generación segura.');
       setIsGeneratingAI(false);
     } finally {
       isRunningRef.current = false;
@@ -2784,7 +2789,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     } catch (error: any) {
       console.error("Error en Solutium AI Engine:", error);
       setIsGeneratingAI(false);
-      setAiError(error.message || "No se pudo generar el sitio. Por favor, verifica tu conexiÃƒÆ’Ã‚Â³n o las API Keys en Staging.");
+      setAiError(error.message || "No se pudo generar el sitio. Por favor, verifica tu conexión o las API Keys en Staging.");
     }
   };
 
@@ -3743,9 +3748,9 @@ const formatTimestampName = () => {
           // [SIP v5.5 FIX] Correctly resolve product selection settings from el_products_config
           const selectionMode = String(getVal(module.id, 'el_products_config', 'selection_mode', 'auto') || 'auto').toLowerCase();
           const rawSelectedIds = getVal(module.id, 'el_products_config', 'select_products', []);
-          const selectedIds = Array.isArray(rawSelectedIds) ? rawSelectedIds.map(String).filter(Boolean) : [];
+          const selectedIds = normalizeSelectedProductIds(rawSelectedIds);
           const catalogProducts = Array.isArray(products) ? products.filter(Boolean) : [];
-          const isManualSelectionMode = ['manual', 'selected', 'selection', 'featured', 'custom'].includes(selectionMode);
+          const isManualSelectionMode = isManualProductsSelectionMode(selectionMode);
           const snapshotKey = `${module.id}_el_products_items_products`;
           const previousSnapshotSource =
             currentState.settingsValues?.[snapshotKey] ||
@@ -3764,33 +3769,29 @@ const formatTimestampName = () => {
           let finalProducts: Product[] = [];
 
           if (catalogProducts.length > 0) {
-            if (isManualSelectionMode) {
-              if (selectedIds.length > 0) {
-                const selectedIdSet = new Set(selectedIds);
-                finalProducts = catalogProducts.filter(p => selectedIdSet.has(String(p.id)));
-                logDebug(`[PRODUCTS_CONTRACT_DEBUG] Resolved ${finalProducts.length} manually selected products.`);
-              } else {
-                // [SIP v5.6 FIX] If manual mode but empty selection, publish EMPTY list, do NOT fallback to latest products
-                finalProducts = [];
-                logDebug(`[PRODUCTS_CONTRACT_DEBUG] Manual selection is empty. Publishing empty product list.`);
-              }
-            } else {
-              // Default to auto: publish the full real project catalog for 'auto' mode
-              finalProducts = [...catalogProducts]
-                .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
-              logDebug(`[PRODUCTS_CONTRACT_DEBUG] Resolved ${finalProducts.length} automated products (Mode: ${selectionMode}).`);
-            }
+            const selectionSourceProducts = isManualSelectionMode
+              ? catalogProducts
+              : [...catalogProducts].sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+
+            finalProducts = resolveProductsForSelection({
+              selectionMode,
+              selectedIds,
+              availableProducts: selectionSourceProducts
+            });
+
+            logDebug(`[PRODUCTS_CONTRACT_DEBUG] Resolved ${finalProducts.length} published products (Mode: ${selectionMode}).`, {
+              moduleId: module.id,
+              selectedIdsCount: selectedIds.length,
+              resolvedAllForManualEmpty: isManualSelectionMode && selectedIds.length === 0
+            });
           }
 
           if (finalProducts.length === 0 && previousSnapshotProducts.length > 0) {
-            if (isManualSelectionMode) {
-              const selectedIdSet = new Set(selectedIds);
-              finalProducts = selectedIds.length > 0
-                ? previousSnapshotProducts.filter((product: any) => selectedIdSet.has(String(product?.id)))
-                : [];
-            } else {
-              finalProducts = previousSnapshotProducts as Product[];
-            }
+            finalProducts = resolveProductsForSelection({
+              selectionMode,
+              selectedIds,
+              availableProducts: previousSnapshotProducts as Product[]
+            });
 
             if (finalProducts.length > 0) {
               logDebug('[PRODUCTS_CONTRACT_SNAPSHOT_FALLBACK_DEBUG]', {
@@ -3798,7 +3799,8 @@ const formatTimestampName = () => {
                 selectionMode,
                 selectedIdsCount: selectedIds.length,
                 previousSnapshotCount: previousSnapshotProducts.length,
-                finalProductsCount: finalProducts.length
+                finalProductsCount: finalProducts.length,
+                resolvedAllForManualEmpty: isManualSelectionMode && selectedIds.length === 0
               });
             }
           }
@@ -3930,7 +3932,7 @@ const formatTimestampName = () => {
             content.productos = normalizedSnapshot;
             content.selectedProductIds = normalizedSnapshot.map(p => p.id);
 
-            // TambiÃƒÆ’Ã‚Â©n en settings para hidrataciÃƒÆ’Ã‚Â³n delegada
+            // También en settings para hidratación delegada
             const itemsKey = `${module.id}_el_products_showcase_items_products`;
             settings[itemsKey] = normalizedSnapshot;
             settings.productsSnapshot = normalizedSnapshot;
@@ -4139,7 +4141,7 @@ const formatTimestampName = () => {
           const contactDefaults = {
             email: 'hola@tuempresa.com',
             phone: '+34 900 000 000',
-            address: 'Calle InnovaciÃƒÆ’Ã‚Â³n 123, Madrid, EspaÃƒÆ’Ã‚Â±a',
+            address: 'Calle Innovación 123, Madrid, EspaÃƒÆ’Ã‚Â±a',
             whatsappNumber: ''
           };
 
@@ -4400,7 +4402,7 @@ const formatTimestampName = () => {
       if (sessionState.state === 'missing_session' || sessionState.state === 'expired_session') {
         setAuthNotice({
           type: 'error',
-          message: 'Tu sesiÃƒÂ³n expirÃƒÂ³. Inicia sesiÃƒÂ³n nuevamente para guardar. Tus cambios siguen en pantalla.'
+          message: 'Tu sesón expirÃƒÂ³. Inicia sesón nuevamente para guardar. Tus cambios siguen en pantalla.'
         });
         setSaveStatus('error');
         return;
@@ -4409,7 +4411,7 @@ const formatTimestampName = () => {
       if (sessionState.state === 'refreshed') {
         setAuthNotice({
           type: 'info',
-          message: 'SesiÃƒÂ³n actualizada. Guardando cambios...'
+          message: 'Sesón actualizada. Guardando cambios...'
         });
       }
 
@@ -4593,7 +4595,7 @@ const formatTimestampName = () => {
       if (error instanceof SupabaseSessionError) {
         setAuthNotice({
           type: 'error',
-          message: 'Tu sesiÃƒÂ³n expirÃƒÂ³. Inicia sesiÃƒÂ³n nuevamente para guardar. Tus cambios siguen en pantalla.'
+          message: 'Tu sesón expirÃƒÂ³. Inicia sesón nuevamente para guardar. Tus cambios siguen en pantalla.'
         });
       }
       setSaveStatus('error');
@@ -5018,7 +5020,7 @@ const formatTimestampName = () => {
       if (sessionState.state === 'missing_session' || sessionState.state === 'expired_session') {
         setAuthNotice({
           type: 'error',
-          message: 'Tu sesiÃƒÂ³n expirÃƒÂ³. Inicia sesiÃƒÂ³n nuevamente para publicar. Tus cambios siguen en pantalla.'
+          message: 'Tu sesón expirÃƒÂ³. Inicia sesón nuevamente para publicar. Tus cambios siguen en pantalla.'
         });
         setPublishStatus('error');
         return;
@@ -5027,7 +5029,7 @@ const formatTimestampName = () => {
       if (sessionState.state === 'refreshed') {
         setAuthNotice({
           type: 'info',
-          message: 'SesiÃƒÂ³n actualizada. Publicando cambios...'
+          message: 'Sesón actualizada. Publicando cambios...'
         });
       }
 
@@ -5307,7 +5309,7 @@ const formatTimestampName = () => {
       if (error instanceof SupabaseSessionError) {
         setAuthNotice({
           type: 'error',
-          message: 'Tu sesiÃƒÂ³n expirÃƒÂ³. Inicia sesiÃƒÂ³n nuevamente para publicar. Tus cambios siguen en pantalla.'
+          message: 'Tu sesión expiró. Inicia sesión nuevamente para publicar. Tus cambios siguen en pantalla.'
         });
       }
       setPublishStatus('error');
@@ -5411,7 +5413,7 @@ const formatTimestampName = () => {
     if (projectId && currentSiteId) {
       const shouldAutoCapture = sessionStorage.getItem(`auto_capture_${currentSiteId}`) === 'true';
       if (shouldAutoCapture) {
-        logDebug(`[AUTO_CAPTURE] Detectada bandera para sitio: ${currentSiteId}. Iniciando captura automÃƒÆ’Ã‚Â¡tica...`);
+        logDebug(`[AUTO_CAPTURE] Detectada bandera para sitio: ${currentSiteId}. Iniciando captura automática...`);
         sessionStorage.removeItem(`auto_capture_${currentSiteId}`);
         // Esperamos un momento a que el canvas se hidrate completamente
         setTimeout(() => {
@@ -5480,7 +5482,7 @@ const formatTimestampName = () => {
       }
     } catch (error: any) {
       console.warn('Manual preview update failed:', error);
-      setPreviewWarning('No se pudo actualizar la vista previa. El borrador/publicaciÃƒÆ’Ã‚Â³n no se modifica.');
+      setPreviewWarning('No se pudo actualizar la vista previa. El borrador/publicación no se modifica.');
       setPreviewStatus('error');
     } finally {
       setIsGeneratingPreview(false);
@@ -5489,30 +5491,30 @@ const formatTimestampName = () => {
   };
 
   const normalizeBentoSchema = (schema: BentoSchema, prompt: string) => {
-    // 1. Limpiar el tÃƒÆ’Ã‚Â­tulo (quitar prefijos comunes de prompts)
+    // 1. Limpiar el título (quitar prefijos comunes de prompts)
     let cleanTitle = schema.header.title || prompt;
     const prefixes = [
-      /crea (una|un|la|el|informaciÃƒÆ’Ã‚Â³n sobre|secciÃƒÆ’Ã‚Â³n de|pÃƒÆ’Ã‚Â¡gina de)\s+/i,
-      /genera (una|un|la|el|informaciÃƒÆ’Ã‚Â³n sobre)\s+/i,
-      /haz (una|un|la|el|informaciÃƒÆ’Ã‚Â³n sobre)\s+/i,
-      /muÃƒÆ’Ã‚Â©strame (por quÃƒÆ’Ã‚Â©|cÃƒÆ’Ã‚Â³mo|quÃƒÆ’Ã‚Â©)\s+/i,
-      /muestra (por quÃƒÆ’Ã‚Â©|cÃƒÆ’Ã‚Â³mo|quÃƒÆ’Ã‚Â©)\s+/i,
-      /informaciÃƒÆ’Ã‚Â³n que muestre\s+/i
+      /crea (una|un|la|el|información sobre|sección de|página de)\s+/i,
+      /genera (una|un|la|el|información sobre)\s+/i,
+      /haz (una|un|la|el|información sobre)\s+/i,
+      /muéstrame (por qué|cómo|qué)\s+/i,
+      /muestra (por qué|cómo|qué)\s+/i,
+      /información que muestre\s+/i
     ];
 
     prefixes.forEach(p => {
       cleanTitle = cleanTitle.replace(p, '');
     });
 
-    // CapitalizaciÃƒÆ’Ã‚Â³n
+    // Capitalización
     cleanTitle = cleanTitle.trim();
     if (cleanTitle) {
       cleanTitle = cleanTitle.charAt(0).toUpperCase() + cleanTitle.slice(1);
     } else {
-      cleanTitle = "SoluciÃƒÆ’Ã‚Â³n Personalizada";
+      cleanTitle = "Solución Personalizada";
     }
 
-    // 2. Normalizar items y asegurar layout bÃƒÆ’Ã‚Â¡sico
+    // 2. Normalizar items y asegurar layout básico
     const normalizedItems = schema.items.map((item, idx) => {
       const itemAny = item as any;
       const colsPerRow = 3;
@@ -5596,7 +5598,7 @@ const formatTimestampName = () => {
       });
     });
 
-    // 3. Forzar inserciÃƒÆ’Ã‚Â³n de items en la clave que BentoModule espera
+    // 3. Forzar inserción de items en la clave que BentoModule espera
     const itemsKey = `${moduleId}_el_bento_items_items`;
     initialValues[itemsKey] = schema.items.map(item => {
       const itemAny = item as any;
@@ -5634,7 +5636,7 @@ const formatTimestampName = () => {
       id: moduleId,
       templateId: 'mod_bento_1',
       elements: newElements,
-      name: 'Bento / ComposiciÃƒÆ’Ã‚Â³n IA',
+      name: 'Bento / Composición IA',
       // Redundancia solicitada por el usuario
       content: {
         title: schema.header.title,
@@ -5668,8 +5670,8 @@ const formatTimestampName = () => {
 
     setShowBentoPrompt(false);
 
-    // 4. SincronizaciÃƒÆ’Ã‚Â³n manual con el store de renderizado (opcional pero seguro)
-    // createRenderingContract se dispararÃƒÆ’Ã‚Â¡ vÃƒÆ’Ã‚Â­a useEffect al cambiar editorState
+    // 4. Sincronización manual con el store de renderizado (opcional pero seguro)
+    // createRenderingContract se disparará vía useEffect al cambiar editorState
 
     // Auto-select and scroll
     setTimeout(() => {
@@ -6124,8 +6126,8 @@ const formatTimestampName = () => {
           <div className="flex-1 h-full overflow-auto bg-secondary">
             <div className="p-8">
               <div className="flex flex-col mb-8">
-                <h2 className="text-3xl font-bold text-text">GestiÃƒÆ’Ã‚Â³n de Datos</h2>
-                <p className="text-sm text-text/40 font-medium">Administra la informaciÃƒÆ’Ã‚Â³n de tu proyecto de forma profesional.</p>
+                <h2 className="text-3xl font-bold text-text">Gestión de Datos</h2>
+                <p className="text-sm text-text/40 font-medium">Administra la información de tu proyecto de forma profesional.</p>
               </div>
               <DataTab projectId={projectId || ''} currentUserId={currentUserId || ''} />
             </div>
@@ -6158,7 +6160,7 @@ const formatTimestampName = () => {
           className="fixed bottom-6 right-6 z-[2300] flex items-center gap-2 rounded-2xl border border-blue-200 bg-white px-4 py-3 text-xs font-black uppercase tracking-widest text-blue-700 shadow-2xl transition hover:bg-blue-50"
         >
           <Sparkles size={16} />
-          DiagnÃƒÆ’Ã‚Â³stico IA
+          Diagnóstico IA
         </motion.button>
       )}
 

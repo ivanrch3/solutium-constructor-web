@@ -1,4 +1,5 @@
 import { Variants } from 'motion/react';
+import { resolveEffectiveAnimation } from '../utils/constructorAnimationPolicy';
 
 export const OFFICIAL_SECTION_ANIMATIONS = [
   'none',
@@ -64,15 +65,17 @@ export const normalizeSectionAnimation = (
   value: unknown,
   fallback: SectionAnimationType = 'fade-up'
 ): SectionAnimationType => {
-  if (value === false || value === 'false' || value === 0 || value === '0') {
+  const effectiveValue = resolveEffectiveAnimation(value);
+
+  if (effectiveValue === false || effectiveValue === 'false' || effectiveValue === 0 || effectiveValue === '0') {
     return 'none';
   }
 
-  if (value === true || value === 'true' || value === 1 || value === '1') {
+  if (effectiveValue === true || effectiveValue === 'true' || effectiveValue === 1 || effectiveValue === '1') {
     return fallback;
   }
 
-  const rawValue = String(value || '').trim().toLowerCase();
+  const rawValue = String(effectiveValue || '').trim().toLowerCase();
   if (!rawValue) {
     return 'none';
   }

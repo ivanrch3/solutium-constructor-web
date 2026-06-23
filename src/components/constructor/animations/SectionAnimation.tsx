@@ -1,5 +1,5 @@
 import React from 'react';
-import { motion, useInView, useReducedMotion } from 'motion/react';
+import { motion, useReducedMotion } from 'motion/react';
 import {
   getSectionAnimationVariants,
   normalizeSectionAnimation,
@@ -73,13 +73,59 @@ export const SectionAnimation: React.FC<SectionAnimationProps> = ({
   const sectionRef = React.useRef<HTMLDivElement | null>(null);
   const normalizedAnimation = normalizeSectionAnimation(animation);
   const viewportOptions = viewport || DEFAULT_VIEWPORT;
-  const isInView = useInView(sectionRef, {
-    once: viewportOptions.once,
-    amount: viewportOptions.amount,
-    root: scrollContainerRef || undefined
-  });
+  const shouldAnimate = !(disabled || prefersReducedMotion || normalizedAnimation === 'none');
+  const [isInView, setIsInView] = React.useState(!shouldAnimate);
 
-  if (disabled || prefersReducedMotion || normalizedAnimation === 'none') {
+  React.useEffect(() => {
+    if (!shouldAnimate) {
+      setIsInView(true);
+      return;
+    }
+
+    const target = sectionRef.current;
+    if (!target) {
+      setIsInView(false);
+      return;
+    }
+
+    if (typeof IntersectionObserver === 'undefined') {
+      setIsInView(true);
+      return;
+    }
+
+    setIsInView(false);
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (!entry) return;
+
+        if (entry.isIntersecting) {
+          setIsInView(true);
+          if (viewportOptions.once !== false) {
+            observer.disconnect();
+          }
+          return;
+        }
+
+        if (viewportOptions.once === false) {
+          setIsInView(false);
+        }
+      },
+      {
+        threshold: viewportOptions.amount,
+        root: scrollContainerRef?.current || null
+      }
+    );
+
+    observer.observe(target);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [scrollContainerRef, shouldAnimate, viewportOptions.amount, viewportOptions.once]);
+
+  if (!shouldAnimate) {
     return className ? <div className={className}>{children}</div> : <>{children}</>;
   }
 

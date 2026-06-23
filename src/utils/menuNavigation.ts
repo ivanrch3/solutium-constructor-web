@@ -247,3 +247,28 @@ export const mergeAutomaticMenuItemsWithExisting = (
     };
   }));
 };
+
+export const resolveMenuItems = ({
+  mode,
+  persistedItems,
+  modules,
+  settingsValues
+}: {
+  mode: MenuMode;
+  persistedItems: MenuItemLike[];
+  modules: ModuleLike[];
+  settingsValues: Record<string, any>;
+}) => {
+  const canonicalPersistedItems = dedupeMenuLinks(persistedItems);
+
+  if (mode === 'manual') {
+    return canonicalPersistedItems;
+  }
+
+  const automaticItems = buildAutomaticMenuItems({
+    modules,
+    settingsValues
+  });
+
+  return mergeAutomaticMenuItemsWithExisting(automaticItems, canonicalPersistedItems);
+};

@@ -84,7 +84,6 @@ import {
   normalizeProjectBrandColors
 } from '../../utils/projectTheme';
 import {
-  buildAutomaticMenuItems,
   dedupeMenuLinks,
   getMenuModeKey,
   getShowInMenuKey,
@@ -93,9 +92,9 @@ import {
   isMenuModuleLike,
   isMenuEligibleModule,
   isUtilityMenuModule,
-  mergeAutomaticMenuItemsWithExisting,
   normalizeConstructorModuleOrder,
   normalizeHeaderPositionValue,
+  resolveMenuItems,
   resolveSectionHref,
   resolveMenuMode,
   resolveShowInMenuState
@@ -3256,33 +3255,18 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   const rebuildMenuLinksIfNeeded = (state: EditorState, menuModuleId: string) => {
     const menuItemsElId = `${menuModuleId}_el_menu_items`;
     const menuLinksKey = `${menuItemsElId}_links`;
-    const currentLinks = dedupeMenuLinks(state.settingsValues[menuLinksKey] || []);
-    const autoAnchors = new Set(
-      (state.addedModules || [])
-        .filter((module) => isMenuEligibleModule(module))
-        .flatMap((module) => [`#${module.id}`, resolveSectionHref(module.id)])
-    );
-
-    const manualLinks = currentLinks.filter((link) => {
-      if (!link || typeof link !== 'object') return false;
-      if (link.is_title) return true;
-      if (link.source === 'auto') return false;
-      const url = String(link.href || link.url || '').trim();
-      if (!url.startsWith('#')) return true;
-      return !autoAnchors.has(url);
-    });
-
-    const visibleLinks = buildAutomaticMenuItems({
+    const resolvedLinks = resolveMenuItems({
+      mode: resolveMenuMode(menuModuleId, state.settingsValues || {}),
+      persistedItems: state.settingsValues[menuLinksKey] || [],
       modules: state.addedModules || [],
-      settingsValues: state.settingsValues
+      settingsValues: state.settingsValues || {}
     });
-    const mergedVisibleLinks = mergeAutomaticMenuItemsWithExisting(visibleLinks, currentLinks);
 
     return {
       ...state,
       settingsValues: {
         ...state.settingsValues,
-        [menuLinksKey]: dedupeMenuLinks([...mergedVisibleLinks, ...manualLinks])
+        [menuLinksKey]: resolvedLinks
       }
     };
   };
@@ -3502,10 +3486,6 @@ const formatTimestampName = () => {
 
   const generateRenderingContract = (finalSiteName: string, stateToUse?: any): RenderingContract => {
     const currentState = stateToUse || editorState;
-    const automaticMenuItems = buildAutomaticMenuItems({
-      modules: currentState.addedModules || [],
-      settingsValues: currentState.settingsValues || {}
-    });
     // Helper to get setting value with fallback and CLEAN value extraction
     const getVal = (moduleId: string, elementId: string | null, settingId: string, defaultValue: any) => {
       const key = elementId ? `${moduleId}_${elementId}_${settingId}` : `${moduleId}_global_${settingId}`;
@@ -3731,16 +3711,17 @@ const formatTimestampName = () => {
         if ((module.type === 'menu' || module.type === 'navegacion') && !module.id.startsWith('mod_footer_1')) {
           const menuMode = resolveMenuMode(module.id, currentState.settingsValues || {});
           const manualLinksKey = `${module.id}_el_menu_items_links`;
-          const manualLinks = dedupeMenuLinks(
-            Array.isArray(currentState.settingsValues?.[manualLinksKey])
+          const resolvedLinks = resolveMenuItems({
+            mode: menuMode,
+            persistedItems: Array.isArray(currentState.settingsValues?.[manualLinksKey])
               ? currentState.settingsValues[manualLinksKey]
-              : []
-          );
+              : [],
+            modules: currentState.addedModules || [],
+            settingsValues: currentState.settingsValues || {}
+          });
 
           settings['global_menu_mode'] = menuMode;
-          settings['el_menu_items_links'] = menuMode === 'manual'
-            ? manualLinks
-            : mergeAutomaticMenuItemsWithExisting(automaticMenuItems, manualLinks);
+          settings['el_menu_items_links'] = resolvedLinks;
         }
 
         // Specific overrides for modules that have multiple items (like products/clients)

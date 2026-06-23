@@ -27,6 +27,7 @@ import { syncAsset } from '../../services/assetService';
 import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../constants/typography';
 import { MOCK_PRODUCTS, MOCK_CUSTOMERS } from '../../constants/mockData';
 import { PexelsImagePickerModal, SelectedPexelsImageMetadata } from './media/PexelsImagePickerModal';
+import { resolveConstructorAnimationControlState } from '../../utils/constructorAnimationPolicy';
 
 import { normalizeSocialPlatform, SOCIAL_PLATFORMS, getIconForPlatform } from '../../utils/socialUtils';
 
@@ -439,12 +440,15 @@ export const SettingControl: React.FC<SettingControlProps> = ({
   const [openRepeaterItems, setOpenRepeaterItems] = useState<Record<string, number | null>>({});
   const [openRepeaterSections, setOpenRepeaterSections] = useState<Record<string, string | null>>({});
   const currentValue = value !== undefined ? value : setting.defaultValue;
+  const animationControlState = resolveConstructorAnimationControlState(setting, currentValue);
+  const effectiveCurrentValue = animationControlState.effectiveValue;
   const dynamicCardsBulletsTimerRef = useRef<number | null>(null);
   const dynamicCardsCommittedValueRef = useRef(currentValue);
   const dynamicCardsBulletsEditingRef = useRef(false);
   const [dynamicCardsDraftValue, setDynamicCardsDraftValue] = useState(currentValue ?? '');
 
-  const isDisabled = setting.disabledMessage !== undefined;
+  const disabledMessage = animationControlState.disabledMessage ?? setting.disabledMessage;
+  const isDisabled = disabledMessage !== undefined;
   const shouldShowPexels = setting.type === 'image' && !shouldHidePexelsButton(setting, moduleType);
   const preferredOrientation = inferPexelsOrientation(setting, moduleType);
   const contextModuleId = getModuleIdFromContext(contextId);
@@ -895,8 +899,8 @@ export const SettingControl: React.FC<SettingControlProps> = ({
           <div className="flex items-center justify-between">
             <label className="text-[10px] font-bold text-text/40">{setting.label}</label>
             <div className="flex items-center gap-2">
-              {isDisabled && <span className="text-[8px] font-bold text-red-500/60 italic">{setting.disabledMessage}</span>}
-              <span className="text-[10px] font-medium text-primary">{currentValue}{setting.unit}</span>
+              {isDisabled && <span className="text-[8px] font-bold text-red-500/60 italic">{disabledMessage}</span>}
+              <span className="text-[10px] font-medium text-primary">{effectiveCurrentValue}{setting.unit}</span>
             </div>
           </div>
           <input 
@@ -904,7 +908,7 @@ export const SettingControl: React.FC<SettingControlProps> = ({
             min={setting.min} 
             max={setting.max} 
             step={setting.step || 1}
-            value={currentValue}
+            value={effectiveCurrentValue}
             disabled={isDisabled}
             onChange={(e) => onChange(Number(e.target.value))}
             className="w-full h-1 bg-secondary rounded-lg appearance-none cursor-pointer accent-primary" 
@@ -912,15 +916,15 @@ export const SettingControl: React.FC<SettingControlProps> = ({
         </div>
       );
     case 'select':
-      const selectOptions = resolveDynamicOptions(setting);
+      const selectOptions = animationControlState.forcedOptions || resolveDynamicOptions(setting);
       return (
         <div className={`space-y-1.5 ${isDisabled ? 'opacity-50 pointer-events-none grayscale' : ''}`}>
           <div className="flex items-center justify-between">
             <label className="text-[10px] font-bold text-text/40">{setting.label}</label>
-            {isDisabled && <span className="text-[8px] font-bold text-red-500/60 italic">{setting.disabledMessage}</span>}
+            {isDisabled && <span className="text-[8px] font-bold text-red-500/60 italic">{disabledMessage}</span>}
           </div>
           <select 
-            value={currentValue}
+            value={effectiveCurrentValue}
             disabled={isDisabled}
             onChange={(e) => onChange(e.target.value)}
             className="w-full p-1.5 border border-border rounded-md text-[10px] font-medium focus:outline-none focus:border-primary/30 bg-surface"
@@ -936,14 +940,14 @@ export const SettingControl: React.FC<SettingControlProps> = ({
         <div className={`flex items-center justify-between p-1.5 bg-secondary rounded-md ${isDisabled ? 'opacity-50 pointer-events-none grayscale' : ''}`}>
           <div className="flex flex-col">
             <span className="text-[10px] font-medium text-text/60">{setting.label}</span>
-            {isDisabled && <span className="text-[8px] font-bold text-red-500/60 italic">{setting.disabledMessage}</span>}
+            {isDisabled && <span className="text-[8px] font-bold text-red-500/60 italic">{disabledMessage}</span>}
           </div>
           <button 
             disabled={isDisabled}
-            onClick={() => onChange(!currentValue)}
-            className={`w-7 h-3.5 rounded-full relative transition-colors ${currentValue ? 'bg-primary' : 'bg-secondary-foreground/20'}`}
+            onClick={() => onChange(!effectiveCurrentValue)}
+            className={`w-7 h-3.5 rounded-full relative transition-colors ${effectiveCurrentValue ? 'bg-primary' : 'bg-secondary-foreground/20'}`}
           >
-            <div className={`absolute top-0.5 w-2.5 h-2.5 bg-white rounded-full shadow-sm transition-all ${currentValue ? 'left-4' : 'left-0.5'}`}></div>
+            <div className={`absolute top-0.5 w-2.5 h-2.5 bg-white rounded-full shadow-sm transition-all ${effectiveCurrentValue ? 'left-4' : 'left-0.5'}`}></div>
           </button>
         </div>
       );

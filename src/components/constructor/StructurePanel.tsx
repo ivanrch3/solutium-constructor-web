@@ -32,6 +32,11 @@ import { GlobalSettingsPanel } from './GlobalSettingsPanel';
 import { BentoCellEditor } from './BentoCellEditor';
 import { resolveModuleDisplayLabel } from '../../utils/menuNavigation';
 import {
+  CONSTRUCTOR_MODULE_ANIMATIONS_ENABLED,
+  CONSTRUCTOR_ANIMATION_DISABLED_MESSAGE,
+  isConstructorAnimationSetting
+} from '../../utils/constructorAnimationPolicy';
+import {
   addCompositionElement,
   buildCompositionTree,
   deleteCompositionElement,
@@ -1231,8 +1236,23 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                                                 const settingsToRender = element.type === 'global'
                                                   ? module.globalSettings?.[group]
                                                   : element.settings?.[group];
+                                                const hasAnimationSettings = Boolean(
+                                                  settingsToRender?.some((setting) => isConstructorAnimationSetting(setting))
+                                                );
 
-                                                return settingsToRender?.map((setting, settingIndex) => {
+                                                return (
+                                                  <>
+                                                    {!CONSTRUCTOR_MODULE_ANIMATIONS_ENABLED && hasAnimationSettings && (
+                                                      <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+                                                        <p className="text-[9px] font-black uppercase tracking-wider text-amber-700">
+                                                          Temporalmente deshabilitado
+                                                        </p>
+                                                        <p className="mt-1 text-[10px] leading-relaxed text-amber-800/80">
+                                                          {CONSTRUCTOR_ANIMATION_DISABLED_MESSAGE}
+                                                        </p>
+                                                      </div>
+                                                    )}
+                                                    {settingsToRender?.map((setting, settingIndex) => {
                                                   const prefix = resolveElementSettingsPrefix(module.id, element.id);
                                                   const show = evaluateCondition(setting.showIf, editorState.settingsValues, prefix, module.id);
                                                   if (!show.result) return null;
@@ -1272,7 +1292,9 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                                                       />
                                                     </React.Fragment>
                                                   );
-                                                });
+                                                })}
+                                                  </>
+                                                );
                                               })()}
 
                                               {/* Fallback if no settings defined for this group */}

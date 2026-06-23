@@ -58,6 +58,7 @@ import {
   normalizeSectionAnchorId,
   resolveMenuMode
 } from '../../utils/menuNavigation';
+import { resolveAnimationSafeSettings } from '../../utils/constructorAnimationPolicy';
 
 interface CanvasProps {
   editorState: EditorState;
@@ -907,11 +908,11 @@ export const Canvas: React.FC<CanvasProps> = ({
                 // 1. editorState.settingsValues (Estado vivo del editor - Prioridad Alta)
                 // 2. section.settings (Estado del store/db - Fallback)
                 // 3. moduleOverrides (Tematización global/alternante - Prioridad Máxima)
-                const finalSettings = { 
+                const finalSettings = resolveAnimationSafeSettings({
                   ...section.settings, 
                   ...editorState.settingsValues,
                   ...moduleOverrides 
-                };
+                });
 
                 if (!isCleanPreviewMode) {
                    logDebug('[CANVAS_SECTION_RENDER_DEBUG]', {

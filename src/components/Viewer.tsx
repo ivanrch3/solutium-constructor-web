@@ -46,6 +46,11 @@ import {
 } from '../utils/menuNavigation';
 import { buildProjectThemeCssVariables, normalizeProjectBrandColors } from '../utils/projectTheme';
 import { appendReferralParamToSolutiumUrl, extractReferralCodeFromSearch } from '../utils/referralLinks';
+import { resolveAnimationSafeSettings } from '../utils/constructorAnimationPolicy';
+import {
+  isManualProductsSelectionMode,
+  resolveProductsForSelection
+} from '../utils/productsSelection';
 
 interface ViewerProps {
   site: PublishedSite;
@@ -500,13 +505,13 @@ export const Viewer: React.FC<ViewerProps> = ({
         }, {} as Record<string, any>);
 
         // SIP v5.5 (Protocolo 10.5) - Centralized Hydration Bridge
-        const finalSettingsValues = bridgeModuleContent({
+        const finalSettingsValues = resolveAnimationSafeSettings(bridgeModuleContent({
           type,
           moduleId,
           content,
           settings,
           existingDeepValues: settingsValues
-        });
+        }));
 
         // Debug diagnostic for rendered sections
         if (isRenderMode && (type === 'hero' || type === 'features')) {
@@ -596,7 +601,7 @@ export const Viewer: React.FC<ViewerProps> = ({
                section.content?.selection_mode ||
                'auto';
              const selectionMode = String(rawSelectionMode || 'auto').toLowerCase();
-             const isManualSelectionMode = ['manual', 'selected', 'selection', 'featured', 'custom'].includes(selectionMode);
+             const isManualSelectionMode = isManualProductsSelectionMode(selectionMode);
             
             // [VIEWER_PUBLISHED_CONTRACT_PRODUCTS_FORENSIC]
             if (isPublishedViewer || window.location.search.includes('debug=products')) {
@@ -676,16 +681,15 @@ export const Viewer: React.FC<ViewerProps> = ({
                   }));
                 resolutionSource = "published_snapshot";
               } else if (catalogProducts.length > 0) {
-                const manualIdsSource = Array.isArray(explicitSelectedProductIds) && explicitSelectedProductIds.length > 0
-                  ? explicitSelectedProductIds
-                  : (Array.isArray(snapshotProducts) ? snapshotProducts.map((product: any) => product?.id).filter(Boolean) : []);
-                const manualIds = new Set(manualIdsSource.map((id: any) => String(id)).filter(Boolean));
-
                 if (isManualSelectionMode) {
-                  finalProducts = manualIds.size > 0
-                    ? catalogProducts.filter((product) => manualIds.has(String(product.id)))
-                    : [];
-                  resolutionSource = manualIds.size > 0 ? "published_catalog_manual_selected" : "published_catalog_manual_empty";
+                  finalProducts = resolveProductsForSelection({
+                    selectionMode,
+                    selectedIds: explicitSelectedProductIds,
+                    availableProducts: catalogProducts
+                  });
+                  resolutionSource = Array.isArray(explicitSelectedProductIds) && explicitSelectedProductIds.length > 0
+                    ? "published_catalog_manual_selected"
+                    : "published_catalog_manual_all";
                 } else {
                   finalProducts = catalogProducts;
                   resolutionSource = "published_catalog_auto_all";

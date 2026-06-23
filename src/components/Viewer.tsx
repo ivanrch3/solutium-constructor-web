@@ -34,14 +34,13 @@ import { bridgeModuleContent } from '../utils/hydrationBridge';
 import { getProducts } from '../services/dataService';
 import { Customer, Product, TrustedCompanyLogo } from '../types/schema';
 import {
-  buildAutomaticMenuItems,
   isHeaderModuleLike,
   isMenuModuleLike,
-  mergeAutomaticMenuItemsWithExisting,
   normalizeConstructorModuleOrder,
   normalizeHeaderPositionValue,
   normalizeMenuPositionValue,
   normalizeSectionAnchorId,
+  resolveMenuItems,
   resolveMenuMode
 } from '../utils/menuNavigation';
 import { buildProjectThemeCssVariables, normalizeProjectBrandColors } from '../utils/projectTheme';
@@ -266,7 +265,12 @@ export const Viewer: React.FC<ViewerProps> = ({
   );
   const automaticMenuItems = React.useMemo(
     () => {
-      const baseItems = buildAutomaticMenuItems({
+      const menuSection = sections.find((section: any) => section.type === 'menu' || section.type === 'navegacion' || section.tipo === 'menu' || section.tipo === 'navegacion');
+      if (!menuSection) return [];
+
+      return resolveMenuItems({
+        mode: resolveMenuMode(menuSection.id, aggregatedSectionSettings),
+        persistedItems: aggregatedSectionSettings?.[`${menuSection.id}_el_menu_items_links`] || [],
         modules: sections.map((section: any) => ({
           id: section.id,
           type: section.type || section.tipo || '',
@@ -274,11 +278,6 @@ export const Viewer: React.FC<ViewerProps> = ({
         })),
         settingsValues: aggregatedSectionSettings
       });
-      const menuSection = sections.find((section: any) => section.type === 'menu' || section.type === 'navegacion' || section.tipo === 'menu' || section.tipo === 'navegacion');
-      const existingLinks = menuSection
-        ? aggregatedSectionSettings?.[`${menuSection.id}_el_menu_items_links`] || []
-        : [];
-      return mergeAutomaticMenuItemsWithExisting(baseItems, existingLinks);
     },
     [aggregatedSectionSettings, sections]
   );

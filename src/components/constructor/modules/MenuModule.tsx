@@ -9,11 +9,9 @@ import { SectionAnimation } from '../animations/SectionAnimation';
 import { normalizeSectionAnimation } from '../../../constants/moduleAnimations';
 import { MODULE_INFO } from '../registry';
 import {
-  MenuMode,
   dedupeMenuLinks,
   normalizeMenuPositionValue,
   normalizeSectionAnchorId,
-  resolveMenuMode,
   resolveSectionHref
 } from '../../../utils/menuNavigation';
 
@@ -25,7 +23,6 @@ const normalizeExternalHref = (value: unknown) => {
   if (/^(https?:|mailto:|tel:|#|\/)/i.test(rawUrl)) return rawUrl;
   return `https://${rawUrl}`;
 };
-
 const resolveThemeColor = (
   value: string | undefined,
   lightDefault: string,
@@ -48,7 +45,6 @@ export const MenuModule: React.FC<{
   isEditorCanvas?: boolean,
   isFullscreenPreview?: boolean,
   constructorViewport?: 'desktop' | 'tablet' | 'mobile',
-  menuMode?: MenuMode,
   automaticMenuItems?: any[],
   stackedTopOffset?: number
 }> = ({
@@ -60,7 +56,6 @@ export const MenuModule: React.FC<{
   isEditorCanvas = false,
   isFullscreenPreview = false,
   constructorViewport,
-  menuMode: menuModeProp,
   automaticMenuItems = [],
   stackedTopOffset = 0
 }) => {
@@ -119,12 +114,11 @@ export const MenuModule: React.FC<{
   })();
 
   // Element: Items
-  const resolvedMenuMode = menuModeProp || resolveMenuMode(moduleId, settingsValues);
   const rawLinks = getVal(`${moduleId}_el_menu_items`, 'links', []);
   const manualLinks = dedupeMenuLinks(Array.isArray(rawLinks) ? rawLinks : []);
-  const links = resolvedMenuMode === 'automatic'
-    ? dedupeMenuLinks(automaticMenuItems)
-    : manualLinks;
+  const links = manualLinks.length > 0
+    ? manualLinks
+    : dedupeMenuLinks(automaticMenuItems);
 
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
 
@@ -384,7 +378,9 @@ export const MenuModule: React.FC<{
     left: effectivePosition === 'fixed' ? 0 : undefined,
     right: effectivePosition === 'fixed' ? 0 : undefined,
     width: '100%',
-    zIndex: effectivePosition === 'relative' ? 1 : 1000
+    zIndex: isMobileMenuOpen && canOpenOverlayMenu
+      ? 1200
+      : (effectivePosition === 'relative' ? 1 : 1000)
   };
 
   const needsSpacer = isFixed && !isCanvasPreview;
@@ -562,12 +558,12 @@ export const MenuModule: React.FC<{
           <div className={`flex min-w-0 flex-1 items-center gap-4 sm:gap-6 ${forceHamburgerMenu ? 'justify-end' : (layout === 'horizontal' ? alignmentClasses[align as keyof typeof alignmentClasses] : 'flex-col items-center')}`}>
             {forceHamburgerMenu ? (
               <div className="ml-auto flex items-center justify-end">
-                <button 
+                <button
                   type="button"
                   onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                   className="rounded-full p-2 transition-colors hover:bg-black/5"
                   style={{ color: textColor }}
-                  aria-label={isMobileMenuOpen ? 'Cerrar menú de navegación' : 'Abrir menú de navegación'}
+                  aria-label={isMobileMenuOpen ? 'Cerrar menu de navegacion' : 'Abrir menu de navegacion'}
                   aria-expanded={isMobileMenuOpen}
                   aria-controls={menuPanelId}
                 >
@@ -578,12 +574,12 @@ export const MenuModule: React.FC<{
               <div className={`flex min-w-0 items-center gap-4 ${linkListAlignmentClass}`}>
                 {renderLinks(false, visibleLinks)}
                 {hasOverflowLinks && (
-                  <button 
+                  <button
                     type="button"
                     onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                     className="rounded-full p-2 transition-colors hover:bg-black/5"
                     style={{ color: textColor }}
-                    aria-label={isMobileMenuOpen ? 'Cerrar menú de navegación' : 'Abrir menú de navegación'}
+                    aria-label={isMobileMenuOpen ? 'Cerrar menu de navegacion' : 'Abrir menu de navegacion'}
                     aria-expanded={isMobileMenuOpen}
                     aria-controls={menuPanelId}
                   >
@@ -611,11 +607,15 @@ export const MenuModule: React.FC<{
               }}
             >
               <div className="flex max-h-[min(70vh,32rem)] flex-col gap-2 overflow-y-auto p-6">
-                <div className="mb-4 flex items-center justify-between border-b pb-4 border-border/50">
-                   <span className="text-[10px] font-black uppercase tracking-widest opacity-40">Navegación</span>
-                   <button type="button" onClick={() => setIsMobileMenuOpen(false)} className="rounded-lg p-1 transition-colors hover:bg-black/5">
-                     <CloseIcon size={16} style={{ color: textColor }} />
-                   </button>
+                <div className="mb-2 flex items-center justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="rounded-lg p-1 transition-colors hover:bg-black/5"
+                    aria-label="Cerrar menu"
+                  >
+                    <CloseIcon size={16} style={{ color: textColor }} />
+                  </button>
                 </div>
                 {renderLinks(true, dropdownLinks)}
               </div>

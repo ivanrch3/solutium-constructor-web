@@ -48,14 +48,14 @@ import { ParallaxScrollContext } from './ParallaxBackground';
 
 import { normalizeSocialUrl, getIconForPlatform, resolveFooterSocialLinks, FOOTER_DEFAULTS } from '../../utils/socialUtils';
 import {
+  buildAutomaticMenuItems,
   isHeaderModuleLike,
   isMenuModuleLike,
+  mergeAutomaticMenuItemsWithExisting,
   normalizeConstructorModuleOrder,
   normalizeHeaderPositionValue,
   normalizeMenuPositionValue,
-  normalizeSectionAnchorId,
-  resolveMenuItems,
-  resolveMenuMode
+  normalizeSectionAnchorId
 } from '../../utils/menuNavigation';
 import { resolveAnimationSafeSettings } from '../../utils/constructorAnimationPolicy';
 
@@ -153,15 +153,15 @@ export const Canvas: React.FC<CanvasProps> = ({
   const isFullscreenPreview = isFullscreen && !isPreviewMode;
   const automaticMenuItems = React.useMemo(
     () => {
-      const menuModule = (editorState.addedModules || []).find((module) => module.type === 'navegacion' || module.type === 'menu');
-      if (!menuModule) return [];
-
-      return resolveMenuItems({
-        mode: resolveMenuMode(menuModule.id, editorState.settingsValues || {}),
-        persistedItems: editorState.settingsValues?.[`${menuModule.id}_el_menu_items_links`] || [],
+      const baseItems = buildAutomaticMenuItems({
         modules: editorState.addedModules || [],
         settingsValues: editorState.settingsValues || {}
       });
+      const menuModule = (editorState.addedModules || []).find((module) => module.type === 'navegacion' || module.type === 'menu');
+      const existingLinks = menuModule
+        ? editorState.settingsValues?.[`${menuModule.id}_el_menu_items_links`] || []
+        : [];
+      return mergeAutomaticMenuItemsWithExisting(baseItems, existingLinks);
     },
     [editorState.addedModules, editorState.settingsValues]
   );
@@ -1139,7 +1139,6 @@ export const Canvas: React.FC<CanvasProps> = ({
                         isEditorCanvas={!isCleanPreviewMode}
                         isFullscreenPreview={isFullscreenPreview}
                         constructorViewport={viewport}
-                        menuMode={resolveMenuMode(section.id, finalSettings)}
                         automaticMenuItems={automaticMenuItems}
                         stackedTopOffset={topOffset}
                       />

@@ -84,6 +84,7 @@ import {
   normalizeProjectBrandColors
 } from '../../utils/projectTheme';
 import {
+  buildAutomaticMenuItems,
   dedupeMenuLinks,
   getMenuModeKey,
   getShowInMenuKey,
@@ -92,9 +93,9 @@ import {
   isMenuModuleLike,
   isMenuEligibleModule,
   isUtilityMenuModule,
+  mergeAutomaticMenuItemsWithExisting,
   normalizeConstructorModuleOrder,
   normalizeHeaderPositionValue,
-  resolveMenuItems,
   resolveSectionHref,
   resolveMenuMode,
   resolveShowInMenuState
@@ -3255,18 +3256,33 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   const rebuildMenuLinksIfNeeded = (state: EditorState, menuModuleId: string) => {
     const menuItemsElId = `${menuModuleId}_el_menu_items`;
     const menuLinksKey = `${menuItemsElId}_links`;
-    const resolvedLinks = resolveMenuItems({
-      mode: resolveMenuMode(menuModuleId, state.settingsValues || {}),
-      persistedItems: state.settingsValues[menuLinksKey] || [],
-      modules: state.addedModules || [],
-      settingsValues: state.settingsValues || {}
+    const currentLinks = dedupeMenuLinks(state.settingsValues[menuLinksKey] || []);
+    const autoAnchors = new Set(
+      (state.addedModules || [])
+        .filter((module) => isMenuEligibleModule(module))
+        .flatMap((module) => [`#${module.id}`, resolveSectionHref(module.id)])
+    );
+
+    const manualLinks = currentLinks.filter((link) => {
+      if (!link || typeof link !== 'object') return false;
+      if (link.is_title) return true;
+      if (link.source === 'auto') return false;
+      const url = String(link.href || link.url || '').trim();
+      if (!url.startsWith('#')) return true;
+      return !autoAnchors.has(url);
     });
+
+    const visibleLinks = buildAutomaticMenuItems({
+      modules: state.addedModules || [],
+      settingsValues: state.settingsValues
+    });
+    const mergedVisibleLinks = mergeAutomaticMenuItemsWithExisting(visibleLinks, currentLinks);
 
     return {
       ...state,
       settingsValues: {
         ...state.settingsValues,
-        [menuLinksKey]: resolvedLinks
+        [menuLinksKey]: dedupeMenuLinks([...mergedVisibleLinks, ...manualLinks])
       }
     };
   };
@@ -3710,18 +3726,29 @@ const formatTimestampName = () => {
 
         if ((module.type === 'menu' || module.type === 'navegacion') && !module.id.startsWith('mod_footer_1')) {
           const menuMode = resolveMenuMode(module.id, currentState.settingsValues || {});
-          const manualLinksKey = `${module.id}_el_menu_items_links`;
-          const resolvedLinks = resolveMenuItems({
-            mode: menuMode,
-            persistedItems: Array.isArray(currentState.settingsValues?.[manualLinksKey])
-              ? currentState.settingsValues[manualLinksKey]
-              : [],
+          const automaticMenuItems = buildAutomaticMenuItems({
             modules: currentState.addedModules || [],
             settingsValues: currentState.settingsValues || {}
           });
+          const manualLinksKey = `${module.id}_el_menu_items_links`;
+          const manualLinks = dedupeMenuLinks(
+            Array.isArray(currentState.settingsValues?.[manualLinksKey])
+              ? currentState.settingsValues[manualLinksKey]
+              : []
+          );
+          const currentLogo = getPlainValue(currentState.settingsValues?.[`${module.id}_el_menu_logo_logo_img`]);
+          const shouldUseProjectLogo = (!currentLogo || String(currentLogo).trim() === '') && project?.logoUrl;
 
           settings['global_menu_mode'] = menuMode;
-          settings['el_menu_items_links'] = resolvedLinks;
+          settings['el_menu_items_links'] = manualLinks.length > 0
+            ? manualLinks
+            : mergeAutomaticMenuItemsWithExisting(automaticMenuItems, manualLinks);
+
+          if (shouldUseProjectLogo) {
+            content.logo_url = project.logoUrl;
+            content.brand = { ...(content.brand || {}), logo: project.logoUrl, logo_url: project.logoUrl };
+            settings[`${module.id}_el_menu_logo_logo_img`] = project.logoUrl;
+          }
         }
 
         // Specific overrides for modules that have multiple items (like products/clients)

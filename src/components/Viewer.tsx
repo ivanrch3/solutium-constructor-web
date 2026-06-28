@@ -34,14 +34,14 @@ import { bridgeModuleContent } from '../utils/hydrationBridge';
 import { getProducts } from '../services/dataService';
 import { Customer, Product, TrustedCompanyLogo } from '../types/schema';
 import {
+  buildAutomaticMenuItems,
   isHeaderModuleLike,
   isMenuModuleLike,
+  mergeAutomaticMenuItemsWithExisting,
   normalizeConstructorModuleOrder,
   normalizeHeaderPositionValue,
   normalizeMenuPositionValue,
-  normalizeSectionAnchorId,
-  resolveMenuItems,
-  resolveMenuMode
+  normalizeSectionAnchorId
 } from '../utils/menuNavigation';
 import { buildProjectThemeCssVariables, normalizeProjectBrandColors } from '../utils/projectTheme';
 import { appendReferralParamToSolutiumUrl, extractReferralCodeFromSearch } from '../utils/referralLinks';
@@ -87,6 +87,36 @@ export const Viewer: React.FC<ViewerProps> = ({
   
   const isPublishedViewer = !isConstructorMode && !!site.siteId;
   const showBackControl = Boolean(onBack) && !isPublicRenderMode;
+  const globalMenuLogoUrl = React.useMemo(() => {
+    const metadata = (site.metadata || {}) as Record<string, any>;
+    const project = (metadata.project || metadata.projectContext || metadata.launchContext || {}) as Record<string, any>;
+    const theme = (site.content?.theme || {}) as Record<string, any>;
+    return (
+      project.logoUrl ||
+      project.logo_url ||
+      project.companyLogoUrl ||
+      metadata.logoUrl ||
+      metadata.logo_url ||
+      metadata.companyLogoUrl ||
+      theme.logoUrl ||
+      theme.logo_url ||
+      null
+    );
+  }, [site.content?.theme, site.metadata]);
+  const globalMenuLogoWhiteUrl = React.useMemo(() => {
+    const metadata = (site.metadata || {}) as Record<string, any>;
+    const project = (metadata.project || metadata.projectContext || metadata.launchContext || {}) as Record<string, any>;
+    const theme = (site.content?.theme || {}) as Record<string, any>;
+    return (
+      project.logoWhiteUrl ||
+      project.logo_white_url ||
+      metadata.logoWhiteUrl ||
+      metadata.logo_white_url ||
+      theme.logoWhiteUrl ||
+      theme.logo_white_url ||
+      null
+    );
+  }, [site.content?.theme, site.metadata]);
 
   useEffect(() => {
     (window as any).__SOLUTIUM_READ_ONLY_RENDER__ = true;
@@ -265,12 +295,7 @@ export const Viewer: React.FC<ViewerProps> = ({
   );
   const automaticMenuItems = React.useMemo(
     () => {
-      const menuSection = sections.find((section: any) => section.type === 'menu' || section.type === 'navegacion' || section.tipo === 'menu' || section.tipo === 'navegacion');
-      if (!menuSection) return [];
-
-      return resolveMenuItems({
-        mode: resolveMenuMode(menuSection.id, aggregatedSectionSettings),
-        persistedItems: aggregatedSectionSettings?.[`${menuSection.id}_el_menu_items_links`] || [],
+      const baseItems = buildAutomaticMenuItems({
         modules: sections.map((section: any) => ({
           id: section.id,
           type: section.type || section.tipo || '',
@@ -278,6 +303,11 @@ export const Viewer: React.FC<ViewerProps> = ({
         })),
         settingsValues: aggregatedSectionSettings
       });
+      const menuSection = sections.find((section: any) => section.type === 'menu' || section.type === 'navegacion' || section.tipo === 'menu' || section.tipo === 'navegacion');
+      const existingLinks = menuSection
+        ? aggregatedSectionSettings?.[`${menuSection.id}_el_menu_items_links`] || []
+        : [];
+      return mergeAutomaticMenuItemsWithExisting(baseItems, existingLinks);
     },
     [aggregatedSectionSettings, sections]
   );
@@ -827,7 +857,8 @@ export const Viewer: React.FC<ViewerProps> = ({
                 key={moduleId}
                 moduleId={moduleId}
                 settingsValues={finalSettingsValues}
-                menuMode={resolveMenuMode(moduleId, finalSettingsValues)}
+                logoUrl={globalMenuLogoUrl}
+                logoWhiteUrl={globalMenuLogoWhiteUrl}
                 automaticMenuItems={automaticMenuItems}
                 stackedTopOffset={stackedTopOffset}
               />

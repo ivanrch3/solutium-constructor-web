@@ -22,6 +22,7 @@ export interface PexelsMediaPhoto {
   photographer?: string;
   photographer_url?: string;
   pexels_url?: string;
+  selected_url_recommended?: string;
   src?: {
     original?: string;
     large2x?: string;

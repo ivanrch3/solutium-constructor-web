@@ -1,12 +1,28 @@
 import express from "express";
+import fs from "fs";
 import path from "path";
-import "dotenv/config";
+import { config as loadDotenv } from "dotenv";
 import { fileURLToPath } from "url";
 import { createServer as createViteServer } from "vite";
 import { AIBrokerService } from "./src/services/aiBrokerService";
 import { initSupabase } from "./src/services/supabaseClient";
 
+const loadServerEnv = () => {
+  const envFiles = [".env", ".env.local"];
+  const loadedFiles: string[] = [];
+
+  envFiles.forEach((file, index) => {
+    const absolutePath = path.resolve(process.cwd(), file);
+    if (!fs.existsSync(absolutePath)) return;
+    loadDotenv({ path: absolutePath, override: index > 0 });
+    loadedFiles.push(file);
+  });
+
+  return loadedFiles;
+};
+
 async function startServer() {
+  const loadedEnvFiles = loadServerEnv();
   const app = express();
   const PORT = Number(process.env.PORT || process.env.VITE_LOCAL_PORT || 3010);
 
@@ -17,7 +33,14 @@ async function startServer() {
     initSupabase(sbUrl, sbKey, '');
     console.log('[Supabase] Initialized in backend server');
   } else {
-    console.warn('[Supabase] Backend initialization skipped: Missing keys');
+    const missingVars: string[] = [];
+    if (!sbUrl) missingVars.push('SUPABASE_URL | VITE_SUPABASE_URL');
+    if (!sbKey) missingVars.push('SUPABASE_SERVICE_ROLE_KEY | SUPABASE_ANON_KEY | VITE_SUPABASE_ANON_KEY');
+    console.warn(
+      `[Supabase] Backend initialization skipped: missing ${missingVars.join(', ')}. ` +
+      `Loaded env files: ${loadedEnvFiles.join(', ') || 'none'}. ` +
+      `Only backend-local Supabase helpers remain disabled; browser session flows still bootstrap from App Madre.`
+    );
   }
 
   app.use(express.json());

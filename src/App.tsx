@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { sendToMother, startHandshake } from './services/handshakeService';
+import { sendToMother, startHandshake, syncSupabaseRuntimeConfig } from './services/handshakeService';
 import { configService } from './services/configService';
 import { getSupabase, getSupabaseConfig, initSupabase } from './services/supabaseClient';
 import { captureAuthToken } from './services/authTokenProvider';
@@ -11,10 +11,11 @@ import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { Sidebar } from './components/Sidebar';
 import { DataTab } from './components/DataTab';
 import { Dashboard } from './components/Dashboard';
-import { AI_PAGE_GENERATOR_ENABLED, MethodSelection, CreationMethod } from './components/MethodSelection';
+import { MethodSelection, CreationMethod } from './components/MethodSelection';
 import { ProjectForm, ProjectFormData } from './components/ProjectForm';
 import { WebConstructor } from './components/constructor/WebConstructor';
 import { AIGenerationOverlay } from './components/constructor/AIGenerationOverlay';
+import { AI_PAGE_GENERATION_ENABLED } from './constants/aiPageGeneration';
 import { useEditorStore } from './store/editorStore';
 import { Viewer } from './components/Viewer';
 import { logDebug } from './utils/debug';
@@ -448,7 +449,7 @@ const normalizeSecureLaunchPayloadForHandshake = (payload: SecureLaunchSessionPa
   const mode = payload.launcher?.mode || params.get('mode') || params.get('editor_mode') || null;
   const projectFromBranding = normalizeProjectBrandingToProject(payload.projectBranding, projectId);
 
-  return {
+  const normalized = {
     type: 'SOLUTIUM_SECURE_LAUNCH',
     projectId,
     project_id: projectId,
@@ -467,6 +468,13 @@ const normalizeSecureLaunchPayloadForHandshake = (payload: SecureLaunchSessionPa
     site_status: params.get('site_status') || undefined,
     source: params.get('source') || 'secure_launch',
     launch_contract: getLaunchContractVersion(payload) || params.get('launch_contract') || 'app-launch-v1',
+    supabase_url: (payload as any).supabase_url || (payload as any).supabaseUrl || null,
+    supabase_anon_key: (payload as any).supabase_anon_key || (payload as any).supabaseAnonKey || null,
+    session_token:
+      (payload as any).session_token ||
+      (payload as any).supabaseAccessToken ||
+      (payload as any).accessToken ||
+      null,
     launcher: payload.launcher || null,
     projectContext: payload.projectContext || null,
     uiTheme: payload.uiTheme || null,
@@ -475,6 +483,8 @@ const normalizeSecureLaunchPayloadForHandshake = (payload: SecureLaunchSessionPa
     publicRenderContext: (payload as any).publicRenderContext || null,
     projectContact: payload.projectContact || (payload as any).projectContact || null
   };
+
+  return normalized;
 };
 const normalizeDraftLifecycleStatus = (
   rawStatus: unknown,
@@ -1305,6 +1315,7 @@ const AppContent: React.FC = () => {
     }
 
     try {
+      syncSupabaseRuntimeConfig(payload);
       (window as any).SOLUTIUM_SUPABASE_SESSION = { access_token: payload.session_token };
 
       const supabase = initSupabase(
@@ -1321,6 +1332,8 @@ const AppContent: React.FC = () => {
       ]).catch((error) => ({ data: { user: null }, error }));
 
       const { data: { user }, error: userError } = userResult as any;
+      const sessionResult = await supabase.auth.getSession().catch((error) => ({ data: { session: null }, error }));
+      const activeSession = (sessionResult as any)?.data?.session || null;
       if (!user || userError) {
         return;
       }
@@ -1362,6 +1375,10 @@ const AppContent: React.FC = () => {
       const secureLaunchPayload = secureLaunchPayloadRef.current;
       const secureUiTheme = secureLaunchPayload?.uiTheme || null;
       const secureProjectBranding = secureLaunchPayload?.projectBranding || payload.projectBranding || null;
+
+      if (payload?.supabase_url && payload?.supabase_anon_key && payload?.session_token) {
+        syncSupabaseRuntimeConfig(payload);
+      }
 
       logDebug('[HANDSHAKE] Procesando payload:', summarizeLaunchPayload(payload));
       
@@ -1856,7 +1873,7 @@ const AppContent: React.FC = () => {
   };
 
   const handleSelectMethod = (method: CreationMethod) => {
-    if (method === 'ai' && !AI_PAGE_GENERATOR_ENABLED) {
+    if (method === 'ai' && !AI_PAGE_GENERATION_ENABLED) {
       setSelectedMethod(null);
       setCurrentView('selection-method');
       return;
@@ -1885,7 +1902,7 @@ const AppContent: React.FC = () => {
 
   const handleFormSubmit = (data: ProjectFormData) => {
     setFormData(data);
-    if (selectedMethod === 'ai' && AI_PAGE_GENERATOR_ENABLED) {
+    if (selectedMethod === 'ai' && AI_PAGE_GENERATION_ENABLED) {
       setCurrentView('generator');
     } else {
       setCurrentView('constructor');
@@ -2098,7 +2115,7 @@ const AppContent: React.FC = () => {
               onSubmit={handleFormSubmit}
               onCancel={() => setCurrentView('selection-method')}
               onSkip={() => {
-                if (selectedMethod === 'ai' && AI_PAGE_GENERATOR_ENABLED) {
+                if (selectedMethod === 'ai' && AI_PAGE_GENERATION_ENABLED) {
                   setCurrentView('generator');
                 } else {
                   setCurrentView('constructor');

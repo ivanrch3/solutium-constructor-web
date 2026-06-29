@@ -44,8 +44,180 @@ export type AIPageTone =
   | 'juvenil'
   | 'institucional';
 
+export type AIBusinessTypeId =
+  | 'restaurant'
+  | 'professional_services'
+  | 'retail_store'
+  | 'health_wellness'
+  | 'digital_services'
+  | 'other';
+
+export type AIFixedModuleType =
+  | 'navegacion'
+  | 'hero'
+  | 'features'
+  | 'dynamic_cards'
+  | 'pricing'
+  | 'comparative'
+  | 'process'
+  | 'stats'
+  | 'gallery'
+  | 'video'
+  | 'products'
+  | 'trusted_logos'
+  | 'team'
+  | 'testimonials'
+  | 'faq'
+  | 'cta'
+  | 'newsletter'
+  | 'contact'
+  | 'spacer'
+  | 'footer'
+  | 'genius_web_wa';
+
+export type AIBlueprintId =
+  | 'restaurant_landing_v1'
+  | 'professional_services_landing_v1'
+  | 'retail_store_landing_v1';
+
+export interface BusinessPageBlueprintModule {
+  id: string;
+  moduleType: AIFixedModuleType;
+  summaryLabel: string;
+  purpose: string;
+  requiredContentFields: string[];
+  defaultSettings?: Record<string, unknown>;
+}
+
+export interface BusinessPageBlueprint {
+  id: AIBlueprintId;
+  businessTypeId: AIBusinessTypeId;
+  businessTypeLabel: string;
+  version: number;
+  pageType: AIPageType;
+  modules: BusinessPageBlueprintModule[];
+}
+
+export interface GeneratedFeatureItem {
+  title: string;
+  description: string;
+  icon?: string;
+  imageUrl?: string;
+  imagePrompt?: string;
+  badge?: string;
+}
+
+export interface GeneratedShowcaseItem {
+  name: string;
+  description: string;
+  tag?: string;
+  price?: string;
+  imageUrl?: string;
+  imagePrompt?: string;
+}
+
+export interface GeneratedGalleryItem {
+  title: string;
+  description: string;
+  category?: string;
+  imageUrl?: string;
+  imagePrompt?: string;
+}
+
+export interface GeneratedTestimonialItem {
+  author: string;
+  role: string;
+  text: string;
+  stars?: number;
+}
+
+export interface GeneratedFaqItem {
+  question: string;
+  answer: string;
+  category?: string;
+}
+
+export interface GeneratedBusinessContent {
+  businessName: string;
+  businessTypeId: AIBusinessTypeId;
+  businessTypeLabel: string;
+  pageGoal: string;
+  primaryCta: string;
+  secondaryCta?: string;
+  hero: {
+    eyebrow: string;
+    title: string;
+    subtitle: string;
+    primaryCta: string;
+    secondaryCta?: string;
+    imageUrl?: string;
+    imagePrompt?: string;
+  };
+  benefits?: {
+    eyebrow?: string;
+    title: string;
+    subtitle: string;
+    items: GeneratedFeatureItem[];
+  };
+  featuredItems?: {
+    eyebrow?: string;
+    title: string;
+    subtitle: string;
+    items: GeneratedShowcaseItem[];
+  };
+  gallery?: {
+    eyebrow?: string;
+    title: string;
+    subtitle: string;
+    items: GeneratedGalleryItem[];
+  };
+  testimonials?: {
+    eyebrow?: string;
+    title: string;
+    subtitle: string;
+    items: GeneratedTestimonialItem[];
+  };
+  faq?: {
+    eyebrow?: string;
+    title: string;
+    subtitle: string;
+    items: GeneratedFaqItem[];
+    ctaText?: string;
+    buttonText?: string;
+  };
+  cta?: {
+    title: string;
+    subtitle: string;
+    primaryText: string;
+    secondaryText?: string;
+  };
+  contact?: {
+    title: string;
+    subtitle: string;
+    phone?: string;
+    whatsapp?: string;
+    email?: string;
+    address?: string;
+    hours?: string;
+    buttonText?: string;
+  };
+  menu?: {
+    logoText: string;
+    links: Array<{
+      label: string;
+      url: string;
+    }>;
+  };
+  footer?: {
+    bio: string;
+    copyright?: string;
+  };
+}
+
 export interface AIPageGenerationBrief {
   pageType: AIPageType;
+  businessTypeId?: AIBusinessTypeId;
+  businessTypeLabel?: string;
   businessType: string;
   pageGoal: string;
   instructions: string;
@@ -77,6 +249,7 @@ export interface AIPagePlanSection {
   moduleType: string;
   preset?: AIPagePlanPreset | null;
   title: string;
+  summaryLabel?: string;
   purpose: string;
   content: Record<string, unknown> & {
     eyebrow?: string;
@@ -92,14 +265,43 @@ export interface AIPagePlanSection {
 export interface AIPagePlan {
   pageTitle: string;
   pageGoal: string;
+  businessTypeId?: AIBusinessTypeId;
   businessType?: string;
+  businessTypeLabel?: string;
+  blueprintId?: AIBlueprintId;
+  blueprintVersion?: number;
+  contentContractVersion?: 'generated_business_content_v1';
   tone?: string;
   source: 'mock_local' | 'ai_broker' | 'fallback';
   generationMode?: AIPagePlanGenerationMode;
   warnings?: string[];
   estimatedCredits?: number;
+  usageSummary?: AIUsageSummary;
   referenceDebug?: ReferenceDebugInfo;
   sections: AIPagePlanSection[];
+}
+
+export interface AICreditBalanceSummary {
+  monthlyBalance: number;
+  bonusBalance: number;
+  totalAvailable: number;
+  monthlyLimit?: number;
+  nextResetAt?: string | null;
+}
+
+export interface AIUsageSummary {
+  provider?: string;
+  model?: string;
+  aiUsageLogId?: string;
+  inputTokens?: number;
+  outputTokens?: number;
+  totalTokens?: number;
+  costCredits?: number;
+  estimatedCredits?: number;
+  status?: 'charged' | 'reused' | 'skipped' | 'failed' | 'charge_failed' | 'insufficient_balance' | 'not_required';
+  balanceBefore?: AICreditBalanceSummary | null;
+  balanceAfter?: AICreditBalanceSummary | null;
+  idempotencyReused?: boolean;
 }
 
 export interface ReferenceUrlAnalysisRequest {

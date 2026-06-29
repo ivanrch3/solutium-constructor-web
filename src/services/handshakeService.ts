@@ -35,12 +35,19 @@ const resolveMotherOrigin = () => {
 const extractConfigPayload = (message: any) =>
   message?.payload || message?.config || (message?.projectId || message?.satellite_id ? message : null);
 
-const syncSupabaseAccessToken = (payload: any) => {
-  if (payload?.session_token) {
-    sessionStorage.setItem('solutium_supabase_access_token', payload.session_token);
+export const syncSupabaseRuntimeConfig = (payload: any) => {
+  const sessionToken = payload?.session_token || payload?.supabaseAccessToken || payload?.accessToken;
+  const supabaseUrl = payload?.supabase_url;
+  const supabaseAnonKey = payload?.supabase_anon_key;
+
+  if (sessionToken) {
+    sessionStorage.setItem('solutium_supabase_access_token', sessionToken);
   }
-  if (payload?.supabaseAccessToken) {
-    sessionStorage.setItem('solutium_supabase_access_token', payload.supabaseAccessToken);
+  if (supabaseUrl) {
+    sessionStorage.setItem('solutium_supabase_url', supabaseUrl);
+  }
+  if (supabaseAnonKey) {
+    sessionStorage.setItem('solutium_supabase_anon_key', supabaseAnonKey);
   }
 };
 
@@ -64,7 +71,7 @@ export const startHandshake = (onConfig: (payload: HandshakePayload) => void) =>
       siteName: payload.siteName,
     };
 
-    syncSupabaseAccessToken(payload);
+    syncSupabaseRuntimeConfig(payload);
 
     Object.keys(payload).forEach((key) => {
       if (!(key in config)) {
@@ -215,7 +222,11 @@ export const requestFreshSupabaseConfig = async (timeoutMs: number = 6000): Prom
       }
 
       try {
-        sessionStorage.setItem('solutium_supabase_access_token', sessionToken);
+        syncSupabaseRuntimeConfig({
+          session_token: sessionToken,
+          supabase_url: supabaseUrl,
+          supabase_anon_key: supabaseAnonKey
+        });
         if (!hasSecureLaunchToken) {
           localStorage.setItem('solutium_handshake_cache', JSON.stringify(payload));
         }

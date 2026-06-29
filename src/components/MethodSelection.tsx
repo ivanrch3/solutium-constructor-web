@@ -1,12 +1,25 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Sparkles, Layout, PlusSquare, ArrowLeft, Lock } from 'lucide-react';
 import { motion } from 'motion/react';
+import { AI_PAGE_GENERATION_ENABLED } from '../constants/aiPageGeneration';
 
 export type CreationMethod = 'ai' | 'template' | 'scratch';
 
 const CONSTRUCTOR_WEB_LOGO_URL = 'https://nyc3.digitaloceanspaces.com/solutium-space/988cd339-a2c7-4951-b944-998d32dc349b-solutium-constructor-web-imagotipo.png';
-export const AI_PAGE_GENERATOR_ENABLED = false;
 export const AI_PAGE_GENERATOR_AVAILABLE_AT = '2026-06-15T00:00:00-06:00';
+
+const TEXT = {
+  aiCountdownSoon: 'La creaci\u00f3n de p\u00e1ginas web en minutos potenciada con IA estar\u00e1 disponible pronto.',
+  aiCountdownLater: (countdown: string) => `La creaci\u00f3n de p\u00e1ginas web en minutos potenciada con IA se habilitar\u00e1 en ${countdown}.`,
+  title: '\u00bfC\u00f3mo quieres crear tu p\u00e1gina?',
+  soon: 'Pr\u00f3ximamente',
+  aiDescription: 'Describe tu negocio y deja que nuestra inteligencia artificial cree la estructura, textos e im\u00e1genes por ti en minutos.',
+  aiReady: 'Genera una primera versi\u00f3n editable de tu p\u00e1gina con estructura, textos y llamadas a la acci\u00f3n listas para personalizar.',
+  aiDisabled: 'Esta funci\u00f3n estar\u00e1 disponible pr\u00f3ximamente.',
+  templateDescription: 'Elige entre dise\u00f1os preconstruidos profesionales optimizados para conversi\u00f3n. Ideal si quieres una base s\u00f3lida y r\u00e1pida.',
+  scratchDescription: 'Empieza desde cero. A\u00f1ade secciones una a una y construye tu sitio con total control creativo sin distracciones.',
+  back: 'Atr\u00e1s'
+} as const;
 
 const formatCountdown = (targetTimestamp: number) => {
   const remainingMs = Math.max(0, targetTimestamp - Date.now());
@@ -17,7 +30,7 @@ const formatCountdown = (targetTimestamp: number) => {
   const seconds = totalSeconds % 60;
 
   if (days > 0) {
-    return `${days} días, ${hours} horas, ${minutes} minutos`;
+    return `${days} dias, ${hours} horas, ${minutes} minutos`;
   }
 
   if (hours > 0) {
@@ -65,16 +78,13 @@ interface MethodSelectionProps {
 export const MethodSelection: React.FC<MethodSelectionProps> = ({ onSelect, onBack }) => {
   const displayLogo = CONSTRUCTOR_WEB_LOGO_URL;
   const { countdown, hasReachedTarget } = useCountdown(AI_PAGE_GENERATOR_AVAILABLE_AT);
-  const aiCountdownMessage = hasReachedTarget
-    ? 'La creación de páginas web en minutos potenciada con IA estará disponible pronto.'
-    : `La creación de páginas web en minutos potenciada con IA se habilitará en ${countdown}.`;
+  const aiCountdownMessage = hasReachedTarget ? TEXT.aiCountdownSoon : TEXT.aiCountdownLater(countdown);
 
   return (
     <div
       className="min-h-screen px-8 pb-8 pt-4 flex flex-col items-center"
       style={{ background: 'linear-gradient(180deg, var(--builder-bg) 0%, #EEF2FF 100%)' }}
     >
-      {/* Header Logo */}
       <div className="w-full min-h-[170px] flex items-center justify-center">
         <img
           src={displayLogo}
@@ -84,67 +94,67 @@ export const MethodSelection: React.FC<MethodSelectionProps> = ({ onSelect, onBa
         />
       </div>
 
-      <h2 className="text-2xl font-bold text-text mb-12 text-center">¿Cómo quieres crear tu página?</h2>
+      <h2 className="text-2xl font-bold text-text mb-12 text-center">{TEXT.title}</h2>
 
-      {/* Methods Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-5xl mb-12">
-        {/* Generar con IA */}
         <motion.button
-          whileHover={AI_PAGE_GENERATOR_ENABLED ? { y: -5 } : undefined}
-          whileTap={AI_PAGE_GENERATOR_ENABLED ? { scale: 0.98 } : undefined}
+          whileHover={AI_PAGE_GENERATION_ENABLED ? { y: -5 } : undefined}
+          whileTap={AI_PAGE_GENERATION_ENABLED ? { scale: 0.98 } : undefined}
           onClick={() => {
-            if (AI_PAGE_GENERATOR_ENABLED) {
+            if (AI_PAGE_GENERATION_ENABLED) {
               onSelect('ai');
             }
           }}
-          disabled={!AI_PAGE_GENERATOR_ENABLED}
-          aria-disabled={!AI_PAGE_GENERATOR_ENABLED}
+          disabled={!AI_PAGE_GENERATION_ENABLED}
+          aria-disabled={!AI_PAGE_GENERATION_ENABLED}
           className={`relative rounded-3xl p-8 text-left flex flex-col h-[400px] group transition-all border border-black/5 text-white ${
-            AI_PAGE_GENERATOR_ENABLED ? 'cursor-pointer' : 'cursor-not-allowed'
+            AI_PAGE_GENERATION_ENABLED ? 'cursor-pointer' : 'cursor-not-allowed'
           }`}
           style={{
             backgroundColor: 'var(--builder-primary)',
             boxShadow: '0 20px 40px -20px color-mix(in srgb, var(--builder-primary) 45%, transparent)'
           }}
         >
-          {!AI_PAGE_GENERATOR_ENABLED && (
+          {!AI_PAGE_GENERATION_ENABLED && (
             <div className="absolute right-6 top-6 inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-white ring-1 ring-white/20">
               <Lock className="h-3 w-3" />
-              Próximamente
+              {TEXT.soon}
             </div>
           )}
           <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center mb-6">
             <Sparkles className="text-white w-6 h-6" />
           </div>
           <h3 className="text-xl font-bold text-white mb-4">Generar con IA</h3>
-          <p className="text-white/90 text-sm leading-relaxed">
-            Describe tu negocio y deja que nuestra inteligencia artificial cree la estructura, textos e imágenes por ti en minutos.
-          </p>
+          <p className="text-white/90 text-sm leading-relaxed">{TEXT.aiDescription}</p>
           <div className="mt-auto space-y-3">
-            <p className="rounded-2xl bg-white/12 p-4 text-sm font-semibold leading-relaxed text-white ring-1 ring-white/15">
-              {aiCountdownMessage}
-            </p>
-            <span className="block rounded-xl bg-white/10 px-4 py-3 text-center text-[11px] font-black uppercase tracking-widest text-white/70 ring-1 ring-white/10">
-              Esta función estará disponible próximamente.
-            </span>
+            {AI_PAGE_GENERATION_ENABLED ? (
+              <p className="rounded-2xl bg-white/12 p-4 text-sm font-semibold leading-relaxed text-white ring-1 ring-white/15">
+                {TEXT.aiReady}
+              </p>
+            ) : (
+              <>
+                <p className="rounded-2xl bg-white/12 p-4 text-sm font-semibold leading-relaxed text-white ring-1 ring-white/15">
+                  {aiCountdownMessage}
+                </p>
+                <span className="block rounded-xl bg-white/10 px-4 py-3 text-center text-[11px] font-black uppercase tracking-widest text-white/70 ring-1 ring-white/10">
+                  {TEXT.aiDisabled}
+                </span>
+              </>
+            )}
           </div>
         </motion.button>
 
-        {/* Usar Plantilla (Disabled) */}
         <div className="bg-surface rounded-3xl p-8 text-left flex flex-col h-[400px] border border-border opacity-60 relative cursor-not-allowed">
           <div className="absolute top-6 right-6 bg-secondary text-text/40 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
-            Próximamente
+            {TEXT.soon}
           </div>
           <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center mb-6">
             <Layout className="text-text/20 w-6 h-6" />
           </div>
           <h3 className="text-xl font-bold text-text/40 mb-4">Usar Plantilla</h3>
-          <p className="text-text/40 text-sm leading-relaxed">
-            Elige entre diseños pre-construidos profesionales optimizados para conversión. Ideal si quieres una base sólida rápida.
-          </p>
+          <p className="text-text/40 text-sm leading-relaxed">{TEXT.templateDescription}</p>
         </div>
 
-        {/* Lienzo en Blanco */}
         <motion.button
           whileHover={{ y: -5 }}
           whileTap={{ scale: 0.98 }}
@@ -159,19 +169,16 @@ export const MethodSelection: React.FC<MethodSelectionProps> = ({ onSelect, onBa
             <PlusSquare className="text-text w-6 h-6 transition-colors group-hover:text-[var(--builder-primary)]" />
           </div>
           <h3 className="text-xl font-bold text-text mb-4 transition-colors group-hover:text-[var(--builder-primary)]">Lienzo en Blanco</h3>
-          <p className="text-text/60 text-sm leading-relaxed">
-            Empieza desde cero. Añade secciones una a una y construye tu sitio con total control creativo sin distracciones.
-          </p>
+          <p className="text-text/60 text-sm leading-relaxed">{TEXT.scratchDescription}</p>
         </motion.button>
       </div>
 
-      {/* Back Button */}
       <button
         onClick={onBack}
         className="flex items-center gap-2 text-text/60 hover:text-text font-bold text-base transition-colors"
       >
         <ArrowLeft className="w-4 h-4" />
-        Atrás
+        {TEXT.back}
       </button>
     </div>
   );

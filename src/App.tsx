@@ -7,6 +7,7 @@ import { captureAuthToken } from './services/authTokenProvider';
 import { ensureActiveSupabaseSession } from './services/supabaseSessionService';
 import { clearLaunchTokenFromUrl, consumeSecureLaunchSession, fetchConstructorContext, getAppMadreBaseUrl, getLaunchTokenFromUrl, getStoredLaunchAccessSession, getStoredSecureLaunchPayload, type SecureLaunchSessionPayload } from './services/secureLaunchSession';
 import { getProfile, getProject, getWebBuilderSites, getPublishedSites } from './services/dataService';
+import { pruneStoredLocalDraftSnapshots } from './services/localDraftSnapshotService';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { Sidebar } from './components/Sidebar';
 import { DataTab } from './components/DataTab';
@@ -35,6 +36,24 @@ const CONSTRUCTOR_TAB_ACTIVE_MS = 15_000;
 const CONSTRUCTOR_TAB_STALE_MS = 30_000;
 const CONSTRUCTOR_TAB_HEARTBEAT_MS = 4_000;
 const CONSTRUCTOR_TAB_CLEANUP_INTERVAL_MS = 30_000;
+const SESSION_STORAGE_KEY = 'solutium_session_v2';
+const PENDING_ASSETS_STORAGE_KEY = 'pending_assets';
+
+interface PersistedSessionPageRef {
+  id?: string | null;
+  siteId?: string | null;
+  status?: string | null;
+  siteName?: string | null;
+  name?: string | null;
+}
+
+interface PersistedSessionState {
+  projectId?: string | null;
+  appId?: string | null;
+  currentView?: View;
+  activeTab?: string | null;
+  selectedPageRef?: PersistedSessionPageRef | null;
+}
 
 const AbstractLoadingIndicator: React.FC<{ label?: string; compact?: boolean }> = ({ label = 'Preparando experiencia', compact = false }) => (
   <div className="flex flex-col items-center gap-4" role="status" aria-live="polite" aria-label={label}>
@@ -118,6 +137,118 @@ const readSafeHandshakeCache = (): any | null => {
     return null;
   }
 };
+
+const isQuotaExceededError = (error: any) => {
+  const message = String(error?.message || '');
+  return (
+    error?.name === 'QuotaExceededError' ||
+    message.includes('QuotaExceededError') ||
+    message.includes('exceeded the quota')
+  );
+};
+
+const buildPersistedSelectedPageRef = (
+  page: (WebBuilderSite | PublishedSite | null | undefined)
+): PersistedSessionPageRef | null => {
+  if (!page) return null;
+
+  const candidate = page as any;
+  const id = candidate.id || candidate.pageId || candidate.page_id || null;
+  const siteId = candidate.siteId || candidate.site_id || null;
+  const status = candidate.status || null;
+  const siteName = candidate.siteName || candidate.site_name || null;
+  const name = candidate.name || siteName || null;
+
+  if (!id && !siteId) return null;
+
+  return {
+    id,
+    siteId,
+    status,
+    siteName,
+    name
+  };
+};
+
+const normalizePersistedSelectedPageRef = (value: any): PersistedSessionPageRef | null => {
+  if (!value || typeof value !== 'object') return null;
+
+  const id = value.id || value.pageId || value.page_id || null;
+  const siteId = value.siteId || value.site_id || null;
+  const status = value.status || null;
+  const siteName = value.siteName || value.site_name || value.name || null;
+  const name = value.name || value.siteName || value.site_name || null;
+
+  if (!id && !siteId) return null;
+
+  return {
+    id,
+    siteId,
+    status,
+    siteName,
+    name
+  };
+};
+
+const buildPersistedSession = (params: {
+  projectId: string | null;
+  appId: string | null;
+  currentView: View;
+  selectedPage: WebBuilderSite | PublishedSite | null;
+  activeTab: string;
+}): PersistedSessionState => ({
+  projectId: params.projectId,
+  appId: params.appId,
+  currentView: params.currentView,
+  activeTab: params.activeTab,
+  selectedPageRef: buildPersistedSelectedPageRef(params.selectedPage)
+});
+
+const removeControlledTemporaryStorageKeys = () => {
+  let removed = 0;
+
+  try {
+    removed += pruneStoredLocalDraftSnapshots(null, 1);
+  } catch {
+    // Best effort cleanup only.
+  }
+
+  try {
+    if (window.localStorage.getItem(PENDING_ASSETS_STORAGE_KEY) !== null) {
+      window.localStorage.removeItem(PENDING_ASSETS_STORAGE_KEY);
+      removed += 1;
+    }
+  } catch {
+    // Ignore storage cleanup issues.
+  }
+
+  return removed;
+};
+
+const persistSessionWithQuotaFallback = (session: PersistedSessionState) => {
+  const serialized = JSON.stringify(session);
+  const serializedBytes = new Blob([serialized]).size;
+
+  try {
+    window.localStorage.setItem(SESSION_STORAGE_KEY, serialized);
+    return { saved: true, serializedBytes, cleanupRemoved: 0 };
+  } catch (error: any) {
+    if (!isQuotaExceededError(error)) {
+      throw error;
+    }
+
+    const cleanupRemoved = removeControlledTemporaryStorageKeys();
+    window.localStorage.setItem(SESSION_STORAGE_KEY, serialized);
+    return { saved: true, serializedBytes, cleanupRemoved };
+  }
+};
+
+const describeTopLevelFieldSizes = (value: Record<string, unknown>) => (
+  Object.entries(value).map(([key, fieldValue]) => ({
+    key,
+    sizeBytes: new Blob([JSON.stringify(fieldValue ?? null)]).size
+  })).sort((a, b) => b.sizeBytes - a.sizeBytes)
+);
 
 const hasThemeColorValue = (value: any) => (
   Array.isArray(value)
@@ -640,6 +771,10 @@ const AppContent: React.FC = () => {
   const [formData, setFormData] = useState<ProjectFormData | null>(null);
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const [selectedPage, setSelectedPage] = useState<WebBuilderSite | PublishedSite | null>(null);
+  const [restoredSessionTarget, setRestoredSessionTarget] = useState<{
+    view: View;
+    pageRef: PersistedSessionPageRef;
+  } | null>(null);
   const [urlLogo, setUrlLogo] = useState<string | null>(null);
   const [urlLogoWhite, setUrlLogoWhite] = useState<string | null>(null);
   const loadingMessages = React.useMemo(() => ([
@@ -715,17 +850,29 @@ const AppContent: React.FC = () => {
 
   // --- PERSISTENCE PROTOCOL v1.0 ---
   const saveSession = () => {
+    const session = buildPersistedSession({
+      projectId,
+      appId,
+      currentView,
+      selectedPage,
+      activeTab
+    });
+
     try {
-      const session = {
-        projectId,
-        appId,
-        currentView,
-        selectedPage,
-        activeTab
-      };
-      localStorage.setItem('solutium_session_v2', JSON.stringify(session));
+      const result = persistSessionWithQuotaFallback(session);
+      if (result.cleanupRemoved > 0) {
+        console.warn('[SESSION] localStorage cleanup applied while saving session.', {
+          serializedBytes: result.serializedBytes,
+          cleanupRemoved: result.cleanupRemoved
+        });
+      }
     } catch (e) {
-      console.warn('[SESSION] Error saving session:', e);
+      console.warn('[SESSION] Error saving session:', {
+        error: e,
+        serializedBytes: new Blob([JSON.stringify(session)]).size,
+        topLevelKeys: Object.keys(session),
+        largestFields: describeTopLevelFieldSizes(session as Record<string, unknown>).slice(0, 5)
+      });
     }
   };
 
@@ -1639,15 +1786,29 @@ const AppContent: React.FC = () => {
     
     if (!hasInitParams && !hasSecureLaunchToken && !hasStoredSecureLaunchSession) {
       try {
-        const saved = localStorage.getItem('solutium_session_v2');
+        const saved = localStorage.getItem(SESSION_STORAGE_KEY);
         if (saved) {
-          const session = JSON.parse(saved);
+          const session = JSON.parse(saved) as PersistedSessionState & { selectedPage?: any };
+          const restoredPageRef = normalizePersistedSelectedPageRef(
+            session.selectedPageRef ?? session.selectedPage
+          );
           logDebug('[SESSION] Recuperando sesión persistente:', session);
           if (session.projectId) setProjectId(session.projectId);
           if (session.appId) setAppId(session.appId);
-          if (session.currentView) setCurrentView(session.currentView);
-          if (session.selectedPage) setSelectedPage(session.selectedPage);
           if (session.activeTab) setActiveTab(session.activeTab);
+          if (
+            restoredPageRef &&
+            (session.currentView === 'constructor' || session.currentView === 'viewer')
+          ) {
+            setSelectedPage(null);
+            setRestoredSessionTarget({
+              view: session.currentView,
+              pageRef: restoredPageRef
+            });
+            setCurrentView('dashboard');
+          } else if (session.currentView) {
+            setCurrentView(session.currentView);
+          }
           
           const savedHandshake = localStorage.getItem('solutium_handshake_cache');
           if (savedHandshake) {
@@ -1900,6 +2061,40 @@ const AppContent: React.FC = () => {
     setPages(mergePagesByCurrentLifecycle(drafts, published));
   };
 
+  useEffect(() => {
+    if (!restoredSessionTarget) return;
+    if (pagesLoading) return;
+
+    const { pageRef, view } = restoredSessionTarget;
+    const matchedPage = pages.find((page) => {
+      const candidate = page as any;
+      const matchesById = Boolean(pageRef.id) && (
+        candidate.id === pageRef.id ||
+        candidate.pageId === pageRef.id ||
+        candidate.page_id === pageRef.id
+      );
+      const matchesBySiteId = Boolean(pageRef.siteId) && (
+        candidate.siteId === pageRef.siteId ||
+        candidate.site_id === pageRef.siteId ||
+        candidate.id === pageRef.siteId
+      );
+
+      return matchesById || matchesBySiteId;
+    }) || null;
+
+    if (matchedPage) {
+      setSelectedPage(matchedPage);
+      setCurrentView(view);
+      setRestoredSessionTarget(null);
+      return;
+    }
+
+    if (pages.length > 0 || pagesLoadError) {
+      setRestoredSessionTarget(null);
+      setCurrentView('dashboard');
+    }
+  }, [pages, pagesLoadError, pagesLoading, restoredSessionTarget]);
+
   const handleFormSubmit = (data: ProjectFormData) => {
     setFormData(data);
     if (selectedMethod === 'ai' && AI_PAGE_GENERATION_ENABLED) {
@@ -2056,6 +2251,14 @@ const AppContent: React.FC = () => {
             Esta pestaña no tomó control. La sesión activa se mantiene sin cambios.
           </p>
         </div>
+      </div>
+    );
+  }
+
+  if (restoredSessionTarget) {
+    return (
+      <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-white">
+        <AbstractLoadingIndicator label="Restaurando sesión del editor" compact />
       </div>
     );
   }

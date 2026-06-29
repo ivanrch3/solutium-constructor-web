@@ -47,6 +47,12 @@ import { buildProjectThemeCssVariables, normalizeProjectBrandColors } from '../u
 import { appendReferralParamToSolutiumUrl, extractReferralCodeFromSearch } from '../utils/referralLinks';
 import { resolveAnimationSafeSettings } from '../utils/constructorAnimationPolicy';
 import {
+  getMetaPixelStatus,
+  isMetaPixelDebugMode,
+  META_PIXEL_SCRIPT_SRC,
+  shouldInjectMetaPixel
+} from '../utils/metaPixel';
+import {
   isManualProductsSelectionMode,
   resolveProductsForSelection
 } from '../utils/productsSelection';
@@ -166,6 +172,91 @@ export const Viewer: React.FC<ViewerProps> = ({
       observer.disconnect();
     };
   }, [isPublishedViewer, site.siteId]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof document === 'undefined') return;
+
+    const theme = (site.content?.theme || {}) as Record<string, any>;
+    const metaPixel = getMetaPixelStatus(theme.metaPixelEnabled, theme.metaPixelId);
+    const debugMode = isMetaPixelDebugMode(window.location.search);
+    const publishHostEligible = shouldInjectMetaPixel(window.location.hostname);
+    const shouldRunPixel = isPublishedViewer && metaPixel.active && publishHostEligible;
+    const body = document.body;
+
+    if (debugMode && body) {
+      body.dataset.solutiumMetaPixel = shouldRunPixel ? 'eligible' : 'skipped';
+      body.dataset.solutiumMetaPixelId = metaPixel.normalizedPixelId || '';
+      body.dataset.solutiumMetaPixelHost = window.location.hostname;
+      body.dataset.solutiumMetaPixelReason = shouldRunPixel
+        ? 'ready'
+        : !isPublishedViewer
+          ? 'not-published'
+          : !metaPixel.hasPixelId
+            ? 'missing-id'
+            : !metaPixel.validPixelId
+              ? 'invalid-id'
+              : 'environment-blocked';
+    }
+
+    if (!shouldRunPixel) {
+      return () => {
+        if (debugMode && body) {
+          delete body.dataset.solutiumMetaPixel;
+          delete body.dataset.solutiumMetaPixelId;
+          delete body.dataset.solutiumMetaPixelHost;
+          delete body.dataset.solutiumMetaPixelReason;
+        }
+      };
+    }
+
+    const pixelId = metaPixel.normalizedPixelId;
+    const win = window as typeof window & {
+      fbq?: any;
+      _fbq?: any;
+      __solutiumMetaPixelTrackedPath?: string;
+    };
+
+    if (typeof win.fbq !== 'function') {
+      const fbqBootstrap = (...args: any[]) => {
+        if ((fbqBootstrap as any).callMethod) {
+          (fbqBootstrap as any).callMethod.apply(fbqBootstrap, args);
+          return;
+        }
+        (fbqBootstrap as any).queue.push(args);
+      };
+      (fbqBootstrap as any).queue = [];
+      (fbqBootstrap as any).loaded = true;
+      (fbqBootstrap as any).version = '2.0';
+      win.fbq = fbqBootstrap;
+      win._fbq = fbqBootstrap;
+    }
+
+    const scriptId = `solutium-meta-pixel-script-${pixelId}`;
+    if (!document.getElementById(scriptId)) {
+      const script = document.createElement('script');
+      script.id = scriptId;
+      script.async = true;
+      script.src = META_PIXEL_SCRIPT_SRC;
+      script.dataset.solutiumMetaPixel = pixelId;
+      document.head.appendChild(script);
+    }
+
+    win.fbq('init', pixelId);
+    const currentTrackPath = `${pixelId}:${window.location.pathname}:${window.location.search}`;
+    if (win.__solutiumMetaPixelTrackedPath !== currentTrackPath) {
+      win.fbq('track', 'PageView');
+      win.__solutiumMetaPixelTrackedPath = currentTrackPath;
+    }
+
+    return () => {
+      if (debugMode && body) {
+        delete body.dataset.solutiumMetaPixel;
+        delete body.dataset.solutiumMetaPixelId;
+        delete body.dataset.solutiumMetaPixelHost;
+        delete body.dataset.solutiumMetaPixelReason;
+      }
+    };
+  }, [isPublishedViewer, site.content?.theme, site.siteId]);
 
   useEffect(() => {
     // [SATELLITE_PRODUCTS_PAYLOAD_RECEIVE_DEBUG] (FASE 3)

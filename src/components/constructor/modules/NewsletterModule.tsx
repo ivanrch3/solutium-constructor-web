@@ -5,7 +5,7 @@ import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
 import { TextRenderer } from '../TextRenderer';
 import { ParallaxBackground, useParallaxScrollProgress } from '../ParallaxBackground';
 import { SectionAnimation } from '../animations/SectionAnimation';
-import { parseNumSafe } from '../utils';
+import { getButtonTypographyStyle, getLegacyButtonTypographyStyle, parseNumSafe } from '../utils';
 
 import { InlineEditableText } from '../InlineEditableText';
 import { useEditorStore } from '../../../store/editorStore';
@@ -120,6 +120,12 @@ export const NewsletterModule: React.FC<{
   const inputRadius = parseNumSafe(getVal(`${moduleId}_el_news_form`, 'input_radius', 16), 16);
   const hoverEffect = getVal(`${moduleId}_el_news_form`, 'hover_effect', 'scale');
   const showConfetti = getVal(`${moduleId}_el_news_form`, 'show_confetti', true);
+  const buttonTypography = settingsValues[`${moduleId}_el_news_form_button_size`] !== undefined
+    ? getButtonTypographyStyle(
+        getVal(`${moduleId}_el_news_form`, 'button_size', 's'),
+        getVal(`${moduleId}_el_news_form`, 'button_weight', 'bold')
+      )
+    : getLegacyButtonTypographyStyle(14, 700, 1.2);
 
   // Element: Magnet
   const magnetImage = getVal(`${moduleId}_el_news_magnet`, 'image', 'https://picsum.photos/seed/ebook/600/800');
@@ -260,7 +266,7 @@ export const NewsletterModule: React.FC<{
           <button 
             type="submit"
             className="px-6 py-2.5 bg-primary text-white font-bold text-sm rounded-xl hover:opacity-90 transition-all whitespace-nowrap"
-            style={{ backgroundColor: btnBg, color: btnColor }}
+            style={{ backgroundColor: btnBg, color: btnColor, ...buttonTypography }}
           >
             {isSubscribed ? '¡Listo!' : buttonText}
           </button>
@@ -442,7 +448,7 @@ export const NewsletterModule: React.FC<{
                           whileTap={{ scale: 0.98 }}
                           type="submit"
                           className="px-8 py-4 font-black text-sm flex items-center justify-center gap-2 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
-                          style={{ backgroundColor: btnBg, color: btnColor, borderRadius: `${inputRadius - 8}px`, boxShadow: 'none' }}
+                          style={{ backgroundColor: btnBg, color: btnColor, borderRadius: `${inputRadius - 8}px`, boxShadow: 'none', ...buttonTypography }}
                         >
                         {buttonText}
                         <Send size={16} />

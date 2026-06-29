@@ -8,7 +8,7 @@ import { ParallaxBackground, useParallaxScrollProgress } from '../ParallaxBackgr
 import { RotatingText } from '../RotatingText';
 import { InlineEditableText } from '../InlineEditableText';
 import { SectionAnimation } from '../animations/SectionAnimation';
-import { parseNumSafe } from '../utils';
+import { getButtonTypographyStyle, getLegacyButtonTypographyStyle, parseNumSafe } from '../utils';
 import { useEditorStore } from '../../../store/editorStore';
 import { normalizeSectionAnimation } from '../../../constants/moduleAnimations';
 import { getProjectThemeFromSettings, resolveBrandColor } from '../../../utils/projectTheme';
@@ -407,6 +407,18 @@ export const HeroModule: React.FC<{
   const hoverEffect = getVal(`${moduleId}_el_hero_ctas`, 'hover_effect', 'lift');
   const btnRadius = parseNumSafe(getVal(`${moduleId}_el_hero_ctas`, 'btn_radius', 16), 16);
   const btnWidthMobile = getVal(`${moduleId}_el_hero_ctas`, 'btn_width', 'auto');
+  const primaryButtonTypography = settingsValues[`${moduleId}_el_hero_ctas_primary_size`] !== undefined
+    ? getButtonTypographyStyle(
+        getVal(`${moduleId}_el_hero_ctas`, 'primary_size', 's'),
+        getVal(`${moduleId}_el_hero_ctas`, 'primary_weight', 'black')
+      )
+    : getLegacyButtonTypographyStyle(11, 900, 1.15);
+  const secondaryButtonTypography = settingsValues[`${moduleId}_el_hero_ctas_secondary_size`] !== undefined
+    ? getButtonTypographyStyle(
+        getVal(`${moduleId}_el_hero_ctas`, 'secondary_size', 's'),
+        getVal(`${moduleId}_el_hero_ctas`, 'secondary_weight', 'black')
+      )
+    : getLegacyButtonTypographyStyle(11, 900, 1.15);
 
   // Element: Social Proof
   const showProof = getVal(`${moduleId}_el_hero_social_proof`, 'show_proof', true);
@@ -594,7 +606,8 @@ export const HeroModule: React.FC<{
                 color: primaryColor,
                 minHeight: '56px',
                 borderRadius: `${btnRadius}px`,
-                boxShadow: 'none'
+                boxShadow: 'none',
+                ...primaryButtonTypography
               }}
             >
               {shimmerEffect && (
@@ -632,7 +645,8 @@ export const HeroModule: React.FC<{
               color: darkMode ? '#FFFFFF' : '#0F172A',
               border: secondaryStyle === 'outline' ? `2px solid ${darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}` : 'none',
               minHeight: '56px',
-              borderRadius: `${btnRadius}px`
+              borderRadius: `${btnRadius}px`,
+              ...secondaryButtonTypography
             }}
           >
             <InlineEditableText

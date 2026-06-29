@@ -20,18 +20,23 @@ import { motion } from 'motion/react';
 import { SettingControl } from './SettingControl';
 import { useEditorStore } from '../../store/editorStore';
 import { parseNumSafe } from './utils';
+import { getMetaPixelStatus, isValidMetaPixelId, normalizeMetaPixelId } from '../../utils/metaPixel';
 import * as registryModules from './registry';
 
 interface GlobalSettingsPanelProps {
   view?: string;
   settingsValues: Record<string, any>;
   onSettingChange: (id: string, settingId: string, value: any) => void;
+  onSaveConfiguration?: () => Promise<boolean> | boolean;
   project: any;
   projectId: string | null;
   isSidebarMode?: boolean;
   onBack?: () => void;
   siteName?: string;
   onSiteNameChange?: (name: string) => void;
+  saveStatus?: 'idle' | 'loading' | 'success' | 'error';
+  hasUnsavedChanges?: boolean;
+  isSaving?: boolean;
 }
 
 const TEMPORARY_SAVE_INTERVAL_STORAGE_KEY = 'solutium_constructor_temporary_save_interval_minutes';
@@ -54,21 +59,47 @@ const normalizeBooleanPreference = (value: any, fallback: boolean) => {
   return Boolean(value);
 };
 
+const getThemeSettingStorageKey = (settingId: string) => {
+  if (settingId === 'metaPixelEnabled') return 'global_theme_meta_pixel_enabled';
+  if (settingId === 'metaPixelId') return 'global_theme_meta_pixel_id';
+  return `global_theme_${settingId}`;
+};
+
+const getLegacyThemeSettingStorageKey = (settingId: string) => {
+  if (settingId === 'metaPixelEnabled') return 'global_theme_metaPixelEnabled';
+  if (settingId === 'metaPixelId') return 'global_theme_metaPixelId';
+  return null;
+};
+
 export const GlobalSettingsPanel: React.FC<GlobalSettingsPanelProps> = ({
   view = 'settings',
   settingsValues,
   onSettingChange,
+  onSaveConfiguration,
   project,
   projectId,
   isSidebarMode = false,
   onBack,
   siteName,
-  onSiteNameChange
+  onSiteNameChange,
+  saveStatus = 'idle',
+  hasUnsavedChanges = false,
+  isSaving = false
 }) => {
   const { siteContent, updateTheme, selectedSectionId } = useEditorStore();
   const theme = siteContent.theme;
   const [activeInternalTab, setActiveInternalTab] = React.useState<'seo' | 'marketing' | 'conversion' | 'style'>('style');
   const [backupSettingsSavedNotice, setBackupSettingsSavedNotice] = React.useState(false);
+  const [metaPixelDraftId, setMetaPixelDraftId] = React.useState(() =>
+    normalizeMetaPixelId(
+      settingsValues[getThemeSettingStorageKey('metaPixelId')] ??
+      settingsValues[getLegacyThemeSettingStorageKey('metaPixelId') || ''] ??
+      theme?.metaPixelId ??
+      ''
+    )
+  );
+  const [metaPixelError, setMetaPixelError] = React.useState<string | null>(null);
+  const [metaPixelSaveFeedback, setMetaPixelSaveFeedback] = React.useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   const selectedSection = selectedSectionId
     ? siteContent.sections.find((section) => section.id === selectedSectionId)
@@ -88,13 +119,23 @@ export const GlobalSettingsPanel: React.FC<GlobalSettingsPanelProps> = ({
   );
 
   const getVal = (settingId: string, defaultValue: any) => {
-    return settingsValues[`global_theme_${settingId}`] !== undefined
-      ? settingsValues[`global_theme_${settingId}`]
-      : defaultValue;
+    const storageKey = getThemeSettingStorageKey(settingId);
+    const legacyKey = getLegacyThemeSettingStorageKey(settingId);
+
+    if (settingsValues[storageKey] !== undefined) {
+      return settingsValues[storageKey];
+    }
+
+    if (legacyKey && settingsValues[legacyKey] !== undefined) {
+      return settingsValues[legacyKey];
+    }
+
+    return defaultValue;
   };
 
   const handleThemeChange = (settingId: string, value: any) => {
-    onSettingChange('global', `theme_${settingId}`, value);
+    const storageKey = getThemeSettingStorageKey(settingId).replace('global_', '');
+    onSettingChange('global', storageKey, value);
     if (
       settingId === 'builder_temporary_save_interval_minutes' ||
       settingId === 'builder_temporary_save_notice_enabled'
@@ -105,6 +146,21 @@ export const GlobalSettingsPanel: React.FC<GlobalSettingsPanelProps> = ({
     // Also update store theme for immediate access in modules
     updateTheme({ [settingId]: value });
   };
+
+  React.useEffect(() => {
+    setMetaPixelDraftId(normalizeMetaPixelId(
+      settingsValues[getThemeSettingStorageKey('metaPixelId')] ??
+      settingsValues[getLegacyThemeSettingStorageKey('metaPixelId') || ''] ??
+      theme?.metaPixelId ??
+      ''
+    ));
+  }, [settingsValues, theme?.metaPixelId]);
+
+  React.useEffect(() => {
+    if (!metaPixelSaveFeedback || metaPixelSaveFeedback.type !== 'success') return;
+    const timer = window.setTimeout(() => setMetaPixelSaveFeedback(null), 3000);
+    return () => window.clearTimeout(timer);
+  }, [metaPixelSaveFeedback]);
 
   const handleSaveTemporaryBackupSettings = () => {
     try {
@@ -123,6 +179,91 @@ export const GlobalSettingsPanel: React.FC<GlobalSettingsPanelProps> = ({
       console.warn('[LOCAL_DRAFT_SNAPSHOT] Unable to persist temporary backup settings:', error);
       setBackupSettingsSavedNotice(false);
     }
+  };
+
+  const persistMetaPixelId = () => {
+    const normalized = normalizeMetaPixelId(metaPixelDraftId);
+    if (!normalized) {
+      handleThemeChange('metaPixelId', '');
+      setMetaPixelError(null);
+      return '';
+    }
+
+    if (!isValidMetaPixelId(normalized)) {
+      handleThemeChange('metaPixelEnabled', false);
+      setMetaPixelError('Ingresa un identificador numerico valido de Meta Pixel.');
+      return null;
+    }
+
+    handleThemeChange('metaPixelId', normalized);
+    setMetaPixelDraftId(normalized);
+    setMetaPixelError(null);
+    return normalized;
+  };
+
+  const handleMetaPixelInputChange = (rawValue: string) => {
+    setMetaPixelDraftId(rawValue);
+    if (metaPixelError) setMetaPixelError(null);
+    if (metaPixelSaveFeedback) setMetaPixelSaveFeedback(null);
+    handleThemeChange('metaPixelId', rawValue);
+  };
+
+  const toggleMetaPixel = (enabled: boolean) => {
+    if (metaPixelSaveFeedback) setMetaPixelSaveFeedback(null);
+    if (!enabled) {
+      handleThemeChange('metaPixelEnabled', false);
+      setMetaPixelError(null);
+      return;
+    }
+
+    const persistedId = persistMetaPixelId();
+    if (!persistedId) {
+      handleThemeChange('metaPixelEnabled', false);
+      if (persistedId === '') {
+        setMetaPixelError('Ingresa primero el ID numerico de tu Pixel de Meta.');
+      }
+      return;
+    }
+
+    handleThemeChange('metaPixelEnabled', true);
+  };
+
+  const handleSaveMetaPixelConfiguration = async () => {
+    if (!onSaveConfiguration || isSaving || saveStatus === 'loading') return;
+
+    const normalized = normalizeMetaPixelId(metaPixelDraftId);
+    const enabled = Boolean(getVal('metaPixelEnabled', theme?.metaPixelEnabled ?? false));
+
+    if (!normalized) {
+      if (enabled) {
+        setMetaPixelError('Ingresa primero el ID numerico de tu Pixel de Meta.');
+        setMetaPixelSaveFeedback({
+          type: 'error',
+          message: 'No pudimos guardar la configuración. Revisa el ID del Pixel.'
+        });
+        return;
+      }
+
+      handleThemeChange('metaPixelId', '');
+      setMetaPixelDraftId('');
+      setMetaPixelError(null);
+    } else if (!isValidMetaPixelId(normalized)) {
+      setMetaPixelError('Ingresa un identificador numerico valido de Meta Pixel.');
+      setMetaPixelSaveFeedback({
+        type: 'error',
+        message: 'No pudimos guardar la configuración. Revisa el ID del Pixel.'
+      });
+      return;
+    } else {
+      handleThemeChange('metaPixelId', normalized);
+      setMetaPixelDraftId(normalized);
+      setMetaPixelError(null);
+    }
+
+    const saved = await onSaveConfiguration();
+    setMetaPixelSaveFeedback(saved
+      ? { type: 'success', message: 'Configuración guardada correctamente.' }
+      : { type: 'error', message: 'No pudimos guardar la configuración. Intenta nuevamente.' });
   };
 
   const animations = [
@@ -232,33 +373,119 @@ export const GlobalSettingsPanel: React.FC<GlobalSettingsPanelProps> = ({
   );
 
   // Conversion View Content
-  const renderConversionView = () => (
-    <div className="space-y-8">
-      <div className="p-6 bg-emerald-50 rounded-3xl border border-emerald-100 space-y-3">
-        <div className="flex items-center gap-3 text-emerald-700">
-          <Sparkles size={24} />
-          <h3 className="text-lg font-black tracking-tight">Conversión & Funnels</h3>
-        </div>
-        <p className="text-sm text-emerald-800/70 font-medium">
-          Transforma visitantes en leads calificados mediante flujos de conversión optimizados y herramientas de persuasión.
-        </p>
-      </div>
+  const renderConversionView = () => {
+    const metaPixel = getMetaPixelStatus(
+      getVal('metaPixelEnabled', theme?.metaPixelEnabled ?? false),
+      getVal('metaPixelId', theme?.metaPixelId ?? '')
+    );
+    const metaPixelStateLabel = !metaPixel.hasPixelId
+      ? 'No configurado'
+      : metaPixel.active
+        ? 'Activo'
+        : 'Configurado pero desactivado';
+    const metaPixelStateClass = !metaPixel.hasPixelId
+      ? 'bg-slate-100 text-slate-600'
+      : metaPixel.active
+        ? 'bg-emerald-100 text-emerald-700'
+        : 'bg-amber-100 text-amber-700';
+    const metaPixelSaveDisabled = !onSaveConfiguration || isSaving || saveStatus === 'loading' || !hasUnsavedChanges;
+    const metaPixelButtonLabel = saveStatus === 'loading'
+      ? 'Guardando...'
+      : hasUnsavedChanges
+        ? 'Guardar configuración'
+        : metaPixelSaveFeedback?.type === 'success'
+          ? 'Configuración guardada'
+          : 'Sin cambios pendientes';
 
-      <div className="space-y-3">
-        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 block mb-4">Optimización de Resultados</label>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <ChecklistItem title="Integración Nativa con CRM (Hubspot/Solutium)" />
-          <ChecklistItem title="Captura de Leads vía Webhooks seguros" checked />
-          <ChecklistItem title="Pop-ups de Exit Intent dinámicos" />
-          <ChecklistItem title="Pruebas A/B de Títulos y Botones" />
-          <ChecklistItem title="Chat Directo con Agentes (WhatsApp/Intercom)" checked />
-          <ChecklistItem title="Mapas de Calor y Grabación de Sesiones" />
-          <ChecklistItem title="Validación de Formularios en tiempo real" checked />
-          <ChecklistItem title="Encuestas de Satisfacción Post-Conversión" />
+    return (
+      <div className="space-y-8">
+        <div className="p-6 bg-emerald-50 rounded-3xl border border-emerald-100 space-y-3">
+          <div className="flex items-center gap-3 text-emerald-700">
+            <Sparkles size={24} />
+            <h3 className="text-lg font-black tracking-tight">Conversión</h3>
+          </div>
+          <p className="text-sm text-emerald-800/70 font-medium">
+            Configura medición base para tus páginas publicadas sin afectar el tráfico dentro del Constructor.
+          </p>
+        </div>
+
+        <div className="rounded-3xl border border-slate-200 bg-white p-6 space-y-5 shadow-sm">
+          <div className="flex flex-col gap-3 @md:flex-row @md:items-start @md:justify-between">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <h4 className="text-base font-black text-slate-900">Pixel de Meta</h4>
+                <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-widest ${metaPixelStateClass}`}>
+                  {metaPixelStateLabel}
+                </span>
+              </div>
+              <p className="text-sm text-slate-500 font-medium max-w-2xl">
+                Ingresa el identificador numerico de tu Pixel de Meta. Se instalara en todas las páginas publicadas de este sitio.
+              </p>
+            </div>
+            <SettingControl
+              setting={{ id: 'metaPixelEnabled', type: 'boolean', label: 'Activar Pixel de Meta', defaultValue: false }}
+              value={getVal('metaPixelEnabled', theme?.metaPixelEnabled ?? false)}
+              onChange={(val) => toggleMetaPixel(Boolean(val))}
+              projectId={projectId}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-[10px] font-bold text-text/40 uppercase tracking-wider">ID del Pixel</label>
+            <input
+              type="text"
+              inputMode="numeric"
+              autoComplete="off"
+              placeholder="123456789012345"
+              value={metaPixelDraftId}
+              onChange={(event) => handleMetaPixelInputChange(event.target.value)}
+              onBlur={() => {
+                const result = persistMetaPixelId();
+                if (result === '') {
+                  handleThemeChange('metaPixelEnabled', false);
+                }
+              }}
+              className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition-all focus:border-primary/30 focus:bg-white focus:ring-2 focus:ring-primary/10"
+            />
+            {metaPixelError && (
+              <p className="text-xs font-semibold text-rose-600">{metaPixelError}</p>
+            )}
+          </div>
+
+          <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 text-xs font-medium text-slate-600 space-y-2">
+            <p>El Pixel se activa únicamente en el sitio publicado. No registra visitas dentro del Constructor.</p>
+            <p>No se inyecta en Canvas, Preview interno ni desarrollo local.</p>
+          </div>
+
+          <div className="flex flex-col gap-3 @md:items-end">
+            <button
+              type="button"
+              onClick={() => { void handleSaveMetaPixelConfiguration(); }}
+              disabled={metaPixelSaveDisabled}
+              className={`inline-flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-black transition-all @md:w-auto ${
+                metaPixelSaveDisabled
+                  ? 'cursor-not-allowed border border-slate-200 bg-slate-100 text-slate-400'
+                  : 'bg-primary text-white shadow-lg shadow-primary/20 hover:opacity-95'
+              }`}
+            >
+              {saveStatus === 'loading' ? (
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" aria-hidden="true" />
+              ) : (
+                <Save size={16} />
+              )}
+              <span>{metaPixelButtonLabel}</span>
+            </button>
+
+            {metaPixelSaveFeedback && (
+              <p className={`text-sm font-semibold ${metaPixelSaveFeedback.type === 'success' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                {metaPixelSaveFeedback.message}
+              </p>
+            )}
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   if (view === 'design-style') {
     return (

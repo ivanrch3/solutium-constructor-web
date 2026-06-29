@@ -47,6 +47,8 @@ export interface Theme {
   textColor?: string;
   mutedColor?: string;
   borderColor?: string;
+  metaPixelEnabled?: boolean;
+  metaPixelId?: string;
 }
 
 export interface Profile {
@@ -199,6 +201,8 @@ export interface RenderingContract {
     mutedColor?: string;
     borderColor?: string;
     fontFamily: string;
+    metaPixelEnabled?: boolean;
+    metaPixelId?: string;
   };
   sections: Array<{
     id: string;

@@ -10,6 +10,7 @@ import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
 import { TextRenderer } from '../TextRenderer';
 import { InlineEditableText } from '../InlineEditableText';
 import { useEditorStore } from '../../../store/editorStore';
+import { getButtonTypographyStyle, getLegacyButtonTypographyStyle } from '../utils';
 import {
   normalizeSelectedProductIds,
   resolveProductsForSelection
@@ -452,6 +453,12 @@ export const ProductsModule: React.FC<{
   const ctaColor = getVal(`${moduleId}_el_cta`, 'cta_color', '#FFFFFF');
   const ctaRadius = parseF(getVal(`${moduleId}_el_cta`, 'cta_radius', 12), 12);
   const ctaHoverBg = getVal(`${moduleId}_el_cta`, 'cta_hover_bg', '#2563EB');
+  const ctaTypography = settingsValues[`${moduleId}_el_cta_cta_size`] !== undefined
+    ? getButtonTypographyStyle(
+        getVal(`${moduleId}_el_cta`, 'cta_size', 's'),
+        getVal(`${moduleId}_el_cta`, 'cta_weight', 'bold')
+      )
+    : getLegacyButtonTypographyStyle(10, 700, 1.15);
 
   logDebug('[PRODUCTS_MODULE_RENDER_INPUT_DEBUG]', {
     runtime: isPublishedViewer ? "published_viewer" : "constructor_canvas",
@@ -823,7 +830,8 @@ export const ProductsModule: React.FC<{
                               style={{ 
                                 backgroundColor: isAdding ? '#10B981' : ctaBg, 
                                 color: ctaColor,
-                                borderRadius: `${ctaRadius}px`
+                                borderRadius: `${ctaRadius}px`,
+                                ...ctaTypography
                               }}
                             >
                               <AnimatePresence mode="wait">

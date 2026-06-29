@@ -17,7 +17,7 @@ import { TextRenderer } from '../TextRenderer';
 import { ParallaxBackground, useParallaxScrollProgress } from '../ParallaxBackground';
 import { InlineEditableText } from '../InlineEditableText';
 import { SectionAnimation } from '../animations/SectionAnimation';
-import { parseNumSafe } from '../utils';
+import { getButtonTypographyStyle, getLegacyButtonTypographyStyle, parseNumSafe } from '../utils';
 import { useEditorStore } from '../../../store/editorStore';
 import { normalizeSectionAnimation } from '../../../constants/moduleAnimations';
 import { getProjectThemeFromSettings, resolveBrandColor } from '../../../utils/projectTheme';
@@ -217,6 +217,18 @@ export const CTAModule: React.FC<{
   const btnPrimaryColor = getVal(`${moduleId}_el_cta_actions`, 'btn_primary_color', '#FFFFFF');
   const btnRadius = parseNumSafe(getVal(`${moduleId}_el_cta_actions`, 'btn_radius', 16), 16);
   const hoverEffect = getVal(`${moduleId}_el_cta_actions`, 'hover_effect', 'scale');
+  const primaryButtonTypography = settingsValues[`${moduleId}_el_cta_actions_primary_size`] !== undefined
+    ? getButtonTypographyStyle(
+        getVal(`${moduleId}_el_cta_actions`, 'primary_size', 's'),
+        getVal(`${moduleId}_el_cta_actions`, 'primary_weight', 'black')
+      )
+    : getLegacyButtonTypographyStyle(14, 900, 1.2);
+  const secondaryButtonTypography = settingsValues[`${moduleId}_el_cta_actions_secondary_size`] !== undefined
+    ? getButtonTypographyStyle(
+        getVal(`${moduleId}_el_cta_actions`, 'secondary_size', 's'),
+        getVal(`${moduleId}_el_cta_actions`, 'secondary_weight', 'extrabold')
+      )
+    : getLegacyButtonTypographyStyle(14, 700, 1.2);
 
   // Element: Trust
   const showTrust = getVal(`${moduleId}_el_cta_trust`, 'show_trust', true);
@@ -355,7 +367,7 @@ export const CTAModule: React.FC<{
                   <button 
                     type="submit"
                     className="px-6 py-3 bg-primary text-white font-black text-xs uppercase tracking-widest rounded-xl hover:bg-blue-700 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
-                    style={{ backgroundColor: btnPrimaryBg, color: btnPrimaryColor, boxShadow: 'none' }}
+                    style={{ backgroundColor: btnPrimaryBg, color: btnPrimaryColor, boxShadow: 'none', ...primaryButtonTypography }}
                   >
                   {primaryText}
                 </button>
@@ -397,7 +409,8 @@ export const CTAModule: React.FC<{
               backgroundColor: btnPrimaryBg, 
               color: btnPrimaryColor,
               borderRadius: `${btnRadius}px`,
-              boxShadow: 'none'
+              boxShadow: 'none',
+              ...primaryButtonTypography
             }}
           >
             {enableShimmer && (
@@ -425,7 +438,8 @@ export const CTAModule: React.FC<{
             className="px-8 py-4 font-bold text-sm transition-all flex items-center gap-2"
             style={{ 
               color: darkMode ? '#FFFFFF' : '#0F172A',
-              borderRadius: `${btnRadius}px` 
+              borderRadius: `${btnRadius}px`,
+              ...secondaryButtonTypography
             }}
           >
             <InlineEditableText

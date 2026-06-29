@@ -8,6 +8,7 @@ import { SectionAnimation } from '../animations/SectionAnimation';
 import { InlineEditableText } from '../InlineEditableText';
 import { useEditorStore } from '../../../store/editorStore';
 import { normalizeSectionAnimation } from '../../../constants/moduleAnimations';
+import { getButtonTypographyStyle, getLegacyButtonTypographyStyle } from '../utils';
 
 const CONTACT_DEFAULTS = {
   email: 'hola@tuempresa.com',
@@ -178,6 +179,12 @@ export const ContactModule: React.FC<{
   const labelWeightToken = getVal(`${moduleId}_el_contact_form`, 'label_weight', 'bold');
   const shimmer = getVal(`${moduleId}_el_contact_form`, 'shimmer', false);
   const hoverEffect = getVal(`${moduleId}_el_contact_form`, 'hover_effect', 'lift');
+  const formButtonTypography = settingsValues[`${moduleId}_el_contact_form_button_size`] !== undefined
+    ? getButtonTypographyStyle(
+        getVal(`${moduleId}_el_contact_form`, 'button_size', 's'),
+        getVal(`${moduleId}_el_contact_form`, 'button_weight', 'black')
+      )
+    : getLegacyButtonTypographyStyle(14, 900, 1.2);
 
   // Element: Integrations
   const showCalendly = getVal(`${moduleId}_el_contact_integrations`, 'show_calendly', false);
@@ -442,7 +449,7 @@ export const ContactModule: React.FC<{
               value="whatsapp"
               disabled={!showWhatsappContact}
               className={`w-full min-w-0 px-4 py-4 @md:py-5 font-black text-sm transition-all flex items-center justify-center gap-2 relative overflow-hidden group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${!showWhatsappContact ? 'opacity-45 cursor-not-allowed' : 'hover:-translate-y-0.5'}`}
-              style={{ backgroundColor: '#25D366', color: '#FFFFFF', borderRadius: `${inputRadius}px`, boxShadow: 'none' }}
+              style={{ backgroundColor: '#25D366', color: '#FFFFFF', borderRadius: `${inputRadius}px`, boxShadow: 'none', ...formButtonTypography }}
             >
               {shimmer && showWhatsappContact && (
                 <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]" />
@@ -461,7 +468,7 @@ export const ContactModule: React.FC<{
                   ? 'opacity-45 cursor-not-allowed'
                   : 'border-slate-200 text-slate-800 bg-white hover:bg-slate-50'
               }`}
-              style={{ borderRadius: `${inputRadius}px`, boxShadow: 'none' }}
+              style={{ borderRadius: `${inputRadius}px`, boxShadow: 'none', ...formButtonTypography }}
             >
               <Mail size={18} />
               Enviar por correo

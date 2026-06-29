@@ -805,12 +805,22 @@ export const DynamicCardsModule: React.FC<{
         .dynamic-cards-content.dc-blocks-3 { justify-content: space-evenly; gap: clamp(18px, 3.2cqw, 34px); }
         .dynamic-cards-content.dc-blocks-2 { justify-content: center; gap: clamp(34px, 7cqw, 72px); }
         .dynamic-cards-content.dc-blocks-1 { justify-content: center; }
-        .dynamic-cards-title { max-width: min(920px, 100%); }
+        .dynamic-cards-title {
+          width: min(920px, 100%);
+          max-width: 100%;
+          min-width: 0;
+        }
         .dynamic-cards-body,
         .dynamic-cards-cta {
           width: min(760px, 100%);
           max-width: 100%;
+          min-width: 0;
           align-self: center;
+        }
+        .dynamic-cards-title h2,
+        .dynamic-cards-body p {
+          margin: 0;
+          max-width: 100%;
         }
         .dynamic-cards-body p { overflow-wrap: anywhere; white-space: pre-line; }
         .dynamic-cards-bullets { margin-top: clamp(10px, 2cqw, 16px); gap: clamp(6px, 1.5cqw, 10px); }

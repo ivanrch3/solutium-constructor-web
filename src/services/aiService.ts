@@ -1,13 +1,31 @@
-import { GoogleGenAI, Type } from "@google/genai";
+﻿import { GoogleGenAI, Type } from "@google/genai";
 import { SiteContent, VisualStyle } from "../types";
-import { AIGenerationContext, AIPageGenerationBrief, AIPagePlan, AIPageTone, ReferenceUrlAnalysis, ReferenceUrlAnalysisRequest, VisualReferenceScan } from "../types/ai";
+import {
+  AICreditBalanceSummary,
+  AIGenerationContext,
+  AIPageGenerationBrief,
+  AIPagePlan,
+  AIPageTone,
+  AIUsageSummary,
+  GeneratedBusinessContent,
+  ReferenceUrlAnalysis,
+  ReferenceUrlAnalysisRequest,
+  VisualReferenceScan
+} from "../types/ai";
 import {
   AI_PAGE_PLAN_ESTIMATED_CREDITS,
   ALLOWED_AI_PAGE_MODULE_TYPES,
-  ALLOWED_COMPOSITION_PRESETS,
+  ALLOWED_REFERENCE_AI_PAGE_MODULE_TYPES,
+  buildMinimalGeneratedBusinessContent,
+  buildPlanFromBlueprint,
   createLocalAIPagePlanFallback,
+  validateGeneratedBusinessContent,
   validateAIPagePlan
 } from "../utils/aiPagePlanValidator";
+import {
+  getAIBlueprintForBusinessType,
+  getAIBusinessTypeOption
+} from '../constants/aiPageBlueprints';
 import { configService } from "./configService";
 import { mapStyleToTheme } from "../lib/styleMapper";
 import { searchPexelsMedia } from "./pexelsMediaClient";
@@ -35,18 +53,168 @@ const searchStockPhotos = async (
   try {
     const response = await searchPexelsMedia({
       query,
-      per_page: 5,
+      per_page: 8,
       projectId: options?.projectId,
       moduleType: options?.moduleType,
       fieldKey: options?.fieldKey,
       industry: options?.industry,
       orientation: options?.orientation
     });
-    return response.photos?.map((p: any) => p?.src?.large || p?.src?.landscape || p?.src?.medium).filter(Boolean) || [];
+    return response.photos?.map((p: any) => p?.selected_url_recommended || p?.src?.large || p?.src?.landscape || p?.src?.medium).filter(Boolean) || [];
   } catch (err) {
     console.error("Secure stock search error:", err);
     return [];
   }
+};
+
+const isSvgPlaceholderUrl = (value: unknown) =>
+  typeof value === 'string' && value.startsWith('data:image/svg+xml');
+
+const normalizePexelsQueryCandidates = (candidates: Array<string | null | undefined>) => (
+  candidates
+    .map((candidate) => String(candidate || '').trim())
+    .filter(Boolean)
+    .filter((candidate, index, source) => source.indexOf(candidate) === index)
+);
+
+const resolveCuratedPexelsImage = async ({
+  projectId,
+  industry,
+  fieldKey,
+  orientation,
+  queryCandidates,
+  usedUrls
+}: {
+  projectId?: string | null;
+  industry: string;
+  fieldKey: string;
+  orientation: string;
+  queryCandidates: Array<string | null | undefined>;
+  usedUrls: Set<string>;
+}) => {
+  for (const query of normalizePexelsQueryCandidates(queryCandidates)) {
+    const urls = await searchStockPhotos(query, {
+      projectId,
+      moduleType: 'ai_page_generation',
+      fieldKey,
+      industry,
+      orientation
+    });
+    const selectedUrl = urls.find((url) => url && !usedUrls.has(url));
+    if (selectedUrl) {
+      usedUrls.add(selectedUrl);
+      return selectedUrl;
+    }
+  }
+
+  return null;
+};
+
+const enrichGeneratedBusinessContentWithPexels = async (
+  content: GeneratedBusinessContent,
+  options: { projectId?: string | null }
+): Promise<GeneratedBusinessContent> => {
+  if (!options.projectId) {
+    return content;
+  }
+
+  const industry = content.businessTypeLabel || content.businessName || 'business';
+  const usedUrls = new Set<string>();
+
+  const rememberIfRealImage = (value: unknown) => {
+    if (typeof value !== 'string' || !value || isSvgPlaceholderUrl(value)) return;
+    usedUrls.add(value);
+  };
+
+  rememberIfRealImage(content.hero.imageUrl);
+  content.featuredItems?.items.forEach((item) => rememberIfRealImage(item.imageUrl));
+  content.gallery?.items.forEach((item) => rememberIfRealImage(item.imageUrl));
+
+  const heroImageUrl =
+    (!content.hero.imageUrl || isSvgPlaceholderUrl(content.hero.imageUrl))
+      ? await resolveCuratedPexelsImage({
+          projectId: options.projectId,
+          industry,
+          fieldKey: 'hero_image',
+          orientation: 'landscape',
+          queryCandidates: [
+            content.hero.imagePrompt,
+            `${industry} ${content.hero.title}`,
+            `${industry} hero`
+          ],
+          usedUrls
+        }) || content.hero.imageUrl
+      : content.hero.imageUrl;
+
+  const featuredItems = content.featuredItems
+    ? {
+        ...content.featuredItems,
+        items: await Promise.all(
+          content.featuredItems.items.map(async (item, index) => {
+            const imageUrl =
+              (!item.imageUrl || isSvgPlaceholderUrl(item.imageUrl))
+                ? await resolveCuratedPexelsImage({
+                    projectId: options.projectId,
+                    industry,
+                    fieldKey: `featured_item_${index + 1}`,
+                    orientation: 'landscape',
+                    queryCandidates: [
+                      item.imagePrompt,
+                      `${industry} ${item.name}`,
+                      `${industry} ${item.tag || 'featured item'}`
+                    ],
+                    usedUrls
+                  }) || item.imageUrl
+                : item.imageUrl;
+
+            return {
+              ...item,
+              imageUrl
+            };
+          })
+        )
+      }
+    : content.featuredItems;
+
+  const gallery = content.gallery
+    ? {
+        ...content.gallery,
+        items: await Promise.all(
+          content.gallery.items.map(async (item, index) => {
+            const imageUrl =
+              (!item.imageUrl || isSvgPlaceholderUrl(item.imageUrl))
+                ? await resolveCuratedPexelsImage({
+                    projectId: options.projectId,
+                    industry,
+                    fieldKey: `gallery_item_${index + 1}`,
+                    orientation: 'landscape',
+                    queryCandidates: [
+                      item.imagePrompt,
+                      `${industry} ${item.title}`,
+                      `${industry} ${item.category || 'gallery'}`
+                    ],
+                    usedUrls
+                  }) || item.imageUrl
+                : item.imageUrl;
+
+            return {
+              ...item,
+              imageUrl
+            };
+          })
+        )
+      }
+    : content.gallery;
+
+  return {
+    ...content,
+    hero: {
+      ...content.hero,
+      imageUrl: heroImageUrl
+    },
+    featuredItems,
+    gallery
+  };
 };
 
 const SITE_SCHEMA = {
@@ -218,7 +386,7 @@ async function processResponse(text: string, brief: AIGenerationContext): Promis
 
 export const generateSite = generateSiteContent;
 
-import { getUploadAuthToken } from './authTokenProvider';
+import { getMotherApiAuthToken, getUploadAuthToken } from './authTokenProvider';
 
 export interface MotherAIPageResponse {
   success: boolean;
@@ -273,166 +441,136 @@ export const generateLandingDryRunLocal = (brief: any): MotherAIPageResponse => 
   } as any;
 };
 
-const titleCase = (value: string) =>
-  value
-    .trim()
-    .split(/\s+/)
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-    .join(' ');
-
 const normalizeBriefText = (value: string, fallback: string) => {
   const clean = value.trim();
   return clean || fallback;
 };
 
-/**
- * Fase 1 Crear con IA: genera un pagePlan local compatible con el Constructor.
- * No llama APIs externas ni genera HTML libre; queda listo para reemplazar por ai_broker.
- */
-export const generatePagePlanLocal = (brief: AIPageGenerationBrief): AIPagePlan => {
-  const businessType = normalizeBriefText(brief.businessType, 'servicios profesionales');
-  const businessName = normalizeBriefText(brief.businessName || '', titleCase(businessType));
-  const goal = normalizeBriefText(brief.pageGoal, 'conseguir clientes potenciales');
-  const instructions = normalizeBriefText(brief.instructions, `Presentar ${businessName} con una propuesta clara y editable.`);
-  const primaryCta = normalizeBriefText(brief.primaryCta, 'Solicitar información');
-  const tone = brief.tone || 'profesional';
-  const isContactFocused = /contact|whatsapp|mensaje|cita|agenda/i.test(`${brief.pageType} ${goal} ${instructions}`);
-  const isProductFocused = brief.pageType === 'product' || /producto|comprar|venta/i.test(`${goal} ${instructions}`);
+const getMotherApiBaseUrl = () => {
+  const apiBaseUrl = import.meta.env.VITE_APP_MADRE_API_URL || import.meta.env.VITE_API_BASE_URL;
+  return typeof apiBaseUrl === 'string' && apiBaseUrl.trim()
+    ? apiBaseUrl.replace(/\/$/, '')
+    : 'http://localhost:3000';
+};
 
-  const pageTitle = brief.pageType === 'contact'
-    ? `Contacto para ${businessName}`
-    : brief.pageType === 'services'
-      ? `Servicios de ${businessName}`
-      : brief.pageType === 'product'
-        ? `${businessName}: producto destacado`
-        : `${businessName}: página generada con IA`;
+const shouldAllowAIPagePlanFallback = () =>
+  import.meta.env.VITE_ENABLE_AI_PAGE_PLAN_LOCAL_FALLBACK === 'true';
 
-  const valueWord = tone === 'premium' ? 'premium' : tone === 'cercano' ? 'simple y cercana' : 'profesional';
-  const benefitItems = [
-    `Atencion ${valueWord} desde el primer contacto`,
-    `Informacion clara para decidir con confianza`,
-    `Ruta directa hacia: ${goal}`
-  ];
-  const serviceItems = isProductFocused
-    ? ['Beneficio principal del producto', 'Caracteristicas editables', 'Soporte antes y despues de la compra']
-    : ['Diagnostico inicial', 'Solucion a la medida', 'Acompanamiento y seguimiento'];
+const buildUsageSummaryFromBrokerUsage = (usage: any, estimatedCredits = 0): AIUsageSummary | undefined => {
+  if (!usage || typeof usage !== 'object') return undefined;
 
-  const sections: AIPagePlan['sections'] = [
-    {
-      id: 'ai-hero',
-      moduleType: 'composition_section',
-      preset: 'hero_visual_premium',
-      title: 'Hero principal',
-      purpose: 'Presentar la oferta y orientar al CTA principal.',
-      content: {
-        eyebrow: titleCase(businessType),
-        title: `${businessName} para ${goal}`,
-        description: instructions,
-        cta: primaryCta,
-        secondaryCta: 'Ver detalles',
-        items: benefitItems
-      },
-      settings: {}
-    },
-    {
-      id: 'ai-benefits',
-      moduleType: 'composition_section',
-      preset: 'features_bento',
-      title: 'Beneficios clave',
-      purpose: 'Resumir por que la propuesta es relevante.',
-      content: {
-        eyebrow: 'Beneficios',
-        title: 'Una experiencia pensada para convertir visitas en oportunidades',
-        description: `Contenido editable con tono ${tone} para explicar el valor de ${businessName}.`,
-        items: benefitItems
-      },
-      settings: {}
-    },
-    {
-      id: 'ai-services',
-      moduleType: 'composition_section',
-      preset: 'services_grid',
-      title: isProductFocused ? 'Producto y valor' : 'Servicios principales',
-      purpose: 'Mostrar la oferta de forma escaneable.',
-      content: {
-        eyebrow: isProductFocused ? 'Producto' : 'Servicios',
-        title: isProductFocused ? 'Todo lo necesario para avanzar con confianza' : 'Servicios creados para resolver necesidades reales',
-        description: 'Cada bloque puede editarse desde el panel de propiedades.',
-        items: serviceItems
-      },
-      settings: {}
-    },
-    {
-      id: 'ai-process',
-      moduleType: 'composition_section',
-      preset: 'process_steps',
-      title: 'Proceso',
-      purpose: 'Explicar los pasos esperados antes de la conversion.',
-      content: {
-        eyebrow: 'Como funciona',
-        title: 'Un camino claro desde el primer mensaje',
-        description: 'Una secuencia simple para que el visitante entienda que ocurre despues.',
-        items: ['Cuentanos que necesitas', 'Recibe una propuesta clara', 'Avanza con acompanamiento']
-      },
-      settings: {}
-    },
-    {
-      id: 'ai-trust',
-      moduleType: 'composition_section',
-      preset: 'trust_logos',
-      title: 'Confianza',
-      purpose: 'Reservar espacio editable para pruebas sociales o logos.',
-      content: {
-        eyebrow: 'Confianza',
-        title: 'Senales que ayudan a decidir',
-        description: 'Agrega clientes, certificaciones, metricas o testimonios cuando los tengas.',
-        items: ['Clientes', 'Resultados', 'Garantia']
-      },
-      settings: {}
-    },
-    {
-      id: 'ai-cta',
-      moduleType: 'composition_section',
-      preset: 'cta_premium',
-      title: 'CTA principal',
-      purpose: 'Cerrar la página con una accion concreta.',
-      content: {
-        eyebrow: 'Siguiente paso',
-        title: isContactFocused ? 'Hablemos hoy mismo' : 'Convierte esta visita en una oportunidad',
-        description: `Invita al usuario a avanzar con el objetivo: ${goal}.`,
-        cta: primaryCta
-      },
-      settings: {}
-    }
-  ];
+  const creditSummary = usage.creditSummary && typeof usage.creditSummary === 'object'
+    ? usage.creditSummary
+    : null;
 
-  if (isContactFocused) {
-    sections.push({
-      id: 'ai-contact',
-      moduleType: 'contact',
-      preset: null,
-      title: 'Contacto',
-      purpose: 'Facilitar el contacto posterior a la revisión.',
-      content: {
-        title: 'Contacto r?pido',
-        description: 'Completa los datos de contacto reales antes de publicar.',
-        cta: primaryCta
-      },
-      settings: {}
-    });
-  }
+  const normalizeBalance = (balance: any): AICreditBalanceSummary | null => {
+    if (!balance || typeof balance !== 'object') return null;
+    return {
+      monthlyBalance: Number(balance.monthlyBalance || 0),
+      bonusBalance: Number(balance.bonusBalance || 0),
+      totalAvailable: Number(balance.totalAvailable || 0),
+      monthlyLimit: balance.monthlyLimit !== undefined ? Number(balance.monthlyLimit || 0) : undefined,
+      nextResetAt: typeof balance.nextResetAt === 'string' ? balance.nextResetAt : null
+    };
+  };
 
   return {
-    pageTitle,
-    pageGoal: goal,
-    businessType,
-    tone,
+    provider: typeof usage.provider === 'string' ? usage.provider : undefined,
+    model: typeof usage.model === 'string' ? usage.model : undefined,
+    aiUsageLogId: typeof usage.aiUsageLogId === 'string' ? usage.aiUsageLogId : undefined,
+    inputTokens: Number(usage.inputTokens || usage.usageMetadata?.promptTokenCount || usage.usageMetadata?.prompt_token_count || 0),
+    outputTokens: Number(usage.outputTokens || usage.usageMetadata?.candidatesTokenCount || usage.usageMetadata?.candidates_token_count || 0),
+    totalTokens: Number(usage.totalTokens || usage.usageMetadata?.totalTokenCount || usage.usageMetadata?.total_token_count || 0),
+    costCredits: Number(usage.costCredits ?? usage.totalConsumed ?? usage.total_consumed ?? estimatedCredits ?? 0),
+    estimatedCredits,
+    status: creditSummary?.status,
+    balanceBefore: normalizeBalance(creditSummary?.balanceBefore),
+    balanceAfter: normalizeBalance(creditSummary?.balanceAfter),
+    idempotencyReused: creditSummary?.idempotencyReused === true
+  };
+};
+
+const pendingAICreditBalanceRequests = new Map<string, Promise<AICreditBalanceSummary | null>>();
+
+export const getProjectAICreditBalance = async (
+  projectId: string,
+  options: { forceRefresh?: boolean } = {}
+): Promise<AICreditBalanceSummary | null> => {
+  const normalizedProjectId = projectId?.trim();
+  if (!normalizedProjectId) return null;
+
+  if (!options.forceRefresh) {
+    const pendingRequest = pendingAICreditBalanceRequests.get(normalizedProjectId);
+    if (pendingRequest) {
+      return pendingRequest;
+    }
+  }
+
+  const request = (async () => {
+    const { token } = await getMotherApiAuthToken({
+      allowLaunch: true,
+      forceRefreshSupabase: options.forceRefresh
+    });
+    if (!token) {
+      throw new Error('No pudimos validar tus créditos de IA porque la sesión no es válida. Actualiza la sesión y vuelve a intentarlo.');
+    }
+
+    const response = await fetch(`${getMotherApiBaseUrl()}/api/projects/${normalizedProjectId}/ai-credits`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+
+    const payload = await response.json().catch(() => null);
+    if (!response.ok || !payload?.success || !payload?.balance) {
+      throw new Error(payload?.message || payload?.error || 'No se pudo consultar el saldo de créditos IA.');
+    }
+
+    return {
+      monthlyBalance: Number(payload.balance.monthlyBalance || 0),
+      bonusBalance: Number(payload.balance.bonusBalance || 0),
+      totalAvailable: Number(payload.balance.totalAvailable || 0),
+      monthlyLimit: Number(payload.balance.monthlyLimit || 0),
+      nextResetAt: typeof payload.balance.nextResetAt === 'string' ? payload.balance.nextResetAt : null
+    };
+  })().finally(() => {
+    pendingAICreditBalanceRequests.delete(normalizedProjectId);
+  });
+
+  pendingAICreditBalanceRequests.set(normalizedProjectId, request);
+  return request;
+};
+
+const enrichBusinessTypeBrief = (brief: AIPageGenerationBrief): AIPageGenerationBrief => {
+  const inferredOption = getAIBusinessTypeOption(brief.businessTypeId);
+  const businessTypeLabel = normalizeBriefText(
+    brief.businessTypeLabel || brief.businessType,
+    inferredOption.label
+  );
+
+  return {
+    ...brief,
+    businessTypeId: brief.businessTypeId || inferredOption.id,
+    businessTypeLabel,
+    businessType: normalizeBriefText(brief.businessType, businessTypeLabel)
+  };
+};
+
+/**
+ * Genera un pagePlan local usando blueprints fijos del Constructor.
+ * No llama APIs externas ni crea composición visual libre.
+ */
+export const generatePagePlanLocal = (brief: AIPageGenerationBrief): AIPagePlan => {
+  const safeBrief = enrichBusinessTypeBrief(brief);
+  const blueprint = getAIBlueprintForBusinessType(safeBrief.businessTypeId);
+  const localContent = buildMinimalGeneratedBusinessContent(safeBrief, blueprint, []);
+
+  return buildPlanFromBlueprint(safeBrief, blueprint, localContent, {
     source: 'mock_local',
     generationMode: 'mock',
     estimatedCredits: 0,
-    warnings: [],
-    sections: sections.slice(0, 7)
-  };
+    warnings: []
+  });
 };
 
 export const searchReferenceSectionImage = async ({
@@ -518,13 +656,13 @@ export const searchReferenceSectionImage = async ({
 
   const photos = response.photos || [];
   const selectedIndex = photos.findIndex((photo: any) => {
-    const url = photo?.src?.landscape || photo?.src?.large || photo?.src?.medium || '';
+    const url = photo?.selected_url_recommended || photo?.src?.landscape || photo?.src?.large || photo?.src?.medium || '';
     return url && !usedUrls.has(url);
   });
   const candidateIndex = selectedIndex >= 0 ? selectedIndex : 0;
   const photo = photos[candidateIndex];
   if (!photo) return null;
-  const url = photo.src?.landscape || photo.src?.large || photo.src?.medium || '';
+  const url = photo.selected_url_recommended || photo.src?.landscape || photo.src?.large || photo.src?.medium || '';
   if (!url || usedUrls.has(url)) return null;
 
   return {
@@ -575,14 +713,14 @@ const REFERENCE_ROLE_TITLES: Record<string, string> = {
   hero: 'Hero inspirado en la referencia',
   features: 'Beneficios y diferenciales',
   services: 'Servicios o propuesta',
-  process: 'Proceso o metodolog?a',
+  process: 'Proceso o metodología',
   testimonials: 'Confianza y prueba social',
   trust: 'Confianza',
   pricing: 'Comparativa de valor',
   faq: 'Preguntas frecuentes',
   contact: 'Contacto',
   cta: 'CTA final',
-  gallery: 'Galer?a editable',
+  gallery: 'Galería editable',
   about: 'Sobre la propuesta',
   comparison: 'Comparativa',
   unknown: 'Sección editable'
@@ -652,70 +790,113 @@ const createReferenceDrivenFallbackPlan = (
 };
 
 export const buildAIPagePlanPrompt = (brief: AIPageGenerationBrief) => {
-  const modules = ALLOWED_AI_PAGE_MODULE_TYPES.join(', ');
-  const presets = ALLOWED_COMPOSITION_PRESETS.join(', ');
+  const safeBrief = enrichBusinessTypeBrief(brief);
+  const blueprint = getAIBlueprintForBusinessType(safeBrief.businessTypeId);
+  const modules = blueprint.modules
+    .map(module => `- ${module.summaryLabel} -> ${module.moduleType} (${module.requiredContentFields.join(', ')})`)
+    .join('\n');
 
   return `
-Eres el planificador de páginas editables del Constructor Web de Solutium.
+Eres el generador de contenido editable del Constructor Web de Solutium.
 
-Responde ÚNICAMENTE JSON válido. No uses markdown, comentarios, HTML, CSS, scripts ni bloques de código.
+Responde UNICAMENTE JSON valido. No uses markdown, comentarios, HTML, CSS, scripts ni bloques de codigo.
 
 Objetivo:
-Generar un AIPagePlan estructurado para que el Constructor lo convierta en módulos editables.
+Generar solamente contenido para una pagina editable basada en un blueprint fijo.
 
 Datos del usuario:
-- Tipo de página: ${brief.pageType}
-- Tipo de negocio: ${brief.businessType}
-- Objetivo: ${brief.pageGoal}
-- Tono: ${brief.tone}
-- CTA principal: ${brief.primaryCta}
-- Nombre del negocio/proyecto: ${brief.businessName || 'No indicado'}
-- Instrucciones: ${brief.instructions}
+- Tipo de pagina: ${safeBrief.pageType}
+- Tipo de negocio: ${safeBrief.businessTypeLabel}
+- Objetivo: ${safeBrief.pageGoal}
+- Tono: ${safeBrief.tone}
+- CTA principal: ${safeBrief.primaryCta}
+- Nombre del negocio/proyecto: ${safeBrief.businessName || 'No indicado'}
+- Instrucciones: ${safeBrief.instructions}
 
-Módulos permitidos:
+Blueprint fijo:
+- blueprintId: ${blueprint.id}
+- version: ${blueprint.version}
+- orden fijo de modulos:
 ${modules}
 
-Presets permitidos para composition_section:
-${presets}
+Reglas obligatorias:
+- No disenes la estructura.
+- No inventes modulos.
+- No cambies el orden.
+- No generes composition_section, bento ni modulos legacy.
+- No generes animaciones.
+- Genera unicamente contenido para los campos solicitados.
+- Todo texto debe estar en espanol y ser editable.
+- No inventes datos sensibles, testimonios reales, logos, marcas ajenas ni URLs externas no solicitadas.
+- Si no conoces un dato real, deja copy editable y honesto.
 
-Reglas:
-- Prioriza composition_section con presets premium.
-- Usa módulos estándar solo si encajan claramente.
-- Genera entre 4 y 7 secciones.
-- Todo texto debe estar en español y ser editable.
-- No inventes datos sensibles, números legales, testimonios reales, marcas de terceros, logos, imágenes externas ni identidad ajena.
-- No copies contenido protegido.
-- No incluyas URLs externas salvo "#".
-- No generes HTML libre.
-- No generes CSS.
-- No generes scripts.
-- No incluyas instrucciones fuera del JSON.
-
-Estructura exacta:
+Contrato de salida:
 {
-  "pageTitle": "string",
+  "businessName": "string",
+  "businessTypeId": "string",
+  "businessTypeLabel": "string",
   "pageGoal": "string",
-  "businessType": "string",
-  "tone": "string",
-  "estimatedCredits": ${AI_PAGE_PLAN_ESTIMATED_CREDITS},
-  "sections": [
-    {
-      "id": "string-unico-kebab-case",
-      "moduleType": "composition_section",
-      "preset": "hero_visual_premium",
-      "title": "string",
-      "purpose": "string",
-      "content": {
-        "eyebrow": "string",
-        "title": "string",
-        "description": "string",
-        "cta": "string",
-        "secondaryCta": "string",
-        "items": ["string"]
-      },
-      "settings": {}
-    }
-  ]
+  "primaryCta": "string",
+  "secondaryCta": "string opcional",
+  "hero": {
+    "eyebrow": "string",
+    "title": "string",
+    "subtitle": "string",
+    "primaryCta": "string",
+    "secondaryCta": "string opcional",
+    "imagePrompt": "string opcional"
+  },
+  "benefits": {
+    "title": "string",
+    "subtitle": "string",
+    "items": [{ "title": "string", "description": "string", "icon": "string opcional" }]
+  },
+  "featuredItems": {
+    "title": "string",
+    "subtitle": "string",
+    "items": [{ "name": "string", "description": "string", "tag": "string opcional", "price": "string opcional", "imagePrompt": "string opcional" }]
+  },
+  "gallery": {
+    "title": "string",
+    "subtitle": "string",
+    "items": [{ "title": "string", "description": "string", "category": "string opcional", "imagePrompt": "string opcional" }]
+  },
+  "testimonials": {
+    "title": "string",
+    "subtitle": "string",
+    "items": [{ "author": "string", "role": "string", "text": "string", "stars": 4 }]
+  },
+  "faq": {
+    "title": "string",
+    "subtitle": "string",
+    "items": [{ "question": "string", "answer": "string" }],
+    "ctaText": "string opcional",
+    "buttonText": "string opcional"
+  },
+  "cta": {
+    "title": "string",
+    "subtitle": "string",
+    "primaryText": "string",
+    "secondaryText": "string opcional"
+  },
+  "contact": {
+    "title": "string",
+    "subtitle": "string",
+    "phone": "string opcional",
+    "whatsapp": "string opcional",
+    "email": "string opcional",
+    "address": "string opcional",
+    "hours": "string opcional",
+    "buttonText": "string opcional"
+  },
+  "menu": {
+    "logoText": "string",
+    "links": [{ "label": "string", "url": "#anchor" }]
+  },
+  "footer": {
+    "bio": "string",
+    "copyright": "string opcional"
+  }
 }
 `.trim();
 };
@@ -726,46 +907,113 @@ export const generateAIPagePlan = async (
     projectId?: string | null;
     siteId?: string | null;
     userId?: string | null;
+    idempotencyKey?: string | null;
     forceFallback?: boolean;
     brokerResponseOverride?: unknown;
   } = {}
 ): Promise<AIPagePlan> => {
-  const localPlan = validateAIPagePlan(generatePagePlanLocal(brief), brief, {
-    source: 'mock_local',
-    generationMode: 'mock'
-  });
+  const safeBrief = enrichBusinessTypeBrief(brief);
+  const blueprint = getAIBlueprintForBusinessType(safeBrief.businessTypeId);
+  const localPlan = generatePagePlanLocal(safeBrief);
+
+  const buildPlanWithEnrichedContent = async (
+    content: GeneratedBusinessContent,
+    {
+      source,
+      generationMode,
+      warnings = [],
+      estimatedCredits = 0,
+      usageSummary
+    }: {
+      source: AIPagePlan['source'];
+      generationMode: AIPagePlan['generationMode'];
+      warnings?: string[];
+      estimatedCredits?: number;
+      usageSummary?: AIUsageSummary;
+    }
+  ) => {
+    const enrichedContent = await enrichGeneratedBusinessContentWithPexels(content, {
+      projectId: options.projectId
+    });
+
+    return buildPlanFromBlueprint(safeBrief, blueprint, enrichedContent, {
+      source,
+      generationMode,
+      estimatedCredits,
+      warnings,
+      usageSummary
+    });
+  };
+
+  const buildPlanFromRemoteContent = (
+    remoteContent: unknown,
+    extraWarnings: string[] = [],
+    estimatedCredits = 0,
+    source: AIPagePlan['source'] = 'ai_broker',
+    usageSummary?: AIUsageSummary
+  ) => {
+    const validatedContent = validateGeneratedBusinessContent(remoteContent, safeBrief, blueprint, extraWarnings);
+    return buildPlanWithEnrichedContent(validatedContent, {
+      source,
+      generationMode: source === 'fallback' ? 'fallback' : source === 'mock_local' ? 'mock' : 'broker',
+      estimatedCredits,
+      warnings: extraWarnings,
+      usageSummary
+    });
+  };
 
   if (options.forceFallback) {
-    return createLocalAIPagePlanFallback(brief, ['Fallback forzado para validacion.']);
+    return buildPlanWithEnrichedContent(
+      buildMinimalGeneratedBusinessContent(safeBrief, blueprint, ['Fallback forzado para validación.']),
+      {
+        source: 'fallback',
+        generationMode: 'fallback',
+        warnings: ['Fallback forzado para validación.']
+      }
+    );
   }
 
   if (options.brokerResponseOverride !== undefined) {
-    return validateAIPagePlan(options.brokerResponseOverride, brief, {
+    const overrideRecord = options.brokerResponseOverride as any;
+    const overrideContent = overrideRecord?.generatedContent ?? overrideRecord?.content ?? overrideRecord?.planContent;
+    if (overrideContent !== undefined) {
+      return buildPlanFromRemoteContent(overrideContent);
+    }
+    return validateAIPagePlan(options.brokerResponseOverride, safeBrief, {
       source: 'ai_broker',
-      generationMode: 'broker'
+      generationMode: 'broker',
+      allowedModuleTypes: ALLOWED_AI_PAGE_MODULE_TYPES
     });
   }
 
   const brokerEnabled = import.meta.env.VITE_ENABLE_AI_PAGE_PLAN_BROKER === 'true';
   const brokerUrl = import.meta.env.VITE_AI_PAGE_PLAN_BROKER_URL as string | undefined;
+  const fallbackAllowed = shouldAllowAIPagePlanFallback();
 
   if (!brokerEnabled || !brokerUrl) {
-    return {
-      ...localPlan,
-      warnings: [
-        ...(localPlan.warnings || []),
-        'Broker IA seguro no configurado; se uso generacion local editable.'
-      ]
-    };
+    if (fallbackAllowed) {
+      return buildPlanFromRemoteContent(
+        buildMinimalGeneratedBusinessContent(safeBrief, blueprint, []),
+        [
+          ...(localPlan.warnings || []),
+          'Broker IA seguro no configurado; se usó generación local editable basada en blueprint.'
+        ],
+        0,
+        'mock_local'
+      );
+    }
+    throw new Error('El broker IA seguro no está configurado para esta generación.');
   }
 
-  const authData = await getUploadAuthToken();
+  const authData = await getMotherApiAuthToken({ allowLaunch: true, forceRefreshSupabase: true });
+  if (!(authData.token || '').trim()) {
+    throw new Error('No hay una sesión válida para usar la IA. Reabre el Constructor desde Solutium.');
+  }
+
   const token = authData.token || '';
 
-  if (!token || token.split('.').length !== 3) {
-    return createLocalAIPagePlanFallback(brief, [
-      'No hay sesion valida para llamar al broker IA. Se usó fallback editable.'
-    ]);
+  if (!token) {
+    throw new Error('No hay una sesión válida para usar la IA. Reabre el Constructor desde Solutium.');
   }
 
   const controller = new AbortController();
@@ -782,13 +1030,24 @@ export const generateAIPagePlan = async (
       body: JSON.stringify({
         projectId: options.projectId,
         siteId: options.siteId || null,
-        pageType: brief.pageType,
-        businessType: brief.businessType,
-        pageGoal: brief.pageGoal,
-        tone: brief.tone,
-        cta: brief.primaryCta,
-        instructions: brief.instructions,
-        idempotencyKey: `website_ai_generate_page:${options.projectId || 'unknown'}:${Date.now()}`
+        pageType: safeBrief.pageType,
+        businessTypeId: safeBrief.businessTypeId,
+        businessTypeLabel: safeBrief.businessTypeLabel,
+        businessType: safeBrief.businessType,
+        pageGoal: safeBrief.pageGoal,
+        tone: safeBrief.tone,
+        cta: safeBrief.primaryCta,
+        instructions: safeBrief.instructions,
+        blueprintId: blueprint.id,
+        blueprintVersion: blueprint.version,
+        requiredContentFields: blueprint.modules.map(module => ({
+          sectionId: module.id,
+          moduleType: module.moduleType,
+          fields: module.requiredContentFields
+        })),
+        responseContract: 'generated_business_content_v1',
+        prompt: buildAIPagePlanPrompt(safeBrief),
+        idempotencyKey: options.idempotencyKey || undefined
       })
     });
 
@@ -808,73 +1067,114 @@ export const generateAIPagePlan = async (
       const reason = safeError?.reason || safeError?.error || safeError?.message || `HTTP ${response.status}`;
       const warning =
         response.status === 401
-          ? 'Sesion invalida o expirada para el broker IA. Se usó fallback editable.'
+          ? 'Sesión inválida o expirada para el broker IA.'
           : response.status === 402
-            ? 'Créditos IA insuficientes para generar con broker real. Se usó fallback editable.'
+            ? 'Créditos IA insuficientes para generar con broker real.'
             : response.status === 403
-              ? 'No hay permisos para generar con IA en este proyecto. Se usó fallback editable.'
-              : `Broker IA respondio ${reason}. Se usó fallback editable.`;
+              ? 'No hay permisos para generar con IA en este proyecto.'
+              : `Broker IA respondió ${reason}.`;
 
-      return createLocalAIPagePlanFallback(brief, [
+      if (fallbackAllowed) {
+        return createLocalAIPagePlanFallback(safeBrief, [
+          `${warning} Se usó una plantilla base editable.`,
+          ...(Array.isArray(safeError?.warnings) ? safeError.warnings : [])
+        ]);
+      }
+
+      throw new Error([
         warning,
         ...(Array.isArray(safeError?.warnings) ? safeError.warnings : [])
-      ]);
+      ].filter(Boolean).join(' '));
     }
 
     if (!parsed || typeof parsed !== 'object') {
-      return createLocalAIPagePlanFallback(brief, [
-        'El broker IA devolvio una respuesta no JSON. Se usó fallback editable.'
-      ]);
+      if (fallbackAllowed) {
+        return createLocalAIPagePlanFallback(safeBrief, [
+          'El broker IA devolvió una respuesta no JSON. Se usó una plantilla base editable.'
+        ]);
+      }
+      throw new Error('El broker IA devolvió una respuesta inválida.');
     }
 
     const responseBody = parsed as {
       success?: boolean;
+      generatedContent?: GeneratedBusinessContent;
+      content?: GeneratedBusinessContent;
+      planContent?: GeneratedBusinessContent;
       plan?: unknown;
       warnings?: string[];
       usage?: {
         actionSlug?: string;
         estimatedCredits?: number;
+        provider?: string;
         model?: string;
         aiUsageLogId?: string;
         totalConsumed?: number;
+        inputTokens?: number;
+        outputTokens?: number;
+        totalTokens?: number;
+        usageMetadata?: Record<string, unknown>;
+        creditSummary?: Record<string, unknown>;
       };
     };
 
-    if (responseBody.success !== true || !responseBody.plan) {
-      return createLocalAIPagePlanFallback(brief, [
-        'El broker IA no devolvio un AIPagePlan v?lido. Se usó fallback editable.',
-        ...(Array.isArray(responseBody.warnings) ? responseBody.warnings : [])
-      ]);
+    const returnedContent = responseBody.generatedContent ?? responseBody.content ?? responseBody.planContent;
+
+    if (responseBody.success !== true || returnedContent === undefined) {
+      const warnings = [...(Array.isArray(responseBody.warnings) ? responseBody.warnings : [])];
+      if (responseBody.plan) {
+        warnings.push('El broker respondió con el contrato legacy de plan libre.');
+      }
+      if (fallbackAllowed) {
+        return createLocalAIPagePlanFallback(safeBrief, [
+          'El broker IA no devolvió contenido compatible con el blueprint solicitado. Se usó una plantilla base editable.',
+          ...warnings
+        ]);
+      }
+      throw new Error([
+        'El broker IA no devolvió contenido compatible con el blueprint solicitado.',
+        ...warnings
+      ].join(' '));
     }
 
-    const plan = validateAIPagePlan(responseBody.plan, brief, {
-      source: 'ai_broker',
-      generationMode: 'broker'
-    });
+    const usageSummary = buildUsageSummaryFromBrokerUsage(
+      responseBody.usage,
+      responseBody.usage?.estimatedCredits ?? AI_PAGE_PLAN_ESTIMATED_CREDITS
+    );
 
-    return {
-      ...plan,
-      estimatedCredits: responseBody.usage?.estimatedCredits ?? plan.estimatedCredits ?? AI_PAGE_PLAN_ESTIMATED_CREDITS,
-      warnings: [
-        ...(plan.warnings || []),
+    const plan = buildPlanFromRemoteContent(
+      returnedContent,
+      [
         ...(Array.isArray(responseBody.warnings) ? responseBody.warnings : []),
         ...(responseBody.usage?.aiUsageLogId ? [`AI Broker ref: ${responseBody.usage.aiUsageLogId}`] : []),
         ...(responseBody.usage?.totalConsumed !== undefined ? [`Créditos consumidos: ${responseBody.usage.totalConsumed}`] : [])
-      ]
-    };
+      ],
+      responseBody.usage?.estimatedCredits ?? AI_PAGE_PLAN_ESTIMATED_CREDITS,
+      'ai_broker',
+      usageSummary
+    );
+
+    return plan;
   } catch (error: any) {
-    return createLocalAIPagePlanFallback(brief, [
-      error?.name === 'AbortError'
-        ? 'El broker IA supero el tiempo de espera. Se usó fallback editable.'
-        : 'No se pudo contactar el broker IA. Se usó fallback editable.'
-    ]);
+    if (fallbackAllowed) {
+      return createLocalAIPagePlanFallback(safeBrief, [
+        error?.name === 'AbortError'
+          ? 'El broker IA superó el tiempo de espera. Se usó una plantilla base editable.'
+          : 'No se pudo contactar el broker IA. Se usó una plantilla base editable.'
+      ]);
+    }
+    throw error?.name === 'AbortError'
+      ? new Error('El broker IA superó el tiempo de espera.')
+      : error;
   } finally {
     window.clearTimeout(timeout);
   }
 };
 
 export const analyzeReferenceUrl = async (
-  request: ReferenceUrlAnalysisRequest
+  request: ReferenceUrlAnalysisRequest & {
+    idempotencyKey?: string | null;
+  }
 ): Promise<ReferenceUrlAnalysis> => {
   const visualScanEnabled = import.meta.env.VITE_ENABLE_REFERENCE_URL_VISUAL_SCAN !== 'false';
   const visualScanUrl = import.meta.env.VITE_REFERENCE_URL_VISUAL_SCAN_URL
@@ -882,11 +1182,15 @@ export const analyzeReferenceUrl = async (
   const brokerUrl = import.meta.env.VITE_REFERENCE_URL_ANALYSIS_BROKER_URL
     || `${(import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api').replace(/\/$/, '')}/ai/reference-url/analyze`;
 
-  const authData = await getUploadAuthToken();
+  const authData = await getMotherApiAuthToken({ allowLaunch: true, forceRefreshSupabase: true });
+  if (!(authData.token || '').trim()) {
+    throw new Error('No hay una sesión válida para analizar URL de referencia.');
+  }
+
   const token = authData.token || '';
 
-  if (!token || token.split('.').length !== 3) {
-    throw new Error('No hay sesion valida para analizar URL de referencia.');
+  if (!token) {
+    throw new Error('No hay una sesión válida para analizar URL de referencia.');
   }
 
   if (visualScanEnabled && visualScanUrl && request.businessType?.trim()) {
@@ -987,7 +1291,7 @@ export const analyzeReferenceUrl = async (
       signal: controller.signal,
       body: JSON.stringify({
         ...request,
-        idempotencyKey: `website_ai_analyze_reference_url:${request.projectId}:${Date.now()}`
+        idempotencyKey: request.idempotencyKey || undefined
       })
     });
 
@@ -1073,25 +1377,36 @@ export const generateAIPagePlanFromReferenceAnalysis = async (
     tone?: string;
     cta?: string;
     instructions?: string;
+    idempotencyKey?: string | null;
   },
   brief: AIPageGenerationBrief
 ): Promise<AIPagePlan> => {
   const brokerEnabled = import.meta.env.VITE_ENABLE_REFERENCE_URL_PAGE_PLAN_BROKER === 'true';
   const brokerUrl = import.meta.env.VITE_REFERENCE_URL_PAGE_PLAN_BROKER_URL
     || `${(import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api').replace(/\/$/, '')}/ai/reference-url/generate-page-plan`;
+  const fallbackAllowed = shouldAllowAIPagePlanFallback();
 
   if (!brokerEnabled || !brokerUrl) {
+    if (fallbackAllowed) {
+      return createReferenceDrivenFallbackPlan(request, brief, [
+        'Broker IA seguro no configurado; se usó generación local editable basada en blueprint.'
+      ]);
+    }
+    throw new Error('El broker IA seguro no está configurado para esta generación.');
+  }
+
+  const authData = await getMotherApiAuthToken({ allowLaunch: true, forceRefreshSupabase: true });
+  if (!(authData.token || '').trim()) {
     return createReferenceDrivenFallbackPlan(request, brief, [
-      'Broker para generar desde URL no configurado; se usó fallback editable.'
+      'No hay una sesión válida para generar desde URL. Se usó fallback editable.'
     ]);
   }
 
-  const authData = await getUploadAuthToken();
   const token = authData.token || '';
 
-  if (!token || token.split('.').length !== 3) {
+  if (!token) {
     return createReferenceDrivenFallbackPlan(request, brief, [
-      'No hay sesion valida para generar desde URL. Se usó fallback editable.'
+      'No hay una sesión válida para generar desde URL. Se usó fallback editable.'
     ]);
   }
 
@@ -1108,7 +1423,7 @@ export const generateAIPagePlanFromReferenceAnalysis = async (
       signal: controller.signal,
       body: JSON.stringify({
         ...request,
-        idempotencyKey: `website_ai_generate_page_from_reference_url:${request.projectId}:${Date.now()}`
+        idempotencyKey: request.idempotencyKey || undefined
       })
     });
 
@@ -1136,7 +1451,7 @@ export const generateAIPagePlanFromReferenceAnalysis = async (
       const safeWarnings = Array.isArray(parsed?.warnings) ? parsed.warnings : [];
       const warning =
         response.status === 401
-          ? 'Sesion invalida o expirada para generar desde URL. Se usó fallback editable.'
+          ? 'Sesión inválida o expirada para generar desde URL. Se usó fallback editable.'
           : response.status === 402
             ? 'Créditos IA insuficientes para generar desde URL. Se usó fallback editable.'
             : response.status === 403
@@ -1148,7 +1463,8 @@ export const generateAIPagePlanFromReferenceAnalysis = async (
 
     const plan = validateAIPagePlan(parsed.plan, brief, {
       source: 'ai_broker',
-      generationMode: 'reference_url_broker'
+      generationMode: 'reference_url_broker',
+      allowedModuleTypes: ALLOWED_REFERENCE_AI_PAGE_MODULE_TYPES
     });
 
     return {
@@ -1165,7 +1481,7 @@ export const generateAIPagePlanFromReferenceAnalysis = async (
   } catch (error: any) {
     return createReferenceDrivenFallbackPlan(request, brief, [
       error?.name === 'AbortError'
-        ? 'La generacion desde URL supero el tiempo de espera. Se usó fallback editable.'
+        ? 'La generación desde URL superó el tiempo de espera. Se usó fallback editable.'
         : 'No se pudo contactar el broker para generar desde URL. Se usó fallback editable.'
     ]);
   } finally {
@@ -1217,7 +1533,14 @@ export const generateLandingWithMotherAI = async (
     dryRun: false // Aquí siempre es false porque el dryrun se maneja localmente
   };
 
-  const authData = await getUploadAuthToken();
+  const authData = await getMotherApiAuthToken({ allowLaunch: true, forceRefreshSupabase: true });
+  if (!(authData.token || '').trim()) {
+    return {
+      success: false,
+      error: 'No hay una sesión válida para generar con IA. Reabre el Constructor desde la App Madre o recarga el contexto.'
+    };
+  }
+
   const token = authData.token || '';
 
   console.log('[CONSTRUCTOR_LANDING_REAL_EXECUTION_START]', {
@@ -1228,10 +1551,10 @@ export const generateLandingWithMotherAI = async (
     idempotencyKey
   });
 
-  if (!token || token.split('.').length !== 3) {
+  if (!token) {
     return {
       success: false,
-      error: 'No hay access_token válido de Supabase. Abre el Constructor desde la App Madre o recarga contexto.'
+      error: 'No hay un token válido para generar con IA. Abre el Constructor desde la App Madre o recarga el contexto.'
     };
   }
 

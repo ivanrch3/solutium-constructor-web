@@ -72,8 +72,8 @@ import { BentoPromptGenerator } from './BentoPromptGenerator';
 import { BentoSchema } from '../../types/bentoSchema';
 
 const DEFAULT_PARALLAX_BG_IMAGE = '/parallax-default-centered.svg';
-import { generateSite, generateLandingWithMotherAI, generateLandingDryRunLocal, generateAIPagePlan, analyzeReferenceUrl, generateAIPagePlanFromReferenceAnalysis, MotherAIPageResponse, searchReferenceSectionImage } from '../../services/aiService';
-import { AIGenerationContext, AIPageGenerationBrief, AIPagePlan, ReferenceDebugInfo } from '../../types/ai';
+import { generateSite, generateLandingWithMotherAI, generateLandingDryRunLocal, generateAIPagePlan, analyzeReferenceUrl, generateAIPagePlanFromReferenceAnalysis, getProjectAICreditBalance, MotherAIPageResponse, searchReferenceSectionImage } from '../../services/aiService';
+import { AICreditBalanceSummary, AIGenerationContext, AIPageGenerationBrief, AIPagePlan, ReferenceDebugInfo } from '../../types/ai';
 import { ProjectForm, ProjectFormData } from '../ProjectForm';
 import { initialContent, useEditorStore } from '../../store/editorStore';
 import { logDebug } from '../../utils/debug';
@@ -135,6 +135,47 @@ const buildSafeReferenceDebugJson = (debug: ReferenceDebugInfo | null) => {
   };
 };
 
+type AILogicalAttemptFlow =
+  | 'landing'
+  | 'page_plan'
+  | 'reference_analysis'
+  | 'reference_generation';
+
+type AILogicalAttemptStatus = 'pending' | 'failed' | 'succeeded';
+
+interface AILogicalAttemptRecord {
+  key: string;
+  fingerprint: string;
+  status: AILogicalAttemptStatus;
+}
+
+const stableSerializeForIdempotency = (value: unknown): string => {
+  const normalize = (input: unknown): unknown => {
+    if (Array.isArray(input)) {
+      return input.map(normalize);
+    }
+
+    if (input && typeof input === 'object') {
+      return Object.keys(input as Record<string, unknown>)
+        .sort()
+        .reduce<Record<string, unknown>>((accumulator, key) => {
+          accumulator[key] = normalize((input as Record<string, unknown>)[key]);
+          return accumulator;
+        }, {});
+    }
+
+    return input;
+  };
+
+  return JSON.stringify(normalize(value));
+};
+
+const createAIIdempotencyKey = (prefix: string, projectId?: string | null) => {
+  const fallbackRandom = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  const randomPart = globalThis.crypto?.randomUUID?.() || fallbackRandom;
+  return `${prefix}:${projectId || 'unknown'}:${randomPart}`;
+};
+
 const ReferenceDebugFloatingPanel: React.FC<{ debug: ReferenceDebugInfo; onClose: () => void }> = ({ debug, onClose }) => {
   const [copied, setCopied] = useState(false);
   const warnings = Array.from(new Set(debug.warnings || []));
@@ -171,11 +212,11 @@ const ReferenceDebugFloatingPanel: React.FC<{ debug: ReferenceDebugInfo; onClose
         <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
           <div className="rounded-2xl bg-slate-50 p-3"><p className="font-black text-blue-700">visualScanUsed</p><p>{String(debug.visualScanUsed)}</p></div>
           <div className="rounded-2xl bg-slate-50 p-3"><p className="font-black text-blue-700">fallbackDomUsed</p><p>{String(debug.fallbackDomUsed)}</p></div>
-          <div className="rounded-2xl bg-slate-50 p-3"><p className="font-black text-blue-700">fallbackReason</p><p className="break-words">{debug.fallbackReason || 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â'}</p></div>
+          <div className="rounded-2xl bg-slate-50 p-3"><p className="font-black text-blue-700">fallbackReason</p><p className="break-words">{debug.fallbackReason || '—'}</p></div>
           <div className="rounded-2xl bg-slate-50 p-3"><p className="font-black text-blue-700">secciones</p><p>{debug.sections?.length || 0}</p></div>
         </div>
 
-        {debug.screenshot && <div className="rounded-2xl bg-slate-50 p-3"><p className="font-black text-blue-700">Visual scan</p><p>{debug.screenshot.width || 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â'}x{debug.screenshot.height || 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â'} Ãƒâ€šÃ‚Â· captured {debug.screenshot.capturedHeight || 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â'} Ãƒâ€šÃ‚Â· stored {String(Boolean(debug.screenshot.stored))}</p></div>}
+        {debug.screenshot && <div className="rounded-2xl bg-slate-50 p-3"><p className="font-black text-blue-700">Visual scan</p><p>{debug.screenshot.width || '—'}x{debug.screenshot.height || '—'} · captured {debug.screenshot.capturedHeight || '—'} · stored {String(Boolean(debug.screenshot.stored))}</p></div>}
 
         {debug.generation && <div className="grid grid-cols-2 gap-2 md:grid-cols-4">{Object.entries(debug.generation).map(([key, value]) => <div key={key} className="rounded-2xl bg-slate-50 p-3"><p className="font-black text-blue-700">{key}</p><p>{String(value)}</p></div>)}</div>}
 
@@ -184,7 +225,7 @@ const ReferenceDebugFloatingPanel: React.FC<{ debug: ReferenceDebugInfo; onClose
             <p className="mb-2 font-black text-blue-700">Secciones detectadas</p>
             <table className="min-w-full text-left text-[11px]">
               <thead><tr className="text-blue-700"><th className="pr-3">Sección</th><th className="pr-3">layout</th><th className="pr-3">roleHint</th><th className="pr-3">media</th><th className="pr-3">confidence</th><th className="pr-3">queryHint</th></tr></thead>
-              <tbody>{debug.sections.map(section => <tr key={`${section.index}-${section.layout}`}><td className="pr-3 font-bold">{section.index}</td><td className="pr-3">{section.layout}</td><td className="pr-3">{section.roleHint}</td><td className="pr-3">{String(section.media)}</td><td className="pr-3">{typeof section.confidence === 'number' ? Math.round(section.confidence * 100) + '%' : 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â'}</td><td className="pr-3">{section.queryHint || 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â'}</td></tr>)}</tbody>
+              <tbody>{debug.sections.map(section => <tr key={`${section.index}-${section.layout}`}><td className="pr-3 font-bold">{section.index}</td><td className="pr-3">{section.layout}</td><td className="pr-3">{section.roleHint}</td><td className="pr-3">{String(section.media)}</td><td className="pr-3">{typeof section.confidence === 'number' ? Math.round(section.confidence * 100) + '%' : '—'}</td><td className="pr-3">{section.queryHint || '—'}</td></tr>)}</tbody>
             </table>
           </div>
         )}
@@ -204,7 +245,7 @@ const ReferenceDebugFloatingPanel: React.FC<{ debug: ReferenceDebugInfo; onClose
             <p className="mb-2 font-black text-blue-700">Pexels / placeholders</p>
             <table className="min-w-full text-left text-[11px]">
               <thead><tr className="text-blue-700"><th className="pr-3">Sección</th><th className="pr-3">source</th><th className="pr-3">found</th><th className="pr-3">query</th><th className="pr-3">candidate</th><th className="pr-3">usedUrls</th><th className="pr-3">photographer</th><th className="pr-3">reused</th></tr></thead>
-              <tbody>{debug.pexels.map(row => <tr key={`${row.section}-${row.query || row.source}`}><td className="pr-3 font-bold">{row.section}</td><td className="pr-3">{row.source}</td><td className="pr-3">{String(row.found)}</td><td className="pr-3">{row.queryUsed || row.query || 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â'}</td><td className="pr-3">{typeof row.candidateIndex === 'number' ? row.candidateIndex + 1 : 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â'}</td><td className="pr-3">{row.usedImageUrlsCount || 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â'}</td><td className="pr-3">{row.photographer || 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â'}</td><td className="pr-3">{row.reusedCount && row.reusedCount > 1 ? row.reusedCount : 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â'}</td></tr>)}</tbody>
+              <tbody>{debug.pexels.map(row => <tr key={`${row.section}-${row.query || row.source}`}><td className="pr-3 font-bold">{row.section}</td><td className="pr-3">{row.source}</td><td className="pr-3">{String(row.found)}</td><td className="pr-3">{row.queryUsed || row.query || '—'}</td><td className="pr-3">{typeof row.candidateIndex === 'number' ? row.candidateIndex + 1 : '—'}</td><td className="pr-3">{row.usedImageUrlsCount || '—'}</td><td className="pr-3">{row.photographer || '—'}</td><td className="pr-3">{row.reusedCount && row.reusedCount > 1 ? row.reusedCount : '—'}</td></tr>)}</tbody>
             </table>
           </div>
         )}
@@ -705,7 +746,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     if (initialPage && (initialPage as any).siteId) return (initialPage as any).siteId;
     if (initialPage && (initialPage as any).web_builder_site_id) return (initialPage as any).web_builder_site_id;
 
-    // 2. Si es una página NUEVA, generamos un ID ÃƒÆ’Ã‚Âºnico para que sea independiente.
+    // 2. Si es una página NUEVA, generamos un ID único para que sea independiente.
     return crypto.randomUUID();
   });
 
@@ -1211,6 +1252,11 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [aiGenerationStep, setAiGenerationStep] = useState(0);
   const [aiPagePlan, setAiPagePlan] = useState<AIPagePlan | null>(null);
+  const [aiCreditBalance, setAiCreditBalance] = useState<AICreditBalanceSummary | null>(null);
+  const [isLoadingAICreditBalance, setIsLoadingAICreditBalance] = useState(false);
+  const [aiCreditBalanceError, setAiCreditBalanceError] = useState<string | null>(null);
+  const aiCreditBalanceRequestRef = useRef<Promise<void> | null>(null);
+  const aiCreditBalanceLoadedProjectRef = useRef<string | null>(null);
   const [lastReferenceDebug, setLastReferenceDebug] = useState<ReferenceDebugInfo | null>(() => {
     if (!isReferenceDebugEnabled()) return null;
     try {
@@ -1232,9 +1278,104 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   const [isMotherAIConfirmationOpen, setIsMotherAIConfirmationOpen] = useState(false);
   const [isDryRun, setIsDryRun] = useState(true); // Default to dry-run (preview)
   const [motherAIBrief, setMotherAIBrief] = useState<ProjectFormData | null>(null);
-  const [activeIdempotencyKey, setActiveIdempotencyKey] = useState<string | null>(null);
   const [aiUsageSuccess, setAiUsageSuccess] = useState<{costCredits: number, totalTokens: number, aiUsageLogId: string, isDryRun?: boolean} | null>(null);
   const isRunningRef = useRef(false); // Ref for blocking double clics
+  const aiAttemptRegistryRef = useRef<Record<AILogicalAttemptFlow, AILogicalAttemptRecord | null>>({
+    landing: null,
+    page_plan: null,
+    reference_analysis: null,
+    reference_generation: null
+  });
+
+  const getOrCreateAIAttemptKey = useCallback((
+    flow: AILogicalAttemptFlow,
+    prefix: string,
+    payload: unknown
+  ) => {
+    const fingerprint = stableSerializeForIdempotency(payload);
+    const existingAttempt = aiAttemptRegistryRef.current[flow];
+
+    if (
+      existingAttempt &&
+      existingAttempt.fingerprint === fingerprint &&
+      existingAttempt.status !== 'succeeded'
+    ) {
+      return existingAttempt.key;
+    }
+
+    const nextKey = createAIIdempotencyKey(prefix, projectId);
+    aiAttemptRegistryRef.current[flow] = {
+      key: nextKey,
+      fingerprint,
+      status: 'pending'
+    };
+    return nextKey;
+  }, [projectId]);
+
+  const updateAIAttemptStatus = useCallback((flow: AILogicalAttemptFlow, status: AILogicalAttemptStatus) => {
+    const currentAttempt = aiAttemptRegistryRef.current[flow];
+    if (!currentAttempt) return;
+    aiAttemptRegistryRef.current[flow] = {
+      ...currentAttempt,
+      status
+    };
+  }, []);
+
+  const loadAICreditBalance = useCallback((forceRefresh = false) => {
+    if (!projectId) return Promise.resolve();
+
+    if (!forceRefresh && aiCreditBalanceLoadedProjectRef.current === projectId && aiCreditBalance) {
+      return Promise.resolve();
+    }
+
+    if (aiCreditBalanceRequestRef.current) {
+      return aiCreditBalanceRequestRef.current;
+    }
+
+    const request = (async () => {
+
+    setIsLoadingAICreditBalance(true);
+    setAiCreditBalanceError(null);
+
+    try {
+      const balance = await getProjectAICreditBalance(projectId, { forceRefresh });
+      setAiCreditBalance(balance);
+      setAiCreditBalanceError(null);
+      aiCreditBalanceLoadedProjectRef.current = projectId;
+    } catch (error: any) {
+      setAiCreditBalance(null);
+      setAiCreditBalanceError(
+        error?.message || 'No pudimos validar tus crÃ©ditos de IA porque la sesiÃ³n no es vÃ¡lida. Actualiza la sesiÃ³n y vuelve a intentarlo.'
+      );
+    } finally {
+      setIsLoadingAICreditBalance(false);
+      aiCreditBalanceRequestRef.current = null;
+    }
+    })();
+
+    aiCreditBalanceRequestRef.current = request;
+    return request;
+  }, [aiCreditBalance, projectId]);
+
+  useEffect(() => {
+    if (!showAIInitialForm || !projectId) return;
+
+    let isCancelled = false;
+    void loadAICreditBalance().catch(() => {
+      if (!isCancelled) {
+        setIsLoadingAICreditBalance(false);
+      }
+    });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [showAIInitialForm, projectId, loadAICreditBalance]);
+
+  useEffect(() => {
+    aiCreditBalanceLoadedProjectRef.current = null;
+    aiCreditBalanceRequestRef.current = null;
+  }, [projectId]);
 
   const [isPreviewMode] = useState(() => {
     const params = new URLSearchParams(window.location.search);
@@ -1851,6 +1992,18 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
 
   const resolveAISectionModule = (section: AIPagePlan['sections'][number]): WebModule => {
     switch (section.moduleType) {
+      case 'navegacion':
+        return MENU_MODULE;
+      case 'hero':
+        return HERO_MODULE;
+      case 'products':
+        return PRODUCTS_MODULE;
+      case 'stats':
+        return STATS_MODULE;
+      case 'newsletter':
+        return NEWSLETTER_MODULE;
+      case 'team':
+        return TEAM_MODULE;
       case 'contact':
         return CONTACT_MODULE;
       case 'genius_web_wa':
@@ -1867,6 +2020,20 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         return FEATURES_MODULE;
       case 'process':
         return PROCESS_MODULE;
+      case 'dynamic_cards':
+        return DYNAMIC_CARDS_MODULE;
+      case 'pricing':
+        return PRICING_MODULE;
+      case 'trusted_logos':
+        return TRUSTED_LOGOS_MODULE;
+      case 'comparative':
+        return COMPARISON_MODULE;
+      case 'footer':
+        return FOOTER_MODULE;
+      case 'video':
+        return VIDEO_MODULE;
+      case 'spacer':
+        return SPACER_MODULE;
       case 'composition_section':
       default:
         return COMPOSITION_SECTION_MODULE;
@@ -1911,7 +2078,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       }
 
       if (nextElement.type === 'button' && nextElement.content) {
-        const label = section.content.cta || nextElement.content.label || 'Solicitar informacion';
+        const label = section.content.cta || nextElement.content.label || 'Solicitar información';
         nextElement.content.label = label;
         nextElement.content.href = nextElement.content.href || '#';
         nextElement.actions = [{ type: 'link', target: nextElement.content.href, label }];
@@ -1978,6 +2145,374 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       });
     });
 
+    const setValueIfPresent = (key: string, value: any) => {
+      if (key in initialValues) {
+        initialValues[key] = value;
+      }
+    };
+
+    const findElementId = (elementSuffix: string) =>
+      newElements.find(element => element.id.endsWith(`_${elementSuffix}`))?.id;
+
+    const disableModuleAnimations = () => {
+      setValueIfPresent(`${moduleId}_global_entrance_anim`, false);
+      setValueIfPresent(`${moduleId}_global_stagger_anim`, false);
+      setValueIfPresent(`${moduleId}_global_show_floating_assets`, false);
+
+      const heroTypographyId = findElementId('el_hero_typography');
+      const heroMediaId = findElementId('el_hero_media');
+      const ctaActionsId = findElementId('el_cta_actions');
+      const dynamicCardsId = findElementId('el_dynamic_cards_cards');
+
+      if (baseModule.type === 'hero') {
+        setValueIfPresent(`${moduleId}_global_entrance_anim`, 'none');
+        if (heroTypographyId) {
+          setValueIfPresent(`${heroTypographyId}_title_mode`, 'static');
+          setValueIfPresent(`${heroTypographyId}_rotating_anim`, 'fade');
+          setValueIfPresent(`${heroTypographyId}_rotating_speed`, 3000);
+        }
+        if (heroMediaId) {
+          setValueIfPresent(`${heroMediaId}_floating_anim`, false);
+        }
+      }
+
+      if (baseModule.type === 'cta' && ctaActionsId) {
+        setValueIfPresent(`${ctaActionsId}_enable_shimmer`, false);
+        setValueIfPresent(`${ctaActionsId}_magnetic_button`, false);
+      }
+
+      if (baseModule.type === 'dynamic_cards' && dynamicCardsId) {
+        const cardsKey = `${dynamicCardsId}_cards`;
+        if (Array.isArray(initialValues[cardsKey])) {
+          initialValues[cardsKey] = initialValues[cardsKey].map((card: any) => ({
+            ...card,
+            titleEnterAnimation: 'none',
+            titleExitAnimation: 'none',
+            bodyEnterAnimation: 'none',
+            bodyExitAnimation: 'none',
+            ctaAnimation: 'none',
+            ctaExitAnimation: 'none',
+            effect: 'none'
+          }));
+        }
+      }
+    };
+
+    const applyAISectionContent = () => {
+      if (!section) return;
+
+      const menuLogoId = findElementId('el_menu_logo');
+      const menuItemsId = findElementId('el_menu_items');
+      const heroTypographyId = findElementId('el_hero_typography');
+      const heroMediaId = findElementId('el_hero_media');
+      const heroCtasId = findElementId('el_hero_ctas');
+      const featuresHeaderId = findElementId('el_features_header');
+      const featureCardId = findElementId('el_feature_card');
+      const processHeaderId = findElementId('el_process_header');
+      const processItemsId = findElementId('el_process_items');
+      const galleryHeaderId = findElementId('el_gallery_header');
+      const galleryFiltersId = findElementId('el_gallery_filters');
+      const galleryItemsId = findElementId('el_gallery_items');
+      const dynamicCardsId = findElementId('el_dynamic_cards_cards');
+      const testimonialHeaderId = findElementId('el_testimonials_header');
+      const testimonialItemsId = findElementId('el_testimonial_items');
+      const faqHeaderId = findElementId('el_faq_header');
+      const faqSearchId = findElementId('el_faq_search');
+      const faqItemId = findElementId('el_faq_item');
+      const faqCtaId = findElementId('el_faq_cta');
+      const ctaContentId = findElementId('el_cta_content');
+      const ctaActionsId = findElementId('el_cta_actions');
+      const contactHeaderId = findElementId('el_contact_header');
+      const contactFormId = findElementId('el_contact_form');
+      const footerBrandId = findElementId('el_footer_brand');
+      const footerContactId = findElementId('el_footer_contact');
+      const footerBottomId = findElementId('el_footer_bottom');
+
+      switch (section.moduleType) {
+        case 'navegacion':
+          if (menuLogoId) {
+            setValueIfPresent(`${menuLogoId}_logo_type`, 'text');
+            setValueIfPresent(`${menuLogoId}_logo_text`, String((section.content as any).logoText || project?.name || 'Marca'));
+            setValueIfPresent(`${menuLogoId}_logo_link_type`, 'home');
+          }
+          if (menuItemsId) {
+            setValueIfPresent(
+              `${menuItemsId}_links`,
+              Array.isArray((section.content as any).links)
+                ? (section.content as any).links.map((link: any) => ({
+                    label: String(link.label || 'Enlace'),
+                    url: String(link.url || '#'),
+                    icon: '',
+                    badge: ''
+                  }))
+                : []
+            );
+          }
+          setValueIfPresent(`${moduleId}_global_position`, 'relative');
+          break;
+        case 'hero':
+          setValueIfPresent(`${moduleId}_global_entrance_anim`, 'none');
+          if (heroTypographyId) {
+            setValueIfPresent(`${heroTypographyId}_title_mode`, 'static');
+            setValueIfPresent(`${heroTypographyId}_eyebrow`, String((section.content as any).eyebrow || ''));
+            setValueIfPresent(`${heroTypographyId}_title`, String((section.content as any).title || section.title));
+            setValueIfPresent(`${heroTypographyId}_subtitle`, String((section.content as any).description || ''));
+          }
+          if (heroCtasId) {
+            setValueIfPresent(`${heroCtasId}_primary_text`, String((section.content as any).cta || 'Solicitar información'));
+            setValueIfPresent(`${heroCtasId}_show_secondary`, Boolean((section.content as any).secondaryCta));
+            setValueIfPresent(`${heroCtasId}_secondary_text`, String((section.content as any).secondaryCta || ''));
+          }
+          if (heroMediaId) {
+            setValueIfPresent(`${heroMediaId}_floating_anim`, false);
+            if ((section.content as any).imageUrl) {
+              setValueIfPresent(`${heroMediaId}_image`, String((section.content as any).imageUrl));
+            }
+          }
+          break;
+        case 'features':
+          if (featuresHeaderId) {
+            setValueIfPresent(`${featuresHeaderId}_eyebrow`, String((section.content as any).eyebrow || ''));
+            setValueIfPresent(`${featuresHeaderId}_title`, String((section.content as any).title || section.title));
+            setValueIfPresent(`${featuresHeaderId}_subtitle`, String((section.content as any).description || ''));
+          }
+          if (featureCardId) {
+            const featureItems = Array.isArray((section.content as any).featureItems)
+              ? (section.content as any).featureItems
+              : Array.isArray((section.content as any).showcaseItems)
+                ? (section.content as any).showcaseItems
+                : [];
+            setValueIfPresent(
+              `${featureCardId}_items`,
+              featureItems.map((item: any) => ({
+                title: String(item.title || item.name || 'Elemento'),
+                desc: item.price ? `${String(item.description || '')} · ${String(item.price)}` : String(item.description || ''),
+                media_type: item.imageUrl ? 'image' : 'icon',
+                icon: String(item.icon || (section.id === 'featured_menu' ? 'Utensils' : 'BadgeCheck')),
+                image: String(item.imageUrl || ''),
+                link_text: String(item.tag || '')
+              }))
+            );
+          }
+          setValueIfPresent(`${moduleId}_global_stagger_anim`, false);
+          break;
+        case 'process':
+          if (processHeaderId) {
+            setValueIfPresent(`${processHeaderId}_eyebrow`, String((section.content as any).eyebrow || 'Proceso'));
+            setValueIfPresent(`${processHeaderId}_title`, String((section.content as any).title || section.title));
+            setValueIfPresent(`${processHeaderId}_subtitle`, String((section.content as any).description || ''));
+          }
+          if (processItemsId) {
+            setValueIfPresent(
+              `${processItemsId}_items`,
+              (Array.isArray((section.content as any).processItems) ? (section.content as any).processItems : []).map((item: any, index: number) => ({
+                title: String(item.name || item.title || `Paso ${index + 1}`),
+                desc: String(item.description || ''),
+                icon: String(item.icon || 'ArrowRight'),
+                badge: String(item.tag || `Paso ${index + 1}`),
+                image: String(item.imageUrl || '')
+              }))
+            );
+          }
+          break;
+        case 'dynamic_cards':
+          setValueIfPresent(`${moduleId}_global_navigation_mode`, 'dots');
+          setValueIfPresent(`${moduleId}_global_show_arrows`, false);
+          setValueIfPresent(`${moduleId}_global_show_dots`, true);
+          setValueIfPresent(`${moduleId}_global_interval_seconds`, 6);
+          setValueIfPresent(`${moduleId}_global_use_global_card_background`, true);
+          setValueIfPresent(`${moduleId}_global_global_background_type`, 'gradient');
+          setValueIfPresent(`${moduleId}_global_global_gradient_from`, '#14532D');
+          setValueIfPresent(`${moduleId}_global_global_gradient_to`, '#15803D');
+          setValueIfPresent(`${moduleId}_global_global_effect`, 'none');
+          setValueIfPresent(`${moduleId}_global_global_density`, 'low');
+          setValueIfPresent(`${moduleId}_global_global_speed`, 'slow');
+          setValueIfPresent(`${moduleId}_global_global_title_enter_animation`, 'none');
+          setValueIfPresent(`${moduleId}_global_global_title_exit_animation`, 'none');
+          setValueIfPresent(`${moduleId}_global_global_body_enter_animation`, 'none');
+          setValueIfPresent(`${moduleId}_global_global_body_exit_animation`, 'none');
+          setValueIfPresent(`${moduleId}_global_global_cta_enter_animation`, 'none');
+          setValueIfPresent(`${moduleId}_global_global_cta_exit_animation`, 'none');
+
+          if (dynamicCardsId) {
+            const showcaseItems = Array.isArray((section.content as any).showcaseItems)
+              ? (section.content as any).showcaseItems
+              : [];
+            const cards = showcaseItems.map((item: any, index: number) => {
+              const bullets = [item.tag, item.price].filter(Boolean).join('\n');
+              return {
+                id: `${section.id}-card-${index + 1}`,
+                enabled: true,
+                backgroundType: item.imageUrl ? 'image' : 'gradient',
+                bgColor: '#14532D',
+                gradientFrom: '#14532D',
+                gradientTo: '#15803D',
+                gradientDirection: '135deg',
+                bgImage: String(item.imageUrl || ''),
+                overlayEnabled: true,
+                overlayColor: '#052E16',
+                overlayOpacity: item.imageUrl ? 38 : 18,
+                imageFit: 'cover',
+                imagePosition: 'center',
+                effect: 'none',
+                effectSpeed: 'slow',
+                effectDensity: 'low',
+                effectDirection: 'ltr',
+                showPrimaryText: true,
+                titleText: String(item.name || item.title || `Destacado ${index + 1}`),
+                titleEnterAnimation: 'none',
+                titleExitAnimation: 'none',
+                bodyText: String(item.description || ''),
+                showBody: true,
+                showBullets: Boolean(bullets),
+                bullets,
+                bulletIcon: 'UtensilsCrossed',
+                bulletColor: '#BBF7D0',
+                bodyEnterAnimation: 'none',
+                bodyExitAnimation: 'none',
+                ctaEnabled: false,
+                ctaText: '',
+                ctaUrl: '#',
+                ctaAnimation: 'none',
+                ctaExitAnimation: 'none'
+              };
+            });
+
+            if (cards.length > 0) {
+              setValueIfPresent(`${dynamicCardsId}_cards`, cards);
+            }
+          }
+          break;
+        case 'gallery': {
+          const galleryItems = Array.isArray((section.content as any).galleryItems)
+            ? (section.content as any).galleryItems
+            : [];
+          const generatedGalleryCategories = Array.from(
+            new Set(
+              galleryItems
+                .map((item: any) => String(item.category || '').trim())
+                .filter(Boolean)
+            )
+          );
+
+          if (galleryHeaderId) {
+            setValueIfPresent(`${galleryHeaderId}_eyebrow`, String((section.content as any).eyebrow || 'Galería'));
+            setValueIfPresent(`${galleryHeaderId}_title`, String((section.content as any).title || section.title));
+            setValueIfPresent(`${galleryHeaderId}_subtitle`, String((section.content as any).description || ''));
+          }
+          if (galleryFiltersId && generatedGalleryCategories.length > 0) {
+            setValueIfPresent(`${galleryFiltersId}_categories`, generatedGalleryCategories.join(', '));
+          }
+          if (galleryItemsId) {
+            setValueIfPresent(
+              `${galleryItemsId}_items`,
+              galleryItems.map((item: any) => ({
+                title: String(item.title || 'Imagen'),
+                desc: String(item.description || ''),
+                category: String(item.category || 'Galería'),
+                url: String(item.imageUrl || '')
+              }))
+            );
+          }
+          break;
+        }
+          break;
+        case 'testimonials':
+          if (testimonialHeaderId) {
+            setValueIfPresent(`${testimonialHeaderId}_eyebrow`, String((section.content as any).eyebrow || 'Testimonios'));
+            setValueIfPresent(`${testimonialHeaderId}_title`, String((section.content as any).title || section.title));
+            setValueIfPresent(`${testimonialHeaderId}_subtitle`, String((section.content as any).description || ''));
+          }
+          if (testimonialItemsId) {
+            setValueIfPresent(
+              `${testimonialItemsId}_items`,
+              (Array.isArray((section.content as any).testimonialItems) ? (section.content as any).testimonialItems : []).map((item: any, index: number) => ({
+                author: String(item.author || `Cliente ${index + 1}`),
+                role: String(item.role || 'Cliente'),
+                text: String(item.text || ''),
+                stars: Number(item.stars || 5),
+                avatar: '',
+                logo: ''
+              }))
+            );
+          }
+          break;
+        case 'faq':
+          if (faqHeaderId) {
+            setValueIfPresent(`${faqHeaderId}_eyebrow`, String((section.content as any).eyebrow || 'FAQ'));
+            setValueIfPresent(`${faqHeaderId}_title`, String((section.content as any).title || section.title));
+            setValueIfPresent(`${faqHeaderId}_subtitle`, String((section.content as any).description || ''));
+          }
+          if (faqItemId) {
+            setValueIfPresent(
+              `${faqItemId}_faqs`,
+              (Array.isArray((section.content as any).faqItems) ? (section.content as any).faqItems : []).map((item: any) => ({
+                category: String(item.category || 'general'),
+                question: String(item.question || ''),
+                answer: String(item.answer || ''),
+                icon: 'HelpCircle'
+              }))
+            );
+          }
+          if (faqCtaId) {
+            setValueIfPresent(`${faqCtaId}_cta_text`, String((section.content as any).ctaText || ''));
+            setValueIfPresent(`${faqCtaId}_btn_text`, String((section.content as any).buttonText || ''));
+          }
+          if (faqSearchId) {
+            setValueIfPresent(`${faqSearchId}_show_search`, false);
+          }
+          break;
+        case 'cta':
+          setValueIfPresent(`${moduleId}_global_entrance_anim`, false);
+          setValueIfPresent(`${moduleId}_global_show_floating_assets`, false);
+          if (ctaContentId) {
+            setValueIfPresent(`${ctaContentId}_title`, String((section.content as any).title || section.title));
+            setValueIfPresent(`${ctaContentId}_subtitle`, String((section.content as any).description || ''));
+          }
+          if (ctaActionsId) {
+            setValueIfPresent(`${ctaActionsId}_primary_text`, String((section.content as any).cta || 'Solicitar información'));
+            setValueIfPresent(`${ctaActionsId}_secondary_text`, String((section.content as any).secondaryCta || ''));
+            setValueIfPresent(`${ctaActionsId}_show_secondary`, Boolean((section.content as any).secondaryCta));
+            setValueIfPresent(`${ctaActionsId}_enable_shimmer`, false);
+            setValueIfPresent(`${ctaActionsId}_magnetic_button`, false);
+          }
+          break;
+        case 'contact':
+          setValueIfPresent(`${moduleId}_global_entrance_anim`, false);
+          if (contactHeaderId) {
+            setValueIfPresent(`${contactHeaderId}_title`, String((section.content as any).title || section.title));
+            setValueIfPresent(`${contactHeaderId}_subtitle`, String((section.content as any).description || ''));
+          }
+          if (contactFormId) {
+            setValueIfPresent(`${contactFormId}_phone`, String((section.content as any).phone || project?.whatsapp || ''));
+            setValueIfPresent(`${contactFormId}_whatsapp_number`, String((section.content as any).whatsapp || project?.whatsapp || ''));
+            setValueIfPresent(`${contactFormId}_email`, String((section.content as any).email || project?.email || ''));
+            setValueIfPresent(`${contactFormId}_address`, String((section.content as any).address || project?.address || ''));
+            setValueIfPresent(`${contactFormId}_button_text`, String((section.content as any).cta || 'Solicitar información'));
+          }
+          break;
+        case 'footer':
+          if (footerBrandId) {
+            setValueIfPresent(`${footerBrandId}_show_logo`, false);
+            setValueIfPresent(`${footerBrandId}_bio`, String((section.content as any).description || ''));
+          }
+          if (footerContactId) {
+            setValueIfPresent(`${footerContactId}_phone`, String((section.content as any).phone || project?.whatsapp || ''));
+            setValueIfPresent(`${footerContactId}_email`, String((section.content as any).email || project?.email || ''));
+            setValueIfPresent(`${footerContactId}_address`, String((section.content as any).address || project?.address || ''));
+          }
+          if (footerBottomId) {
+            setValueIfPresent(`${footerBottomId}_copyright`, String((section.content as any).copyright || ''));
+          }
+          break;
+        default:
+          break;
+      }
+    };
+
+    disableModuleAnimations();
+    applyAISectionContent();
+
     const newModule: WebModule = {
       ...baseModule,
       id: moduleId,
@@ -1994,15 +2529,38 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     setAiError(null);
     try {
       await new Promise(resolve => setTimeout(resolve, 650));
-      setAiPagePlan(await generateAIPagePlan({
+      const enrichedBrief = {
         ...brief,
         businessName: brief.businessName || project?.name || siteName
+      };
+      const idempotencyKey = getOrCreateAIAttemptKey(
+        'page_plan',
+        'website_ai_generate_page',
+        {
+          projectId,
+          siteId: currentSiteId,
+          brief: enrichedBrief
+        }
+      );
+      const generatedPlan = await generateAIPagePlan({
+        ...enrichedBrief
       }, {
         projectId,
         siteId: currentSiteId,
-        userId: currentUserId
-      }));
+        userId: currentUserId,
+        idempotencyKey,
+        forceFallback: true
+      });
+
+      updateAIAttemptStatus('page_plan', 'succeeded');
+      setAiPagePlan(generatedPlan);
+      if (generatedPlan.usageSummary?.balanceAfter) {
+        setAiCreditBalance(generatedPlan.usageSummary.balanceAfter);
+      } else if (generatedPlan.usageSummary?.balanceBefore) {
+        setAiCreditBalance(generatedPlan.usageSummary.balanceBefore);
+      }
     } catch (error: any) {
+      updateAIAttemptStatus('page_plan', 'failed');
       setAiError(error.message || 'No se pudo generar el plan de pagina.');
     } finally {
       setIsGeneratingAI(false);
@@ -2016,11 +2574,29 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     tone?: string;
     cta?: string;
   }) => {
-    return analyzeReferenceUrl({
-      projectId,
-      siteId: currentSiteId,
-      ...request
-    });
+    const idempotencyKey = getOrCreateAIAttemptKey(
+      'reference_analysis',
+      'website_ai_analyze_reference_url',
+      {
+        projectId,
+        siteId: currentSiteId,
+        request
+      }
+    );
+
+    try {
+      const response = await analyzeReferenceUrl({
+        projectId,
+        siteId: currentSiteId,
+        ...request,
+        idempotencyKey
+      });
+      updateAIAttemptStatus('reference_analysis', 'succeeded');
+      return response;
+    } catch (error) {
+      updateAIAttemptStatus('reference_analysis', 'failed');
+      throw error;
+    }
   };
 
   const buildReferenceDebugQuery = (businessType: string, intent?: string, sectionIndex = 1) => {
@@ -2031,7 +2607,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       if (intent === 'feature_grid' || intent === 'benefits_grid') return 'ingredientes frescos para batidos';
       if (intent === 'social_proof') return 'clientes satisfechos tomando batidos';
       if (intent === 'final_cta') return 'promociones de bebidas naturales';
-      return sectionIndex % 2 === 0 ? 'menÃƒÆ’Ã‚Âº de batidos naturales' : 'frutas frescas y bebidas saludables';
+        if (intent === 'hero_visual') return 'menú de batidos naturales';
     }
     if (lowerBusiness.includes('crm') || lowerBusiness.includes('software')) {
       if (intent === 'hero_visual') return 'business dashboard team workflow';
@@ -2405,9 +2981,19 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         pageGoal: request.pageGoal || 'conseguir clientes potenciales',
         instructions: request.instructions || 'Generar una pagina original inspirada en la estructura de referencia.',
         tone: (request.tone as any) || 'profesional',
-        primaryCta: request.cta || 'Solicitar informacion',
+        primaryCta: request.cta || 'Solicitar información',
         businessName: project?.name || siteName
       };
+      const idempotencyKey = getOrCreateAIAttemptKey(
+        'reference_generation',
+        'website_ai_generate_page_from_reference_url',
+        {
+          projectId,
+          siteId: currentSiteId,
+          request,
+          brief
+        }
+      );
 
       const generatedPlan = await generateAIPagePlanFromReferenceAnalysis({
         projectId,
@@ -2418,7 +3004,8 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         pageGoal: request.pageGoal,
         tone: request.tone,
         cta: request.cta,
-        instructions: request.instructions
+        instructions: request.instructions,
+        idempotencyKey
       }, brief);
       const enrichedPlan = await enrichReferencePlanWithMasterSchemas({
         ...generatedPlan,
@@ -2459,9 +3046,11 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
           // Debug persistence is best-effort only.
         }
       }
+      updateAIAttemptStatus('reference_generation', 'succeeded');
       setAiPagePlan(enrichedPlan);
       applyAIPagePlanToEditor(enrichedPlan);
     } catch (error: any) {
+      updateAIAttemptStatus('reference_generation', 'failed');
       setAiError(error.message || 'No se pudo generar la pagina desde la referencia.');
     } finally {
       setIsGeneratingAI(false);
@@ -2474,6 +3063,19 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     updateEditorState(prev => {
       const nextSettings = { ...prev.settingsValues };
       const nextModules: WebModule[] = [];
+      const sectionRuntimeMap = new Map<string, { section: AIPagePlan['sections'][number]; moduleId: string; module: WebModule }>();
+      const sectionAliasMap = new Map<string, string>();
+
+      const registerSectionAliases = (sectionId: string) => {
+        const normalized = String(sectionId || '').trim();
+        if (!normalized) return;
+        const aliases = [
+          normalized,
+          normalized.replace(/_/g, '-'),
+          normalized.replace(/-/g, '_')
+        ];
+        aliases.forEach(alias => sectionAliasMap.set(alias, normalized));
+      };
 
       planToApply.sections.forEach(section => {
         const baseModule = resolveAISectionModule(section);
@@ -2488,7 +3090,82 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
 
         nextSettings[getShowInMenuKey(moduleId)] = isMenuEligibleModule(baseModule);
         nextModules.push(newModule);
+        registerSectionAliases(section.id);
+        sectionRuntimeMap.set(section.id, { section, moduleId, module: newModule });
       });
+
+      const menuRuntime = planToApply.sections
+        .map(section => sectionRuntimeMap.get(section.id))
+        .find((entry) => entry?.section.moduleType === 'navegacion');
+
+      if (menuRuntime) {
+        const menuItemsElementId = menuRuntime.module.elements.find(element => element.id.endsWith('_el_menu_items'))?.id;
+        if (menuItemsElementId) {
+          const rawLinks = Array.isArray((menuRuntime.section.content as any).links)
+            ? (menuRuntime.section.content as any).links
+            : [];
+
+          const normalizedLinks = rawLinks
+            .map((link: any) => {
+              const rawUrl = String(link?.url || link?.href || '').trim();
+              if (!rawUrl || rawUrl === '#top') {
+                return {
+                  label: String(link?.label || 'Inicio'),
+                  url: '#top',
+                  href: '#top',
+                  targetSectionId: '',
+                  moduleId: '',
+                  icon: '',
+                  badge: ''
+                };
+              }
+
+              const normalizedTarget = String(rawUrl)
+                .replace(/^#/, '')
+                .replace(/^section-/, '')
+                .trim();
+              const canonicalSectionId = sectionAliasMap.get(normalizedTarget);
+              if (!canonicalSectionId) return null;
+
+              const targetRuntime = sectionRuntimeMap.get(canonicalSectionId);
+              if (!targetRuntime || targetRuntime.section.moduleType === 'navegacion') return null;
+
+              const href = resolveSectionHref(targetRuntime.moduleId);
+              return {
+                label: String(link?.label || targetRuntime.section.summaryLabel || targetRuntime.section.title || 'Sección'),
+                url: href,
+                href,
+                targetSectionId: targetRuntime.moduleId,
+                moduleId: targetRuntime.moduleId,
+                icon: '',
+                badge: ''
+              };
+            })
+            .filter(Boolean);
+
+          const fallbackLinks = planToApply.sections
+            .map(section => sectionRuntimeMap.get(section.id))
+            .filter((entry): entry is { section: AIPagePlan['sections'][number]; moduleId: string; module: WebModule } =>
+              Boolean(entry && entry.section.moduleType !== 'navegacion' && entry.section.moduleType !== 'footer')
+            )
+            .map((entry) => {
+              const href = resolveSectionHref(entry.moduleId);
+              return {
+                label: String(entry.section.summaryLabel || entry.section.title || 'Sección'),
+                url: href,
+                href,
+                targetSectionId: entry.moduleId,
+                moduleId: entry.moduleId,
+                icon: '',
+                badge: ''
+              };
+            });
+
+          nextSettings[`${menuItemsElementId}_links`] = dedupeMenuLinks(
+            normalizedLinks.length > 0 ? normalizedLinks : fallbackLinks
+          );
+        }
+      }
 
       return {
         ...prev,
@@ -2516,10 +3193,6 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     // [PHASE 3D.5.2] INTERCEPTAMOS EL FLUJO PARA USAR EL ENDPOINT SEGURO
     setMotherAIBrief(data);
     setIsMotherAIConfirmationOpen(true);
-
-    // Generar key persistente para este intento
-    const key = `web-landing-${projectId || 'anon'}-${Date.now()}`;
-    setActiveIdempotencyKey(key);
   };
 
   const executeSecureAIGeneration = async () => {
@@ -2528,10 +3201,20 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       return;
     }
 
+    const idempotencyKey = getOrCreateAIAttemptKey(
+      'landing',
+      'web_ai_generate_landing',
+      {
+        projectId,
+        isDryRun,
+        brief: motherAIBrief
+      }
+    );
+
     // Bloquear dobles clics
     if (isRunningRef.current) {
       logDebug('[CONSTRUCTOR_GENERATE_LANDING_DUPLICATE_BLOCKED]', {
-        idempotencyKey: activeIdempotencyKey,
+        idempotencyKey,
         actionSlug: 'web_ai_generate_landing'
       });
       return;
@@ -2542,7 +3225,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       willCallBackend: !isDryRun,
       estimatedCostCredits: 15,
       actionSlug: 'web_ai_generate_landing',
-      idempotencyKey: activeIdempotencyKey
+      idempotencyKey
     });
 
     isRunningRef.current = true;
@@ -2565,7 +3248,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
           actionSlug: 'web_ai_generate_landing'
         });
 
-        // Simular un pequeÃƒÆ’Ã‚Â±o delay para feedback visual
+        // Simular un pequeño delay para feedback visual
         await new Promise(resolve => setTimeout(resolve, 1500));
 
         response = generateLandingDryRunLocal({
@@ -2584,7 +3267,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
             style: motherAIBrief.style || 'Moderno',
             targetAudience: motherAIBrief.targetAudience || 'Clientes potenciales'
           },
-          activeIdempotencyKey!,
+          idempotencyKey,
           { isDryRun: false }
         );
       }
@@ -2596,6 +3279,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       }
 
       if (isDryRun) {
+        updateAIAttemptStatus('landing', 'succeeded');
         setIsGeneratingAI(false);
         // [FASE 4] Mostrar estado SIMULADO
         setAiUsageSuccess({
@@ -2614,7 +3298,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         throw new Error("El servidor no devolvió secciones válidas.");
       }
 
-      // [PROTOCOL 13.1] HIDRATACIÃƒÆ’Ã¢â‚¬Å“N DESDE BACKEND SEGURO
+      // [PROTOCOL 13.1] HIDRATACIÓN DESDE BACKEND SEGURO
       updateEditorState(prev => {
         let newSettings = { ...prev.settingsValues };
         const newAddedModules: WebModule[] = [];
@@ -2675,9 +3359,10 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         totalTokens: response.usage?.totalTokens || 0,
         aiUsageLogId: response.usage?.aiUsageLogId || 'unknown'
       });
+      updateAIAttemptStatus('landing', 'succeeded');
 
       logDebug('[CONSTRUCTOR_GENERATE_LANDING_REAL_SUCCESS]', {
-        idempotencyKey: activeIdempotencyKey,
+        idempotencyKey,
         costCredits: cost
       });
 
@@ -2687,6 +3372,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       setOnboardingFinished(true);
 
     } catch (err: any) {
+      updateAIAttemptStatus('landing', 'failed');
       console.error('[AI_GENERATION_ERROR]', err);
       setAiError(err.message || 'Error en la generación segura.');
       setIsGeneratingAI(false);
@@ -2991,7 +3677,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
                 val = project?.industry || `Servicios profesionales de ${project?.name}`;
               }
               if (setting.id === 'copyright' && project?.name) {
-                val = `Ãƒâ€šÃ‚Â© ${new Date().getFullYear()} ${project.name}. Todos los derechos reservados.`;
+                val = `© ${new Date().getFullYear()} ${project.name}. Todos los derechos reservados.`;
               }
             }
 
@@ -3392,6 +4078,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
 
 // Helper to check for persistent UUIDs (Solutium Protocol v2.0)
 const isUUID = (str: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+const isPersistentModuleInstanceId = (value: string) => /^mod_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 
 const migrateEditorStateToUUIDs = (state: any): any => {
   let changed = false;
@@ -3400,9 +4087,9 @@ const migrateEditorStateToUUIDs = (state: any): any => {
 
   const addedModules = state.addedModules || [];
   const newAddedModules = addedModules.map((mod: any) => {
-    if (!isUUID(mod.id)) {
+    if (!isUUID(mod.id) && !isPersistentModuleInstanceId(mod.id)) {
       const oldId = mod.id;
-      const newId = crypto.randomUUID();
+      const newId = `mod_${crypto.randomUUID()}`;
       changed = true;
 
       const updatedMod = { ...mod, id: newId };
@@ -3514,11 +4201,11 @@ const formatTimestampName = () => {
       return rawValue;
     };
 
-    // --- ORDEN DE SERIALIZACIÃƒÆ’Ã¢â‚¬Å“N BIT-A-BIT (PROTOCOLO SOLUTIUM v2.3) ---
+    // --- ORDEN DE SERIALIZACIÓN EXPLÍCITA OBLIGATORIA & Booleans
     const atomicTransform = (key: string, value: any) => {
       const result: Record<string, any> = {};
 
-      // 1. ColometrÃƒÆ’Ã‚Â­a Detallada (Standard --sv-)
+      // 1. Colorimetría Detallada (Standard --sv-)
       if (typeof value === 'string' && (value.startsWith('#') || value.startsWith('rgba') || value.startsWith('rgb') || value.includes('var('))) {
         const varName = value.includes('var(') ? value.match(/var\(([^)]+)\)/)?.[1] : `--sv-${key.replace(/_/g, '-')}`;
         result[`${key}_hex`] = value.startsWith('#') ? value : null;
@@ -3529,7 +4216,7 @@ const formatTimestampName = () => {
         return result;
       }
 
-      // 2. Dimensiones Bit-a-Bit con Unidad ExplÃƒÆ’Ã‚Â­cita
+      // 2. Dimensiones Bit-a-Bit con Unidad Explícita
       const dimensionKeys = ['radius', 'gap', 'padding', 'width', 'height', 'thickness', 'size', 'margin', 'offset', 'letter_spacing', 'line_height', 'blur', 'spread'];
       if (typeof value === 'number' && dimensionKeys.some(dk => key.includes(dk))) {
         let unit = 'px';
@@ -3556,7 +4243,7 @@ const formatTimestampName = () => {
         };
       }
 
-      // 4. TipografÃƒÆ’Ã‚Â­a Obligatoria & Booleans
+      // 4. Tipografía Obligatoria & Booleans
       result[key] = value;
       return result;
     };
@@ -3687,6 +4374,10 @@ const formatTimestampName = () => {
 
             // Allocation to Styles/Settings & Audit Specs (Solutium Protocol v2.3)
             // Note: Colors and styles should ALWAYS go to settings, even if they contain text-like keywords
+            if (settings[relativeKey] === undefined) {
+              settings[relativeKey] = value;
+            }
+
             if (!isContentField || isPrimaryCtaUrl || isPrimaryCtaText || isEyebrowText || isImageField || isRotatingOptions || isRotatingFixed || isTitleMode || isRotatingEnabled || isRotatingSpeed) {
               // Standard mapping for common containers
               const isBorderRadius = cleanKey.includes('radius') || cleanKey.includes('rounded');
@@ -3934,7 +4625,7 @@ const formatTimestampName = () => {
               };
             });
 
-            // Inyectar snapshot en mÃƒÆ’Ã‚Âºltiples lugares para redundancia total
+            // Inyectar snapshot en múltiples lugares para redundancia total
             content.products = normalizedSnapshot;
             content.items = normalizedSnapshot;
             content.productos = normalizedSnapshot;
@@ -4031,23 +4722,21 @@ const formatTimestampName = () => {
             content.images = normalizedGalleryItems;
             content.gallery = normalizedGalleryItems;
             settings[galleryItemsKey] = normalizedGalleryItems;
-
-            const existingCategories = String(currentState.settingsValues[galleryCategoriesKey] || '')
-              .split(',')
-              .map((category) => category.trim())
-              .filter(Boolean);
             const categoryMap = new Map<string, string>();
-            [...existingCategories, 'Todos', ...normalizedGalleryItems.map((item: any) => item.category)].forEach((category) => {
+            normalizedGalleryItems.map((item: any) => item.category).forEach((category) => {
               const key = String(category || '')
                 .trim()
                 .normalize('NFD')
                 .replace(/[\u0300-\u036f]/g, '')
                 .toLowerCase();
               if (key && !categoryMap.has(key)) {
-                categoryMap.set(key, key === 'all' || key === 'todos' ? 'Todos' : String(category).trim());
+                categoryMap.set(key, String(category).trim());
               }
             });
-            settings[galleryCategoriesKey] = Array.from(categoryMap.values()).join(', ');
+            const serializedCategories = Array.from(categoryMap.values());
+            if (serializedCategories.length > 0) {
+              settings[galleryCategoriesKey] = serializedCategories.join(', ');
+            }
           }
         }
 
@@ -4096,7 +4785,7 @@ const formatTimestampName = () => {
 
           const currentCopyVal = currentState.settingsValues[`${module.id}_el_footer_bottom_copyright`];
           if (isDefault(currentCopyVal, defaults.copyright)) {
-            const copyVal = `Ãƒâ€šÃ‚Â© ${new Date().getFullYear()} ${project?.name || 'Solutium'}. Todos los derechos reservados.`;
+            const copyVal = `© ${new Date().getFullYear()} ${project?.name || 'Solutium'}. Todos los derechos reservados.`;
             content.copyright = copyVal;
             settings[`${module.id}_el_footer_bottom_copyright`] = copyVal;
           }
@@ -4149,7 +4838,7 @@ const formatTimestampName = () => {
           const contactDefaults = {
             email: 'hola@tuempresa.com',
             phone: '+34 900 000 000',
-            address: 'Calle Innovación 123, Madrid, EspaÃƒÆ’Ã‚Â±a',
+            address: 'Calle Innovación 123, Madrid, España',
             whatsappNumber: ''
           };
 
@@ -4410,7 +5099,7 @@ const formatTimestampName = () => {
       if (sessionState.state === 'missing_session' || sessionState.state === 'expired_session') {
         setAuthNotice({
           type: 'error',
-          message: 'Tu sesón expirÃƒÂ³. Inicia sesón nuevamente para guardar. Tus cambios siguen en pantalla.'
+          message: 'Tu sesión expiró. Inicia sesión nuevamente para guardar. Tus cambios siguen en pantalla.'
         });
         setSaveStatus('error');
         return;
@@ -4419,7 +5108,7 @@ const formatTimestampName = () => {
       if (sessionState.state === 'refreshed') {
         setAuthNotice({
           type: 'info',
-          message: 'Sesón actualizada. Guardando cambios...'
+          message: 'Sesión actualizada. Guardando cambios...'
         });
       }
 
@@ -4603,7 +5292,7 @@ const formatTimestampName = () => {
       if (error instanceof SupabaseSessionError) {
         setAuthNotice({
           type: 'error',
-          message: 'Tu sesón expirÃƒÂ³. Inicia sesón nuevamente para guardar. Tus cambios siguen en pantalla.'
+          message: 'Tu sesión expiró. Inicia sesión nuevamente para guardar. Tus cambios siguen en pantalla.'
         });
       }
       setSaveStatus('error');
@@ -4741,7 +5430,7 @@ const formatTimestampName = () => {
         });
 
         if (!savedPage?.id) {
-          throw new Error('Error al sincronizar la pÃƒÂ¡gina del borrador');
+          throw new Error('Error al sincronizar la página del borrador');
         }
 
         if (savedPage && savedPage.id) {
@@ -5028,7 +5717,7 @@ const formatTimestampName = () => {
       if (sessionState.state === 'missing_session' || sessionState.state === 'expired_session') {
         setAuthNotice({
           type: 'error',
-          message: 'Tu sesón expirÃƒÂ³. Inicia sesón nuevamente para publicar. Tus cambios siguen en pantalla.'
+          message: 'Tu sesión expiró. Inicia sesión nuevamente para publicar. Tus cambios siguen en pantalla.'
         });
         setPublishStatus('error');
         return;
@@ -5037,7 +5726,7 @@ const formatTimestampName = () => {
       if (sessionState.state === 'refreshed') {
         setAuthNotice({
           type: 'info',
-          message: 'Sesón actualizada. Publicando cambios...'
+          message: 'Sesión actualizada. Publicando cambios...'
         });
       }
 
@@ -6104,7 +6793,7 @@ const formatTimestampName = () => {
                       Puedes restaurarlos para continuar editando o descartarlos si ya no los necesitas.
                     </p>
                     <p className="hidden">
-                      Encontramos cambios locales no guardados de esta pÃƒÂ¡gina. Puedes restaurarlos o descartar el respaldo local.
+                      Encontramos cambios locales no guardados de esta página. Puedes restaurarlos o descartar el respaldo local.
                     </p>
                     <p className="text-[11px] text-text/40 mb-7">
                       Respaldo: {new Date(localSnapshotToRestore.updatedAt).toLocaleString()}
@@ -6241,10 +6930,14 @@ const formatTimestampName = () => {
             key="ai-page-plan-modal"
             plan={aiPagePlan}
             isGenerating={isGeneratingAI}
+            aiCreditBalance={aiCreditBalance}
+            isLoadingAICreditBalance={isLoadingAICreditBalance}
+            aiCreditBalanceError={aiCreditBalanceError}
             projectName={project?.name || siteName}
             onGenerate={handleGenerateAIPagePlan}
             onAnalyzeReferenceUrl={handleAnalyzeReferenceUrl}
             onGenerateFromReferenceAnalysis={handleGenerateFromReferenceAnalysis}
+            onRetryAICreditBalance={() => { void loadAICreditBalance(true); }}
             onApply={handleApplyAIPagePlan}
             onCancel={handleCloseOnboarding}
           />

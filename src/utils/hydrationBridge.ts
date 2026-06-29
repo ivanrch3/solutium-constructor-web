@@ -656,6 +656,15 @@ const MODULE_ADAPTERS: Record<string, ModuleBridgeAdapter> = {
       'gap': 'global_gap'
     }
   },
+  dynamic_cards: {
+    contentToSettings: {},
+    settingsToDeep: {
+      'navigation_mode': 'global_navigation_mode',
+      'show_arrows': 'global_show_arrows',
+      'show_dots': 'global_show_dots',
+      'interval_seconds': 'global_interval_seconds'
+    }
+  },
   video: {
     contentToSettings: {
       'title': 'el_video_text_title',
@@ -1132,6 +1141,57 @@ export const bridgeModuleContent = ({
           };
         }).filter(Boolean); // Filter out items with no URL
         mappedKeys.push(itemsKey);
+      }
+    }
+
+    // --- Specialized Dynamic Cards Logic ---
+    if (baseType === 'dynamic_cards' && content) {
+      const cardsKey = `${moduleId}_el_dynamic_cards_cards_cards`;
+      const cardsSource = content.showcaseItems || content.cards || content.items;
+
+      if (Array.isArray(cardsSource) && cardsSource.length > 0 && result[cardsKey] === undefined) {
+        result[cardsKey] = cardsSource.map((item: any, index: number) => {
+          const title = item.titleText || item.title || item.name || `Tarjeta ${index + 1}`;
+          const body = item.bodyText || item.description || item.desc || '';
+          const imageUrl = item.bgImage || item.imageUrl || item.image_url || item.image || item.imagen || item.url || '';
+          const badge = item.badge || item.tag || '';
+          const price = item.price || '';
+          const bullets = item.bullets || [badge, price].filter(Boolean).join('\n');
+          const ctaText = item.ctaText || item.cta?.text || item.buttonText || '';
+          const ctaUrl = item.ctaUrl || item.cta?.url || item.buttonUrl || '#';
+
+          return {
+            id: String(item.id || `dynamic-card-${index + 1}`),
+            enabled: item.enabled !== false,
+            backgroundType: imageUrl ? 'image' : (item.backgroundType || 'gradient'),
+            bgColor: String(item.bgColor || '#14532D'),
+            gradientFrom: String(item.gradientFrom || '#14532D'),
+            gradientTo: String(item.gradientTo || '#15803D'),
+            gradientDirection: String(item.gradientDirection || '135deg'),
+            bgImage: String(imageUrl),
+            overlayEnabled: item.overlayEnabled !== false,
+            overlayColor: String(item.overlayColor || '#052E16'),
+            overlayOpacity: Number(item.overlayOpacity ?? (imageUrl ? 38 : 18)),
+            imageFit: String(item.imageFit || 'cover'),
+            imagePosition: String(item.imagePosition || 'center'),
+            effect: String(item.effect || 'none'),
+            effectSpeed: String(item.effectSpeed || 'slow'),
+            effectDensity: String(item.effectDensity || 'low'),
+            effectDirection: String(item.effectDirection || 'ltr'),
+            showPrimaryText: item.showPrimaryText !== false,
+            titleText: String(title),
+            bodyText: String(body),
+            showBody: item.showBody !== false,
+            showBullets: Boolean(bullets),
+            bullets: String(bullets),
+            bulletIcon: String(item.bulletIcon || 'UtensilsCrossed'),
+            bulletColor: String(item.bulletColor || '#BBF7D0'),
+            ctaEnabled: Boolean(ctaText),
+            ctaText: String(ctaText),
+            ctaUrl: String(ctaUrl)
+          };
+        });
+        mappedKeys.push(cardsKey);
       }
     }
 

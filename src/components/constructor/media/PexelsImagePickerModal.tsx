@@ -60,6 +60,8 @@ const buildInitialQuery = ({
 };
 
 const getPreferredImageUrl = (photo: PexelsMediaPhoto, orientation: OrientationOption) => {
+  const curatedUrl = photo.selected_url_recommended;
+  if (curatedUrl) return curatedUrl;
   if (orientation === 'portrait') return photo.src?.portrait || photo.src?.large || photo.src?.medium || '';
   if (orientation === 'square') return photo.src?.large || photo.src?.medium || photo.src?.portrait || '';
   return photo.src?.landscape || photo.src?.large || photo.src?.medium || '';

@@ -1,6 +1,7 @@
 import { getSupabase } from './supabaseClient';
 import { logDebug } from '../utils/debug';
 import { getStoredLaunchAccessSession } from './secureLaunchSession';
+import { ensureActiveSupabaseSession } from './supabaseSessionService';
 
 /**
  * [AUTH_TOKEN_PROVIDER_DEBUG] Centralized Token Provider
@@ -17,24 +18,66 @@ export const isJWT = (token: string | null): boolean => {
 interface TokenResult {
   token: string | null;
   source: string;
+  authType?: 'supabase' | 'launch' | 'none';
 }
+
+const getJwtTokenFromContext = async (): Promise<TokenResult> => {
+  // 1. Supabase Runtime Session
+  try {
+    const supabase = getSupabase();
+    if (supabase) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token && isJWT(session.access_token)) {
+        return { token: session.access_token, source: 'supabase_session', authType: 'supabase' };
+      }
+    }
+  } catch {}
+
+  // 2. URL Parameters
+  const hashParams = new URLSearchParams(window.location.hash.substring(1));
+  const queryParams = new URLSearchParams(window.location.search);
+  const urlToken = hashParams.get('access_token') || hashParams.get('token') ||
+    queryParams.get('access_token') || queryParams.get('token') || queryParams.get('session_token');
+  if (isJWT(urlToken)) {
+    return { token: urlToken, source: 'url_params', authType: 'supabase' };
+  }
+
+  // 3. Session Storage
+  const sessionStorageToken = sessionStorage.getItem('solutium_supabase_access_token') ||
+    sessionStorage.getItem('solutium_upload_token');
+  if (isJWT(sessionStorageToken)) {
+    return { token: sessionStorageToken, source: 'session_storage', authType: 'supabase' };
+  }
+
+  // 4. Handshake cache
+  try {
+    const savedHandshake = localStorage.getItem('solutium_handshake_cache');
+    if (savedHandshake) {
+      const payload = JSON.parse(savedHandshake);
+      const handshakeToken = payload.supabaseAccessToken || payload.accessToken || payload.session_token;
+      if (isJWT(handshakeToken)) {
+        return { token: handshakeToken, source: 'handshake_cache', authType: 'supabase' };
+      }
+    }
+  } catch {}
+
+  // 5. Window global
+  const globalToken = (window as any).SOLUTIUM_AUTH_TOKEN;
+  if (isJWT(globalToken)) {
+    return { token: globalToken, source: 'window_global', authType: 'supabase' };
+  }
+
+  return { token: null, source: 'none', authType: 'none' };
+};
 
 /**
  * Prioritizes tokens from different sources.
  * Returns a result object indicating the token and its source.
  */
 export async function getUploadAuthToken(): Promise<TokenResult> {
-  // 1. Supabase Runtime Session (Highest Priority A)
-  try {
-    const supabase = getSupabase();
-    if (supabase) {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.access_token && isJWT(session.access_token)) {
-        return { token: session.access_token, source: 'supabase_session' };
-      }
-    }
-  } catch (err) {
-    // Log suppressed but tracked
+  const jwtResult = await getJwtTokenFromContext();
+  if (jwtResult.token) {
+    return jwtResult;
   }
 
   // 1b. Secure Constructor launch access token.
@@ -42,48 +85,45 @@ export async function getUploadAuthToken(): Promise<TokenResult> {
   // Constructor proxy endpoints such as Pexels search and preview generation.
   const secureLaunchSession = getStoredLaunchAccessSession();
   if (secureLaunchSession.active && secureLaunchSession.token) {
-    return { token: secureLaunchSession.token, source: 'secure_constructor_launch' };
+    return { token: secureLaunchSession.token, source: 'secure_constructor_launch', authType: 'launch' };
   }
 
-  // 2. URL Parameters (Explicit overrides)
-  const hashParams = new URLSearchParams(window.location.hash.substring(1));
-  const queryParams = new URLSearchParams(window.location.search);
-  
-  const urlToken = hashParams.get('access_token') || hashParams.get('token') || 
-                   queryParams.get('access_token') || queryParams.get('token') || queryParams.get('session_token');
-                   
-  if (isJWT(urlToken)) {
-    return { token: urlToken, source: 'url_params' };
-  }
+  return { token: null, source: 'none', authType: 'none' };
+}
 
-  // 3. Session Storage (Handshake persistency)
-  const ssToken = sessionStorage.getItem('solutium_supabase_access_token') || 
-                  sessionStorage.getItem('solutium_upload_token');
-  if (isJWT(ssToken)) {
-    return { token: ssToken, source: 'session_storage' };
-  }
+export async function getSupabaseAuthToken(): Promise<TokenResult> {
+  return getJwtTokenFromContext();
+}
 
-  // 4. Handshake Cache (LocalStorage - Priority B)
-  try {
-    const savedHandshake = localStorage.getItem('solutium_handshake_cache');
-    if (savedHandshake) {
-      const payload = JSON.parse(savedHandshake);
-      
-      // Explicitly prioritize accessToken/supabaseAccessToken fields from handshake
-      const hToken = payload.supabaseAccessToken || payload.accessToken || payload.session_token;
-      if (isJWT(hToken)) {
-        return { token: hToken, source: 'handshake_cache' };
-      }
+export async function getMotherApiAuthToken(options?: {
+  allowLaunch?: boolean;
+  forceRefreshSupabase?: boolean;
+}): Promise<TokenResult> {
+  if (options?.forceRefreshSupabase) {
+    try {
+      await ensureActiveSupabaseSession({ forceRefresh: false });
+    } catch {
+      // Ignore and continue with available credentials.
     }
-  } catch (err) {}
-
-  // 5. Window Global (Last resort)
-  const globalToken = (window as any).SOLUTIUM_AUTH_TOKEN;
-  if (isJWT(globalToken)) {
-    return { token: globalToken, source: 'window_global' };
   }
 
-  return { token: null, source: 'none' };
+  const jwtResult = await getJwtTokenFromContext();
+  if (jwtResult.token) {
+    return jwtResult;
+  }
+
+  if (options?.allowLaunch) {
+    const secureLaunchSession = getStoredLaunchAccessSession();
+    if (secureLaunchSession.active && secureLaunchSession.token) {
+      return {
+        token: secureLaunchSession.token,
+        source: 'secure_constructor_launch',
+        authType: 'launch'
+      };
+    }
+  }
+
+  return { token: null, source: 'none', authType: 'none' };
 }
 
 /**

@@ -1,4 +1,4 @@
-import { getSupabase, getSupabaseConfig } from './supabaseClient';
+import { getSupabase, getSupabaseConfig, initSupabase } from './supabaseClient';
 import { requestFreshSupabaseConfig } from './handshakeService';
 import { logDebug } from '../utils/debug';
 
@@ -26,6 +26,14 @@ export class SupabaseSessionError extends Error {
 }
 
 const EXPIRY_BUFFER_SECONDS = 90;
+const SUPABASE_BOOTSTRAP_WAIT_MS = 1500;
+const SUPABASE_BOOTSTRAP_POLL_MS = 100;
+
+interface SupabaseBootstrapConfig {
+  url: string;
+  key: string;
+  token: string;
+}
 
 const decodeJwtPayload = (token: string | null): Record<string, any> | null => {
   if (!token || typeof token !== 'string') return null;
@@ -77,6 +85,109 @@ const getStoredAccessToken = (): string | null => {
   return null;
 };
 
+const readSessionStorageBootstrapConfig = (): SupabaseBootstrapConfig | null => {
+  try {
+    const url = sessionStorage.getItem('solutium_supabase_url');
+    const key = sessionStorage.getItem('solutium_supabase_anon_key');
+    const token = sessionStorage.getItem('solutium_supabase_access_token') || sessionStorage.getItem('solutium_upload_token');
+    if (url && key && token) {
+      return { url, key, token };
+    }
+  } catch {}
+
+  return null;
+};
+
+const readHandshakeCacheBootstrapConfig = (): SupabaseBootstrapConfig | null => {
+  try {
+    const raw = localStorage.getItem('solutium_handshake_cache');
+    if (!raw) return null;
+    const payload = JSON.parse(raw);
+    const url = payload?.supabase_url;
+    const key = payload?.supabase_anon_key;
+    const token = payload?.session_token || payload?.supabaseAccessToken || payload?.accessToken;
+    if (url && key && token) {
+      return { url, key, token };
+    }
+  } catch {}
+
+  return null;
+};
+
+const readUrlBootstrapConfig = (): SupabaseBootstrapConfig | null => {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const url = params.get('supabase_url');
+    const key = params.get('supabase_anon_key');
+    const token = params.get('session_token') || params.get('access_token') || params.get('token');
+    if (url && key && token) {
+      return { url, key, token };
+    }
+  } catch {}
+
+  return null;
+};
+
+const readWindowNameBootstrapConfig = (): SupabaseBootstrapConfig | null => {
+  try {
+    if (!window.name) return null;
+    const payload = JSON.parse(window.name);
+    const source = payload?.payload || payload;
+    const url = source?.supabase_url;
+    const key = source?.supabase_anon_key;
+    const token = source?.session_token || source?.supabaseAccessToken || source?.accessToken;
+    if (url && key && token) {
+      return { url, key, token };
+    }
+  } catch {}
+
+  return null;
+};
+
+const resolveBootstrapConfig = (): SupabaseBootstrapConfig | null =>
+  readSessionStorageBootstrapConfig() ||
+  readHandshakeCacheBootstrapConfig() ||
+  readUrlBootstrapConfig() ||
+  readWindowNameBootstrapConfig();
+
+const bootstrapSupabaseClientFromConfig = (config: SupabaseBootstrapConfig | null): boolean => {
+  if (!config?.url || !config?.key || !config?.token) return false;
+
+  try {
+    sessionStorage.setItem('solutium_supabase_url', config.url);
+    sessionStorage.setItem('solutium_supabase_anon_key', config.key);
+    sessionStorage.setItem('solutium_supabase_access_token', config.token);
+    (window as any).SOLUTIUM_SUPABASE_SESSION = { access_token: config.token };
+  } catch {}
+
+  return Boolean(initSupabase(config.url, config.key, config.token));
+};
+
+const ensureSupabaseClientReady = async (): Promise<boolean> => {
+  if (getSupabase()) return true;
+
+  const deadline = Date.now() + SUPABASE_BOOTSTRAP_WAIT_MS;
+  while (Date.now() < deadline) {
+    if (getSupabase()) return true;
+
+    const bootstrapConfig = resolveBootstrapConfig();
+    if (bootstrapSupabaseClientFromConfig(bootstrapConfig)) {
+      return true;
+    }
+
+    await new Promise((resolve) => window.setTimeout(resolve, SUPABASE_BOOTSTRAP_POLL_MS));
+  }
+
+  const refreshedFromMother = await requestFreshSupabaseConfig();
+  if (refreshedFromMother && getSupabase()) {
+    return true;
+  }
+
+  const fallbackConfig = resolveBootstrapConfig();
+  const bootstrapped = bootstrapSupabaseClientFromConfig(fallbackConfig);
+  return bootstrapped;
+};
+
 export const resolveSupabaseUserIdentity = async (): Promise<ResolvedSupabaseUserIdentity> => {
   const supabase = getSupabase();
   if (!supabase) {
@@ -119,11 +230,14 @@ export const resolveSupabaseUserIdentity = async (): Promise<ResolvedSupabaseUse
 export const ensureActiveSupabaseSession = async (
   options: { forceRefresh?: boolean } = {}
 ): Promise<EnsureSupabaseSessionResult> => {
+  const supabaseReady = await ensureSupabaseClientReady();
   const supabase = getSupabase();
   if (!supabase) {
-    return {
-      state: 'missing_session',
-      message: 'No se encontró un cliente activo de Supabase.'
+      return {
+        state: 'missing_session',
+      message: supabaseReady
+        ? 'No se pudo recuperar un cliente usable de Supabase.'
+        : 'No se encontró un cliente activo de Supabase.'
     };
   }
 
@@ -136,7 +250,7 @@ export const ensureActiveSupabaseSession = async (
     const fallbackToken = getStoredAccessToken();
     const effectiveToken = sessionToken || fallbackToken;
 
-    if (!forceRefresh && sessionToken && !isTokenNearExpiry(sessionToken)) {
+      if (!forceRefresh && sessionToken && !isTokenNearExpiry(sessionToken)) {
       return { state: 'active', source: 'supabase_session' };
     }
 

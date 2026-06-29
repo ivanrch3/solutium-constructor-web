@@ -14,7 +14,6 @@ const TEXT = {
   title: '\u00bfC\u00f3mo quieres crear tu p\u00e1gina?',
   soon: 'Pr\u00f3ximamente',
   aiDescription: 'Describe tu negocio y deja que nuestra inteligencia artificial cree la estructura, textos e im\u00e1genes por ti en minutos.',
-  aiReady: 'Genera una primera versi\u00f3n editable de tu p\u00e1gina con estructura, textos y llamadas a la acci\u00f3n listas para personalizar.',
   aiDisabled: 'Esta funci\u00f3n estar\u00e1 disponible pr\u00f3ximamente.',
   templateDescription: 'Elige entre dise\u00f1os preconstruidos profesionales optimizados para conversi\u00f3n. Ideal si quieres una base s\u00f3lida y r\u00e1pida.',
   scratchDescription: 'Empieza desde cero. A\u00f1ade secciones una a una y construye tu sitio con total control creativo sin distracciones.',
@@ -127,11 +126,7 @@ export const MethodSelection: React.FC<MethodSelectionProps> = ({ onSelect, onBa
           <h3 className="text-xl font-bold text-white mb-4">Generar con IA</h3>
           <p className="text-white/90 text-sm leading-relaxed">{TEXT.aiDescription}</p>
           <div className="mt-auto space-y-3">
-            {AI_PAGE_GENERATION_ENABLED ? (
-              <p className="rounded-2xl bg-white/12 p-4 text-sm font-semibold leading-relaxed text-white ring-1 ring-white/15">
-                {TEXT.aiReady}
-              </p>
-            ) : (
+            {AI_PAGE_GENERATION_ENABLED ? null : (
               <>
                 <p className="rounded-2xl bg-white/12 p-4 text-sm font-semibold leading-relaxed text-white ring-1 ring-white/15">
                   {aiCountdownMessage}

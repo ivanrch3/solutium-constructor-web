@@ -50,7 +50,9 @@ export const initialContent: SiteContent = {
     alternatingDarkMode: false,
     alternatingThemeMode: false,
     themeBackgroundColor: '#1e293b',
-    globalAnimationType: 'recommended'
+    globalAnimationType: 'recommended',
+    metaPixelEnabled: false,
+    metaPixelId: ''
   },
   sections: []
 };

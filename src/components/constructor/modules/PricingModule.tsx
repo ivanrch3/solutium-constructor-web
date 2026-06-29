@@ -5,7 +5,7 @@ import { Check, X, ShieldCheck, Zap, Clock, CreditCard } from 'lucide-react';
 import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
 import { TextRenderer } from '../TextRenderer';
 import { SectionAnimation } from '../animations/SectionAnimation';
-import { parseNumSafe } from '../utils';
+import { getButtonTypographyStyle, getLegacyButtonTypographyStyle, parseNumSafe } from '../utils';
 
 import { InlineEditableText } from '../InlineEditableText';
 import { useEditorStore } from '../../../store/editorStore';
@@ -221,6 +221,18 @@ export const PricingModule: React.FC<{
       hidden: { y: 30, opacity: 0 },
       visible: { y: 0, opacity: 1, transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] as any } }
     };
+  const toggleButtonTypography = settingsValues[`${moduleId}_el_pricing_toggle_toggle_size`] !== undefined
+    ? getButtonTypographyStyle(
+        getVal(`${moduleId}_el_pricing_toggle`, 'toggle_size', 's'),
+        getVal(`${moduleId}_el_pricing_toggle`, 'toggle_weight', 'bold')
+      )
+    : getLegacyButtonTypographyStyle(14, 700, 1.2);
+  const planButtonTypography = settingsValues[`${moduleId}_el_pricing_card_cta_size`] !== undefined
+    ? getButtonTypographyStyle(
+        getVal(`${moduleId}_el_pricing_card`, 'cta_size', 's'),
+        getVal(`${moduleId}_el_pricing_card`, 'cta_weight', 'black')
+      )
+    : getLegacyButtonTypographyStyle(14, 900, 1.2);
 
   return (
     <SectionAnimation animation={sectionAnimation} speed={globalThemeSectionAnimationSpeed}>
@@ -321,7 +333,8 @@ export const PricingModule: React.FC<{
                 className={`px-8 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 ${!isYearly ? 'shadow-lg scale-105' : (darkMode ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-700')}`}
                 style={{ 
                   backgroundColor: !isYearly ? activeBg : 'transparent',
-                  color: !isYearly ? activeColor : undefined
+                  color: !isYearly ? activeColor : undefined,
+                  ...toggleButtonTypography
                 }}
               >
                 Mensual
@@ -331,7 +344,8 @@ export const PricingModule: React.FC<{
                 className={`px-8 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 relative ${isYearly ? 'shadow-lg scale-105' : (darkMode ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-700')}`}
                 style={{ 
                   backgroundColor: isYearly ? activeBg : 'transparent',
-                  color: isYearly ? activeColor : undefined
+                  color: isYearly ? activeColor : undefined,
+                  ...toggleButtonTypography
                 }}
               >
                 Anual
@@ -508,7 +522,8 @@ export const PricingModule: React.FC<{
                       style={{ 
                         backgroundColor: plan.highlight ? highlightColor : (darkMode ? '#334155' : '#F1F5F9'),
                         color: plan.highlight ? '#FFFFFF' : (darkMode ? '#FFFFFF' : '#0F172A'),
-                        boxShadow: 'none'
+                        boxShadow: 'none',
+                        ...planButtonTypography
                       }}
                     >
                     <span className="relative z-10">{plan.cta}</span>

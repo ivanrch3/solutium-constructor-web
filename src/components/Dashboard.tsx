@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { PlusSquare, FileText, ExternalLink, Eye, Edit2, Trash2 } from 'lucide-react';
 import { Asset, WebBuilderSite, PublishedSite } from '../types/schema';
 import { motion } from 'motion/react';
@@ -210,18 +210,18 @@ export const Dashboard: React.FC<DashboardProps> = ({
                           onSelectPage(page);
                         }
                       }}
-                      className="flex items-center justify-between p-3 rounded-xl border border-border hover:bg-[var(--builder-primary-soft)] transition-all group text-left cursor-pointer"
+                      className="rounded-2xl border border-border p-4 text-left transition-all group cursor-pointer hover:bg-[var(--builder-primary-soft)]"
                       style={{ borderColor: 'color-mix(in srgb, var(--builder-primary) 18%, var(--builder-border) 82%)' }}
                     >
-                      <div className="flex items-center gap-3 shrink-0 min-w-0">
-                        <div className={`w-14 h-10 rounded-lg flex items-center justify-center transition-colors overflow-hidden border border-border/40 shrink-0 ${
+                      <div className="flex flex-col gap-4 md:flex-row md:items-stretch">
+                        <div className={`aspect-square w-full overflow-hidden rounded-xl border border-border/40 transition-colors md:w-36 md:flex-none xl:w-[6.5rem] ${
                           isPublished ? 'bg-green-50 text-green-600' : 'bg-amber-50 text-amber-600'
                         }`}>
                           {previewImageSrc ? (
                             <img
                               src={previewImageSrc}
                               alt={page.siteName}
-                              className="w-full h-full object-cover"
+                              className="h-full w-full object-cover"
                               referrerPolicy="no-referrer"
                               onError={(e) => {
                                 // Fallback if image fails to load
@@ -233,78 +233,88 @@ export const Dashboard: React.FC<DashboardProps> = ({
                             <FileText className="w-5 h-5 opacity-40" />
                           )}
                         </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2">
-                            <h3 className="text-base font-bold text-text group-hover:text-[var(--builder-primary)] transition-colors truncate">
+                        <div className="flex min-w-0 flex-1 flex-col justify-between gap-4 text-center md:text-left">
+                          <div className="min-w-0 space-y-2">
+                            <h3
+                              className="break-words text-base font-bold text-text transition-colors group-hover:text-[var(--builder-primary)]"
+                              style={{
+                                display: '-webkit-box',
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: 'vertical',
+                                overflow: 'hidden'
+                              }}
+                            >
                               {page.siteName || 'Sin nombre'}
                             </h3>
-                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold uppercase shrink-0 ${
-                              status === 'published' && isLinked ? 'border border-purple-200 bg-purple-100 text-purple-700' :
-                              status === 'published' ? 'bg-green-100 text-green-700' :
-                              status === 'modified' ? 'bg-blue-100 text-blue-700' :
-                              'bg-amber-100 text-amber-700'
-                            }`}>
-                              {statusLabel}
-                            </span>
-                            {status === 'modified' && isLinked && (
-                              <span className="shrink-0 rounded-full border border-purple-200 bg-purple-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-purple-700">
-                                VINCULADO
+                            <div className="flex flex-wrap justify-center gap-2 md:justify-start">
+                              <span className={`text-[10px] px-2 py-1 rounded-full font-bold uppercase ${
+                                status === 'published' && isLinked ? 'border border-purple-200 bg-purple-100 text-purple-700' :
+                                status === 'published' ? 'bg-green-100 text-green-700' :
+                                status === 'modified' ? 'bg-blue-100 text-blue-700' :
+                                'bg-amber-100 text-amber-700'
+                              }`}>
+                                {statusLabel}
                               </span>
-                            )}
+                              {status === 'modified' && isLinked && (
+                                <span className="rounded-full border border-purple-200 bg-purple-100 px-2 py-1 text-[10px] font-bold uppercase text-purple-700">
+                                  VINCULADO
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs font-medium text-text/80">
+                              Actualizado el {new Date(page.updatedAt || '').toLocaleString([], { day: 'numeric', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                            </p>
                           </div>
-                          <p className="text-xs text-text/80 font-medium truncate">
-                            Actualizado el {new Date(page.updatedAt || '').toLocaleString([], { day: 'numeric', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                          </p>
+                          <div className="flex flex-wrap justify-center gap-2 md:justify-start">
+                            {isPublished && isLinked && (
+                              <button
+                                onClick={(e) => handleOpenPublished(e, page)}
+                                className="inline-flex h-10 min-w-10 items-center justify-center rounded-xl text-slate-600 transition-all hover:bg-green-50 hover:text-green-700"
+                                aria-label="Abrir sitio vinculado"
+                                title="Abrir URL vinculada"
+                              >
+                                <ExternalLink className="w-4 h-4" />
+                              </button>
+                            )}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onSelectPage(page);
+                              }}
+                              className="inline-flex h-10 min-w-10 items-center justify-center rounded-xl text-slate-600 transition-all hover:bg-primary/5 hover:text-[var(--builder-primary)]"
+                              aria-label="Editar"
+                              title="Editar"
+                            >
+                              <Edit2 size={15} />
+                            </button>
+                            {(isDebug || true) && (
+                              <button
+                                onClick={(e) => handlePreview(e, page)}
+                                disabled={!previewImageSrc}
+                                className={`inline-flex h-10 min-w-10 items-center justify-center rounded-xl transition-all ${
+                                  previewImageSrc
+                                    ? 'text-slate-600 hover:bg-amber-50 hover:text-amber-600'
+                                    : 'cursor-not-allowed text-slate-300'
+                                }`}
+                                aria-label="Actualizar preview"
+                                title={previewImageSrc ? 'Ver preview guardado' : 'Aún no hay preview guardado.'}
+                              >
+                                <Eye size={16} />
+                              </button>
+                            )}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                              }}
+                              disabled
+                              className="inline-flex h-10 min-w-10 cursor-not-allowed items-center justify-center rounded-xl text-slate-300 transition-all"
+                              aria-label="Borrar no disponible"
+                              title={deleteUnavailableMessage}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                      <div className="flex items-center gap-1 ml-2 shrink-0">
-                        {isPublished && isLinked && (
-                          <button
-                            onClick={(e) => handleOpenPublished(e, page)}
-                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-600 transition-all hover:bg-green-50 hover:text-green-700"
-                            aria-label="Abrir sitio vinculado"
-                            title="Abrir URL vinculada"
-                          >
-                            <ExternalLink className="w-4 h-4" />
-                          </button>
-                        )}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onSelectPage(page);
-                          }}
-                          className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-600 transition-all hover:bg-primary/5 hover:text-[var(--builder-primary)]"
-                          aria-label="Editar"
-                          title="Editar"
-                        >
-                          <Edit2 size={15} />
-                        </button>
-                        {(isDebug || true) && (
-                          <button
-                            onClick={(e) => handlePreview(e, page)}
-                            disabled={!previewImageSrc}
-                            className={`inline-flex h-9 w-9 items-center justify-center rounded-lg transition-all ${
-                              previewImageSrc
-                                ? 'text-slate-600 hover:bg-amber-50 hover:text-amber-600'
-                                : 'cursor-not-allowed text-slate-300'
-                            }`}
-                            aria-label="Actualizar preview"
-                            title={previewImageSrc ? 'Ver preview guardado' : 'Aún no hay preview guardado.'}
-                          >
-                            <Eye size={16} />
-                          </button>
-                        )}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                          }}
-                          disabled
-                          className="inline-flex h-9 w-9 cursor-not-allowed items-center justify-center rounded-lg text-slate-300 transition-all"
-                          aria-label="Borrar no disponible"
-                          title={deleteUnavailableMessage}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
                       </div>
                     </div>
                   );
@@ -389,7 +399,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             ) : (
               <div className="flex flex-col items-center gap-2">
                 <p className="text-xs font-semibold leading-relaxed">
-                  Sesión expirada o no válida. Por favor vuelve a lanzar el Constructor Web desde Solutium.
+                  Sesión expirada o no vÃ¡lida. Por favor vuelve a lanzar el Constructor Web desde Solutium.
                 </p>
                 {sessionInfo.canRequestMotherContext && onRequestMotherContext && (
                   <button

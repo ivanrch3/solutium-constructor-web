@@ -342,6 +342,18 @@ const normalizeConstructorSettingsValues = (
   const nextSettings = { ...(settingsValues || {}) };
   let changed = false;
 
+  const metaPixelKeyMap: Record<string, string> = {
+    global_theme_metaPixelEnabled: 'global_theme_meta_pixel_enabled',
+    global_theme_metaPixelId: 'global_theme_meta_pixel_id'
+  };
+
+  Object.entries(metaPixelKeyMap).forEach(([legacyKey, canonicalKey]) => {
+    if (nextSettings[canonicalKey] === undefined && nextSettings[legacyKey] !== undefined) {
+      nextSettings[canonicalKey] = nextSettings[legacyKey];
+      changed = true;
+    }
+  });
+
   for (const module of Array.isArray(modules) ? modules : []) {
     if (!isHeaderModuleLike(module as any)) continue;
 
@@ -356,6 +368,28 @@ const normalizeConstructorSettingsValues = (
       nextSettings[positionKey] = normalizedPosition;
       changed = true;
     }
+  }
+
+  return changed ? nextSettings : settingsValues;
+};
+
+const seedMetaPixelThemeSettings = (
+  settingsValues: Record<string, any> = {},
+  theme?: Partial<RenderingContract['theme']> | null
+) => {
+  if (!theme) return settingsValues;
+
+  const nextSettings = { ...(settingsValues || {}) };
+  let changed = false;
+
+  if (nextSettings.global_theme_meta_pixel_enabled === undefined && theme.metaPixelEnabled !== undefined) {
+    nextSettings.global_theme_meta_pixel_enabled = Boolean(theme.metaPixelEnabled);
+    changed = true;
+  }
+
+  if (nextSettings.global_theme_meta_pixel_id === undefined && theme.metaPixelId !== undefined) {
+    nextSettings.global_theme_meta_pixel_id = String(theme.metaPixelId ?? '');
+    changed = true;
   }
 
   return changed ? nextSettings : settingsValues;
@@ -935,6 +969,8 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
           'global_theme_builder_autosave_show_indicator': false,
           'global_theme_builder_temporary_save_notice_enabled': true,
           'global_theme_builder_temporary_save_interval_minutes': DEFAULT_TEMPORARY_SAVE_INTERVAL_MINUTES,
+          'global_theme_meta_pixel_enabled': false,
+          'global_theme_meta_pixel_id': '',
           ...localTemporarySavePreferences
         },
       recentlyAddedModuleId: null,
@@ -965,7 +1001,10 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         totalModulesAdded: draft.totalModulesAdded !== undefined ? draft.totalModulesAdded : addedModules.length
       };
 
-      hydrated.settingsValues = normalizeConstructorSettingsValues(hydrated.settingsValues, addedModules);
+      hydrated.settingsValues = normalizeConstructorSettingsValues(
+        seedMetaPixelThemeSettings(hydrated.settingsValues, site?.content?.theme),
+        addedModules
+      );
 
       return hydrated;
     }
@@ -982,7 +1021,10 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         ...draft,
         addedModules,
         settingsValues: normalizeConstructorSettingsValues(
-          { ...defaultState.settingsValues, ...(draft.settingsValues || {}), ...localTemporarySavePreferences },
+          seedMetaPixelThemeSettings(
+            { ...defaultState.settingsValues, ...(draft.settingsValues || {}), ...localTemporarySavePreferences },
+            site?.content?.theme
+          ),
           addedModules
         )
       };
@@ -1044,6 +1086,8 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
             );
           }
         });
+
+        Object.assign(reconstructedSettings, seedMetaPixelThemeSettings({}, contract.theme));
 
         const enrichedReconstructedModules = syncModulesWithRegistryDefinitions(reconstructedModules);
 
@@ -1511,6 +1555,13 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       localSnapshotDirtyRef.current = false;
       setLocalSnapshotPending(true);
       setLocalSnapshotError(null);
+      if (result.degraded || result.cleanupRemoved) {
+        console.warn('[LOCAL_DRAFT_SNAPSHOT] Stored with fallback strategy:', {
+          degraded: Boolean(result.degraded),
+          cleanupRemoved: result.cleanupRemoved || 0,
+          sizeBytes: result.sizeBytes || null
+        });
+      }
       if (options?.showNotice) {
         showLocalDraftSavedNotice();
       }
@@ -1521,7 +1572,9 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       setLocalSnapshotError(result.error);
       console.warn('[LOCAL_DRAFT_SNAPSHOT] Unable to persist local draft snapshot:', {
         error: result.error,
-        sizeBytes: result.sizeBytes || null
+        sizeBytes: result.sizeBytes || null,
+        degraded: Boolean(result.degraded),
+        cleanupRemoved: result.cleanupRemoved || 0
       });
     }
 
@@ -2320,7 +2373,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
           setValueIfPresent(`${moduleId}_global_show_arrows`, false);
           setValueIfPresent(`${moduleId}_global_show_dots`, true);
           setValueIfPresent(`${moduleId}_global_interval_seconds`, 6);
-          setValueIfPresent(`${moduleId}_global_use_global_card_background`, true);
+          setValueIfPresent(`${moduleId}_global_use_global_card_background`, false);
           setValueIfPresent(`${moduleId}_global_global_background_type`, 'gradient');
           setValueIfPresent(`${moduleId}_global_global_gradient_from`, '#14532D');
           setValueIfPresent(`${moduleId}_global_global_gradient_to`, '#15803D');
@@ -5030,6 +5083,20 @@ const formatTimestampName = () => {
       }
     });
 
+    const activeTheme = siteContent?.theme ?? initialContent.theme;
+    const resolvedMetaPixelEnabled = Boolean(
+      currentState.settingsValues['global_theme_meta_pixel_enabled'] ??
+      currentState.settingsValues['global_theme_metaPixelEnabled'] ??
+      activeTheme?.metaPixelEnabled ??
+      false
+    );
+    const resolvedMetaPixelId = String(
+      currentState.settingsValues['global_theme_meta_pixel_id'] ??
+      currentState.settingsValues['global_theme_metaPixelId'] ??
+      activeTheme?.metaPixelId ??
+      ''
+    ).trim();
+
     const contractResult: RenderingContract = {
       layout: "full-width",
       inject_tailwind: true,
@@ -5043,6 +5110,8 @@ const formatTimestampName = () => {
         mutedColor,
         borderColor,
         fontFamily: currentState.settingsValues['global_theme_font_sans'] || project?.fontFamily || 'Inter',
+        metaPixelEnabled: resolvedMetaPixelEnabled,
+        metaPixelId: resolvedMetaPixelId,
       },
       sections
     };
@@ -6624,10 +6693,14 @@ const formatTimestampName = () => {
                         view={activeTab as any}
                         settingsValues={editorState.settingsValues}
                         onSettingChange={handleSettingChange}
+                        onSaveConfiguration={handleSaveDraft}
                         project={project}
                         projectId={projectId}
                         siteName={siteName}
                         onSiteNameChange={updateSiteName}
+                        saveStatus={saveStatus}
+                        hasUnsavedChanges={hasUnsavedChanges}
+                        isSaving={isSaving}
                       />
                     </div>
                   )}
@@ -6837,11 +6910,15 @@ const formatTimestampName = () => {
               view={activeTab}
               settingsValues={editorState.settingsValues}
               onSettingChange={handleSettingChange}
+              onSaveConfiguration={handleSaveDraft}
               project={project}
               projectId={projectId}
               siteName={siteName}
               onSiteNameChange={updateSiteName}
               onBack={() => setActiveTab('constructor')}
+              saveStatus={saveStatus}
+              hasUnsavedChanges={hasUnsavedChanges}
+              isSaving={isSaving}
             />
           </div>
         )}

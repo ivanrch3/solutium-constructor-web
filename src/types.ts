@@ -67,6 +67,8 @@ export interface Theme {
   sectionAnimation?: string;
   sectionAnimationSpeed?: number;
   invertedAlternatingMode?: boolean;
+  metaPixelEnabled?: boolean;
+  metaPixelId?: string;
 }
 
 export interface SiteContent {

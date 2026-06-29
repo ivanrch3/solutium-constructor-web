@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as LucideIcons from 'lucide-react';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
-import { FONT_WEIGHTS } from '../../../constants/typography';
+import { FONT_WEIGHTS, TYPOGRAPHY_SCALE } from '../../../constants/typography';
 import { parseNumSafe } from '../utils';
 
 type DynamicCard = {
@@ -53,6 +53,8 @@ type DynamicCard = {
   ctaText?: string;
   ctaUrl?: string;
   ctaSize?: 'sm' | 'md' | 'lg';
+  ctaTextSize?: 't3' | 'p' | 's';
+  ctaWeight?: string;
   ctaStyle?: 'solid' | 'outline' | 'glass';
   ctaPosition?: 'left' | 'center' | 'right' | 'inline' | 'below' | 'bottom_right' | 'bottom_center' | 'center_bottom' | 'left_bottom' | 'right_bottom';
   ctaColor?: string;
@@ -112,6 +114,8 @@ const DEFAULT_CARD: DynamicCard = {
   ctaText: 'Comenzar',
   ctaUrl: '#',
   ctaSize: 'md',
+  ctaTextSize: 's',
+  ctaWeight: 'black',
   ctaStyle: 'solid',
   ctaPosition: 'center',
   ctaColor: 'var(--primary-color, #2563EB)',
@@ -397,8 +401,9 @@ export const DynamicCardsModule: React.FC<{
   const globalCtaStyle = getVal(null, 'global_cta_style', 'solid') as DynamicCard['ctaStyle'];
   const globalCtaPosition = getVal(null, 'global_cta_position', 'center') as DynamicCard['ctaPosition'];
   const globalCtaWeight = getVal(null, 'global_cta_weight', 'black');
+  const globalCtaTextSize = getVal(null, 'global_cta_text_size', 's');
   const globalCtaColor = getVal(null, 'global_cta_color', 'var(--primary-color, #2563EB)');
-  const useGlobalBackground = getGlobalBool('use_global_card_background', 'use_global_background', true);
+  const useGlobalBackground = getGlobalBool('use_global_card_background', 'use_global_background', false);
   const globalBackgroundType = getVal(null, 'global_background_type', 'gradient') as DynamicCard['backgroundType'];
   const globalBgColor = getVal(null, 'global_bg_color', '#0F172A');
   const globalGradientFrom = getVal(null, 'global_gradient_from', '#0F172A');
@@ -684,7 +689,8 @@ export const DynamicCardsModule: React.FC<{
   const ctaSize = useGlobalCtaStyles ? globalCtaSize : activeCard.ctaSize || 'md';
   const effectiveCtaStyle = useGlobalCtaStyles ? globalCtaStyle : activeCard.ctaStyle || 'solid';
   const effectiveCtaPosition = useGlobalCtaStyles ? globalCtaPosition : activeCard.ctaPosition || 'center';
-  const ctaWeight = useGlobalCtaStyles ? globalCtaWeight : 'black';
+  const ctaTextSize = useGlobalCtaStyles ? globalCtaTextSize : activeCard.ctaTextSize || 's';
+  const ctaWeight = useGlobalCtaStyles ? globalCtaWeight : activeCard.ctaWeight || 'black';
   const ctaColor = useGlobalCtaStyles ? globalCtaColor : activeCard.ctaColor || 'var(--primary-color, #2563EB)';
 
   const titleStyle: React.CSSProperties = {
@@ -750,6 +756,8 @@ export const DynamicCardsModule: React.FC<{
         ? '1px solid rgba(255,255,255,0.28)'
         : '1px solid transparent',
     backdropFilter: effectiveCtaStyle === 'glass' ? 'blur(14px)' : undefined,
+    fontSize: `${TYPOGRAPHY_SCALE[ctaTextSize as keyof typeof TYPOGRAPHY_SCALE]?.fontSize || TYPOGRAPHY_SCALE.s.fontSize}px`,
+    lineHeight: TYPOGRAPHY_SCALE[ctaTextSize as keyof typeof TYPOGRAPHY_SCALE]?.lineHeight || TYPOGRAPHY_SCALE.s.lineHeight,
     fontWeight: getWeight(ctaWeight)
   };
 

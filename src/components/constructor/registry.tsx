@@ -83,6 +83,17 @@ const BUTTON_LINK_SETTINGS = (prefix: string, defaultUrl: string = '#'): Setting
   ]}
 ];
 
+const BUTTON_TYPOGRAPHY_SETTINGS = (
+  prefix: string,
+  defaultSize: 't3' | 'p' | 's' = 's',
+  defaultWeight: string = 'black',
+  subsection?: string,
+  showIf?: SettingDefinition['showIf']
+): SettingDefinition[] => [
+  { id: `${prefix}_size`, label: 'Tamano tipografico', type: 'typography_size', defaultValue: defaultSize, allowedLevels: ['t3', 'p', 's'], subsection, showIf },
+  { id: `${prefix}_weight`, label: 'Peso tipografico', type: 'font_weight', defaultValue: defaultWeight, subsection, showIf }
+];
+
 const DEFAULT_PARALLAX_BG_IMAGE = '/parallax-default-centered.svg';
 
 const PARALLAX_BACKGROUND_SETTINGS: SettingDefinition[] = [
@@ -714,7 +725,7 @@ export const PRODUCTS_MODULE: WebModule = {
         estructura: [], multimedia: [], interaccion: []
       }
     },
-    { id: 'el_cta', name: 'Botón de Compra', type: 'button', groups: ['contenido', 'estilo', 'interaccion'], settings: {
+    { id: 'el_cta', name: 'Botón de Compra', type: 'button', groups: ['contenido', 'estilo', 'interaccion', 'tipografia'], settings: {
       contenido: [
         { id: 'cta_text', label: 'Texto del Botón', type: 'text', defaultValue: 'Añadir' },
         { id: 'show_icon', label: 'Mostrar Icono Carrito', type: 'boolean', defaultValue: true }
@@ -727,7 +738,10 @@ export const PRODUCTS_MODULE: WebModule = {
       interaccion: [
         { id: 'cta_hover_bg', label: 'Fondo Hover', type: 'color', defaultValue: '#2563EB' }
       ],
-      estructura: [], tipografia: [], multimedia: []
+      tipografia: [
+        ...BUTTON_TYPOGRAPHY_SETTINGS('cta', 's', 'bold')
+      ],
+      estructura: [], multimedia: []
     }}
   ]
 };
@@ -907,7 +921,7 @@ export const HERO_MODULE: WebModule = {
       ],
       contenido: [], tipografia: []
     }},
-    { id: 'el_hero_ctas', name: 'Llamados a la Acción', type: 'button', groups: ['contenido', 'estilo', 'interaccion', 'estructura'], settings: {
+    { id: 'el_hero_ctas', name: 'Llamados a la Acción', type: 'button', groups: ['contenido', 'estilo', 'interaccion', 'estructura', 'tipografia'], settings: {
       contenido: [
         { id: 'show_primary', label: 'Mostrar Botón Primario', type: 'boolean', defaultValue: true, subsection: 'Botón Primario' },
         { id: 'primary_text', label: 'Texto', type: 'text', defaultValue: 'Comenzar Ahora', subsection: 'Botón Primario', showIf: { settingId: 'show_primary', value: true } },
@@ -931,7 +945,10 @@ export const HERO_MODULE: WebModule = {
         { id: 'btn_radius', label: 'Redondeado', type: 'range', defaultValue: 16, min: 0, max: 40, subsection: 'Botones' },
         { id: 'btn_width', label: 'Ancho (Mobile)', type: 'select', defaultValue: 'auto', options: [{label:'Automático', value:'auto'}, {label:'Ancho Completo', value:'full'}], subsection: 'Botones' }
       ],
-      tipografia: [], multimedia: []
+      tipografia: [
+        ...BUTTON_TYPOGRAPHY_SETTINGS('primary', 's', 'black', 'BotÃ³n Primario', { settingId: 'show_primary', value: true }),
+        ...BUTTON_TYPOGRAPHY_SETTINGS('secondary', 's', 'black', 'BotÃ³n Secundario', { settingId: 'show_secondary', value: true })
+      ], multimedia: []
     }},
     { id: 'el_hero_social_proof', name: 'Prueba Social', type: 'text', groups: ['contenido', 'estructura', 'tipografia', 'multimedia'], settings: {
       contenido: [
@@ -2235,7 +2252,7 @@ export const NEWSLETTER_MODULE: WebModule = {
       ],
       multimedia: [], interaccion: []
     }},
-    { id: 'el_news_form', name: 'Formulario', type: 'text', groups: ['contenido', 'estilo', 'interaccion'], settings: {
+    { id: 'el_news_form', name: 'Formulario', type: 'text', groups: ['contenido', 'estilo', 'interaccion', 'tipografia'], settings: {
       contenido: [
         { id: 'show_name', label: 'Pedir Nombre', type: 'boolean', defaultValue: false },
         { id: 'placeholder', label: 'Placeholder Email', type: 'text', defaultValue: 'tu@email.com' },
@@ -2257,7 +2274,10 @@ export const NEWSLETTER_MODULE: WebModule = {
         { id: 'show_gdpr', label: 'Mostrar Checkbox GDPR', type: 'boolean', defaultValue: true },
         { id: 'show_confetti', label: 'Efecto Confeti al Éxito', type: 'boolean', defaultValue: true }
       ],
-      estructura: [], tipografia: [], multimedia: []
+      tipografia: [
+        ...BUTTON_TYPOGRAPHY_SETTINGS('button', 's', 'bold')
+      ],
+      estructura: [], multimedia: []
     }},
     { id: 'el_news_magnet', name: 'Lead Magnet (Opcional)', type: 'text', groups: ['contenido', 'multimedia'], settings: {
       contenido: [
@@ -2384,7 +2404,8 @@ export const CONTACT_MODULE: WebModule = {
       ],
       tipografia: [
         { id: 'label_size', label: 'Tamaño de Etiquetas', type: 'typography_size', defaultValue: 's', allowedLevels: ['p', 's'] },
-        { id: 'label_weight', label: 'Peso de Etiquetas', type: 'font_weight', defaultValue: 'extrabold' }
+        { id: 'label_weight', label: 'Peso de Etiquetas', type: 'font_weight', defaultValue: 'extrabold' },
+        ...BUTTON_TYPOGRAPHY_SETTINGS('button', 's', 'black')
       ],
       multimedia: []
     }},
@@ -2648,7 +2669,7 @@ export const CTA_MODULE: WebModule = {
       ],
       contenido: [], estilo: [], tipografia: [], multimedia: [], interaccion: []
     }},
-    { id: 'el_cta_actions', name: 'Acción Principal', type: 'text', groups: ['contenido', 'estilo', 'interaccion', 'estructura'], settings: {
+    { id: 'el_cta_actions', name: 'Acción Principal', type: 'text', groups: ['contenido', 'estilo', 'interaccion', 'estructura', 'tipografia'], settings: {
       contenido: [
         { id: 'mode', label: 'Modo de Acción', type: 'select', defaultValue: 'buttons', options: [
           { label: 'Botones Clásicos', value: 'buttons' },
@@ -2676,7 +2697,10 @@ export const CTA_MODULE: WebModule = {
         { id: 'enable_shimmer', label: 'Efecto Brillo (Shimmer)', type: 'boolean', defaultValue: true },
         { id: 'magnetic_button', label: 'Botón Magnético', type: 'boolean', defaultValue: false }
       ],
-      tipografia: [], multimedia: []
+      tipografia: [
+        ...BUTTON_TYPOGRAPHY_SETTINGS('primary', 's', 'black'),
+        ...BUTTON_TYPOGRAPHY_SETTINGS('secondary', 's', 'extrabold')
+      ], multimedia: []
     }},
     { id: 'el_cta_urgency', name: 'Urgencia (Countdown)', type: 'text', groups: ['contenido', 'interaccion'], settings: {
       contenido: [
@@ -2874,6 +2898,7 @@ export const DYNAMIC_CARDS_MODULE: WebModule = {
         { label: 'Centro', value: 'center' },
         { label: 'Derecha', value: 'right' }
       ]},
+      { id: 'global_cta_text_size', label: 'Tamano tipografico CTA', type: 'typography_size', defaultValue: 's', allowedLevels: ['t3', 'p', 's'], subsection: 'CTA' },
       { id: 'global_cta_weight', label: 'Peso CTA', type: 'font_weight', defaultValue: 'black', subsection: 'CTA' },
       { id: 'global_cta_color', label: 'Color CTA', type: 'color', defaultValue: 'var(--primary-color, #2563EB)', subsection: 'CTA' },
       { id: 'global_cta_enter_animation', label: 'Entrada CTA', type: 'select', defaultValue: 'zoom', subsection: 'CTA', options: [
@@ -2895,7 +2920,7 @@ export const DYNAMIC_CARDS_MODULE: WebModule = {
       { id: 'global_cta_exit_duration', label: 'Duración salida', type: 'range', defaultValue: 0.35, min: 0.1, max: 2, step: 0.05, unit: 's', subsection: 'CTA' },
     ],
     multimedia: [
-      { id: 'use_global_card_background', label: 'Usar fondo global para todas las tarjetas', type: 'boolean', defaultValue: true, subsection: 'Fondo' },
+      { id: 'use_global_card_background', label: 'Usar fondo global para todas las tarjetas', type: 'boolean', defaultValue: false, subsection: 'Fondo' },
       { id: 'global_background_type', label: 'Tipo de fondo', type: 'select', defaultValue: 'gradient', subsection: 'Fondo', options: [
         { label: 'Color sólido', value: 'color' },
         { label: 'Degradado lineal', value: 'gradient' },
@@ -3127,6 +3152,8 @@ export const DYNAMIC_CARDS_MODULE: WebModule = {
                 { label: 'Mediano', value: 'md' },
                 { label: 'Grande', value: 'lg' }
               ]},
+              { id: 'ctaTextSize', label: 'Tamano tipografico', type: 'typography_size', defaultValue: 's', allowedLevels: ['t3', 'p', 's'], subsection: 'CTA' },
+              { id: 'ctaWeight', label: 'Peso tipografico', type: 'font_weight', defaultValue: 'black', subsection: 'CTA' },
               { id: 'ctaStyle', label: 'Estilo', type: 'select', defaultValue: 'solid', subsection: 'CTA', options: [
                 { label: 'Solido', value: 'solid' },
                 { label: 'Contorno', value: 'outline' },
@@ -3268,7 +3295,7 @@ export const PRICING_MODULE: WebModule = {
       ],
       contenido: [], estilo: [], tipografia: [], multimedia: [], interaccion: []
     }},
-    { id: 'el_pricing_toggle', name: 'Selector de Facturación', type: 'text', groups: ['contenido', 'estilo'], settings: {
+    { id: 'el_pricing_toggle', name: 'Selector de Facturación', type: 'text', groups: ['contenido', 'estilo', 'tipografia'], settings: {
       contenido: [
         { id: 'show_toggle', label: 'Mostrar Selector Mensual/Anual', type: 'boolean', defaultValue: true },
         { id: 'discount_label', label: 'Etiqueta de Descuento', type: 'text', defaultValue: '-20%' }
@@ -3278,7 +3305,10 @@ export const PRICING_MODULE: WebModule = {
         { id: 'active_bg', label: 'Fondo Activo', type: 'color', defaultValue: '#FFFFFF' },
         { id: 'active_color', label: 'Color Texto Activo', type: 'color', defaultValue: '#0F172A' }
       ],
-      estructura: [], tipografia: [], multimedia: [], interaccion: []
+      tipografia: [
+        ...BUTTON_TYPOGRAPHY_SETTINGS('toggle', 's', 'bold')
+      ],
+      estructura: [], multimedia: [], interaccion: []
     }},
     { id: 'el_pricing_plans', name: 'Configuración de Planes', type: 'text', groups: ['contenido'], settings: {
       contenido: [
@@ -3307,7 +3337,7 @@ export const PRICING_MODULE: WebModule = {
       ],
       estilo: [], estructura: [], tipografia: [], multimedia: [], interaccion: []
     }},
-    { id: 'el_pricing_card', name: 'Estilo de Tarjetas', type: 'text', groups: ['estilo', 'estructura'], settings: {
+    { id: 'el_pricing_card', name: 'Estilo de Tarjetas', type: 'text', groups: ['estilo', 'estructura', 'tipografia'], settings: {
       estructura: [
         { id: 'card_radius', label: 'Redondeo', type: 'range', defaultValue: 32, min: 0, max: 60 }
       ],
@@ -3322,7 +3352,9 @@ export const PRICING_MODULE: WebModule = {
           { label: 'Resplandor', value: 'glow' }
         ]}
       ],
-      contenido: [], tipografia: [], multimedia: [], interaccion: []
+      contenido: [], tipografia: [
+        ...BUTTON_TYPOGRAPHY_SETTINGS('cta', 's', 'black')
+      ], multimedia: [], interaccion: []
     }},
     { id: 'el_pricing_price', name: 'Estilo de Precios', type: 'text', groups: ['estilo', 'tipografia'], settings: {
       estilo: [
@@ -4081,5 +4113,3 @@ export const MODULE_INFO: Record<string, {
   bento: { label: 'Diseño libre', icon: Layout },
   composition_section: { label: 'Composición Visual', icon: Layout }
 };
-
-

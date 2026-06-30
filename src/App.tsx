@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { sendToMother, startHandshake, syncSupabaseRuntimeConfig } from './services/handshakeService';
 import { configService } from './services/configService';
@@ -38,6 +39,7 @@ const CONSTRUCTOR_TAB_HEARTBEAT_MS = 4_000;
 const CONSTRUCTOR_TAB_CLEANUP_INTERVAL_MS = 30_000;
 const SESSION_STORAGE_KEY = 'solutium_session_v2';
 const PENDING_ASSETS_STORAGE_KEY = 'pending_assets';
+const CONSTRUCTOR_PREVIEW_GENERATED_EVENT = 'solutium:preview-generated';
 
 interface PersistedSessionPageRef {
   id?: string | null;
@@ -1451,6 +1453,80 @@ const AppContent: React.FC = () => {
     }
   };
 
+  const returnToDashboard = React.useCallback((options?: { refresh?: boolean }) => {
+    flushSync(() => {
+      setSelectedPage(null);
+      setSelectedAsset(null);
+      setSelectedMethod(null);
+      setFormData(null);
+      setCurrentView('dashboard');
+    });
+
+    if (options?.refresh !== false) {
+      void refreshData();
+    }
+  }, [refreshData]);
+
+  useEffect(() => {
+    const handlePreviewGenerated = (event: Event) => {
+      const detail = (event as CustomEvent<any>).detail || {};
+      const siteId = detail.site_id;
+      const previewImageUrl = detail.preview_image_url || null;
+      const previewThumbnailUrl = detail.preview_thumbnail_url || previewImageUrl;
+
+      if (!siteId || !previewImageUrl) return;
+
+      const applyPreviewPatch = <T extends WebBuilderSite | PublishedSite | null>(page: T): T => {
+        if (!page) return page;
+        const pageAny = page as any;
+        const matchesPage =
+          pageAny.siteId === siteId ||
+          pageAny.site_id === siteId ||
+          pageAny.id === siteId;
+
+        if (!matchesPage) return page;
+
+        const nextPreviewImageHash = detail.preview_image_hash || pageAny.previewImageHash || null;
+        const nextPreviewImageUpdatedAt = detail.preview_image_updated_at || pageAny.previewImageUpdatedAt || null;
+
+        const alreadyUpToDate =
+          pageAny.previewImageUrl === previewImageUrl &&
+          pageAny.previewThumbnailUrl === previewThumbnailUrl &&
+          (pageAny.previewImageHash || null) === nextPreviewImageHash &&
+          (pageAny.previewImageUpdatedAt || null) === nextPreviewImageUpdatedAt;
+
+        if (alreadyUpToDate) return page;
+
+        return {
+          ...pageAny,
+          previewImageUrl,
+          previewThumbnailUrl,
+          previewImageHash: nextPreviewImageHash,
+          previewImageUpdatedAt: nextPreviewImageUpdatedAt
+        } as T;
+      };
+
+      setPages((prev) => {
+        let changed = false;
+        const next = prev.map((page) => {
+          const patched = applyPreviewPatch(page);
+          if (patched !== page) changed = true;
+          return patched;
+        });
+        return changed ? next : prev;
+      });
+
+      if (currentView !== 'constructor') {
+        setSelectedPage((prev) => applyPreviewPatch(prev));
+      }
+    };
+
+    window.addEventListener(CONSTRUCTOR_PREVIEW_GENERATED_EVENT, handlePreviewGenerated as EventListener);
+    return () => {
+      window.removeEventListener(CONSTRUCTOR_PREVIEW_GENERATED_EVENT, handlePreviewGenerated as EventListener);
+    };
+  }, [currentView]);
+
   const hydrateProfileAndThemeFromSession = async (
     payload: any,
     handshakeFont: string,
@@ -2340,14 +2416,8 @@ const AppContent: React.FC = () => {
         return (
           <WebConstructor 
             key={selectedPage?.id || (selectedPage as any)?.siteId || 'new-constructor'}
-            onBackToDashboard={() => {
-              refreshData();
-              setSelectedPage(null);
-              setSelectedAsset(null);
-              setSelectedMethod(null);
-              setFormData(null);
-              setCurrentView('dashboard');
-            }} 
+            onBackToDashboard={() => returnToDashboard({ refresh: true })}
+            onDiscardAndExit={() => returnToDashboard({ refresh: false })}
             onCancelOnboarding={() => {
               setCurrentView('selection-method');
               setSelectedPage(null);

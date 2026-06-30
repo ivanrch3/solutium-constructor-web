@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useEditorStore } from '../../store/editorStore';
 
 interface InlineEditableTextProps {
@@ -38,9 +38,11 @@ export const InlineEditableText: React.FC<InlineEditableTextProps> = ({
   const fullId = elementId ? `${elementId}_${settingId}` : `${moduleId}_global_${settingId}`;
   const isEditing = inlineEditingId === fullId;
   
-  const [localValue, setLocalValue] = useState(value);
   const textRef = useRef<HTMLDivElement>(null);
-  const isBlurring = useRef(false);
+  const focusFrameRef = useRef<number | null>(null);
+  const isCommittingRef = useRef(false);
+  const shouldSkipCommitRef = useRef(false);
+  const lastCommittedValueRef = useRef(value);
   const isReadOnlyRuntime = (() => {
     try {
       return (window as any).__SOLUTIUM_READ_ONLY_RENDER__ === true;
@@ -51,19 +53,42 @@ export const InlineEditableText: React.FC<InlineEditableTextProps> = ({
   const shouldDisableEditing = isPreviewMode || isReadOnlyRuntime;
 
   useEffect(() => {
-    if (!isEditing) {
-      setLocalValue(value);
+    lastCommittedValueRef.current = value;
+
+    if (!isEditing && textRef.current && textRef.current.innerText !== value) {
+      textRef.current.innerText = value;
     }
   }, [value, isEditing]);
 
+  useEffect(() => {
+    if (!isEditing) {
+      isCommittingRef.current = false;
+      shouldSkipCommitRef.current = false;
+    }
+  }, [isEditing]);
+
+  useEffect(() => {
+    return () => {
+      if (focusFrameRef.current !== null) {
+        window.cancelAnimationFrame(focusFrameRef.current);
+      }
+    };
+  }, []);
+
   const handleBlur = () => {
-    if (isBlurring.current) return;
-    isBlurring.current = true;
+    if (!isEditing || isCommittingRef.current) return;
+    isCommittingRef.current = true;
+
+    if (shouldSkipCommitRef.current) {
+      shouldSkipCommitRef.current = false;
+      setInlineEditingId(null);
+      return;
+    }
 
     if (textRef.current) {
       const newValue = textRef.current.innerText;
-      if (newValue !== value) {
-        setLocalValue(newValue); // Update local state immediately
+      if (newValue !== lastCommittedValueRef.current) {
+        lastCommittedValueRef.current = newValue;
         if (onSave) {
           onSave(newValue);
         } else {
@@ -72,11 +97,6 @@ export const InlineEditableText: React.FC<InlineEditableTextProps> = ({
       }
     }
     setInlineEditingId(null);
-    
-    // Reset blurring flag after a tick to allow for state propagation
-    setTimeout(() => {
-      isBlurring.current = false;
-    }, 100);
   };
 
   const handleClick = (e: React.MouseEvent) => {
@@ -95,8 +115,7 @@ export const InlineEditableText: React.FC<InlineEditableTextProps> = ({
 
     if (!isEditing) {
       setInlineEditingId(fullId);
-      // Give it a tick to render as contentEditable before focusing
-      setTimeout(() => {
+      focusFrameRef.current = window.requestAnimationFrame(() => {
         if (textRef.current) {
           textRef.current.focus();
           // Move cursor to end
@@ -107,7 +126,7 @@ export const InlineEditableText: React.FC<InlineEditableTextProps> = ({
           sel?.removeAllRanges();
           sel?.addRange(range);
         }
-      }, 0);
+      });
     }
   };
 
@@ -118,8 +137,9 @@ export const InlineEditableText: React.FC<InlineEditableTextProps> = ({
     }
     if (e.key === 'Escape') {
       if (textRef.current) {
-        textRef.current.innerText = value; // Reset
+        textRef.current.innerText = lastCommittedValueRef.current;
       }
+      shouldSkipCommitRef.current = true;
       textRef.current?.blur();
     }
   };

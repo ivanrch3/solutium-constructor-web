@@ -213,6 +213,7 @@ export const Viewer: React.FC<ViewerProps> = ({
     const win = window as typeof window & {
       fbq?: any;
       _fbq?: any;
+      __solutiumMetaPixelInitializedIds?: Set<string>;
       __solutiumMetaPixelTrackedPath?: string;
     };
 
@@ -231,8 +232,12 @@ export const Viewer: React.FC<ViewerProps> = ({
       win._fbq = fbqBootstrap;
     }
 
-    const scriptId = `solutium-meta-pixel-script-${pixelId}`;
-    if (!document.getElementById(scriptId)) {
+    const scriptId = 'solutium-meta-pixel-script';
+    const existingScript =
+      document.getElementById(scriptId) ||
+      document.querySelector('script[src*="connect.facebook.net"][src*="fbevents.js"]');
+
+    if (!existingScript) {
       const script = document.createElement('script');
       script.id = scriptId;
       script.async = true;
@@ -241,11 +246,21 @@ export const Viewer: React.FC<ViewerProps> = ({
       document.head.appendChild(script);
     }
 
-    win.fbq('init', pixelId);
-    const currentTrackPath = `${pixelId}:${window.location.pathname}:${window.location.search}`;
-    if (win.__solutiumMetaPixelTrackedPath !== currentTrackPath) {
+    const initializedIds =
+      win.__solutiumMetaPixelInitializedIds ??
+      new Set<string>();
+
+    win.__solutiumMetaPixelInitializedIds = initializedIds;
+
+    if (!initializedIds.has(pixelId)) {
+      win.fbq('init', pixelId);
+      initializedIds.add(pixelId);
+    }
+
+    const trackKey = `${pixelId}:${window.location.pathname}${window.location.search}`;
+    if (win.__solutiumMetaPixelTrackedPath !== trackKey) {
       win.fbq('track', 'PageView');
-      win.__solutiumMetaPixelTrackedPath = currentTrackPath;
+      win.__solutiumMetaPixelTrackedPath = trackKey;
     }
 
     return () => {

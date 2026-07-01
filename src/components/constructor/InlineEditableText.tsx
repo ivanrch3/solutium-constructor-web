@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useLayoutEffect, useRef } from 'react';
 import { useEditorStore } from '../../store/editorStore';
 
 interface InlineEditableTextProps {
@@ -38,11 +38,12 @@ export const InlineEditableText: React.FC<InlineEditableTextProps> = ({
   const fullId = elementId ? `${elementId}_${settingId}` : `${moduleId}_global_${settingId}`;
   const isEditing = inlineEditingId === fullId;
   
-  const textRef = useRef<HTMLDivElement>(null);
+  const textRef = useRef<HTMLElement | null>(null);
   const focusFrameRef = useRef<number | null>(null);
   const isCommittingRef = useRef(false);
   const shouldSkipCommitRef = useRef(false);
   const lastCommittedValueRef = useRef(value);
+  const lastInitializedEditIdRef = useRef<string | null>(null);
   const isReadOnlyRuntime = (() => {
     try {
       return (window as any).__SOLUTIUM_READ_ONLY_RENDER__ === true;
@@ -52,28 +53,64 @@ export const InlineEditableText: React.FC<InlineEditableTextProps> = ({
   })();
   const shouldDisableEditing = isPreviewMode || isReadOnlyRuntime;
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     lastCommittedValueRef.current = value;
+    const node = textRef.current;
 
-    if (!isEditing && textRef.current && textRef.current.innerText !== value) {
-      textRef.current.innerText = value;
+    if (focusFrameRef.current !== null) {
+      window.cancelAnimationFrame(focusFrameRef.current);
+      focusFrameRef.current = null;
     }
-  }, [value, isEditing]);
 
-  useEffect(() => {
-    if (!isEditing) {
-      isCommittingRef.current = false;
-      shouldSkipCommitRef.current = false;
+    if (!node) {
+      if (!isEditing) {
+        isCommittingRef.current = false;
+        shouldSkipCommitRef.current = false;
+        lastInitializedEditIdRef.current = null;
+      }
+      return;
     }
-  }, [isEditing]);
 
-  useEffect(() => {
+    if (isEditing) {
+      if (lastInitializedEditIdRef.current !== fullId || node.textContent !== value) {
+        node.textContent = value;
+        lastInitializedEditIdRef.current = fullId;
+      }
+
+      focusFrameRef.current = window.requestAnimationFrame(() => {
+        const currentNode = textRef.current;
+        if (!currentNode || !currentNode.isConnected) return;
+        currentNode.focus();
+        const range = document.createRange();
+        const selection = window.getSelection();
+        range.selectNodeContents(currentNode);
+        range.collapse(false);
+        selection?.removeAllRanges();
+        selection?.addRange(range);
+      });
+      return;
+    }
+
+    isCommittingRef.current = false;
+    shouldSkipCommitRef.current = false;
+    lastInitializedEditIdRef.current = null;
+  }, [fullId, isEditing, value]);
+
+  React.useEffect(() => {
     return () => {
       if (focusFrameRef.current !== null) {
         window.cancelAnimationFrame(focusFrameRef.current);
       }
     };
   }, []);
+
+  const getCurrentTextValue = () => {
+    return textRef.current?.textContent?.replace(/\u00a0/g, ' ') ?? '';
+  };
+
+  const setEditableRef = (node: HTMLElement | null) => {
+    textRef.current = node;
+  };
 
   const handleBlur = () => {
     if (!isEditing || isCommittingRef.current) return;
@@ -85,15 +122,13 @@ export const InlineEditableText: React.FC<InlineEditableTextProps> = ({
       return;
     }
 
-    if (textRef.current) {
-      const newValue = textRef.current.innerText;
-      if (newValue !== lastCommittedValueRef.current) {
-        lastCommittedValueRef.current = newValue;
-        if (onSave) {
-          onSave(newValue);
-        } else {
-          updateSectionSettings(moduleId, { [fullId]: newValue });
-        }
+    const newValue = getCurrentTextValue();
+    if (newValue !== lastCommittedValueRef.current) {
+      lastCommittedValueRef.current = newValue;
+      if (onSave) {
+        onSave(newValue);
+      } else {
+        updateSectionSettings(moduleId, { [fullId]: newValue });
       }
     }
     setInlineEditingId(null);
@@ -115,18 +150,6 @@ export const InlineEditableText: React.FC<InlineEditableTextProps> = ({
 
     if (!isEditing) {
       setInlineEditingId(fullId);
-      focusFrameRef.current = window.requestAnimationFrame(() => {
-        if (textRef.current) {
-          textRef.current.focus();
-          // Move cursor to end
-          const range = document.createRange();
-          const sel = window.getSelection();
-          range.selectNodeContents(textRef.current);
-          range.collapse(false);
-          sel?.removeAllRanges();
-          sel?.addRange(range);
-        }
-      });
     }
   };
 
@@ -136,9 +159,7 @@ export const InlineEditableText: React.FC<InlineEditableTextProps> = ({
       textRef.current?.blur();
     }
     if (e.key === 'Escape') {
-      if (textRef.current) {
-        textRef.current.innerText = lastCommittedValueRef.current;
-      }
+      e.preventDefault();
       shouldSkipCommitRef.current = true;
       textRef.current?.blur();
     }
@@ -150,7 +171,7 @@ export const InlineEditableText: React.FC<InlineEditableTextProps> = ({
 
   return (
     <Tag
-      ref={textRef}
+      ref={setEditableRef as unknown as React.Ref<any>}
       className={`${className} transition-all duration-200 ${
         isEditing 
           ? 'outline-none ring-2 ring-blue-400 ring-offset-2 bg-blue-50/10 rounded cursor-text' 
@@ -163,11 +184,7 @@ export const InlineEditableText: React.FC<InlineEditableTextProps> = ({
       onKeyDown={handleKeyDown}
       suppressContentEditableWarning={true}
     >
-      {/* 
-        When editing, we show the RAW value (including **) 
-        When not editing, we show the CHILDREN (rendered TextRenderer with highlights)
-      */}
-      {isEditing ? value : (children || value)}
+      {!isEditing ? (children || value) : null}
     </Tag>
   );
 };

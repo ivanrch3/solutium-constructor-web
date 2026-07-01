@@ -72,7 +72,7 @@ export const InlineEditableText: React.FC<InlineEditableTextProps> = ({
     }
 
     if (isEditing) {
-      if (lastInitializedEditIdRef.current !== fullId || node.textContent !== value) {
+      if (lastInitializedEditIdRef.current !== fullId) {
         node.textContent = value;
         lastInitializedEditIdRef.current = fullId;
       }
@@ -108,6 +108,12 @@ export const InlineEditableText: React.FC<InlineEditableTextProps> = ({
     return textRef.current?.textContent?.replace(/\u00a0/g, ' ') ?? '';
   };
 
+  const clearUncontrolledEditableContent = () => {
+    const node = textRef.current;
+    if (!node) return;
+    node.textContent = '';
+  };
+
   const setEditableRef = (node: HTMLElement | null) => {
     textRef.current = node;
   };
@@ -118,6 +124,7 @@ export const InlineEditableText: React.FC<InlineEditableTextProps> = ({
 
     if (shouldSkipCommitRef.current) {
       shouldSkipCommitRef.current = false;
+      clearUncontrolledEditableContent();
       setInlineEditingId(null);
       return;
     }
@@ -131,15 +138,16 @@ export const InlineEditableText: React.FC<InlineEditableTextProps> = ({
         updateSectionSettings(moduleId, { [fullId]: newValue });
       }
     }
+    clearUncontrolledEditableContent();
     setInlineEditingId(null);
   };
 
   const handleClick = (e: React.MouseEvent) => {
     if (shouldDisableEditing) return;
-    
+
     e.stopPropagation();
     if (onClick) onClick(e);
-    
+
     // Open in structure panel
     selectSection(moduleId);
     if (elementId) {

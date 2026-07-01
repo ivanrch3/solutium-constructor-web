@@ -10,7 +10,8 @@ import {
   Sparkles,
   Check,
   ArrowLeft,
-  RotateCcw
+  RotateCcw,
+  Loader2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AICreditBalanceSummary, AIPageGenerationBrief, AIPagePlan, AIPageTone, AIPageType, ReferenceDebugInfo, ReferenceUrlAnalysis } from '../../types/ai';
@@ -66,11 +67,15 @@ export const MobileBottomNav = ({
 export const UnsavedChangesModal = ({
   onCancel,
   onSaveAndExit,
-  onExitWithoutSaving
+  onExitWithoutSaving,
+  isSaving = false,
+  errorMessage = null
 }: {
   onCancel: () => void,
   onSaveAndExit: () => void,
-  onExitWithoutSaving: () => void
+  onExitWithoutSaving: () => void,
+  isSaving?: boolean,
+  errorMessage?: string | null
 }) => (
   <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[2000] p-6">
     <motion.div
@@ -90,24 +95,38 @@ export const UnsavedChangesModal = ({
         <div className="flex flex-col gap-3 w-full">
           <button
             onClick={onSaveAndExit}
-            className="w-full py-3.5 bg-primary text-white font-bold rounded-xl shadow-lg shadow-primary/20 hover:opacity-90 transition-all flex items-center justify-center gap-2"
+            disabled={isSaving}
+            className={`w-full py-3.5 bg-primary text-white font-bold rounded-xl shadow-lg shadow-primary/20 transition-all flex items-center justify-center gap-2 ${
+              isSaving ? 'cursor-wait opacity-90' : 'hover:opacity-90'
+            }`}
           >
-            <Save size={18} />
-            Guardar
+            {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+            {isSaving ? 'Guardando...' : 'Guardar'}
           </button>
           <button
             onClick={onExitWithoutSaving}
-            className="w-full py-3.5 bg-amber-500/10 text-amber-700 font-bold rounded-xl hover:bg-amber-500/15 transition-all flex items-center justify-center gap-2"
+            disabled={isSaving}
+            className={`w-full py-3.5 bg-amber-500/10 text-amber-700 font-bold rounded-xl transition-all flex items-center justify-center gap-2 ${
+              isSaving ? 'cursor-not-allowed opacity-50' : 'hover:bg-amber-500/15'
+            }`}
           >
             <Trash2 size={18} />
             Salir sin guardar
           </button>
           <button
             onClick={onCancel}
-            className="w-full py-3.5 text-text/40 font-bold hover:text-text/60 transition-all"
+            disabled={isSaving}
+            className={`w-full py-3.5 font-bold transition-all ${
+              isSaving ? 'cursor-not-allowed text-text/25' : 'text-text/40 hover:text-text/60'
+            }`}
           >
             Cancelar
           </button>
+          {errorMessage && (
+            <p className="text-sm font-semibold text-rose-600">
+              {errorMessage}
+            </p>
+          )}
         </div>
       </div>
     </motion.div>

@@ -7,6 +7,7 @@ import { InlineEditableText } from '../InlineEditableText';
 import { useEditorStore } from '../../../store/editorStore';
 import { SectionAnimation } from '../animations/SectionAnimation';
 import { normalizeSectionAnimation } from '../../../constants/moduleAnimations';
+import { buildVideoEmbedUrl, getEmbedFrameReferrerPolicy, resolveVideoProviderFromUrl } from '../../../utils/videoEmbed';
 
 export const VideoModule: React.FC<{ 
   moduleId: string, 
@@ -148,25 +149,21 @@ export const VideoModule: React.FC<{
     }
   };
 
-  const isYouTube = typeof videoUrl === 'string' && (videoUrl.includes('youtube.com') || videoUrl.includes('youtu.be'));
-  const isVimeo = typeof videoUrl === 'string' && videoUrl.includes('vimeo.com');
+  const videoProvider = useMemo(
+    () => resolveVideoProviderFromUrl(typeof videoUrl === 'string' ? videoUrl : ''),
+    [videoUrl]
+  );
+  const isYouTube = videoProvider === 'youtube';
+  const isVimeo = videoProvider === 'vimeo';
 
   const getEmbedUrl = (url: any, forceAutoplay = false) => {
     if (typeof url !== 'string' || !url) return '';
-    const shouldAutoplay = forceAutoplay || autoplay || (hoverToPlay && isHovered);
-    
-    if (isYouTube) {
-      const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-      const match = url.match(regExp);
-      const id = (match && match[2].length === 11) ? match[2] : null;
-      if (!id) return url;
-      return `https://www.youtube.com/embed/${id}?autoplay=${shouldAutoplay ? 1 : 0}&loop=${loop ? 1 : 0}&controls=${controls ? 1 : 0}&mute=${shouldAutoplay ? 1 : 0}&playlist=${id}&rel=0`;
-    }
-    if (isVimeo) {
-      const id = url.split('/').filter(p => p).pop()?.split('?')[0];
-      return `https://player.vimeo.com/video/${id}?autoplay=${shouldAutoplay ? 1 : 0}&loop=${loop ? 1 : 0}&muted=${shouldAutoplay ? 1 : 0}`;
-    }
-    return url;
+    return buildVideoEmbedUrl(url, {
+      autoplay: forceAutoplay || autoplay,
+      loop,
+      controls,
+      hoverToPlay: hoverToPlay && isHovered,
+    }) || url;
   };
 
   const handlePlayClick = () => {
@@ -187,7 +184,9 @@ export const VideoModule: React.FC<{
           key={`${videoUrl}-${inLightbox || isPlaying || (hoverToPlay && isHovered)}`}
           src={getEmbedUrl(videoUrl, inLightbox || isPlaying)}
           className={`absolute inset-0 w-full h-full border-0 transition-all duration-700 ${filterClass}`}
-          allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; gyroscope"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          allowFullScreen
+          referrerPolicy={getEmbedFrameReferrerPolicy(videoProvider)}
           title="Video Player"
           loading="lazy"
         />

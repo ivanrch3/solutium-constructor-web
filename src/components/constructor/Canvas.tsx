@@ -114,12 +114,17 @@ export const Canvas: React.FC<CanvasProps> = ({
     () => normalizeConstructorModuleOrder(((renderSiteContent?.sections) || []) as any[]),
     [renderSiteContent?.sections]
   );
+  const moduleMeasurementSignature = React.useMemo(
+    () => orderedSections.map((section: any) => `${section.id}:${section.type || (section as any).tipo || 'unknown'}`).join('|'),
+    [orderedSections]
+  );
 
   const lastModuleRef = React.useRef<HTMLDivElement>(null);
   const prevModulesLength = React.useRef(editorState.addedModules?.length || 0);
   const canvasScrollContainerRef = React.useRef<HTMLDivElement>(null);
   const fullscreenRootRef = React.useRef<HTMLDivElement>(null);
   const renderRootRef = React.useRef<HTMLDivElement>(null);
+  const scheduledMeasurementFrameRef = React.useRef<number | null>(null);
   const panStartRef = React.useRef({ x: 0, y: 0, scrollLeft: 0, scrollTop: 0 });
   const [canvasViewportWidth, setCanvasViewportWidth] = React.useState(0);
   const [renderContentWidth, setRenderContentWidth] = React.useState(0);
@@ -260,7 +265,10 @@ export const Canvas: React.FC<CanvasProps> = ({
     if (!scrollNode || typeof ResizeObserver === 'undefined') return;
 
     const updateCanvasViewportWidth = () => {
-      setCanvasViewportWidth(scrollNode.clientWidth || scrollNode.getBoundingClientRect().width || 0);
+      const nextWidth = scrollNode.clientWidth || scrollNode.getBoundingClientRect().width || 0;
+      setCanvasViewportWidth((previousWidth) => (
+        previousWidth === nextWidth ? previousWidth : nextWidth
+      ));
     };
 
     updateCanvasViewportWidth();
@@ -274,8 +282,14 @@ export const Canvas: React.FC<CanvasProps> = ({
     if (!renderNode || typeof ResizeObserver === 'undefined') return;
 
     const updateRenderContentSize = () => {
-      setRenderContentWidth(renderNode.offsetWidth || 0);
-      setRenderContentHeight(renderNode.offsetHeight || 0);
+      const nextWidth = renderNode.offsetWidth || 0;
+      const nextHeight = renderNode.offsetHeight || 0;
+      setRenderContentWidth((previousWidth) => (
+        previousWidth === nextWidth ? previousWidth : nextWidth
+      ));
+      setRenderContentHeight((previousHeight) => (
+        previousHeight === nextHeight ? previousHeight : nextHeight
+      ));
     };
     updateRenderContentSize();
     const observer = new ResizeObserver(updateRenderContentSize);
@@ -310,37 +324,70 @@ export const Canvas: React.FC<CanvasProps> = ({
     });
   }, []);
 
+  const scheduleMeasuredSectionHeightsUpdate = React.useCallback(() => {
+    if (scheduledMeasurementFrameRef.current !== null) return;
+    scheduledMeasurementFrameRef.current = window.requestAnimationFrame(() => {
+      scheduledMeasurementFrameRef.current = null;
+      updateMeasuredSectionHeights();
+    });
+  }, [updateMeasuredSectionHeights]);
+
+  React.useEffect(() => {
+    return () => {
+      if (scheduledMeasurementFrameRef.current !== null) {
+        window.cancelAnimationFrame(scheduledMeasurementFrameRef.current);
+        scheduledMeasurementFrameRef.current = null;
+      }
+    };
+  }, []);
+
   React.useLayoutEffect(() => {
-    updateMeasuredSectionHeights();
-  }, [updateMeasuredSectionHeights, orderedSections, viewport, isFullscreen, isPreviewMode, reloadKey, editorState.settingsValues]);
+    scheduleMeasuredSectionHeightsUpdate();
+  }, [scheduleMeasuredSectionHeightsUpdate, moduleMeasurementSignature, viewport, isFullscreen, isPreviewMode, reloadKey]);
 
   React.useEffect(() => {
     const root = renderRootRef.current;
     if (!root || typeof ResizeObserver === 'undefined') return;
 
-    updateMeasuredSectionHeights();
+    scheduleMeasuredSectionHeightsUpdate();
 
     const observer = new ResizeObserver(() => {
-      updateMeasuredSectionHeights();
+      scheduleMeasuredSectionHeightsUpdate();
     });
 
     observer.observe(root);
     root.querySelectorAll<HTMLElement>('[data-module-id]').forEach((node) => observer.observe(node));
 
-    return () => observer.disconnect();
-  }, [updateMeasuredSectionHeights, orderedSections, viewport, isFullscreen, isPreviewMode]);
+    return () => {
+      observer.disconnect();
+      if (scheduledMeasurementFrameRef.current !== null) {
+        window.cancelAnimationFrame(scheduledMeasurementFrameRef.current);
+        scheduledMeasurementFrameRef.current = null;
+      }
+    };
+  }, [scheduleMeasuredSectionHeightsUpdate, moduleMeasurementSignature, reloadKey]);
 
   const updateScrollMetrics = React.useCallback(() => {
     const node = canvasScrollContainerRef.current;
     if (!node) return;
-    setScrollMetrics({
+    const nextMetrics = {
       scrollLeft: node.scrollLeft,
       scrollTop: node.scrollTop,
       scrollWidth: node.scrollWidth,
       scrollHeight: node.scrollHeight,
       clientWidth: node.clientWidth,
       clientHeight: node.clientHeight
-    });
+    };
+    setScrollMetrics((previousMetrics) => (
+      previousMetrics.scrollLeft === nextMetrics.scrollLeft &&
+      previousMetrics.scrollTop === nextMetrics.scrollTop &&
+      previousMetrics.scrollWidth === nextMetrics.scrollWidth &&
+      previousMetrics.scrollHeight === nextMetrics.scrollHeight &&
+      previousMetrics.clientWidth === nextMetrics.clientWidth &&
+      previousMetrics.clientHeight === nextMetrics.clientHeight
+        ? previousMetrics
+        : nextMetrics
+    ));
   }, []);
 
   React.useEffect(() => {

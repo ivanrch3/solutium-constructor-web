@@ -109,6 +109,7 @@ import { applySectionVariety, buildMasterModuleSchemaFromSectionBlueprint, norma
 import { bridgeModuleContent } from '../../utils/hydrationBridge';
 import { cloneCompositionPresetSchema, CompositionPresetId } from './modules/compositionPresets';
 import { validateCompositionSchema } from '../../utils/compositionSchemaValidator';
+import { buildVideoEmbedUrl, resolveVideoExternalId, resolveVideoProviderFromUrl } from '../../utils/videoEmbed';
 
 const isReferenceDebugEnabled = () => import.meta.env.DEV || import.meta.env.VITE_SHOW_AI_REFERENCE_DEBUG === 'true';
 
@@ -118,6 +119,16 @@ const isObsoleteReferenceSectionLimitWarning = (warning: unknown) => {
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase();
   return normalized.includes('mas de 7 secciones') || normalized.includes('truncaron las excedentes');
+};
+
+const CONSTRUCTOR_PREVIEW_GENERATED_EVENT = 'solutium:preview-generated';
+
+type DraftSaveResult = {
+  draftSaved: boolean;
+  pageSynced: boolean;
+  sectionsSynced: boolean;
+  previewQueued: boolean;
+  warnings: string[];
 };
 
 const buildSafeReferenceDebugJson = (debug: ReferenceDebugInfo | null) => {
@@ -395,6 +406,65 @@ const seedMetaPixelThemeSettings = (
   return changed ? nextSettings : settingsValues;
 };
 
+const stableSerializePersistedValue = (value: any): string => {
+  if (value === null) return 'null';
+  if (value === undefined) return 'null';
+
+  const valueType = typeof value;
+  if (valueType === 'number' || valueType === 'boolean') {
+    return JSON.stringify(value);
+  }
+
+  if (valueType === 'string') {
+    return JSON.stringify(value);
+  }
+
+  if (Array.isArray(value)) {
+    return `[${value.map((entry) => stableSerializePersistedValue(entry)).join(',')}]`;
+  }
+
+  if (value instanceof Date) {
+    return JSON.stringify(value.toISOString());
+  }
+
+  if (valueType === 'object') {
+    const keys = Object.keys(value)
+      .filter((key) => {
+        const entry = value[key];
+        return entry !== undefined && typeof entry !== 'function';
+      })
+      .sort();
+
+    return `{${keys
+      .map((key) => `${JSON.stringify(key)}:${stableSerializePersistedValue(value[key])}`)
+      .join(',')}}`;
+  }
+
+  return JSON.stringify(String(value));
+};
+
+const buildPersistableEditorSignature = ({
+  editorState,
+  siteName
+}: {
+  editorState: EditorState;
+  siteName: string;
+}) => {
+  const normalizedModules = normalizeConstructorModuleOrder(
+    syncModulesWithRegistryDefinitions(editorState?.addedModules || [])
+  );
+  const normalizedSettings = normalizeConstructorSettingsValues(
+    editorState?.settingsValues || {},
+    normalizedModules
+  );
+
+  return stableSerializePersistedValue({
+    siteName: (siteName || '').trim(),
+    addedModules: normalizedModules,
+    settingsValues: normalizedSettings
+  });
+};
+
 const AUTOSAVE_DISABLED_VALUE = 'disabled';
 const TEMPORARY_SAVE_INTERVAL_OPTIONS = [1, 3, 10] as const;
 const DEFAULT_TEMPORARY_SAVE_INTERVAL_MINUTES = 3;
@@ -454,6 +524,32 @@ const getPlainValue = (val: any) => {
     return val.value;
   }
   return val;
+};
+
+const normalizeOptionalString = (value: unknown): string | undefined => {
+  const plainValue = getPlainValue(value);
+  if (plainValue === undefined || plainValue === null) return undefined;
+  const text = String(plainValue).trim();
+  return text.length > 0 ? text : undefined;
+};
+
+const normalizeBooleanValue = (value: unknown, fallback = false): boolean => {
+  if (value === undefined || value === null || value === '') return fallback;
+  return value === true || value === 'true' || value === 1 || value === '1';
+};
+
+const buildPublishedVideoUrl = (
+  sourceUrl: string | undefined,
+  options: {
+    autoplay?: boolean;
+    loop?: boolean;
+    controls?: boolean;
+    hoverToPlay?: boolean;
+  }
+): string | undefined => {
+  const normalizedUrl = normalizeOptionalString(sourceUrl);
+  if (!normalizedUrl) return undefined;
+  return buildVideoEmbedUrl(normalizedUrl, options);
 };
 
 const PROJECT_BRAND_COLOR_DEFAULTS = new Set([
@@ -548,6 +644,7 @@ const checkDictionarySync = async (contract: RenderingContract): Promise<void> =
 
 interface WebConstructorProps {
   onBackToDashboard: () => void;
+  onDiscardAndExit: () => void;
   onCancelOnboarding?: () => void;
   projectId: string | null;
   appId: string | null;
@@ -704,6 +801,7 @@ const openPublishedUrl = (url: string | null) => {
 
 export const WebConstructor: React.FC<WebConstructorProps> = ({
   onBackToDashboard,
+  onDiscardAndExit,
   onCancelOnboarding,
   projectId,
   appId,
@@ -852,6 +950,13 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     if (Array.isArray(warnings) && warnings.length > 0) {
       setPreviewWarning(`${fallbackMessage} ${warnings.join(' ')}`);
     }
+  }, []);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -1455,22 +1560,37 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   const [localSnapshotToRestore, setLocalSnapshotToRestore] = useState<LocalDraftSnapshot | null>(null);
   const [showTemporarySaveNotice, setShowTemporarySaveNotice] = useState(false);
   const [showUnsavedModal, setShowUnsavedModal] = useState(false);
+  const [unsavedModalSaveError, setUnsavedModalSaveError] = useState<string | null>(null);
+  const [isDirtyBaselineReady, setIsDirtyBaselineReady] = useState(false);
+  const [isInitialHydrationSettled, setIsInitialHydrationSettled] = useState(false);
   const isInitialLoad = useRef(true);
+  const isMountedRef = useRef(true);
   const editorStateRef = useRef(editorState);
   const saveInProgressRef = useRef(false);
   const autosaveInProgressRef = useRef(false);
   const publishInProgressRef = useRef(false);
+  const previewCaptureInFlightRef = useRef<Promise<void> | null>(null);
+  const previewCaptureActiveKeyRef = useRef<string | null>(null);
+  const pendingPreviewCaptureRef = useRef<{
+    requestKey: string;
+    projectId: string;
+    siteId: string;
+    webBuilderSiteId: string;
+    savedCanvasScrollTop: number;
+  } | null>(null);
   const temporarySaveNoticeTimerRef = useRef<number | null>(null);
   const localSnapshotDirtyRef = useRef(false);
   const pendingChangesDuringSaveRef = useRef(false);
   const lastSaveSourceRef = useRef<'manual' | 'autosave' | 'prepublish' | null>(null);
-  const activeSavePromiseRef = useRef<Promise<boolean> | null>(null);
+  const activeSavePromiseRef = useRef<Promise<DraftSaveResult> | null>(null);
   const changeVersionRef = useRef(0);
   const lastSaveChangeVersionRef = useRef(0);
+  const lastSavedSignatureRef = useRef<string | null>(null);
   const siteNameRef = useRef(siteName);
   const currentStatusRef = useRef(currentStatus);
   const lastLocalSectionsSignatureRef = useRef<string | null>(null);
   const lastProjectThemeSeedSignatureRef = useRef<string | null>(null);
+  const isLeavingEditorRef = useRef(false);
   const autosaveIntervalSetting = editorState.settingsValues['global_theme_builder_autosave_interval_ms'];
   const autosaveDisabledByInterval = String(autosaveIntervalSetting).trim().toLowerCase() === AUTOSAVE_DISABLED_VALUE;
   const autosaveEnabled = !autosaveDisabledByInterval && resolveBooleanSetting(
@@ -1485,14 +1605,30 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     editorState.settingsValues['global_theme_builder_temporary_save_interval_minutes']
   );
   const temporarySaveIntervalMs = temporarySaveIntervalMinutes * 60_000;
+  const pageIdentityKey = React.useMemo(
+    () => `${projectId || 'project'}:${currentSiteId || 'site'}:${localSnapshotPageId || 'page'}`,
+    [currentSiteId, localSnapshotPageId, projectId]
+  );
+  const currentPersistedEditorSignature = React.useMemo(
+    () => buildPersistableEditorSignature({ editorState, siteName }),
+    [editorState, siteName]
+  );
 
-  // Mark initial load as finished after a short delay to allow sync effects to run
   useEffect(() => {
-    const timer = setTimeout(() => {
+    isLeavingEditorRef.current = false;
+    isInitialLoad.current = true;
+    setIsInitialHydrationSettled(false);
+    setIsDirtyBaselineReady(false);
+    lastSavedSignatureRef.current = null;
+    localSnapshotDirtyRef.current = false;
+
+    const timer = window.setTimeout(() => {
       isInitialLoad.current = false;
+      setIsInitialHydrationSettled(true);
     }, 1500);
-    return () => clearTimeout(timer);
-  }, []);
+
+    return () => window.clearTimeout(timer);
+  }, [pageIdentityKey]);
 
   useEffect(() => {
     if (autosaveStatus !== 'saved') return;
@@ -1511,6 +1647,28 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   useEffect(() => {
     currentStatusRef.current = currentStatus;
   }, [currentStatus]);
+
+  useEffect(() => {
+    if (!isInitialHydrationSettled) return;
+    if (isDraftOperationInProgress) return;
+
+    if (!isDirtyBaselineReady || lastSavedSignatureRef.current === null) {
+      lastSavedSignatureRef.current = currentPersistedEditorSignature;
+      localSnapshotDirtyRef.current = false;
+      setIsDirtyBaselineReady(true);
+      setHasUnsavedChanges(false);
+      return;
+    }
+
+    const nextIsDirty = currentPersistedEditorSignature !== lastSavedSignatureRef.current;
+    localSnapshotDirtyRef.current = nextIsDirty;
+    setHasUnsavedChanges((prev) => (prev === nextIsDirty ? prev : nextIsDirty));
+  }, [
+    currentPersistedEditorSignature,
+    isDirtyBaselineReady,
+    isDraftOperationInProgress,
+    isInitialHydrationSettled
+  ]);
 
 
   useEffect(() => {
@@ -1588,6 +1746,147 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     setLocalSnapshotError(null);
     setLocalSnapshotToRestore(null);
   }, [localSnapshotIdentity]);
+
+  const emitPreviewGenerated = useCallback((detail: {
+    site_id: string;
+    preview_image_url?: string;
+    preview_thumbnail_url?: string;
+    preview_image_hash?: string;
+    preview_image_updated_at?: string;
+  }) => {
+    sendToMother('SOLUTIUM_PREVIEW_GENERATED', detail);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent(CONSTRUCTOR_PREVIEW_GENERATED_EVENT, { detail }));
+    }
+  }, []);
+
+  const queueDraftPreviewCapture = useCallback((params: {
+    requestKey: string;
+    projectId: string;
+    siteId: string;
+    webBuilderSiteId: string;
+    savedCanvasScrollTop: number;
+  }) => {
+    if (previewCaptureActiveKeyRef.current === params.requestKey) {
+      return previewCaptureInFlightRef.current;
+    }
+
+    if (previewCaptureInFlightRef.current) {
+      pendingPreviewCaptureRef.current = params;
+      return previewCaptureInFlightRef.current;
+    }
+
+    previewCaptureActiveKeyRef.current = params.requestKey;
+
+    const capturePromise = (async () => {
+      const previewDisableReason = getPreviewDisableReason(params.siteId);
+      if (isPreviewConfigDisabled(previewDisableReason)) {
+        logDebug('[PREVIEW_CAPTURE_DEBUG] Preview generation skipped because backend preview configuration is disabled for this session.', {
+          siteId: params.siteId,
+          previewDisableReason
+        });
+        if (isMountedRef.current) {
+          setPreviewWarning(null);
+          setPreviewStatus('idle');
+        }
+        return;
+      }
+
+      if (isMountedRef.current) {
+        setPreviewWarning(null);
+        setPreviewStatus('loading');
+        setIsGeneratingPreview(true);
+      }
+
+      try {
+        const previewResult = await generatePreviewServerSide({
+          project_id: params.projectId,
+          site_id: params.siteId,
+          web_builder_site_id: params.webBuilderSiteId,
+          mode: 'thumbnail'
+        });
+
+        if (previewResult.success && previewResult.preview_image_url) {
+          if (isMountedRef.current) {
+            setPreviewWarningsFromResult(
+              previewResult.warnings,
+              'Preview generado, pero hubo advertencias al guardar metadatos.'
+            );
+            setPreviewStatus('success');
+          }
+
+          emitPreviewGenerated({
+            site_id: params.siteId,
+            preview_image_url: previewResult.preview_image_url,
+            preview_thumbnail_url: previewResult.preview_thumbnail_url,
+            preview_image_hash: previewResult.preview_image_hash,
+            preview_image_updated_at: previewResult.preview_image_updated_at
+          });
+
+          logDebug('[PREVIEW_CAPTURE_DEBUG] Server-side preview generated (Save):', {
+            siteId: params.siteId,
+            url: previewResult.preview_image_url,
+            requestKey: params.requestKey
+          });
+        } else if (previewResult.errorCode === 'preview_region_missing' || previewResult.errorCode === 'preview_missing_storage_config') {
+          const disableReason = previewResult.errorCode === 'preview_missing_storage_config'
+            ? 'preview_missing_storage_config'
+            : 'preview_region_missing';
+          setPreviewDisableReason(disableReason, params.siteId);
+          logDebug('[PREVIEW_CAPTURE_DEBUG] Draft saved. Preview omitted because backend storage is not configured.', {
+            siteId: params.siteId,
+            reason: previewResult.reason || disableReason,
+            requestKey: params.requestKey
+          });
+          if (isMountedRef.current) {
+            setPreviewStatus('idle');
+          }
+        } else if (previewResult.skipped) {
+          logDebug('[PREVIEW_CAPTURE_DEBUG] Draft saved. Preview skipped by client/backend guard.', {
+            siteId: params.siteId,
+            reason: previewResult.reason || null,
+            requestKey: params.requestKey
+          });
+          if (isMountedRef.current) {
+            setPreviewStatus('idle');
+          }
+        } else {
+          console.warn('[PREVIEW_CAPTURE_WARNING] Draft saved, but preview generation failed.', previewResult.error);
+          if (isMountedRef.current) {
+            setPreviewWarning('Borrador guardado, pero no se pudo actualizar la vista previa.');
+            setPreviewStatus('error');
+          }
+        }
+      } catch (pError) {
+        console.warn('[PREVIEW_CAPTURE_WARNING] Preview failed after saving draft. Draft remains saved.', pError);
+        if (isMountedRef.current) {
+          setPreviewWarning('Borrador guardado, pero no se pudo actualizar la vista previa.');
+          setPreviewStatus('error');
+        }
+      } finally {
+        stabilizeCanvasScroll(params.savedCanvasScrollTop);
+        if (isMountedRef.current) {
+          setIsGeneratingPreview(false);
+          window.setTimeout(() => {
+            if (isMountedRef.current) {
+              setPreviewStatus('idle');
+            }
+          }, 3000);
+        }
+        previewCaptureInFlightRef.current = null;
+        previewCaptureActiveKeyRef.current = null;
+
+        const pendingRequest = pendingPreviewCaptureRef.current;
+        pendingPreviewCaptureRef.current = null;
+        if (pendingRequest) {
+          queueDraftPreviewCapture(pendingRequest);
+        }
+      }
+    })();
+
+    previewCaptureInFlightRef.current = capturePromise;
+    return capturePromise;
+  }, [emitPreviewGenerated, setPreviewWarningsFromResult]);
 
   useEffect(() => {
     const snapshot = readLocalDraftSnapshot(localSnapshotIdentity);
@@ -1753,13 +2052,6 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     });
   }, [projectId, secureCustomers, secureProducts, secureTrustedCompanyLogos, useSecureCatalogContext]);
 
-  // Track unsaved changes
-  React.useEffect(() => {
-    // We skip the first render by checking if editorState has modules or if it's different from initial
-    // But a simpler way is to just set it to true after any change
-    // For now, let's assume any change to editorState or siteName after mount makes it dirty
-  }, [editorState, siteName]);
-
   const normalizeEditorSyncValue = (value: any) => {
     if (typeof value === 'string') {
       const dimensionMatch = value.trim().match(/^(-?\d+(?:\.\d+)?)px$/);
@@ -1905,6 +2197,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
 
   // Synchronize local editorState TO store siteContent whenever it changes
   useEffect(() => {
+    if (isLeavingEditorRef.current) return;
     if (isInitialLoad.current && (!editorState.addedModules || editorState.addedModules.length === 0)) return;
 
     // Generar el contrato de renderizado (SiteContent)
@@ -1923,6 +2216,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
 
   // Synchronize store settings back to local editorState
   useEffect(() => {
+    if (isLeavingEditorRef.current) return;
     if (siteContent.sections.length > 0) {
       const incomingSectionsSignature = getSectionsSyncSignature(siteContent.sections);
       if (incomingSectionsSignature === lastLocalSectionsSignatureRef.current) return;
@@ -4133,6 +4427,54 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
 const isUUID = (str: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
 const isPersistentModuleInstanceId = (value: string) => /^mod_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 
+const resolveSectionTechnicalName = (sectionType: unknown): string | undefined => {
+  const normalizedType = String(sectionType || '').trim().toLowerCase();
+  if (!normalizedType) return undefined;
+  if (normalizedType === 'conversion') return 'HEADER_MODULE';
+  return `${normalizedType.replace(/[^a-z0-9]+/gi, '_').toUpperCase()}_MODULE`;
+};
+
+const extractModuleUuid = (moduleInstanceId: unknown): string | undefined => {
+  const rawValue = String(moduleInstanceId || '').trim();
+  if (!rawValue) return undefined;
+  if (isUUID(rawValue)) return rawValue;
+  if (isPersistentModuleInstanceId(rawValue)) {
+    const candidate = rawValue.slice(4);
+    return isUUID(candidate) ? candidate : undefined;
+  }
+  return undefined;
+};
+
+const buildPageSectionsPayload = (
+  contract: RenderingContract,
+  pageId: string
+): Partial<PageSection>[] => {
+  return contract.sections.map((section: any, idx) => {
+    const moduleInstanceId = typeof section.id === 'string' ? section.id : undefined;
+    const technicalName = resolveSectionTechnicalName(section.tipo || section.type);
+    const moduleUuid = extractModuleUuid(moduleInstanceId);
+
+    return {
+      id: moduleUuid,
+      page_id: pageId,
+      section_type: section.tipo,
+      technical_name: technicalName,
+      web_builder_section_id: moduleUuid,
+      content_json: section.content,
+      styles_json: { ...section.styles, ...section.settings },
+      order_index: idx,
+      metadata: {
+        version: '2.3-Atomic',
+        audit_specs: section.audit_specs,
+        config_hash: section.config_hash,
+        module_id: moduleInstanceId,
+        technical_name: technicalName,
+        web_builder_section_uuid: moduleUuid
+      }
+    };
+  });
+};
+
 const migrateEditorStateToUUIDs = (state: any): any => {
   let changed = false;
   let newState = { ...state };
@@ -4218,6 +4560,7 @@ const formatTimestampName = () => {
 
   const handleLogoClick = () => {
     if (hasUnsavedChanges) {
+      setUnsavedModalSaveError(null);
       setShowUnsavedModal(true);
     } else {
       onBackToDashboard();
@@ -4225,18 +4568,33 @@ const formatTimestampName = () => {
   };
 
   const handleSaveAndExit = async () => {
-    const saved = await handleSaveDraft();
-    if (!saved) return;
+    if (isSaving || saveStatus === 'loading') return;
+    setUnsavedModalSaveError(null);
+    const saveResult = await performDraftSave({
+      source: 'manual',
+      skipPreview: false,
+      silent: false
+    });
+    if (!saveResult.draftSaved) {
+      setUnsavedModalSaveError('No pudimos guardar los cambios. Intenta nuevamente.');
+      return;
+    }
     setShowUnsavedModal(false);
     onBackToDashboard();
   };
 
   const handleExitWithoutSaving = () => {
-    if (localSnapshotDirtyRef.current) {
-      persistLocalDraftSnapshot({ showNotice: false });
+    if (isSaving || saveStatus === 'loading') return;
+    isLeavingEditorRef.current = true;
+    localSnapshotDirtyRef.current = false;
+    pendingPreviewCaptureRef.current = null;
+    previewCaptureActiveKeyRef.current = null;
+    if (temporarySaveNoticeTimerRef.current) {
+      window.clearTimeout(temporarySaveNoticeTimerRef.current);
+      temporarySaveNoticeTimerRef.current = null;
     }
-    setShowUnsavedModal(false);
-    onBackToDashboard();
+    removeLocalDraftSnapshot(localSnapshotIdentity);
+    onDiscardAndExit();
   };
 
 
@@ -4464,6 +4822,107 @@ const formatTimestampName = () => {
             }
           }
         });
+
+        if (module.type === 'video') {
+          const rawVideoUrl = normalizeOptionalString(
+            currentState.settingsValues?.[`${module.id}_el_video_player_video_url`] ??
+            settings.el_video_player_video_url
+          );
+          const rawPosterUrl = normalizeOptionalString(
+            currentState.settingsValues?.[`${module.id}_el_video_player_poster_url`] ??
+            settings.el_video_player_poster_url
+          );
+          const autoplay = normalizeBooleanValue(
+            currentState.settingsValues?.[`${module.id}_el_video_player_autoplay`] ??
+            settings.el_video_player_autoplay,
+            false
+          );
+          const loop = normalizeBooleanValue(
+            currentState.settingsValues?.[`${module.id}_el_video_player_loop`] ??
+            settings.el_video_player_loop,
+            true
+          );
+          const controls = normalizeBooleanValue(
+            currentState.settingsValues?.[`${module.id}_el_video_player_controls`] ??
+            settings.el_video_player_controls,
+            true
+          );
+          const lightbox = normalizeBooleanValue(
+            currentState.settingsValues?.[`${module.id}_el_video_player_lightbox`] ??
+            settings.el_video_player_lightbox,
+            false
+          );
+          const hoverToPlay = normalizeBooleanValue(
+            currentState.settingsValues?.[`${module.id}_global_hover_to_play`] ??
+            settings.global_hover_to_play,
+            false
+          );
+          const aspectRatio = normalizeOptionalString(
+            currentState.settingsValues?.[`${module.id}_global_aspect_ratio`] ??
+            settings.global_aspect_ratio
+          );
+          const videoFilter = normalizeOptionalString(
+            currentState.settingsValues?.[`${module.id}_global_video_filter`] ??
+            settings.global_video_filter
+          );
+          const layoutValue = normalizeOptionalString(
+            currentState.settingsValues?.[`${module.id}_global_layout`] ??
+            settings.global_layout
+          );
+          const playButtonStyle = normalizeOptionalString(
+            currentState.settingsValues?.[`${module.id}_el_video_player_play_button_style`] ??
+            settings.el_video_player_play_button_style
+          );
+          const provider = resolveVideoProviderFromUrl(rawVideoUrl);
+          const videoId = resolveVideoExternalId(rawVideoUrl, provider);
+          const publishedVideoUrl = buildPublishedVideoUrl(rawVideoUrl, {
+            autoplay,
+            loop,
+            controls,
+            hoverToPlay
+          });
+
+          if (rawVideoUrl) {
+            content.sourceVideoUrl = rawVideoUrl;
+            content.source_video_url = rawVideoUrl;
+            content.video_url = rawVideoUrl;
+          }
+          if (publishedVideoUrl) {
+            content.videoUrl = publishedVideoUrl;
+          }
+          if (rawPosterUrl) {
+            content.posterUrl = rawPosterUrl;
+            content.poster_url = rawPosterUrl;
+            content.thumbnail = rawPosterUrl;
+            content.poster = rawPosterUrl;
+          }
+          if (provider !== 'unknown') {
+            content.provider = provider;
+          }
+          if (videoId) {
+            content.videoId = videoId;
+            content.video_id = videoId;
+          }
+          if (aspectRatio) {
+            content.aspect_ratio = aspectRatio;
+            content.ratio = aspectRatio;
+          }
+          if (videoFilter) {
+            content.video_filter = videoFilter;
+          }
+          if (layoutValue) {
+            content.layout = layoutValue;
+          }
+          if (playButtonStyle) {
+            content.play_button_style = playButtonStyle;
+          }
+
+          content.autoplay = autoplay;
+          content.loop = loop;
+          content.controls = controls;
+          content.lightbox = lightbox;
+          content.hover_to_play = hoverToPlay;
+        }
 
         // Safeguard: Ensure content has meaningful values or generic placeholders
         if (!content.title) content.title = module.name;
@@ -5145,14 +5604,15 @@ const formatTimestampName = () => {
     if (!projectId || isPreviewMode) return false;
     if (saveInProgressRef.current && activeSavePromiseRef.current) {
       const activeSaveResult = await activeSavePromiseRef.current;
-      if (!activeSaveResult) return false;
+      if (!activeSaveResult.draftSaved) return false;
     }
-    return performDraftSave({
+    const result = await performDraftSave({
       source: 'manual',
       skipPreview: false,
       silent: false,
       forcedStatus
     });
+    return result.draftSaved;
     return;
     if (!projectId || isPreviewMode || isSaving || saveStatus === 'loading') return;
     const savedCanvasScrollTop = getCanvasScrollContainer()?.scrollTop ?? 0;
@@ -5248,19 +5708,7 @@ const formatTimestampName = () => {
 
       // 4. ATOMIC SERIALIZATION V2.3: Save individual sections with Audit Data
       if (savedPage && savedPage.id) {
-        const pageSections: Partial<PageSection>[] = contract.sections.map((section: any, idx) => ({
-          id: isUUID(section.id) ? section.id : undefined, // Prioritize UUID from contract
-          page_id: savedPage.id!,
-          section_type: section.tipo,
-          content_json: section.content,
-          styles_json: { ...section.styles, ...section.settings },
-          order_index: idx,
-          metadata: {
-            version: '2.3-Atomic',
-            audit_specs: section.audit_specs,
-            config_hash: section.config_hash
-          }
-        }));
+        const pageSections = buildPageSectionsPayload(contract, savedPage.id!);
         await upsertPageSections(savedPage.id!, pageSections);
       }
 
@@ -5304,7 +5752,7 @@ const formatTimestampName = () => {
                 'Preview generado, pero hubo advertencias al guardar metadatos.'
               );
 
-              sendToMother('SOLUTIUM_PREVIEW_GENERATED', {
+              emitPreviewGenerated({
                 site_id: siteId,
                 preview_image_url: previewResult.preview_image_url,
                 preview_thumbnail_url: previewResult.preview_thumbnail_url,
@@ -5381,18 +5829,33 @@ const formatTimestampName = () => {
     skipPreview: boolean;
     silent: boolean;
     forcedStatus?: 'draft' | 'published' | 'modified';
-  }): Promise<boolean> => {
-    if (!projectId || isPreviewMode) return false;
+  }): Promise<DraftSaveResult> => {
+    if (!projectId || isPreviewMode) {
+      return {
+        draftSaved: false,
+        pageSynced: false,
+        sectionsSynced: false,
+        previewQueued: false,
+        warnings: []
+      };
+    }
 
     if (saveInProgressRef.current && activeSavePromiseRef.current) {
       return activeSavePromiseRef.current;
     }
 
-    const runSave = async (): Promise<boolean> => {
+    const runSave = async (): Promise<DraftSaveResult> => {
       const isAutosave = source === 'autosave';
       const isInteractiveManualSave = source === 'manual';
       const savedCanvasScrollTop = skipPreview ? 0 : (getCanvasScrollContainer()?.scrollTop ?? 0);
       const changeVersionAtSaveStart = changeVersionRef.current;
+      const saveResult: DraftSaveResult = {
+        draftSaved: false,
+        pageSynced: false,
+        sectionsSynced: true,
+        previewQueued: false,
+        warnings: []
+      };
       pendingChangesDuringSaveRef.current = false;
       saveInProgressRef.current = true;
       autosaveInProgressRef.current = isAutosave;
@@ -5423,7 +5886,7 @@ const formatTimestampName = () => {
             setAutosaveStatus('error');
             setAutosaveError(sessionMessage);
           }
-          return false;
+          return saveResult;
         }
 
         if (sessionState.state === 'refreshed' && !silent) {
@@ -5476,17 +5939,18 @@ const formatTimestampName = () => {
           siteData.id = initialPage.id;
         }
 
-        const result = await saveWebBuilderSiteDraft(siteData);
-        if (!result) {
+        const savedSite = await saveWebBuilderSiteDraft(siteData);
+        if (!savedSite) {
           throw new Error('Error al guardar el borrador base');
         }
+        saveResult.draftSaved = true;
 
         const contract = generateRenderingContract(finalSiteName, activeState);
         await checkDictionarySync(contract);
 
         const savedPage = await upsertPage({
           project_id: projectId,
-          web_builder_site_id: result.id,
+          web_builder_site_id: savedSite.id,
           slug: 'index',
           title: finalSiteName,
           content: contract,
@@ -5501,24 +5965,27 @@ const formatTimestampName = () => {
         if (!savedPage?.id) {
           throw new Error('Error al sincronizar la página del borrador');
         }
+        saveResult.pageSynced = true;
 
         if (savedPage && savedPage.id) {
-          const pageSections: Partial<PageSection>[] = contract.sections.map((section: any, idx) => ({
-            id: isUUID(section.id) ? section.id : undefined,
-            page_id: savedPage.id!,
-            section_type: section.tipo,
-            content_json: section.content,
-            styles_json: { ...section.styles, ...section.settings },
-            order_index: idx,
-            metadata: {
-              version: '2.3-Atomic',
-              audit_specs: section.audit_specs,
-              config_hash: section.config_hash
+          const pageSections = buildPageSectionsPayload(contract, savedPage.id!);
+          try {
+            const savedSections = await upsertPageSections(savedPage.id!, pageSections);
+            if (pageSections.length > 0 && savedSections.length === 0) {
+              saveResult.sectionsSynced = false;
+              saveResult.warnings.push('No pudimos sincronizar las secciones del Constructor. El borrador base sí quedó guardado.');
             }
-          }));
-          const savedSections = await upsertPageSections(savedPage.id!, pageSections);
-          if (pageSections.length > 0 && savedSections.length === 0) {
-            throw new Error('Error al sincronizar las secciones del borrador');
+          } catch (sectionError) {
+            saveResult.sectionsSynced = false;
+            saveResult.warnings.push('No pudimos sincronizar las secciones del Constructor. El borrador base sí quedó guardado.');
+            console.warn('[DRAFT_SECTIONS_SYNC_WARNING] Draft saved, but auxiliary page section sync failed.', {
+              pageId: savedPage.id,
+              siteId,
+              projectId,
+              sectionCount: pageSections.length,
+              sectionTypes: pageSections.map((section) => section.section_type || '(missing)').slice(0, 20),
+              error: sectionError
+            });
           }
         }
 
@@ -5532,13 +5999,21 @@ const formatTimestampName = () => {
 
         const hadChangesDuringSave =
           pendingChangesDuringSaveRef.current || changeVersionRef.current !== changeVersionAtSaveStart;
+        const savedEditorSignature = buildPersistableEditorSignature({
+          editorState: activeState,
+          siteName: finalSiteName
+        });
 
         if (!hadChangesDuringSave) {
+          lastSavedSignatureRef.current = savedEditorSignature;
+          setIsDirtyBaselineReady(true);
           setHasUnsavedChanges(false);
           lastSaveChangeVersionRef.current = changeVersionAtSaveStart;
+          localSnapshotDirtyRef.current = false;
           clearLocalDraftSnapshot();
         } else {
           setHasUnsavedChanges(true);
+          localSnapshotDirtyRef.current = true;
           persistLocalDraftSnapshot({ showNotice: false });
         }
 
@@ -5546,81 +6021,27 @@ const formatTimestampName = () => {
         setCurrentStatus(newStatus);
 
         if (!skipPreview) {
-          const previewDisableReason = getPreviewDisableReason(siteId);
-          if (isPreviewConfigDisabled(previewDisableReason)) {
-            logDebug('[PREVIEW_CAPTURE_DEBUG] Preview generation skipped because backend preview configuration is disabled for this session.', {
+          const webBuilderSiteId = savedSite.id || initialPage?.id || (window as any).WEB_BUILDER_SITE_ID;
+          if (projectId && siteId && webBuilderSiteId) {
+            saveResult.previewQueued = true;
+            void queueDraftPreviewCapture({
+              requestKey: `${siteId}:${changeVersionAtSaveStart}:${newStatus}`,
+              projectId,
               siteId,
-              previewDisableReason
+              webBuilderSiteId,
+              savedCanvasScrollTop
             });
-            setPreviewWarning(null);
-            setPreviewStatus('idle');
-          } else {
-            setPreviewWarning(null);
-            setPreviewStatus('loading');
-
-            try {
-              const webBuilderSiteId = result.id || initialPage?.id || (window as any).WEB_BUILDER_SITE_ID;
-              const previewResult = await generatePreviewServerSide({
-                project_id: projectId!,
-                site_id: siteId,
-                web_builder_site_id: webBuilderSiteId,
-                mode: 'thumbnail'
-              });
-
-              if (previewResult.success && previewResult.preview_image_url) {
-                setPreviewWarningsFromResult(
-                  previewResult.warnings,
-                  'Preview generado, pero hubo advertencias al guardar metadatos.'
-                );
-
-                sendToMother('SOLUTIUM_PREVIEW_GENERATED', {
-                  site_id: siteId,
-                  preview_image_url: previewResult.preview_image_url,
-                  preview_thumbnail_url: previewResult.preview_thumbnail_url,
-                  preview_image_hash: previewResult.preview_image_hash,
-                  preview_image_updated_at: previewResult.preview_image_updated_at
-                });
-
-                logDebug('[PREVIEW_CAPTURE_DEBUG] Server-side preview generated (Save):', {
-                  siteId,
-                  url: previewResult.preview_image_url
-                });
-                setPreviewStatus('success');
-              } else {
-                if (previewResult.errorCode === 'preview_region_missing' || previewResult.errorCode === 'preview_missing_storage_config') {
-                  const disableReason = previewResult.errorCode === 'preview_missing_storage_config'
-                    ? 'preview_missing_storage_config'
-                    : 'preview_region_missing';
-                  setPreviewDisableReason(disableReason, siteId);
-                  logDebug('[PREVIEW_CAPTURE_DEBUG] Draft saved. Preview omitted because backend storage is not configured.', {
-                    siteId,
-                    reason: previewResult.reason || disableReason
-                  });
-                  setPreviewStatus('idle');
-                } else if (previewResult.skipped) {
-                  logDebug('[PREVIEW_CAPTURE_DEBUG] Draft saved. Preview skipped by client/backend guard.', {
-                    siteId,
-                    reason: previewResult.reason || null
-                  });
-                  setPreviewStatus('idle');
-                } else {
-                  console.warn('[PREVIEW_CAPTURE_WARNING] Draft saved, but preview generation failed.', previewResult.error);
-                  setPreviewWarning('Borrador guardado, pero no se pudo actualizar la vista previa.');
-                  setPreviewStatus('error');
-                }
-              }
-            } catch (pError) {
-              console.warn('[PREVIEW_CAPTURE_WARNING] Preview failed after saving draft. Draft remains saved.', pError);
-              setPreviewWarning('Borrador guardado, pero no se pudo actualizar la vista previa.');
-              setPreviewStatus('error');
-            } finally {
-              stabilizeCanvasScroll(savedCanvasScrollTop);
-              setTimeout(() => setPreviewStatus('idle'), 3000);
-            }
           }
         } else {
           // Autosave deliberately skips preview to avoid expensive render cycles and scroll jumps.
           logDebug('[AUTOSAVE_DEBUG] Preview skipped intentionally during autosave.');
+        }
+
+        if (saveResult.warnings.length > 0 && !silent) {
+          setAuthNotice({
+            type: 'info',
+            message: saveResult.warnings[0]
+          });
         }
 
         if (isInteractiveManualSave) {
@@ -5637,7 +6058,7 @@ const formatTimestampName = () => {
           setAutosaveError(null);
         }
 
-        return true;
+        return saveResult;
       } catch (error) {
         console.error(isAutosave ? 'Error autosaving draft:' : 'Error saving draft:', error);
         persistLocalDraftSnapshot({ showNotice: false });
@@ -5645,7 +6066,7 @@ const formatTimestampName = () => {
           const isExpiredSecureWrite = error.status === 401 || error.status === 403 || error.code === 'LAUNCH_ACCESS_TOKEN_MISSING';
           setAuthNotice({
             type: 'error',
-            title: isExpiredSecureWrite ? EXPIRED_SESSION_NOTICE_TITLE : undefined,
+            title: isExpiredSecureWrite ? EXPIRED_SESSION_NOTICE_TITLE : 'Error de sincronización',
             message: isExpiredSecureWrite ? EXPIRED_SESSION_SAVE_NOTICE : `${error.message} Cambios protegidos localmente.`
           });
         } else if (error instanceof SupabaseSessionError) {
@@ -5671,7 +6092,7 @@ const formatTimestampName = () => {
                 : 'No se pudo guardar automáticamente. Cambios protegidos localmente.';
           setAutosaveError(autosaveFailureMessage);
         }
-        return false;
+        return saveResult;
       } finally {
         pendingChangesDuringSaveRef.current = false;
         autosaveInProgressRef.current = false;
@@ -5708,7 +6129,7 @@ const formatTimestampName = () => {
 
   const ensureStableDraftBeforePublish = useCallback(async () => {
     const activeSaveResult = await waitForActiveSaveIfNeeded();
-    if (!activeSaveResult) return false;
+    if (typeof activeSaveResult !== 'boolean' && !activeSaveResult.draftSaved) return false;
 
     const runPrepublishSave = () => performDraftSave({
       source: 'prepublish',
@@ -5717,13 +6138,13 @@ const formatTimestampName = () => {
     });
 
     let saved = await runPrepublishSave();
-    if (!saved) return false;
+    if (!saved.draftSaved) return false;
 
     if (lastSaveChangeVersionRef.current !== changeVersionRef.current) {
       saved = await runPrepublishSave();
     }
 
-    return saved && lastSaveChangeVersionRef.current === changeVersionRef.current;
+    return saved.draftSaved && lastSaveChangeVersionRef.current === changeVersionRef.current;
   }, [performDraftSave, waitForActiveSaveIfNeeded]);
 
   const isDefaultName = (name: string) => {
@@ -5912,19 +6333,7 @@ const formatTimestampName = () => {
 
       // 4. ATOMIC SERIALIZATION V2.3: Save individual sections with Audit Data
       if (savedPage && savedPage.id) {
-        const pageSections: Partial<PageSection>[] = contract.sections.map((section: any, idx) => ({
-          id: isUUID(section.id) ? section.id : undefined, // Prioritize UUID from contract
-          page_id: savedPage.id!,
-          section_type: section.tipo,
-          content_json: section.content,
-          styles_json: { ...section.styles, ...section.settings },
-          order_index: idx,
-          metadata: {
-            version: '2.3-Atomic',
-            audit_specs: section.audit_specs,
-            config_hash: section.config_hash
-          }
-        }));
+        const pageSections = buildPageSectionsPayload(contract, savedPage.id!);
         await upsertPageSections(savedPage.id!, pageSections);
       }
 
@@ -5945,6 +6354,12 @@ const formatTimestampName = () => {
         siteNameRef.current = publishedDisplayName;
         currentStatusRef.current = 'published';
         setCurrentStatus('published');
+        lastSavedSignatureRef.current = buildPersistableEditorSignature({
+          editorState: activeState,
+          siteName: publishedDisplayName
+        });
+        setIsDirtyBaselineReady(true);
+        localSnapshotDirtyRef.current = false;
         setHasUnsavedChanges(false);
         setShowPublishModal(false);
         window.setTimeout(() => {
@@ -6008,7 +6423,7 @@ const formatTimestampName = () => {
                 preview_image_hash: previewResult.preview_image_hash
               });
 
-              sendToMother('SOLUTIUM_PREVIEW_GENERATED', {
+              emitPreviewGenerated({
                 site_id: siteId,
                 preview_image_url: previewResult.preview_image_url,
                 preview_thumbnail_url: previewResult.preview_thumbnail_url,
@@ -6069,6 +6484,9 @@ const formatTimestampName = () => {
       if (error instanceof SecureConstructorWriteError) {
         setAuthNotice({
           type: 'error',
+          title: error.status === 401 || error.status === 403 || error.code === 'LAUNCH_ACCESS_TOKEN_MISSING'
+            ? EXPIRED_SESSION_NOTICE_TITLE
+            : 'Error de sincronización',
           message: error.message
         });
       }
@@ -6217,7 +6635,7 @@ const formatTimestampName = () => {
         );
 
         // Notificar a la App Madre para que refresque la miniatura en su UI
-        sendToMother('SOLUTIUM_PREVIEW_GENERATED', {
+        emitPreviewGenerated({
           site_id: currentSiteId,
           preview_image_url: result.preview_image_url,
           preview_thumbnail_url: result.preview_thumbnail_url,
@@ -6843,9 +7261,15 @@ const formatTimestampName = () => {
 
             {showUnsavedModal && (
               <UnsavedChangesModal
-                onCancel={() => setShowUnsavedModal(false)}
+                onCancel={() => {
+                  if (isSaving || saveStatus === 'loading') return;
+                  setUnsavedModalSaveError(null);
+                  setShowUnsavedModal(false);
+                }}
                 onSaveAndExit={handleSaveAndExit}
                 onExitWithoutSaving={handleExitWithoutSaving}
+                isSaving={isSaving || saveStatus === 'loading'}
+                errorMessage={unsavedModalSaveError}
               />
             )}
 

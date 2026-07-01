@@ -152,7 +152,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   return (
     <div
-      className="min-h-screen px-8 pb-8 pt-4 flex flex-col items-center"
+      className="min-h-screen px-4 pb-8 pt-4 flex flex-col items-center md:px-8"
       style={{ background: 'linear-gradient(180deg, var(--builder-bg) 0%, #EEF2FF 100%)' }}
     >
         {/* Header Logo */}
@@ -166,18 +166,18 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </div>
 
       {/* Main Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-6xl">
+      <div className="grid w-full max-w-6xl grid-cols-1 gap-8 md:grid-cols-2">
         {/* Páginas Creadas Card */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-surface rounded-3xl p-8 shadow-sm border border-border flex flex-col h-[380px]"
+          className="bg-surface rounded-3xl border border-border p-6 shadow-sm flex flex-col md:h-[420px] md:p-8"
         >
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-bold text-text">Páginas creadas</h2>
           </div>
 
-          <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
+          <div className="flex-1 overflow-visible pr-0 custom-scrollbar md:overflow-y-auto md:pr-2">
             {pages.length > 0 ? (
               <div className="grid grid-cols-1 gap-3">
                 {pages.map((page, index) => {
@@ -213,8 +213,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       className="rounded-2xl border border-border p-4 text-left transition-all group cursor-pointer hover:bg-[var(--builder-primary-soft)]"
                       style={{ borderColor: 'color-mix(in srgb, var(--builder-primary) 18%, var(--builder-border) 82%)' }}
                     >
-                      <div className="flex flex-col gap-4 md:flex-row md:items-stretch">
-                        <div className={`aspect-square w-full overflow-hidden rounded-xl border border-border/40 transition-colors md:w-36 md:flex-none xl:w-[6.5rem] ${
+                      <div className="flex flex-col gap-4 md:grid md:grid-cols-[minmax(220px,0.8fr)_minmax(0,1.2fr)] md:items-stretch">
+                        <div className={`aspect-[4/3] w-full overflow-hidden rounded-xl border border-border/40 transition-colors ${
                           isPublished ? 'bg-green-50 text-green-600' : 'bg-amber-50 text-amber-600'
                         }`}>
                           {previewImageSrc ? (

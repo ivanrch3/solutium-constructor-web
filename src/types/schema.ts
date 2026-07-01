@@ -265,7 +265,10 @@ export interface Page {
 export interface PageSection {
   id?: string;
   page_id: string;
+  site_id?: string;
   section_type: string;
+  technical_name?: string;
+  web_builder_section_id?: string;
   content_json: any;
   styles_json: any;
   order_index: number;

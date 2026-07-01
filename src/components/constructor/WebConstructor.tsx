@@ -109,6 +109,7 @@ import { applySectionVariety, buildMasterModuleSchemaFromSectionBlueprint, norma
 import { bridgeModuleContent } from '../../utils/hydrationBridge';
 import { cloneCompositionPresetSchema, CompositionPresetId } from './modules/compositionPresets';
 import { validateCompositionSchema } from '../../utils/compositionSchemaValidator';
+import { buildVideoEmbedUrl, resolveVideoExternalId, resolveVideoProviderFromUrl } from '../../utils/videoEmbed';
 
 const isReferenceDebugEnabled = () => import.meta.env.DEV || import.meta.env.VITE_SHOW_AI_REFERENCE_DEBUG === 'true';
 
@@ -523,6 +524,32 @@ const getPlainValue = (val: any) => {
     return val.value;
   }
   return val;
+};
+
+const normalizeOptionalString = (value: unknown): string | undefined => {
+  const plainValue = getPlainValue(value);
+  if (plainValue === undefined || plainValue === null) return undefined;
+  const text = String(plainValue).trim();
+  return text.length > 0 ? text : undefined;
+};
+
+const normalizeBooleanValue = (value: unknown, fallback = false): boolean => {
+  if (value === undefined || value === null || value === '') return fallback;
+  return value === true || value === 'true' || value === 1 || value === '1';
+};
+
+const buildPublishedVideoUrl = (
+  sourceUrl: string | undefined,
+  options: {
+    autoplay?: boolean;
+    loop?: boolean;
+    controls?: boolean;
+    hoverToPlay?: boolean;
+  }
+): string | undefined => {
+  const normalizedUrl = normalizeOptionalString(sourceUrl);
+  if (!normalizedUrl) return undefined;
+  return buildVideoEmbedUrl(normalizedUrl, options);
 };
 
 const PROJECT_BRAND_COLOR_DEFAULTS = new Set([
@@ -4400,6 +4427,54 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
 const isUUID = (str: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
 const isPersistentModuleInstanceId = (value: string) => /^mod_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 
+const resolveSectionTechnicalName = (sectionType: unknown): string | undefined => {
+  const normalizedType = String(sectionType || '').trim().toLowerCase();
+  if (!normalizedType) return undefined;
+  if (normalizedType === 'conversion') return 'HEADER_MODULE';
+  return `${normalizedType.replace(/[^a-z0-9]+/gi, '_').toUpperCase()}_MODULE`;
+};
+
+const extractModuleUuid = (moduleInstanceId: unknown): string | undefined => {
+  const rawValue = String(moduleInstanceId || '').trim();
+  if (!rawValue) return undefined;
+  if (isUUID(rawValue)) return rawValue;
+  if (isPersistentModuleInstanceId(rawValue)) {
+    const candidate = rawValue.slice(4);
+    return isUUID(candidate) ? candidate : undefined;
+  }
+  return undefined;
+};
+
+const buildPageSectionsPayload = (
+  contract: RenderingContract,
+  pageId: string
+): Partial<PageSection>[] => {
+  return contract.sections.map((section: any, idx) => {
+    const moduleInstanceId = typeof section.id === 'string' ? section.id : undefined;
+    const technicalName = resolveSectionTechnicalName(section.tipo || section.type);
+    const moduleUuid = extractModuleUuid(moduleInstanceId);
+
+    return {
+      id: moduleUuid,
+      page_id: pageId,
+      section_type: section.tipo,
+      technical_name: technicalName,
+      web_builder_section_id: moduleUuid,
+      content_json: section.content,
+      styles_json: { ...section.styles, ...section.settings },
+      order_index: idx,
+      metadata: {
+        version: '2.3-Atomic',
+        audit_specs: section.audit_specs,
+        config_hash: section.config_hash,
+        module_id: moduleInstanceId,
+        technical_name: technicalName,
+        web_builder_section_uuid: moduleUuid
+      }
+    };
+  });
+};
+
 const migrateEditorStateToUUIDs = (state: any): any => {
   let changed = false;
   let newState = { ...state };
@@ -4747,6 +4822,107 @@ const formatTimestampName = () => {
             }
           }
         });
+
+        if (module.type === 'video') {
+          const rawVideoUrl = normalizeOptionalString(
+            currentState.settingsValues?.[`${module.id}_el_video_player_video_url`] ??
+            settings.el_video_player_video_url
+          );
+          const rawPosterUrl = normalizeOptionalString(
+            currentState.settingsValues?.[`${module.id}_el_video_player_poster_url`] ??
+            settings.el_video_player_poster_url
+          );
+          const autoplay = normalizeBooleanValue(
+            currentState.settingsValues?.[`${module.id}_el_video_player_autoplay`] ??
+            settings.el_video_player_autoplay,
+            false
+          );
+          const loop = normalizeBooleanValue(
+            currentState.settingsValues?.[`${module.id}_el_video_player_loop`] ??
+            settings.el_video_player_loop,
+            true
+          );
+          const controls = normalizeBooleanValue(
+            currentState.settingsValues?.[`${module.id}_el_video_player_controls`] ??
+            settings.el_video_player_controls,
+            true
+          );
+          const lightbox = normalizeBooleanValue(
+            currentState.settingsValues?.[`${module.id}_el_video_player_lightbox`] ??
+            settings.el_video_player_lightbox,
+            false
+          );
+          const hoverToPlay = normalizeBooleanValue(
+            currentState.settingsValues?.[`${module.id}_global_hover_to_play`] ??
+            settings.global_hover_to_play,
+            false
+          );
+          const aspectRatio = normalizeOptionalString(
+            currentState.settingsValues?.[`${module.id}_global_aspect_ratio`] ??
+            settings.global_aspect_ratio
+          );
+          const videoFilter = normalizeOptionalString(
+            currentState.settingsValues?.[`${module.id}_global_video_filter`] ??
+            settings.global_video_filter
+          );
+          const layoutValue = normalizeOptionalString(
+            currentState.settingsValues?.[`${module.id}_global_layout`] ??
+            settings.global_layout
+          );
+          const playButtonStyle = normalizeOptionalString(
+            currentState.settingsValues?.[`${module.id}_el_video_player_play_button_style`] ??
+            settings.el_video_player_play_button_style
+          );
+          const provider = resolveVideoProviderFromUrl(rawVideoUrl);
+          const videoId = resolveVideoExternalId(rawVideoUrl, provider);
+          const publishedVideoUrl = buildPublishedVideoUrl(rawVideoUrl, {
+            autoplay,
+            loop,
+            controls,
+            hoverToPlay
+          });
+
+          if (rawVideoUrl) {
+            content.sourceVideoUrl = rawVideoUrl;
+            content.source_video_url = rawVideoUrl;
+            content.video_url = rawVideoUrl;
+          }
+          if (publishedVideoUrl) {
+            content.videoUrl = publishedVideoUrl;
+          }
+          if (rawPosterUrl) {
+            content.posterUrl = rawPosterUrl;
+            content.poster_url = rawPosterUrl;
+            content.thumbnail = rawPosterUrl;
+            content.poster = rawPosterUrl;
+          }
+          if (provider !== 'unknown') {
+            content.provider = provider;
+          }
+          if (videoId) {
+            content.videoId = videoId;
+            content.video_id = videoId;
+          }
+          if (aspectRatio) {
+            content.aspect_ratio = aspectRatio;
+            content.ratio = aspectRatio;
+          }
+          if (videoFilter) {
+            content.video_filter = videoFilter;
+          }
+          if (layoutValue) {
+            content.layout = layoutValue;
+          }
+          if (playButtonStyle) {
+            content.play_button_style = playButtonStyle;
+          }
+
+          content.autoplay = autoplay;
+          content.loop = loop;
+          content.controls = controls;
+          content.lightbox = lightbox;
+          content.hover_to_play = hoverToPlay;
+        }
 
         // Safeguard: Ensure content has meaningful values or generic placeholders
         if (!content.title) content.title = module.name;
@@ -5532,19 +5708,7 @@ const formatTimestampName = () => {
 
       // 4. ATOMIC SERIALIZATION V2.3: Save individual sections with Audit Data
       if (savedPage && savedPage.id) {
-        const pageSections: Partial<PageSection>[] = contract.sections.map((section: any, idx) => ({
-          id: isUUID(section.id) ? section.id : undefined, // Prioritize UUID from contract
-          page_id: savedPage.id!,
-          section_type: section.tipo,
-          content_json: section.content,
-          styles_json: { ...section.styles, ...section.settings },
-          order_index: idx,
-          metadata: {
-            version: '2.3-Atomic',
-            audit_specs: section.audit_specs,
-            config_hash: section.config_hash
-          }
-        }));
+        const pageSections = buildPageSectionsPayload(contract, savedPage.id!);
         await upsertPageSections(savedPage.id!, pageSections);
       }
 
@@ -5804,28 +5968,16 @@ const formatTimestampName = () => {
         saveResult.pageSynced = true;
 
         if (savedPage && savedPage.id) {
-          const pageSections: Partial<PageSection>[] = contract.sections.map((section: any, idx) => ({
-            id: isUUID(section.id) ? section.id : undefined,
-            page_id: savedPage.id!,
-            section_type: section.tipo,
-            content_json: section.content,
-            styles_json: { ...section.styles, ...section.settings },
-            order_index: idx,
-            metadata: {
-              version: '2.3-Atomic',
-              audit_specs: section.audit_specs,
-              config_hash: section.config_hash
-            }
-          }));
+          const pageSections = buildPageSectionsPayload(contract, savedPage.id!);
           try {
             const savedSections = await upsertPageSections(savedPage.id!, pageSections);
             if (pageSections.length > 0 && savedSections.length === 0) {
               saveResult.sectionsSynced = false;
-              saveResult.warnings.push('Los cambios se guardaron, pero no pudimos actualizar una función auxiliar.');
+              saveResult.warnings.push('No pudimos sincronizar las secciones del Constructor. El borrador base sí quedó guardado.');
             }
           } catch (sectionError) {
             saveResult.sectionsSynced = false;
-            saveResult.warnings.push('Los cambios se guardaron, pero no pudimos actualizar una función auxiliar.');
+            saveResult.warnings.push('No pudimos sincronizar las secciones del Constructor. El borrador base sí quedó guardado.');
             console.warn('[DRAFT_SECTIONS_SYNC_WARNING] Draft saved, but auxiliary page section sync failed.', {
               pageId: savedPage.id,
               siteId,
@@ -5914,7 +6066,7 @@ const formatTimestampName = () => {
           const isExpiredSecureWrite = error.status === 401 || error.status === 403 || error.code === 'LAUNCH_ACCESS_TOKEN_MISSING';
           setAuthNotice({
             type: 'error',
-            title: isExpiredSecureWrite ? EXPIRED_SESSION_NOTICE_TITLE : undefined,
+            title: isExpiredSecureWrite ? EXPIRED_SESSION_NOTICE_TITLE : 'Error de sincronización',
             message: isExpiredSecureWrite ? EXPIRED_SESSION_SAVE_NOTICE : `${error.message} Cambios protegidos localmente.`
           });
         } else if (error instanceof SupabaseSessionError) {
@@ -6181,19 +6333,7 @@ const formatTimestampName = () => {
 
       // 4. ATOMIC SERIALIZATION V2.3: Save individual sections with Audit Data
       if (savedPage && savedPage.id) {
-        const pageSections: Partial<PageSection>[] = contract.sections.map((section: any, idx) => ({
-          id: isUUID(section.id) ? section.id : undefined, // Prioritize UUID from contract
-          page_id: savedPage.id!,
-          section_type: section.tipo,
-          content_json: section.content,
-          styles_json: { ...section.styles, ...section.settings },
-          order_index: idx,
-          metadata: {
-            version: '2.3-Atomic',
-            audit_specs: section.audit_specs,
-            config_hash: section.config_hash
-          }
-        }));
+        const pageSections = buildPageSectionsPayload(contract, savedPage.id!);
         await upsertPageSections(savedPage.id!, pageSections);
       }
 
@@ -6344,6 +6484,9 @@ const formatTimestampName = () => {
       if (error instanceof SecureConstructorWriteError) {
         setAuthNotice({
           type: 'error',
+          title: error.status === 401 || error.status === 403 || error.code === 'LAUNCH_ACCESS_TOKEN_MISSING'
+            ? EXPIRED_SESSION_NOTICE_TITLE
+            : 'Error de sincronización',
           message: error.message
         });
       }

@@ -49,6 +49,7 @@ import {
   BENTO_MODULE,
   COMPARISON_MODULE
 } from './registry';
+import { WhatsAppOrdersAvailability } from '../../utils/whatsappOrdersAvailability';
 
 const CONSTRUCTOR_WEB_LOGO_URL = 'https://nyc3.digitaloceanspaces.com/solutium-space/988cd339-a2c7-4951-b944-998d32dc349b-solutium-constructor-web-imagotipo.png';
 
@@ -73,13 +74,35 @@ const SidebarItem: React.FC<SidebarItemProps> = ({ icon, label, active, onClick 
   </button>
 );
 
-export const ModuleItem = ({ icon, label, onClick }: { icon: React.ReactNode, label: string, onClick?: () => void }) => (
+export const ModuleItem = ({
+  icon,
+  label,
+  note,
+  disabled = false,
+  onClick
+}: {
+  icon: React.ReactNode;
+  label: string;
+  note?: string | null;
+  disabled?: boolean;
+  onClick?: () => void;
+}) => (
   <button
-    onClick={onClick}
-    className="group w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-slate-600 hover:text-primary hover:bg-primary/5 transition-all text-left"
+    type="button"
+    onClick={disabled ? undefined : onClick}
+    aria-disabled={disabled}
+    title={note || label}
+    className={`group w-full flex items-start gap-3 px-4 py-2.5 rounded-xl transition-all text-left ${
+      disabled
+        ? 'cursor-not-allowed text-slate-400 opacity-80'
+        : 'text-slate-600 hover:text-primary hover:bg-primary/5'
+    }`}
   >
-    <div className="text-slate-500 group-hover:text-primary transition-colors shrink-0">{icon}</div>
-    <span className="text-sm font-medium flex-1 text-left">{label}</span>
+    <div className={`shrink-0 transition-colors ${disabled ? 'text-slate-300' : 'text-slate-500 group-hover:text-primary'}`}>{icon}</div>
+    <div className="min-w-0 flex-1 text-left">
+      <span className="block text-sm font-medium">{label}</span>
+      {note ? <span className="mt-0.5 block text-[11px] leading-4 text-slate-400">{note}</span> : null}
+    </div>
   </button>
 );
 
@@ -90,6 +113,7 @@ interface MainSidebarProps {
   logoUrl: string | null;
   logoWhiteUrl: string | null;
   project: Project | null;
+  whatsappOrdersAvailability: WhatsAppOrdersAvailability;
   onAddModule: (module: WebModule) => void;
   onOpenBentoGenerator?: () => void;
   onLogoClick?: () => void;
@@ -102,6 +126,7 @@ export const MainSidebar: React.FC<MainSidebarProps> = ({
   logoUrl,
   logoWhiteUrl,
   project,
+  whatsappOrdersAvailability,
   onAddModule,
   onOpenBentoGenerator,
   onLogoClick
@@ -220,7 +245,7 @@ export const MainSidebar: React.FC<MainSidebarProps> = ({
                     <ModuleItem icon={React.createElement(MODULE_INFO.dynamic_cards.icon, { size: 18 })} label="Tarjetas dinámicas" onClick={() => onAddModule(DYNAMIC_CARDS_MODULE)} />
                     <ModuleItem icon={React.createElement(MODULE_INFO.contact.icon, { size: 18 })} label="Contacto" onClick={() => onAddModule(CONTACT_MODULE)} />
                     <ModuleItem icon={React.createElement(MODULE_INFO.genius_web_wa.icon, { size: 18 })} label="Genius Web-WA" onClick={() => onAddModule(GENIUS_WEB_WA_MODULE)} />
-                    <ModuleItem icon={React.createElement(MODULE_INFO.whatsapp_orders.icon, { size: 18 })} label="Pedidos por WhatsApp" onClick={() => onAddModule(WHATSAPP_ORDERS_MODULE)} />
+                    <ModuleItem icon={React.createElement(MODULE_INFO.whatsapp_orders.icon, { size: 18 })} label="Pedidos por WhatsApp" note={whatsappOrdersAvailability.known && !whatsappOrdersAvailability.allowed ? whatsappOrdersAvailability.message : null} disabled={whatsappOrdersAvailability.known && !whatsappOrdersAvailability.allowed} onClick={() => onAddModule(WHATSAPP_ORDERS_MODULE)} />
                     <ModuleItem icon={React.createElement(MODULE_INFO.newsletter.icon, { size: 18 })} label="Newsletter" onClick={() => onAddModule(NEWSLETTER_MODULE)} />
                     <ModuleItem icon={React.createElement(MODULE_INFO.pricing.icon, { size: 18 })} label="Planes" onClick={() => onAddModule(PRICING_MODULE)} />
                     <ModuleItem icon={React.createElement(MODULE_INFO.header.icon, { size: 18 })} label="Publicidad" onClick={() => onAddModule(HEADER_MODULE)} />

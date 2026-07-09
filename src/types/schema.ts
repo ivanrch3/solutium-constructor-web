@@ -73,6 +73,7 @@ export interface Profile {
   verificationSent?: boolean;
   totalRequestsMade?: number;
   lastRequestAt?: string;
+  createdAt?: string;
   updatedAt?: string;
   defaultProjectId?: string;
   systemRoleId?: string;

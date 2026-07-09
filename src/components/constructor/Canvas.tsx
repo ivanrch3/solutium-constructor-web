@@ -16,6 +16,7 @@ import { SiteContent } from '../../types';
 import { useEditorStore } from '../../store/editorStore';
 import { isDarkColor } from './utils';
 import { logDebug } from '../../utils/debug';
+import { WhatsAppOrdersAvailability } from '../../utils/whatsappOrdersAvailability';
 import { ProductsModule } from './modules/ProductsModule';
 import { WhatsAppOrdersModule } from './modules/WhatsAppOrdersModule';
 import { HeroModule } from './modules/HeroModule';
@@ -75,6 +76,7 @@ interface CanvasProps {
   setIsFullscreen: (f: boolean) => void;
   isPreviewMode: boolean;
   project?: any;
+  whatsappOrdersAvailability: WhatsAppOrdersAvailability;
   onSettingChange: (elementOrModuleId: string, settingId: string, value: any) => void;
   reloadKey?: number;
   onOpenBentoGenerator?: () => void;
@@ -97,6 +99,7 @@ export const Canvas: React.FC<CanvasProps> = ({
   setIsFullscreen,
   isPreviewMode,
   project,
+  whatsappOrdersAvailability,
   onSettingChange,
   reloadKey = 0,
   onOpenBentoGenerator,
@@ -1029,6 +1032,8 @@ export const Canvas: React.FC<CanvasProps> = ({
                         products={products}
                         renderMode="preview"
                         projectId={project?.id || null}
+                        activeViewport={viewport}
+                        availability={whatsappOrdersAvailability}
                       />
                     )}
                     {section.type === 'hero' && (

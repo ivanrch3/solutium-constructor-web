@@ -57,6 +57,10 @@ import {
   isManualProductsSelectionMode,
   resolveProductsForSelection
 } from '../utils/productsSelection';
+import {
+  extractWhatsAppOrdersCapability,
+  resolveWhatsAppOrdersAvailability
+} from '../utils/whatsappOrdersAvailability';
 
 interface ViewerProps {
   site: PublishedSite;
@@ -135,6 +139,18 @@ export const Viewer: React.FC<ViewerProps> = ({
       null
     );
   }, [site.content?.theme, site.metadata]);
+  const publishedWhatsAppOrdersAvailability = React.useMemo(() => {
+    const metadata = (site.metadata || {}) as Record<string, any>;
+    const explicitCapability = extractWhatsAppOrdersCapability(
+      site.capabilities,
+      metadata.public_capabilities,
+      metadata.capabilities
+    );
+
+    return explicitCapability
+      ? resolveWhatsAppOrdersAvailability({ capability: explicitCapability })
+      : null;
+  }, [site.capabilities, site.metadata]);
 
   useEffect(() => {
     (window as any).__SOLUTIUM_READ_ONLY_RENDER__ = true;
@@ -786,6 +802,7 @@ export const Viewer: React.FC<ViewerProps> = ({
                 publishedSiteId={isPublishedViewer ? site.id : null}
                 pageId={publishedPageId}
                 projectId={effectiveProjectId}
+                availability={publishedWhatsAppOrdersAvailability}
               />
             );
           }

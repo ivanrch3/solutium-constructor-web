@@ -77,7 +77,10 @@ import { AICreditBalanceSummary, AIGenerationContext, AIPageGenerationBrief, AIP
 import { ProjectForm, ProjectFormData } from '../ProjectForm';
 import { initialContent, useEditorStore } from '../../store/editorStore';
 import { logDebug } from '../../utils/debug';
-import { resolveWhatsAppOrdersAvailability } from '../../utils/whatsappOrdersAvailability';
+import {
+  extractWhatsAppOrdersCapability,
+  resolveWhatsAppOrdersAvailability
+} from '../../utils/whatsappOrdersAvailability';
 import {
   PROJECT_THEME_FALLBACKS,
   buildProjectThemeCssVariables,
@@ -1596,6 +1599,11 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   const isLeavingEditorRef = useRef(false);
   const whatsappOrdersAvailability = useMemo(() => {
     const projectAny = project as Record<string, any> | null;
+    const explicitCapability = extractWhatsAppOrdersCapability(
+      projectAny?.capabilities,
+      projectAny?.projectContext?.capabilities,
+      projectAny?.metadata?.capabilities
+    );
     const planSlug =
       currentProfile?.subscriptionPlan ||
       projectAny?.subscriptionPlan ||
@@ -1613,6 +1621,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       null;
 
     return resolveWhatsAppOrdersAvailability({
+      capability: explicitCapability,
       planSlug,
       isTrialUser,
       trialStartedAt

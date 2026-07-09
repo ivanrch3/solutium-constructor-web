@@ -31,7 +31,7 @@ import * as registryModules from './registry';
 import {
   MODULE_INFO,
   HEADER_MODULE, MENU_MODULE, FOOTER_MODULE, SPACER_MODULE,
-  PRODUCTS_MODULE, HERO_MODULE, HERO2_MODULE, FEATURES_MODULE, ABOUT_MODULE,
+  PRODUCTS_MODULE, WHATSAPP_ORDERS_MODULE, HERO_MODULE, HERO2_MODULE, FEATURES_MODULE, ABOUT_MODULE,
   PROCESS_MODULE, GALLERY_MODULE, VIDEO_MODULE, TESTIMONIALS_MODULE,
   STATS_MODULE, NEWSLETTER_MODULE, CONTACT_MODULE, TEAM_MODULE,
   CTA_MODULE, DYNAMIC_CARDS_MODULE, PRICING_MODULE, FAQ_MODULE, TRUSTED_LOGOS_MODULE, GENIUS_WEB_WA_MODULE,
@@ -272,7 +272,7 @@ const MASTER_DICTIONARY = {
   modules: [
     'hero', 'hero2', 'features', 'about', 'process', 'gallery', 'video', 'testimonials',
     'stats', 'newsletter', 'contact', 'genius_web_wa', 'team', 'cta', 'dynamic_cards', 'pricing', 'faq', 'clients', 'trusted_logos',
-    'bento', 'comparative', 'header', 'menu', 'footer', 'spacer', 'products'
+    'bento', 'comparative', 'header', 'menu', 'footer', 'spacer', 'products', 'whatsapp_orders'
   ],
   styles: [
     'border_radius', 'box_shadow', 'font_family', 'button_styles',
@@ -2345,6 +2345,8 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         return HERO_MODULE;
       case 'products':
         return PRODUCTS_MODULE;
+      case 'whatsapp_orders':
+        return WHATSAPP_ORDERS_MODULE;
       case 'stats':
         return STATS_MODULE;
       case 'newsletter':
@@ -3982,7 +3984,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
             }
 
             // SIP v12.1: Intelligent product defaults
-            if (module.type === 'products' || module.type === 'product_grid') {
+            if (module.type === 'products' || module.type === 'product_grid' || module.type === 'whatsapp_orders') {
               if (setting.id === 'selection_mode') {
                 // If we have real DB products, default to 'auto' to show them instantly
                 if ((products?.length || 0) > 0) {
@@ -5092,6 +5094,74 @@ const formatTimestampName = () => {
               selectedIdsCount: selectedIds.length,
               availableProductsCount: catalogProducts.length
             });
+          }
+        }
+
+        if (module.type === 'whatsapp_orders') {
+          const selectionMode = String(getVal(module.id, 'el_whatsapp_orders_catalog', 'selection_mode', 'auto') || 'auto').toLowerCase();
+          const rawSelectedIds = getVal(module.id, 'el_whatsapp_orders_catalog', 'select_products', []);
+          const selectedIds = normalizeSelectedProductIds(rawSelectedIds);
+          const catalogProducts = Array.isArray(products) ? products.filter(Boolean) : [];
+          const isManualSelectionMode = isManualProductsSelectionMode(selectionMode);
+          const snapshotKey = `${module.id}_el_whatsapp_orders_catalog_products`;
+          const previousSnapshotSource =
+            currentState.settingsValues?.[snapshotKey] ||
+            (module as any).content?.products ||
+            (module as any).content?.items ||
+            [];
+          const previousSnapshotProducts = Array.isArray(previousSnapshotSource)
+            ? previousSnapshotSource.filter(Boolean)
+            : [];
+
+          content.selectionMode = selectionMode;
+          content.productIds = selectedIds;
+          content.mode = String(getVal(module.id, null, 'mode', 'orders') || 'orders').toLowerCase();
+
+          let finalProducts: Product[] = [];
+
+          if (catalogProducts.length > 0) {
+            const selectionSourceProducts = isManualSelectionMode
+              ? catalogProducts
+              : [...catalogProducts].sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+
+            finalProducts = resolveProductsForSelection({
+              selectionMode,
+              selectedIds,
+              availableProducts: selectionSourceProducts
+            });
+          }
+
+          if (finalProducts.length === 0 && previousSnapshotProducts.length > 0) {
+            finalProducts = resolveProductsForSelection({
+              selectionMode,
+              selectedIds,
+              availableProducts: previousSnapshotProducts as Product[]
+            });
+          }
+
+          if (finalProducts.length > 0) {
+            const normalizedProducts = finalProducts.map((p, idx) => {
+              const rawPrice = (p as any).price;
+              const rawRefPrice = (p as any).priceReference;
+              const rawStock = (p as any).stock;
+
+              const priceNum = typeof rawPrice === 'string' ? parseFloat(rawPrice.replace(/[^\d.,-]/g, '').replace(',', '.')) : rawPrice;
+              const refPriceNum = typeof rawRefPrice === 'string' ? parseFloat(rawRefPrice.replace(/[^\d.,-]/g, '').replace(',', '.')) : rawRefPrice;
+              const stockNum = typeof rawStock === 'string' ? parseInt(rawStock, 10) : rawStock;
+
+              return {
+                ...p,
+                id: String(p.id || `prod_${idx}`),
+                name: String(p.name || `Producto ${idx + 1}`),
+                price: Number.isFinite(priceNum) ? Number(priceNum) : undefined,
+                priceReference: Number.isFinite(refPriceNum) ? Number(refPriceNum) : undefined,
+                stock: Number.isFinite(stockNum) ? Number(stockNum) : undefined
+              };
+            });
+
+            content.products = normalizedProducts;
+            content.items = normalizedProducts;
+            settings[snapshotKey] = normalizedProducts;
           }
         }
 
@@ -6975,7 +7045,8 @@ const formatTimestampName = () => {
                                     { icon: MODULE_INFO.newsletter.icon, label: "Newsletter", mod: NEWSLETTER_MODULE },
                                     { icon: MODULE_INFO.pricing.icon, label: "Planes", mod: PRICING_MODULE },
                                     { icon: MODULE_INFO.header.icon, label: "Publicidad", mod: HEADER_MODULE },
-                                    { icon: MODULE_INFO.products.icon, label: "Productos y Servicios", mod: PRODUCTS_MODULE }
+                                    { icon: MODULE_INFO.products.icon, label: "Productos y Servicios", mod: PRODUCTS_MODULE },
+                                    { icon: MODULE_INFO.whatsapp_orders.icon, label: "Pedidos por WhatsApp", mod: WHATSAPP_ORDERS_MODULE }
                                   ]},
                                   { id: 'social', label: 'Social', modules: [
                                     { icon: MODULE_INFO.faq.icon, label: "FAQ", mod: FAQ_MODULE },
@@ -7069,6 +7140,7 @@ const formatTimestampName = () => {
                                       <ModuleItem icon={React.createElement(MODULE_INFO.pricing.icon, { size: 18 })} label="Planes" onClick={() => addModule(PRICING_MODULE)} />
                                       <ModuleItem icon={React.createElement(MODULE_INFO.header.icon, { size: 18 })} label="Publicidad" onClick={() => addModule(HEADER_MODULE)} />
                                       <ModuleItem icon={React.createElement(MODULE_INFO.products.icon, { size: 18 })} label="Productos y Servicios" onClick={() => addModule(PRODUCTS_MODULE)} />
+                                      <ModuleItem icon={React.createElement(MODULE_INFO.whatsapp_orders.icon, { size: 18 })} label="Pedidos por WhatsApp" onClick={() => addModule(WHATSAPP_ORDERS_MODULE)} />
                                     </div>
                                   </div>
                                 </div>

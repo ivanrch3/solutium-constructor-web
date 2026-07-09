@@ -44,6 +44,7 @@ import {
   TRUSTED_LOGOS_MODULE,
   FAQ_MODULE,
   PRODUCTS_MODULE,
+  WHATSAPP_ORDERS_MODULE,
   SPACER_MODULE,
   BENTO_MODULE,
   COMPARISON_MODULE
@@ -219,6 +220,7 @@ export const MainSidebar: React.FC<MainSidebarProps> = ({
                     <ModuleItem icon={React.createElement(MODULE_INFO.dynamic_cards.icon, { size: 18 })} label="Tarjetas dinámicas" onClick={() => onAddModule(DYNAMIC_CARDS_MODULE)} />
                     <ModuleItem icon={React.createElement(MODULE_INFO.contact.icon, { size: 18 })} label="Contacto" onClick={() => onAddModule(CONTACT_MODULE)} />
                     <ModuleItem icon={React.createElement(MODULE_INFO.genius_web_wa.icon, { size: 18 })} label="Genius Web-WA" onClick={() => onAddModule(GENIUS_WEB_WA_MODULE)} />
+                    <ModuleItem icon={React.createElement(MODULE_INFO.whatsapp_orders.icon, { size: 18 })} label="Pedidos por WhatsApp" onClick={() => onAddModule(WHATSAPP_ORDERS_MODULE)} />
                     <ModuleItem icon={React.createElement(MODULE_INFO.newsletter.icon, { size: 18 })} label="Newsletter" onClick={() => onAddModule(NEWSLETTER_MODULE)} />
                     <ModuleItem icon={React.createElement(MODULE_INFO.pricing.icon, { size: 18 })} label="Planes" onClick={() => onAddModule(PRICING_MODULE)} />
                     <ModuleItem icon={React.createElement(MODULE_INFO.header.icon, { size: 18 })} label="Publicidad" onClick={() => onAddModule(HEADER_MODULE)} />

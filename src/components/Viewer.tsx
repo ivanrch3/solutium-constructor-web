@@ -15,6 +15,7 @@ import { FAQModule } from './constructor/modules/FAQModule';
 import { ContactModule } from './constructor/modules/ContactModule';
 import { GeniusWebWaModule } from './constructor/modules/GeniusWebWaModule';
 import { ProductsModule } from './constructor/modules/ProductsModule';
+import { WhatsAppOrdersModule } from './constructor/modules/WhatsAppOrdersModule';
 import { ClientsModule } from './constructor/modules/ClientsModule';
 import { TrustedLogosModule } from './constructor/modules/TrustedLogosModule';
 import { CTAModule } from './constructor/modules/CTAModule';
@@ -92,6 +93,17 @@ export const Viewer: React.FC<ViewerProps> = ({
   );
   
   const isPublishedViewer = !isConstructorMode && !!site.siteId;
+  const publishedPageId = React.useMemo(() => {
+    const metadata = (site.metadata || {}) as Record<string, any>;
+    return (
+      queryParams.get('page_id') ||
+      queryParams.get('pageId') ||
+      metadata.pageId ||
+      metadata.page_id ||
+      metadata.page?.id ||
+      null
+    );
+  }, [queryParams, site.metadata]);
   const showBackControl = Boolean(onBack) && !isPublicRenderMode;
   const globalMenuLogoUrl = React.useMemo(() => {
     const metadata = (site.metadata || {}) as Record<string, any>;
@@ -713,6 +725,70 @@ export const Viewer: React.FC<ViewerProps> = ({
                 renderMode={isConstructorMode ? 'preview' : 'live'}
               />
             );
+          case 'whatsapp_orders': {
+            const rawMode =
+              finalSettingsValues[`${moduleId}_global_mode`] ||
+              section.settings?.[`${moduleId}_global_mode`] ||
+              section.settings?.mode ||
+              section.content?.mode ||
+              'orders';
+            const normalizedMode = String(rawMode || 'orders').toLowerCase() === 'visual' ? 'visual' : 'orders';
+            const rawSelectionMode =
+              finalSettingsValues[`${moduleId}_el_whatsapp_orders_catalog_selection_mode`] ||
+              section.settings?.[`${moduleId}_el_whatsapp_orders_catalog_selection_mode`] ||
+              section.settings?.selection_mode ||
+              section.content?.selectionMode ||
+              section.content?.selection_mode ||
+              'auto';
+            const whatsappOrderSelectionMode = String(rawSelectionMode || 'auto').toLowerCase();
+            const explicitSelectedProductIds =
+              finalSettingsValues[`${moduleId}_el_whatsapp_orders_catalog_select_products`] ||
+              section.settings?.[`${moduleId}_el_whatsapp_orders_catalog_select_products`] ||
+              section.content?.productIds ||
+              [];
+            const snapshotProducts =
+              section.content?.products ||
+              section.content?.items ||
+              finalSettingsValues[`${moduleId}_el_whatsapp_orders_catalog_products`] ||
+              section.settings?.[`${moduleId}_el_whatsapp_orders_catalog_products`] ||
+              [];
+
+            let finalProducts: Product[] = [];
+
+            if (Array.isArray(snapshotProducts) && snapshotProducts.length > 0) {
+              finalProducts = snapshotProducts
+                .filter(Boolean)
+                .map((product: any, index: number) => ({
+                  ...product,
+                  id: String(product?.id || `published_whatsapp_order_product_${index}`),
+                  name: String(product?.name || `Producto ${index + 1}`)
+                }));
+            } else if (catalogProducts.length > 0) {
+              finalProducts = isManualProductsSelectionMode(whatsappOrderSelectionMode)
+                ? resolveProductsForSelection({
+                    selectionMode: whatsappOrderSelectionMode,
+                    selectedIds: explicitSelectedProductIds,
+                    availableProducts: catalogProducts
+                  })
+                : catalogProducts;
+            }
+
+            return (
+              <WhatsAppOrdersModule
+                key={moduleId}
+                moduleId={moduleId}
+                settingsValues={{
+                  ...finalSettingsValues,
+                  [`${moduleId}_global_mode`]: normalizedMode
+                }}
+                products={finalProducts}
+                renderMode={isPublishedViewer ? 'published' : 'preview'}
+                publishedSiteId={isPublishedViewer ? site.id : null}
+                pageId={publishedPageId}
+                projectId={effectiveProjectId}
+              />
+            );
+          }
           case 'products':
           case 'product_grid':
           case 'product':

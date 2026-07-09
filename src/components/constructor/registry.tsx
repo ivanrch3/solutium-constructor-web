@@ -746,6 +746,85 @@ export const PRODUCTS_MODULE: WebModule = {
   ]
 };
 
+export const WHATSAPP_ORDERS_MODULE: WebModule = {
+  id: 'mod_whatsapp_orders_1',
+  type: 'whatsapp_orders',
+  iconKey: 'whatsapp_orders',
+  name: 'Pedidos por WhatsApp',
+  globalGroups: ['contenido', 'estructura', 'estilo', 'interaccion'],
+  globalSettings: {
+    contenido: [
+      { id: 'mode', label: 'Modo del módulo', type: 'select', defaultValue: 'orders', options: [
+        { label: 'Visual / Informativo', value: 'visual' },
+        { label: 'Pedidos', value: 'orders' }
+      ]},
+      { id: 'showPrices', label: 'Mostrar precios', type: 'boolean', defaultValue: true },
+      { id: 'showDescriptions', label: 'Mostrar descripciones', type: 'boolean', defaultValue: true },
+      { id: 'showSearch', label: 'Mostrar buscador', type: 'boolean', defaultValue: true },
+      { id: 'showCategories', label: 'Mostrar categorías', type: 'boolean', defaultValue: false },
+      { id: 'buttonLabel', label: 'Texto del botón principal', type: 'text', defaultValue: 'Agregar al pedido' },
+      { id: 'emptyStateText', label: 'Texto sin productos', type: 'textarea', defaultValue: 'No hay productos disponibles en este momento.', rows: 3 },
+      { id: 'confirmationTitle', label: 'Título de confirmación', type: 'text', defaultValue: 'Confirma tu pedido' },
+      { id: 'confirmationDescription', label: 'Descripción de confirmación', type: 'textarea', defaultValue: 'Déjanos tu WhatsApp y te enviaremos la cotización.', rows: 3 },
+      { id: 'customerNameRequired', label: 'Solicitar nombre como obligatorio', type: 'boolean', defaultValue: false },
+      { id: 'customerEmailEnabled', label: 'Solicitar correo electrónico', type: 'boolean', defaultValue: true },
+      { id: 'customerNotesEnabled', label: 'Permitir notas por producto', type: 'boolean', defaultValue: false }
+    ],
+    estructura: [
+      { id: 'layout', label: 'Diseño del catálogo', type: 'select', defaultValue: 'grid', options: [
+        { label: 'Grilla', value: 'grid' },
+        { label: 'Lista', value: 'list' }
+      ]},
+      { id: 'columns', label: 'Columnas (desktop)', type: 'range', defaultValue: 3, min: 1, max: 4 },
+      { id: 'gap', label: 'Espaciado entre productos', type: 'range', defaultValue: 24, min: 8, max: 48, unit: 'px' },
+      { id: 'padding_y', label: 'Padding vertical', type: 'range', defaultValue: 56, min: 24, max: 160, unit: 'px' }
+    ],
+    estilo: [],
+    interaccion: [],
+    tipografia: [],
+    multimedia: []
+  },
+  elements: [
+    {
+      id: 'el_whatsapp_orders_header',
+      name: 'Encabezado',
+      type: 'text',
+      groups: ['contenido'],
+      settings: {
+        contenido: [
+          { id: 'title', label: 'Título', type: 'text', defaultValue: 'Pedidos por WhatsApp' },
+          { id: 'subtitle', label: 'Descripción', type: 'textarea', defaultValue: 'Muestra tu catálogo y recibe pedidos confirmados desde tu web.', rows: 3 }
+        ],
+        estructura: [],
+        estilo: [],
+        tipografia: [],
+        multimedia: [],
+        interaccion: []
+      }
+    },
+    {
+      id: 'el_whatsapp_orders_catalog',
+      name: 'Catálogo',
+      type: 'style',
+      groups: ['contenido'],
+      settings: {
+        contenido: [
+          { id: 'selection_mode', label: 'Modo de selección', type: 'select', defaultValue: 'auto', options: [
+            { label: 'Automático', value: 'auto' },
+            { label: 'Manual', value: 'manual' }
+          ]},
+          { id: 'select_products', label: 'Productos del catálogo', type: 'product_selection', defaultValue: null }
+        ],
+        estructura: [],
+        estilo: [],
+        tipografia: [],
+        multimedia: [],
+        interaccion: []
+      }
+    }
+  ]
+};
+
 export const PRODUCTS_SHOWCASE_MODULE: WebModule = {
   id: 'mod_products_showcase_1',
   type: 'products_showcase',
@@ -4077,6 +4156,7 @@ export const MODULE_INFO: Record<string, {
   footer: { label: 'Pie de página', icon: PanelBottom },
   spacer: { label: 'Espaciadores', icon: SeparatorHorizontal },
   products: { label: 'Productos y Servicios', icon: ShoppingBag },
+  whatsapp_orders: { label: 'Pedidos por WhatsApp', icon: MessageSquare },
   products_showcase: {
     label: 'EXPERIMENTAL: Catalogo V2',
     icon: ShoppingBag,

@@ -367,6 +367,7 @@ export interface ConstructorContextResult {
   clients?: any[];
   projectContact?: Record<string, any> | null;
   projectBranding?: Record<string, any> | null;
+  capabilities?: Record<string, any> | null;
   httpStatus?: number;
   error?: string;
   message?: string;
@@ -416,7 +417,8 @@ export const fetchConstructorContext = async ({
       customers: Array.isArray(result.customers) ? result.customers : [],
       clients: Array.isArray(result.clients) ? result.clients : [],
       projectContact: result.projectContact || null,
-      projectBranding: result.projectBranding || null
+      projectBranding: result.projectBranding || null,
+      capabilities: result.capabilities && typeof result.capabilities === 'object' ? result.capabilities : null
     };
   } catch (error) {
     return {

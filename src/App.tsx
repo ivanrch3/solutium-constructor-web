@@ -24,6 +24,7 @@ import { logDebug } from './utils/debug';
 import { Profile, Project, Asset, WebBuilderSite, PublishedSite, Product, Customer, TrustedCompanyLogo } from './types/schema';
 import { getAssets } from './services/dataService';
 import { BrandColorsInput, normalizeProjectBrandColors } from './utils/projectTheme';
+import { extractWhatsAppOrdersCapability } from './utils/whatsappOrdersAvailability';
 
 type View = 'dashboard' | 'selection-method' | 'form' | 'generator' | 'constructor' | 'viewer';
 
@@ -413,6 +414,24 @@ const normalizeIncomingProject = (
     createdAt: rawProject.createdAt || rawProject.created_at || null,
     updatedAt: rawProject.updatedAt || rawProject.updated_at || null
   } as Project;
+};
+
+const mergeProjectWithWhatsAppOrdersCapability = (
+  project: Project | null,
+  ...sources: unknown[]
+): Project | null => {
+  if (!project) return null;
+
+  const capability = extractWhatsAppOrdersCapability(...sources);
+  if (!capability) return project;
+
+  return {
+    ...project,
+    capabilities: {
+      ...((project as any).capabilities || {}),
+      whatsapp_orders: capability
+    }
+  };
 };
 
 const normalizeSecureProduct = (rawProduct: any): Product | null => {
@@ -1340,6 +1359,13 @@ const AppContent: React.FC = () => {
       if (secureLaunchPayloadRef.current) {
         secureLaunchPayloadRef.current = {
           ...secureLaunchPayloadRef.current,
+          projectContext: {
+            ...(secureLaunchPayloadRef.current.projectContext || {}),
+            capabilities:
+              (contextResult.capabilities && typeof contextResult.capabilities === 'object'
+                ? contextResult.capabilities
+                : secureLaunchPayloadRef.current.projectContext?.capabilities) || null
+          },
           projectContact: contextResult.projectContact || secureLaunchPayloadRef.current.projectContact || null,
           projectBranding: contextResult.projectBranding || secureLaunchPayloadRef.current.projectBranding || null
         };
@@ -1360,11 +1386,16 @@ const AppContent: React.FC = () => {
           : null,
         contextResult.projectId || idToUse
       );
+      const projectFromContextWithCapabilities = mergeProjectWithWhatsAppOrdersCapability(
+        projectFromContext,
+        contextResult.capabilities,
+        secureLaunchPayload?.projectContext?.capabilities
+      );
 
-      if (projectFromContext) {
-        setProject(projectFromContext);
-        if (projectFromContext.logoUrl) setUrlLogo(projectFromContext.logoUrl);
-        if (projectFromContext.logoWhiteUrl) setUrlLogoWhite(projectFromContext.logoWhiteUrl);
+      if (projectFromContextWithCapabilities) {
+        setProject(projectFromContextWithCapabilities);
+        if (projectFromContextWithCapabilities.logoUrl) setUrlLogo(projectFromContextWithCapabilities.logoUrl);
+        if (projectFromContextWithCapabilities.logoWhiteUrl) setUrlLogoWhite(projectFromContextWithCapabilities.logoWhiteUrl);
       }
 
       setAssets(contextAssets as Asset[]);
@@ -1736,16 +1767,21 @@ const AppContent: React.FC = () => {
 
         const pagesPromise = finalProjectId ? refreshData(finalProjectId) : Promise.resolve([]);
         const [resolvedProject, allPages] = await Promise.all([projectPromise, pagesPromise]);
+        const resolvedProjectWithCapabilities = mergeProjectWithWhatsAppOrdersCapability(
+          resolvedProject,
+          payload.projectContext?.capabilities,
+          secureLaunchPayload?.projectContext?.capabilities
+        );
 
-        if (resolvedProject) {
-          setProject(resolvedProject);
-          if (!secureUiTheme && (resolvedProject.fontFamily || handshakeFont)) {
+        if (resolvedProjectWithCapabilities) {
+          setProject(resolvedProjectWithCapabilities);
+          if (!secureUiTheme && (resolvedProjectWithCapabilities.fontFamily || handshakeFont)) {
             applyTheme({
-              fontFamily: handshakeFont || resolvedProject.fontFamily || undefined
+              fontFamily: handshakeFont || resolvedProjectWithCapabilities.fontFamily || undefined
             });
           }
-          if (resolvedProject.logoWhiteUrl) {
-            setUrlLogoWhite(resolvedProject.logoWhiteUrl);
+          if (resolvedProjectWithCapabilities.logoWhiteUrl) {
+            setUrlLogoWhite(resolvedProjectWithCapabilities.logoWhiteUrl);
           }
         }
 

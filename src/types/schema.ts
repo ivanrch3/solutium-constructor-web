@@ -108,6 +108,7 @@ export interface Project {
   socials?: any;
   integrations?: any;
   imageMappings?: any;
+  capabilities?: Record<string, any>;
   schemaVersion?: string;
   createdAt?: string;
   updatedAt?: string;
@@ -225,6 +226,7 @@ export interface PublishedSite {
   siteName?: string;
   isActive?: boolean;
   content: RenderingContract;
+  capabilities?: Record<string, any>;
   metadata?: any;
   createdAt?: string;
   updatedAt?: string;

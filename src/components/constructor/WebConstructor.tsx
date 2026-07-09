@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import * as LucideIcons from 'lucide-react';
 import {
   Monitor,
@@ -25,7 +25,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { DataTab } from '../DataTab';
-import { Project, RenderingContract, WebBuilderSite, PublishedSite, Page } from '../../types/schema';
+import { Project, Profile, RenderingContract, WebBuilderSite, PublishedSite, Page } from '../../types/schema';
 import { WebModule, EditorState } from '../../types/constructor';
 import * as registryModules from './registry';
 import {
@@ -77,6 +77,7 @@ import { AICreditBalanceSummary, AIGenerationContext, AIPageGenerationBrief, AIP
 import { ProjectForm, ProjectFormData } from '../ProjectForm';
 import { initialContent, useEditorStore } from '../../store/editorStore';
 import { logDebug } from '../../utils/debug';
+import { resolveWhatsAppOrdersAvailability } from '../../utils/whatsappOrdersAvailability';
 import {
   PROJECT_THEME_FALLBACKS,
   buildProjectThemeCssVariables,
@@ -649,6 +650,7 @@ interface WebConstructorProps {
   projectId: string | null;
   appId: string | null;
   currentUserId: string | null;
+  currentProfile?: Profile | null;
   logoUrl: string | null;
   logoWhiteUrl: string | null;
   project: Project | null;
@@ -806,6 +808,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   projectId,
   appId,
   currentUserId,
+  currentProfile = null,
   logoUrl,
   logoWhiteUrl,
   project,
@@ -1591,6 +1594,30 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   const lastLocalSectionsSignatureRef = useRef<string | null>(null);
   const lastProjectThemeSeedSignatureRef = useRef<string | null>(null);
   const isLeavingEditorRef = useRef(false);
+  const whatsappOrdersAvailability = useMemo(() => {
+    const projectAny = project as Record<string, any> | null;
+    const planSlug =
+      currentProfile?.subscriptionPlan ||
+      projectAny?.subscriptionPlan ||
+      projectAny?.subscription_plan ||
+      null;
+    const isTrialUser =
+      currentProfile?.isTrialUser ??
+      projectAny?.isTrialUser ??
+      projectAny?.is_trial_user ??
+      null;
+    const trialStartedAt =
+      currentProfile?.createdAt ||
+      projectAny?.trialStartedAt ||
+      projectAny?.trial_started_at ||
+      null;
+
+    return resolveWhatsAppOrdersAvailability({
+      planSlug,
+      isTrialUser,
+      trialStartedAt
+    });
+  }, [currentProfile, project]);
   const autosaveIntervalSetting = editorState.settingsValues['global_theme_builder_autosave_interval_ms'];
   const autosaveDisabledByInterval = String(autosaveIntervalSetting).trim().toLowerCase() === AUTOSAVE_DISABLED_VALUE;
   const autosaveEnabled = !autosaveDisabledByInterval && resolveBooleanSetting(
@@ -6966,6 +6993,7 @@ const formatTimestampName = () => {
           logoUrl={logoUrl}
           logoWhiteUrl={logoWhiteUrl}
           project={project}
+          whatsappOrdersAvailability={whatsappOrdersAvailability}
           onAddModule={addModule}
           onOpenBentoGenerator={() => setShowBentoPrompt(true)}
           onLogoClick={handleLogoClick}
@@ -7042,11 +7070,11 @@ const formatTimestampName = () => {
                                     { icon: MODULE_INFO.dynamic_cards.icon, label: "Tarjetas dinámicas", mod: DYNAMIC_CARDS_MODULE },
                                     { icon: MODULE_INFO.contact.icon, label: "Contacto", mod: CONTACT_MODULE },
                                     { icon: MODULE_INFO.genius_web_wa.icon, label: "Genius Web-WA", mod: GENIUS_WEB_WA_MODULE },
+                                    { icon: MODULE_INFO.whatsapp_orders.icon, label: "Pedidos por WhatsApp", mod: WHATSAPP_ORDERS_MODULE, disabled: whatsappOrdersAvailability.known && !whatsappOrdersAvailability.allowed, note: whatsappOrdersAvailability.known && !whatsappOrdersAvailability.allowed ? whatsappOrdersAvailability.message : null },
                                     { icon: MODULE_INFO.newsletter.icon, label: "Newsletter", mod: NEWSLETTER_MODULE },
                                     { icon: MODULE_INFO.pricing.icon, label: "Planes", mod: PRICING_MODULE },
                                     { icon: MODULE_INFO.header.icon, label: "Publicidad", mod: HEADER_MODULE },
-                                    { icon: MODULE_INFO.products.icon, label: "Productos y Servicios", mod: PRODUCTS_MODULE },
-                                    { icon: MODULE_INFO.whatsapp_orders.icon, label: "Pedidos por WhatsApp", mod: WHATSAPP_ORDERS_MODULE }
+                                    { icon: MODULE_INFO.products.icon, label: "Productos y Servicios", mod: PRODUCTS_MODULE }
                                   ]},
                                   { id: 'social', label: 'Social', modules: [
                                     { icon: MODULE_INFO.faq.icon, label: "FAQ", mod: FAQ_MODULE },
@@ -7086,6 +7114,8 @@ const formatTimestampName = () => {
                                                   key={`cat-mod-${cat.id}-${idx}`}
                                                   icon={React.createElement(m.icon, { size: 18 })}
                                                   label={m.label}
+                                                  disabled={Boolean((m as any).disabled)}
+                                                  note={typeof (m as any).note === 'string' ? (m as any).note : null}
                                                   onClick={() => addModule(m.mod)}
                                                 />
                                               ))}
@@ -7136,11 +7166,11 @@ const formatTimestampName = () => {
                                       <ModuleItem icon={React.createElement(MODULE_INFO.dynamic_cards.icon, { size: 18 })} label="Tarjetas dinámicas" onClick={() => addModule(DYNAMIC_CARDS_MODULE)} />
                                       <ModuleItem icon={React.createElement(MODULE_INFO.contact.icon, { size: 18 })} label="Contacto" onClick={() => addModule(CONTACT_MODULE)} />
                                       <ModuleItem icon={React.createElement(MODULE_INFO.genius_web_wa.icon, { size: 18 })} label="Genius Web-WA" onClick={() => addModule(GENIUS_WEB_WA_MODULE)} />
+                                      <ModuleItem icon={React.createElement(MODULE_INFO.whatsapp_orders.icon, { size: 18 })} label="Pedidos por WhatsApp" note={whatsappOrdersAvailability.known && !whatsappOrdersAvailability.allowed ? whatsappOrdersAvailability.message : null} disabled={whatsappOrdersAvailability.known && !whatsappOrdersAvailability.allowed} onClick={() => addModule(WHATSAPP_ORDERS_MODULE)} />
                                       <ModuleItem icon={React.createElement(MODULE_INFO.newsletter.icon, { size: 18 })} label="Newsletter" onClick={() => addModule(NEWSLETTER_MODULE)} />
                                       <ModuleItem icon={React.createElement(MODULE_INFO.pricing.icon, { size: 18 })} label="Planes" onClick={() => addModule(PRICING_MODULE)} />
                                       <ModuleItem icon={React.createElement(MODULE_INFO.header.icon, { size: 18 })} label="Publicidad" onClick={() => addModule(HEADER_MODULE)} />
                                       <ModuleItem icon={React.createElement(MODULE_INFO.products.icon, { size: 18 })} label="Productos y Servicios" onClick={() => addModule(PRODUCTS_MODULE)} />
-                                      <ModuleItem icon={React.createElement(MODULE_INFO.whatsapp_orders.icon, { size: 18 })} label="Pedidos por WhatsApp" onClick={() => addModule(WHATSAPP_ORDERS_MODULE)} />
                                     </div>
                                   </div>
                                 </div>
@@ -7229,6 +7259,7 @@ const formatTimestampName = () => {
                         logoUrl={logoUrl}
                         logoWhiteUrl={logoWhiteUrl}
                         project={project}
+                        whatsappOrdersAvailability={whatsappOrdersAvailability}
                         viewport={viewport}
                         setViewport={handleViewportChange}
                         isFullscreen={false}
@@ -7313,6 +7344,7 @@ const formatTimestampName = () => {
                         logoUrl={logoUrl}
                         logoWhiteUrl={logoWhiteUrl}
                         project={project}
+                        whatsappOrdersAvailability={whatsappOrdersAvailability}
                         viewport={viewport}
                         setViewport={handleViewportChange}
                         isFullscreen={isFullscreen}

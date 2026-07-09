@@ -2428,6 +2428,7 @@ const AppContent: React.FC = () => {
             projectId={projectId} 
             appId={appId}
             currentUserId={profile?.id || null}
+            currentProfile={profile}
             logoUrl={urlLogo}
             logoWhiteUrl={urlLogoWhite}
             project={project}

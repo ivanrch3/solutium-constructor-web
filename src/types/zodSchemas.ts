@@ -39,6 +39,7 @@ export const profileSchema = z.object({
   verificationSent: z.any().optional().nullable(),
   totalRequestsMade: z.any().optional().nullable(),
   lastRequestAt: z.any().optional().nullable(),
+  createdAt: z.any().optional().nullable(),
   updatedAt: z.any().optional().nullable(),
   defaultProjectId: z.any().optional().nullable(),
   systemRoleId: z.any().optional().nullable(),

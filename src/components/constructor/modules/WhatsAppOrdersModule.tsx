@@ -19,6 +19,7 @@ import {
   PublicWhatsAppOrderQuoteResponse
 } from '../../../services/publicWhatsAppOrders';
 import { resolveProductsForSelection } from '../../../utils/productsSelection';
+import { WhatsAppOrdersAvailability } from '../../../utils/whatsappOrdersAvailability';
 
 type ModuleRenderMode = 'preview' | 'published';
 
@@ -212,6 +213,8 @@ export const WhatsAppOrdersModule: React.FC<{
   publishedSiteId?: string | null;
   pageId?: string | null;
   projectId?: string | null;
+  activeViewport?: 'desktop' | 'tablet' | 'mobile';
+  availability?: WhatsAppOrdersAvailability | null;
 }> = ({
   moduleId,
   settingsValues,
@@ -219,7 +222,9 @@ export const WhatsAppOrdersModule: React.FC<{
   renderMode = 'preview',
   publishedSiteId = null,
   pageId = null,
-  projectId = null
+  projectId = null,
+  activeViewport,
+  availability = null
 }) => {
   const getVal = React.useCallback((elementId: string | null, settingId: string, defaultValue: any) => {
     const key = elementId ? `${elementId}_${settingId}` : `${moduleId}_global_${settingId}`;
@@ -284,6 +289,9 @@ export const WhatsAppOrdersModule: React.FC<{
   const submitAttemptKeyRef = React.useRef<string | null>(null);
   const catalogContainerRef = React.useRef<HTMLDivElement | null>(null);
   const [catalogWidth, setCatalogWidth] = React.useState(0);
+  const planBlocked = Boolean(availability?.known && !availability.allowed);
+  const previewOrdersBlocked = renderMode === 'preview' && mode === 'orders' && planBlocked;
+  const ordersInteractionEnabled = mode === 'orders' && !previewOrdersBlocked;
 
   const currentOptionGroups = React.useMemo(
     () => (selectedProduct ? extractOptionGroups(selectedProduct) : []),
@@ -353,6 +361,14 @@ export const WhatsAppOrdersModule: React.FC<{
 
     return () => observer.disconnect();
   }, []);
+
+  React.useEffect(() => {
+    if (!previewOrdersBlocked) return;
+    setCartOpen(false);
+    setCheckoutOpen(false);
+    setSubmitResponse(null);
+    setSubmitError(null);
+  }, [previewOrdersBlocked]);
 
   const visibleProducts = React.useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
@@ -446,6 +462,10 @@ export const WhatsAppOrdersModule: React.FC<{
   }, []);
 
   const handleSubmitOrder = React.useCallback(async () => {
+    if (previewOrdersBlocked) {
+      setSubmitError(availability?.message || 'Disponible en planes superiores.');
+      return;
+    }
     if (submitState === 'loading') return;
     if (cartItems.length === 0) {
       setSubmitError('El carrito está vacío.');
@@ -514,15 +534,19 @@ export const WhatsAppOrdersModule: React.FC<{
     moduleId,
     pageId,
     publishedSiteId,
+    previewOrdersBlocked,
     submitState
   ]);
 
   const effectiveColumns = React.useMemo(() => {
     if (layout === 'list') return 1;
+    if (activeViewport === 'mobile') return 1;
+    if (activeViewport === 'tablet') return Math.min(columns, 2);
+    if (activeViewport === 'desktop') return columns;
     if (catalogWidth > 0 && catalogWidth < MOBILE_BREAKPOINT) return 1;
     if (catalogWidth > 0 && catalogWidth < TABLET_BREAKPOINT) return Math.min(columns, 2);
     return columns;
-  }, [catalogWidth, columns, layout]);
+  }, [activeViewport, catalogWidth, columns, layout]);
 
   const gridStyle = React.useMemo<React.CSSProperties>(() => {
     if (layout === 'list') {
@@ -542,6 +566,10 @@ export const WhatsAppOrdersModule: React.FC<{
   const responseTone = getResponseTone(submitResponse);
   const responseMessage = getResponseMessage(submitResponse);
 
+  if (renderMode === 'published' && planBlocked) {
+    return null;
+  }
+
   return (
     <section
       data-module-type="whatsapp_orders"
@@ -553,7 +581,7 @@ export const WhatsAppOrdersModule: React.FC<{
         color: 'var(--text-color, #0f172a)'
       }}
     >
-      {mode === 'orders' && (
+      {ordersInteractionEnabled && (
         <button
           type="button"
           onClick={() => {
@@ -576,6 +604,12 @@ export const WhatsAppOrdersModule: React.FC<{
           <h2 className="text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">{title}</h2>
           {subtitle ? (
             <p className="max-w-3xl text-sm leading-6 text-slate-600 sm:text-base">{subtitle}</p>
+          ) : null}
+          {previewOrdersBlocked ? (
+            <div className="inline-flex w-fit items-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-800">
+              <AlertCircle size={16} />
+              <span>{availability?.message || 'Disponible en planes superiores.'}</span>
+            </div>
           ) : null}
         </div>
 
@@ -673,7 +707,7 @@ export const WhatsAppOrdersModule: React.FC<{
 
                       <div className="mt-auto flex items-center justify-between gap-3 pt-2">
                         <span className="text-xs font-semibold text-slate-400">
-                          {mode === 'orders' ? 'Ver detalle y agregar' : 'Ver detalle'}
+                          {ordersInteractionEnabled ? 'Ver detalle y agregar' : 'Ver detalle'}
                         </span>
                         <span className="inline-flex items-center gap-1 text-sm font-bold text-slate-900">
                           Abrir
@@ -768,7 +802,7 @@ export const WhatsAppOrdersModule: React.FC<{
                   </label>
                 )}
 
-                {mode === 'orders' ? (
+                {ordersInteractionEnabled ? (
                   <>
                     <div className="space-y-2">
                       <span className="text-xs font-bold uppercase tracking-wide text-slate-500">Cantidad</span>
@@ -806,7 +840,7 @@ export const WhatsAppOrdersModule: React.FC<{
         </div>
       )}
 
-      {cartOpen && mode === 'orders' && (
+      {cartOpen && ordersInteractionEnabled && (
         <div className="fixed inset-0 z-[75] flex justify-end bg-slate-950/40">
           <div className="flex h-full w-full max-w-xl flex-col bg-white shadow-2xl">
             <div className="flex items-center justify-between border-b border-black/5 px-5 py-4">

@@ -19,6 +19,7 @@ import {
   PublicWhatsAppOrderQuoteResponse
 } from '../../../services/publicWhatsAppOrders';
 import { resolveProductsForSelection } from '../../../utils/productsSelection';
+import { resolveProductPrimaryImageUrl } from '../../../utils/productImage';
 import { WhatsAppOrdersAvailability } from '../../../utils/whatsappOrdersAvailability';
 
 type ModuleRenderMode = 'preview' | 'published';
@@ -108,7 +109,7 @@ const normalizeProduct = (product: Product, index: number): Product => {
     id: String(raw.id || `product-${index}`),
     name: normalizeString(raw.name || raw.title, 'Producto'),
     description: normalizeString(raw.description || raw.shortDescription || raw.short_description, ''),
-    imageUrl: normalizeString(raw.imageUrl || raw.image_url || raw.image, ''),
+    imageUrl: normalizeString(resolveProductPrimaryImageUrl(raw), ''),
     image2Url: normalizeString(raw.image2Url || raw.image_2_url, ''),
     price: raw.price !== undefined && raw.price !== null ? toNumber(raw.price, 0) : undefined,
     category: normalizeString(raw.category || raw.categoria, 'General'),

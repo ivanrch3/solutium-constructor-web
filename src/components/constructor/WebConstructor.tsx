@@ -39,6 +39,7 @@ import {
 } from './registry';
 import { saveWebBuilderSiteDraft, publishWebBuilderSite, getProducts, getCustomers, getTrustedCompanyLogos, normalizeTrustedCompanyLogos, upsertPage, upsertPageSections, logEvolutionRequest, getPageBySiteId, generatePreviewServerSide } from '../../services/dataService';
 import { sendToMother } from '../../services/handshakeService';
+import { resolveProductPrimaryImageUrl } from '../../utils/productImage';
 import { ensureActiveSupabaseSession, SupabaseSessionError } from '../../services/supabaseSessionService';
 import {
   hasActiveSecureConstructorWriteSession,
@@ -5180,6 +5181,7 @@ const formatTimestampName = () => {
               const rawPrice = (p as any).price;
               const rawRefPrice = (p as any).priceReference;
               const rawStock = (p as any).stock;
+              const imageUrl = resolveProductPrimaryImageUrl(p);
 
               const priceNum = typeof rawPrice === 'string' ? parseFloat(rawPrice.replace(/[^\d.,-]/g, '').replace(',', '.')) : rawPrice;
               const refPriceNum = typeof rawRefPrice === 'string' ? parseFloat(rawRefPrice.replace(/[^\d.,-]/g, '').replace(',', '.')) : rawRefPrice;
@@ -5191,7 +5193,9 @@ const formatTimestampName = () => {
                 name: String(p.name || `Producto ${idx + 1}`),
                 price: Number.isFinite(priceNum) ? Number(priceNum) : undefined,
                 priceReference: Number.isFinite(refPriceNum) ? Number(refPriceNum) : undefined,
-                stock: Number.isFinite(stockNum) ? Number(stockNum) : undefined
+                stock: Number.isFinite(stockNum) ? Number(stockNum) : undefined,
+                imageUrl,
+                image_url: imageUrl || (p as any).image_url || ''
               };
             });
 

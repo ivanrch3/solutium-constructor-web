@@ -34,6 +34,7 @@ import { logDebug } from '../utils/debug';
 import { bridgeModuleContent } from '../utils/hydrationBridge';
 import { getProducts } from '../services/dataService';
 import { Customer, Product, TrustedCompanyLogo } from '../types/schema';
+import { resolveProductPrimaryImageUrl } from '../utils/productImage';
 import {
   buildAutomaticMenuItems,
   isHeaderModuleLike,
@@ -774,11 +775,16 @@ export const Viewer: React.FC<ViewerProps> = ({
             if (Array.isArray(snapshotProducts) && snapshotProducts.length > 0) {
               finalProducts = snapshotProducts
                 .filter(Boolean)
-                .map((product: any, index: number) => ({
-                  ...product,
-                  id: String(product?.id || `published_whatsapp_order_product_${index}`),
-                  name: String(product?.name || `Producto ${index + 1}`)
-                }));
+                .map((product: any, index: number) => {
+                  const imageUrl = resolveProductPrimaryImageUrl(product);
+                  return {
+                    ...product,
+                    id: String(product?.id || `published_whatsapp_order_product_${index}`),
+                    name: String(product?.name || `Producto ${index + 1}`),
+                    imageUrl,
+                    image_url: imageUrl || product?.image_url || ''
+                  };
+                });
             } else if (catalogProducts.length > 0) {
               finalProducts = isManualProductsSelectionMode(whatsappOrderSelectionMode)
                 ? resolveProductsForSelection({

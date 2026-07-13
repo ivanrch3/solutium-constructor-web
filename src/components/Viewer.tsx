@@ -16,6 +16,7 @@ import { ContactModule } from './constructor/modules/ContactModule';
 import { GeniusWebWaModule } from './constructor/modules/GeniusWebWaModule';
 import { ProductsModule } from './constructor/modules/ProductsModule';
 import { WhatsAppOrdersModule } from './constructor/modules/WhatsAppOrdersModule';
+import { resolveProjectCurrencySettings } from '../utils/projectCurrency';
 import { ClientsModule } from './constructor/modules/ClientsModule';
 import { TrustedLogosModule } from './constructor/modules/TrustedLogosModule';
 import { CTAModule } from './constructor/modules/CTAModule';
@@ -152,6 +153,12 @@ export const Viewer: React.FC<ViewerProps> = ({
       ? resolveWhatsAppOrdersAvailability({ capability: explicitCapability })
       : null;
   }, [site.capabilities, site.metadata]);
+  const publishedRegionalSettings = React.useMemo(() => {
+    const metadata = (site.metadata || {}) as Record<string, any>;
+    const snapshotRegionalSettings = (site.content as any)?.regionalSettings || metadata.regionalSettings || null;
+    const project = metadata.project || metadata.projectContext || metadata.launchContext || null;
+    return resolveProjectCurrencySettings(snapshotRegionalSettings || project);
+  }, [site.content, site.metadata]);
 
   useEffect(() => {
     (window as any).__SOLUTIUM_READ_ONLY_RENDER__ = true;
@@ -808,6 +815,7 @@ export const Viewer: React.FC<ViewerProps> = ({
                 publishedSiteId={isPublishedViewer ? site.id : null}
                 pageId={publishedPageId}
                 projectId={effectiveProjectId}
+                regionalSettings={publishedRegionalSettings}
                 availability={publishedWhatsAppOrdersAvailability}
               />
             );

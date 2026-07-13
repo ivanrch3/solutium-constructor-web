@@ -354,6 +354,11 @@ const normalizeProjectBrandingToProject = (
     projectIconUrl: projectBranding.projectIconUrl || projectBranding.project_icon_url || null,
     faviconUrl: projectBranding.faviconUrl || projectBranding.favicon_url || null,
     fontFamily: projectBranding.typography?.fontFamily || projectBranding.fontFamily || null,
+    currency: projectBranding.currency || projectBranding.regionalSettings?.currency || null,
+    showDecimals: projectBranding.showDecimals ?? projectBranding.regionalSettings?.showDecimals ?? true,
+    decimalCount: projectBranding.decimalCount ?? projectBranding.regionalSettings?.decimalCount ?? 2,
+    locale: projectBranding.locale || projectBranding.regionalSettings?.locale || null,
+    regionalSettings: projectBranding.regionalSettings || null,
     brandColors: normalizeProjectBrandColors(brandColors)
   } as Project;
 };
@@ -410,6 +415,11 @@ const normalizeIncomingProject = (
       : projectBrandColors,
     webConfig: rawProject.webConfig || rawProject.web_config || null,
     imageMappings: rawProject.imageMappings || rawProject.image_mappings || null,
+    currency: projectBranding?.currency || projectBranding?.regionalSettings?.currency || rawProject.currency || null,
+    showDecimals: projectBranding?.showDecimals ?? projectBranding?.regionalSettings?.showDecimals ?? rawProject.showDecimals ?? rawProject.show_decimals ?? true,
+    decimalCount: projectBranding?.decimalCount ?? projectBranding?.regionalSettings?.decimalCount ?? rawProject.decimalCount ?? rawProject.decimal_count ?? 2,
+    locale: projectBranding?.locale || projectBranding?.regionalSettings?.locale || rawProject.locale || null,
+    regionalSettings: projectBranding?.regionalSettings || rawProject.regionalSettings || null,
     schemaVersion: rawProject.schemaVersion || rawProject.schema_version || null,
     createdAt: rawProject.createdAt || rawProject.created_at || null,
     updatedAt: rawProject.updatedAt || rawProject.updated_at || null
@@ -1364,14 +1374,25 @@ const AppContent: React.FC = () => {
             capabilities:
               (contextResult.capabilities && typeof contextResult.capabilities === 'object'
                 ? contextResult.capabilities
-                : secureLaunchPayloadRef.current.projectContext?.capabilities) || null
+                : secureLaunchPayloadRef.current.projectContext?.capabilities) || null,
+            regionalSettings: contextResult.projectRegionalSettings || secureLaunchPayloadRef.current.projectContext?.regionalSettings || null
           },
           projectContact: contextResult.projectContact || secureLaunchPayloadRef.current.projectContact || null,
           projectBranding: contextResult.projectBranding || secureLaunchPayloadRef.current.projectBranding || null
         };
       }
 
-      const contextProjectBranding = contextResult.projectBranding || secureLaunchPayload?.projectBranding || null;
+      const contextProjectBranding = contextResult.projectBranding || secureLaunchPayload?.projectBranding
+        ? {
+            ...(contextResult.projectBranding || secureLaunchPayload?.projectBranding || {}),
+            regionalSettings:
+              contextResult.projectRegionalSettings ||
+              (contextResult.projectBranding as any)?.regionalSettings ||
+              secureLaunchPayload?.projectContext?.regionalSettings ||
+              (secureLaunchPayload?.projectBranding as any)?.regionalSettings ||
+              null
+          }
+        : null;
       const contextProjectContact = contextResult.projectContact || null;
       const projectFromContext = normalizeProjectBrandingToProject(
         contextProjectBranding

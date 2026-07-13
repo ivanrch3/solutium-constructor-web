@@ -21,6 +21,11 @@ import {
 import { resolveProductsForSelection } from '../../../utils/productsSelection';
 import { resolveProductPrimaryImageUrl } from '../../../utils/productImage';
 import { WhatsAppOrdersAvailability } from '../../../utils/whatsappOrdersAvailability';
+import {
+  formatProjectCurrency,
+  resolveProjectCurrencySettings,
+  type ProjectCurrencySettings
+} from '../../../utils/projectCurrency';
 
 type ModuleRenderMode = 'preview' | 'published';
 
@@ -214,6 +219,7 @@ export const WhatsAppOrdersModule: React.FC<{
   publishedSiteId?: string | null;
   pageId?: string | null;
   projectId?: string | null;
+  regionalSettings?: Partial<ProjectCurrencySettings> | Record<string, unknown> | null;
   activeViewport?: 'desktop' | 'tablet' | 'mobile';
   availability?: WhatsAppOrdersAvailability | null;
 }> = ({
@@ -224,9 +230,18 @@ export const WhatsAppOrdersModule: React.FC<{
   publishedSiteId = null,
   pageId = null,
   projectId = null,
+  regionalSettings = null,
   activeViewport,
   availability = null
 }) => {
+  const projectCurrencySettings = React.useMemo(
+    () => resolveProjectCurrencySettings(regionalSettings),
+    [regionalSettings]
+  );
+  const formatPrice = React.useCallback(
+    (amount: unknown) => formatProjectCurrency(amount, projectCurrencySettings),
+    [projectCurrencySettings]
+  );
   const getVal = React.useCallback((elementId: string | null, settingId: string, defaultValue: any) => {
     const key = elementId ? `${elementId}_${settingId}` : `${moduleId}_global_${settingId}`;
     return settingsValues[key] !== undefined ? settingsValues[key] : defaultValue;
@@ -697,7 +712,7 @@ export const WhatsAppOrdersModule: React.FC<{
                         </div>
                         {showPrices && product.price !== undefined ? (
                           <span className="text-base font-black text-[var(--primary-color,#16a34a)]">
-                            ${Number(product.price || 0).toFixed(2)}
+                            {formatPrice(product.price)}
                           </span>
                         ) : null}
                       </div>
@@ -731,7 +746,7 @@ export const WhatsAppOrdersModule: React.FC<{
               <div>
                 <h3 className="text-xl font-black text-slate-950">{selectedProduct.name}</h3>
                 {showPrices && selectedProduct.price !== undefined ? (
-                  <p className="text-sm font-bold text-[var(--primary-color,#16a34a)]">${Number(selectedProduct.price || 0).toFixed(2)}</p>
+                  <p className="text-sm font-bold text-[var(--primary-color,#16a34a)]">{formatPrice(selectedProduct.price)}</p>
                 ) : null}
               </div>
               <button
@@ -885,7 +900,7 @@ export const WhatsAppOrdersModule: React.FC<{
                             <div>
                               <h4 className="text-sm font-black text-slate-950">{item.name}</h4>
                               {showPrices && item.price !== undefined ? (
-                                <p className="text-sm font-bold text-[var(--primary-color,#16a34a)]">${Number(item.price || 0).toFixed(2)}</p>
+                                <p className="text-sm font-bold text-[var(--primary-color,#16a34a)]">{formatPrice(item.price)}</p>
                               ) : null}
                             </div>
                             <button
@@ -1024,7 +1039,7 @@ export const WhatsAppOrdersModule: React.FC<{
               {showPrices && (
                 <div className="mb-3 flex items-center justify-between text-sm">
                   <span className="font-semibold text-slate-500">Subtotal estimado</span>
-                  <span className="text-base font-black text-slate-950">${subtotal.toFixed(2)}</span>
+                  <span className="text-base font-black text-slate-950">{formatPrice(subtotal)}</span>
                 </div>
               )}
 

@@ -836,6 +836,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     setProject,
     resetEditorStore
   } = useEditorStore();
+  const skipNextExternalSiteContentSyncRef = useRef(false);
 
   useEffect(() => {
     logDebug('[CONSTRUCTOR_RUNTIME_VERSION]', {
@@ -846,12 +847,15 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       buildTime: new Date().toISOString()
     });
 
-    if (initialPage && 'content' in initialPage && (initialPage as any).content) {
+    if (initialPage && 'contentDraft' in initialPage && initialPage.contentDraft) {
+      // Keep the global render store from replaying content from a previous editor session
+      // before the draft state can generate its own rendering contract.
+      skipNextExternalSiteContentSyncRef.current = true;
+      resetEditorStore();
+      setSiteContent(initialContent);
+    } else if (initialPage && 'content' in initialPage && (initialPage as any).content) {
+      resetEditorStore();
       setSiteContent((initialPage as any).content);
-    } else if (initialPage && 'contentDraft' in initialPage && initialPage.contentDraft) {
-      // SIP v7.4: Ensure that if we have a draft, we also have a valid siteContent
-      // for the Canvas to render during the first 1.5s (before standard sync kicks in)
-      const draft = initialPage.contentDraft;
     } else if (!initialPage) {
       resetEditorStore();
       setSiteContent(initialContent);
@@ -2254,6 +2258,10 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   // Synchronize store settings back to local editorState
   useEffect(() => {
     if (isLeavingEditorRef.current) return;
+    if (skipNextExternalSiteContentSyncRef.current) {
+      skipNextExternalSiteContentSyncRef.current = false;
+      return;
+    }
     if (siteContent.sections.length > 0) {
       const incomingSectionsSignature = getSectionsSyncSignature(siteContent.sections);
       if (incomingSectionsSignature === lastLocalSectionsSignatureRef.current) return;

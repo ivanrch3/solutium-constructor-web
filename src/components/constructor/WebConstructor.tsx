@@ -6638,8 +6638,13 @@ const formatTimestampName = () => {
   const getPreviewDisableReason = (siteId?: string) => {
     try {
       const key = getPreviewDisableKey(siteId);
+      // A missing storage configuration can be repaired while this editor tab
+      // remains open. Do not let a stale per-tab marker suppress all later
+      // capture attempts, otherwise the published record can never acquire a
+      // preview until the user opens a fresh tab.
       localStorage.removeItem(key);
-      return sessionStorage.getItem(key);
+      sessionStorage.removeItem(key);
+      return null;
     } catch {
       return null;
     }

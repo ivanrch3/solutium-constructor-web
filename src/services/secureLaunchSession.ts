@@ -40,6 +40,7 @@ export interface SecureLaunchSessionPayload {
     role?: string | null;
     projectRole?: string | null;
     capabilities?: Record<string, any> | null;
+    regionalSettings?: Record<string, any> | null;
   } | null;
 }
 
@@ -367,6 +368,7 @@ export interface ConstructorContextResult {
   clients?: any[];
   projectContact?: Record<string, any> | null;
   projectBranding?: Record<string, any> | null;
+  projectRegionalSettings?: Record<string, any> | null;
   capabilities?: Record<string, any> | null;
   httpStatus?: number;
   error?: string;
@@ -418,6 +420,9 @@ export const fetchConstructorContext = async ({
       clients: Array.isArray(result.clients) ? result.clients : [],
       projectContact: result.projectContact || null,
       projectBranding: result.projectBranding || null,
+      projectRegionalSettings: result.projectRegionalSettings && typeof result.projectRegionalSettings === 'object'
+        ? result.projectRegionalSettings
+        : null,
       capabilities: result.capabilities && typeof result.capabilities === 'object' ? result.capabilities : null
     };
   } catch (error) {

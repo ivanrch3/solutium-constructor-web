@@ -88,6 +88,7 @@ import {
   getProjectThemeFromSettings,
   normalizeProjectBrandColors
 } from '../../utils/projectTheme';
+import { resolveProjectCurrencySettings } from '../../utils/projectCurrency';
 import {
   buildAutomaticMenuItems,
   dedupeMenuLinks,
@@ -5690,6 +5691,7 @@ const formatTimestampName = () => {
         metaPixelEnabled: resolvedMetaPixelEnabled,
         metaPixelId: resolvedMetaPixelId,
       },
+      regionalSettings: resolveProjectCurrencySettings(project),
       sections
     };
 
@@ -5820,6 +5822,7 @@ const formatTimestampName = () => {
         metadata: {
           origin_app: 'Constructor Web',
           version: '2.3-Atomic',
+          regionalSettings: contract.regionalSettings,
           editor_state: activeState // Use migrated state
         }
       });
@@ -6076,6 +6079,7 @@ const formatTimestampName = () => {
           metadata: {
             origin_app: 'Constructor Web',
             version: '2.3-Atomic',
+            regionalSettings: contract.regionalSettings,
             editor_state: activeState
           }
         });
@@ -6395,7 +6399,8 @@ const formatTimestampName = () => {
         metadata: {
           publishedAt: new Date().toISOString(),
           origin: 'Constructor Web',
-          version: '6.2-Forensic'
+          version: '6.2-Forensic',
+          regionalSettings: contract.regionalSettings
         }
       };
 
@@ -6445,6 +6450,7 @@ const formatTimestampName = () => {
           origin_app: 'Constructor Web',
           version: '2.3-Atomic',
           published_at: new Date().toISOString(),
+          regionalSettings: contract.regionalSettings,
           editor_state: activeState // Use migrated state
         }
       });

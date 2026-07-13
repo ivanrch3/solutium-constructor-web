@@ -1032,6 +1032,7 @@ export const Canvas: React.FC<CanvasProps> = ({
                         products={products}
                         renderMode="preview"
                         projectId={project?.id || null}
+                        regionalSettings={project}
                         activeViewport={viewport}
                         availability={whatsappOrdersAvailability}
                       />

@@ -102,6 +102,15 @@ export interface Project {
   projectIconUrl?: string;
   fontFamily?: string;
   currency?: string;
+  showDecimals?: boolean;
+  decimalCount?: number;
+  locale?: string;
+  regionalSettings?: {
+    currency: string;
+    showDecimals: boolean;
+    decimalCount: number;
+    locale: string;
+  };
   isMaster?: boolean;
   brandColors?: BrandColors | string[];
   webConfig?: any;
@@ -205,6 +214,12 @@ export interface RenderingContract {
     fontFamily: string;
     metaPixelEnabled?: boolean;
     metaPixelId?: string;
+  };
+  regionalSettings?: {
+    currency: string;
+    showDecimals: boolean;
+    decimalCount: number;
+    locale: string;
   };
   sections: Array<{
     id: string;

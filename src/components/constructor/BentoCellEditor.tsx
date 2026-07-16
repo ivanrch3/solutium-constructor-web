@@ -12,6 +12,7 @@ import {
   X
 } from 'lucide-react';
 import { logDebug } from '../../utils/debug';
+import { resolveBentoIconSpacing, updateBentoIconSpacing, type BentoIconDevice } from '../../utils/bentoIconSpacing';
 import { SettingControl } from './SettingControl';
 
 const PILLAR_ICONS: Record<string, React.ReactNode> = {
@@ -39,6 +40,45 @@ const PILLAR_LABELS: Record<string, string> = {
 };
 
 const PILLARS_ORDER: string[] = ['contenido', 'estructura', 'estilo', 'tipografia', 'multimedia', 'interaccion'];
+const ICON_SETTINGS_TABS = [
+  { id: 'structure', label: 'Estructura', pillars: ['estructura', 'estilo', 'interaccion'] },
+  { id: 'text', label: 'Texto', pillars: ['contenido', 'tipografia'] },
+  { id: 'media', label: 'Multimedia', pillars: ['multimedia'] }
+] as const;
+type IconSettingsTab = typeof ICON_SETTINGS_TABS[number]['id'];
+
+const ICON_DEVICE_OPTIONS = [
+  { label: 'Escritorio', value: 'desktop' },
+  { label: 'Tablet', value: 'tablet' },
+  { label: 'Móvil', value: 'mobile' }
+] as const;
+
+const ICON_TEXT_SETTING_IDS = new Set([
+  'title',
+  'description',
+  'title_size',
+  'title_weight',
+  'title_color',
+  'description_size',
+  'description_weight',
+  'description_color',
+  'text_contrast'
+]);
+
+const ICON_MEDIA_SETTING_IDS = new Set([
+  'icon_visual_type',
+  'icon',
+  'icon_color',
+  'icon_size',
+  'show_icon_bg',
+  'icon_bg',
+  'icon_image',
+  'icon_image_size',
+  'card_bg',
+  'card_gradient',
+  'card_image',
+  'card_overlay'
+]);
 const BENTO_DESKTOP_COLUMNS = 24;
 const BENTO_MIN_DESKTOP_COLUMNS = 12;
 const BENTO_MAX_DESKTOP_COLUMNS = 32;
@@ -263,6 +303,8 @@ const BENTO_CLICK_ACTION_FIELDS = [
   }
 ];
 
+const ICON_INTERACTION_SETTING_IDS = new Set(BENTO_CLICK_ACTION_FIELDS.map((field) => field.setting.id));
+
 const clampBentoDesktopColumns = (value: any) => {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return BENTO_DESKTOP_COLUMNS;
@@ -309,6 +351,9 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
     interaccion: false
   });
   const [expandedSubsections, setExpandedSubsections] = React.useState<Record<string, boolean>>({});
+  const [activeIconSettingsTab, setActiveIconSettingsTab] = React.useState<IconSettingsTab>('structure');
+  const [iconLayoutDevice, setIconLayoutDevice] = React.useState<BentoIconDevice>('desktop');
+  const [iconSpacingDevice, setIconSpacingDevice] = React.useState<BentoIconDevice>('desktop');
 
   const getBentoItems = () => {
     const sectionId = selectedSection.id;
@@ -333,6 +378,14 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
 
   const selectedBentoItem = getSelectedBentoItem();
   const selectedType = selectedBentoItem?.type || 'text';
+
+  React.useEffect(() => {
+    if (selectedType === 'icon') {
+      setActiveIconSettingsTab('structure');
+      setIconLayoutDevice('desktop');
+      setIconSpacingDevice('desktop');
+    }
+  }, [selectedBentoCellIndex, selectedType]);
   const activeLayoutKey = activeViewport;
   const desktopColumns = clampBentoDesktopColumns(
     settingsValues?.[`${selectedSection.id}_global_columns`]
@@ -358,9 +411,15 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
         ? parseNumber(item.icon_image_size, 72)
         : Math.max(parseNumber(item.icon_size, 32) + 16, 40);
       const hasText = Boolean(item.title || item.description);
-      const textPadding = parseNumber(item.padding, 32);
-      const elementPaddingY = parseNumber(item.element_padding_y, 20);
-      const estimatedHeight = visualSize + (hasText ? 92 + (textPadding * 2) : 0) + (elementPaddingY * 2);
+      const spacing = resolveBentoIconSpacing(item, activeLayoutKey);
+      const hasExplicitSpacing = Boolean(item?.icon_spacing?.[activeLayoutKey])
+        || item?.card_padding !== undefined
+        || ['top', 'right', 'bottom', 'left'].some((side) => item?.[`card_padding_${side}`] !== undefined);
+      const textPadding = hasExplicitSpacing ? 0 : parseNumber(item.padding, 32);
+      const estimatedHeight = visualSize
+        + (hasText ? 92 + (textPadding * 2) + spacing.internalGap : 0)
+        + spacing.top
+        + spacing.bottom;
       return Math.max(2, Math.ceil(estimatedHeight / 96));
     }
     if (item?.type === 'list') return 3;
@@ -538,7 +597,7 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
     text: ['text_style', 'title', 'description', 'title_size', 'title_weight', 'font_family', 'title_color', 'description_size', 'content_align', 'line_height', 'letter_spacing', 'card_image', 'card_overlay', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'align_items', 'card_style', 'card_bg', 'card_gradient', 'card_radius', 'card_shadow', 'text_contrast'],
     visual: ['image', 'image_fit', 'card_image', 'card_overlay', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'align_items', 'card_style', 'card_bg', 'card_gradient', 'card_radius', 'card_shadow'],
     button: ['button_text', 'btn_url', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'align_items', 'card_style', 'card_bg', 'card_gradient', 'card_image', 'card_overlay', 'card_radius', 'card_shadow'],
-    icon: ['title', 'description', 'icon_visual_type', 'icon', 'icon_color', 'icon_size', 'show_icon_bg', 'icon_bg', 'icon_image', 'icon_image_size', 'title_size', 'title_weight', 'title_color', 'description_size', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'element_padding_y', 'padding', 'align_items', 'card_style', 'card_bg', 'card_gradient', 'card_image', 'card_overlay', 'card_radius', 'card_shadow', 'text_contrast'],
+    icon: ['title', 'description', 'icon_visual_type', 'icon', 'icon_color', 'icon_size', 'show_icon_bg', 'icon_bg', 'icon_image', 'icon_image_size', 'title_size', 'title_weight', 'title_color', 'description_size', 'description_weight', 'description_color', 'content_align', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'element_padding_y', 'card_padding_linked', 'card_padding_top', 'card_padding_right', 'card_padding_bottom', 'card_padding_left', 'icon_content_gap', 'text_content_gap', 'padding', 'align_items', 'card_style', 'card_bg', 'card_gradient', 'card_image', 'card_overlay', 'card_radius', 'card_shadow', 'text_contrast'],
     badge: ['title', 'icon', 'title_size', 'title_weight', 'title_color', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'align_items', 'card_style', 'card_bg', 'card_gradient', 'card_image', 'card_overlay', 'card_radius', 'card_shadow'],
     metric: ['metric_value', 'metric_prefix', 'metric_suffix', 'metric_label', 'accent_color', 'icon', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'align_items', 'card_style', 'card_bg', 'card_gradient', 'card_image', 'card_overlay', 'card_radius', 'card_shadow'],
     list: ['title', 'list_items', 'icon', 'title_size', 'title_weight', 'title_color', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'align_items', 'card_style', 'card_bg', 'card_gradient', 'card_image', 'card_overlay', 'card_radius', 'card_shadow'],
@@ -583,6 +642,9 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
     }
     if (selectedType === 'icon' && field.id === 'element_padding_y') {
       nextField = { ...nextField, label: 'Separación vertical del elemento', subsection: 'Espaciado del elemento', description: 'Aire superior e inferior del conjunto visual + textos dentro de la celda.' };
+    }
+    if (selectedType === 'icon' && field.id === 'card_padding_linked') {
+      nextField = { ...nextField, subsection: 'Espaciado de la tarjeta' };
     }
     if (selectedType === 'icon' && field.id === 'padding') {
       nextField = { ...nextField, label: 'Separación interna de textos', description: 'Espacio propio del bloque de título y descripción; no cambia el tamaño ni la posición del visual.' };
@@ -645,6 +707,23 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
     }))
   );
 
+  const iconSettingsByTab = Object.values(settingsByPillar)
+    .flat()
+    .reduce((tabs, field) => {
+      const settingId = field.setting.id;
+      const tab: IconSettingsTab = ICON_MEDIA_SETTING_IDS.has(settingId)
+        ? 'media'
+        : ICON_TEXT_SETTING_IDS.has(settingId)
+          ? 'text'
+          : 'structure';
+      tabs[tab].push(field);
+      return tabs;
+    }, {
+      structure: [],
+      text: [],
+      media: []
+    } as Record<IconSettingsTab, any[]>);
+
   const togglePillar = (pillar: string) => {
     setExpandedPillars(prev => ({ ...prev, [pillar]: !prev[pillar] }));
   };
@@ -699,6 +778,33 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
       const currentItem = newItems[index];
       let nextItem = { ...currentItem, [settingId]: value, ...textStylePreset };
       const numericValue = Number(value);
+
+      const isCardPaddingSide = ['card_padding_top', 'card_padding_right', 'card_padding_bottom', 'card_padding_left'].includes(settingId);
+      const isCardPaddingLinked = currentItem.card_padding_linked !== false && currentItem.card_padding_linked !== 'false';
+      if (isCardPaddingSide && isCardPaddingLinked) {
+        nextItem = {
+          ...nextItem,
+          card_padding: value,
+          card_padding_top: value,
+          card_padding_right: value,
+          card_padding_bottom: value,
+          card_padding_left: value
+        };
+      }
+
+      if (settingId === 'card_padding_linked' && (value === true || value === 'true')) {
+        const uniformPadding = currentItem.card_padding_top
+          ?? currentItem.card_padding
+          ?? 24;
+        nextItem = {
+          ...nextItem,
+          card_padding: uniformPadding,
+          card_padding_top: uniformPadding,
+          card_padding_right: uniformPadding,
+          card_padding_bottom: uniformPadding,
+          card_padding_left: uniformPadding
+        };
+      }
 
       if (Number.isFinite(numericValue) && ['desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span'].includes(settingId)) {
         const existingLayouts = currentItem.layouts || {};
@@ -895,6 +1001,177 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
     </div>
   );
 
+  const iconFieldsById = new Map(
+    Object.values(iconSettingsByTab)
+      .flat()
+      .map((field) => [field.setting.id, field])
+  );
+  const iconContextId = `${selectedSection.id}_el_bento_items_${selectedBentoCellIndex}`;
+  const iconSpacing = resolveBentoIconSpacing(selectedBentoItem, iconSpacingDevice);
+  const iconWidthSettingId = iconLayoutDevice === 'desktop'
+    ? 'desktop_span'
+    : iconLayoutDevice === 'tablet'
+      ? 'tablet_span'
+      : 'mobile_span';
+  const iconWidthMax = iconLayoutDevice === 'desktop'
+    ? desktopColumns
+    : iconLayoutDevice === 'tablet'
+      ? BENTO_TABLET_COLUMNS
+      : BENTO_MOBILE_COLUMNS;
+  const iconWidthFallback = iconLayoutDevice === 'desktop' ? 4 : iconLayoutDevice === 'tablet' ? 2 : 4;
+  const iconWidthValue = Number(selectedBentoItem?.[iconWidthSettingId] ?? iconWidthFallback);
+
+  const renderIconField = (settingId: string, label?: string) => {
+    const field = iconFieldsById.get(settingId);
+    if (!field) return null;
+    const setting = label ? { ...field.setting, label } : field.setting;
+    return renderFieldControl({ ...field, label: label || field.label, setting });
+  };
+
+  const renderIconLocalControl = (setting: any, value: any, onChange: (value: any) => void) => (
+    <div key={setting.id} className="space-y-1">
+      <SettingControl
+        setting={setting}
+        value={value}
+        onChange={onChange}
+        projectId={project?.id || null}
+        products={project?.products || []}
+        customers={project?.customers || []}
+        projectColors={projectColors}
+        project={project}
+        contextId={iconContextId}
+        moduleType={selectedSection.type}
+      />
+    </div>
+  );
+
+  const renderIconSectionHeading = (label: string) => (
+    <h4 className="border-b border-gray-100 pb-2 text-[10px] font-black uppercase tracking-wider text-gray-700">
+      {label}
+    </h4>
+  );
+
+  const updateSelectedIconSpacing = (updates: Parameters<typeof updateBentoIconSpacing>[2]) => {
+    if (!selectedBentoItem) return;
+    handleFieldChange(
+      iconContextId,
+      'icon_spacing',
+      updateBentoIconSpacing(selectedBentoItem, iconSpacingDevice, updates)
+    );
+  };
+
+  const iconStructureControls = (
+    <div className="space-y-5">
+      <div className="space-y-3">
+        {renderIconSectionHeading('Distribución')}
+        {renderIconLocalControl({ id: 'icon_layout_device', label: 'Dispositivo', type: 'select', options: ICON_DEVICE_OPTIONS }, iconLayoutDevice, (value) => setIconLayoutDevice(value as BentoIconDevice))}
+        {renderIconLocalControl({ id: 'icon_cell_width', label: 'Ancho de celda', type: 'range', min: 1, max: iconWidthMax, step: 1 }, iconWidthValue, (value) => handleFieldChange(iconContextId, iconWidthSettingId, value))}
+      </div>
+
+      <div className="space-y-3">
+        {renderIconSectionHeading('Espaciado')}
+        {renderIconLocalControl({ id: 'icon_spacing_device', label: 'Dispositivo', type: 'select', options: ICON_DEVICE_OPTIONS }, iconSpacingDevice, (value) => setIconSpacingDevice(value as BentoIconDevice))}
+        {renderIconLocalControl({ id: 'icon_vertical_padding', label: 'Aire vertical', type: 'range', min: 0, max: 64, step: 2, unit: 'px' }, iconSpacing.top, (value) => updateSelectedIconSpacing({ verticalPadding: Number(value) }))}
+        {renderIconLocalControl({ id: 'icon_horizontal_padding', label: 'Aire horizontal', type: 'range', min: 0, max: 64, step: 2, unit: 'px' }, iconSpacing.left, (value) => updateSelectedIconSpacing({ horizontalPadding: Number(value) }))}
+        {renderIconLocalControl({ id: 'icon_internal_gap', label: 'Separación interna', type: 'range', min: 0, max: 48, step: 2, unit: 'px' }, iconSpacing.internalGap, (value) => updateSelectedIconSpacing({ internalGap: Number(value) }))}
+      </div>
+
+      <div className="space-y-3">
+        {renderIconSectionHeading('Alineación')}
+        {renderIconField('align_items', 'Alineación vertical')}
+        {renderIconField('content_align', 'Alineación horizontal')}
+      </div>
+
+      <div className="space-y-3">
+        {renderIconSectionHeading('Tarjeta')}
+        {renderIconField('card_style', 'Estilo')}
+        {renderIconField('card_radius', 'Radio')}
+        {renderIconField('card_shadow', 'Sombra')}
+        {[...ICON_INTERACTION_SETTING_IDS].map((settingId) => renderIconField(settingId))}
+      </div>
+    </div>
+  );
+
+  const iconTextControls = (
+    <div className="space-y-5">
+      <div className="space-y-3">
+        {renderIconSectionHeading('Título')}
+        {renderIconField('title', 'Título')}
+        {renderIconField('title_size', 'Tamaño')}
+        {renderIconField('title_weight', 'Peso')}
+        {renderIconField('title_color', 'Color')}
+      </div>
+      <div className="space-y-3">
+        {renderIconSectionHeading('Descripción')}
+        {renderIconField('description', 'Descripción')}
+        {renderIconField('description_size', 'Tamaño')}
+        {renderIconField('description_weight', 'Peso')}
+        {renderIconField('description_color', 'Color')}
+        {renderIconField('text_contrast', 'Contraste')}
+      </div>
+    </div>
+  );
+
+  const iconMediaControls = (
+    <div className="space-y-5">
+      <div className="space-y-3">
+        {renderIconSectionHeading('Ícono o imagen')}
+        {renderIconField('icon_visual_type', 'Tipo visual')}
+        {renderIconField('icon', 'Ícono')}
+        {renderIconField('icon_image', 'Imagen')}
+        {renderIconField('icon_size', 'Tamaño del ícono')}
+        {renderIconField('icon_image_size', 'Tamaño de imagen')}
+        {renderIconField('icon_color', 'Color del ícono')}
+        {renderIconField('show_icon_bg', 'Mostrar fondo del ícono')}
+        {renderIconField('icon_bg', 'Fondo del ícono')}
+      </div>
+      <div className="space-y-3">
+        {renderIconSectionHeading('Fondo del contenedor')}
+        {renderIconField('card_bg', 'Color de fondo')}
+        {renderIconField('card_gradient', 'Degradado')}
+        {renderIconField('card_image', 'Imagen de fondo')}
+        {renderIconField('card_overlay', 'Opacidad de imagen de fondo')}
+      </div>
+    </div>
+  );
+
+  const iconSettingsPanel = selectedType === 'icon' && (
+    <section
+      id={`icon-settings-${activeIconSettingsTab}-panel`}
+      role="tabpanel"
+      aria-labelledby={`icon-settings-${activeIconSettingsTab}-tab`}
+      className="space-y-4"
+    >
+      {activeIconSettingsTab === 'structure'
+        ? iconStructureControls
+        : activeIconSettingsTab === 'text'
+          ? iconTextControls
+          : iconMediaControls}
+    </section>
+  );
+
+  const iconSettingsTabs = selectedType === 'icon' && (
+    <div className="grid grid-cols-3 gap-1 rounded-lg bg-gray-100 p-1" role="tablist" aria-label="Configuración del ícono">
+      {ICON_SETTINGS_TABS.map(tab => {
+        const isActive = activeIconSettingsTab === tab.id;
+        return (
+          <button
+            key={tab.id}
+            type="button"
+            id={`icon-settings-${tab.id}-tab`}
+            role="tab"
+            aria-selected={isActive}
+            aria-controls={`icon-settings-${tab.id}-panel`}
+            onClick={() => setActiveIconSettingsTab(tab.id)}
+            className={`rounded-md px-2 py-1.5 text-[10px] font-bold transition-colors ${isActive ? 'bg-white text-blue-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+          >
+            {tab.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+
   return (
     <div className={`flex flex-col h-full bg-white overflow-hidden ${embedded ? '' : 'border-l border-gray-100 shadow-sm'}`}>
       {!embedded && <div className="p-4 border-b border-gray-100 bg-gray-50/50 flex flex-col gap-2">
@@ -935,7 +1212,8 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
         {embedded ? (
           <div className="space-y-5 p-3">
             {movementControls}
-            {PILLARS_ORDER.map(pillar => {
+            {iconSettingsTabs}
+            {selectedType === 'icon' ? iconSettingsPanel : PILLARS_ORDER.map(pillar => {
               const fields = settingsByPillar[pillar];
               if (!fields || fields.length === 0) return null;
 
@@ -958,8 +1236,11 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
           <>
           <div className="p-4 pb-2">
             {movementControls}
+            {iconSettingsTabs && <div className={movementControls ? 'mt-3' : ''}>{iconSettingsTabs}</div>}
           </div>
-          {PILLARS_ORDER.map(pillar => {
+          {selectedType === 'icon' ? (
+            <div className="p-4 pt-2">{iconSettingsPanel}</div>
+          ) : PILLARS_ORDER.map(pillar => {
             const fields = settingsByPillar[pillar];
             if (!fields || fields.length === 0) return null;
 

@@ -3920,6 +3920,8 @@ export const BENTO_MODULE: WebModule = {
             { label: 'Monoespaciada', value: 'monospace' }
           ], showIf: { settingId: 'type', value: 'text' } },
           { id: 'description_size', label: 'Tamaño del texto', type: 'typography_size', defaultValue: 'p', allowedLevels: ['t3', 'p', 's'] },
+          { id: 'description_weight', label: 'Peso del texto', type: 'font_weight', defaultValue: 'normal', showIf: { settingId: 'type', value: 'icon' } },
+          { id: 'description_color', label: 'Color del texto', type: 'color', defaultValue: '#64748B', showIf: { settingId: 'type', value: 'icon' } },
           { id: 'content_align', label: 'Alineación del contenido', type: 'select', defaultValue: 'center', options: [
             { label: 'Izquierda', value: 'left' },
             { label: 'Centro', value: 'center' },
@@ -3985,6 +3987,13 @@ export const BENTO_MODULE: WebModule = {
           { id: 'mobile_span', label: 'Ancho Móvil (Columnas)', type: 'range', defaultValue: 4, min: 1, max: 4 },
           
           { id: 'element_padding_y', label: 'Separación vertical del elemento', type: 'range', defaultValue: 20, min: 0, max: 120, unit: 'px', showIf: { settingId: 'type', value: 'icon' } },
+          { id: 'card_padding_linked', label: 'Usar el mismo valor en todos los lados', type: 'boolean', defaultValue: true, subsection: 'Espaciado de la tarjeta', showIf: { settingId: 'type', value: 'icon' } },
+          { id: 'card_padding_top', label: 'Superior', type: 'range', defaultValue: 24, min: 0, max: 64, step: 2, unit: 'px', subsection: 'Espaciado de la tarjeta', showIf: { settingId: 'type', value: 'icon' } },
+          { id: 'card_padding_right', label: 'Derecho', type: 'range', defaultValue: 24, min: 0, max: 64, step: 2, unit: 'px', subsection: 'Espaciado de la tarjeta', showIf: { settingId: 'type', value: 'icon' } },
+          { id: 'card_padding_bottom', label: 'Inferior', type: 'range', defaultValue: 24, min: 0, max: 64, step: 2, unit: 'px', subsection: 'Espaciado de la tarjeta', showIf: { settingId: 'type', value: 'icon' } },
+          { id: 'card_padding_left', label: 'Izquierdo', type: 'range', defaultValue: 24, min: 0, max: 64, step: 2, unit: 'px', subsection: 'Espaciado de la tarjeta', showIf: { settingId: 'type', value: 'icon' } },
+          { id: 'icon_content_gap', label: 'Separación entre ícono y texto', type: 'range', defaultValue: 12, min: 0, max: 48, step: 2, unit: 'px', subsection: 'Espaciado del contenido', showIf: { settingId: 'type', value: 'icon' } },
+          { id: 'text_content_gap', label: 'Separación entre título y descripción', type: 'range', defaultValue: 8, min: 0, max: 32, step: 2, unit: 'px', subsection: 'Espaciado del contenido', showIf: { settingId: 'type', value: 'icon' } },
           { id: 'padding', label: 'Padding Interno', type: 'range', defaultValue: 32, min: 0, max: 80, unit: 'px' },
           { id: 'align_items', label: 'Alineación Vertical', type: 'select', defaultValue: 'start', options: [
             { label: 'Arriba', value: 'start' },

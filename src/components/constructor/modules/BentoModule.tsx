@@ -11,6 +11,7 @@ import { Responsive } from 'react-grid-layout/legacy';
 import { SectionAnimation } from '../animations/SectionAnimation';
 import { normalizeSectionAnimation } from '../../../constants/moduleAnimations';
 import { appendReferralParamToSolutiumUrl, extractReferralCodeFromSearch } from '../../../utils/referralLinks';
+import { resolveBentoIconSpacing, type BentoIconDevice } from '../../../utils/bentoIconSpacing';
 import '/node_modules/react-grid-layout/css/styles.css';
 import '/node_modules/react-resizable/css/styles.css';
 
@@ -113,9 +114,9 @@ const getBentoResponsiveMinRows = (
   rowHeight: number,
   rowGap: number
 ) => {
-  if (breakpoint === 'desktop') return 1;
-
   const type = item?.type || 'text';
+  if (breakpoint === 'desktop' && type !== 'icon') return 1;
+
   const safeGap = Math.max(Number(rowGap) || 0, 0);
   let minHeight = rowHeight;
 
@@ -124,9 +125,18 @@ const getBentoResponsiveMinRows = (
     const iconSize = parseNumSafe(item.icon_size, 32);
     const iconImageSize = parseNumSafe(item.icon_image_size, 72);
     const visualSize = isImage ? iconImageSize : Math.max(iconSize + 16, 40);
-    const textPadding = parseNumSafe(item.padding, 32);
-    const elementPaddingY = parseNumSafe(item.element_padding_y, 20);
-    const charsPerLine = breakpoint === 'mobile' ? 22 : 34;
+    const iconSpacing = resolveBentoIconSpacing(item, breakpoint);
+    const hasExplicitSpacing = Boolean(item?.icon_spacing?.[breakpoint])
+      || item?.card_padding !== undefined
+      || ['top', 'right', 'bottom', 'left'].some((side) => item?.[`card_padding_${side}`] !== undefined);
+    const textPadding = hasExplicitSpacing ? 0 : parseNumSafe(item.padding, 32);
+    const span = breakpoint === 'desktop'
+      ? parseNumSafe(item.desktop_span || item.col_span, 4)
+      : breakpoint === 'tablet'
+        ? parseNumSafe(item.tablet_span || item.col_span, 2)
+        : parseNumSafe(item.mobile_span || item.col_span, 4);
+    const baseCharsPerLine = breakpoint === 'mobile' ? 22 : Math.max(18, Math.round(span * 4.5));
+    const charsPerLine = Math.max(10, baseCharsPerLine - Math.ceil((iconSpacing.left + iconSpacing.right) / 16));
     const titleFontSize = getTypographyFontSize(item.title_size, 't3');
     const descFontSize = getTypographyFontSize(item.description_size || item.desc_size, 'p');
     const titleLines = estimateTextLines(item.title, charsPerLine);
@@ -134,10 +144,10 @@ const getBentoResponsiveMinRows = (
     const titleHeight = titleLines * titleFontSize * 1.25;
     const descHeight = descLines * descFontSize * 1.45;
     const textHeight = titleLines || descLines
-      ? titleHeight + descHeight + (titleLines && descLines ? 8 : 0) + (textPadding * 2)
+      ? titleHeight + descHeight + (titleLines && descLines ? iconSpacing.internalGap : 0) + (textPadding * 2)
       : 0;
 
-    minHeight = visualSize + (textHeight ? 12 : 0) + textHeight + (elementPaddingY * 2);
+    minHeight = visualSize + (textHeight ? iconSpacing.internalGap : 0) + textHeight + iconSpacing.top + iconSpacing.bottom;
   } else if (type === 'visual') {
     minHeight = breakpoint === 'mobile' ? 220 : 260;
   } else if (type === 'list') {
@@ -324,7 +334,7 @@ const hasBentoClickAction = (item: any) => {
   return false;
 };
 
-const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave }: any) => {
+const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave, breakpoint = 'desktop' }: any) => {
   const {
     type,
     title,
@@ -350,7 +360,10 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave }: a
     letter_spacing,
     content_align,
     description_size,
+    description_weight,
+    description_color,
     desc_size,
+    desc_weight,
     desc_color,
     metric_suffix,
     accent_color,
@@ -365,6 +378,8 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave }: a
     icon_image = '',
     icon_image_size,
     element_padding_y,
+    icon_content_gap,
+    text_content_gap,
     padding,
     text_contrast = 'auto'
   } = item;
@@ -383,20 +398,25 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave }: a
   const finalTitleSize = (title_size && title_size !== 'auto') ? title_size : (textStyleDefault?.titleSize || adaptive.title);
   const finalDescSize = ((description_size || desc_size) && (description_size || desc_size) !== 'auto') ? (description_size || desc_size) : (textStyleDefault?.descSize || adaptive.desc);
   const finalTitleWeight = getFontWeightValue(title_weight, 'extrabold');
+  const finalDescWeight = getFontWeightValue(description_weight || desc_weight, 'normal');
 
   const IconComponent = (LucideIcons as any)[icon] || Sparkles;
   
   // Contraste de texto forzado
   const forcedColor = text_contrast === 'white' ? '#FFFFFF' : text_contrast === 'black' ? '#0F172A' : null;
   const finalTitleColor = forcedColor || resolveThemeColor(title_color, '#0F172A', '#FFFFFF', darkMode);
-  const finalDescColor = forcedColor || resolveThemeColor(desc_color, '#64748B', '#94A3B8', darkMode);
+  const finalDescColor = forcedColor || resolveThemeColor(description_color || desc_color, '#64748B', '#94A3B8', darkMode);
   const isHero = type === 'hero' || priority === 'hero';
   const finalIconColor = resolveThemeColor(icon_color, '#2563EB', '#60A5FA', darkMode);
   const resolvedIconBg = resolveThemeColor(icon_bg, 'rgba(59, 130, 246, 0.1)', 'rgba(96, 165, 250, 0.18)', darkMode);
   const numericIconSize = parseNumSafe(icon_size, isHero ? 40 : 32);
   const numericIconImageSize = parseNumSafe(icon_image_size, 72);
   const numericTextPadding = parseNumSafe(padding, 32);
-  const numericElementPaddingY = parseNumSafe(element_padding_y, 20);
+  const iconSpacing = resolveBentoIconSpacing(item, breakpoint as BentoIconDevice);
+  const hasExplicitIconSpacing = Boolean(item?.icon_spacing?.[breakpoint])
+    || item?.card_padding !== undefined
+    || ['top', 'right', 'bottom', 'left'].some((side) => item?.[`card_padding_${side}`] !== undefined);
+  const effectiveIconTextPadding = hasExplicitIconSpacing ? 0 : numericTextPadding;
   const iconFrameSize = Math.max(numericIconSize + 16, 40);
   const verticalContentClass = {
     start: 'justify-start',
@@ -581,11 +601,14 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave }: a
       const visualFrameSize = isIconImage ? numericIconImageSize : iconFrameSize;
       return (
         <div
-          className={`flex flex-col z-10 w-full h-full items-center ${verticalContentClass} gap-3 text-center`}
+          className={`flex flex-col z-10 w-full h-full items-center ${verticalContentClass}`}
           style={{
             boxSizing: 'border-box',
-            paddingTop: `${numericElementPaddingY}px`,
-            paddingBottom: `${numericElementPaddingY}px`
+            gap: `${iconSpacing.internalGap}px`,
+            paddingTop: `${iconSpacing.top}px`,
+            paddingRight: `${iconSpacing.right}px`,
+            paddingBottom: `${iconSpacing.bottom}px`,
+            paddingLeft: `${iconSpacing.left}px`
           }}
         >
           <div
@@ -593,6 +616,10 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave }: a
             style={{
               width: `${visualFrameSize}px`,
               height: `${visualFrameSize}px`,
+              minWidth: `${visualFrameSize}px`,
+              minHeight: `${visualFrameSize}px`,
+              flex: '0 0 auto',
+              flexShrink: 0,
               backgroundColor: !isIconImage && toBoolean(show_icon_bg) ? resolvedIconBg : 'transparent',
               color: finalIconColor
             }}
@@ -610,15 +637,18 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave }: a
           </div>
           {(title || description) && (
             <div
-              className="flex w-full max-w-full flex-col items-center gap-2 text-center"
+              className={`flex w-full max-w-none flex-col ${alignClass}`}
               style={{
                 boxSizing: 'border-box',
-                padding: `${numericTextPadding}px`
+                minWidth: 0,
+                flexShrink: 0,
+                gap: `${iconSpacing.internalGap}px`,
+                padding: `${effectiveIconTextPadding}px`
               }}
             >
               {title && (
                 <h3
-                  className="leading-tight"
+                  className="w-full leading-tight"
                   style={{
                     color: finalTitleColor,
                     fontWeight: finalTitleWeight,
@@ -637,9 +667,10 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave }: a
               )}
               {description && (
                 <p
-                  className="max-w-[220px] leading-snug opacity-70"
+                  className="w-full max-w-none leading-snug opacity-70"
                   style={{
                     color: finalDescColor,
+                    fontWeight: finalDescWeight,
                     fontSize: `${TYPOGRAPHY_SCALE[finalDescSize as keyof typeof TYPOGRAPHY_SCALE]?.fontSize || 14}px`
                   }}
                 >
@@ -1792,7 +1823,15 @@ export const BentoModule: React.FC<{
       card_style: 'solid',
       card_radius: 28,
       padding: 32,
-      element_padding_y: 20,
+      ...(type === 'icon' ? {
+        description_weight: 'normal',
+        description_color: '#64748B',
+        icon_spacing: {
+          desktop: { verticalPadding: 24, horizontalPadding: 24, internalGap: 12 },
+          tablet: { verticalPadding: 20, horizontalPadding: 20, internalGap: 10 },
+          mobile: { verticalPadding: 16, horizontalPadding: 16, internalGap: 8 }
+        }
+      } : { element_padding_y: 20 }),
       content_align: 'center',
       clickActionType: 'none',
       icon: type === 'stat' ? 'Zap' : 'Sparkles',
@@ -1950,33 +1989,6 @@ export const BentoModule: React.FC<{
     window.addEventListener('keydown', handleEscape);
     return () => window.removeEventListener('keydown', handleEscape);
   }, [activeClickOverlay]);
-
-  useEffect(() => {
-    if (isPreviewMode || !onSettingChange || rawItems.length === 0 || isInteractingWithLayoutRef.current) return;
-
-    const targetWorkspaceRows = clampNumber(
-      Math.max(BENTO_BASE_VISIBLE_ROWS, occupiedRows),
-      BENTO_BASE_VISIBLE_ROWS,
-      BENTO_MAX_EDITABLE_ROWS
-    );
-
-    if (storedWorkspaceRows !== targetWorkspaceRows) {
-      onSettingChange(
-        `${moduleId}_el_bento_items`,
-        'workspace_rows',
-        buildBentoWorkspaceRowsValue(workspaceRowsSetting, activeLayoutKeyForHeight, targetWorkspaceRows)
-      );
-    }
-  }, [
-    activeLayoutKeyForHeight,
-    isPreviewMode,
-    moduleId,
-    occupiedRows,
-    onSettingChange,
-    rawItems.length,
-    storedWorkspaceRows,
-    workspaceRowsSetting
-  ]);
 
   useEffect(() => {
     if (!isPreviewMode && isBentoDebugEnabled()) {
@@ -2355,6 +2367,7 @@ export const BentoModule: React.FC<{
                         item={item} 
                         darkMode={darkMode} 
                         moduleId={moduleId}
+                        breakpoint={BENTO_BREAKPOINT_TO_LAYOUT[effectiveBreakpoint] || 'desktop'}
                         isPreviewMode={isPreviewMode}
                         onSave={(field: string, val: string) => {
                           const newItems = [...rawItems];

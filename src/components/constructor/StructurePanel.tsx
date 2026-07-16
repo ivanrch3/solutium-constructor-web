@@ -257,16 +257,25 @@ const createBentoPanelElementPreset = (kind: string, existingItems: any[], deskt
     case 'button':
       return withLayout({ type: 'button', title: 'Haz clic aquí', button_text: 'Haz clic aquí', btn_url: '#', card_style: 'transparent', padding: 16 }, 6, 1, 3, 4);
     case 'icon':
-      return withLayout({
+      const iconPreset = withLayout({
         type: 'icon',
         title: 'Ícono destacado',
+        description: 'Describe brevemente este ícono.',
+        description_weight: 'normal',
+        description_color: '#64748B',
         icon_visual_type: 'icon',
         icon: 'Sparkles',
         icon_color: '#2563EB',
         icon_image: '',
         icon_image_size: 72,
-        description: 'Describe brevemente este ícono.'
-      }, 4, 2, 2, 4);
+        icon_spacing: {
+          desktop: { verticalPadding: 24, horizontalPadding: 24, internalGap: 12 },
+          tablet: { verticalPadding: 20, horizontalPadding: 20, internalGap: 10 },
+          mobile: { verticalPadding: 16, horizontalPadding: 16, internalGap: 8 }
+        }
+      }, 4, 3, 2, 4);
+      delete iconPreset.element_padding_y;
+      return iconPreset;
     case 'badge':
       return withLayout({ type: 'badge', title: 'Nuevo', icon: 'Tag', card_style: 'transparent', padding: 12 }, 4, 1, 2, 4);
     case 'metric':

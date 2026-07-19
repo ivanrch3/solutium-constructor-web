@@ -222,6 +222,7 @@ export const WhatsAppOrdersModule: React.FC<{
   regionalSettings?: Partial<ProjectCurrencySettings> | Record<string, unknown> | null;
   activeViewport?: 'desktop' | 'tablet' | 'mobile';
   availability?: WhatsAppOrdersAvailability | null;
+  initialProduct?: Product | null;
 }> = ({
   moduleId,
   settingsValues,
@@ -232,7 +233,8 @@ export const WhatsAppOrdersModule: React.FC<{
   projectId = null,
   regionalSettings = null,
   activeViewport,
-  availability = null
+  availability = null,
+  initialProduct = null
 }) => {
   const projectCurrencySettings = React.useMemo(
     () => resolveProjectCurrencySettings(regionalSettings),
@@ -303,6 +305,7 @@ export const WhatsAppOrdersModule: React.FC<{
   const [submitResponse, setSubmitResponse] = React.useState<PublicWhatsAppOrderQuoteResponse | null>(null);
   const [submitError, setSubmitError] = React.useState<string | null>(null);
   const submitAttemptKeyRef = React.useRef<string | null>(null);
+  const openedInitialProductRef = React.useRef<string | null>(null);
   const catalogContainerRef = React.useRef<HTMLDivElement | null>(null);
   const [catalogWidth, setCatalogWidth] = React.useState(0);
   const planBlocked = Boolean(availability?.known && !availability.allowed);
@@ -419,6 +422,17 @@ export const WhatsAppOrdersModule: React.FC<{
     });
     setSelectedOptions(defaults);
   }, []);
+
+  React.useEffect(() => {
+    if (!initialProduct || renderMode !== 'published') return;
+
+    const normalized = normalizeProduct(initialProduct, 0);
+    const routeProductKey = `${normalized.id}:${normalized.updatedAt || ''}`;
+    if (openedInitialProductRef.current === routeProductKey) return;
+
+    openedInitialProductRef.current = routeProductKey;
+    openProductDetail(normalized);
+  }, [initialProduct, openProductDetail, renderMode]);
 
   const addCurrentProductToCart = React.useCallback(() => {
     if (!selectedProduct) return;

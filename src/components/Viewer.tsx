@@ -63,6 +63,8 @@ import {
   extractWhatsAppOrdersCapability,
   resolveWhatsAppOrdersAvailability
 } from '../utils/whatsappOrdersAvailability';
+import { resolvePublicCatalogItemRoute } from '../utils/publicCatalogItemRoute';
+import { fetchHostedPublicCatalogItem } from '../services/publicCatalogItems';
 
 interface ViewerProps {
   site: PublishedSite;
@@ -99,6 +101,11 @@ export const Viewer: React.FC<ViewerProps> = ({
   );
   
   const isPublishedViewer = !isConstructorMode && !!site.siteId;
+  const publicCatalogItemRoute = React.useMemo(
+    () => isPublishedViewer ? resolvePublicCatalogItemRoute(window.location) : null,
+    [isPublishedViewer, window.location.pathname, window.location.search]
+  );
+  const [publicCatalogRouteProduct, setPublicCatalogRouteProduct] = useState<Product | null>(null);
   const publishedPageId = React.useMemo(() => {
     const metadata = (site.metadata || {}) as Record<string, any>;
     return (
@@ -110,6 +117,31 @@ export const Viewer: React.FC<ViewerProps> = ({
       null
     );
   }, [queryParams, site.metadata]);
+
+  React.useEffect(() => {
+    if (!publicCatalogItemRoute) {
+      setPublicCatalogRouteProduct(null);
+      return;
+    }
+
+    const controller = new AbortController();
+    setPublicCatalogRouteProduct(null);
+
+    void fetchHostedPublicCatalogItem(publicCatalogItemRoute, controller.signal)
+      .then((product) => {
+        if (!controller.signal.aborted) setPublicCatalogRouteProduct(product);
+      })
+      .catch((error) => {
+        if (!controller.signal.aborted) {
+          logDebug('[PUBLIC_CATALOG_ITEM_ROUTE_RESOLUTION_FAILED]', {
+            route: publicCatalogItemRoute,
+            message: error instanceof Error ? error.message : String(error)
+          });
+        }
+      });
+
+    return () => controller.abort();
+  }, [publicCatalogItemRoute?.categorySlug, publicCatalogItemRoute?.itemSlug, publicCatalogItemRoute?.source]);
   const showBackControl = Boolean(onBack) && !isPublicRenderMode;
   const globalMenuLogoUrl = React.useMemo(() => {
     const metadata = (site.metadata || {}) as Record<string, any>;
@@ -599,7 +631,10 @@ export const Viewer: React.FC<ViewerProps> = ({
         fontFamily: theme.fontFamily || 'sans-serif'
       } as React.CSSProperties}
     >
-      {orderedSections.map((section, index) => {
+      {(() => {
+        let publicCatalogRouteAssigned = false;
+
+        return orderedSections.map((section, index) => {
         const moduleId = section.id;
         // SOP: Fallback entre 'type' y 'tipo' para máxima compatibilidad
         const type = section.type || section.tipo; 
@@ -757,6 +792,12 @@ export const Viewer: React.FC<ViewerProps> = ({
               section.content?.mode ||
               'orders';
             const normalizedMode = String(rawMode || 'orders').toLowerCase() === 'visual' ? 'visual' : 'orders';
+            const shouldOpenPublicCatalogRoute = Boolean(
+              publicCatalogRouteProduct &&
+              !publicCatalogRouteAssigned &&
+              normalizedMode === 'orders'
+            );
+            if (shouldOpenPublicCatalogRoute) publicCatalogRouteAssigned = true;
             const rawSelectionMode =
               finalSettingsValues[`${moduleId}_el_whatsapp_orders_catalog_selection_mode`] ||
               section.settings?.[`${moduleId}_el_whatsapp_orders_catalog_selection_mode`] ||
@@ -817,6 +858,7 @@ export const Viewer: React.FC<ViewerProps> = ({
                 projectId={effectiveProjectId}
                 regionalSettings={publishedRegionalSettings}
                 availability={publishedWhatsAppOrdersAvailability}
+                initialProduct={shouldOpenPublicCatalogRoute ? publicCatalogRouteProduct : null}
               />
             );
           }
@@ -1115,7 +1157,8 @@ export const Viewer: React.FC<ViewerProps> = ({
             {renderedSection}
           </div>
         );
-      })}
+        });
+      })()}
 
       {showBackControl && (
         <button 

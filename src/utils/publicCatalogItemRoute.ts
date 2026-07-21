@@ -4,7 +4,7 @@ export type PublicCatalogItemRoute = {
   source: 'query' | 'path';
 };
 
-const normalizeSlug = (value: string | null | undefined) => {
+export const normalizePublicCatalogSlug = (value: string | null | undefined) => {
   const normalized = decodeURIComponent(String(value || ''))
     .trim()
     .toLowerCase()
@@ -19,15 +19,15 @@ const normalizeSlug = (value: string | null | undefined) => {
 export const resolvePublicCatalogItemRoute = (location: Pick<Location, 'pathname' | 'search'>): PublicCatalogItemRoute | null => {
   const query = new URLSearchParams(location.search);
   if (query.get('catalog_view') === 'item') {
-    const categorySlug = normalizeSlug(query.get('catalog_category'));
-    const itemSlug = normalizeSlug(query.get('catalog_item'));
+    const categorySlug = normalizePublicCatalogSlug(query.get('catalog_category'));
+    const itemSlug = normalizePublicCatalogSlug(query.get('catalog_item'));
     return categorySlug && itemSlug ? { categorySlug, itemSlug, source: 'query' } : null;
   }
 
   const segments = location.pathname
     .split('/')
     .filter(Boolean)
-    .map((segment) => normalizeSlug(segment));
+    .map((segment) => normalizePublicCatalogSlug(segment));
 
   if (segments.length !== 2 || !segments[0] || !segments[1]) return null;
 

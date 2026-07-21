@@ -20,6 +20,8 @@ import {
 } from '../../../services/publicWhatsAppOrders';
 import { resolveProductsForSelection } from '../../../utils/productsSelection';
 import { resolveProductPrimaryImageUrl } from '../../../utils/productImage';
+import { fetchHostedPublicCatalogItem } from '../../../services/publicCatalogItems';
+import { normalizePublicCatalogSlug } from '../../../utils/publicCatalogItemRoute';
 import { WhatsAppOrdersAvailability } from '../../../utils/whatsappOrdersAvailability';
 import {
   formatProjectCurrency,
@@ -176,6 +178,9 @@ const resolveProductOptionGroupsSource = (raw: any): unknown => {
 
   return candidates.find((candidate) => Array.isArray(candidate));
 };
+
+const hasProductOptionGroupsSnapshot = (product: Product) =>
+  Array.isArray(resolveProductOptionGroupsSource(product as any));
 
 const normalizeProduct = (product: Product, index: number): Product => {
   const raw = product as any;
@@ -551,6 +556,8 @@ export const WhatsAppOrdersModule: React.FC<{
   const [search, setSearch] = React.useState('');
   const [activeCategory, setActiveCategory] = React.useState<string>('Todos');
   const [selectedProduct, setSelectedProduct] = React.useState<Product | null>(null);
+  const [isResolvingProductDetail, setIsResolvingProductDetail] = React.useState(false);
+  const [productDetailNotice, setProductDetailNotice] = React.useState<string | null>(null);
   const [selectedQuantity, setSelectedQuantity] = React.useState(1);
   const [selectedOptions, setSelectedOptions] = React.useState<SelectedOptions>({});
   const [selectedNotes, setSelectedNotes] = React.useState('');
@@ -563,6 +570,7 @@ export const WhatsAppOrdersModule: React.FC<{
   const [submitError, setSubmitError] = React.useState<string | null>(null);
   const submitAttemptKeyRef = React.useRef<string | null>(null);
   const openedInitialProductRef = React.useRef<string | null>(null);
+  const publicProductCacheRef = React.useRef(new Map<string, Promise<Product | null>>());
   const catalogContainerRef = React.useRef<HTMLDivElement | null>(null);
   const [catalogWidth, setCatalogWidth] = React.useState(0);
   const planBlocked = Boolean(availability?.known && !availability.allowed);
@@ -676,14 +684,64 @@ export const WhatsAppOrdersModule: React.FC<{
     [cartItems]
   );
 
-  const openProductDetail = React.useCallback((product: Product) => {
-    setSelectedProduct(product);
+  const showProductDetail = React.useCallback((product: Product) => {
+    const normalizedProduct = normalizeProduct(product, 0);
+    setSelectedProduct(normalizedProduct);
     setSelectedQuantity(1);
     setSelectedNotes('');
 
-    const groups = extractOptionGroups(product);
+    const groups = extractOptionGroups(normalizedProduct);
     setSelectedOptions(getDefaultSelectedOptions(groups));
   }, []);
+
+  const openProductDetail = React.useCallback(async (product: Product) => {
+    const normalizedProduct = normalizeProduct(product, 0);
+    const shouldResolvePublishedProduct =
+      renderMode === 'published'
+      && Boolean(normalizedProduct.id)
+      && !hasProductOptionGroupsSnapshot(normalizedProduct);
+
+    if (!shouldResolvePublishedProduct) {
+      setProductDetailNotice(null);
+      showProductDetail(normalizedProduct);
+      return;
+    }
+
+    const categorySlug = normalizePublicCatalogSlug(normalizedProduct.category);
+    const itemSlug = normalizePublicCatalogSlug(normalizedProduct.name);
+    if (!categorySlug || !itemSlug) {
+      setProductDetailNotice('No pudimos cargar las opciones de este producto. Puedes continuar con la información disponible.');
+      showProductDetail(normalizedProduct);
+      return;
+    }
+
+    const cacheKey = `${categorySlug}/${itemSlug}`;
+    let request = publicProductCacheRef.current.get(cacheKey);
+    if (!request) {
+      request = fetchHostedPublicCatalogItem({ categorySlug, itemSlug });
+      publicProductCacheRef.current.set(cacheKey, request);
+    }
+
+    setIsResolvingProductDetail(true);
+    setProductDetailNotice(null);
+
+    try {
+      const resolvedProduct = await request;
+      if (resolvedProduct) {
+        showProductDetail(resolvedProduct);
+      } else {
+        publicProductCacheRef.current.delete(cacheKey);
+        setProductDetailNotice('No pudimos cargar las opciones de este producto. Puedes continuar con la información disponible.');
+        showProductDetail(normalizedProduct);
+      }
+    } catch {
+      publicProductCacheRef.current.delete(cacheKey);
+      setProductDetailNotice('No pudimos cargar las opciones de este producto. Puedes continuar con la información disponible.');
+      showProductDetail(normalizedProduct);
+    } finally {
+      setIsResolvingProductDetail(false);
+    }
+  }, [renderMode, showProductDetail]);
 
   React.useEffect(() => {
     if (!initialProduct || renderMode !== 'published') return;
@@ -693,7 +751,7 @@ export const WhatsAppOrdersModule: React.FC<{
     if (openedInitialProductRef.current === routeProductKey) return;
 
     openedInitialProductRef.current = routeProductKey;
-    openProductDetail(normalized);
+    void openProductDetail(normalized);
   }, [initialProduct, openProductDetail, renderMode]);
 
   const addCurrentProductToCart = React.useCallback(() => {
@@ -964,7 +1022,7 @@ export const WhatsAppOrdersModule: React.FC<{
                 >
                   <button
                     type="button"
-                    onClick={() => openProductDetail(product)}
+                    onClick={() => void openProductDetail(product)}
                     className="flex w-full flex-col text-left"
                   >
                     <div className="relative aspect-[4/3] overflow-hidden bg-slate-100">
@@ -1024,6 +1082,15 @@ export const WhatsAppOrdersModule: React.FC<{
         )}
       </div>
 
+      {isResolvingProductDetail ? (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/30 p-4" role="status" aria-live="polite">
+          <div className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-lg">
+            <Loader2 size={16} className="animate-spin" />
+            Cargando opciones del producto...
+          </div>
+        </div>
+      ) : null}
+
       {selectedProduct && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/50 p-4">
           <div className="max-h-[90vh] w-full max-w-3xl overflow-auto rounded-[28px] bg-white shadow-2xl">
@@ -1068,6 +1135,11 @@ export const WhatsAppOrdersModule: React.FC<{
               </div>
 
               <div className="flex flex-col gap-4">
+                {productDetailNotice ? (
+                  <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium leading-5 text-amber-800">
+                    {productDetailNotice}
+                  </p>
+                ) : null}
                 {selectedProduct.description ? (
                   <p className="text-sm leading-6 text-slate-600">{selectedProduct.description}</p>
                 ) : null}

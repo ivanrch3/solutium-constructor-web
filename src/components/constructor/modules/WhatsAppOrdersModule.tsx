@@ -30,15 +30,27 @@ import {
 type ModuleRenderMode = 'preview' | 'published';
 
 type ProductOptionChoice = {
+  id: string;
   label: string;
   value: string;
+  description: string;
+  priceAdjustment: number;
+  isDefault: boolean;
 };
 
 type ProductOptionGroup = {
   id: string;
   label: string;
+  description: string;
+  selectionType: 'single' | 'multiple' | 'quantity';
+  isRequired: boolean;
+  minSelections: number;
+  maxSelections: number | null;
   choices: ProductOptionChoice[];
 };
+
+type SelectedOptionValue = string | string[] | Record<string, number>;
+type SelectedOptions = Record<string, SelectedOptionValue>;
 
 type CartItem = {
   id: string;
@@ -47,7 +59,7 @@ type CartItem = {
   imageUrl?: string;
   price?: number;
   quantity: number;
-  selectedOptions: Record<string, string>;
+  selectedOptions: SelectedOptions;
   selectedOptionsLabel: string[];
   notes: string | null;
 };
@@ -104,7 +116,7 @@ const stableStringify = (value: unknown): string => {
   return JSON.stringify(value);
 };
 
-const buildCartItemId = (productId: string, selectedOptions: Record<string, string>, notes: string | null) =>
+const buildCartItemId = (productId: string, selectedOptions: SelectedOptions, notes: string | null) =>
   `${productId}:${stableStringify(selectedOptions)}:${notes || ''}`;
 
 const normalizeProduct = (product: Product, index: number): Product => {
@@ -128,6 +140,7 @@ const extractOptionGroups = (product: Product): ProductOptionGroup[] => {
   const raw = product as any;
   const appData = raw.appData || raw.app_data || {};
   const candidates = [
+    raw.optionGroups,
     appData.options,
     appData.optionGroups,
     appData.variantOptions,
@@ -139,9 +152,14 @@ const extractOptionGroups = (product: Product): ProductOptionGroup[] => {
     if (!Array.isArray(candidate)) continue;
 
     const groups = candidate
+      .filter((group: any) => group?.isActive !== false)
       .map((group: any, index: number) => {
         const label = normalizeString(group?.label || group?.name || group?.title, `Opción ${index + 1}`);
         const groupId = normalizeString(group?.id || group?.key || group?.slug, `option_${index + 1}`);
+        const rawSelectionType = normalizeString(group?.selectionType, 'single');
+        const selectionType: ProductOptionGroup['selectionType'] = rawSelectionType === 'multiple' || rawSelectionType === 'quantity'
+          ? rawSelectionType
+          : 'single';
         const rawChoices = Array.isArray(group?.choices)
           ? group.choices
           : Array.isArray(group?.values)
@@ -150,17 +168,32 @@ const extractOptionGroups = (product: Product): ProductOptionGroup[] => {
               ? group.options
               : [];
         const choices = rawChoices
+          .filter((choice: any) => typeof choice === 'string' || choice?.isActive !== false)
+          .sort((left: any, right: any) => toNumber(left?.sortOrder ?? left?.sort_order, 0) - toNumber(right?.sortOrder ?? right?.sort_order, 0))
           .map((choice: any, choiceIndex: number) => {
             if (typeof choice === 'string') {
               const normalized = choice.trim();
-              return normalized ? { label: normalized, value: normalized } : null;
+              return normalized
+                ? {
+                    id: normalized,
+                    label: normalized,
+                    value: normalized,
+                    description: '',
+                    priceAdjustment: 0,
+                    isDefault: false
+                  }
+                : null;
             }
             const choiceLabel = normalizeString(choice?.label || choice?.name || choice?.value, '');
             const choiceValue = normalizeString(choice?.value || choice?.id || choiceLabel, '');
             if (!choiceLabel && !choiceValue) return null;
             return {
+              id: normalizeString(choice?.id, choiceValue || `choice_${choiceIndex + 1}`),
               label: choiceLabel || choiceValue,
-              value: choiceValue || choiceLabel
+              value: choiceValue || choiceLabel,
+              description: normalizeString(choice?.description, ''),
+              priceAdjustment: toNumber(choice?.priceAdjustment ?? choice?.price_adjustment, 0),
+              isDefault: toBoolean(choice?.isDefault ?? choice?.is_default, false)
             };
           })
           .filter((choice): choice is ProductOptionChoice => Boolean(choice));
@@ -169,15 +202,96 @@ const extractOptionGroups = (product: Product): ProductOptionGroup[] => {
         return {
           id: groupId,
           label,
+          description: normalizeString(group?.description, ''),
+          selectionType,
+          isRequired: toBoolean(group?.isRequired ?? group?.is_required, false),
+          minSelections: Math.max(0, toNumber(group?.minSelections ?? group?.min_selections, 0)),
+          maxSelections: (() => {
+            const max = toNumber(group?.maxSelections ?? group?.max_selections, 0);
+            return max > 0 ? max : null;
+          })(),
           choices
         };
       })
       .filter((group): group is ProductOptionGroup => Boolean(group));
 
-    if (groups.length > 0) return groups;
+    if (groups.length > 0) {
+      return groups.sort((left, right) => {
+        const leftSource = candidate.find((group: any) => normalizeString(group?.id || group?.key || group?.slug) === left.id);
+        const rightSource = candidate.find((group: any) => normalizeString(group?.id || group?.key || group?.slug) === right.id);
+        return toNumber(leftSource?.sortOrder ?? leftSource?.sort_order, 0) - toNumber(rightSource?.sortOrder ?? rightSource?.sort_order, 0);
+      });
+    }
   }
 
   return [];
+};
+
+const getSelectedChoiceValues = (selection: SelectedOptionValue | undefined): string[] => {
+  if (typeof selection === 'string') return selection ? [selection] : [];
+  if (Array.isArray(selection)) return selection.filter(Boolean);
+  if (selection && typeof selection === 'object') {
+    return Object.entries(selection)
+      .filter(([, quantity]) => Number(quantity) > 0)
+      .map(([choiceId]) => choiceId);
+  }
+  return [];
+};
+
+const getSelectionCount = (selection: SelectedOptionValue | undefined, selectionType: ProductOptionGroup['selectionType']) => {
+  if (selectionType !== 'quantity') return getSelectedChoiceValues(selection).length;
+  if (!selection || typeof selection !== 'object' || Array.isArray(selection)) return 0;
+  return Object.values(selection).reduce((total, quantity) => total + Math.max(0, Number(quantity) || 0), 0);
+};
+
+const getQuantitySelection = (selection: SelectedOptionValue | undefined): Record<string, number> => {
+  return selection && typeof selection === 'object' && !Array.isArray(selection)
+    ? selection
+    : {};
+};
+
+const getDefaultSelectedOptions = (groups: ProductOptionGroup[]): SelectedOptions => {
+  return groups.reduce<SelectedOptions>((defaults, group) => {
+    const selected = group.choices.filter((choice) => choice.isDefault).map((choice) => choice.value);
+    if (group.selectionType === 'single') {
+      if (selected[0]) defaults[group.id] = selected[0];
+    } else if (group.selectionType === 'multiple') {
+      if (selected.length) defaults[group.id] = selected;
+    } else if (selected.length) {
+      defaults[group.id] = selected.reduce<Record<string, number>>((quantities, choiceValue) => {
+        quantities[choiceValue] = 1;
+        return quantities;
+      }, {});
+    }
+    return defaults;
+  }, {});
+};
+
+const getOptionSelectionValidation = (groups: ProductOptionGroup[], selectedOptions: SelectedOptions) => {
+  return groups.reduce<Record<string, string>>((errors, group) => {
+    const count = getSelectionCount(selectedOptions[group.id], group.selectionType);
+    const minimum = Math.max(group.isRequired ? 1 : 0, group.minSelections);
+    if (count < minimum) {
+      errors[group.id] = minimum === 1 ? 'Selecciona una opcion.' : `Selecciona al menos ${minimum} opciones.`;
+    } else if (group.maxSelections !== null && count > group.maxSelections) {
+      errors[group.id] = `Puedes seleccionar hasta ${group.maxSelections} opciones.`;
+    }
+    return errors;
+  }, {});
+};
+
+const getOptionPriceAdjustment = (groups: ProductOptionGroup[], selectedOptions: SelectedOptions) => {
+  return groups.reduce((total, group) => {
+    const selection = selectedOptions[group.id];
+    return total + group.choices.reduce((groupTotal, choice) => {
+      if (group.selectionType === 'quantity' && selection && typeof selection === 'object' && !Array.isArray(selection)) {
+        return groupTotal + choice.priceAdjustment * Math.max(0, Number(selection[choice.value]) || 0);
+      }
+      return getSelectedChoiceValues(selection).includes(choice.value)
+        ? groupTotal + choice.priceAdjustment
+        : groupTotal;
+    }, 0);
+  }, 0);
 };
 
 const getResponseTone = (response: PublicWhatsAppOrderQuoteResponse | null) => {
@@ -295,7 +409,7 @@ export const WhatsAppOrdersModule: React.FC<{
   const [activeCategory, setActiveCategory] = React.useState<string>('Todos');
   const [selectedProduct, setSelectedProduct] = React.useState<Product | null>(null);
   const [selectedQuantity, setSelectedQuantity] = React.useState(1);
-  const [selectedOptions, setSelectedOptions] = React.useState<Record<string, string>>({});
+  const [selectedOptions, setSelectedOptions] = React.useState<SelectedOptions>({});
   const [selectedNotes, setSelectedNotes] = React.useState('');
   const [cartOpen, setCartOpen] = React.useState(false);
   const [checkoutOpen, setCheckoutOpen] = React.useState(false);
@@ -316,6 +430,15 @@ export const WhatsAppOrdersModule: React.FC<{
     () => (selectedProduct ? extractOptionGroups(selectedProduct) : []),
     [selectedProduct]
   );
+  const optionSelectionErrors = React.useMemo(
+    () => getOptionSelectionValidation(currentOptionGroups, selectedOptions),
+    [currentOptionGroups, selectedOptions]
+  );
+  const selectedOptionPriceAdjustment = React.useMemo(
+    () => getOptionPriceAdjustment(currentOptionGroups, selectedOptions),
+    [currentOptionGroups, selectedOptions]
+  );
+  const selectedProductPrice = (Number(selectedProduct?.price) || 0) + selectedOptionPriceAdjustment;
 
   const storageScopeId = React.useMemo(() => {
     const runtimeSiteId = publishedSiteId || (window as any).SITE_ID || (window as any).currentSite?.site_id || 'preview';
@@ -416,11 +539,7 @@ export const WhatsAppOrdersModule: React.FC<{
     setSelectedNotes('');
 
     const groups = extractOptionGroups(product);
-    const defaults: Record<string, string> = {};
-    groups.forEach((group) => {
-      defaults[group.id] = group.choices[0]?.value || '';
-    });
-    setSelectedOptions(defaults);
+    setSelectedOptions(getDefaultSelectedOptions(groups));
   }, []);
 
   React.useEffect(() => {
@@ -436,20 +555,28 @@ export const WhatsAppOrdersModule: React.FC<{
 
   const addCurrentProductToCart = React.useCallback(() => {
     if (!selectedProduct) return;
+    if (Object.keys(optionSelectionErrors).length > 0) return;
     const optionLabels = currentOptionGroups
-      .map((group) => {
-        const selectedValue = selectedOptions[group.id];
-        const choice = group.choices.find((entry) => entry.value === selectedValue);
-        return choice ? `${group.label}: ${choice.label}` : null;
+      .flatMap((group) => {
+        const selection = selectedOptions[group.id];
+        return group.choices.flatMap((choice) => {
+          if (group.selectionType === 'quantity' && selection && typeof selection === 'object' && !Array.isArray(selection)) {
+            const quantity = Math.max(0, Number(selection[choice.value]) || 0);
+            return quantity > 0 ? [`${group.label}: ${choice.label} x${quantity}`] : [];
+          }
+          return getSelectedChoiceValues(selection).includes(choice.value)
+            ? [`${group.label}: ${choice.label}`]
+            : [];
+        });
       })
-      .filter(Boolean) as string[];
+      .filter(Boolean);
 
     const nextItem: CartItem = {
       id: buildCartItemId(selectedProduct.id, selectedOptions, customerNotesEnabled ? selectedNotes || null : null),
       productId: selectedProduct.id,
       name: selectedProduct.name,
       imageUrl: selectedProduct.imageUrl,
-      price: selectedProduct.price,
+      price: selectedProductPrice,
       quantity: selectedQuantity,
       selectedOptions,
       selectedOptionsLabel: optionLabels,
@@ -471,7 +598,7 @@ export const WhatsAppOrdersModule: React.FC<{
     setCartOpen(true);
     setSubmitResponse(null);
     setSubmitError(null);
-  }, [currentOptionGroups, customerNotesEnabled, selectedNotes, selectedOptions, selectedProduct, selectedQuantity]);
+  }, [currentOptionGroups, customerNotesEnabled, optionSelectionErrors, selectedNotes, selectedOptions, selectedProduct, selectedProductPrice, selectedQuantity]);
 
   const updateCartQuantity = React.useCallback((cartItemId: string, quantity: number) => {
     if (quantity <= 0) {
@@ -801,23 +928,95 @@ export const WhatsAppOrdersModule: React.FC<{
                   <p className="text-sm leading-6 text-slate-600">{selectedProduct.description}</p>
                 ) : null}
 
-                {currentOptionGroups.map((group) => (
-                  <label key={group.id} className="space-y-2">
-                    <span className="text-xs font-bold uppercase tracking-wide text-slate-500">{group.label}</span>
-                    <select
-                      value={selectedOptions[group.id] || ''}
-                      onChange={(event) => setSelectedOptions((current) => ({
-                        ...current,
-                        [group.id]: event.target.value
-                      }))}
-                      className="w-full rounded-2xl border border-black/10 bg-white px-3 py-3 text-sm text-slate-900 outline-none focus:border-[var(--primary-color,#16a34a)]"
-                    >
-                      {group.choices.map((choice) => (
-                        <option key={choice.value} value={choice.value}>{choice.label}</option>
-                      ))}
-                    </select>
-                  </label>
-                ))}
+                {currentOptionGroups.map((group) => {
+                  const selectedValues = getSelectedChoiceValues(selectedOptions[group.id]);
+                  const selectedQuantityValues = selectedOptions[group.id];
+                  const error = optionSelectionErrors[group.id];
+
+                  return (
+                    <fieldset key={group.id} className="space-y-2 rounded-2xl border border-black/5 bg-slate-50 p-3">
+                      <legend className="px-1 text-xs font-bold uppercase tracking-wide text-slate-600">
+                        {group.label}{group.isRequired ? ' *' : ''}
+                      </legend>
+                      {group.description ? <p className="text-xs leading-5 text-slate-500">{group.description}</p> : null}
+
+                      {group.selectionType === 'single' ? (
+                        <div className="space-y-2">
+                          {group.choices.map((choice) => (
+                            <label key={choice.value} className="flex cursor-pointer items-start gap-3 rounded-xl bg-white px-3 py-2 text-sm text-slate-700">
+                              <input
+                                type="radio"
+                                name={`${moduleId}-${group.id}`}
+                                checked={selectedOptions[group.id] === choice.value}
+                                onChange={() => setSelectedOptions((current) => ({ ...current, [group.id]: choice.value }))}
+                              />
+                              <span className="min-w-0 flex-1">
+                                <span className="block font-semibold text-slate-900">{choice.label}</span>
+                                {choice.description ? <span className="block text-xs text-slate-500">{choice.description}</span> : null}
+                              </span>
+                              {choice.priceAdjustment !== 0 ? <span className="text-xs font-bold text-slate-600">{choice.priceAdjustment > 0 ? '+' : ''}{formatPrice(choice.priceAdjustment)}</span> : null}
+                            </label>
+                          ))}
+                        </div>
+                      ) : group.selectionType === 'multiple' ? (
+                        <div className="space-y-2">
+                          {group.choices.map((choice) => {
+                            const checked = selectedValues.includes(choice.value);
+                            return (
+                              <label key={choice.value} className="flex cursor-pointer items-start gap-3 rounded-xl bg-white px-3 py-2 text-sm text-slate-700">
+                                <input
+                                  type="checkbox"
+                                  checked={checked}
+                                  onChange={() => setSelectedOptions((current) => {
+                                    const values = getSelectedChoiceValues(current[group.id]);
+                                    return {
+                                      ...current,
+                                      [group.id]: checked ? values.filter((value) => value !== choice.value) : [...values, choice.value]
+                                    };
+                                  })}
+                                />
+                                <span className="min-w-0 flex-1">
+                                  <span className="block font-semibold text-slate-900">{choice.label}</span>
+                                  {choice.description ? <span className="block text-xs text-slate-500">{choice.description}</span> : null}
+                                </span>
+                                {choice.priceAdjustment !== 0 ? <span className="text-xs font-bold text-slate-600">{choice.priceAdjustment > 0 ? '+' : ''}{formatPrice(choice.priceAdjustment)}</span> : null}
+                              </label>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {group.choices.map((choice) => {
+                            const quantity = Math.max(0, Number(getQuantitySelection(selectedQuantityValues)[choice.value]) || 0);
+                            return (
+                              <div key={choice.value} className="flex items-center gap-3 rounded-xl bg-white px-3 py-2 text-sm text-slate-700">
+                                <span className="min-w-0 flex-1">
+                                  <span className="block font-semibold text-slate-900">{choice.label}</span>
+                                  {choice.description ? <span className="block text-xs text-slate-500">{choice.description}</span> : null}
+                                </span>
+                                {choice.priceAdjustment !== 0 ? <span className="text-xs font-bold text-slate-600">{choice.priceAdjustment > 0 ? '+' : ''}{formatPrice(choice.priceAdjustment)}</span> : null}
+                                <div className="inline-flex items-center rounded-full border border-black/10 bg-slate-50 p-1">
+                                  <button type="button" onClick={() => setSelectedOptions((current) => {
+                                    const quantities = { ...getQuantitySelection(current[group.id]) };
+                                    quantities[choice.value] = Math.max(0, (Number(quantities[choice.value]) || 0) - 1);
+                                    return { ...current, [group.id]: quantities };
+                                  })} className="rounded-full p-1 text-slate-600 hover:bg-white"><Minus size={14} /></button>
+                                  <span className="min-w-7 text-center text-xs font-bold">{quantity}</span>
+                                  <button type="button" onClick={() => setSelectedOptions((current) => {
+                                    const quantities = { ...getQuantitySelection(current[group.id]) };
+                                    quantities[choice.value] = (Number(quantities[choice.value]) || 0) + 1;
+                                    return { ...current, [group.id]: quantities };
+                                  })} className="rounded-full p-1 text-slate-600 hover:bg-white"><Plus size={14} /></button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                      {error ? <p className="text-xs font-semibold text-rose-600">{error}</p> : null}
+                    </fieldset>
+                  );
+                })}
 
                 {customerNotesEnabled && mode === 'orders' && (
                   <label className="space-y-2">
@@ -834,6 +1033,12 @@ export const WhatsAppOrdersModule: React.FC<{
 
                 {ordersInteractionEnabled ? (
                   <>
+                    {showPrices && selectedProduct ? (
+                      <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-3 py-2 text-sm">
+                        <span className="font-semibold text-slate-500">Precio del item</span>
+                        <span className="font-black text-slate-950">{formatPrice(selectedProductPrice)}</span>
+                      </div>
+                    ) : null}
                     <div className="space-y-2">
                       <span className="text-xs font-bold uppercase tracking-wide text-slate-500">Cantidad</span>
                       <div className="inline-flex items-center rounded-full border border-black/10 bg-slate-50 p-1">
@@ -858,7 +1063,8 @@ export const WhatsAppOrdersModule: React.FC<{
                     <button
                       type="button"
                       onClick={addCurrentProductToCart}
-                      className="inline-flex items-center justify-center rounded-2xl bg-[var(--primary-color,#16a34a)] px-4 py-3 text-sm font-black text-white transition hover:opacity-90"
+                      disabled={Object.keys(optionSelectionErrors).length > 0}
+                      className="inline-flex items-center justify-center rounded-2xl bg-[var(--primary-color,#16a34a)] px-4 py-3 text-sm font-black text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {buttonLabel}
                     </button>

@@ -52,15 +52,37 @@ type ProductOptionGroup = {
 type SelectedOptionValue = string | string[] | Record<string, number>;
 type SelectedOptions = Record<string, SelectedOptionValue>;
 
+type CartOptionSelectionSnapshot = {
+  optionId: string;
+  optionName: string;
+  quantity: number;
+  priceAdjustment: number;
+  totalAdjustment: number;
+};
+
+type CartOptionGroupSnapshot = {
+  groupId: string;
+  groupName: string;
+  selectionType: ProductOptionGroup['selectionType'];
+  selections: CartOptionSelectionSnapshot[];
+  totalAdjustment: number;
+};
+
 type CartItem = {
   id: string;
   productId: string;
   name: string;
   imageUrl?: string;
+  // price stays for carts saved before item option snapshots were introduced.
   price?: number;
   quantity: number;
   selectedOptions: SelectedOptions;
   selectedOptionsLabel: string[];
+  optionGroupsSnapshot: CartOptionGroupSnapshot[];
+  unitBasePrice: number;
+  unitOptionsAdjustment: number;
+  unitFinalPrice: number;
+  optionsSummary: string[];
   notes: string | null;
 };
 
@@ -141,6 +163,7 @@ const extractOptionGroups = (product: Product): ProductOptionGroup[] => {
   const appData = raw.appData || raw.app_data || {};
   const candidates = [
     raw.optionGroups,
+    appData.catalogOptionGroups,
     appData.options,
     appData.optionGroups,
     appData.variantOptions,
@@ -292,6 +315,87 @@ const getOptionPriceAdjustment = (groups: ProductOptionGroup[], selectedOptions:
         : groupTotal;
     }, 0);
   }, 0);
+};
+
+const buildOptionSelectionSnapshot = (
+  groups: ProductOptionGroup[],
+  selectedOptions: SelectedOptions,
+  formatAmount: (amount: number) => string
+): { optionGroupsSnapshot: CartOptionGroupSnapshot[]; optionsSummary: string[]; unitOptionsAdjustment: number } => {
+  const optionGroupsSnapshot = groups.flatMap((group) => {
+    const selection = selectedOptions[group.id];
+    const selections = group.choices.flatMap((choice) => {
+      const quantity = group.selectionType === 'quantity'
+        ? Math.max(0, Number(getQuantitySelection(selection)[choice.value]) || 0)
+        : getSelectedChoiceValues(selection).includes(choice.value)
+          ? 1
+          : 0;
+
+      if (quantity <= 0) return [];
+
+      return [{
+        optionId: choice.id,
+        optionName: choice.label,
+        quantity,
+        priceAdjustment: choice.priceAdjustment,
+        totalAdjustment: choice.priceAdjustment * quantity
+      }];
+    });
+
+    if (selections.length === 0) return [];
+
+    return [{
+      groupId: group.id,
+      groupName: group.label,
+      selectionType: group.selectionType,
+      selections,
+      totalAdjustment: selections.reduce((total, choice) => total + choice.totalAdjustment, 0)
+    }];
+  });
+
+  const optionsSummary = optionGroupsSnapshot.flatMap((group) => group.selections.map((choice) => {
+    const quantitySuffix = group.selectionType === 'quantity' ? ` x${choice.quantity}` : '';
+    const adjustmentSuffix = choice.totalAdjustment === 0
+      ? ''
+      : ` (${choice.totalAdjustment > 0 ? '+' : ''}${formatAmount(choice.totalAdjustment)})`;
+    return `${group.groupName}: ${choice.optionName}${quantitySuffix}${adjustmentSuffix}`;
+  }));
+
+  return {
+    optionGroupsSnapshot,
+    optionsSummary,
+    unitOptionsAdjustment: optionGroupsSnapshot.reduce((total, group) => total + group.totalAdjustment, 0)
+  };
+};
+
+const normalizeCartItem = (item: Partial<CartItem>): CartItem | null => {
+  if (!item || !normalizeString(item.productId) || !normalizeString(item.name)) return null;
+
+  const unitFinalPrice = toNumber(item.unitFinalPrice ?? item.price, 0);
+  const unitOptionsAdjustment = toNumber(item.unitOptionsAdjustment, 0);
+  const selectedOptionsLabel = Array.isArray(item.selectedOptionsLabel)
+    ? item.selectedOptionsLabel.filter((entry): entry is string => typeof entry === 'string' && Boolean(entry.trim()))
+    : [];
+  const optionsSummary = Array.isArray(item.optionsSummary)
+    ? item.optionsSummary.filter((entry): entry is string => typeof entry === 'string' && Boolean(entry.trim()))
+    : selectedOptionsLabel;
+
+  return {
+    id: normalizeString(item.id, buildCartItemId(normalizeString(item.productId), item.selectedOptions || {}, item.notes || null)),
+    productId: normalizeString(item.productId),
+    name: normalizeString(item.name),
+    imageUrl: normalizeString(item.imageUrl, ''),
+    price: unitFinalPrice,
+    quantity: Math.max(1, toNumber(item.quantity, 1)),
+    selectedOptions: item.selectedOptions && typeof item.selectedOptions === 'object' ? item.selectedOptions : {},
+    selectedOptionsLabel,
+    optionGroupsSnapshot: Array.isArray(item.optionGroupsSnapshot) ? item.optionGroupsSnapshot : [],
+    unitBasePrice: toNumber(item.unitBasePrice, unitFinalPrice - unitOptionsAdjustment),
+    unitOptionsAdjustment,
+    unitFinalPrice,
+    optionsSummary,
+    notes: normalizeString(item.notes, '') || null
+  };
 };
 
 const getResponseTone = (response: PublicWhatsAppOrderQuoteResponse | null) => {
@@ -458,7 +562,7 @@ export const WhatsAppOrdersModule: React.FC<{
       if (!raw) return;
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed?.items)) {
-        setCartItems(parsed.items);
+        setCartItems(parsed.items.map(normalizeCartItem).filter((item): item is CartItem => Boolean(item)));
       }
       if (parsed?.customer && typeof parsed.customer === 'object') {
         setCheckoutForm({
@@ -529,7 +633,7 @@ export const WhatsAppOrdersModule: React.FC<{
   );
 
   const subtotal = React.useMemo(
-    () => cartItems.reduce((total, item) => total + (Number(item.price) || 0) * item.quantity, 0),
+    () => cartItems.reduce((total, item) => total + item.unitFinalPrice * item.quantity, 0),
     [cartItems]
   );
 
@@ -556,30 +660,24 @@ export const WhatsAppOrdersModule: React.FC<{
   const addCurrentProductToCart = React.useCallback(() => {
     if (!selectedProduct) return;
     if (Object.keys(optionSelectionErrors).length > 0) return;
-    const optionLabels = currentOptionGroups
-      .flatMap((group) => {
-        const selection = selectedOptions[group.id];
-        return group.choices.flatMap((choice) => {
-          if (group.selectionType === 'quantity' && selection && typeof selection === 'object' && !Array.isArray(selection)) {
-            const quantity = Math.max(0, Number(selection[choice.value]) || 0);
-            return quantity > 0 ? [`${group.label}: ${choice.label} x${quantity}`] : [];
-          }
-          return getSelectedChoiceValues(selection).includes(choice.value)
-            ? [`${group.label}: ${choice.label}`]
-            : [];
-        });
-      })
-      .filter(Boolean);
+    const unitBasePrice = toNumber(selectedProduct.price, 0);
+    const optionSnapshot = buildOptionSelectionSnapshot(currentOptionGroups, selectedOptions, formatPrice);
+    const unitFinalPrice = unitBasePrice + optionSnapshot.unitOptionsAdjustment;
 
     const nextItem: CartItem = {
       id: buildCartItemId(selectedProduct.id, selectedOptions, customerNotesEnabled ? selectedNotes || null : null),
       productId: selectedProduct.id,
       name: selectedProduct.name,
       imageUrl: selectedProduct.imageUrl,
-      price: selectedProductPrice,
+      price: unitFinalPrice,
       quantity: selectedQuantity,
       selectedOptions,
-      selectedOptionsLabel: optionLabels,
+      selectedOptionsLabel: optionSnapshot.optionsSummary,
+      optionGroupsSnapshot: optionSnapshot.optionGroupsSnapshot,
+      unitBasePrice,
+      unitOptionsAdjustment: optionSnapshot.unitOptionsAdjustment,
+      unitFinalPrice,
+      optionsSummary: optionSnapshot.optionsSummary,
       notes: customerNotesEnabled ? (selectedNotes || null) : null
     };
 
@@ -598,7 +696,7 @@ export const WhatsAppOrdersModule: React.FC<{
     setCartOpen(true);
     setSubmitResponse(null);
     setSubmitError(null);
-  }, [currentOptionGroups, customerNotesEnabled, optionSelectionErrors, selectedNotes, selectedOptions, selectedProduct, selectedProductPrice, selectedQuantity]);
+  }, [currentOptionGroups, customerNotesEnabled, formatPrice, optionSelectionErrors, selectedNotes, selectedOptions, selectedProduct, selectedProductPrice, selectedQuantity]);
 
   const updateCartQuantity = React.useCallback((cartItemId: string, quantity: number) => {
     if (quantity <= 0) {
@@ -659,8 +757,15 @@ export const WhatsAppOrdersModule: React.FC<{
         },
         items: cartItems.map((item) => ({
           productId: item.productId,
+          name: item.name,
           quantity: item.quantity,
           selectedOptions: item.selectedOptions,
+          optionGroupsSnapshot: item.optionGroupsSnapshot,
+          unitBasePrice: item.unitBasePrice,
+          unitOptionsAdjustment: item.unitOptionsAdjustment,
+          unitFinalPrice: item.unitFinalPrice,
+          subtotal: item.unitFinalPrice * item.quantity,
+          optionsSummary: item.optionsSummary,
           notes: item.notes
         })),
         idempotencyKey
@@ -1119,8 +1224,8 @@ export const WhatsAppOrdersModule: React.FC<{
                           <div className="flex items-start justify-between gap-3">
                             <div>
                               <h4 className="text-sm font-black text-slate-950">{item.name}</h4>
-                              {showPrices && item.price !== undefined ? (
-                                <p className="text-sm font-bold text-[var(--primary-color,#16a34a)]">{formatPrice(item.price)}</p>
+                              {showPrices ? (
+                                <p className="text-sm font-bold text-[var(--primary-color,#16a34a)]">{formatPrice(item.unitFinalPrice)}</p>
                               ) : null}
                             </div>
                             <button
@@ -1132,9 +1237,9 @@ export const WhatsAppOrdersModule: React.FC<{
                             </button>
                           </div>
 
-                          {item.selectedOptionsLabel.length > 0 && (
+                          {item.optionsSummary.length > 0 && (
                             <div className="mt-2 flex flex-wrap gap-2">
-                              {item.selectedOptionsLabel.map((entry) => (
+                              {item.optionsSummary.map((entry) => (
                                 <span key={entry} className="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600">
                                   {entry}
                                 </span>

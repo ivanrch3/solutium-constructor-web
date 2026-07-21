@@ -28,8 +28,27 @@ export interface PublicWhatsAppOrderQuotePayload {
   };
   items: Array<{
     productId: string;
+    name?: string;
     quantity: number;
     selectedOptions?: Record<string, any>;
+    optionGroupsSnapshot?: Array<{
+      groupId: string;
+      groupName: string;
+      selectionType: 'single' | 'multiple' | 'quantity';
+      selections: Array<{
+        optionId: string;
+        optionName: string;
+        quantity: number;
+        priceAdjustment: number;
+        totalAdjustment: number;
+      }>;
+      totalAdjustment: number;
+    }>;
+    unitBasePrice?: number;
+    unitOptionsAdjustment?: number;
+    unitFinalPrice?: number;
+    subtotal?: number;
+    optionsSummary?: string[];
     notes?: string | null;
   }>;
   idempotencyKey?: string | null;

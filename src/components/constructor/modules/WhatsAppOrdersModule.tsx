@@ -560,6 +560,8 @@ export const WhatsAppOrdersModule: React.FC<{
   const [productDetailNotice, setProductDetailNotice] = React.useState<string | null>(null);
   const [selectedQuantity, setSelectedQuantity] = React.useState(1);
   const [selectedOptions, setSelectedOptions] = React.useState<SelectedOptions>({});
+  const [touchedOptionGroups, setTouchedOptionGroups] = React.useState<Set<string>>(() => new Set());
+  const [hasAttemptedAdd, setHasAttemptedAdd] = React.useState(false);
   const [selectedNotes, setSelectedNotes] = React.useState('');
   const [cartOpen, setCartOpen] = React.useState(false);
   const [checkoutOpen, setCheckoutOpen] = React.useState(false);
@@ -571,6 +573,7 @@ export const WhatsAppOrdersModule: React.FC<{
   const submitAttemptKeyRef = React.useRef<string | null>(null);
   const openedInitialProductRef = React.useRef<string | null>(null);
   const publicProductCacheRef = React.useRef(new Map<string, Promise<Product | null>>());
+  const optionGroupRefs = React.useRef(new Map<string, HTMLFieldSetElement>());
   const catalogContainerRef = React.useRef<HTMLDivElement | null>(null);
   const [catalogWidth, setCatalogWidth] = React.useState(0);
   const planBlocked = Boolean(availability?.known && !availability.allowed);
@@ -684,14 +687,34 @@ export const WhatsAppOrdersModule: React.FC<{
     [cartItems]
   );
 
+  const resetOptionValidation = React.useCallback(() => {
+    setTouchedOptionGroups(new Set());
+    setHasAttemptedAdd(false);
+  }, []);
+
+  const closeProductDetail = React.useCallback(() => {
+    setSelectedProduct(null);
+    resetOptionValidation();
+  }, [resetOptionValidation]);
+
   const showProductDetail = React.useCallback((product: Product) => {
     const normalizedProduct = normalizeProduct(product, 0);
     setSelectedProduct(normalizedProduct);
     setSelectedQuantity(1);
     setSelectedNotes('');
+    resetOptionValidation();
 
     const groups = extractOptionGroups(normalizedProduct);
     setSelectedOptions(getDefaultSelectedOptions(groups));
+  }, [resetOptionValidation]);
+
+  const markOptionGroupTouched = React.useCallback((groupId: string) => {
+    setTouchedOptionGroups((current) => {
+      if (current.has(groupId)) return current;
+      const next = new Set(current);
+      next.add(groupId);
+      return next;
+    });
   }, []);
 
   const openProductDetail = React.useCallback(async (product: Product) => {
@@ -756,7 +779,16 @@ export const WhatsAppOrdersModule: React.FC<{
 
   const addCurrentProductToCart = React.useCallback(() => {
     if (!selectedProduct) return;
-    if (Object.keys(optionSelectionErrors).length > 0) return;
+    if (Object.keys(optionSelectionErrors).length > 0) {
+      setHasAttemptedAdd(true);
+      const firstInvalidGroupId = Object.keys(optionSelectionErrors)[0];
+      const firstInvalidGroup = optionGroupRefs.current.get(firstInvalidGroupId);
+      if (firstInvalidGroup) {
+        firstInvalidGroup.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        firstInvalidGroup.focus({ preventScroll: true });
+      }
+      return;
+    }
     const unitBasePrice = toNumber(selectedProduct.price, 0);
     const optionSnapshot = buildOptionSelectionSnapshot(currentOptionGroups, selectedOptions, formatPrice);
     const unitFinalPrice = unitBasePrice + optionSnapshot.unitOptionsAdjustment;
@@ -789,11 +821,11 @@ export const WhatsAppOrdersModule: React.FC<{
           : item
       );
     });
-    setSelectedProduct(null);
+    closeProductDetail();
     setCartOpen(true);
     setSubmitResponse(null);
     setSubmitError(null);
-  }, [currentOptionGroups, customerNotesEnabled, formatPrice, optionSelectionErrors, selectedNotes, selectedOptions, selectedProduct, selectedProductPrice, selectedQuantity]);
+  }, [closeProductDetail, currentOptionGroups, customerNotesEnabled, formatPrice, optionSelectionErrors, selectedNotes, selectedOptions, selectedProduct, selectedProductPrice, selectedQuantity]);
 
   const updateCartQuantity = React.useCallback((cartItemId: string, quantity: number) => {
     if (quantity <= 0) {
@@ -1103,7 +1135,7 @@ export const WhatsAppOrdersModule: React.FC<{
               </div>
               <button
                 type="button"
-                onClick={() => setSelectedProduct(null)}
+                onClick={closeProductDetail}
                 className="rounded-full p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
               >
                 <X size={18} />
@@ -1148,10 +1180,22 @@ export const WhatsAppOrdersModule: React.FC<{
                   const selectedValues = getSelectedChoiceValues(selectedOptions[group.id]);
                   const selectedQuantityValues = selectedOptions[group.id];
                   const error = optionSelectionErrors[group.id];
+                  const shouldShowError = Boolean(error) && (hasAttemptedAdd || touchedOptionGroups.has(group.id));
+                  const errorId = `${moduleId}-${group.id}-error`;
 
                   return (
-                    <fieldset key={group.id} className="space-y-2 rounded-2xl border border-black/5 bg-slate-50 p-3">
-                      <legend className="px-1 text-xs font-bold uppercase tracking-wide text-slate-600">
+                    <fieldset
+                      key={group.id}
+                      ref={(node) => {
+                        if (node) optionGroupRefs.current.set(group.id, node);
+                        else optionGroupRefs.current.delete(group.id);
+                      }}
+                      tabIndex={-1}
+                      aria-invalid={shouldShowError || undefined}
+                      aria-describedby={shouldShowError ? errorId : undefined}
+                      className={`space-y-2 rounded-2xl border p-3 ${shouldShowError ? 'border-rose-200 bg-rose-50/40' : 'border-black/5 bg-slate-50'}`}
+                    >
+                      <legend className={`px-1 text-xs font-bold uppercase tracking-wide ${shouldShowError ? 'text-rose-700' : 'text-slate-600'}`}>
                         {group.label}{group.isRequired ? ' *' : ''}
                       </legend>
                       {group.description ? <p className="text-xs leading-5 text-slate-500">{group.description}</p> : null}
@@ -1164,7 +1208,12 @@ export const WhatsAppOrdersModule: React.FC<{
                                 type="radio"
                                 name={`${moduleId}-${group.id}`}
                                 checked={selectedOptions[group.id] === choice.value}
-                                onChange={() => setSelectedOptions((current) => ({ ...current, [group.id]: choice.value }))}
+                                aria-invalid={shouldShowError || undefined}
+                                aria-describedby={shouldShowError ? errorId : undefined}
+                                onChange={() => {
+                                  markOptionGroupTouched(group.id);
+                                  setSelectedOptions((current) => ({ ...current, [group.id]: choice.value }));
+                                }}
                               />
                               <span className="min-w-0 flex-1">
                                 <span className="block font-semibold text-slate-900">{choice.label}</span>
@@ -1183,13 +1232,18 @@ export const WhatsAppOrdersModule: React.FC<{
                                 <input
                                   type="checkbox"
                                   checked={checked}
-                                  onChange={() => setSelectedOptions((current) => {
-                                    const values = getSelectedChoiceValues(current[group.id]);
-                                    return {
-                                      ...current,
-                                      [group.id]: checked ? values.filter((value) => value !== choice.value) : [...values, choice.value]
-                                    };
-                                  })}
+                                  aria-invalid={shouldShowError || undefined}
+                                  aria-describedby={shouldShowError ? errorId : undefined}
+                                  onChange={() => {
+                                    markOptionGroupTouched(group.id);
+                                    setSelectedOptions((current) => {
+                                      const values = getSelectedChoiceValues(current[group.id]);
+                                      return {
+                                        ...current,
+                                        [group.id]: checked ? values.filter((value) => value !== choice.value) : [...values, choice.value]
+                                      };
+                                    });
+                                  }}
                                 />
                                 <span className="min-w-0 flex-1">
                                   <span className="block font-semibold text-slate-900">{choice.label}</span>
@@ -1212,24 +1266,30 @@ export const WhatsAppOrdersModule: React.FC<{
                                 </span>
                                 {choice.priceAdjustment !== 0 ? <span className="text-xs font-bold text-slate-600">{choice.priceAdjustment > 0 ? '+' : ''}{formatPrice(choice.priceAdjustment)}</span> : null}
                                 <div className="inline-flex items-center rounded-full border border-black/10 bg-slate-50 p-1">
-                                  <button type="button" onClick={() => setSelectedOptions((current) => {
-                                    const quantities = { ...getQuantitySelection(current[group.id]) };
-                                    quantities[choice.value] = Math.max(0, (Number(quantities[choice.value]) || 0) - 1);
-                                    return { ...current, [group.id]: quantities };
-                                  })} className="rounded-full p-1 text-slate-600 hover:bg-white"><Minus size={14} /></button>
+                                  <button type="button" aria-invalid={shouldShowError || undefined} aria-describedby={shouldShowError ? errorId : undefined} onClick={() => {
+                                    markOptionGroupTouched(group.id);
+                                    setSelectedOptions((current) => {
+                                      const quantities = { ...getQuantitySelection(current[group.id]) };
+                                      quantities[choice.value] = Math.max(0, (Number(quantities[choice.value]) || 0) - 1);
+                                      return { ...current, [group.id]: quantities };
+                                    });
+                                  }} className="rounded-full p-1 text-slate-600 hover:bg-white"><Minus size={14} /></button>
                                   <span className="min-w-7 text-center text-xs font-bold">{quantity}</span>
-                                  <button type="button" onClick={() => setSelectedOptions((current) => {
-                                    const quantities = { ...getQuantitySelection(current[group.id]) };
-                                    quantities[choice.value] = (Number(quantities[choice.value]) || 0) + 1;
-                                    return { ...current, [group.id]: quantities };
-                                  })} className="rounded-full p-1 text-slate-600 hover:bg-white"><Plus size={14} /></button>
+                                  <button type="button" aria-invalid={shouldShowError || undefined} aria-describedby={shouldShowError ? errorId : undefined} onClick={() => {
+                                    markOptionGroupTouched(group.id);
+                                    setSelectedOptions((current) => {
+                                      const quantities = { ...getQuantitySelection(current[group.id]) };
+                                      quantities[choice.value] = (Number(quantities[choice.value]) || 0) + 1;
+                                      return { ...current, [group.id]: quantities };
+                                    });
+                                  }} className="rounded-full p-1 text-slate-600 hover:bg-white"><Plus size={14} /></button>
                                 </div>
                               </div>
                             );
                           })}
                         </div>
                       )}
-                      {error ? <p className="text-xs font-semibold text-rose-600">{error}</p> : null}
+                      {shouldShowError ? <p id={errorId} className="text-xs font-semibold text-rose-600" aria-live="polite">{error}</p> : null}
                     </fieldset>
                   );
                 })}
@@ -1279,7 +1339,6 @@ export const WhatsAppOrdersModule: React.FC<{
                     <button
                       type="button"
                       onClick={addCurrentProductToCart}
-                      disabled={Object.keys(optionSelectionErrors).length > 0}
                       className="inline-flex items-center justify-center rounded-2xl bg-[var(--primary-color,#16a34a)] px-4 py-3 text-sm font-black text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {buttonLabel}

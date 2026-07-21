@@ -141,8 +141,46 @@ const stableStringify = (value: unknown): string => {
 const buildCartItemId = (productId: string, selectedOptions: SelectedOptions, notes: string | null) =>
   `${productId}:${stableStringify(selectedOptions)}:${notes || ''}`;
 
+const getProductAppData = (raw: any): Record<string, any> => {
+  const candidates = [
+    raw?.appData,
+    raw?.app_data,
+    raw?.product?.appData,
+    raw?.product?.app_data,
+    raw?.snapshot?.appData,
+    raw?.snapshot?.app_data,
+    raw?.rawItem?.appData,
+    raw?.rawItem?.app_data
+  ];
+
+  const appData = candidates.find((candidate) => candidate && typeof candidate === 'object' && !Array.isArray(candidate));
+  return appData || {};
+};
+
+const resolveProductOptionGroupsSource = (raw: any): unknown => {
+  const appData = getProductAppData(raw);
+  const candidates = [
+    raw?.optionGroups,
+    appData.catalogOptionGroups,
+    raw?.app_data?.catalogOptionGroups,
+    raw?.product?.optionGroups,
+    raw?.product?.appData?.catalogOptionGroups,
+    raw?.product?.app_data?.catalogOptionGroups,
+    raw?.snapshot?.optionGroups,
+    raw?.snapshot?.appData?.catalogOptionGroups,
+    raw?.snapshot?.app_data?.catalogOptionGroups,
+    raw?.rawItem?.optionGroups,
+    raw?.rawItem?.appData?.catalogOptionGroups,
+    raw?.rawItem?.app_data?.catalogOptionGroups
+  ];
+
+  return candidates.find((candidate) => Array.isArray(candidate));
+};
+
 const normalizeProduct = (product: Product, index: number): Product => {
   const raw = product as any;
+  const appData = getProductAppData(raw);
+  const optionGroups = resolveProductOptionGroupsSource(raw);
   return {
     ...product,
     id: String(raw.id || `product-${index}`),
@@ -154,15 +192,16 @@ const normalizeProduct = (product: Product, index: number): Product => {
     category: normalizeString(raw.category || raw.categoria, 'General'),
     status: normalizeString(raw.status, ''),
     stock: raw.stock !== undefined && raw.stock !== null ? toNumber(raw.stock, 0) : undefined,
-    appData: raw.appData || raw.app_data || {}
-  };
+    appData,
+    optionGroups: Array.isArray(optionGroups) ? optionGroups : raw.optionGroups
+  } as Product;
 };
 
 const extractOptionGroups = (product: Product): ProductOptionGroup[] => {
   const raw = product as any;
-  const appData = raw.appData || raw.app_data || {};
+  const appData = getProductAppData(raw);
   const candidates = [
-    raw.optionGroups,
+    resolveProductOptionGroupsSource(raw),
     appData.catalogOptionGroups,
     appData.options,
     appData.optionGroups,

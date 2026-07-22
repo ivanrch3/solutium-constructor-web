@@ -8,6 +8,7 @@ export type PublicWhatsAppOrderCode =
   | 'MODULE_NOT_FOUND'
   | 'PLAN_NOT_ALLOWED'
   | 'SYSTEM_NOT_READY'
+  | 'INVALID_CUSTOMER_PHONE'
   | 'INVALID_CUSTOMER_WHATSAPP'
   | 'EMPTY_CART'
   | 'INVALID_PRODUCT'
@@ -23,8 +24,11 @@ export interface PublicWhatsAppOrderQuotePayload {
   moduleId?: string | null;
   customer: {
     name?: string | null;
-    whatsapp: string;
+    whatsapp?: string | null;
     email?: string | null;
+    phoneCountryCode?: string | null;
+    phoneCallingCode?: string | null;
+    phoneNationalNumber?: string | null;
   };
   items: Array<{
     productId: string;
@@ -56,8 +60,9 @@ export interface PublicWhatsAppOrderQuotePayload {
 
 export interface PublicWhatsAppOrderQuoteResponse {
   ok: boolean;
-  code: PublicWhatsAppOrderCode;
-  message: string;
+  success?: boolean;
+  code?: PublicWhatsAppOrderCode;
+  message?: string;
   quoteId: string | null;
   quoteStatus: string | null;
   quoteNumber: string | null;
@@ -68,6 +73,34 @@ export interface PublicWhatsAppOrderQuoteResponse {
   internalAlertReason: string | null;
   idempotentReplay: boolean;
   warnings: string[];
+  quote?: {
+    id?: string | null;
+    quoteNumber?: string | null;
+    status?: string | null;
+    publicUrl?: string | null;
+    total?: number | null;
+    currency?: string | null;
+  } | null;
+  customer?: {
+    name?: string | null;
+    phone?: string | null;
+    maskedPhone?: string | null;
+  } | null;
+  delivery?: {
+    customer?: {
+      mode?: string | null;
+      status?: PublicWhatsAppOrderMessageStatus | 'pending' | null;
+      error?: string | null;
+    } | null;
+    owner?: {
+      mode?: string | null;
+      status?: PublicWhatsAppOrderMessageStatus | 'pending' | null;
+      error?: string | null;
+    } | null;
+  } | null;
+  idempotency?: {
+    reused?: boolean;
+  } | null;
 }
 
 const normalizeBaseUrl = (value: string) => String(value || '').trim().replace(/\/+$/, '');
@@ -86,7 +119,12 @@ export const createPublicWhatsAppOrderQuote = async (
 
   const result = await response.json().catch(() => null);
 
-  if (result && typeof result === 'object' && typeof result.code === 'string') {
+  if (result && typeof result === 'object' && (
+    typeof (result as any).code === 'string'
+    || typeof (result as any).success === 'boolean'
+    || typeof (result as any).ok === 'boolean'
+    || typeof (result as any).quote === 'object'
+  )) {
     return result as PublicWhatsAppOrderQuoteResponse;
   }
 

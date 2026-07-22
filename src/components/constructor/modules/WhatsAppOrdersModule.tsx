@@ -2,6 +2,7 @@ import React from 'react';
 import {
   AlertCircle,
   CheckCircle2,
+  ChevronDown,
   ChevronRight,
   Loader2,
   MessageCircle,
@@ -28,6 +29,20 @@ import {
   resolveProjectCurrencySettings,
   type ProjectCurrencySettings
 } from '../../../utils/projectCurrency';
+import { PHONE_COUNTRIES, getPhoneCountryFlag, type PhoneCountry } from '../../../constants/phoneCountries';
+import {
+  buildInternationalPhone,
+  findPhoneCountry,
+  getPhoneValidationError,
+  migrateLegacyWhatsApp,
+  normalizeNationalPhoneNumber,
+  resolveInitialPhoneCountry,
+  type StructuredPhone
+} from '../../../utils/phoneCountry';
+import {
+  classifyWebOrderResult,
+  normalizeWebOrderResponse
+} from '../../../utils/publicWhatsAppOrderResult';
 
 type ModuleRenderMode = 'preview' | 'published';
 
@@ -88,17 +103,18 @@ type CartItem = {
   notes: string | null;
 };
 
-type CheckoutFormState = {
+type CheckoutFormState = StructuredPhone & {
   name: string;
-  whatsapp: string;
   email: string;
 };
 
-const EMPTY_CHECKOUT_FORM: CheckoutFormState = {
+const createEmptyCheckoutForm = (country: PhoneCountry): CheckoutFormState => ({
   name: '',
-  whatsapp: '',
-  email: ''
-};
+  email: '',
+  phoneCountryCode: country.countryCode,
+  phoneCallingCode: country.callingCode,
+  phoneNationalNumber: ''
+});
 
 const MOBILE_BREAKPOINT = 640;
 const TABLET_BREAKPOINT = 960;
@@ -442,13 +458,6 @@ const normalizeCartItem = (item: Partial<CartItem>): CartItem | null => {
   };
 };
 
-const getResponseTone = (response: PublicWhatsAppOrderQuoteResponse | null) => {
-  if (!response) return 'idle';
-  if (response.ok && response.code === 'OK') return 'success';
-  if (response.ok && response.code === 'PARTIAL_SUCCESS') return 'warning';
-  return 'error';
-};
-
 const getResponseMessage = (response: PublicWhatsAppOrderQuoteResponse | null) => {
   if (!response) return null;
 
@@ -460,6 +469,7 @@ const getResponseMessage = (response: PublicWhatsAppOrderQuoteResponse | null) =
     PLAN_NOT_ALLOWED: 'Disponible en planes superiores.',
     SYSTEM_NOT_READY: 'El sistema de pedidos por WhatsApp aún no está configurado para este negocio.',
     CHANNEL_NOT_AVAILABLE: 'No fue posible enviar la cotización por WhatsApp en este momento.',
+    INVALID_CUSTOMER_PHONE: 'El número de WhatsApp no es válido. Revisa el código de país y el número.',
     INVALID_CUSTOMER_WHATSAPP: 'Debes ingresar un número de WhatsApp válido.',
     EMPTY_CART: 'El carrito está vacío.',
     INVALID_PRODUCT: 'El pedido contiene productos o cantidades inválidas.',
@@ -470,7 +480,7 @@ const getResponseMessage = (response: PublicWhatsAppOrderQuoteResponse | null) =
     QUOTE_CREATION_FAILED: 'No pudimos procesar el pedido en este momento.'
   };
 
-  return fallbackByCode[response.code] || 'No pudimos procesar el pedido en este momento.';
+  return response.code ? fallbackByCode[response.code] || 'No pudimos procesar el pedido en este momento.' : 'No pudimos procesar el pedido en este momento.';
 };
 
 export const WhatsAppOrdersModule: React.FC<{
@@ -505,6 +515,10 @@ export const WhatsAppOrdersModule: React.FC<{
   const formatPrice = React.useCallback(
     (amount: unknown) => formatProjectCurrency(amount, projectCurrencySettings),
     [projectCurrencySettings]
+  );
+  const initialPhoneCountry = React.useMemo(
+    () => resolveInitialPhoneCountry(regionalSettings as Record<string, unknown> | null),
+    [regionalSettings]
   );
   const getVal = React.useCallback((elementId: string | null, settingId: string, defaultValue: any) => {
     const key = elementId ? `${elementId}_${settingId}` : `${moduleId}_global_${settingId}`;
@@ -565,7 +579,10 @@ export const WhatsAppOrdersModule: React.FC<{
   const [selectedNotes, setSelectedNotes] = React.useState('');
   const [cartOpen, setCartOpen] = React.useState(false);
   const [checkoutOpen, setCheckoutOpen] = React.useState(false);
-  const [checkoutForm, setCheckoutForm] = React.useState<CheckoutFormState>(EMPTY_CHECKOUT_FORM);
+  const [checkoutForm, setCheckoutForm] = React.useState<CheckoutFormState>(() => createEmptyCheckoutForm(initialPhoneCountry));
+  const [countryPickerOpen, setCountryPickerOpen] = React.useState(false);
+  const [countrySearch, setCountrySearch] = React.useState('');
+  const [checkoutPhoneError, setCheckoutPhoneError] = React.useState<string | null>(null);
   const [cartItems, setCartItems] = React.useState<CartItem[]>([]);
   const [submitState, setSubmitState] = React.useState<'idle' | 'loading' | 'done'>('idle');
   const [submitResponse, setSubmitResponse] = React.useState<PublicWhatsAppOrderQuoteResponse | null>(null);
@@ -579,6 +596,19 @@ export const WhatsAppOrdersModule: React.FC<{
   const planBlocked = Boolean(availability?.known && !availability.allowed);
   const previewOrdersBlocked = renderMode === 'preview' && mode === 'orders' && planBlocked;
   const ordersInteractionEnabled = mode === 'orders' && !previewOrdersBlocked;
+  const selectedPhoneCountry = React.useMemo(
+    () => findPhoneCountry(checkoutForm.phoneCountryCode) || initialPhoneCountry,
+    [checkoutForm.phoneCountryCode, initialPhoneCountry]
+  );
+  const visiblePhoneCountries = React.useMemo(() => {
+    const query = countrySearch.trim().toLocaleLowerCase();
+    if (!query) return PHONE_COUNTRIES;
+    return PHONE_COUNTRIES.filter((country) => (
+      country.countryName.toLocaleLowerCase().includes(query)
+      || country.countryCode.toLocaleLowerCase().includes(query)
+      || country.callingCode.includes(query.replace(/\s/g, ''))
+    ));
+  }, [countrySearch]);
 
   const currentOptionGroups = React.useMemo(
     () => (selectedProduct ? extractOptionGroups(selectedProduct) : []),
@@ -615,10 +645,16 @@ export const WhatsAppOrdersModule: React.FC<{
         setCartItems(parsed.items.map(normalizeCartItem).filter((item): item is CartItem => Boolean(item)));
       }
       if (parsed?.customer && typeof parsed.customer === 'object') {
+        const persistedCountry = findPhoneCountry(parsed.customer.phoneCountryCode) || initialPhoneCountry;
+        const legacyPhone = migrateLegacyWhatsApp(parsed.customer.whatsapp, persistedCountry);
         setCheckoutForm({
           name: normalizeString(parsed.customer.name, ''),
-          whatsapp: normalizeString(parsed.customer.whatsapp, ''),
-          email: normalizeString(parsed.customer.email, '')
+          email: normalizeString(parsed.customer.email, ''),
+          phoneCountryCode: persistedCountry.countryCode,
+          phoneCallingCode: persistedCountry.callingCode,
+          phoneNationalNumber: normalizeNationalPhoneNumber(
+            parsed.customer.phoneNationalNumber ?? legacyPhone.phoneNationalNumber
+          )
         });
       }
     } catch {
@@ -629,13 +665,17 @@ export const WhatsAppOrdersModule: React.FC<{
   React.useEffect(() => {
     if (typeof window === 'undefined') return;
     try {
-      if (cartItems.length === 0 && !checkoutForm.name && !checkoutForm.whatsapp && !checkoutForm.email) {
+      if (cartItems.length === 0 && !checkoutForm.name && !checkoutForm.phoneNationalNumber && !checkoutForm.email) {
         window.localStorage.removeItem(storageKey);
         return;
       }
       window.localStorage.setItem(storageKey, JSON.stringify({
         items: cartItems,
-        customer: checkoutForm
+        customer: {
+          ...checkoutForm,
+          // Preserved only for legacy carts and the original API contract.
+          whatsapp: buildInternationalPhone(checkoutForm)
+        }
       }));
     } catch {
       // noop
@@ -823,11 +863,13 @@ export const WhatsAppOrdersModule: React.FC<{
     });
     closeProductDetail();
     setCartOpen(true);
+    submitAttemptKeyRef.current = null;
     setSubmitResponse(null);
     setSubmitError(null);
   }, [closeProductDetail, currentOptionGroups, customerNotesEnabled, formatPrice, optionSelectionErrors, selectedNotes, selectedOptions, selectedProduct, selectedProductPrice, selectedQuantity]);
 
   const updateCartQuantity = React.useCallback((cartItemId: string, quantity: number) => {
+    submitAttemptKeyRef.current = null;
     if (quantity <= 0) {
       setCartItems((current) => current.filter((item) => item.id !== cartItemId));
       return;
@@ -836,6 +878,7 @@ export const WhatsAppOrdersModule: React.FC<{
   }, []);
 
   const removeCartItem = React.useCallback((cartItemId: string) => {
+    submitAttemptKeyRef.current = null;
     setCartItems((current) => current.filter((item) => item.id !== cartItemId));
   }, []);
 
@@ -843,7 +886,15 @@ export const WhatsAppOrdersModule: React.FC<{
     setSubmitError(null);
     setSubmitResponse(null);
     setSubmitState('idle');
+    setCheckoutPhoneError(null);
   }, []);
+
+  const dismissOrderResult = React.useCallback(() => {
+    clearCheckoutState();
+    submitAttemptKeyRef.current = null;
+    setCheckoutOpen(false);
+    setCartOpen(false);
+  }, [clearCheckoutState]);
 
   const handleSubmitOrder = React.useCallback(async () => {
     if (previewOrdersBlocked) {
@@ -855,8 +906,10 @@ export const WhatsAppOrdersModule: React.FC<{
       setSubmitError('El carrito está vacío.');
       return;
     }
-    if (!checkoutForm.whatsapp.trim()) {
-      setSubmitError('Debes ingresar un número de WhatsApp válido.');
+    const phoneError = getPhoneValidationError(checkoutForm);
+    if (phoneError) {
+      setCheckoutPhoneError(phoneError);
+      setSubmitError(phoneError);
       return;
     }
     if (customerNameRequired && !checkoutForm.name.trim()) {
@@ -872,6 +925,7 @@ export const WhatsAppOrdersModule: React.FC<{
     submitAttemptKeyRef.current = idempotencyKey;
     setSubmitState('loading');
     setSubmitError(null);
+    setCheckoutPhoneError(null);
     setSubmitResponse(null);
 
     try {
@@ -881,8 +935,11 @@ export const WhatsAppOrdersModule: React.FC<{
         moduleId,
         customer: {
           name: checkoutForm.name.trim() || null,
-          whatsapp: checkoutForm.whatsapp.trim(),
-          email: customerEmailEnabled ? (checkoutForm.email.trim() || null) : null
+          whatsapp: buildInternationalPhone(checkoutForm),
+          email: customerEmailEnabled ? (checkoutForm.email.trim() || null) : null,
+          phoneCountryCode: checkoutForm.phoneCountryCode,
+          phoneCallingCode: checkoutForm.phoneCallingCode,
+          phoneNationalNumber: normalizeNationalPhoneNumber(checkoutForm.phoneNationalNumber)
         },
         items: cartItems.map((item) => ({
           productId: item.productId,
@@ -903,11 +960,10 @@ export const WhatsAppOrdersModule: React.FC<{
       setSubmitResponse(response);
       setSubmitState('done');
 
-      if (response.ok) {
+      if (normalizeWebOrderResponse(response)?.quoteId) {
         setCartItems([]);
         setCartOpen(true);
         setCheckoutOpen(false);
-        submitAttemptKeyRef.current = null;
       } else {
         setSubmitError(getResponseMessage(response));
       }
@@ -919,7 +975,9 @@ export const WhatsAppOrdersModule: React.FC<{
     cartItems,
     checkoutForm.email,
     checkoutForm.name,
-    checkoutForm.whatsapp,
+    checkoutForm.phoneCallingCode,
+    checkoutForm.phoneCountryCode,
+    checkoutForm.phoneNationalNumber,
     customerEmailEnabled,
     customerNameRequired,
     moduleId,
@@ -954,8 +1012,20 @@ export const WhatsAppOrdersModule: React.FC<{
       ? 'fixed bottom-4 right-4 z-[70] flex items-center gap-2 rounded-full border border-black/10 bg-white/95 px-4 py-2 text-sm font-semibold text-slate-900 shadow-lg backdrop-blur'
       : 'fixed right-4 top-4 z-[70] flex items-center gap-2 rounded-full border border-black/10 bg-white/95 px-4 py-2 text-sm font-semibold text-slate-900 shadow-lg backdrop-blur';
 
-  const responseTone = getResponseTone(submitResponse);
-  const responseMessage = getResponseMessage(submitResponse);
+  const normalizedOrderResult = React.useMemo(() => normalizeWebOrderResponse(submitResponse), [submitResponse]);
+  const orderResultKind = classifyWebOrderResult(normalizedOrderResult);
+  const hasCompletedOrder = Boolean(normalizedOrderResult?.quoteId);
+  const formatOrderResultTotal = React.useCallback((amount: number, currency: string | null) => {
+    if (!currency) return formatPrice(amount);
+    try {
+      return new Intl.NumberFormat(projectCurrencySettings.locale, {
+        style: 'currency',
+        currency
+      }).format(amount);
+    } catch {
+      return formatPrice(amount);
+    }
+  }, [formatPrice, projectCurrencySettings.locale]);
 
   if (renderMode === 'published' && planBlocked) {
     return null;
@@ -1445,36 +1515,53 @@ export const WhatsAppOrdersModule: React.FC<{
                 </div>
               )}
 
-              {responseMessage && (
+              {hasCompletedOrder && normalizedOrderResult ? (
                 <div
-                  className={`mt-4 rounded-3xl border px-4 py-3 text-sm ${
-                    responseTone === 'success'
-                      ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
-                      : responseTone === 'warning'
-                        ? 'border-amber-200 bg-amber-50 text-amber-800'
-                        : 'border-rose-200 bg-rose-50 text-rose-700'
+                  className={`mt-4 rounded-3xl border px-4 py-4 text-sm ${
+                    orderResultKind === 'partial'
+                      ? 'border-amber-200 bg-amber-50 text-amber-900'
+                      : 'border-emerald-200 bg-emerald-50 text-emerald-900'
                   }`}
                 >
-                  <div className="flex items-start gap-2">
-                    {responseTone === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
-                    <div>
-                      <p className="font-semibold">{responseMessage}</p>
-                      {submitResponse?.publicQuoteUrl ? (
-                        <a
-                          href={submitResponse.publicQuoteUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="mt-1 inline-flex text-xs font-bold underline"
-                        >
-                          Ver cotización
-                        </a>
-                      ) : null}
+                  <div className="flex items-start gap-3">
+                    <CheckCircle2 size={20} className="mt-0.5 shrink-0" />
+                    <div className="min-w-0 flex-1 space-y-2">
+                      <div>
+                        <p className="font-black">
+                          {orderResultKind === 'replay'
+                            ? 'Tu pedido ya había sido confirmado.'
+                            : orderResultKind === 'partial'
+                              ? 'Tu pedido fue registrado.'
+                              : '¡Pedido confirmado!'}
+                        </p>
+                        <p className="mt-1 leading-5">
+                          {orderResultKind === 'partial'
+                            ? 'La cotización se creó. El negocio dará seguimiento a cualquier entrega pendiente.'
+                            : 'Recibirás la cotización por WhatsApp.'}
+                        </p>
+                      </div>
+                      <dl className="grid gap-1 text-xs sm:grid-cols-2">
+                        {normalizedOrderResult.quoteNumber ? <div><dt className="font-semibold">Cotización</dt><dd>{normalizedOrderResult.quoteNumber}</dd></div> : null}
+                        {normalizedOrderResult.maskedPhone ? <div><dt className="font-semibold">WhatsApp</dt><dd>{normalizedOrderResult.maskedPhone}</dd></div> : null}
+                        {normalizedOrderResult.total !== null ? <div><dt className="font-semibold">Total</dt><dd>{formatOrderResultTotal(normalizedOrderResult.total, normalizedOrderResult.currency)}</dd></div> : null}
+                        {normalizedOrderResult.customerDelivery.status !== 'unknown' ? <div><dt className="font-semibold">Entrega</dt><dd>{normalizedOrderResult.customerDelivery.status}</dd></div> : null}
+                      </dl>
+                      <div className="flex flex-wrap gap-3">
+                        {normalizedOrderResult.publicQuoteUrl ? (
+                          <a href={normalizedOrderResult.publicQuoteUrl} target="_blank" rel="noreferrer" className="font-bold underline">
+                            Ver cotización
+                          </a>
+                        ) : null}
+                        <button type="button" onClick={dismissOrderResult} className="font-bold underline">
+                          Seguir comprando
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
-              )}
+              ) : null}
 
-              {submitError && !responseMessage && (
+              {submitError && !hasCompletedOrder && (
                 <div className="mt-4 rounded-3xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
                   {submitError}
                 </div>
@@ -1499,28 +1586,115 @@ export const WhatsAppOrdersModule: React.FC<{
                     </span>
                     <input
                       value={checkoutForm.name}
-                      onChange={(event) => setCheckoutForm((current) => ({ ...current, name: event.target.value }))}
+                      onChange={(event) => {
+                        submitAttemptKeyRef.current = null;
+                        setCheckoutForm((current) => ({ ...current, name: event.target.value }));
+                      }}
                       className="w-full rounded-2xl border border-black/10 px-3 py-3 text-sm outline-none focus:border-[var(--primary-color,#16a34a)]"
                       placeholder="Tu nombre"
                     />
                   </label>
 
-                  <label className="space-y-1.5">
+                  <div className="space-y-1.5">
                     <span className="text-xs font-bold uppercase tracking-wide text-slate-500">WhatsApp *</span>
-                    <input
-                      value={checkoutForm.whatsapp}
-                      onChange={(event) => setCheckoutForm((current) => ({ ...current, whatsapp: event.target.value }))}
-                      className="w-full rounded-2xl border border-black/10 px-3 py-3 text-sm outline-none focus:border-[var(--primary-color,#16a34a)]"
-                      placeholder="+506 8888 8888"
-                    />
-                  </label>
+                    <div className="flex gap-2">
+                      <div className="relative shrink-0">
+                        <button
+                          type="button"
+                          aria-haspopup="listbox"
+                          aria-expanded={countryPickerOpen}
+                          aria-label={`Código de país: ${selectedPhoneCountry.countryName} ${selectedPhoneCountry.callingCode}`}
+                          onClick={() => {
+                            setCountryPickerOpen((open) => !open);
+                            setCountrySearch('');
+                          }}
+                          className="inline-flex h-full min-h-[48px] items-center gap-1 rounded-2xl border border-black/10 bg-white px-3 text-sm font-bold text-slate-800 outline-none transition hover:bg-slate-50 focus:border-[var(--primary-color,#16a34a)]"
+                        >
+                          <span aria-hidden="true">{getPhoneCountryFlag(selectedPhoneCountry.countryCode)}</span>
+                          <span>{selectedPhoneCountry.callingCode}</span>
+                          <ChevronDown size={14} aria-hidden="true" />
+                        </button>
+                        {countryPickerOpen ? (
+                          <div className="absolute left-0 top-[calc(100%+0.5rem)] z-20 w-72 rounded-2xl border border-black/10 bg-white p-2 shadow-xl">
+                            <input
+                              autoFocus
+                              value={countrySearch}
+                              onChange={(event) => setCountrySearch(event.target.value)}
+                              placeholder="Buscar país o código"
+                              aria-label="Buscar país o código"
+                              className="w-full rounded-xl border border-black/10 px-3 py-2 text-sm outline-none focus:border-[var(--primary-color,#16a34a)]"
+                            />
+                            <div role="listbox" aria-label="Países disponibles" className="mt-2 max-h-56 overflow-y-auto">
+                              {visiblePhoneCountries.map((country) => (
+                                <button
+                                  key={country.countryCode}
+                                  type="button"
+                                  role="option"
+                                  aria-selected={country.countryCode === selectedPhoneCountry.countryCode}
+                                  onClick={() => {
+                                    submitAttemptKeyRef.current = null;
+                                    setCheckoutForm((current) => ({
+                                      ...current,
+                                      phoneCountryCode: country.countryCode,
+                                      phoneCallingCode: country.callingCode
+                                    }));
+                                    setCheckoutPhoneError(null);
+                                    setCountryPickerOpen(false);
+                                    setCountrySearch('');
+                                  }}
+                                  className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-50"
+                                >
+                                  <span aria-hidden="true">{getPhoneCountryFlag(country.countryCode)}</span>
+                                  <span className="min-w-0 flex-1 truncate">{country.countryName}</span>
+                                  <span className="font-semibold text-slate-500">{country.callingCode}</span>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        ) : null}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <input
+                          type="tel"
+                          inputMode="tel"
+                          autoComplete="tel-national"
+                          value={checkoutForm.phoneNationalNumber}
+                          onChange={(event) => {
+                            const rawValue = event.target.value;
+                            const countryPrefix = selectedPhoneCountry.callingCode.replace(/\D/g, '');
+                            const enteredDigits = normalizeNationalPhoneNumber(rawValue);
+                            const phoneNationalNumber = rawValue.trim().startsWith('+') && enteredDigits.startsWith(countryPrefix)
+                              ? enteredDigits.slice(countryPrefix.length)
+                              : enteredDigits;
+                            submitAttemptKeyRef.current = null;
+                            setCheckoutForm((current) => ({ ...current, phoneNationalNumber }));
+                            setCheckoutPhoneError(null);
+                          }}
+                          aria-invalid={checkoutPhoneError ? true : undefined}
+                          aria-describedby={checkoutPhoneError ? 'whatsapp-phone-error' : undefined}
+                          className={`w-full rounded-2xl border px-3 py-3 text-sm outline-none focus:border-[var(--primary-color,#16a34a)] ${
+                            checkoutPhoneError ? 'border-rose-400' : 'border-black/10'
+                          }`}
+                          placeholder="8888 8888"
+                        />
+                      </div>
+                    </div>
+                    {checkoutPhoneError ? (
+                      <p id="whatsapp-phone-error" className="text-xs font-semibold text-rose-600" role="alert">
+                        {checkoutPhoneError}
+                      </p>
+                    ) : null}
+                  </div>
 
                   {customerEmailEnabled && (
                     <label className="space-y-1.5">
                       <span className="text-xs font-bold uppercase tracking-wide text-slate-500">Correo electrónico</span>
                       <input
-                        value={checkoutForm.email}
-                        onChange={(event) => setCheckoutForm((current) => ({ ...current, email: event.target.value }))}
+                      value={checkoutForm.email}
+                      onChange={(event) => {
+                        submitAttemptKeyRef.current = null;
+                        setCheckoutForm((current) => ({ ...current, email: event.target.value }));
+                      }}
                         className="w-full rounded-2xl border border-black/10 px-3 py-3 text-sm outline-none focus:border-[var(--primary-color,#16a34a)]"
                         placeholder="tu@correo.com"
                       />

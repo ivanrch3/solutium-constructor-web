@@ -768,6 +768,7 @@ export const WHATSAPP_ORDERS_MODULE: WebModule = {
       { id: 'confirmationDescription', label: 'Descripción de confirmación', type: 'textarea', defaultValue: 'Déjanos tu WhatsApp y te enviaremos la cotización.', rows: 3 },
       { id: 'customerNameRequired', label: 'Solicitar nombre como obligatorio', type: 'boolean', defaultValue: false },
       { id: 'customerEmailEnabled', label: 'Solicitar correo electrónico', type: 'boolean', defaultValue: true },
+      { id: 'allowOrderNotes', label: 'Permitir notas para el pedido', type: 'boolean', defaultValue: false, description: 'Permite que el cliente agregue indicaciones generales al confirmar su pedido.' },
       { id: 'customerNotesEnabled', label: 'Permitir notas por producto', type: 'boolean', defaultValue: false }
     ],
     estructura: [

@@ -34,7 +34,6 @@ import {
   buildInternationalPhone,
   findPhoneCountry,
   getPhoneValidationError,
-  migrateLegacyWhatsApp,
   normalizeNationalPhoneNumber,
   resolveInitialPhoneCountry,
   type StructuredPhone
@@ -44,6 +43,11 @@ import {
   normalizeWebOrderResponse
 } from '../../../utils/publicWhatsAppOrderResult';
 import { submitWithSingleNetworkRetry } from '../../../utils/publicWhatsAppOrderRecovery';
+import {
+  buildCustomerProfileStorageKey,
+  mergePublicWhatsAppOrderCustomerProfiles,
+  normalizePublicWhatsAppOrderCustomerProfile
+} from '../../../utils/publicWhatsAppOrderCustomerProfile';
 
 type ModuleRenderMode = 'preview' | 'published';
 
@@ -597,6 +601,8 @@ export const WhatsAppOrdersModule: React.FC<{
   const [submitResponse, setSubmitResponse] = React.useState<PublicWhatsAppOrderQuoteResponse | null>(null);
   const [submitError, setSubmitError] = React.useState<string | null>(null);
   const submitAttemptKeyRef = React.useRef<string | null>(null);
+  const checkoutFormEditedRef = React.useRef(false);
+  const [hydratedStorageKey, setHydratedStorageKey] = React.useState<string | null>(null);
   const openedInitialProductRef = React.useRef<string | null>(null);
   const publicProductCacheRef = React.useRef(new Map<string, Promise<Product | null>>());
   const optionGroupRefs = React.useRef(new Map<string, HTMLFieldSetElement>());
@@ -643,39 +649,45 @@ export const WhatsAppOrdersModule: React.FC<{
     () => `solutium_whatsapp_orders_cart:${storageScopeId}`,
     [storageScopeId]
   );
+  const customerProfileStorageKey = React.useMemo(
+    () => buildCustomerProfileStorageKey(storageScopeId),
+    [storageScopeId]
+  );
 
   React.useEffect(() => {
     if (typeof window === 'undefined') return;
     try {
       const raw = window.localStorage.getItem(storageKey);
-      if (!raw) return;
-      const parsed = JSON.parse(raw);
+      const rawProfile = window.localStorage.getItem(customerProfileStorageKey);
+      const parsed = raw ? JSON.parse(raw) : null;
+      const persistedProfile = rawProfile ? JSON.parse(rawProfile) : null;
       if (Array.isArray(parsed?.items)) {
         setCartItems(parsed.items.map(normalizeCartItem).filter((item): item is CartItem => Boolean(item)));
       }
-      if (parsed?.customer && typeof parsed.customer === 'object') {
-        const persistedCountry = findPhoneCountry(parsed.customer.phoneCountryCode) || initialPhoneCountry;
-        const legacyPhone = migrateLegacyWhatsApp(parsed.customer.whatsapp, persistedCountry);
+      if (!checkoutFormEditedRef.current) {
+        const snapshotProfile = parsed?.customer && typeof parsed.customer === 'object'
+          ? normalizePublicWhatsAppOrderCustomerProfile(parsed.customer, initialPhoneCountry)
+          : null;
+        const profile = persistedProfile && typeof persistedProfile === 'object'
+          ? normalizePublicWhatsAppOrderCustomerProfile(persistedProfile, initialPhoneCountry)
+          : null;
+        const resolvedProfile = mergePublicWhatsAppOrderCustomerProfiles(profile, snapshotProfile, initialPhoneCountry);
         setCheckoutForm({
-          name: normalizeString(parsed.customer.name, ''),
-          email: normalizeString(parsed.customer.email, ''),
-          orderNotes: normalizeString(parsed.customer.orderNotes, '').slice(0, 1000),
-          phoneCountryCode: persistedCountry.countryCode,
-          phoneCallingCode: persistedCountry.callingCode,
-          phoneNationalNumber: normalizeNationalPhoneNumber(
-            parsed.customer.phoneNationalNumber ?? legacyPhone.phoneNationalNumber
-          )
+          ...resolvedProfile,
+          orderNotes: normalizeString(parsed?.customer?.orderNotes, '').slice(0, 1000)
         });
       }
     } catch {
       // noop
+    } finally {
+      setHydratedStorageKey(storageKey);
     }
-  }, [storageKey]);
+  }, [customerProfileStorageKey, initialPhoneCountry, storageKey]);
 
   React.useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined' || hydratedStorageKey !== storageKey) return;
     try {
-      if (cartItems.length === 0 && !checkoutForm.name && !checkoutForm.phoneNationalNumber && !checkoutForm.email && !checkoutForm.orderNotes) {
+      if (cartItems.length === 0 && !checkoutForm.orderNotes) {
         window.localStorage.removeItem(storageKey);
         return;
       }
@@ -690,7 +702,23 @@ export const WhatsAppOrdersModule: React.FC<{
     } catch {
       // noop
     }
-  }, [cartItems, checkoutForm, storageKey]);
+  }, [cartItems, checkoutForm, hydratedStorageKey, storageKey]);
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined' || hydratedStorageKey !== storageKey) return;
+    try {
+      window.localStorage.setItem(customerProfileStorageKey, JSON.stringify({
+        name: checkoutForm.name.trim(),
+        email: checkoutForm.email.trim(),
+        phoneCountryCode: checkoutForm.phoneCountryCode,
+        phoneCallingCode: checkoutForm.phoneCallingCode,
+        phoneNationalNumber: normalizeNationalPhoneNumber(checkoutForm.phoneNationalNumber),
+        whatsapp: buildInternationalPhone(checkoutForm) || undefined
+      }));
+    } catch {
+      // noop
+    }
+  }, [checkoutForm, customerProfileStorageKey, hydratedStorageKey, storageKey]);
 
   React.useEffect(() => {
     if (typeof window === 'undefined' || typeof ResizeObserver === 'undefined') return;
@@ -985,7 +1013,8 @@ export const WhatsAppOrdersModule: React.FC<{
 
       if (normalizeWebOrderResponse(response)?.quoteId) {
         setCartItems([]);
-        setCheckoutForm(createEmptyCheckoutForm(initialPhoneCountry));
+        setCheckoutForm((current) => ({ ...current, orderNotes: '' }));
+        submitAttemptKeyRef.current = null;
         setCartOpen(true);
         setCheckoutOpen(false);
       } else {
@@ -1620,6 +1649,7 @@ export const WhatsAppOrdersModule: React.FC<{
                     <input
                       value={checkoutForm.name}
                       onChange={(event) => {
+                        checkoutFormEditedRef.current = true;
                         submitAttemptKeyRef.current = null;
                         setCheckoutForm((current) => ({ ...current, name: event.target.value }));
                       }}
@@ -1665,6 +1695,7 @@ export const WhatsAppOrdersModule: React.FC<{
                                   role="option"
                                   aria-selected={country.countryCode === selectedPhoneCountry.countryCode}
                                   onClick={() => {
+                                    checkoutFormEditedRef.current = true;
                                     submitAttemptKeyRef.current = null;
                                     setCheckoutForm((current) => ({
                                       ...current,
@@ -1699,6 +1730,7 @@ export const WhatsAppOrdersModule: React.FC<{
                             const phoneNationalNumber = rawValue.trim().startsWith('+') && enteredDigits.startsWith(countryPrefix)
                               ? enteredDigits.slice(countryPrefix.length)
                               : enteredDigits;
+                            checkoutFormEditedRef.current = true;
                             submitAttemptKeyRef.current = null;
                             setCheckoutForm((current) => ({ ...current, phoneNationalNumber }));
                             setCheckoutPhoneError(null);
@@ -1725,6 +1757,7 @@ export const WhatsAppOrdersModule: React.FC<{
                       <input
                       value={checkoutForm.email}
                       onChange={(event) => {
+                        checkoutFormEditedRef.current = true;
                         submitAttemptKeyRef.current = null;
                         setCheckoutForm((current) => ({ ...current, email: event.target.value }));
                       }}
@@ -1741,6 +1774,7 @@ export const WhatsAppOrdersModule: React.FC<{
                       maxLength={1000}
                       value={checkoutForm.orderNotes}
                       onChange={(event) => {
+                        checkoutFormEditedRef.current = true;
                         submitAttemptKeyRef.current = null;
                         setCheckoutForm((current) => ({ ...current, orderNotes: event.target.value.slice(0, 1000) }));
                       }}

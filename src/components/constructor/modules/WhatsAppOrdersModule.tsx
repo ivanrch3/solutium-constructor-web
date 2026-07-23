@@ -48,6 +48,11 @@ import {
   mergePublicWhatsAppOrderCustomerProfiles,
   normalizePublicWhatsAppOrderCustomerProfile
 } from '../../../utils/publicWhatsAppOrderCustomerProfile';
+import {
+  getOrderNotesForRequest,
+  normalizeOrderNotes,
+  resolveOrderNotesEnabled
+} from '../../../utils/publicWhatsAppOrderNotes';
 
 type ModuleRenderMode = 'preview' | 'published';
 
@@ -533,6 +538,10 @@ export const WhatsAppOrdersModule: React.FC<{
     const key = elementId ? `${elementId}_${settingId}` : `${moduleId}_global_${settingId}`;
     return settingsValues[key] !== undefined ? settingsValues[key] : defaultValue;
   }, [moduleId, settingsValues]);
+  const getRawGlobalVal = React.useCallback(
+    (settingId: string) => settingsValues[`${moduleId}_global_${settingId}`],
+    [moduleId, settingsValues]
+  );
 
   const title = getVal(`${moduleId}_el_whatsapp_orders_header`, 'title', 'Pedidos por WhatsApp');
   const subtitle = getVal(`${moduleId}_el_whatsapp_orders_header`, 'subtitle', 'Muestra tu catálogo y recibe pedidos confirmados desde tu web.');
@@ -560,6 +569,7 @@ export const WhatsAppOrdersModule: React.FC<{
   const customerNameRequired = toBoolean(getVal(null, 'customerNameRequired', false), false);
   const customerEmailEnabled = toBoolean(getVal(null, 'customerEmailEnabled', true), true);
   const customerNotesEnabled = toBoolean(getVal(null, 'customerNotesEnabled', false), false);
+  const allowOrderNotes = resolveOrderNotesEnabled(getRawGlobalVal('allowOrderNotes'), getRawGlobalVal('customerNotesEnabled'));
 
   const normalizedProducts = React.useMemo(
     () => (Array.isArray(products) ? products : []).map((product, index) => normalizeProduct(product, index)),
@@ -674,7 +684,7 @@ export const WhatsAppOrdersModule: React.FC<{
         const resolvedProfile = mergePublicWhatsAppOrderCustomerProfiles(profile, snapshotProfile, initialPhoneCountry);
         setCheckoutForm({
           ...resolvedProfile,
-          orderNotes: normalizeString(parsed?.customer?.orderNotes, '').slice(0, 1000)
+          orderNotes: allowOrderNotes ? normalizeOrderNotes(parsed?.customer?.orderNotes) : ''
         });
       }
     } catch {
@@ -682,12 +692,13 @@ export const WhatsAppOrdersModule: React.FC<{
     } finally {
       setHydratedStorageKey(storageKey);
     }
-  }, [customerProfileStorageKey, initialPhoneCountry, storageKey]);
+  }, [allowOrderNotes, customerProfileStorageKey, initialPhoneCountry, storageKey]);
 
   React.useEffect(() => {
     if (typeof window === 'undefined' || hydratedStorageKey !== storageKey) return;
     try {
-      if (cartItems.length === 0 && !checkoutForm.orderNotes) {
+      const orderNotes = allowOrderNotes ? normalizeOrderNotes(checkoutForm.orderNotes) : '';
+      if (cartItems.length === 0 && !orderNotes) {
         window.localStorage.removeItem(storageKey);
         return;
       }
@@ -695,6 +706,7 @@ export const WhatsAppOrdersModule: React.FC<{
         items: cartItems,
         customer: {
           ...checkoutForm,
+          orderNotes,
           // Preserved only for legacy carts and the original API contract.
           whatsapp: buildInternationalPhone(checkoutForm)
         }
@@ -702,7 +714,12 @@ export const WhatsAppOrdersModule: React.FC<{
     } catch {
       // noop
     }
-  }, [cartItems, checkoutForm, hydratedStorageKey, storageKey]);
+  }, [allowOrderNotes, cartItems, checkoutForm, hydratedStorageKey, storageKey]);
+
+  React.useEffect(() => {
+    if (allowOrderNotes || !checkoutForm.orderNotes) return;
+    setCheckoutForm((current) => current.orderNotes ? { ...current, orderNotes: '' } : current);
+  }, [allowOrderNotes, checkoutForm.orderNotes]);
 
   React.useEffect(() => {
     if (typeof window === 'undefined' || hydratedStorageKey !== storageKey) return;
@@ -967,11 +984,12 @@ export const WhatsAppOrdersModule: React.FC<{
     setSubmitResponse(null);
 
     try {
+      const orderNotesForRequest = getOrderNotesForRequest(checkoutForm.orderNotes, allowOrderNotes);
       const payload = {
         publishedSiteId,
         pageId,
         moduleId,
-        notes: checkoutForm.orderNotes.trim() || null,
+        ...(orderNotesForRequest !== undefined ? { notes: orderNotesForRequest } : {}),
         customer: {
           name: checkoutForm.name.trim() || null,
           whatsapp: buildInternationalPhone(checkoutForm),
@@ -1025,6 +1043,7 @@ export const WhatsAppOrdersModule: React.FC<{
       setSubmitError('No pudimos conectarnos. Verifica tu conexión e inténtalo nuevamente.');
     }
   }, [
+    allowOrderNotes,
     cartItems,
     checkoutForm.email,
     checkoutForm.name,
@@ -1767,22 +1786,24 @@ export const WhatsAppOrdersModule: React.FC<{
                     </label>
                   )}
 
-                  <label className="space-y-1.5">
-                    <span className="text-xs font-bold uppercase tracking-wide text-slate-500">Notas para el pedido (opcional)</span>
-                    <textarea
-                      rows={3}
-                      maxLength={1000}
-                      value={checkoutForm.orderNotes}
-                      onChange={(event) => {
-                        checkoutFormEditedRef.current = true;
-                        submitAttemptKeyRef.current = null;
-                        setCheckoutForm((current) => ({ ...current, orderNotes: event.target.value.slice(0, 1000) }));
-                      }}
-                      className="w-full resize-y rounded-2xl border border-black/10 px-3 py-3 text-sm outline-none focus:border-[var(--primary-color,#16a34a)]"
-                      placeholder="Ejemplo: Sin hielo, entregar después de las 5:00 p. m., llamar al llegar..."
-                    />
-                    <span className="block text-right text-xs text-slate-400">{checkoutForm.orderNotes.length}/1000</span>
-                  </label>
+                  {allowOrderNotes && (
+                    <label className="space-y-1.5">
+                      <span className="text-xs font-bold uppercase tracking-wide text-slate-500">Notas para el pedido (opcional)</span>
+                      <textarea
+                        rows={3}
+                        maxLength={1000}
+                        value={checkoutForm.orderNotes}
+                        onChange={(event) => {
+                          checkoutFormEditedRef.current = true;
+                          submitAttemptKeyRef.current = null;
+                          setCheckoutForm((current) => ({ ...current, orderNotes: normalizeOrderNotes(event.target.value) }));
+                        }}
+                        className="w-full resize-y rounded-2xl border border-black/10 px-3 py-3 text-sm outline-none focus:border-[var(--primary-color,#16a34a)]"
+                        placeholder="Ejemplo: Sin hielo, entregar después de las 5:00 p. m., llamar al llegar..."
+                      />
+                      <span className="block text-right text-xs text-slate-400">{checkoutForm.orderNotes.length}/1000</span>
+                    </label>
+                  )}
                 </div>
               )}
             </div>

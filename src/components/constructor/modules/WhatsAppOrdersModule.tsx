@@ -43,6 +43,7 @@ import {
   classifyWebOrderResult,
   normalizeWebOrderResponse
 } from '../../../utils/publicWhatsAppOrderResult';
+import { submitWithSingleNetworkRetry } from '../../../utils/publicWhatsAppOrderRecovery';
 
 type ModuleRenderMode = 'preview' | 'published';
 
@@ -463,7 +464,9 @@ const normalizeCartItem = (item: Partial<CartItem>): CartItem | null => {
 const getResponseMessage = (response: PublicWhatsAppOrderQuoteResponse | null) => {
   if (!response) return null;
 
-  if (response.message) return response.message;
+  if (response.message && !/failed to fetch/i.test(response.message)) return response.message;
+
+  if (response.message) return 'No pudimos conectarnos. Verifica tu conexión e inténtalo nuevamente.';
 
   const fallbackByCode: Record<PublicWhatsAppOrderCode, string> = {
     OK: 'Pedido recibido. Te enviaremos la cotización a tu WhatsApp.',
@@ -590,7 +593,7 @@ export const WhatsAppOrdersModule: React.FC<{
   const [countrySearch, setCountrySearch] = React.useState('');
   const [checkoutPhoneError, setCheckoutPhoneError] = React.useState<string | null>(null);
   const [cartItems, setCartItems] = React.useState<CartItem[]>([]);
-  const [submitState, setSubmitState] = React.useState<'idle' | 'loading' | 'done'>('idle');
+  const [submitState, setSubmitState] = React.useState<'idle' | 'loading' | 'verifying' | 'done'>('idle');
   const [submitResponse, setSubmitResponse] = React.useState<PublicWhatsAppOrderQuoteResponse | null>(null);
   const [submitError, setSubmitError] = React.useState<string | null>(null);
   const submitAttemptKeyRef = React.useRef<string | null>(null);
@@ -908,7 +911,7 @@ export const WhatsAppOrdersModule: React.FC<{
       setSubmitError(availability?.message || 'Disponible en planes superiores.');
       return;
     }
-    if (submitState === 'loading') return;
+    if (submitState === 'loading' || submitState === 'verifying') return;
     if (cartItems.length === 0) {
       setSubmitError('El carrito está vacío.');
       return;
@@ -936,7 +939,7 @@ export const WhatsAppOrdersModule: React.FC<{
     setSubmitResponse(null);
 
     try {
-      const response = await createPublicWhatsAppOrderQuote({
+      const payload = {
         publishedSiteId,
         pageId,
         moduleId,
@@ -963,7 +966,19 @@ export const WhatsAppOrdersModule: React.FC<{
           notes: item.notes
         })),
         idempotencyKey
-      });
+      };
+      const recovery = await submitWithSingleNetworkRetry(
+        () => createPublicWhatsAppOrderQuote(payload),
+        () => setSubmitState('verifying')
+      );
+
+      if (recovery.kind === 'ambiguous_network_failure') {
+        setSubmitState('done');
+        setSubmitError('No pudimos confirmar la respuesta del servidor. El pedido podría haberse registrado. No vuelvas a enviarlo inmediatamente.');
+        return;
+      }
+
+      const response = recovery.response;
 
       setSubmitResponse(response);
       setSubmitState('done');
@@ -976,9 +991,9 @@ export const WhatsAppOrdersModule: React.FC<{
       } else {
         setSubmitError(getResponseMessage(response));
       }
-    } catch (error: any) {
+    } catch {
       setSubmitState('done');
-      setSubmitError(error?.message || 'No pudimos procesar el pedido en este momento.');
+      setSubmitError('No pudimos conectarnos. Verifica tu conexión e inténtalo nuevamente.');
     }
   }, [
     cartItems,
@@ -1578,6 +1593,13 @@ export const WhatsAppOrdersModule: React.FC<{
                 </div>
               )}
 
+              {submitState === 'verifying' ? (
+                <div className="mt-4 inline-flex items-center gap-2 rounded-3xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm font-semibold text-sky-800" role="status">
+                  <Loader2 size={16} className="animate-spin" />
+                  Estamos verificando tu pedido...
+                </div>
+              ) : null}
+
               {renderMode === 'preview' && !publishedSiteId && checkoutOpen && (
                 <div className="mt-4 rounded-3xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
                   En preview puedes validar la experiencia del carrito. La confirmación real se habilita cuando el sitio ya está publicado.
@@ -1751,11 +1773,11 @@ export const WhatsAppOrdersModule: React.FC<{
                 <button
                   type="button"
                   onClick={handleSubmitOrder}
-                  disabled={cartItems.length === 0 || !checkoutOpen || submitState === 'loading'}
+                  disabled={cartItems.length === 0 || !checkoutOpen || submitState === 'loading' || submitState === 'verifying'}
                   className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[var(--primary-color,#16a34a)] px-4 py-3 text-sm font-black text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {submitState === 'loading' ? <Loader2 size={16} className="animate-spin" /> : <MessageCircle size={16} />}
-                  {submitState === 'loading' ? 'Enviando pedido...' : 'Confirmar pedido'}
+                  {submitState === 'loading' || submitState === 'verifying' ? <Loader2 size={16} className="animate-spin" /> : <MessageCircle size={16} />}
+                  {submitState === 'verifying' ? 'Verificando pedido...' : submitState === 'loading' ? 'Enviando pedido...' : 'Confirmar pedido'}
                 </button>
               </div>
             </div>

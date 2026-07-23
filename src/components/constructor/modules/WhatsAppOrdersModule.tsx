@@ -106,11 +106,13 @@ type CartItem = {
 type CheckoutFormState = StructuredPhone & {
   name: string;
   email: string;
+  orderNotes: string;
 };
 
 const createEmptyCheckoutForm = (country: PhoneCountry): CheckoutFormState => ({
   name: '',
   email: '',
+  orderNotes: '',
   phoneCountryCode: country.countryCode,
   phoneCallingCode: country.callingCode,
   phoneNationalNumber: ''
@@ -543,7 +545,11 @@ export const WhatsAppOrdersModule: React.FC<{
   const buttonLabel = getVal(null, 'buttonLabel', 'Agregar al pedido');
   const emptyStateText = getVal(null, 'emptyStateText', 'No hay productos disponibles en este momento.');
   const confirmationTitle = getVal(null, 'confirmationTitle', 'Confirma tu pedido');
-  const confirmationDescription = getVal(null, 'confirmationDescription', 'Déjanos tu WhatsApp y te enviaremos la cotización.');
+  const neutralConfirmationDescription = 'Completa tus datos para confirmar y recibir la información del pedido.';
+  const configuredConfirmationDescription = getVal(null, 'confirmationDescription', neutralConfirmationDescription);
+  const confirmationDescription = configuredConfirmationDescription === 'Déjanos tu WhatsApp y te enviaremos la cotización.'
+    ? neutralConfirmationDescription
+    : configuredConfirmationDescription;
   const customerNameRequired = toBoolean(getVal(null, 'customerNameRequired', false), false);
   const customerEmailEnabled = toBoolean(getVal(null, 'customerEmailEnabled', true), true);
   const customerNotesEnabled = toBoolean(getVal(null, 'customerNotesEnabled', false), false);
@@ -650,6 +656,7 @@ export const WhatsAppOrdersModule: React.FC<{
         setCheckoutForm({
           name: normalizeString(parsed.customer.name, ''),
           email: normalizeString(parsed.customer.email, ''),
+          orderNotes: normalizeString(parsed.customer.orderNotes, '').slice(0, 1000),
           phoneCountryCode: persistedCountry.countryCode,
           phoneCallingCode: persistedCountry.callingCode,
           phoneNationalNumber: normalizeNationalPhoneNumber(
@@ -665,7 +672,7 @@ export const WhatsAppOrdersModule: React.FC<{
   React.useEffect(() => {
     if (typeof window === 'undefined') return;
     try {
-      if (cartItems.length === 0 && !checkoutForm.name && !checkoutForm.phoneNationalNumber && !checkoutForm.email) {
+      if (cartItems.length === 0 && !checkoutForm.name && !checkoutForm.phoneNationalNumber && !checkoutForm.email && !checkoutForm.orderNotes) {
         window.localStorage.removeItem(storageKey);
         return;
       }
@@ -933,6 +940,7 @@ export const WhatsAppOrdersModule: React.FC<{
         publishedSiteId,
         pageId,
         moduleId,
+        notes: checkoutForm.orderNotes.trim() || null,
         customer: {
           name: checkoutForm.name.trim() || null,
           whatsapp: buildInternationalPhone(checkoutForm),
@@ -962,6 +970,7 @@ export const WhatsAppOrdersModule: React.FC<{
 
       if (normalizeWebOrderResponse(response)?.quoteId) {
         setCartItems([]);
+        setCheckoutForm(createEmptyCheckoutForm(initialPhoneCountry));
         setCartOpen(true);
         setCheckoutOpen(false);
       } else {
@@ -975,12 +984,14 @@ export const WhatsAppOrdersModule: React.FC<{
     cartItems,
     checkoutForm.email,
     checkoutForm.name,
+    checkoutForm.orderNotes,
     checkoutForm.phoneCallingCode,
     checkoutForm.phoneCountryCode,
     checkoutForm.phoneNationalNumber,
     customerEmailEnabled,
     customerNameRequired,
     moduleId,
+    initialPhoneCountry,
     pageId,
     publishedSiteId,
     previewOrdersBlocked,
@@ -1700,6 +1711,22 @@ export const WhatsAppOrdersModule: React.FC<{
                       />
                     </label>
                   )}
+
+                  <label className="space-y-1.5">
+                    <span className="text-xs font-bold uppercase tracking-wide text-slate-500">Notas para el pedido (opcional)</span>
+                    <textarea
+                      rows={3}
+                      maxLength={1000}
+                      value={checkoutForm.orderNotes}
+                      onChange={(event) => {
+                        submitAttemptKeyRef.current = null;
+                        setCheckoutForm((current) => ({ ...current, orderNotes: event.target.value.slice(0, 1000) }));
+                      }}
+                      className="w-full resize-y rounded-2xl border border-black/10 px-3 py-3 text-sm outline-none focus:border-[var(--primary-color,#16a34a)]"
+                      placeholder="Ejemplo: Sin hielo, entregar después de las 5:00 p. m., llamar al llegar..."
+                    />
+                    <span className="block text-right text-xs text-slate-400">{checkoutForm.orderNotes.length}/1000</span>
+                  </label>
                 </div>
               )}
             </div>

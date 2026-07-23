@@ -22,6 +22,7 @@ export interface PublicWhatsAppOrderQuotePayload {
   publishedSiteId: string;
   pageId?: string | null;
   moduleId?: string | null;
+  notes?: string | null;
   customer: {
     name?: string | null;
     whatsapp?: string | null;

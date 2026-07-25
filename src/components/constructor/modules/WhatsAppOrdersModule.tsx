@@ -1073,7 +1073,7 @@ export const WhatsAppOrdersModule: React.FC<{
 
   const gridStyle = React.useMemo<React.CSSProperties>(() => {
     if (layout === 'list') {
-      return { gap, gridTemplateColumns: 'minmax(0, 1fr)' };
+      return { gap: 16, gridTemplateColumns: 'minmax(0, 1fr)' };
     }
     return {
       gap,
@@ -1110,8 +1110,8 @@ export const WhatsAppOrdersModule: React.FC<{
       data-module-type="whatsapp_orders"
       className="relative w-full"
       style={{
-        paddingTop: `${paddingY}px`,
-        paddingBottom: `${paddingY}px`,
+        paddingTop: `${layout === 'list' ? 40 : paddingY}px`,
+        paddingBottom: `${layout === 'list' ? 40 : paddingY}px`,
         background: 'var(--background-color, #ffffff)',
         color: 'var(--text-color, #0f172a)'
       }}
@@ -1199,9 +1199,15 @@ export const WhatsAppOrdersModule: React.FC<{
                   <button
                     type="button"
                     onClick={() => void openProductDetail(product)}
-                    className="flex w-full flex-col text-left"
+                    className={`flex w-full text-left ${layout === 'list' ? 'min-w-0 flex-row' : 'flex-col'}`}
                   >
-                    <div className="relative aspect-[4/3] overflow-hidden bg-slate-100">
+                    <div
+                      className={`relative shrink-0 overflow-hidden bg-slate-100 ${
+                        layout === 'list'
+                          ? 'h-28 w-28 sm:h-36 sm:w-44'
+                          : 'aspect-[4/3] w-full'
+                      }`}
+                    >
                       {product.imageUrl ? (
                         <img
                           src={product.imageUrl}
@@ -1221,7 +1227,7 @@ export const WhatsAppOrdersModule: React.FC<{
                       )}
                     </div>
 
-                    <div className="flex flex-1 flex-col gap-3 p-4">
+                    <div className="flex min-w-0 flex-1 flex-col gap-3 p-4">
                       <div className="flex items-start justify-between gap-3">
                         <div className="space-y-1">
                           <h3 className="text-lg font-black text-slate-950">{product.name}</h3>

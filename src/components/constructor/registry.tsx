@@ -776,9 +776,35 @@ export const WHATSAPP_ORDERS_MODULE: WebModule = {
         { label: 'Grilla', value: 'grid' },
         { label: 'Lista', value: 'list' }
       ]},
-      { id: 'columns', label: 'Columnas (desktop)', type: 'range', defaultValue: 3, min: 1, max: 4 },
-      { id: 'gap', label: 'Espaciado entre productos', type: 'range', defaultValue: 24, min: 8, max: 48, unit: 'px' },
-      { id: 'padding_y', label: 'Padding vertical', type: 'range', defaultValue: 56, min: 24, max: 160, unit: 'px' }
+      {
+        id: 'columns',
+        label: 'Columnas (desktop)',
+        type: 'range',
+        defaultValue: 3,
+        min: 1,
+        max: 4,
+        showIf: { settingId: 'layout', value: 'grid' }
+      },
+      {
+        id: 'gap',
+        label: 'Espaciado entre productos',
+        type: 'range',
+        defaultValue: 24,
+        min: 8,
+        max: 48,
+        unit: 'px',
+        showIf: { settingId: 'layout', value: 'grid' }
+      },
+      {
+        id: 'padding_y',
+        label: 'Padding vertical',
+        type: 'range',
+        defaultValue: 56,
+        min: 24,
+        max: 160,
+        unit: 'px',
+        showIf: { settingId: 'layout', value: 'grid' }
+      }
     ],
     estilo: [],
     interaccion: [],

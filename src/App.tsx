@@ -25,6 +25,11 @@ import { Profile, Project, Asset, WebBuilderSite, PublishedSite, Product, Custom
 import { getAssets } from './services/dataService';
 import { BrandColorsInput, normalizeProjectBrandColors } from './utils/projectTheme';
 import { extractWhatsAppOrdersCapability } from './utils/whatsappOrdersAvailability';
+import {
+  isQuotaExceededError,
+  readHandshakeCache,
+  writeHandshakeCache
+} from './utils/safeHandshakeCache';
 
 type View = 'dashboard' | 'selection-method' | 'form' | 'generator' | 'constructor' | 'viewer';
 
@@ -130,24 +135,6 @@ const decodeJwtPayload = (token?: string | null): any | null => {
 const getJwtExpirationMs = (token?: string | null): number | null => {
   const payload = decodeJwtPayload(token);
   return typeof payload?.exp === 'number' ? payload.exp * 1000 : null;
-};
-
-const readSafeHandshakeCache = (): any | null => {
-  try {
-    const raw = window.localStorage.getItem('solutium_handshake_cache');
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-};
-
-const isQuotaExceededError = (error: any) => {
-  const message = String(error?.message || '');
-  return (
-    error?.name === 'QuotaExceededError' ||
-    message.includes('QuotaExceededError') ||
-    message.includes('exceeded the quota')
-  );
 };
 
 const buildPersistedSelectedPageRef = (
@@ -832,15 +819,11 @@ const AppContent: React.FC = () => {
   const constructorTabCancelledRef = useRef(false);
 
   const welcomeSessionInfo = React.useMemo(() => {
-    const safeCache = readSafeHandshakeCache();
+    const safeCache = readHandshakeCache();
     const currentParams = new URLSearchParams(window.location.search);
     const sessionToken =
       currentParams.get('session_token') ||
       window.sessionStorage.getItem('solutium_supabase_access_token') ||
-      safeCache?.session_token ||
-      safeCache?.sessionToken ||
-      safeCache?.supabaseAccessToken ||
-      safeCache?.accessToken ||
       null;
     const expiresAt = getJwtExpirationMs(sessionToken);
     const hasLegacySession = Boolean(sessionToken) && sessionToken !== 'placeholder-token' && (!expiresAt || expiresAt > Date.now());
@@ -852,21 +835,12 @@ const AppContent: React.FC = () => {
       (profile as any)?.name ||
       (profile as any)?.fullName ||
       (profile as any)?.displayName ||
-      safeCache?.profile?.email ||
-      safeCache?.profile?.name ||
-      safeCache?.profile?.fullName ||
-      safeCache?.profile?.displayName ||
-      safeCache?.user?.email ||
-      safeCache?.user?.name ||
-      safeCache?.user?.fullName ||
-      safeCache?.user?.displayName ||
       (secureLaunchPayload ? getSecureLaunchSessionLabel(secureLaunchPayload) : 'Usuario activo');
     const projectLabel =
       project?.name ||
       (project as any)?.businessName ||
-      safeCache?.project?.name ||
-      safeCache?.project?.businessName ||
       safeCache?.siteName ||
+      safeCache?.projectId ||
       projectId ||
       'proyecto activo';
 
@@ -1251,16 +1225,11 @@ const AppContent: React.FC = () => {
     try {
     const secureLaunchPayload = secureLaunchPayloadRef.current;
     const usingSecureLaunch = Boolean(secureLaunchPayload);
-    const safeCache = readSafeHandshakeCache();
     const supabase = getSupabase();
     const supabaseConfig = getSupabaseConfig();
     const launchAccessToken = secureLaunchPayload?.access?.launch_access_token || null;
     const usingLegacySession = Boolean(
       supabaseConfig?.token ||
-      safeCache?.session_token ||
-      safeCache?.sessionToken ||
-      safeCache?.supabaseAccessToken ||
-      safeCache?.accessToken ||
       window.sessionStorage.getItem('solutium_supabase_access_token')
     );
     let hasSupabaseSession = Boolean(supabaseConfig?.token);
@@ -1692,7 +1661,7 @@ const AppContent: React.FC = () => {
       });
 
       if (!secureLaunchPayload) {
-        localStorage.setItem('solutium_handshake_cache', JSON.stringify(payload));
+        writeHandshakeCache(payload);
       }
 
       // Actualizar configuración dinámica (API Keys) desde la Madre
@@ -1941,11 +1910,6 @@ const AppContent: React.FC = () => {
             setCurrentView('dashboard');
           } else if (session.currentView) {
             setCurrentView(session.currentView);
-          }
-          
-          const savedHandshake = localStorage.getItem('solutium_handshake_cache');
-          if (savedHandshake) {
-            processHandshake(JSON.parse(savedHandshake));
           }
         }
       } catch (e) {

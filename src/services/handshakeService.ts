@@ -1,6 +1,7 @@
 import { logDebug } from '../utils/debug';
 import { initSupabase } from './supabaseClient';
 import { getAppMadreBaseUrl, getLaunchTokenFromUrl } from './secureLaunchSession';
+import { writeHandshakeCache } from '../utils/safeHandshakeCache';
 
 export interface HandshakePayload {
   projectId: string;
@@ -228,7 +229,7 @@ export const requestFreshSupabaseConfig = async (timeoutMs: number = 6000): Prom
           supabase_anon_key: supabaseAnonKey
         });
         if (!hasSecureLaunchToken) {
-          localStorage.setItem('solutium_handshake_cache', JSON.stringify(payload));
+          writeHandshakeCache(payload);
         }
         (window as any).SOLUTIUM_SUPABASE_SESSION = { access_token: sessionToken };
         initSupabase(supabaseUrl, supabaseAnonKey, sessionToken);

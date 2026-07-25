@@ -833,7 +833,7 @@ export const WHATSAPP_ORDERS_MODULE: WebModule = {
       id: 'el_whatsapp_orders_catalog',
       name: 'Catálogo',
       type: 'style',
-      groups: ['contenido'],
+      groups: ['contenido', 'tipografia'],
       settings: {
         contenido: [
           { id: 'selection_mode', label: 'Modo de selección', type: 'select', defaultValue: 'auto', options: [
@@ -844,7 +844,14 @@ export const WHATSAPP_ORDERS_MODULE: WebModule = {
         ],
         estructura: [],
         estilo: [],
-        tipografia: [],
+        tipografia: [
+          { id: 'title_size_desktop', label: 'Tamaño (Desktop)', type: 'typography_size', defaultValue: 't3', allowedLevels: ['t3', 'p', 's'], subsection: 'Título' },
+          { id: 'title_size_tablet', label: 'Tamaño (Tablet)', type: 'typography_size', defaultValue: 't3', allowedLevels: ['t3', 'p', 's'], subsection: 'Título' },
+          { id: 'title_size_mobile', label: 'Tamaño (Móvil)', type: 'typography_size', defaultValue: 'p', allowedLevels: ['t3', 'p', 's'], subsection: 'Título' },
+          { id: 'description_size_desktop', label: 'Tamaño (Desktop)', type: 'typography_size', defaultValue: 's', allowedLevels: ['p', 's'], subsection: 'Descripción' },
+          { id: 'description_size_tablet', label: 'Tamaño (Tablet)', type: 'typography_size', defaultValue: 's', allowedLevels: ['p', 's'], subsection: 'Descripción' },
+          { id: 'description_size_mobile', label: 'Tamaño (Móvil)', type: 'typography_size', defaultValue: 's', allowedLevels: ['p', 's'], subsection: 'Descripción' }
+        ],
         multimedia: [],
         interaccion: []
       }

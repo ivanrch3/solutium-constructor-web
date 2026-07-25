@@ -1271,8 +1271,8 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                                                     ...setting,
                                                     disabledMessage: !disabled.result ? undefined : (disabled.message || setting.disabledMessage)
                                                   };
-                                                  const showDynamicCardsSubsection = module.type === 'dynamic_cards' &&
-                                                    element.type === 'global' &&
+                                                  const showDynamicCardsSubsection = ((module.type === 'dynamic_cards' &&
+                                                    element.type === 'global') || module.type === 'whatsapp_orders') &&
                                                     setting.subsection &&
                                                     settingsToRender[settingIndex - 1]?.subsection !== setting.subsection;
 

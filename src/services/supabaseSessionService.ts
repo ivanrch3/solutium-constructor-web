@@ -98,22 +98,6 @@ const readSessionStorageBootstrapConfig = (): SupabaseBootstrapConfig | null => 
   return null;
 };
 
-const readHandshakeCacheBootstrapConfig = (): SupabaseBootstrapConfig | null => {
-  try {
-    const raw = localStorage.getItem('solutium_handshake_cache');
-    if (!raw) return null;
-    const payload = JSON.parse(raw);
-    const url = payload?.supabase_url;
-    const key = payload?.supabase_anon_key;
-    const token = payload?.session_token || payload?.supabaseAccessToken || payload?.accessToken;
-    if (url && key && token) {
-      return { url, key, token };
-    }
-  } catch {}
-
-  return null;
-};
-
 const readUrlBootstrapConfig = (): SupabaseBootstrapConfig | null => {
   try {
     const params = new URLSearchParams(window.location.search);
@@ -146,7 +130,6 @@ const readWindowNameBootstrapConfig = (): SupabaseBootstrapConfig | null => {
 
 const resolveBootstrapConfig = (): SupabaseBootstrapConfig | null =>
   readSessionStorageBootstrapConfig() ||
-  readHandshakeCacheBootstrapConfig() ||
   readUrlBootstrapConfig() ||
   readWindowNameBootstrapConfig();
 

@@ -49,19 +49,7 @@ const getJwtTokenFromContext = async (): Promise<TokenResult> => {
     return { token: sessionStorageToken, source: 'session_storage', authType: 'supabase' };
   }
 
-  // 4. Handshake cache
-  try {
-    const savedHandshake = localStorage.getItem('solutium_handshake_cache');
-    if (savedHandshake) {
-      const payload = JSON.parse(savedHandshake);
-      const handshakeToken = payload.supabaseAccessToken || payload.accessToken || payload.session_token;
-      if (isJWT(handshakeToken)) {
-        return { token: handshakeToken, source: 'handshake_cache', authType: 'supabase' };
-      }
-    }
-  } catch {}
-
-  // 5. Window global
+  // 4. Window global
   const globalToken = (window as any).SOLUTIUM_AUTH_TOKEN;
   if (isJWT(globalToken)) {
     return { token: globalToken, source: 'window_global', authType: 'supabase' };

@@ -3,6 +3,7 @@ export const HANDSHAKE_CACHE_KEY = 'solutium_handshake_cache';
 const HANDSHAKE_CACHE_VERSION = 2;
 const HANDSHAKE_CACHE_TTL_MS = 30 * 60 * 1000;
 const MAX_HANDSHAKE_CACHE_BYTES = 4096;
+export const SUPABASE_HANDSHAKE_TIMEOUT_MS = 8000;
 
 type SafeHandshakeCacheEntry = {
   version: number;
@@ -25,6 +26,12 @@ type WriteHandshakeCacheResult = {
 };
 
 const warnedKeys = new Set<string>();
+type SupabaseHandshakeStatus = 'pending' | 'ready' | 'failed' | 'timeout';
+
+let handshakeAttemptId = 0;
+let handshakeStatus: SupabaseHandshakeStatus = 'pending';
+let handshakeStartedAt: number | null = null;
+let handshakeTimeoutId: number | null = null;
 
 const warnOnce = (key: string, message: string, details?: Record<string, unknown>) => {
   if (warnedKeys.has(key)) return;
@@ -34,6 +41,92 @@ const warnOnce = (key: string, message: string, details?: Record<string, unknown
   } else {
     console.warn(message);
   }
+};
+
+const clearHandshakeTimeout = () => {
+  if (handshakeTimeoutId === null || typeof window === 'undefined') return;
+  window.clearTimeout(handshakeTimeoutId);
+  handshakeTimeoutId = null;
+};
+
+const warnHandshakeTimeoutOnce = (attemptId: number) => {
+  warnOnce(
+    `supabase-handshake-timeout:${attemptId}`,
+    '[SUPABASE_HANDSHAKE_TIMEOUT] Supabase initialization did not complete in time.'
+  );
+};
+
+const warnHandshakeFailureOnce = (attemptId: number) => {
+  warnOnce(
+    `supabase-handshake-failed:${attemptId}`,
+    '[SUPABASE_HANDSHAKE_FAILED] Supabase initialization failed.'
+  );
+};
+
+export const beginSupabaseHandshakeAttempt = () => {
+  clearHandshakeTimeout();
+  handshakeAttemptId += 1;
+  handshakeStatus = 'pending';
+  handshakeStartedAt = Date.now();
+  const attemptId = handshakeAttemptId;
+
+  if (typeof window !== 'undefined') {
+    handshakeTimeoutId = window.setTimeout(() => {
+      if (handshakeAttemptId !== attemptId || handshakeStatus !== 'pending') return;
+      handshakeStatus = 'timeout';
+      warnHandshakeTimeoutOnce(attemptId);
+    }, SUPABASE_HANDSHAKE_TIMEOUT_MS);
+  }
+
+  return attemptId;
+};
+
+export const markSupabaseHandshakeReady = (attemptId: number = handshakeAttemptId) => {
+  if (attemptId !== handshakeAttemptId) return;
+  handshakeStatus = 'ready';
+  handshakeStartedAt = null;
+  clearHandshakeTimeout();
+};
+
+export const markSupabaseHandshakeFailed = (attemptId: number = handshakeAttemptId) => {
+  if (attemptId !== handshakeAttemptId) return;
+  handshakeStatus = 'failed';
+  handshakeStartedAt = null;
+  clearHandshakeTimeout();
+  warnHandshakeFailureOnce(attemptId);
+};
+
+export const getSupabaseHandshakeStatus = (now: number = Date.now()) => {
+  if (
+    handshakeStatus === 'pending' &&
+    handshakeStartedAt !== null &&
+    now - handshakeStartedAt >= SUPABASE_HANDSHAKE_TIMEOUT_MS
+  ) {
+    handshakeStatus = 'timeout';
+    clearHandshakeTimeout();
+    warnHandshakeTimeoutOnce(handshakeAttemptId);
+  }
+
+  return {
+    attemptId: handshakeAttemptId,
+    status: handshakeStatus,
+    startedAt: handshakeStartedAt
+  };
+};
+
+export const reportSupabaseHandshakeUnavailable = () => {
+  const state = getSupabaseHandshakeStatus();
+  if (state.status === 'pending') {
+    return state;
+  }
+
+  if (state.status === 'failed') {
+    warnHandshakeFailureOnce(state.attemptId);
+  } else if (state.status === 'timeout') {
+    warnHandshakeTimeoutOnce(state.attemptId);
+  }
+
+  return state;
 };
 
 const getStorage = (): Storage | null => {
@@ -162,8 +255,4 @@ export const writeHandshakeCache = (payload: Record<string, any> | null | undefi
     }
     return { saved: false, skipped: true, reason: 'storage_unavailable', serializedBytes, entry };
   }
-};
-
-export const warnHandshakePendingOnce = () => {
-  warnOnce('supabase-handshake-pending', 'Supabase client not initialized. Waiting for handshake.');
 };

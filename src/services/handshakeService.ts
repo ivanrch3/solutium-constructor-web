@@ -1,7 +1,12 @@
 import { logDebug } from '../utils/debug';
 import { initSupabase } from './supabaseClient';
 import { getAppMadreBaseUrl, getLaunchTokenFromUrl } from './secureLaunchSession';
-import { writeHandshakeCache } from '../utils/safeHandshakeCache';
+import {
+  beginSupabaseHandshakeAttempt,
+  markSupabaseHandshakeFailed,
+  markSupabaseHandshakeReady,
+  writeHandshakeCache
+} from '../utils/safeHandshakeCache';
 
 export interface HandshakePayload {
   projectId: string;
@@ -223,6 +228,7 @@ export const requestFreshSupabaseConfig = async (timeoutMs: number = 6000): Prom
       }
 
       try {
+        const handshakeAttemptId = beginSupabaseHandshakeAttempt();
         syncSupabaseRuntimeConfig({
           session_token: sessionToken,
           supabase_url: supabaseUrl,
@@ -232,11 +238,20 @@ export const requestFreshSupabaseConfig = async (timeoutMs: number = 6000): Prom
           writeHandshakeCache(payload);
         }
         (window as any).SOLUTIUM_SUPABASE_SESSION = { access_token: sessionToken };
-        initSupabase(supabaseUrl, supabaseAnonKey, sessionToken);
+        const supabase = initSupabase(supabaseUrl, supabaseAnonKey, sessionToken);
+        if (!supabase) {
+          markSupabaseHandshakeFailed(handshakeAttemptId);
+          finish(false);
+          return;
+        }
+        markSupabaseHandshakeReady(handshakeAttemptId);
         logDebug('[SIP AUTH RECOVERY] Supabase config refreshed from App Madre.');
         finish(true);
       } catch (error) {
-        console.error('[SIP AUTH RECOVERY] Failed to reinitialize Supabase after fresh config:', error);
+        markSupabaseHandshakeFailed();
+        if (import.meta.env.DEV) {
+          console.error('[SIP AUTH RECOVERY] Failed to reinitialize Supabase after fresh config:', error);
+        }
         finish(false);
       }
     };

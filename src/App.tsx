@@ -26,7 +26,10 @@ import { getAssets } from './services/dataService';
 import { BrandColorsInput, normalizeProjectBrandColors } from './utils/projectTheme';
 import { extractWhatsAppOrdersCapability } from './utils/whatsappOrdersAvailability';
 import {
+  beginSupabaseHandshakeAttempt,
   isQuotaExceededError,
+  markSupabaseHandshakeFailed,
+  markSupabaseHandshakeReady,
   readHandshakeCache,
   writeHandshakeCache
 } from './utils/safeHandshakeCache';
@@ -1568,7 +1571,11 @@ const AppContent: React.FC = () => {
         payload.session_token
       );
 
-      if (!supabase) return;
+      if (!supabase) {
+        markSupabaseHandshakeFailed();
+        return;
+      }
+      markSupabaseHandshakeReady();
 
       const userResult = await Promise.race([
         supabase.auth.getUser(),
@@ -1621,6 +1628,7 @@ const AppContent: React.FC = () => {
       const secureProjectBranding = secureLaunchPayload?.projectBranding || payload.projectBranding || null;
 
       if (payload?.supabase_url && payload?.supabase_anon_key && payload?.session_token) {
+        beginSupabaseHandshakeAttempt();
         syncSupabaseRuntimeConfig(payload);
       }
 
@@ -1837,7 +1845,10 @@ const AppContent: React.FC = () => {
       
       setIsHandshakeComplete(true);
     } catch (err) {
-      console.error('Error processing handshake:', err);
+      markSupabaseHandshakeFailed();
+      if (import.meta.env.DEV) {
+        console.error('Error processing handshake:', err);
+      }
       setIsHandshakeComplete(true);
     }
   };

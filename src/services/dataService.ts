@@ -15,7 +15,7 @@ import {
   upsertSecurePageSections
 } from './secureConstructorWriteApi';
 import { getAppMadreBaseUrl } from './secureLaunchSession';
-import { warnHandshakePendingOnce } from '../utils/safeHandshakeCache';
+import { reportSupabaseHandshakeUnavailable } from '../utils/safeHandshakeCache';
 
 // Helper to handle validation and logging
 const validateData = <T>(schema: z.ZodType<T>, data: unknown, context: string): T | null => {
@@ -79,7 +79,7 @@ export const getProfile = async (userId: string): Promise<Profile | null> => {
   try {
     const supabase = getSupabase();
     if (!supabase) {
-      warnHandshakePendingOnce();
+      reportSupabaseHandshakeUnavailable();
       return null;
     }
     const { data, error } = await supabase
@@ -132,7 +132,7 @@ export const getProject = async (projectId: string): Promise<Project | null> => 
   try {
     const supabase = getSupabase();
     if (!supabase) {
-      warnHandshakePendingOnce();
+      reportSupabaseHandshakeUnavailable();
       return null;
     }
     const { data, error } = await supabase
@@ -180,7 +180,7 @@ export const getProfiles = async (page: number, pageSize: number, projectId: str
   try {
     const supabase = getSupabase();
     if (!supabase) {
-      warnHandshakePendingOnce();
+      reportSupabaseHandshakeUnavailable();
       return [];
     }
     const start = page * pageSize;
@@ -240,7 +240,7 @@ export const getProjects = async (page: number, pageSize: number, projectId: str
   try {
     const supabase = getSupabase();
     if (!supabase) {
-      warnHandshakePendingOnce();
+      reportSupabaseHandshakeUnavailable();
       return [];
     }
     const start = page * pageSize;
@@ -295,7 +295,7 @@ export const getCustomers = async (page: number, pageSize: number, projectId: st
   try {
     const supabase = getSupabase();
     if (!supabase) {
-      warnHandshakePendingOnce();
+      reportSupabaseHandshakeUnavailable();
       return [];
     }
     const start = page * pageSize;
@@ -457,7 +457,7 @@ export const getAssets = async (projectId: string, type?: string): Promise<Asset
   try {
     const supabase = getSupabase();
     if (!supabase) {
-      warnHandshakePendingOnce();
+      reportSupabaseHandshakeUnavailable();
       return [];
     }
 

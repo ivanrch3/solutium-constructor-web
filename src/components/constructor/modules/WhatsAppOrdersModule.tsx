@@ -38,6 +38,7 @@ import {
   resolveInitialPhoneCountry,
   type StructuredPhone
 } from '../../../utils/phoneCountry';
+import { TYPOGRAPHY_SCALE } from '../../../constants/typography';
 import {
   classifyWebOrderResult,
   normalizeWebOrderResponse
@@ -616,7 +617,7 @@ export const WhatsAppOrdersModule: React.FC<{
   const openedInitialProductRef = React.useRef<string | null>(null);
   const publicProductCacheRef = React.useRef(new Map<string, Promise<Product | null>>());
   const optionGroupRefs = React.useRef(new Map<string, HTMLFieldSetElement>());
-  const catalogContainerRef = React.useRef<HTMLDivElement | null>(null);
+  const catalogContainerRef = React.useRef<HTMLElement | null>(null);
   const [catalogWidth, setCatalogWidth] = React.useState(0);
   const planBlocked = Boolean(availability?.known && !availability.allowed);
   const previewOrdersBlocked = renderMode === 'preview' && mode === 'orders' && planBlocked;
@@ -742,12 +743,15 @@ export const WhatsAppOrdersModule: React.FC<{
     const node = catalogContainerRef.current;
     if (!node) return;
 
-    const updateWidth = () => {
-      setCatalogWidth(node.getBoundingClientRect().width || 0);
+    const updateWidth = (nextWidth: number) => {
+      const normalizedWidth = Math.round(nextWidth);
+      setCatalogWidth((currentWidth) => currentWidth === normalizedWidth ? currentWidth : normalizedWidth);
     };
 
-    updateWidth();
-    const observer = new ResizeObserver(() => updateWidth());
+    updateWidth(node.clientWidth || node.getBoundingClientRect().width || 0);
+    const observer = new ResizeObserver(([entry]) => {
+      updateWidth(entry?.contentRect.width || node.clientWidth || 0);
+    });
     observer.observe(node);
 
     return () => observer.disconnect();
@@ -1071,6 +1075,34 @@ export const WhatsAppOrdersModule: React.FC<{
     return columns;
   }, [activeViewport, catalogWidth, columns, layout]);
 
+  const catalogViewport = React.useMemo<'desktop' | 'tablet' | 'mobile'>(() => {
+    if (activeViewport) return activeViewport;
+    if (catalogWidth > 0 && catalogWidth < MOBILE_BREAKPOINT) return 'mobile';
+    if (catalogWidth > 0 && catalogWidth < TABLET_BREAKPOINT) return 'tablet';
+    return 'desktop';
+  }, [activeViewport, catalogWidth]);
+
+  const isCompactCatalog = catalogViewport !== 'desktop';
+  const showSecondaryProductMetadata = !isCompactCatalog;
+  const showProductOpenLabel = !isCompactCatalog;
+  const catalogElementId = `${moduleId}_el_whatsapp_orders_catalog`;
+  const resolveCatalogTypographyStyle = React.useCallback((settingId: 'title_size' | 'description_size') => {
+    const responsiveValue = settingsValues[`${catalogElementId}_${settingId}_${catalogViewport}`];
+    const legacyValue = settingsValues[`${catalogElementId}_${settingId}`];
+    const sizeToken = typeof responsiveValue === 'string'
+      ? responsiveValue
+      : typeof legacyValue === 'string'
+        ? legacyValue
+        : null;
+    const size = sizeToken ? TYPOGRAPHY_SCALE[sizeToken as keyof typeof TYPOGRAPHY_SCALE] : null;
+
+    return size
+      ? ({ fontSize: `${size.fontSize}px`, lineHeight: size.lineHeight } as React.CSSProperties)
+      : undefined;
+  }, [catalogElementId, catalogViewport, settingsValues]);
+  const productTitleTypographyStyle = resolveCatalogTypographyStyle('title_size');
+  const productDescriptionTypographyStyle = resolveCatalogTypographyStyle('description_size');
+
   const gridStyle = React.useMemo<React.CSSProperties>(() => {
     if (layout === 'list') {
       return { gap: 16, gridTemplateColumns: 'minmax(0, 1fr)' };
@@ -1108,6 +1140,7 @@ export const WhatsAppOrdersModule: React.FC<{
   return (
     <section
       data-module-type="whatsapp_orders"
+      ref={catalogContainerRef}
       className="relative w-full"
       style={{
         paddingTop: `${layout === 'list' ? 40 : paddingY}px`,
@@ -1130,7 +1163,7 @@ export const WhatsAppOrdersModule: React.FC<{
         </button>
       )}
 
-      <div ref={catalogContainerRef} className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-3">
           <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-[0.2em] text-[var(--primary-color,#16a34a)]">
             <MessageCircle size={16} />
@@ -1204,7 +1237,7 @@ export const WhatsAppOrdersModule: React.FC<{
                     <div
                       className={`relative shrink-0 overflow-hidden bg-slate-100 ${
                         layout === 'list'
-                          ? 'h-28 w-28 sm:h-36 sm:w-44'
+                          ? 'h-28 w-28 self-center sm:h-36 sm:w-44'
                           : 'aspect-[4/3] w-full'
                       }`}
                     >
@@ -1212,7 +1245,7 @@ export const WhatsAppOrdersModule: React.FC<{
                         <img
                           src={product.imageUrl}
                           alt={product.name}
-                          className="h-full w-full object-cover"
+                          className="h-full w-full object-cover object-center"
                           referrerPolicy="no-referrer"
                         />
                       ) : (
@@ -1230,8 +1263,8 @@ export const WhatsAppOrdersModule: React.FC<{
                     <div className="flex min-w-0 flex-1 flex-col gap-3 p-4">
                       <div className="flex items-start justify-between gap-3">
                         <div className="space-y-1">
-                          <h3 className="text-lg font-black text-slate-950">{product.name}</h3>
-                          {product.category ? (
+                          <h3 className="text-lg font-black text-slate-950" style={productTitleTypographyStyle}>{product.name}</h3>
+                          {showSecondaryProductMetadata && product.category ? (
                             <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">{product.category}</p>
                           ) : null}
                         </div>
@@ -1243,18 +1276,22 @@ export const WhatsAppOrdersModule: React.FC<{
                       </div>
 
                       {showDescriptions && product.description ? (
-                        <p className="line-clamp-3 text-sm leading-6 text-slate-600">{product.description}</p>
+                        <p className="line-clamp-3 text-sm leading-6 text-slate-600" style={productDescriptionTypographyStyle}>{product.description}</p>
                       ) : null}
 
-                      <div className="mt-auto flex items-center justify-between gap-3 pt-2">
-                        <span className="text-xs font-semibold text-slate-400">
-                          {ordersInteractionEnabled ? 'Ver detalle y agregar' : 'Ver detalle'}
-                        </span>
-                        <span className="inline-flex items-center gap-1 text-sm font-bold text-slate-900">
-                          Abrir
-                          <ChevronRight size={16} />
-                        </span>
-                      </div>
+                      {showProductOpenLabel && (
+                        <div className="mt-auto flex items-center justify-between gap-3 pt-2">
+                          {showSecondaryProductMetadata && (
+                            <span className="text-xs font-semibold text-slate-400">
+                              {ordersInteractionEnabled ? 'Ver detalle y agregar' : 'Ver detalle'}
+                            </span>
+                          )}
+                          <span className="inline-flex items-center gap-1 text-sm font-bold text-slate-900">
+                            Abrir
+                            <ChevronRight size={16} />
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </button>
                 </article>

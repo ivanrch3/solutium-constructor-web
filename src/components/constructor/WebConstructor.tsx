@@ -52,6 +52,7 @@ import {
   saveLocalDraftSnapshot
 } from '../../services/localDraftSnapshotService';
 import { Product, Customer, PageSection, TrustedCompanyLogo } from '../../types/schema';
+import type { SecureCatalogCategory } from '../../services/secureLaunchSession';
 import { MOCK_PRODUCTS, MOCK_CUSTOMERS } from '../../constants/mockData';
 import { MainSidebar, ModuleItem } from './MainSidebar';
 import { StructurePanel } from './StructurePanel';
@@ -116,6 +117,14 @@ import { bridgeModuleContent } from '../../utils/hydrationBridge';
 import { cloneCompositionPresetSchema, CompositionPresetId } from './modules/compositionPresets';
 import { validateCompositionSchema } from '../../utils/compositionSchemaValidator';
 import { buildVideoEmbedUrl, resolveVideoExternalId, resolveVideoProviderFromUrl } from '../../utils/videoEmbed';
+import {
+  createDefaultWhatsAppOrdersCatalogConfig,
+  getWhatsAppOrdersCatalogConfigSettingKey,
+  hasWhatsAppOrdersCatalogConfig,
+  readWhatsAppOrdersCatalogConfig
+} from './modules/whatsappOrdersCatalogConfig';
+import { buildWhatsAppOrdersCatalogPublishedContract } from './modules/whatsappOrdersCatalogPublishedContract';
+import { resolveWhatsAppOrdersProductsForSelection } from './modules/whatsappOrdersCatalogOrganizer';
 
 const isReferenceDebugEnabled = () => import.meta.env.DEV || import.meta.env.VITE_SHOW_AI_REFERENCE_DEBUG === 'true';
 
@@ -662,6 +671,7 @@ interface WebConstructorProps {
   initialPage?: WebBuilderSite | PublishedSite | Page | null;
   creationMethod?: 'ai' | 'template' | 'scratch' | null;
   secureProducts?: Product[];
+  secureCatalogCategories?: SecureCatalogCategory[];
   secureCustomers?: Customer[];
   secureTrustedCompanyLogos?: TrustedCompanyLogo[];
   useSecureCatalogContext?: boolean;
@@ -820,6 +830,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   initialPage,
   creationMethod,
   secureProducts = [],
+  secureCatalogCategories = [],
   secureCustomers = [],
   secureTrustedCompanyLogos = [],
   useSecureCatalogContext = false
@@ -4017,6 +4028,13 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       });
     }
 
+    // V2 is instance-scoped and intentionally has no editor control yet.
+    // A factory prevents nested defaults from being shared by new modules.
+    if (module.type === 'whatsapp_orders') {
+      initialValues[getWhatsAppOrdersCatalogConfigSettingKey(moduleId)] =
+        createDefaultWhatsAppOrdersCatalogConfig();
+    }
+
     // Element settings
     newElements.forEach(element => {
       if (element.settings) {
@@ -5148,8 +5166,8 @@ const formatTimestampName = () => {
           const rawSelectedIds = getVal(module.id, 'el_whatsapp_orders_catalog', 'select_products', []);
           const selectedIds = normalizeSelectedProductIds(rawSelectedIds);
           const catalogProducts = Array.isArray(products) ? products.filter(Boolean) : [];
-          const isManualSelectionMode = isManualProductsSelectionMode(selectionMode);
           const snapshotKey = `${module.id}_el_whatsapp_orders_catalog_products`;
+          const hasV2CatalogConfig = hasWhatsAppOrdersCatalogConfig(currentState.settingsValues, module.id);
           const previousSnapshotSource =
             currentState.settingsValues?.[snapshotKey] ||
             (module as any).content?.products ||
@@ -5166,26 +5184,41 @@ const formatTimestampName = () => {
           let finalProducts: Product[] = [];
 
           if (catalogProducts.length > 0) {
-            const selectionSourceProducts = isManualSelectionMode
+            const selectionSourceProducts = hasV2CatalogConfig
               ? catalogProducts
               : [...catalogProducts].sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
 
-            finalProducts = resolveProductsForSelection({
+            finalProducts = resolveWhatsAppOrdersProductsForSelection({
               selectionMode,
-              selectedIds,
-              availableProducts: selectionSourceProducts
+              selectedItemIds: rawSelectedIds,
+              availableProducts: selectionSourceProducts,
+              allowLegacyEmptyFallback: !hasV2CatalogConfig
             });
           }
 
           if (finalProducts.length === 0 && previousSnapshotProducts.length > 0) {
-            finalProducts = resolveProductsForSelection({
+            finalProducts = resolveWhatsAppOrdersProductsForSelection({
               selectionMode,
-              selectedIds,
-              availableProducts: previousSnapshotProducts as Product[]
+              selectedItemIds: rawSelectedIds,
+              availableProducts: previousSnapshotProducts as Product[],
+              allowLegacyEmptyFallback: !hasV2CatalogConfig
             });
           }
 
-          if (finalProducts.length > 0) {
+          if (hasV2CatalogConfig) {
+            const catalogConfig = readWhatsAppOrdersCatalogConfig(currentState.settingsValues, module.id);
+            const publishedCatalog = buildWhatsAppOrdersCatalogPublishedContract({
+              config: catalogConfig,
+              categories: secureCatalogCategories,
+              products: finalProducts
+            });
+
+            content.catalogConfig = publishedCatalog.catalogConfig;
+            content.categories = publishedCatalog.categories;
+            content.products = publishedCatalog.products;
+            content.items = publishedCatalog.items;
+            settings[snapshotKey] = publishedCatalog.products;
+          } else if (finalProducts.length > 0) {
             const normalizedProducts = finalProducts.map((p, idx) => {
               const rawPrice = (p as any).price;
               const rawRefPrice = (p as any).priceReference;
@@ -7270,6 +7303,7 @@ const formatTimestampName = () => {
                         onToggleCollapse={() => {}}
                         projectId={projectId}
                         products={products}
+                        catalogCategories={secureCatalogCategories}
                         customers={customers}
                         trustedCompanyLogos={trustedCompanyLogos}
                         isMobile={true}
@@ -7285,6 +7319,7 @@ const formatTimestampName = () => {
                         editorState={editorState}
                         onAddModule={addModule}
                         products={products}
+                        catalogCategories={secureCatalogCategories}
                         customers={customers}
                         trustedCompanyLogos={trustedCompanyLogos}
                         isDevMode={projectId === 'dev-project-id'}
@@ -7324,6 +7359,7 @@ const formatTimestampName = () => {
                     onToggleCollapse={() => setStructurePanelCollapsed(!structurePanelCollapsed)}
                     projectId={projectId}
                     products={products}
+                    catalogCategories={secureCatalogCategories}
                     customers={customers}
                     trustedCompanyLogos={trustedCompanyLogos}
                     activeTab={activeTab}
@@ -7370,6 +7406,7 @@ const formatTimestampName = () => {
                         editorState={editorState}
                         onAddModule={addModule}
                         products={products}
+                        catalogCategories={secureCatalogCategories}
                         customers={customers}
                         trustedCompanyLogos={trustedCompanyLogos}
                         isDevMode={projectId === 'dev-project-id'}

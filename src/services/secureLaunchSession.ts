@@ -355,6 +355,13 @@ export const consumeSecureLaunchSession = async (
   return result;
 };
 
+export type SecureCatalogCategory = {
+  id: string;
+  projectId?: string;
+  name: string;
+  slug?: string;
+};
+
 export interface ConstructorContextResult {
   success: boolean;
   projectId?: string;
@@ -363,6 +370,7 @@ export interface ConstructorContextResult {
   assets?: any[];
   products?: any[];
   catalogProducts?: any[];
+  catalogCategories?: SecureCatalogCategory[];
   trustedLogos?: any[];
   customers?: any[];
   clients?: any[];
@@ -415,6 +423,7 @@ export const fetchConstructorContext = async ({
       assets: Array.isArray(result.assets) ? result.assets : [],
       products: Array.isArray(result.products) ? result.products : [],
       catalogProducts: Array.isArray(result.catalogProducts) ? result.catalogProducts : [],
+      catalogCategories: Array.isArray(result.catalogCategories) ? result.catalogCategories : [],
       trustedLogos: Array.isArray(result.trustedLogos) ? result.trustedLogos : [],
       customers: Array.isArray(result.customers) ? result.customers : [],
       clients: Array.isArray(result.clients) ? result.clients : [],

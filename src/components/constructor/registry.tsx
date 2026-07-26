@@ -760,12 +760,8 @@ export const WHATSAPP_ORDERS_MODULE: WebModule = {
       ]},
       { id: 'showPrices', label: 'Mostrar precios', type: 'boolean', defaultValue: true },
       { id: 'showDescriptions', label: 'Mostrar descripciones', type: 'boolean', defaultValue: true },
-      { id: 'showSearch', label: 'Mostrar buscador', type: 'boolean', defaultValue: true },
-      { id: 'showCategories', label: 'Mostrar categorías', type: 'boolean', defaultValue: false },
-      { id: 'buttonLabel', label: 'Texto del botón principal', type: 'text', defaultValue: 'Agregar al pedido' },
-      { id: 'emptyStateText', label: 'Texto sin productos', type: 'textarea', defaultValue: 'No hay productos disponibles en este momento.', rows: 3 },
-      { id: 'confirmationTitle', label: 'Título de confirmación', type: 'text', defaultValue: 'Confirma tu pedido' },
-      { id: 'confirmationDescription', label: 'Descripción de confirmación', type: 'textarea', defaultValue: 'Déjanos tu WhatsApp y te enviaremos la cotización.', rows: 3 },
+      { id: 'showSearch', label: 'Mostrar buscador', type: 'boolean', defaultValue: false },
+      { id: 'showCategories', label: 'Mostrar categorías', type: 'boolean', defaultValue: true },
       { id: 'customerNameRequired', label: 'Solicitar nombre como obligatorio', type: 'boolean', defaultValue: false },
       { id: 'customerEmailEnabled', label: 'Solicitar correo electrónico', type: 'boolean', defaultValue: true },
       { id: 'allowOrderNotes', label: 'Permitir notas para el pedido', type: 'boolean', defaultValue: false, description: 'Permite que el cliente agregue indicaciones generales al confirmar su pedido.' },
@@ -814,7 +810,7 @@ export const WHATSAPP_ORDERS_MODULE: WebModule = {
   elements: [
     {
       id: 'el_whatsapp_orders_header',
-      name: 'Encabezado',
+      name: 'Textos',
       type: 'text',
       groups: ['contenido'],
       settings: {
@@ -833,25 +829,18 @@ export const WHATSAPP_ORDERS_MODULE: WebModule = {
       id: 'el_whatsapp_orders_catalog',
       name: 'Catálogo',
       type: 'style',
-      groups: ['contenido', 'tipografia'],
+      groups: ['contenido'],
       settings: {
         contenido: [
           { id: 'selection_mode', label: 'Modo de selección', type: 'select', defaultValue: 'auto', options: [
             { label: 'Automático', value: 'auto' },
             { label: 'Manual', value: 'manual' }
           ]},
-          { id: 'select_products', label: 'Productos del catálogo', type: 'product_selection', defaultValue: null }
+          { id: 'select_products', label: 'Productos del catálogo', type: 'product_selection', defaultValue: null, showIf: { settingId: 'selection_mode', value: 'manual' } }
         ],
         estructura: [],
         estilo: [],
-        tipografia: [
-          { id: 'title_size_desktop', label: 'Tamaño (Desktop)', type: 'typography_size', defaultValue: 't3', allowedLevels: ['t3', 'p', 's'], subsection: 'Título' },
-          { id: 'title_size_tablet', label: 'Tamaño (Tablet)', type: 'typography_size', defaultValue: 't3', allowedLevels: ['t3', 'p', 's'], subsection: 'Título' },
-          { id: 'title_size_mobile', label: 'Tamaño (Móvil)', type: 'typography_size', defaultValue: 'p', allowedLevels: ['t3', 'p', 's'], subsection: 'Título' },
-          { id: 'description_size_desktop', label: 'Tamaño (Desktop)', type: 'typography_size', defaultValue: 's', allowedLevels: ['p', 's'], subsection: 'Descripción' },
-          { id: 'description_size_tablet', label: 'Tamaño (Tablet)', type: 'typography_size', defaultValue: 's', allowedLevels: ['p', 's'], subsection: 'Descripción' },
-          { id: 'description_size_mobile', label: 'Tamaño (Móvil)', type: 'typography_size', defaultValue: 's', allowedLevels: ['p', 's'], subsection: 'Descripción' }
-        ],
+        tipografia: [],
         multimedia: [],
         interaccion: []
       }

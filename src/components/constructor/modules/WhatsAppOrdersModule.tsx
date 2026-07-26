@@ -4,6 +4,8 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronRight,
+  LayoutGrid,
+  List,
   Loader2,
   MessageCircle,
   Minus,
@@ -19,7 +21,26 @@ import {
   PublicWhatsAppOrderCode,
   PublicWhatsAppOrderQuoteResponse
 } from '../../../services/publicWhatsAppOrders';
-import { resolveProductsForSelection } from '../../../utils/productsSelection';
+import {
+  hasWhatsAppOrdersCatalogConfig,
+  isPersistedWhatsAppOrdersCatalogConfig,
+  normalizeWhatsAppOrdersCatalogConfig,
+  readWhatsAppOrdersCatalogConfig,
+  resolveEffectiveWhatsAppOrdersCatalogView,
+  resolveWhatsAppOrdersPreviewCatalogView,
+  type WhatsAppOrdersCatalogView
+} from './whatsappOrdersCatalogConfig';
+import {
+  buildWhatsAppOrdersViewPreferenceKey,
+  readWhatsAppOrdersViewPreference,
+  writeWhatsAppOrdersViewPreference
+} from './whatsappOrdersViewPreference';
+import {
+  groupProductsByCategory,
+  resolveWhatsAppOrdersProductsForSelection,
+  resolveWhatsAppOrdersCatalog
+} from './whatsappOrdersCatalogOrganizer';
+import type { SecureCatalogCategory } from '../../../services/secureLaunchSession';
 import { resolveProductPrimaryImageUrl } from '../../../utils/productImage';
 import { fetchHostedPublicCatalogItem } from '../../../services/publicCatalogItems';
 import { normalizePublicCatalogSlug } from '../../../utils/publicCatalogItemRoute';
@@ -38,7 +59,7 @@ import {
   resolveInitialPhoneCountry,
   type StructuredPhone
 } from '../../../utils/phoneCountry';
-import { TYPOGRAPHY_SCALE } from '../../../constants/typography';
+import { FONT_WEIGHTS, TYPOGRAPHY_SCALE } from '../../../constants/typography';
 import {
   classifyWebOrderResult,
   normalizeWebOrderResponse
@@ -502,7 +523,10 @@ export const WhatsAppOrdersModule: React.FC<{
   moduleId: string;
   settingsValues: Record<string, any>;
   products?: Product[];
+  catalogConfig?: unknown;
+  catalogCategories?: SecureCatalogCategory[];
   renderMode?: ModuleRenderMode;
+  siteId?: string | null;
   publishedSiteId?: string | null;
   pageId?: string | null;
   projectId?: string | null;
@@ -514,7 +538,10 @@ export const WhatsAppOrdersModule: React.FC<{
   moduleId,
   settingsValues,
   products = [],
+  catalogConfig: publishedCatalogConfig,
+  catalogCategories = [],
   renderMode = 'preview',
+  siteId = null,
   publishedSiteId = null,
   pageId = null,
   projectId = null,
@@ -548,10 +575,8 @@ export const WhatsAppOrdersModule: React.FC<{
   const subtitle = getVal(`${moduleId}_el_whatsapp_orders_header`, 'subtitle', 'Muestra tu catálogo y recibe pedidos confirmados desde tu web.');
   const mode = normalizeString(getVal(null, 'mode', 'orders'), 'orders') === 'visual' ? 'visual' : 'orders';
   const selectionMode = normalizeString(getVal(`${moduleId}_el_whatsapp_orders_catalog`, 'selection_mode', 'auto'), 'auto').toLowerCase();
-  const selectedProductIds = Array.isArray(getVal(`${moduleId}_el_whatsapp_orders_catalog`, 'select_products', []))
-    ? getVal(`${moduleId}_el_whatsapp_orders_catalog`, 'select_products', [])
-    : [];
-  const layout = normalizeString(getVal(null, 'layout', 'grid'), 'grid') === 'list' ? 'list' : 'grid';
+  const rawSelectedProductIds = settingsValues[`${moduleId}_el_whatsapp_orders_catalog_select_products`];
+  const legacyLayout = normalizeString(getVal(null, 'layout', 'grid'), 'grid') === 'list' ? 'list' : 'grid';
   const columns = Math.max(1, Math.min(4, Number(getVal(null, 'columns', 3)) || 3));
   const gap = Math.max(8, Math.min(48, Number(getVal(null, 'gap', 24)) || 24));
   const paddingY = Math.max(24, Math.min(160, Number(getVal(null, 'padding_y', 56)) || 56));
@@ -577,22 +602,66 @@ export const WhatsAppOrdersModule: React.FC<{
     [products]
   );
 
+  const hasExplicitPublishedCatalogConfig = isPersistedWhatsAppOrdersCatalogConfig(publishedCatalogConfig);
+  const hasSettingsCatalogConfig = hasWhatsAppOrdersCatalogConfig(settingsValues, moduleId);
+  const hasPersistedCatalogConfig = hasExplicitPublishedCatalogConfig || hasSettingsCatalogConfig;
+
   const filteredBySelection = React.useMemo(() => {
-    if (selectionMode !== 'manual') return normalizedProducts;
-    return resolveProductsForSelection({
+    return resolveWhatsAppOrdersProductsForSelection({
       selectionMode,
-      selectedIds: selectedProductIds,
-      availableProducts: normalizedProducts
+      selectedItemIds: rawSelectedProductIds,
+      availableProducts: normalizedProducts,
+      allowLegacyEmptyFallback: !hasPersistedCatalogConfig
     });
-  }, [normalizedProducts, selectedProductIds, selectionMode]);
+  }, [hasPersistedCatalogConfig, normalizedProducts, rawSelectedProductIds, selectionMode]);
+
+  const catalogConfig = React.useMemo(
+    () => hasExplicitPublishedCatalogConfig
+      ? normalizeWhatsAppOrdersCatalogConfig(publishedCatalogConfig, { layout: legacyLayout })
+      : readWhatsAppOrdersCatalogConfig(settingsValues, moduleId, { layout: legacyLayout }),
+    [hasExplicitPublishedCatalogConfig, legacyLayout, moduleId, publishedCatalogConfig, settingsValues]
+  );
+  const catalogScope = catalogConfig.scope;
+  const defaultCatalogView = React.useMemo(
+    () => hasExplicitPublishedCatalogConfig
+      ? catalogConfig.display.defaultView
+      : resolveEffectiveWhatsAppOrdersCatalogView(settingsValues, moduleId, { layout: legacyLayout }),
+    [catalogConfig.display.defaultView, hasExplicitPublishedCatalogConfig, legacyLayout, moduleId, settingsValues]
+  );
+
+  // Keep category groups until render time. Flattening here used to discard the
+  // visual structure needed by both grid and list catalog presentations.
+  const catalogGroups = React.useMemo(() => {
+    // Legacy instances read defaults but retain their existing input order until
+    // a user action explicitly writes the V2 key.
+    const resolvedGroups = hasPersistedCatalogConfig
+      ? resolveWhatsAppOrdersCatalog({
+          categories: catalogCategories,
+          products: filteredBySelection,
+          config: catalogConfig
+        }).groups
+      : groupProductsByCategory(catalogCategories, filteredBySelection);
+
+    const productsById = new Map(filteredBySelection.map((product) => [String(product.id), product]));
+    return resolvedGroups.map((group) => ({
+      category: group.category,
+      products: group.products.flatMap((product) => {
+        const resolvedProduct = productsById.get(product.id);
+        return resolvedProduct ? [resolvedProduct] : [];
+      })
+    }));
+  }, [catalogCategories, catalogConfig, filteredBySelection, hasPersistedCatalogConfig]);
 
   const categories = React.useMemo(() => {
-    const allCategories = Array.from(new Set(filteredBySelection.map((product) => normalizeString(product.category, 'General'))));
+    const allCategories = catalogGroups
+      .filter((group) => group.products.length > 0)
+      .map((group) => group.category.name);
     return allCategories.filter(Boolean);
-  }, [filteredBySelection]);
+  }, [catalogGroups]);
 
   const [search, setSearch] = React.useState('');
   const [activeCategory, setActiveCategory] = React.useState<string>('Todos');
+  const [previewCatalogView, setPreviewCatalogView] = React.useState<WhatsAppOrdersCatalogView>(defaultCatalogView);
   const [selectedProduct, setSelectedProduct] = React.useState<Product | null>(null);
   const [isResolvingProductDetail, setIsResolvingProductDetail] = React.useState(false);
   const [productDetailNotice, setProductDetailNotice] = React.useState<string | null>(null);
@@ -619,6 +688,25 @@ export const WhatsAppOrdersModule: React.FC<{
   const optionGroupRefs = React.useRef(new Map<string, HTMLFieldSetElement>());
   const catalogContainerRef = React.useRef<HTMLElement | null>(null);
   const [catalogWidth, setCatalogWidth] = React.useState(0);
+  const allowPreviewViewSwitch = hasPersistedCatalogConfig && catalogConfig.visitorView.allowViewSwitch;
+  const isPublishedCatalogRuntime = renderMode === 'published';
+  const viewPreferenceKey = React.useMemo(
+    () => isPublishedCatalogRuntime
+      ? buildWhatsAppOrdersViewPreferenceKey({
+          siteId,
+          publishedSiteId,
+          pageId,
+          host: typeof window === 'undefined' ? null : window.location.host,
+          moduleId
+        })
+      : null,
+    [isPublishedCatalogRuntime, moduleId, pageId, publishedSiteId, siteId]
+  );
+  const layout = resolveWhatsAppOrdersPreviewCatalogView(
+    defaultCatalogView,
+    allowPreviewViewSwitch,
+    previewCatalogView
+  );
   const planBlocked = Boolean(availability?.known && !availability.allowed);
   const previewOrdersBlocked = renderMode === 'preview' && mode === 'orders' && planBlocked;
   const ordersInteractionEnabled = mode === 'orders' && !previewOrdersBlocked;
@@ -635,6 +723,31 @@ export const WhatsAppOrdersModule: React.FC<{
       || country.callingCode.includes(query.replace(/\s/g, ''))
     ));
   }, [countrySearch]);
+
+  React.useEffect(() => {
+    if (!allowPreviewViewSwitch) {
+      setPreviewCatalogView(defaultCatalogView);
+      return;
+    }
+
+    if (isPublishedCatalogRuntime) {
+      setPreviewCatalogView(readWhatsAppOrdersViewPreference(viewPreferenceKey) || defaultCatalogView);
+      return;
+    }
+
+    setPreviewCatalogView((currentView) => (
+      currentView === defaultCatalogView
+        ? currentView
+        : defaultCatalogView
+    ));
+  }, [allowPreviewViewSwitch, defaultCatalogView, isPublishedCatalogRuntime, viewPreferenceKey]);
+
+  const selectCatalogView = React.useCallback((view: WhatsAppOrdersCatalogView) => {
+    setPreviewCatalogView(view);
+    if (isPublishedCatalogRuntime && allowPreviewViewSwitch) {
+      writeWhatsAppOrdersViewPreference(viewPreferenceKey, view);
+    }
+  }, [allowPreviewViewSwitch, isPublishedCatalogRuntime, viewPreferenceKey]);
 
   const currentOptionGroups = React.useMemo(
     () => (selectedProduct ? extractOptionGroups(selectedProduct) : []),
@@ -765,16 +878,24 @@ export const WhatsAppOrdersModule: React.FC<{
     setSubmitError(null);
   }, [previewOrdersBlocked]);
 
-  const visibleProducts = React.useMemo(() => {
+  const visibleCatalogGroups = React.useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
-    return filteredBySelection.filter((product) => {
-      const matchesCategory = activeCategory === 'Todos' || normalizeString(product.category, 'General') === activeCategory;
-      const matchesSearch = !normalizedSearch
-        || product.name.toLowerCase().includes(normalizedSearch)
-        || normalizeString(product.description, '').toLowerCase().includes(normalizedSearch);
-      return matchesCategory && matchesSearch;
-    });
-  }, [activeCategory, filteredBySelection, search]);
+    return catalogGroups
+      .filter((group) => catalogScope.mode === 'selected' || activeCategory === 'Todos' || group.category.name === activeCategory)
+      .map((group) => ({
+        category: group.category,
+        products: group.products.filter((product) => !normalizedSearch
+          || product.name.toLowerCase().includes(normalizedSearch)
+          || normalizeString(product.description, '').toLowerCase().includes(normalizedSearch))
+      }))
+      // A selected, empty category remains visible until a search is active.
+      .filter((group) => !normalizedSearch || group.products.length > 0);
+  }, [activeCategory, catalogGroups, catalogScope.mode, search]);
+  const visibleProducts = React.useMemo(
+    () => visibleCatalogGroups.flatMap((group) => group.products),
+    [visibleCatalogGroups]
+  );
+  const showPreviewViewSwitch = allowPreviewViewSwitch;
 
   const cartCount = React.useMemo(
     () => cartItems.reduce((total, item) => total + item.quantity, 0),
@@ -1100,8 +1221,38 @@ export const WhatsAppOrdersModule: React.FC<{
       ? ({ fontSize: `${size.fontSize}px`, lineHeight: size.lineHeight } as React.CSSProperties)
       : undefined;
   }, [catalogElementId, catalogViewport, settingsValues]);
-  const productTitleTypographyStyle = resolveCatalogTypographyStyle('title_size');
-  const productDescriptionTypographyStyle = resolveCatalogTypographyStyle('description_size');
+  const resolveTypographyStyle = React.useCallback((prefix: string, fallbackSize: keyof typeof TYPOGRAPHY_SCALE, fallbackWeight: keyof typeof FONT_WEIGHTS, fallbackFamily = 'inherit') => {
+    const sizeToken = settingsValues[`${prefix}_size`];
+    const weightToken = settingsValues[`${prefix}_weight`];
+    const family = settingsValues[`${prefix}_font_family`];
+    const scale = TYPOGRAPHY_SCALE[(typeof sizeToken === 'string' ? sizeToken : fallbackSize) as keyof typeof TYPOGRAPHY_SCALE] || TYPOGRAPHY_SCALE[fallbackSize];
+    const weight = FONT_WEIGHTS[(typeof weightToken === 'string' ? weightToken : fallbackWeight) as keyof typeof FONT_WEIGHTS] || FONT_WEIGHTS[fallbackWeight];
+    return {
+      fontSize: `${scale.fontSize}px`,
+      lineHeight: scale.lineHeight,
+      fontWeight: weight.value,
+      ...(typeof family === 'string' && family !== 'inherit' ? { fontFamily: family } : fallbackFamily !== 'inherit' ? { fontFamily: fallbackFamily } : {})
+    } as React.CSSProperties;
+  }, [settingsValues]);
+  const hasProductTitleSizeOverride = settingsValues[`${catalogElementId}_title_size`] !== undefined;
+  const hasProductDescriptionSizeOverride = settingsValues[`${catalogElementId}_description_size`] !== undefined;
+  const productTitleBaseTypographyStyle = resolveTypographyStyle(`${catalogElementId}_title`, 't3', 'black');
+  const productDescriptionBaseTypographyStyle = resolveTypographyStyle(`${catalogElementId}_description`, 's', 'normal');
+  const { fontSize: productTitleFontSize, lineHeight: productTitleLineHeight, ...productTitleNonSizeStyle } = productTitleBaseTypographyStyle;
+  const { fontSize: productDescriptionFontSize, lineHeight: productDescriptionLineHeight, ...productDescriptionNonSizeStyle } = productDescriptionBaseTypographyStyle;
+  const productTitleTypographyStyle = {
+    ...(hasProductTitleSizeOverride ? productTitleBaseTypographyStyle : { ...resolveCatalogTypographyStyle('title_size'), ...productTitleNonSizeStyle })
+  };
+  const productDescriptionTypographyStyle = {
+    ...(hasProductDescriptionSizeOverride ? productDescriptionBaseTypographyStyle : { ...resolveCatalogTypographyStyle('description_size'), ...productDescriptionNonSizeStyle })
+  };
+  const productPriceTypographyStyle = resolveTypographyStyle(`${catalogElementId}_price`, 'p', 'black');
+  const categoryTypographyStyle = resolveTypographyStyle(`${catalogElementId}_category`, 't3', 'semibold');
+  const headerTitleTypographyStyle = resolveTypographyStyle(`${moduleId}_el_whatsapp_orders_header_title`, 't2', 'black');
+  const headerSubtitleTypographyStyle = resolveTypographyStyle(`${moduleId}_el_whatsapp_orders_header_subtitle`, 'p', 'normal');
+  const buttonTypographyStyle = resolveTypographyStyle(`${moduleId}_global_button`, 's', 'semibold');
+  const confirmationTitleTypographyStyle = resolveTypographyStyle(`${moduleId}_global_confirmation`, 't3', 'black');
+  const confirmationDescriptionTypographyStyle = resolveTypographyStyle(`${moduleId}_global_confirmation_description`, 'p', 'normal');
 
   const gridStyle = React.useMemo<React.CSSProperties>(() => {
     if (layout === 'list') {
@@ -1164,14 +1315,15 @@ export const WhatsAppOrdersModule: React.FC<{
       )}
 
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex min-w-0 flex-col gap-3">
           <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-[0.2em] text-[var(--primary-color,#16a34a)]">
             <MessageCircle size={16} />
             <span>{mode === 'orders' ? 'Pedidos por WhatsApp' : 'Catálogo visual'}</span>
           </div>
-          <h2 className="text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">{title}</h2>
+          <h2 className="tracking-tight text-slate-950" style={headerTitleTypographyStyle}>{title}</h2>
           {subtitle ? (
-            <p className="max-w-3xl text-sm leading-6 text-slate-600 sm:text-base">{subtitle}</p>
+            <p className="max-w-3xl text-slate-600" style={headerSubtitleTypographyStyle}>{subtitle}</p>
           ) : null}
           {previewOrdersBlocked ? (
             <div className="inline-flex w-fit items-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-800">
@@ -1179,9 +1331,23 @@ export const WhatsAppOrdersModule: React.FC<{
               <span>{availability?.message || 'Disponible en planes superiores.'}</span>
             </div>
           ) : null}
+          </div>
+          {showPreviewViewSwitch && (
+            <div className="flex shrink-0 flex-wrap items-center gap-2" role="group" aria-label="Vista del catálogo">
+              <span className="mr-1 text-xs font-semibold text-slate-500">Vista</span>
+              <button type="button" onClick={() => selectCatalogView('grid')} aria-pressed={layout === 'grid'} className={`inline-flex min-h-9 items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary-color,#16a34a)]/40 ${layout === 'grid' ? 'border-[var(--primary-color,#16a34a)] bg-[var(--primary-color,#16a34a)] text-white' : 'border-black/10 bg-white text-slate-600 hover:bg-slate-50'}`}>
+                <LayoutGrid size={15} />
+                Cuadrícula
+              </button>
+              <button type="button" onClick={() => selectCatalogView('list')} aria-pressed={layout === 'list'} className={`inline-flex min-h-9 items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary-color,#16a34a)]/40 ${layout === 'list' ? 'border-[var(--primary-color,#16a34a)] bg-[var(--primary-color,#16a34a)] text-white' : 'border-black/10 bg-white text-slate-600 hover:bg-slate-50'}`}>
+                <List size={15} />
+                Lista
+              </button>
+            </div>
+          )}
         </div>
 
-        {(showSearch || (showCategories && categories.length > 0)) && (
+        {(showSearch || (showCategories && catalogScope.mode === 'all' && categories.length > 0)) && (
           <div className="flex flex-col gap-3 rounded-3xl border border-black/5 bg-white/80 p-4 shadow-sm backdrop-blur">
             {showSearch && (
               <label className="flex items-center gap-3 rounded-2xl border border-black/10 bg-white px-3 py-3">
@@ -1195,7 +1361,7 @@ export const WhatsAppOrdersModule: React.FC<{
               </label>
             )}
 
-            {showCategories && categories.length > 0 && (
+            {showCategories && catalogScope.mode === 'all' && categories.length > 0 && (
               <div className="flex flex-wrap gap-2">
                 {['Todos', ...categories].map((category) => (
                   <button
@@ -1213,16 +1379,26 @@ export const WhatsAppOrdersModule: React.FC<{
                 ))}
               </div>
             )}
+
           </div>
         )}
 
-        {visibleProducts.length === 0 ? (
+        {visibleCatalogGroups.length === 0 ? (
           <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-50 px-6 py-12 text-center text-sm text-slate-500">
             {emptyStateText}
           </div>
         ) : (
-          <div className="grid" style={gridStyle}>
-            {visibleProducts.map((product) => {
+          <div className="space-y-8">
+            {visibleCatalogGroups.map((group) => (
+              <section key={group.category.id} className="space-y-3">
+                <div className="flex items-center gap-3 border-b border-slate-200 pb-2">
+                  <h3 className="uppercase tracking-[0.14em] text-slate-600" style={categoryTypographyStyle}>{group.category.name}</h3>
+                </div>
+                {group.products.length === 0 ? (
+                  <p className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-sm text-slate-500">Sin productos</p>
+                ) : (
+                  <div className="grid" style={gridStyle}>
+                    {group.products.map((product) => {
               const isUnavailable = normalizeString(product.status, '').toLowerCase() === 'inactive';
               return (
                 <article
@@ -1269,7 +1445,7 @@ export const WhatsAppOrdersModule: React.FC<{
                           ) : null}
                         </div>
                         {showPrices && product.price !== undefined ? (
-                          <span className="text-base font-black text-[var(--primary-color,#16a34a)]">
+                          <span className="text-[var(--primary-color,#16a34a)]" style={productPriceTypographyStyle}>
                             {formatPrice(product.price)}
                           </span>
                         ) : null}
@@ -1296,7 +1472,11 @@ export const WhatsAppOrdersModule: React.FC<{
                   </button>
                 </article>
               );
-            })}
+                    })}
+                  </div>
+                )}
+              </section>
+            ))}
           </div>
         )}
       </div>
@@ -1526,7 +1706,8 @@ export const WhatsAppOrdersModule: React.FC<{
                     <button
                       type="button"
                       onClick={addCurrentProductToCart}
-                      className="inline-flex items-center justify-center rounded-2xl bg-[var(--primary-color,#16a34a)] px-4 py-3 text-sm font-black text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="inline-flex items-center justify-center rounded-2xl bg-[var(--primary-color,#16a34a)] px-4 py-3 text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                      style={buttonTypographyStyle}
                     >
                       {buttonLabel}
                     </button>
@@ -1700,8 +1881,8 @@ export const WhatsAppOrdersModule: React.FC<{
               {checkoutOpen && (
                 <div className="mt-5 space-y-4 rounded-[28px] border border-black/5 bg-white p-4 shadow-sm">
                   <div className="space-y-1">
-                    <h4 className="text-base font-black text-slate-950">{confirmationTitle}</h4>
-                    <p className="text-sm leading-6 text-slate-500">{confirmationDescription}</p>
+                    <h4 className="text-slate-950" style={confirmationTitleTypographyStyle}>{confirmationTitle}</h4>
+                    <p className="text-slate-500" style={confirmationDescriptionTypographyStyle}>{confirmationDescription}</p>
                   </div>
 
                   <label className="space-y-1.5">
@@ -1864,7 +2045,8 @@ export const WhatsAppOrdersModule: React.FC<{
                   type="button"
                   onClick={() => setCheckoutOpen((current) => !current)}
                   disabled={cartItems.length === 0}
-                  className="rounded-2xl border border-black/10 px-4 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded-2xl border border-black/10 px-4 py-3 text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  style={buttonTypographyStyle}
                 >
                   {checkoutOpen ? 'Seguir comprando' : 'Confirmar pedido'}
                 </button>
@@ -1872,7 +2054,8 @@ export const WhatsAppOrdersModule: React.FC<{
                   type="button"
                   onClick={handleSubmitOrder}
                   disabled={cartItems.length === 0 || !checkoutOpen || submitState === 'loading' || submitState === 'verifying'}
-                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[var(--primary-color,#16a34a)] px-4 py-3 text-sm font-black text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[var(--primary-color,#16a34a)] px-4 py-3 text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                  style={buttonTypographyStyle}
                 >
                   {submitState === 'loading' || submitState === 'verifying' ? <Loader2 size={16} className="animate-spin" /> : <MessageCircle size={16} />}
                   {submitState === 'verifying' ? 'Verificando pedido...' : submitState === 'loading' ? 'Enviando pedido...' : 'Confirmar pedido'}

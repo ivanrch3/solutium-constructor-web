@@ -6,7 +6,7 @@ import { configService } from './services/configService';
 import { getSupabase, getSupabaseConfig, initSupabase } from './services/supabaseClient';
 import { captureAuthToken } from './services/authTokenProvider';
 import { ensureActiveSupabaseSession } from './services/supabaseSessionService';
-import { clearLaunchTokenFromUrl, consumeSecureLaunchSession, fetchConstructorContext, getAppMadreBaseUrl, getLaunchTokenFromUrl, getStoredLaunchAccessSession, getStoredSecureLaunchPayload, type SecureLaunchSessionPayload } from './services/secureLaunchSession';
+import { clearLaunchTokenFromUrl, consumeSecureLaunchSession, fetchConstructorContext, getAppMadreBaseUrl, getLaunchTokenFromUrl, getStoredLaunchAccessSession, getStoredSecureLaunchPayload, type SecureCatalogCategory, type SecureLaunchSessionPayload } from './services/secureLaunchSession';
 import { getProfile, getProject, getWebBuilderSites, getPublishedSites } from './services/dataService';
 import { pruneStoredLocalDraftSnapshots } from './services/localDraftSnapshotService';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
@@ -473,6 +473,30 @@ const normalizeSecureProducts = (...sources: any[][]) => {
   return Array.from(deduped.values());
 };
 
+const normalizeSecureCatalogCategories = (rawCategories: unknown): SecureCatalogCategory[] => {
+  if (!Array.isArray(rawCategories)) return [];
+
+  const deduped = new Map<string, SecureCatalogCategory>();
+  rawCategories.forEach((rawCategory) => {
+    if (!rawCategory || typeof rawCategory !== 'object') return;
+    const category = rawCategory as Record<string, unknown>;
+    const id = category.id || category.categoryId || category.category_id || category.uuid;
+    const name = category.name || category.title || category.categoryName || category.category_name;
+    if (typeof id !== 'string' || !id.trim() || typeof name !== 'string' || !name.trim()) return;
+
+    const projectId = category.projectId || category.project_id;
+    const slug = category.slug || category.categorySlug || category.category_slug;
+    deduped.set(id.trim(), {
+      id: id.trim(),
+      ...(typeof projectId === 'string' && projectId.trim() ? { projectId: projectId.trim() } : {}),
+      name: name.trim(),
+      ...(typeof slug === 'string' && slug.trim() ? { slug: slug.trim() } : {})
+    });
+  });
+
+  return Array.from(deduped.values());
+};
+
 const normalizeSecureCustomerLogo = (rawLogo: any): Customer | null => {
   if (!rawLogo || typeof rawLogo !== 'object') return null;
   const id = rawLogo.id || rawLogo.customerId || rawLogo.customer_id || rawLogo.company_id || rawLogo.businessId || rawLogo.business_id;
@@ -781,6 +805,7 @@ const AppContent: React.FC = () => {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [pages, setPages] = useState<(WebBuilderSite | PublishedSite)[]>([]);
   const [secureCatalogProducts, setSecureCatalogProducts] = useState<Product[]>([]);
+  const [secureCatalogCategories, setSecureCatalogCategories] = useState<SecureCatalogCategory[]>([]);
   const [secureCatalogCustomers, setSecureCatalogCustomers] = useState<Customer[]>([]);
   const [secureTrustedLogos, setSecureTrustedLogos] = useState<TrustedCompanyLogo[]>([]);
   const [hasSecureConstructorCatalogContext, setHasSecureConstructorCatalogContext] = useState(false);
@@ -1270,6 +1295,7 @@ const AppContent: React.FC = () => {
 
     if (!usingSecureLaunch && hasSecureConstructorCatalogContext) {
       setSecureCatalogProducts([]);
+      setSecureCatalogCategories([]);
       setSecureCatalogCustomers([]);
       setSecureTrustedLogos([]);
       setHasSecureConstructorCatalogContext(false);
@@ -1332,6 +1358,7 @@ const AppContent: React.FC = () => {
         contextResult.products || [],
         contextResult.catalogProducts || []
       );
+      const contextCategories = normalizeSecureCatalogCategories(contextResult.catalogCategories);
       const contextLogos = normalizeSecureLogoSources(
         contextResult.trustedLogos || [],
         contextResult.customers || [],
@@ -1393,6 +1420,7 @@ const AppContent: React.FC = () => {
 
       setAssets(contextAssets as Asset[]);
       setSecureCatalogProducts(contextProducts);
+      setSecureCatalogCategories(contextCategories);
       setSecureCatalogCustomers(contextLogos.customers);
       setSecureTrustedLogos(contextLogos.trustedLogos);
       setHasSecureConstructorCatalogContext(true);
@@ -2467,6 +2495,7 @@ const AppContent: React.FC = () => {
             initialPage={selectedPage}
             creationMethod={selectedMethod}
             secureProducts={secureCatalogProducts}
+            secureCatalogCategories={secureCatalogCategories}
             secureCustomers={secureCatalogCustomers}
             secureTrustedCompanyLogos={secureTrustedLogos}
             useSecureCatalogContext={hasSecureConstructorCatalogContext}

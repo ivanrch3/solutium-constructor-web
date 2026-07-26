@@ -23,8 +23,9 @@ import {
   Plus
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { EditorState, WebModule, ModuleElement, SettingGroupType } from '../../types/constructor';
+import { EditorState, WebModule, ModuleElement, SettingDefinition, SettingGroupType } from '../../types/constructor';
 import { Product, Customer, TrustedCompanyLogo } from '../../types/schema';
+import type { SecureCatalogCategory } from '../../services/secureLaunchSession';
 import { useEditorStore } from '../../store/editorStore';
 import { MODULE_INFO, GROUP_LABELS, BENTO_MODULE } from './registry';
 import { SettingControl } from './SettingControl';
@@ -53,6 +54,26 @@ import {
   CompositionElementType,
   CompositionSectionSchema
 } from '../../types/compositionSchema';
+import {
+  WHATSAPP_ORDERS_CATALOG_CONFIG_SETTING,
+  getWhatsAppOrdersCatalogConfigSettingKey,
+  readWhatsAppOrdersCatalogConfig,
+  resolveEffectiveWhatsAppOrdersCatalogView,
+  setWhatsAppOrdersCatalogAllowViewSwitch,
+  setWhatsAppOrdersCatalogDefaultView,
+  setWhatsAppOrdersCatalogScope,
+  writeWhatsAppOrdersCatalogConfig
+} from './modules/whatsappOrdersCatalogConfig';
+import {
+  normalizeCatalogCategories,
+  createWhatsAppOrdersCatalogCustomOrderFromAlphabetical,
+  getEffectiveSelectedItemIds,
+  getEffectiveVisibleItemIds,
+  initializeSelectedItemsFromVisibleCatalog,
+  reconcileSelectedItemsWithVisibleCatalog,
+  resolveWhatsAppOrdersCatalog
+} from './modules/whatsappOrdersCatalogOrganizer';
+import { WhatsAppOrdersCatalogOrganizerControl } from './modules/WhatsAppOrdersCatalogOrganizerControl';
 
 const COMPOSITION_ADDABLE_TYPES: CompositionElementType[] = [
   'heading',
@@ -87,6 +108,526 @@ const BENTO_MOBILE_COLUMNS = 4;
 const BENTO_BASE_VISIBLE_ROWS = 7;
 const BENTO_MAX_EDITABLE_ROWS = 240;
 const DEFAULT_SETTING_GROUP_ORDER = Object.keys(GROUP_LABELS) as SettingGroupType[];
+
+type WhatsAppOrdersCatalogScopeControlProps = {
+  moduleId: string;
+  settingsValues: Record<string, unknown>;
+  catalogCategories: SecureCatalogCategory[];
+  products: Product[];
+  onSettingChange: (elementId: string, settingId: string, value: unknown) => void;
+};
+
+type WhatsAppOrdersCatalogViewControlProps = Pick<
+  WhatsAppOrdersCatalogScopeControlProps,
+  'moduleId' | 'settingsValues' | 'onSettingChange'
+>;
+
+type WhatsAppOrdersTextControlProps = Pick<
+  WhatsAppOrdersCatalogScopeControlProps,
+  'moduleId' | 'settingsValues' | 'onSettingChange'
+> & {
+  projectId: string | null;
+  products?: Product[];
+  projectColors?: string[];
+};
+
+const WHATSAPP_ORDERS_FONT_OPTIONS = [
+  { label: 'Heredada del tema', value: 'inherit' },
+  { label: 'Sans', value: 'sans-serif' },
+  { label: 'Serif', value: 'serif' },
+  { label: 'Monoespaciada', value: 'monospace' }
+];
+
+const textSetting = (id: string, label: string, type: SettingDefinition['type'], defaultValue: unknown, allowedLevels?: string[]): SettingDefinition => ({
+  id,
+  label,
+  type,
+  defaultValue,
+  ...(type === 'select' ? { options: WHATSAPP_ORDERS_FONT_OPTIONS } : {}),
+  ...(allowedLevels ? { allowedLevels } : {})
+});
+
+const WhatsAppOrdersTextControl: React.FC<WhatsAppOrdersTextControlProps> = ({
+  moduleId,
+  settingsValues,
+  onSettingChange,
+  projectId,
+  products,
+  projectColors
+}) => {
+  const [openSections, setOpenSections] = React.useState<Set<string>>(() => new Set());
+  const headerPrefix = `${moduleId}_el_whatsapp_orders_header`;
+  const catalogPrefix = `${moduleId}_el_whatsapp_orders_catalog`;
+  const globalPrefix = `${moduleId}_global`;
+  const sections: Array<{ id: string; label: string; prefix: string; settings: SettingDefinition[] }> = [
+    {
+      id: 'header', label: 'Encabezado', prefix: headerPrefix, settings: [
+        textSetting('title', 'Título', 'text', 'Pedidos por WhatsApp'),
+        textSetting('subtitle', 'Descripción', 'textarea', 'Muestra tu catálogo y recibe pedidos confirmados desde tu web.'),
+        textSetting('title_font_family', 'Familia del título', 'select', 'inherit'),
+        textSetting('title_size', 'Tamaño del título', 'typography_size', 't2', ['t1', 't2', 't3']),
+        textSetting('title_weight', 'Peso del título', 'font_weight', 'black'),
+        textSetting('subtitle_font_family', 'Familia de la descripción', 'select', 'inherit'),
+        textSetting('subtitle_size', 'Tamaño de la descripción', 'typography_size', 'p', ['t3', 'p', 's']),
+        textSetting('subtitle_weight', 'Peso de la descripción', 'font_weight', 'normal')
+      ]
+    },
+    {
+      id: 'items', label: 'Ítems', prefix: catalogPrefix, settings: [
+        textSetting('title_font_family', 'Familia del título', 'select', 'inherit'),
+        textSetting('title_size', 'Tamaño del título', 'typography_size', 't3', ['t1', 't2', 't3']),
+        textSetting('title_weight', 'Peso del título', 'font_weight', 'black'),
+        textSetting('description_font_family', 'Familia de la descripción', 'select', 'inherit'),
+        textSetting('description_size', 'Tamaño de la descripción', 'typography_size', 's', ['t3', 'p', 's']),
+        textSetting('description_weight', 'Peso de la descripción', 'font_weight', 'normal'),
+        textSetting('price_font_family', 'Familia del precio', 'select', 'inherit'),
+        textSetting('price_size', 'Tamaño del precio', 'typography_size', 'p', ['t3', 'p', 's']),
+        textSetting('price_weight', 'Peso del precio', 'font_weight', 'black')
+      ]
+    },
+    {
+      id: 'categories', label: 'Categorías', prefix: catalogPrefix, settings: [
+        textSetting('category_font_family', 'Familia del encabezado', 'select', 'inherit'),
+        textSetting('category_size', 'Tamaño del encabezado', 'typography_size', 't3', ['t1', 't2', 't3']),
+        textSetting('category_weight', 'Peso del encabezado', 'font_weight', 'semibold')
+      ]
+    },
+    {
+      id: 'cta', label: 'CTA', prefix: globalPrefix, settings: [
+        textSetting('buttonLabel', 'Texto del botón principal', 'text', 'Agregar al pedido'),
+        textSetting('emptyStateText', 'Mensaje sin productos', 'textarea', 'No hay productos disponibles en este momento.'),
+        textSetting('confirmationTitle', 'Título de confirmación', 'text', 'Confirma tu pedido'),
+        textSetting('confirmationDescription', 'Descripción de confirmación', 'textarea', 'Completa tus datos para confirmar y recibir la información del pedido.'),
+        textSetting('button_font_family', 'Familia de botones', 'select', 'inherit'),
+        textSetting('button_size', 'Tamaño de botones', 'typography_size', 's', ['t3', 'p', 's']),
+        textSetting('button_weight', 'Peso de botones', 'font_weight', 'semibold'),
+        textSetting('confirmation_font_family', 'Familia de confirmación', 'select', 'inherit'),
+        textSetting('confirmation_size', 'Tamaño del título de confirmación', 'typography_size', 't3', ['t3', 'p', 's']),
+        textSetting('confirmation_weight', 'Peso del título de confirmación', 'font_weight', 'black'),
+        textSetting('confirmation_description_font_family', 'Familia de la descripción de confirmación', 'select', 'inherit'),
+        textSetting('confirmation_description_size', 'Tamaño de la descripción de confirmación', 'typography_size', 'p', ['t3', 'p', 's']),
+        textSetting('confirmation_description_weight', 'Peso de la descripción de confirmación', 'font_weight', 'normal')
+      ]
+    }
+  ];
+
+  return <div className="space-y-2">
+    {sections.map((section) => {
+      const isOpen = openSections.has(section.id);
+      return <div key={section.id} className="overflow-hidden rounded-lg border border-border/50 bg-surface">
+        <button type="button" aria-expanded={isOpen} onClick={() => setOpenSections((current) => {
+          const next = new Set(current);
+          if (next.has(section.id)) next.delete(section.id); else next.add(section.id);
+          return next;
+        })} className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left text-xs font-bold text-text hover:bg-primary/5">
+          <span>{section.label}</span><ChevronDown size={15} className={isOpen ? 'rotate-180 transition-transform' : 'transition-transform'} />
+        </button>
+        {isOpen && <div className="grid gap-3 border-t border-border/40 p-3">
+          {section.settings.map((setting) => <SettingControl key={setting.id} setting={setting} value={settingsValues[`${section.prefix}_${setting.id}`]} onChange={(value) => onSettingChange(section.prefix, setting.id, value)} projectId={projectId} products={products} projectColors={projectColors} contextId={section.prefix} moduleType="whatsapp_orders" settingsValues={settingsValues} />)}
+        </div>}
+      </div>;
+    })}
+  </div>;
+};
+
+const WhatsAppOrdersCatalogViewControl: React.FC<WhatsAppOrdersCatalogViewControlProps> = ({
+  moduleId,
+  settingsValues,
+  onSettingChange
+}) => {
+  const config = readWhatsAppOrdersCatalogConfig(settingsValues, moduleId);
+
+  const setDefaultView = (defaultView: 'grid' | 'list') => {
+    const nextSettings = writeWhatsAppOrdersCatalogConfig(
+      settingsValues,
+      moduleId,
+      setWhatsAppOrdersCatalogDefaultView(config, defaultView)
+    );
+    onSettingChange(
+      moduleId,
+      WHATSAPP_ORDERS_CATALOG_CONFIG_SETTING,
+      nextSettings[getWhatsAppOrdersCatalogConfigSettingKey(moduleId)]
+    );
+    // The legacy key remains a compatibility bridge for existing snapshots.
+    onSettingChange(`${moduleId}_global`, 'layout', defaultView);
+  };
+
+  return (
+    <div className="space-y-2 rounded-lg border border-primary/15 bg-primary/5 p-3">
+      <p className="text-[11px] font-bold text-text">Vista del catálogo</p>
+      <p className="text-[10px] leading-relaxed text-text/55">
+        Define cómo se muestran inicialmente los productos.
+      </p>
+      <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Vista predeterminada del catálogo">
+        <label className="flex cursor-pointer items-center gap-2 rounded-md border border-border/50 bg-surface px-2.5 py-2 text-[10px] font-semibold text-text/75">
+          <input
+            type="radio"
+            name={`${moduleId}-catalog-default-view`}
+            checked={config.display.defaultView === 'grid'}
+            onChange={() => setDefaultView('grid')}
+            className="accent-primary"
+          />
+          Cuadrícula
+        </label>
+        <label className="flex cursor-pointer items-center gap-2 rounded-md border border-border/50 bg-surface px-2.5 py-2 text-[10px] font-semibold text-text/75">
+          <input
+            type="radio"
+            name={`${moduleId}-catalog-default-view`}
+            checked={config.display.defaultView === 'list'}
+            onChange={() => setDefaultView('list')}
+            className="accent-primary"
+          />
+          Lista
+        </label>
+      </div>
+    </div>
+  );
+};
+
+const WhatsAppOrdersCatalogScopeControl: React.FC<WhatsAppOrdersCatalogScopeControlProps> = ({
+  moduleId,
+  settingsValues,
+  catalogCategories,
+  products,
+  onSettingChange
+}) => {
+  const categories = React.useMemo(
+    () => normalizeCatalogCategories(catalogCategories),
+    [catalogCategories]
+  );
+  const config = readWhatsAppOrdersCatalogConfig(settingsValues, moduleId);
+  const hasPersistedCatalogConfig = Object.prototype.hasOwnProperty.call(
+    settingsValues,
+    getWhatsAppOrdersCatalogConfigSettingKey(moduleId)
+  );
+  const selectionMode = settingsValues[`${moduleId}_el_whatsapp_orders_catalog_selection_mode`] === 'manual'
+    ? 'manual'
+    : 'auto';
+  const selectedCategoryIds = config.scope.mode === 'selected' ? config.scope.categoryIds : [];
+  const categoryById = React.useMemo(
+    () => new Map(categories.map((category) => [category.id, category])),
+    [categories]
+  );
+  const missingCategoryIds = selectedCategoryIds.filter((categoryId) => !categoryById.has(categoryId));
+  // This is the same effective scope and ordering used by the preview and the
+  // published runtime. The selector only differs by retaining unchecked items.
+  const scopedGroups = React.useMemo(
+    () => resolveWhatsAppOrdersCatalog({ categories, products, config }).groups,
+    [categories, config, products]
+  );
+  const scopedProducts = React.useMemo(
+    () => scopedGroups.flatMap((group) => group.products),
+    [scopedGroups]
+  );
+  const rawSelectedItemIds = settingsValues[`${moduleId}_el_whatsapp_orders_catalog_select_products`];
+  const selectedItemResolution = React.useMemo(() => getEffectiveSelectedItemIds({
+    selectionMode,
+    selectedItemIds: rawSelectedItemIds,
+    availableProducts: scopedProducts,
+    allowLegacyEmptyFallback: !hasPersistedCatalogConfig
+  }), [hasPersistedCatalogConfig, rawSelectedItemIds, scopedProducts, selectionMode]);
+  const selectedItemIds = selectedItemResolution.effectiveItemIds;
+  const [expandedItemCategories, setExpandedItemCategories] = React.useState<Set<string>>(() => new Set());
+
+  const persistConfig = (nextConfig: unknown) => {
+    const nextSettings = writeWhatsAppOrdersCatalogConfig(settingsValues, moduleId, nextConfig);
+    onSettingChange(
+      moduleId,
+      WHATSAPP_ORDERS_CATALOG_CONFIG_SETTING,
+      nextSettings[getWhatsAppOrdersCatalogConfigSettingKey(moduleId)]
+    );
+  };
+
+  const persistScope = (categoryIds: readonly string[] | null) => {
+    const previousVisibleItemIds = getEffectiveVisibleItemIds({ categories, products, config });
+    if (!categoryIds) {
+      persistConfig(setWhatsAppOrdersCatalogScope(config, null));
+      if (selectionMode === 'manual') {
+        const nextConfig = setWhatsAppOrdersCatalogScope(config, null);
+        const nextVisibleItemIds = getEffectiveVisibleItemIds({ categories, products, config: nextConfig });
+        onSettingChange(
+          `${moduleId}_el_whatsapp_orders_catalog`,
+          'select_products',
+          reconcileSelectedItemsWithVisibleCatalog({
+            selectedItemIds: Array.isArray(rawSelectedItemIds) ? rawSelectedItemIds : previousVisibleItemIds,
+            previousVisibleItemIds,
+            nextVisibleItemIds
+          })
+        );
+      }
+      return;
+    }
+
+    const fallbackNames = config.scope.mode === 'selected'
+      ? config.scope.categoryNameFallbacks || {}
+      : {};
+    const selectedCategories = categoryIds.map((categoryId) => {
+      const category = categoryById.get(categoryId);
+      return category || { id: categoryId, name: fallbackNames[categoryId] || categoryId };
+    });
+    const nextConfig = setWhatsAppOrdersCatalogScope(config, selectedCategories);
+    persistConfig(nextConfig);
+    if (selectionMode === 'manual') {
+      const nextVisibleItemIds = getEffectiveVisibleItemIds({ categories, products, config: nextConfig });
+      onSettingChange(
+        `${moduleId}_el_whatsapp_orders_catalog`,
+        'select_products',
+        reconcileSelectedItemsWithVisibleCatalog({
+          selectedItemIds: Array.isArray(rawSelectedItemIds) ? rawSelectedItemIds : previousVisibleItemIds,
+          previousVisibleItemIds,
+          nextVisibleItemIds
+        })
+      );
+    }
+  };
+
+  const setItemScope = (nextMode: 'auto' | 'manual') => {
+    if (nextMode === 'auto') {
+      onSettingChange(`${moduleId}_el_whatsapp_orders_catalog`, 'selection_mode', 'auto');
+      return;
+    }
+
+    const visibleItemIds = initializeSelectedItemsFromVisibleCatalog({ categories, products, config });
+    const nextSelectedItemIds = Array.isArray(rawSelectedItemIds)
+      ? reconcileSelectedItemsWithVisibleCatalog({
+          selectedItemIds: rawSelectedItemIds,
+          previousVisibleItemIds: visibleItemIds,
+          nextVisibleItemIds: visibleItemIds
+        })
+      : visibleItemIds;
+    onSettingChange(`${moduleId}_el_whatsapp_orders_catalog`, 'selection_mode', 'manual');
+    onSettingChange(`${moduleId}_el_whatsapp_orders_catalog`, 'select_products', nextSelectedItemIds);
+  };
+
+  const setCategoryItemsSelected = (itemIds: readonly string[], shouldSelect: boolean) => {
+    const selectedIdSet = new Set(selectedItemIds);
+    itemIds.forEach((itemId) => {
+      if (shouldSelect) selectedIdSet.add(itemId);
+      else selectedIdSet.delete(itemId);
+    });
+    onSettingChange(
+      `${moduleId}_el_whatsapp_orders_catalog`,
+      'select_products',
+      scopedProducts.map((product) => product.id).filter((itemId) => selectedIdSet.has(itemId))
+    );
+  };
+
+  const setOrderMode = (mode: 'alphabetical' | 'custom') => {
+    if (mode === 'alphabetical') {
+      persistConfig({ ...config, order: { mode: 'alphabetical' } });
+      return;
+    }
+
+    const customOrder = createWhatsAppOrdersCatalogCustomOrderFromAlphabetical(
+      scopedGroups.map((group) => group.category),
+      scopedGroups.flatMap((group) => group.products)
+    );
+    persistConfig({ ...config, order: customOrder });
+  };
+
+  const setAllowViewSwitch = (allowViewSwitch: boolean) => {
+    persistConfig(setWhatsAppOrdersCatalogAllowViewSwitch(config, allowViewSwitch));
+  };
+
+  return (
+    <div className="space-y-3 rounded-lg border border-primary/15 bg-primary/5 p-3">
+      <div>
+        <p className="text-[11px] font-bold text-text">Categorías a mostrar</p>
+        <p className="mt-1 text-[10px] leading-relaxed text-text/55">
+          Elige si este módulo mostrará todo el catálogo o únicamente categorías específicas.
+        </p>
+      </div>
+
+      <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Categorías a mostrar">
+        <label className="flex cursor-pointer items-center gap-2 rounded-md border border-border/50 bg-surface px-2.5 py-2 text-[10px] font-semibold text-text/75">
+          <input
+            type="radio"
+            name={`${moduleId}-catalog-scope`}
+            checked={config.scope.mode === 'all'}
+            onChange={() => persistScope(null)}
+            className="accent-primary"
+          />
+          Todas
+        </label>
+        <label className={`flex items-center gap-2 rounded-md border px-2.5 py-2 text-[10px] font-semibold ${
+          categories.length > 0
+            ? 'cursor-pointer border-border/50 bg-surface text-text/75'
+            : 'cursor-not-allowed border-border/30 bg-secondary/40 text-text/35'
+        }`}>
+          <input
+            type="radio"
+            name={`${moduleId}-catalog-scope`}
+            checked={config.scope.mode === 'selected'}
+            onChange={() => {
+              if (categories.length > 0) persistScope(categories.map((category) => category.id));
+            }}
+            disabled={categories.length === 0}
+            className="accent-primary"
+          />
+          Seleccionar
+        </label>
+      </div>
+
+      {categories.length === 0 ? (
+        <p className="rounded-md border border-amber-200 bg-amber-50 px-2.5 py-2 text-[10px] leading-relaxed text-amber-800">
+          No hay categorías disponibles en el Catálogo.
+        </p>
+      ) : config.scope.mode === 'selected' ? (
+        <div className="space-y-2">
+          <div className="max-h-44 space-y-1 overflow-y-auto rounded-md border border-border/50 bg-surface p-2">
+            {categories.map((category) => {
+              const isSelected = selectedCategoryIds.includes(category.id);
+              return (
+                <label key={category.id} className="flex cursor-pointer items-center gap-2 rounded px-1.5 py-1.5 text-xs text-text/75 hover:bg-primary/5">
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={(event) => persistScope(
+                      event.target.checked
+                        ? [...selectedCategoryIds, category.id]
+                        : selectedCategoryIds.filter((selectedId) => selectedId !== category.id)
+                    )}
+                    className="accent-primary"
+                  />
+                  <span>{category.name}</span>
+                </label>
+              );
+            })}
+          </div>
+          {selectedCategoryIds.length === 0 && (
+            <p className="rounded-md border border-amber-200 bg-amber-50 px-2.5 py-2 text-[10px] leading-relaxed text-amber-800">
+              Selecciona al menos una categoría para mostrar productos.
+            </p>
+          )}
+          {missingCategoryIds.length > 0 && (
+            <div className="space-y-2 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-2 text-[10px] leading-relaxed text-amber-800">
+              <p>Hay categorías configuradas que ya no están disponibles. Quitarlas no ampliará el catálogo.</p>
+              <div className="flex flex-wrap gap-1.5">
+                {missingCategoryIds.map((categoryId) => {
+                  const fallback = config.scope.mode === 'selected'
+                    ? config.scope.categoryNameFallbacks?.[categoryId] || categoryId
+                    : categoryId;
+                  return (
+                    <button
+                      key={categoryId}
+                      type="button"
+                      onClick={() => persistScope(selectedCategoryIds.filter((selectedId) => selectedId !== categoryId))}
+                      className="rounded border border-amber-300 bg-white px-2 py-1 font-semibold text-amber-800 transition hover:bg-amber-100"
+                    >
+                      Quitar {fallback}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      ) : null}
+
+      <div className="border-t border-primary/10 pt-3">
+        <p className="text-[11px] font-bold text-text">Items a mostrar</p>
+        <p className="mt-1 text-[10px] leading-relaxed text-text/55">
+          Elige si se mostrarán todos los items de las categorías visibles o solo algunos.
+        </p>
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Items a mostrar">
+        <label className="flex cursor-pointer items-center gap-2 rounded-md border border-border/50 bg-surface px-2.5 py-2 text-[10px] font-semibold text-text/75">
+          <input type="radio" name={`${moduleId}-catalog-items`} checked={selectionMode === 'auto'} onChange={() => setItemScope('auto')} className="accent-primary" />
+          Todos
+        </label>
+        <label className="flex cursor-pointer items-center gap-2 rounded-md border border-border/50 bg-surface px-2.5 py-2 text-[10px] font-semibold text-text/75">
+          <input type="radio" name={`${moduleId}-catalog-items`} checked={selectionMode === 'manual'} onChange={() => setItemScope('manual')} className="accent-primary" />
+          Seleccionar
+        </label>
+      </div>
+      {selectionMode === 'manual' && (
+        <div className="max-h-72 space-y-2 overflow-y-auto rounded-md border border-border/50 bg-surface p-2" role="tree" aria-label="Items por categoría">
+          {scopedGroups.map((group) => {
+            const groupId = `${moduleId}-items-${group.category.id}`;
+            const isExpanded = expandedItemCategories.has(group.category.id);
+            const groupItemIds = group.products.map((product) => product.id);
+            const selectedCount = groupItemIds.filter((id) => selectedItemIds.includes(id)).length;
+            const allItemsSelected = groupItemIds.length > 0 && selectedCount === groupItemIds.length;
+            const isPartiallySelected = selectedCount > 0 && !allItemsSelected;
+            return <div key={group.category.id} className="rounded border border-border/40">
+              <div className="flex items-center gap-1 px-2.5 py-2">
+                <input
+                  type="checkbox"
+                  checked={allItemsSelected}
+                  ref={(node) => { if (node) node.indeterminate = isPartiallySelected; }}
+                  aria-label={`Seleccionar todos los items de ${group.category.name}`}
+                  onChange={(event) => setCategoryItemsSelected(groupItemIds, event.target.checked)}
+                  className="accent-primary"
+                />
+                <button type="button" aria-expanded={isExpanded} aria-controls={groupId} onClick={() => setExpandedItemCategories((current) => { const next = new Set(current); if (next.has(group.category.id)) next.delete(group.category.id); else next.add(group.category.id); return next; })} className="flex min-w-0 flex-1 items-center gap-2 text-left text-xs font-semibold text-text hover:text-primary">
+                <ChevronDown size={14} className={isExpanded ? 'rotate-180 transition-transform' : 'transition-transform'} />
+                <span className="min-w-0 flex-1 truncate">{group.category.name}</span><span className="text-[10px] font-normal text-text/50">{selectedCount} de {group.products.length}</span>
+              </button>
+              </div>
+              {isExpanded && <div id={groupId} className="space-y-1 border-t border-border/30 p-2">
+                {group.products.map((product) => {
+                  const selectedIds = selectedItemIds;
+                  const isSelected = selectedIds.includes(product.id);
+                  return <label key={product.id} className="flex cursor-pointer items-center gap-2 rounded px-1.5 py-1.5 text-xs text-text/75 hover:bg-primary/5"><input type="checkbox" checked={isSelected} onChange={(event) => setCategoryItemsSelected([product.id], event.target.checked)} className="accent-primary" /><span>{product.name}</span></label>;
+                })}
+              </div>}
+            </div>;
+          })}
+        </div>
+      )}
+
+      <div className="border-t border-primary/10 pt-3">
+        <p className="text-[11px] font-bold text-text">Orden del catálogo</p>
+        <p className="mt-1 text-[10px] leading-relaxed text-text/55">
+          Elige cómo se organizan las categorías y los productos en este módulo.
+        </p>
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Orden del catálogo">
+        <label className="flex cursor-pointer items-center gap-2 rounded-md border border-border/50 bg-surface px-2.5 py-2 text-[10px] font-semibold text-text/75">
+          <input
+            type="radio"
+            name={`${moduleId}-catalog-order`}
+            checked={config.order.mode === 'alphabetical'}
+            onChange={() => setOrderMode('alphabetical')}
+            className="accent-primary"
+          />
+          Alfabético
+        </label>
+        <label className="flex cursor-pointer items-center gap-2 rounded-md border border-border/50 bg-surface px-2.5 py-2 text-[10px] font-semibold text-text/75">
+          <input
+            type="radio"
+            name={`${moduleId}-catalog-order`}
+            checked={config.order.mode === 'custom'}
+            onChange={() => setOrderMode('custom')}
+            className="accent-primary"
+          />
+          Personalizado
+        </label>
+      </div>
+      {config.order.mode === 'custom' && (
+        <WhatsAppOrdersCatalogOrganizerControl
+          categories={scopedGroups.map((group) => group.category)}
+          products={scopedProducts}
+          order={config.order}
+          onOrderChange={(order) => persistConfig({ ...config, order })}
+        />
+      )}
+
+      <label className="flex cursor-pointer items-start gap-2 rounded-md border border-border/50 bg-surface px-2.5 py-2 text-[10px] text-text/75">
+        <input
+          type="checkbox"
+          checked={config.visitorView.allowViewSwitch}
+          onChange={(event) => setAllowViewSwitch(event.target.checked)}
+          className="mt-0.5 accent-primary"
+        />
+        <span>
+          <span className="block font-semibold">Permitir al visitante cambiar la vista</span>
+          <span className="mt-0.5 block leading-relaxed text-text/55">Muestra un selector para alternar entre Cuadrícula y Lista.</span>
+        </span>
+      </label>
+    </div>
+  );
+};
 
 const uniqueSettingGroups = (groups: SettingGroupType[]) => Array.from(new Set(groups));
 
@@ -370,6 +911,7 @@ interface StructurePanelProps {
   onToggleCollapse: () => void;
   projectId: string | null;
   products?: Product[];
+  catalogCategories?: SecureCatalogCategory[];
   customers?: Customer[];
   trustedCompanyLogos?: TrustedCompanyLogo[];
   isMobile?: boolean;
@@ -389,6 +931,7 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
   onToggleCollapse,
   projectId,
   products,
+  catalogCategories = [],
   customers,
   trustedCompanyLogos,
   isMobile,
@@ -1160,9 +1703,25 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                                     ? element.groups.includes(group) || hasSettings
                                     : element.groups.includes(group);
 
-                                  if (!isAvailable || !hasSettings) return null;
+                                   if (!isAvailable || !hasSettings) return null;
 
-                                  const isGroupExpanded = editorState.expandedGroupsByElement[element.id] === group;
+                                   const isDirectWhatsAppOrdersCatalog = module.type === 'whatsapp_orders'
+                                     && element.id === 'el_whatsapp_orders_catalog'
+                                     && group === 'contenido';
+                                   if (isDirectWhatsAppOrdersCatalog) {
+                                     return (
+                                       <WhatsAppOrdersCatalogScopeControl
+                                         key={group}
+                                         moduleId={module.id}
+                                         settingsValues={editorState.settingsValues}
+                                         catalogCategories={catalogCategories}
+                                         products={products || []}
+                                         onSettingChange={onSettingChange}
+                                       />
+                                     );
+                                   }
+
+                                   const isGroupExpanded = editorState.expandedGroupsByElement[element.id] === group;
                                   const isShining = shiningGroup === group;
                                   const dynamicCardsGlobalGroupLabels: Partial<Record<SettingGroupType, string>> = {
                                     title: 'Texto principal',
@@ -1212,6 +1771,15 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                                             className="overflow-hidden"
                                           >
                                             <div className="p-3 pt-0 space-y-4 border-t border-border/30 mt-1">
+                                              {module.type === 'whatsapp_orders'
+                                                && element.type === 'global'
+                                                && group === 'estructura' && (
+                                                  <WhatsAppOrdersCatalogViewControl
+                                                    moduleId={module.id}
+                                                    settingsValues={editorState.settingsValues}
+                                                    onSettingChange={onSettingChange}
+                                                  />
+                                                )}
                                               {/* DYNAMIC SETTINGS FOR EACH GROUP */}
                                               {(() => {
                                                 const evaluateCondition = (
@@ -1262,6 +1830,32 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                                                       </div>
                                                     )}
                                                     {settingsToRender?.map((setting, settingIndex) => {
+                                                  const hideWhatsAppOrdersTextSettings =
+                                                    module.type === 'whatsapp_orders'
+                                                    && element.id === 'el_whatsapp_orders_header'
+                                                    && group === 'contenido';
+                                                  if (hideWhatsAppOrdersTextSettings) return null;
+                                                  // The catalog V2 control is the canonical view selector for
+                                                  // WhatsApp Orders. Keep the legacy key as a read/write
+                                                  // compatibility bridge, but do not expose two competing inputs.
+                                                  const hideLegacyWhatsAppOrdersLayout =
+                                                    module.type === 'whatsapp_orders'
+                                                    && element.type === 'global'
+                                                    && group === 'estructura'
+                                                    && setting.id === 'layout';
+                                                  if (hideLegacyWhatsAppOrdersLayout) return null;
+
+                                                  const whatsappOrdersEffectiveView = module.type === 'whatsapp_orders'
+                                                    ? resolveEffectiveWhatsAppOrdersCatalogView(editorState.settingsValues, module.id)
+                                                    : null;
+                                                  const hideListOnlyLegacyStructureSetting =
+                                                    module.type === 'whatsapp_orders'
+                                                    && element.type === 'global'
+                                                    && group === 'estructura'
+                                                    && whatsappOrdersEffectiveView === 'list'
+                                                    && ['columns', 'gap', 'padding_y'].includes(setting.id);
+                                                  if (hideListOnlyLegacyStructureSetting) return null;
+
                                                   const prefix = resolveElementSettingsPrefix(module.id, element.id);
                                                   const show = evaluateCondition(setting.showIf, editorState.settingsValues, prefix, module.id);
                                                   if (!show.result) return null;
@@ -1305,6 +1899,31 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                                                   </>
                                                 );
                                               })()}
+
+                                              {module.type === 'whatsapp_orders'
+                                                && element.id === 'el_whatsapp_orders_header'
+                                                && group === 'contenido' && (
+                                                  <WhatsAppOrdersTextControl
+                                                    moduleId={module.id}
+                                                    settingsValues={editorState.settingsValues}
+                                                    onSettingChange={onSettingChange}
+                                                    projectId={projectId}
+                                                    products={products}
+                                                    projectColors={projectColors}
+                                                  />
+                                                )}
+
+                                              {module.type === 'whatsapp_orders'
+                                                && resolveElementSettingsPrefix(module.id, element.id) === `${module.id}_el_whatsapp_orders_catalog`
+                                                && group === 'contenido' && (
+                                                  <WhatsAppOrdersCatalogScopeControl
+                                                    moduleId={module.id}
+                                                    settingsValues={editorState.settingsValues}
+                                                    catalogCategories={catalogCategories}
+                                                    products={products || []}
+                                                    onSettingChange={onSettingChange}
+                                                  />
+                                                )}
 
                                               {/* Fallback if no settings defined for this group */}
                                               {((element.type === 'global' && !module.globalSettings?.[group]?.length) ||

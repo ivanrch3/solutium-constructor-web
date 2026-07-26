@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { EditorState, WebModule } from '../../types/constructor';
 import { Product, Customer, TrustedCompanyLogo } from '../../types/schema';
+import type { SecureCatalogCategory } from '../../services/secureLaunchSession';
 import { SiteContent } from '../../types';
 import { useEditorStore } from '../../store/editorStore';
 import { isDarkColor } from './utils';
@@ -65,6 +66,7 @@ interface CanvasProps {
   editorState: EditorState;
   onAddModule: (module: WebModule) => void;
   products: Product[];
+  catalogCategories?: SecureCatalogCategory[];
   customers: Customer[];
   trustedCompanyLogos?: TrustedCompanyLogo[];
   isDevMode: boolean;
@@ -88,6 +90,7 @@ export const Canvas: React.FC<CanvasProps> = ({
   editorState, 
   onAddModule, 
   products, 
+  catalogCategories = [],
   customers, 
   trustedCompanyLogos = [],
   isDevMode, 
@@ -1030,6 +1033,7 @@ export const Canvas: React.FC<CanvasProps> = ({
                         moduleId={section.id}
                         settingsValues={finalSettings}
                         products={products}
+                        catalogCategories={catalogCategories}
                         renderMode="preview"
                         projectId={project?.id || null}
                         regionalSettings={project}

@@ -65,6 +65,8 @@ import {
 } from '../utils/whatsappOrdersAvailability';
 import { resolvePublicCatalogItemRoute } from '../utils/publicCatalogItemRoute';
 import { fetchHostedPublicCatalogItem } from '../services/publicCatalogItems';
+import { deriveWhatsAppOrdersCatalogCategoriesFromProducts } from './constructor/modules/whatsappOrdersCatalogPublishedContract';
+import { resolveWhatsAppOrdersProductsForSelection } from './constructor/modules/whatsappOrdersCatalogOrganizer';
 
 interface ViewerProps {
   site: PublishedSite;
@@ -817,6 +819,10 @@ export const Viewer: React.FC<ViewerProps> = ({
               finalSettingsValues[`${moduleId}_el_whatsapp_orders_catalog_products`] ||
               section.settings?.[`${moduleId}_el_whatsapp_orders_catalog_products`] ||
               [];
+            const explicitCatalogConfig =
+              section.content?.catalogConfig ??
+              section.settings?.[`${moduleId}_el_whatsapp_orders_catalog_config`] ??
+              finalSettingsValues[`${moduleId}_el_whatsapp_orders_catalog_config`];
 
             let finalProducts: Product[] = [];
 
@@ -834,14 +840,19 @@ export const Viewer: React.FC<ViewerProps> = ({
                   };
                 });
             } else if (catalogProducts.length > 0) {
-              finalProducts = isManualProductsSelectionMode(whatsappOrderSelectionMode)
-                ? resolveProductsForSelection({
-                    selectionMode: whatsappOrderSelectionMode,
-                    selectedIds: explicitSelectedProductIds,
-                    availableProducts: catalogProducts
-                  })
-                : catalogProducts;
+              finalProducts = catalogProducts;
             }
+
+            finalProducts = resolveWhatsAppOrdersProductsForSelection({
+              selectionMode: whatsappOrderSelectionMode,
+              selectedItemIds: explicitSelectedProductIds,
+              availableProducts: finalProducts,
+              allowLegacyEmptyFallback: explicitCatalogConfig === undefined
+            });
+
+            const snapshotCategories = Array.isArray(section.content?.categories)
+              ? section.content.categories
+              : deriveWhatsAppOrdersCatalogCategoriesFromProducts(finalProducts);
 
             return (
               <WhatsAppOrdersModule
@@ -852,7 +863,10 @@ export const Viewer: React.FC<ViewerProps> = ({
                   [`${moduleId}_global_mode`]: normalizedMode
                 }}
                 products={finalProducts}
+                catalogConfig={explicitCatalogConfig}
+                catalogCategories={snapshotCategories}
                 renderMode={isPublishedViewer ? 'published' : 'preview'}
+                siteId={(site as any).siteId || site.id || null}
                 publishedSiteId={isPublishedViewer ? site.id : null}
                 pageId={publishedPageId}
                 projectId={effectiveProjectId}

@@ -167,6 +167,8 @@ export interface Product {
   status?: string;
   imageUrl?: string;
   image2Url?: string;
+  primaryImageAssetId?: string;
+  secondaryImageAssetId?: string;
   stock?: number;
   ratingAverage?: number;
   reviewCount?: number;

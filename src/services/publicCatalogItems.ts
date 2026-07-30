@@ -1,4 +1,5 @@
 import { Product } from '../types/schema';
+import { normalizeCatalogProductImageFields } from '../utils/productImage';
 
 export type PublicCatalogItemRouteInput = {
   categorySlug: string;
@@ -33,7 +34,9 @@ const resolvePublishedBusinessOrigin = () => {
   return window.location.origin;
 };
 
-const toProduct = (item: Record<string, any>): Product => ({
+const toProduct = (item: Record<string, any>): Product => {
+  const imageFields = normalizeCatalogProductImageFields(item);
+  return {
   ...item,
   id: asString(item.id),
   name: asString(item.name) || 'Producto',
@@ -42,11 +45,11 @@ const toProduct = (item: Record<string, any>): Product => ({
   priceReference: typeof item.priceReference === 'number' ? item.priceReference : Number(item.priceReference || 0),
   category: asString(item.category?.name || item.category),
   sku: asString(item.sku),
-  imageUrl: asString(item.imageUrl),
-  image2Url: asString(item.image2Url),
+  ...imageFields,
   stock: typeof item.stock === 'number' ? item.stock : Number(item.stock || 0),
   appData: item.appData && typeof item.appData === 'object' ? item.appData : {}
-});
+  };
+};
 
 export const fetchHostedPublicCatalogItem = async (
   input: PublicCatalogItemRouteInput,

@@ -25,6 +25,7 @@ import { Profile, Project, Asset, WebBuilderSite, PublishedSite, Product, Custom
 import { getAssets } from './services/dataService';
 import { BrandColorsInput, normalizeProjectBrandColors } from './utils/projectTheme';
 import { extractWhatsAppOrdersCapability } from './utils/whatsappOrdersAvailability';
+import { normalizeCatalogProductImageFields } from './utils/productImage';
 import {
   beginSupabaseHandshakeAttempt,
   isQuotaExceededError,
@@ -440,7 +441,7 @@ const normalizeSecureProduct = (rawProduct: any): Product | null => {
   const name = rawProduct.name || rawProduct.title || rawProduct.productName || rawProduct.product_name;
   if (!id || !name) return null;
 
-  const imageUrl = rawProduct.imageUrl || rawProduct.image_url || rawProduct.thumbnailUrl || rawProduct.thumbnail_url || rawProduct.image;
+  const imageFields = normalizeCatalogProductImageFields(rawProduct);
   const priceValue = rawProduct.price ?? rawProduct.priceReference ?? rawProduct.price_reference;
   const parsedPrice = Number(priceValue);
 
@@ -455,8 +456,9 @@ const normalizeSecureProduct = (rawProduct: any): Product | null => {
     type: rawProduct.type || rawProduct.category || undefined,
     status: rawProduct.status || (rawProduct.active === false ? 'inactive' : 'active'),
     active: rawProduct.active !== false,
-    imageUrl: imageUrl || '',
-    image_url: imageUrl || '',
+    ...imageFields,
+    image_url: imageFields.imageUrl || '',
+    image2_url: imageFields.image2Url || '',
     badgeText: rawProduct.badgeText || rawProduct.badge_text || '',
     ratingAverage: Number(rawProduct.ratingAverage ?? rawProduct.rating_average) || undefined,
     emoji: rawProduct.emoji || '',

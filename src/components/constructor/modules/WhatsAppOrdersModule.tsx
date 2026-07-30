@@ -41,7 +41,8 @@ import {
   resolveWhatsAppOrdersCatalog
 } from './whatsappOrdersCatalogOrganizer';
 import type { SecureCatalogCategory } from '../../../services/secureLaunchSession';
-import { resolveProductPrimaryImageUrl } from '../../../utils/productImage';
+import { normalizeCatalogProductImageFields } from '../../../utils/productImage';
+import { useCatalogProductImages } from '../../../hooks/useCatalogProductImages';
 import { fetchHostedPublicCatalogItem } from '../../../services/publicCatalogItems';
 import { normalizePublicCatalogSlug } from '../../../utils/publicCatalogItemRoute';
 import { WhatsAppOrdersAvailability } from '../../../utils/whatsappOrdersAvailability';
@@ -122,6 +123,7 @@ type CartItem = {
   productId: string;
   name: string;
   imageUrl?: string;
+  primaryImageAssetId?: string;
   // price stays for carts saved before item option snapshots were introduced.
   price?: number;
   quantity: number;
@@ -236,13 +238,13 @@ const normalizeProduct = (product: Product, index: number): Product => {
   const raw = product as any;
   const appData = getProductAppData(raw);
   const optionGroups = resolveProductOptionGroupsSource(raw);
+  const imageFields = normalizeCatalogProductImageFields(raw);
   return {
     ...product,
     id: String(raw.id || `product-${index}`),
     name: normalizeString(raw.name || raw.title, 'Producto'),
     description: normalizeString(raw.description || raw.shortDescription || raw.short_description, ''),
-    imageUrl: normalizeString(resolveProductPrimaryImageUrl(raw), ''),
-    image2Url: normalizeString(raw.image2Url || raw.image_2_url, ''),
+    ...imageFields,
     price: raw.price !== undefined && raw.price !== null ? toNumber(raw.price, 0) : undefined,
     category: normalizeString(raw.category || raw.categoria, 'General'),
     status: normalizeString(raw.status, ''),
@@ -479,6 +481,7 @@ const normalizeCartItem = (item: Partial<CartItem>): CartItem | null => {
     productId: normalizeString(item.productId),
     name: normalizeString(item.name),
     imageUrl: normalizeString(item.imageUrl, ''),
+    primaryImageAssetId: normalizeString(item.primaryImageAssetId, '') || undefined,
     price: unitFinalPrice,
     quantity: Math.max(1, toNumber(item.quantity, 1)),
     selectedOptions: item.selectedOptions && typeof item.selectedOptions === 'object' ? item.selectedOptions : {},
@@ -706,6 +709,33 @@ export const WhatsAppOrdersModule: React.FC<{
     defaultCatalogView,
     allowPreviewViewSwitch,
     previewCatalogView
+  );
+  const imageContext = React.useMemo(
+    () => renderMode === 'published'
+      ? (siteId ? { type: 'published' as const, siteId } : null)
+      : (projectId ? { type: 'editor' as const, projectId } : null),
+    [projectId, renderMode, siteId]
+  );
+  const catalogImageVariant = layout === 'grid' ? 'card' : 'thumbnail';
+  const { urlsByAssetId: catalogImageUrls, retryAsset: retryCatalogImage } = useCatalogProductImages({
+    products: normalizedProducts,
+    context: imageContext,
+    variantKey: catalogImageVariant
+  });
+  const { urlsByAssetId: detailImageUrls, retryAsset: retryDetailImage } = useCatalogProductImages({
+    products: selectedProduct ? [selectedProduct] : [],
+    context: imageContext,
+    variantKey: 'detail'
+  });
+  const { urlsByAssetId: cartImageUrls, retryAsset: retryCartImage } = useCatalogProductImages({
+    products: cartItems,
+    context: imageContext,
+    variantKey: 'thumbnail'
+  });
+  const resolveImageUrl = React.useCallback(
+    (assetId: string | undefined, legacyUrl: string | undefined, urlsByAssetId: Record<string, string>) =>
+      (assetId ? urlsByAssetId[assetId] : '') || legacyUrl || '',
+    []
   );
   const planBlocked = Boolean(availability?.known && !availability.allowed);
   const previewOrdersBlocked = renderMode === 'preview' && mode === 'orders' && planBlocked;
@@ -1018,6 +1048,7 @@ export const WhatsAppOrdersModule: React.FC<{
       productId: selectedProduct.id,
       name: selectedProduct.name,
       imageUrl: selectedProduct.imageUrl,
+      primaryImageAssetId: selectedProduct.primaryImageAssetId,
       price: unitFinalPrice,
       quantity: selectedQuantity,
       selectedOptions,
@@ -1400,6 +1431,7 @@ export const WhatsAppOrdersModule: React.FC<{
                   <div className="grid" style={gridStyle}>
                     {group.products.map((product) => {
               const isUnavailable = normalizeString(product.status, '').toLowerCase() === 'inactive';
+              const productImageUrl = resolveImageUrl(product.primaryImageAssetId, product.imageUrl, catalogImageUrls);
               return (
                 <article
                   key={product.id}
@@ -1417,12 +1449,15 @@ export const WhatsAppOrdersModule: React.FC<{
                           : 'aspect-[4/3] w-full'
                       }`}
                     >
-                      {product.imageUrl ? (
+                      {productImageUrl ? (
                         <img
-                          src={product.imageUrl}
+                          src={productImageUrl}
                           alt={product.name}
                           className="h-full w-full object-cover object-center"
                           referrerPolicy="no-referrer"
+                          onError={() => {
+                            if (product.primaryImageAssetId) void retryCatalogImage(product.primaryImageAssetId);
+                          }}
                         />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center text-slate-400">
@@ -1519,12 +1554,15 @@ export const WhatsAppOrdersModule: React.FC<{
               }}
             >
               <div className="overflow-hidden rounded-[24px] bg-slate-100">
-                {selectedProduct.imageUrl ? (
+                {resolveImageUrl(selectedProduct.primaryImageAssetId, selectedProduct.imageUrl, detailImageUrls) ? (
                   <img
-                    src={selectedProduct.imageUrl}
+                    src={resolveImageUrl(selectedProduct.primaryImageAssetId, selectedProduct.imageUrl, detailImageUrls)}
                     alt={selectedProduct.name}
                     className="h-full w-full object-cover"
                     referrerPolicy="no-referrer"
+                    onError={() => {
+                      if (selectedProduct.primaryImageAssetId) void retryDetailImage(selectedProduct.primaryImageAssetId);
+                    }}
                   />
                 ) : (
                   <div className="flex min-h-[260px] items-center justify-center text-slate-400">
@@ -1746,12 +1784,22 @@ export const WhatsAppOrdersModule: React.FC<{
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {cartItems.map((item) => (
+                  {cartItems.map((item) => {
+                    const cartImageUrl = resolveImageUrl(item.primaryImageAssetId, item.imageUrl, cartImageUrls);
+                    return (
                     <div key={item.id} className="rounded-3xl border border-black/5 bg-slate-50 p-4">
                       <div className="flex items-start gap-3">
                         <div className="h-16 w-16 overflow-hidden rounded-2xl bg-white">
-                          {item.imageUrl ? (
-                            <img src={item.imageUrl} alt={item.name} className="h-full w-full object-cover" referrerPolicy="no-referrer" />
+                          {cartImageUrl ? (
+                            <img
+                              src={cartImageUrl}
+                              alt={item.name}
+                              className="h-full w-full object-cover"
+                              referrerPolicy="no-referrer"
+                              onError={() => {
+                                if (item.primaryImageAssetId) void retryCartImage(item.primaryImageAssetId);
+                              }}
+                            />
                           ) : (
                             <div className="flex h-full w-full items-center justify-center text-slate-400">
                               <ShoppingCart size={20} />
@@ -1809,7 +1857,8 @@ export const WhatsAppOrdersModule: React.FC<{
                         </div>
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
 

@@ -35,7 +35,7 @@ import { logDebug } from '../utils/debug';
 import { bridgeModuleContent } from '../utils/hydrationBridge';
 import { getProducts } from '../services/dataService';
 import { Customer, Product, TrustedCompanyLogo } from '../types/schema';
-import { resolveProductPrimaryImageUrl } from '../utils/productImage';
+import { normalizeCatalogProductImageFields } from '../utils/productImage';
 import {
   buildAutomaticMenuItems,
   isHeaderModuleLike,
@@ -830,13 +830,14 @@ export const Viewer: React.FC<ViewerProps> = ({
               finalProducts = snapshotProducts
                 .filter(Boolean)
                 .map((product: any, index: number) => {
-                  const imageUrl = resolveProductPrimaryImageUrl(product);
+                  const imageFields = normalizeCatalogProductImageFields(product);
                   return {
                     ...product,
                     id: String(product?.id || `published_whatsapp_order_product_${index}`),
                     name: String(product?.name || `Producto ${index + 1}`),
-                    imageUrl,
-                    image_url: imageUrl || product?.image_url || ''
+                    ...imageFields,
+                    image_url: imageFields.imageUrl || '',
+                    image2_url: imageFields.image2Url || ''
                   };
                 });
             } else if (catalogProducts.length > 0) {

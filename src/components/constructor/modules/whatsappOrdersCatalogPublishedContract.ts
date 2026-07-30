@@ -1,4 +1,4 @@
-import { resolveProductPrimaryImageUrl } from '../../../utils/productImage';
+import { normalizeCatalogProductImageFields } from '../../../utils/productImage';
 import type { WhatsAppOrdersCatalogConfigV2 } from './whatsappOrdersCatalogConfig';
 import {
   applyCustomOrderToCatalogGroups,
@@ -26,6 +26,10 @@ export type WhatsAppOrdersProductSnapshot = {
   priceReference?: number;
   imageUrl?: string;
   image_url?: string;
+  image2Url?: string;
+  image2_url?: string;
+  primaryImageAssetId?: string;
+  secondaryImageAssetId?: string;
   category?: string;
   categoryId?: string;
   status?: string;
@@ -66,7 +70,7 @@ const createProductSnapshot = (product: unknown, index: number): WhatsAppOrdersP
 
   const id = stringValue(raw.id) || `published_whatsapp_order_product_${index + 1}`;
   const name = stringValue(raw.name) || stringValue(raw.title) || `Producto ${index + 1}`;
-  const imageUrl = resolveProductPrimaryImageUrl(raw);
+  const imageFields = normalizeCatalogProductImageFields(raw);
   const appData = raw.appData ?? raw.app_data;
   const appDataRecord = asRecord(appData);
   const optionGroups = raw.optionGroups ?? appDataRecord?.catalogOptionGroups;
@@ -78,7 +82,10 @@ const createProductSnapshot = (product: unknown, index: number): WhatsAppOrdersP
     ...(stringValue(raw.description) ? { description: stringValue(raw.description) } : {}),
     ...(numberValue(raw.price) !== undefined ? { price: numberValue(raw.price) } : {}),
     ...(numberValue(raw.priceReference) !== undefined ? { priceReference: numberValue(raw.priceReference) } : {}),
-    ...(imageUrl ? { imageUrl, image_url: imageUrl } : {}),
+    ...(imageFields.primaryImageAssetId ? { primaryImageAssetId: imageFields.primaryImageAssetId } : {}),
+    ...(imageFields.secondaryImageAssetId ? { secondaryImageAssetId: imageFields.secondaryImageAssetId } : {}),
+    ...(imageFields.imageUrl ? { imageUrl: imageFields.imageUrl, image_url: imageFields.imageUrl } : {}),
+    ...(imageFields.image2Url ? { image2Url: imageFields.image2Url, image2_url: imageFields.image2Url } : {}),
     ...(stringValue(raw.category) || stringValue(raw.categoria) || stringValue(raw.categoryName)
       ? { category: stringValue(raw.category) || stringValue(raw.categoria) || stringValue(raw.categoryName) }
       : {}),

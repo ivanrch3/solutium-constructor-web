@@ -21,6 +21,10 @@ export type WhatsAppOrdersCategorySnapshot = {
 export type WhatsAppOrdersProductSnapshot = {
   id: string;
   name: string;
+  shortDescription?: string;
+  short_description?: string;
+  detailedDescription?: string;
+  detailed_description?: string;
   description?: string;
   price?: number;
   priceReference?: number;
@@ -79,6 +83,18 @@ const createProductSnapshot = (product: unknown, index: number): WhatsAppOrdersP
   return {
     id,
     name,
+    ...(stringValue(raw.shortDescription) || stringValue(raw.short_description)
+      ? {
+          shortDescription: stringValue(raw.shortDescription) || stringValue(raw.short_description),
+          short_description: stringValue(raw.short_description) || stringValue(raw.shortDescription)
+        }
+      : {}),
+    ...(stringValue(raw.detailedDescription) || stringValue(raw.detailed_description)
+      ? {
+          detailedDescription: stringValue(raw.detailedDescription) || stringValue(raw.detailed_description),
+          detailed_description: stringValue(raw.detailed_description) || stringValue(raw.detailedDescription)
+        }
+      : {}),
     ...(stringValue(raw.description) ? { description: stringValue(raw.description) } : {}),
     ...(numberValue(raw.price) !== undefined ? { price: numberValue(raw.price) } : {}),
     ...(numberValue(raw.priceReference) !== undefined ? { priceReference: numberValue(raw.priceReference) } : {}),

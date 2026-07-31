@@ -1562,19 +1562,19 @@ export const WhatsAppOrdersModule: React.FC<{
                     : 'minmax(0, 1.05fr) minmax(0, 0.95fr)'
               }}
             >
-              <div className="overflow-hidden rounded-[24px] bg-slate-100">
+              <div className="overflow-hidden rounded-[24px] bg-transparent">
                 {resolveImageUrl(selectedProduct.primaryImageAssetId, selectedProduct.imageUrl, detailImageUrls) ? (
                   <img
                     src={resolveImageUrl(selectedProduct.primaryImageAssetId, selectedProduct.imageUrl, detailImageUrls)}
                     alt={selectedProduct.name}
-                    className="h-full w-full object-cover"
+                    className="h-full w-full object-contain object-center"
                     referrerPolicy="no-referrer"
                     onError={() => {
                       if (selectedProduct.primaryImageAssetId) void retryDetailImage(selectedProduct.primaryImageAssetId);
                     }}
                   />
                 ) : (
-                  <div className="flex min-h-[260px] items-center justify-center text-slate-400">
+                  <div className="flex min-h-[260px] items-center justify-center bg-slate-100 text-slate-400">
                     <ShoppingCart size={44} />
                   </div>
                 )}

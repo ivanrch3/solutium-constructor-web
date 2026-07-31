@@ -159,6 +159,8 @@ export interface TrustedCompanyLogo {
 export interface Product {
   id: string;
   name: string;
+  shortDescription?: string;
+  detailedDescription?: string;
   description?: string;
   price?: number;
   priceReference?: number;

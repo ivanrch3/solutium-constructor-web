@@ -1,5 +1,6 @@
 import { Product } from '../types/schema';
 import { normalizeCatalogProductImageFields } from '../utils/productImage';
+import { resolveCatalogProductDescriptions } from '../utils/catalogProductDescription';
 
 export type PublicCatalogItemRouteInput = {
   categorySlug: string;
@@ -36,11 +37,14 @@ const resolvePublishedBusinessOrigin = () => {
 
 const toProduct = (item: Record<string, any>): Product => {
   const imageFields = normalizeCatalogProductImageFields(item);
+  const descriptions = resolveCatalogProductDescriptions(item);
   return {
   ...item,
   id: asString(item.id),
   name: asString(item.name) || 'Producto',
-  description: asString(item.description),
+  shortDescription: descriptions.shortDescription || undefined,
+  detailedDescription: descriptions.detailedDescription || undefined,
+  description: descriptions.detailDescription || undefined,
   price: typeof item.price === 'number' ? item.price : Number(item.price || 0),
   priceReference: typeof item.priceReference === 'number' ? item.priceReference : Number(item.priceReference || 0),
   category: asString(item.category?.name || item.category),

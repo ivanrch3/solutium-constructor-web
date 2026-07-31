@@ -67,6 +67,7 @@ import { resolvePublicCatalogItemRoute } from '../utils/publicCatalogItemRoute';
 import { fetchHostedPublicCatalogItem } from '../services/publicCatalogItems';
 import { deriveWhatsAppOrdersCatalogCategoriesFromProducts } from './constructor/modules/whatsappOrdersCatalogPublishedContract';
 import { resolveWhatsAppOrdersProductsForSelection } from './constructor/modules/whatsappOrdersCatalogOrganizer';
+import { mergeCurrentCatalogDescriptions } from '../utils/catalogProductDescription';
 
 interface ViewerProps {
   site: PublishedSite;
@@ -827,14 +828,22 @@ export const Viewer: React.FC<ViewerProps> = ({
             let finalProducts: Product[] = [];
 
             if (Array.isArray(snapshotProducts) && snapshotProducts.length > 0) {
+              const currentCatalogProductsById = new Map(
+                catalogProducts.map((product) => [String(product.id), product])
+              );
               finalProducts = snapshotProducts
                 .filter(Boolean)
                 .map((product: any, index: number) => {
-                  const imageFields = normalizeCatalogProductImageFields(product);
+                  const productId = String(product?.id || `published_whatsapp_order_product_${index}`);
+                  const mergedProduct = mergeCurrentCatalogDescriptions(
+                    product,
+                    currentCatalogProductsById.get(productId)
+                  );
+                  const imageFields = normalizeCatalogProductImageFields(mergedProduct);
                   return {
-                    ...product,
-                    id: String(product?.id || `published_whatsapp_order_product_${index}`),
-                    name: String(product?.name || `Producto ${index + 1}`),
+                    ...mergedProduct,
+                    id: productId,
+                    name: String(mergedProduct?.name || `Producto ${index + 1}`),
                     ...imageFields,
                     image_url: imageFields.imageUrl || '',
                     image2_url: imageFields.image2Url || ''

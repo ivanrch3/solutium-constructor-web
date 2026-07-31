@@ -42,6 +42,7 @@ import {
 } from './whatsappOrdersCatalogOrganizer';
 import type { SecureCatalogCategory } from '../../../services/secureLaunchSession';
 import { normalizeCatalogProductImageFields } from '../../../utils/productImage';
+import { resolveCatalogProductDescriptions } from '../../../utils/catalogProductDescription';
 import { useCatalogProductImages } from '../../../hooks/useCatalogProductImages';
 import { fetchHostedPublicCatalogItem } from '../../../services/publicCatalogItems';
 import { normalizePublicCatalogSlug } from '../../../utils/publicCatalogItemRoute';
@@ -239,11 +240,14 @@ const normalizeProduct = (product: Product, index: number): Product => {
   const appData = getProductAppData(raw);
   const optionGroups = resolveProductOptionGroupsSource(raw);
   const imageFields = normalizeCatalogProductImageFields(raw);
+  const descriptions = resolveCatalogProductDescriptions(raw);
   return {
     ...product,
     id: String(raw.id || `product-${index}`),
     name: normalizeString(raw.name || raw.title, 'Producto'),
-    description: normalizeString(raw.description || raw.shortDescription || raw.short_description, ''),
+    shortDescription: descriptions.shortDescription || undefined,
+    detailedDescription: descriptions.detailedDescription || undefined,
+    description: descriptions.detailDescription || undefined,
     ...imageFields,
     price: raw.price !== undefined && raw.price !== null ? toNumber(raw.price, 0) : undefined,
     category: normalizeString(raw.category || raw.categoria, 'General'),
@@ -666,6 +670,10 @@ export const WhatsAppOrdersModule: React.FC<{
   const [activeCategory, setActiveCategory] = React.useState<string>('Todos');
   const [previewCatalogView, setPreviewCatalogView] = React.useState<WhatsAppOrdersCatalogView>(defaultCatalogView);
   const [selectedProduct, setSelectedProduct] = React.useState<Product | null>(null);
+  const selectedProductDescriptions = React.useMemo(
+    () => selectedProduct ? resolveCatalogProductDescriptions(selectedProduct) : null,
+    [selectedProduct]
+  );
   const [isResolvingProductDetail, setIsResolvingProductDetail] = React.useState(false);
   const [productDetailNotice, setProductDetailNotice] = React.useState<string | null>(null);
   const [selectedQuantity, setSelectedQuantity] = React.useState(1);
@@ -1432,6 +1440,7 @@ export const WhatsAppOrdersModule: React.FC<{
                     {group.products.map((product) => {
               const isUnavailable = normalizeString(product.status, '').toLowerCase() === 'inactive';
               const productImageUrl = resolveImageUrl(product.primaryImageAssetId, product.imageUrl, catalogImageUrls);
+              const cardDescription = resolveCatalogProductDescriptions(product).cardDescription;
               return (
                 <article
                   key={product.id}
@@ -1443,7 +1452,7 @@ export const WhatsAppOrdersModule: React.FC<{
                     className={`flex w-full text-left ${layout === 'list' ? 'min-w-0 flex-row' : 'flex-col'}`}
                   >
                     <div
-                      className={`relative shrink-0 overflow-hidden bg-slate-100 ${
+                      className={`relative shrink-0 overflow-hidden bg-transparent ${
                         layout === 'list'
                           ? 'h-28 w-28 self-center sm:h-36 sm:w-44'
                           : 'aspect-[4/3] w-full'
@@ -1453,14 +1462,14 @@ export const WhatsAppOrdersModule: React.FC<{
                         <img
                           src={productImageUrl}
                           alt={product.name}
-                          className="h-full w-full object-cover object-center"
+                          className="h-full w-full object-contain object-center"
                           referrerPolicy="no-referrer"
                           onError={() => {
                             if (product.primaryImageAssetId) void retryCatalogImage(product.primaryImageAssetId);
                           }}
                         />
                       ) : (
-                        <div className="flex h-full w-full items-center justify-center text-slate-400">
+                        <div className="flex h-full w-full items-center justify-center bg-slate-100 text-slate-400">
                           <ShoppingCart size={36} />
                         </div>
                       )}
@@ -1486,8 +1495,8 @@ export const WhatsAppOrdersModule: React.FC<{
                         ) : null}
                       </div>
 
-                      {showDescriptions && product.description ? (
-                        <p className="line-clamp-3 text-sm leading-6 text-slate-600" style={productDescriptionTypographyStyle}>{product.description}</p>
+                      {showDescriptions && cardDescription ? (
+                        <p className="line-clamp-3 text-sm leading-6 text-slate-600" style={productDescriptionTypographyStyle}>{cardDescription}</p>
                       ) : null}
 
                       {showProductOpenLabel && (
@@ -1577,8 +1586,8 @@ export const WhatsAppOrdersModule: React.FC<{
                     {productDetailNotice}
                   </p>
                 ) : null}
-                {selectedProduct.description ? (
-                  <p className="text-sm leading-6 text-slate-600">{selectedProduct.description}</p>
+                {selectedProductDescriptions?.detailDescription ? (
+                  <p className="text-sm leading-6 text-slate-600">{selectedProductDescriptions.detailDescription}</p>
                 ) : null}
 
                 {currentOptionGroups.map((group) => {

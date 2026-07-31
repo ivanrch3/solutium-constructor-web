@@ -422,6 +422,7 @@ export const getProducts = async (page: number, pageSize: number, projectId: str
     const mappedData = data.map((item: any) => ({
       id: item.id,
       name: item.name,
+      shortDescription: item.short_description || item.shortDescription || undefined,
       description: item.description,
       price: item.price,
       priceReference: item.price_reference,

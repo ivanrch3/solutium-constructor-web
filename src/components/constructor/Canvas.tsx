@@ -47,6 +47,7 @@ import { SpacerModule } from './modules/SpacerModule';
 import { BentoModule } from './modules/BentoModule';
 import { ComparisonModule } from './modules/ComparisonModule';
 import { CompositionSectionModule } from './modules/CompositionSectionModule';
+import { SpecialEventModule } from './modules/SpecialEventModule';
 import { ParallaxScrollContext } from './ParallaxBackground';
 
 import { normalizeSocialUrl, getIconForPlatform, resolveFooterSocialLinks, FOOTER_DEFAULTS } from '../../utils/socialUtils';
@@ -1086,6 +1087,7 @@ export const Canvas: React.FC<CanvasProps> = ({
                         isPreviewMode={isCleanPreviewMode}
                       />
                     )}
+                    {section.type === 'special_event' && <SpecialEventModule moduleId={section.id} settingsValues={finalSettings} />}
                     {section.type === 'video' && (
                       <VideoModule 
                         moduleId={section.id}
@@ -1260,7 +1262,7 @@ export const Canvas: React.FC<CanvasProps> = ({
                       />
                     )}
                     {/* Fallback debug for unrendered modules */}
-                    {!['products', 'whatsapp_orders', 'products_showcase', 'hero', 'hero2', 'features', 'about', 'process', 'gallery', 'video', 'testimonials', 'stats', 'team', 'pricing', 'faq', 'contact', 'genius_web_wa', 'clients', 'trusted_logos', 'cta', 'dynamic_cards', 'newsletter', 'conversion', 'navegacion', 'menu', 'footer', 'spacer', 'bento', 'composition_section', 'comparative'].includes(section.type) && (
+                    {!['products', 'whatsapp_orders', 'products_showcase', 'hero', 'hero2', 'features', 'about', 'process', 'gallery', 'special_event', 'video', 'testimonials', 'stats', 'team', 'pricing', 'faq', 'contact', 'genius_web_wa', 'clients', 'trusted_logos', 'cta', 'dynamic_cards', 'newsletter', 'conversion', 'navegacion', 'menu', 'footer', 'spacer', 'bento', 'composition_section', 'comparative'].includes(section.type) && (
                       <div className="p-8 border-2 border-dashed border-rose-200 rounded-2xl bg-rose-50 text-rose-500 text-center">
                         <p className="font-bold">Módulo no reconocido: {section.type}</p>
                         <p className="text-xs opacity-60">ID: {section.id} | Template: {section.templateId}</p>

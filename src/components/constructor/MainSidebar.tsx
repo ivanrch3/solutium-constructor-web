@@ -47,7 +47,8 @@ import {
   WHATSAPP_ORDERS_MODULE,
   SPACER_MODULE,
   BENTO_MODULE,
-  COMPARISON_MODULE
+  COMPARISON_MODULE,
+  SPECIAL_EVENT_MODULE
 } from './registry';
 import { WhatsAppOrdersAvailability } from '../../utils/whatsappOrdersAvailability';
 
@@ -289,6 +290,7 @@ export const MainSidebar: React.FC<MainSidebarProps> = ({
                   <div className="space-y-0.5 px-2">
                     <ModuleItem icon={React.createElement(MODULE_INFO.comparative.icon, { size: 18 })} label="Comparativo" onClick={() => onAddModule(COMPARISON_MODULE)} />
                     <ModuleItem icon={React.createElement(MODULE_INFO.gallery.icon, { size: 18 })} label="Galería" onClick={() => onAddModule(GALLERY_MODULE)} />
+                    <ModuleItem icon={React.createElement(MODULE_INFO.special_event.icon, { size: 18 })} label="Evento Especial" onClick={() => onAddModule(SPECIAL_EVENT_MODULE)} />
                     <ModuleItem icon={React.createElement(MODULE_INFO.video.icon, { size: 18 })} label="Video" onClick={() => onAddModule(VIDEO_MODULE)} />
                   </div>
                 )}

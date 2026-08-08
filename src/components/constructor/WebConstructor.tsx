@@ -35,7 +35,7 @@ import {
   PROCESS_MODULE, GALLERY_MODULE, VIDEO_MODULE, TESTIMONIALS_MODULE,
   STATS_MODULE, NEWSLETTER_MODULE, CONTACT_MODULE, TEAM_MODULE,
   CTA_MODULE, DYNAMIC_CARDS_MODULE, PRICING_MODULE, FAQ_MODULE, TRUSTED_LOGOS_MODULE, GENIUS_WEB_WA_MODULE,
-  BENTO_MODULE, COMPARISON_MODULE, COMPOSITION_SECTION_MODULE
+  BENTO_MODULE, COMPARISON_MODULE, COMPOSITION_SECTION_MODULE, SPECIAL_EVENT_MODULE
 } from './registry';
 import { saveWebBuilderSiteDraft, publishWebBuilderSite, getProducts, getCustomers, getTrustedCompanyLogos, normalizeTrustedCompanyLogos, upsertPage, upsertPageSections, logEvolutionRequest, getPageBySiteId, generatePreviewServerSide } from '../../services/dataService';
 import { sendToMother } from '../../services/handshakeService';
@@ -7149,6 +7149,7 @@ const formatTimestampName = () => {
                                   { id: 'multimedia', label: 'Multimedia', modules: [
                                     { icon: MODULE_INFO.comparative.icon, label: "Comparativo", mod: COMPARISON_MODULE },
                                     { icon: MODULE_INFO.gallery.icon, label: "Galería", mod: GALLERY_MODULE },
+                                    { icon: MODULE_INFO.special_event.icon, label: "Evento Especial", mod: SPECIAL_EVENT_MODULE },
                                     { icon: MODULE_INFO.video.icon, label: "Video", mod: VIDEO_MODULE }
                                   ]}
                                 ].map((cat) => (
@@ -7255,6 +7256,7 @@ const formatTimestampName = () => {
                                     <div className="space-y-1">
                                       <ModuleItem icon={React.createElement(MODULE_INFO.comparative.icon, { size: 18 })} label="Comparativo" onClick={() => addModule(COMPARISON_MODULE)} />
                                       <ModuleItem icon={React.createElement(MODULE_INFO.gallery.icon, { size: 18 })} label="Galería" onClick={() => addModule(GALLERY_MODULE)} />
+                                      <ModuleItem icon={React.createElement(MODULE_INFO.special_event.icon, { size: 18 })} label="Evento Especial" onClick={() => addModule(SPECIAL_EVENT_MODULE)} />
                                       <ModuleItem icon={React.createElement(MODULE_INFO.video.icon, { size: 18 })} label="Video" onClick={() => addModule(VIDEO_MODULE)} />
                                     </div>
                                   </div>

@@ -4161,6 +4161,19 @@ export const COMPOSITION_SECTION_MODULE: WebModule = {
   ]
 };
 
+export const SPECIAL_EVENT_MODULE: WebModule = {
+  id: 'mod_special_event_1', type: 'special_event', iconKey: 'special_event', name: 'Evento Especial',
+  globalGroups: [], globalSettings: { contenido: [], estructura: [], estilo: [], tipografia: [], multimedia: [], interaccion: [] },
+  elements: [
+    { id: 'el_special_event_identity', name: 'Evento', type: 'content', groups: ['contenido'], settings: { contenido: [{ id: 'slug', label: 'Slug del evento backend', type: 'text', defaultValue: '', description: 'Ejemplo: los15desara. No incluye ningún token.' }] } },
+    { id: 'el_special_event_cover', name: 'Portada', type: 'content', groups: ['contenido', 'estilo', 'multimedia', 'interaccion'], settings: { contenido: [{ id: 'title', label: 'Título', type: 'text', defaultValue: 'Evento especial' }, { id: 'subtitle', label: 'Subtítulo', type: 'text', defaultValue: '' }], multimedia: [{ id: 'image', label: 'Imagen de portada', type: 'image', defaultValue: '' }], estilo: [{ id: 'primary_color', label: 'Color principal', type: 'color', defaultValue: '#D99AAA' }, { id: 'secondary_color', label: 'Color secundario', type: 'color', defaultValue: '#D9B978' }, { id: 'background_color', label: 'Fondo', type: 'color', defaultValue: '#FFF9F5' }, { id: 'text_color', label: 'Texto', type: 'color', defaultValue: '#4B3440' }], interaccion: [{ id: 'show_title', label: 'Mostrar título textual', type: 'boolean', defaultValue: true }, { id: 'show_subtitle', label: 'Mostrar subtítulo', type: 'boolean', defaultValue: true }] } },
+    { id: 'el_special_event_carousel', name: 'Carrusel', type: 'repeater', groups: ['contenido', 'multimedia', 'interaccion'], settings: { contenido: [{ id: 'images', label: 'Fotografías', type: 'repeater', defaultValue: [], fields: [{ id: 'url', label: 'Imagen', type: 'image', defaultValue: '' }, { id: 'alt', label: 'Texto alternativo', type: 'text', defaultValue: '' }] }], multimedia: [], interaccion: [{ id: 'autoplay', label: 'Autoplay', type: 'boolean', defaultValue: true }] } },
+    { id: 'el_special_event_details', name: 'Información del evento', type: 'content', groups: ['contenido', 'interaccion'], settings: { contenido: [{ id: 'date', label: 'Fecha', type: 'text', defaultValue: '' }, { id: 'time', label: 'Hora', type: 'text', defaultValue: '' }, { id: 'place', label: 'Lugar', type: 'text', defaultValue: '' }, { id: 'address', label: 'Referencia / dirección', type: 'textarea', defaultValue: '' }], interaccion: [{ id: 'waze_url', label: 'URL de Waze', type: 'text', defaultValue: '' }] } },
+    { id: 'el_special_event_upload', name: 'Recepción de fotografías', type: 'content', groups: ['contenido'], settings: { contenido: [{ id: 'heading', label: 'Título del formulario', type: 'text', defaultValue: 'Comparte tus recuerdos' }] } },
+    { id: 'el_special_event_gallery', name: 'Galería', type: 'content', groups: ['contenido'], settings: { contenido: [] } }
+  ]
+};
+
 export const GROUP_LABELS: Record<SettingGroupType, string> = {
   contenido: 'Contenido',
   estructura: 'Estructura',
@@ -4202,6 +4215,7 @@ export const MODULE_INFO: Record<string, {
   about: { label: 'Sobre Nosotros', icon: Info },
   process: { label: 'Proceso', icon: Workflow },
   gallery: { label: 'Galería', icon: Images },
+  special_event: { label: 'Evento Especial', icon: Heart },
   video: { label: 'Video', icon: PlayCircle },
   testimonials: { label: 'Testimonios', icon: Quote },
   stats: { label: 'Estadísticas', icon: BarChart3 },

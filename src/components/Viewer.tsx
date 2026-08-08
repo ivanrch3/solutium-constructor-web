@@ -30,6 +30,7 @@ import { MenuModule } from './constructor/modules/MenuModule';
 import { BentoModule } from './constructor/modules/BentoModule';
 import { ComparisonModule } from './constructor/modules/ComparisonModule';
 import { CompositionSectionModule } from './constructor/modules/CompositionSectionModule';
+import { SpecialEventModule } from './constructor/modules/SpecialEventModule';
 import { AlertCircle } from 'lucide-react';
 import { logDebug } from '../utils/debug';
 import { bridgeModuleContent } from '../utils/hydrationBridge';
@@ -766,6 +767,8 @@ export const Viewer: React.FC<ViewerProps> = ({
             return <ProcessModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} />;
           case 'gallery':
             return <GalleryModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} content={content} />;
+          case 'special_event':
+            return <SpecialEventModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} />;
           case 'testimonials':
             return <TestimonialsModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} />;
           case 'stats':

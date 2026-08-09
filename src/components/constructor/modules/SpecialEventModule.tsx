@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, MapPin, Upload, X, Check, EyeOff, RefreshCw } from 'lucide-react';
 import { specialEventApi, SpecialEventApiError, type SpecialEventPhoto } from '../../../services/specialEventApi';
+import { resolveSpecialEventModerationToken } from '../../../utils/specialEventModerationPath';
 
 const value = (settings: Record<string, any>, id: string, fallback: any) => settings[id] ?? fallback;
 const key = (moduleId: string, group: string, id: string) => `${moduleId}_${group}_${id}`;
@@ -14,8 +15,9 @@ export const SpecialEventModule: React.FC<{ moduleId: string; settingsValues: Re
   const [slide, setSlide] = useState(0); const [photos, setPhotos] = useState<SpecialEventPhoto[]>([]); const [filter, setFilter] = useState('all'); const [selected, setSelected] = useState<number | null>(null);
   const [files, setFiles] = useState<File[]>([]); const [name, setName] = useState(''); const [message, setMessage] = useState(''); const [uploading, setUploading] = useState(false); const [progress, setProgress] = useState(0); const [notice, setNotice] = useState(''); const fileRef = useRef<HTMLInputElement>(null);
   const primary = value(settingsValues, key(moduleId, 'el_special_event_cover', 'primary_color'), '#D99AAA'); const bg = value(settingsValues, key(moduleId, 'el_special_event_cover', 'background_color'), '#FFF9F5'); const text = value(settingsValues, key(moduleId, 'el_special_event_cover', 'text_color'), '#4B3440');
-  const moderationMatch = typeof window !== 'undefined' ? window.location.pathname.match(/^\/moderar\/([^/]+)$/) : null;
-  const moderationToken = moderationMatch?.[1] || '';
+  const moderationToken = typeof window !== 'undefined'
+    ? resolveSpecialEventModerationToken(window.location.pathname, window.location.search)
+    : '';
   const [moderationStatus, setModerationStatus] = useState<'pending' | 'approved'>('pending'); const [moderationPhotos, setModerationPhotos] = useState<SpecialEventPhoto[]>([]); const [selectedIds, setSelectedIds] = useState<string[]>([]); const [moderationError, setModerationError] = useState(''); const [moderating, setModerating] = useState(false);
   const loadGallery = async (signal?: AbortSignal) => { if (!slug) return; try { setPhotos(await specialEventApi.getPhotos(slug, signal)); } catch { /* public state remains usable while backend is activated */ } };
   useEffect(() => { const controller = new AbortController(); void loadGallery(controller.signal); const timer = window.setInterval(() => { if (document.visibilityState === 'visible') void loadGallery(); }, 30000); return () => { controller.abort(); window.clearInterval(timer); }; }, [slug]);

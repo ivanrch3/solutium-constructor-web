@@ -47,19 +47,21 @@ test('carousel CSS scopes continuous animation and prevents horizontal overflow'
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
 });
 
-test('lightbox zoom and pan are local, finite, and reset before closing', async () => {
+test('lightbox uses discrete zoom controls and native scrolling, without pinch handlers', async () => {
   const component = await source();
   const css = await readFile(new URL('../src/components/constructor/modules/SpecialEventModule.css', import.meta.url), 'utf8');
-  assert.match(component, /resetSpecialEventLightboxGesture[\s\S]*scale: 1[\s\S]*translateX: 0[\s\S]*translateY: 0/);
-  assert.match(component, /const close = \(\) => \{ resetGesture\(\); onClose\(\); \}/);
-  assert.match(component, /LIGHTBOX_MIN_SCALE = 1/);
-  assert.match(component, /LIGHTBOX_MAX_SCALE = 4/);
-  assert.match(component, /Number\.isFinite/);
-  assert.match(component, /onPointerCancel=\{cancelGesture\} onLostPointerCapture=\{cancelGesture\}/);
-  assert.match(component, /if \(isTap\) close\(\)/);
-  assert.match(component, /gestureActive\.current = true/);
-  assert.match(component, /special-event-lightbox-close fixed/);
-  assert.match(css, /\.special-event-lightbox-gesture[\s\S]*touch-action: none/);
+  const lightbox = component.slice(component.indexOf('const SpecialEventLightbox'), component.indexOf('const speedToPixelsPerSecond'));
+  assert.match(lightbox, /LIGHTBOX_ZOOM_LEVELS/);
+  assert.match(lightbox, /disabled=\{zoomIndex === 0\}/);
+  assert.match(lightbox, /disabled=\{zoomIndex === LIGHTBOX_ZOOM_LEVELS\.length - 1\}/);
+  assert.match(lightbox, /viewportRef\.current\.scrollLeft = 0/);
+  assert.match(lightbox, /onClick=\{close\}/);
+  assert.match(component, /onPrevious=\{selected !== null/);
+  assert.doesNotMatch(lightbox, /onPointer(?:Down|Move|Up|Cancel|LostPointerCapture)/);
+  assert.doesNotMatch(lightbox, /translate3d\(/);
+  assert.match(lightbox, /special-event-lightbox-close fixed/);
+  assert.match(css, /\.special-event-lightbox-viewport\.is-zoomed \{[\s\S]*overflow: auto/);
+  assert.doesNotMatch(css, /touch-action: none/);
   assert.match(component, /document\.body\.style\.overflow = previousOverflow/);
   assert.doesNotMatch(component, /document\.(documentElement|body)\.style\.zoom/);
   assert.doesNotMatch(component, /meta.*viewport/);

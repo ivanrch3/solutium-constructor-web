@@ -46,3 +46,14 @@ test('carousel CSS scopes continuous animation and prevents horizontal overflow'
   assert.match(css, /animation-play-state: paused/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
 });
+
+test('lightbox zoom and pan are local and reset before closing', async () => {
+  const component = await source();
+  const css = await readFile(new URL('../src/components/constructor/modules/SpecialEventModule.css', import.meta.url), 'utf8');
+  assert.match(component, /resetSpecialEventLightboxGesture[\s\S]*scale: 1[\s\S]*translateX: 0[\s\S]*translateY: 0/);
+  assert.match(component, /const close = \(\) => \{ resetGesture\(\); onClose\(\); \}/);
+  assert.match(css, /\.special-event-lightbox-gesture[\s\S]*touch-action: none/);
+  assert.match(component, /document\.body\.style\.overflow = previousOverflow/);
+  assert.doesNotMatch(component, /document\.(documentElement|body)\.style\.zoom/);
+  assert.doesNotMatch(component, /meta.*viewport/);
+});

@@ -6,6 +6,9 @@
 .special-event-continuous-cycle { display: flex; flex: 0 0 auto; gap: 0.75rem; padding: 0.75rem; }
 .special-event-carousel-card { flex: 0 0 clamp(15rem, 35vw, 25rem); overflow: hidden; border-radius: 1rem; background: #f8fafc; }
 .special-event-carousel-card img { display: block; width: 100%; height: auto; max-height: min(55svh, 28rem); object-fit: contain; }
+.special-event-lightbox { overscroll-behavior: contain; }
+.special-event-lightbox-gesture { display: flex; max-height: 100%; max-width: 100%; align-items: center; justify-content: center; touch-action: none; overscroll-behavior: contain; }
+.special-event-lightbox-image { display: block; max-height: calc(100svh - 2rem); max-width: calc(100vw - 2rem); transform-origin: center; user-select: none; -webkit-user-drag: none; will-change: transform; }
 @keyframes special-event-train { to { transform: translateX(-50%); } }
 @media (max-width: 767px) { .special-event-carousel-card { flex-basis: min(72vw, 19rem); } }
 @media (prefers-reduced-motion: reduce) { .special-event-continuous-track { animation: none; } }

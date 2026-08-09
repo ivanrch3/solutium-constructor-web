@@ -1,18 +1,11 @@
-/* Public special-event media rules. Scoped by the module's unique accessible labels. */
-img[alt="Historia del evento"] {
-  width: 100% !important;
-  height: auto !important;
-  object-fit: contain;
-  object-position: center;
-}
-
-@media (max-width: 767px) {
-  section:has(img[alt="Portada del evento"]) > div {
-    padding-top: 0.5rem !important;
-    padding-bottom: 0.75rem !important;
-  }
-
-  section:has(img[alt="Portada del evento"]) header + div {
-    margin-top: 0.75rem !important;
-  }
-}
+.special-event-module { overflow-x: clip; }
+.special-event-hero, .special-event-hero-media { background: transparent; }
+.special-event-continuous { overflow: hidden; border-radius: 1.5rem; background: white; box-shadow: 0 10px 20px rgb(15 23 42 / 0.08); touch-action: pan-y; }
+.special-event-continuous-track { display: flex; width: max-content; animation: special-event-train var(--special-event-duration) linear infinite; will-change: transform; }
+.special-event-continuous-track.is-paused { animation-play-state: paused; }
+.special-event-continuous-cycle { display: flex; flex: 0 0 auto; gap: 0.75rem; padding: 0.75rem; }
+.special-event-carousel-card { flex: 0 0 clamp(15rem, 35vw, 25rem); overflow: hidden; border-radius: 1rem; background: #f8fafc; }
+.special-event-carousel-card img { display: block; width: 100%; height: auto; max-height: min(55svh, 28rem); object-fit: contain; }
+@keyframes special-event-train { to { transform: translateX(-50%); } }
+@media (max-width: 767px) { .special-event-carousel-card { flex-basis: min(72vw, 19rem); } }
+@media (prefers-reduced-motion: reduce) { .special-event-continuous-track { animation: none; } }

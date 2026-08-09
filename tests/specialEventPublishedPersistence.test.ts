@@ -58,3 +58,18 @@ test('does not alter settings belonging to modules that already have persistent 
 
   assert.equal(migrateEditorStateToPersistentModuleIds(state, () => 'unused'), state);
 });
+
+test('preserves special-event carousel mode and speed from draft through viewer hydration', () => {
+  const moduleId = 'mod_33333333-3333-4333-8333-333333333333';
+  const settings = {
+    [`${moduleId}_el_special_event_carousel_carouselMode`]: 'continuous',
+    [`${moduleId}_el_special_event_carousel_carouselSpeed`]: 8
+  };
+  const published = buildPublishedModuleSettings(settings, moduleId);
+  const hydrated = bridgeModuleContent({ type: 'special_event', moduleId, content: {}, settings: published, existingDeepValues: {} });
+
+  assert.equal(published.el_special_event_carousel_carouselMode, 'continuous');
+  assert.equal(published.el_special_event_carousel_carouselSpeed, 8);
+  assert.equal(hydrated[`${moduleId}_el_special_event_carousel_carouselMode`], 'continuous');
+  assert.equal(hydrated[`${moduleId}_el_special_event_carousel_carouselSpeed`], 8);
+});

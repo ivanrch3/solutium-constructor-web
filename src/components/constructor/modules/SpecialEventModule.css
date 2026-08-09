@@ -1,0 +1,18 @@
+/* Public special-event media rules. Scoped by the module's unique accessible labels. */
+img[alt="Historia del evento"] {
+  width: 100% !important;
+  height: auto !important;
+  object-fit: contain;
+  object-position: center;
+}
+
+@media (max-width: 767px) {
+  section:has(img[alt="Portada del evento"]) > div {
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.75rem !important;
+  }
+
+  section:has(img[alt="Portada del evento"]) header + div {
+    margin-top: 0.75rem !important;
+  }
+}

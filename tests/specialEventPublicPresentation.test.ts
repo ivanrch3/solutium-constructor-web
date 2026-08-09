@@ -24,3 +24,11 @@ test('public special-event details are intentionally not rendered while their se
   assert.match(component, /specialEventApi\.uploadPhotos/);
   assert.match(component, /specialEventApi\.getPhotos/);
 });
+
+test('mobile cover spacing and carousel width-fit rules remain scoped to the special-event media', async () => {
+  const css = await readFile(new URL('../src/components/constructor/modules/SpecialEventModule.css', import.meta.url), 'utf8');
+  assert.match(css, /img\[alt="Historia del evento"\][\s\S]*width: 100% !important[\s\S]*height: auto !important/);
+  assert.match(css, /@media \(max-width: 767px\)/);
+  assert.match(css, /padding-top: 0.5rem/);
+  assert.match(css, /margin-top: 0.75rem/);
+});

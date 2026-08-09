@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Check, ChevronLeft, ChevronRight, MapPin, RefreshCw, Upload, X } from 'lucide-react';
 import { specialEventApi, SpecialEventApiError, type SpecialEventPhoto } from '../../../services/specialEventApi';
 import { resolveSpecialEventModerationToken } from '../../../utils/specialEventModerationPath';
+import './SpecialEventModule.css';
 
 type ModerationStatus = 'pending' | 'approved' | 'hidden';
 const statuses: ModerationStatus[] = ['approved', 'pending', 'hidden'];

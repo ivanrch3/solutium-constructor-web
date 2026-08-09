@@ -19,7 +19,7 @@ test('public special-event details are intentionally not rendered while their se
   const component = await source();
   assert.match(component, /const renderPublicEventDetails = false/);
   assert.match(component, /\{renderPublicEventDetails && <div/);
-  assert.match(component, /el_special_event_details/);
+  assert.equal(component.includes('el_special_event_details'), false);
   assert.match(component, /el_special_event_upload/);
   assert.match(component, /specialEventApi\.uploadPhotos/);
   assert.match(component, /specialEventApi\.getPhotos/);

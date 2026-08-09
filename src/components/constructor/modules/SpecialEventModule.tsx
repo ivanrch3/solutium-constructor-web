@@ -8,6 +8,9 @@ type ModerationStatus = 'pending' | 'approved' | 'hidden';
 type StoryImage = { url: string; alt?: string };
 type CarouselMode = 'manual' | 'continuous';
 type LightboxGesture = { scale: number; translateX: number; translateY: number };
+const LIGHTBOX_MIN_SCALE = 1;
+const LIGHTBOX_MAX_SCALE = 4;
+const LIGHTBOX_TAP_THRESHOLD = 8;
 const statuses: ModerationStatus[] = ['approved', 'pending', 'hidden'];
 const tabs: Record<ModerationStatus, string> = { approved: 'Mostradas', pending: 'En revisión', hidden: 'Ocultas' };
 const value = (settings: Record<string, any>, id: string, fallback: any) => settings[id] ?? fallback;
@@ -29,26 +32,44 @@ const SpecialEventHero: React.FC<{ cover: string; title: string; subtitle: strin
 
 const SpecialEventLightbox: React.FC<{ image: StoryImage; onClose: () => void }> = ({ image, onClose }) => {
   const [gesture, setGesture] = useState<LightboxGesture>(resetSpecialEventLightboxGesture);
+  const imageRef = useRef<HTMLImageElement>(null);
   const pointers = useRef(new Map<number, { x: number; y: number }>());
   const drag = useRef<{ x: number; y: number } | null>(null);
   const pinch = useRef<{ distance: number; scale: number } | null>(null);
-  const resetGesture = () => { pointers.current.clear(); drag.current = null; pinch.current = null; setGesture(resetSpecialEventLightboxGesture()); };
+  const tapStart = useRef<{ x: number; y: number } | null>(null);
+  const gestureActive = useRef(false);
+  const finite = (number: number) => Number.isFinite(number);
+  const panLimits = (scale: number) => {
+    const width = imageRef.current?.clientWidth ?? 0; const height = imageRef.current?.clientHeight ?? 0;
+    const viewportWidth = window.innerWidth || width; const viewportHeight = window.innerHeight || height;
+    return { x: Math.max(0, Math.min((width * scale - Math.min(width, viewportWidth)) / 2, viewportWidth * 0.45)), y: Math.max(0, Math.min((height * scale - Math.min(height, viewportHeight)) / 2, viewportHeight * 0.45)) };
+  };
+  const sanitizeGesture = (next: LightboxGesture): LightboxGesture => {
+    if (!finite(next.scale) || !finite(next.translateX) || !finite(next.translateY)) return resetSpecialEventLightboxGesture();
+    const scale = Math.min(LIGHTBOX_MAX_SCALE, Math.max(LIGHTBOX_MIN_SCALE, next.scale));
+    if (scale <= LIGHTBOX_MIN_SCALE) return resetSpecialEventLightboxGesture();
+    const limits = panLimits(scale);
+    return { scale, translateX: Math.min(limits.x, Math.max(-limits.x, next.translateX)), translateY: Math.min(limits.y, Math.max(-limits.y, next.translateY)) };
+  };
+  const clearPointers = () => { pointers.current.clear(); drag.current = null; pinch.current = null; tapStart.current = null; gestureActive.current = false; };
+  const resetGesture = () => { clearPointers(); setGesture(resetSpecialEventLightboxGesture()); };
   const close = () => { resetGesture(); onClose(); };
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
     const onKeyDown = (event: KeyboardEvent) => { if (event.key === 'Escape') close(); };
-    document.body.style.overflow = 'hidden';
-    document.addEventListener('keydown', onKeyDown);
-    return () => { pointers.current.clear(); drag.current = null; pinch.current = null; document.body.style.overflow = previousOverflow; document.removeEventListener('keydown', onKeyDown); };
+    document.body.style.overflow = 'hidden'; document.addEventListener('keydown', onKeyDown);
+    return () => { clearPointers(); document.body.style.overflow = previousOverflow; document.removeEventListener('keydown', onKeyDown); };
   }, []);
 
   const distance = () => { const [first, second] = Array.from(pointers.current.values()); return first && second ? Math.hypot(first.x - second.x, first.y - second.y) : 0; };
-  const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => { event.preventDefault(); event.currentTarget.setPointerCapture(event.pointerId); pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY }); if (pointers.current.size === 2) pinch.current = { distance: distance(), scale: gesture.scale }; else drag.current = { x: event.clientX, y: event.clientY }; };
-  const onPointerMove = (event: React.PointerEvent<HTMLDivElement>) => { if (!pointers.current.has(event.pointerId)) return; event.preventDefault(); pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY }); if (pointers.current.size >= 2 && pinch.current) { const nextDistance = distance(); setGesture((current) => ({ ...current, scale: Math.min(4, Math.max(1, pinch.current!.scale * (nextDistance / pinch.current!.distance))) })); return; } if (drag.current) { const deltaX = event.clientX - drag.current.x; const deltaY = event.clientY - drag.current.y; drag.current = { x: event.clientX, y: event.clientY }; setGesture((current) => ({ ...current, translateX: current.translateX + deltaX, translateY: current.translateY + deltaY })); } };
-  const endPointer = (event: React.PointerEvent<HTMLDivElement>) => { pointers.current.delete(event.pointerId); pinch.current = null; const remaining = Array.from(pointers.current.values())[0]; drag.current = remaining ? { ...remaining } : null; };
+  const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => { event.preventDefault(); event.currentTarget.setPointerCapture(event.pointerId); pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY }); if (pointers.current.size === 1) { tapStart.current = { x: event.clientX, y: event.clientY }; drag.current = { x: event.clientX, y: event.clientY }; } if (pointers.current.size === 2) { const initialDistance = distance(); gestureActive.current = true; pinch.current = initialDistance > 0 && finite(initialDistance) ? { distance: initialDistance, scale: gesture.scale } : null; } };
+  const onPointerMove = (event: React.PointerEvent<HTMLDivElement>) => { if (!pointers.current.has(event.pointerId)) return; event.preventDefault(); pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY }); if (tapStart.current && Math.hypot(event.clientX - tapStart.current.x, event.clientY - tapStart.current.y) > LIGHTBOX_TAP_THRESHOLD) gestureActive.current = true; if (pointers.current.size >= 2) { gestureActive.current = true; if (!pinch.current) return; const nextDistance = distance(); if (!finite(nextDistance) || nextDistance <= 0 || !finite(pinch.current.distance) || pinch.current.distance <= 0) { resetGesture(); return; } setGesture((current) => sanitizeGesture({ ...current, scale: pinch.current!.scale * (nextDistance / pinch.current!.distance) })); return; } if (drag.current) { const deltaX = event.clientX - drag.current.x; const deltaY = event.clientY - drag.current.y; drag.current = { x: event.clientX, y: event.clientY }; setGesture((current) => sanitizeGesture({ ...current, translateX: current.translateX + deltaX, translateY: current.translateY + deltaY })); } };
+  const endPointer = (event: React.PointerEvent<HTMLDivElement>) => { const isTap = pointers.current.size === 1 && !gestureActive.current && tapStart.current && Math.hypot(event.clientX - tapStart.current.x, event.clientY - tapStart.current.y) <= LIGHTBOX_TAP_THRESHOLD; pointers.current.delete(event.pointerId); pinch.current = null; const remaining = Array.from(pointers.current.values())[0]; drag.current = remaining ? { ...remaining } : null; if (!remaining) { tapStart.current = null; gestureActive.current = false; } if (isTap) close(); };
+  const cancelGesture = () => resetGesture();
+  const safeGesture = sanitizeGesture(gesture);
 
-  return <div className="special-event-lightbox fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4" role="dialog" aria-modal="true" aria-label="Foto ampliada" onClick={close}><button type="button" aria-label="Cerrar foto ampliada" className="absolute right-4 top-4 rounded-full bg-white/90 p-2 text-slate-900" onClick={close}><X size={20} /></button><div className="special-event-lightbox-gesture" onClick={(event) => event.stopPropagation()} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={endPointer} onPointerCancel={endPointer}><img src={image.url} alt={image.alt || 'Foto ampliada'} className="special-event-lightbox-image" style={{ transform: `translate3d(${gesture.translateX}px, ${gesture.translateY}px, 0) scale(${gesture.scale})` }} /></div></div>;
+  return <div className="special-event-lightbox fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4" role="dialog" aria-modal="true" aria-label="Foto ampliada" onClick={close}><button type="button" aria-label="Cerrar foto ampliada" className="special-event-lightbox-close fixed right-4 top-4 z-[110] rounded-full bg-white/90 p-2 text-slate-900" onClick={(event) => { event.stopPropagation(); close(); }}><X size={20} /></button><div className="special-event-lightbox-gesture" onClick={(event) => event.stopPropagation()} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={endPointer} onPointerCancel={cancelGesture} onLostPointerCapture={cancelGesture}><img ref={imageRef} src={image.url} alt={image.alt || 'Foto ampliada'} className="special-event-lightbox-image" style={{ transform: `translate3d(${safeGesture.translateX}px, ${safeGesture.translateY}px, 0) scale(${safeGesture.scale})` }} /></div></div>;
 };
 
 const speedToPixelsPerSecond = (speed: number) => 20 + Math.min(10, Math.max(1, speed)) * 12;

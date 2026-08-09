@@ -47,11 +47,18 @@ test('carousel CSS scopes continuous animation and prevents horizontal overflow'
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
 });
 
-test('lightbox zoom and pan are local and reset before closing', async () => {
+test('lightbox zoom and pan are local, finite, and reset before closing', async () => {
   const component = await source();
   const css = await readFile(new URL('../src/components/constructor/modules/SpecialEventModule.css', import.meta.url), 'utf8');
   assert.match(component, /resetSpecialEventLightboxGesture[\s\S]*scale: 1[\s\S]*translateX: 0[\s\S]*translateY: 0/);
   assert.match(component, /const close = \(\) => \{ resetGesture\(\); onClose\(\); \}/);
+  assert.match(component, /LIGHTBOX_MIN_SCALE = 1/);
+  assert.match(component, /LIGHTBOX_MAX_SCALE = 4/);
+  assert.match(component, /Number\.isFinite/);
+  assert.match(component, /onPointerCancel=\{cancelGesture\} onLostPointerCapture=\{cancelGesture\}/);
+  assert.match(component, /if \(isTap\) close\(\)/);
+  assert.match(component, /gestureActive\.current = true/);
+  assert.match(component, /special-event-lightbox-close fixed/);
   assert.match(css, /\.special-event-lightbox-gesture[\s\S]*touch-action: none/);
   assert.match(component, /document\.body\.style\.overflow = previousOverflow/);
   assert.doesNotMatch(component, /document\.(documentElement|body)\.style\.zoom/);

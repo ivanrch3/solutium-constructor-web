@@ -66,3 +66,19 @@ test('lightbox uses discrete zoom controls and native scrolling, without pinch h
   assert.doesNotMatch(component, /document\.(documentElement|body)\.style\.zoom/);
   assert.doesNotMatch(component, /meta.*viewport/);
 });
+
+test('gallery reactions use one photo state for cards and lightbox, with accessible protected toggles', async () => {
+  const component = await source();
+  const css = await readFile(new URL('../src/components/constructor/modules/SpecialEventModule.css', import.meta.url), 'utf8');
+  assert.match(component, /SPECIAL_EVENT_REACTIONS\.map/);
+  assert.match(component, /aria-pressed=\{active\}/);
+  assert.match(component, /enableReactions/);
+  assert.match(component, /pendingReactions\.has/);
+  assert.match(component, /setPendingReactions/);
+  assert.match(component, /selectedPhoto/);
+  assert.match(component, /reactions=\{enableReactions && selectedPhoto/);
+  assert.match(component, /specialEventApi\.toggleReaction/);
+  assert.match(component, /window\.localStorage\.getItem\('special_event_actor_id'\)/);
+  assert.match(component, /Math\.max\(0, \(photo\.reactions\?\.\[type\] \|\| 0\)/);
+  assert.match(css, /\.special-event-reactions \{[^}]*overflow-x: auto/);
+});

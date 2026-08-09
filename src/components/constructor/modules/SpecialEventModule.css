@@ -11,6 +11,11 @@
 .special-event-lightbox-viewport.is-zoomed { display: block; overflow: auto; }
 .special-event-lightbox-image { display: block; max-height: calc(100svh - 2rem); max-width: calc(100vw - 2rem); user-select: none; -webkit-user-drag: none; }
 .special-event-lightbox-viewport.is-zoomed .special-event-lightbox-image { max-height: none; }
+.special-event-reactions { display: flex; max-width: 100%; gap: 0.25rem; overflow-x: auto; padding: 0.6rem 0.25rem 0.15rem; scrollbar-width: thin; }
+.special-event-reaction { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 0.2rem; border: 1px solid rgb(148 163 184 / 0.45); border-radius: 999px; background: white; padding: 0.25rem 0.45rem; font-size: 0.8rem; line-height: 1; transition: transform 150ms ease, background 150ms ease, border-color 150ms ease; }
+.special-event-reaction:hover:not(:disabled), .special-event-reaction.is-active { border-color: var(--primary-color, #d99aaa); background: color-mix(in srgb, var(--primary-color, #d99aaa) 15%, white); }
+.special-event-reaction:active:not(:disabled) { transform: scale(0.94); }
+.special-event-reaction:disabled { cursor: wait; opacity: 0.55; }
 @keyframes special-event-train { to { transform: translateX(-50%); } }
 @media (max-width: 767px) { .special-event-carousel-card { flex-basis: min(72vw, 19rem); } }
 @media (prefers-reduced-motion: reduce) { .special-event-continuous-track { animation: none; } }

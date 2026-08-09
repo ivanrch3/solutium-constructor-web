@@ -118,6 +118,11 @@ import { cloneCompositionPresetSchema, CompositionPresetId } from './modules/com
 import { validateCompositionSchema } from '../../utils/compositionSchemaValidator';
 import { buildVideoEmbedUrl, resolveVideoExternalId, resolveVideoProviderFromUrl } from '../../utils/videoEmbed';
 import {
+  isPersistentModuleInstanceId,
+  migrateEditorStateToPersistentModuleIds
+} from '../../utils/constructorStateMigration';
+import { buildPublishedModuleSettings } from '../../utils/publishedModuleSettings';
+import {
   createDefaultWhatsAppOrdersCatalogConfig,
   getWhatsAppOrdersCatalogConfigSettingKey,
   hasWhatsAppOrdersCatalogConfig,
@@ -4491,7 +4496,6 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
 
 // Helper to check for persistent UUIDs (Solutium Protocol v2.0)
 const isUUID = (str: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
-const isPersistentModuleInstanceId = (value: string) => /^mod_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 
 const resolveSectionTechnicalName = (sectionType: unknown): string | undefined => {
   const normalizedType = String(sectionType || '').trim().toLowerCase();
@@ -4541,70 +4545,8 @@ const buildPageSectionsPayload = (
   });
 };
 
-const migrateEditorStateToUUIDs = (state: any): any => {
-  let changed = false;
-  let newState = { ...state };
-  let newSettings = { ...state.settingsValues };
-
-  const addedModules = state.addedModules || [];
-  const newAddedModules = addedModules.map((mod: any) => {
-    if (!isUUID(mod.id) && !isPersistentModuleInstanceId(mod.id)) {
-      const oldId = mod.id;
-      const newId = `mod_${crypto.randomUUID()}`;
-      changed = true;
-
-      const updatedMod = { ...mod, id: newId };
-      updatedMod.elements = (mod.elements || []).map((el: any) => {
-        const oldElId = el.id;
-        const newElId = el.id.replace(oldId, newId);
-
-        Object.keys(newSettings).forEach(key => {
-          if (key.startsWith(oldElId)) {
-            const newKey = key.replace(oldElId, newElId);
-            newSettings[newKey] = newSettings[key];
-            delete newSettings[key];
-          }
-        });
-
-        return { ...el, id: newElId };
-      });
-
-      Object.keys(newSettings).forEach(key => {
-        if (key.startsWith(`${oldId}_global`)) {
-          const newKey = key.replace(oldId, newId);
-          newSettings[newKey] = newSettings[key];
-          delete newSettings[key];
-        }
-      });
-
-      return updatedMod;
-    }
-    return mod;
-  });
-
-  if (changed) {
-    if (newState.expandedModuleId && !isUUID(newState.expandedModuleId)) {
-        const idx = addedModules.findIndex((m: any) => m.id === newState.expandedModuleId);
-        if (idx !== -1) newState.expandedModuleId = newAddedModules[idx].id;
-    }
-    if (newState.selectedElementId && !isUUID(newState.selectedElementId.split('_')[0])) {
-        const parts = newState.selectedElementId.split('_');
-        const oldId = parts[0];
-        const idx = addedModules.findIndex((m: any) => m.id === oldId);
-        if (idx !== -1) {
-            parts[0] = newAddedModules[idx].id;
-            newState.selectedElementId = parts.join('_');
-        }
-    }
-
-    return {
-      ...newState,
-      addedModules: newAddedModules,
-      settingsValues: newSettings
-    };
-  }
-  return state;
-};
+const migrateEditorStateToUUIDs = (state: EditorState): EditorState =>
+  migrateEditorStateToPersistentModuleIds(state, () => `mod_${crypto.randomUUID()}`);
 
 const formatTimestampName = () => {
     const now = new Date();
@@ -4888,6 +4830,11 @@ const formatTimestampName = () => {
             }
           }
         });
+
+        // Published sites keep instance-scoped configuration in section.settings,
+        // not in a root settingsValues object. Reapply the canonical flat map so
+        // every dynamic module setting survives independent of presentation hints.
+        Object.assign(settings, buildPublishedModuleSettings(currentState.settingsValues, module.id));
 
         if (module.type === 'video') {
           const rawVideoUrl = normalizeOptionalString(

@@ -39,9 +39,9 @@ export const ReservasWebPreview = ({ moduleId, config, reservasWebActivities = [
   const unavailable = activity.whatsappReadiness !== 'ready';
 
   return (
-    <section data-module-id={moduleId} className="mx-auto w-full max-w-xl overflow-hidden rounded-2xl border border-border/50 bg-surface text-text shadow-sm">
+    <section data-module-id={moduleId} style={{ backgroundColor: config.style.surfaceColor || undefined, borderColor: config.style.borderColor || undefined, borderRadius: config.style.borderRadius }} className="mx-auto w-full max-w-xl overflow-hidden border bg-surface text-text shadow-sm">
       {activity.catalogItemImageUrl ? <img src={activity.catalogItemImageUrl} alt={title} className="h-52 w-full object-cover" /> : <div role="img" aria-label={`Imagen no disponible para ${title}`} className="h-44 w-full bg-secondary" />}
-      <div className="space-y-4 p-5">
+      <div style={{ padding: config.style.padding }} className="space-y-4">
         <div className="space-y-2"><h2 className="text-xl font-bold">{title}</h2>{activity.shortDescription && <p className="text-sm text-text/70">{activity.shortDescription}</p>}</div>
         <dl className="space-y-2 text-sm">
           {activity.facilitator && <div><dt className="font-semibold">Facilitador</dt><dd>{activity.facilitator}</dd></div>}
@@ -53,7 +53,7 @@ export const ReservasWebPreview = ({ moduleId, config, reservasWebActivities = [
           {config.display.showCountdown && <div><dt className="font-semibold">Cuenta regresiva</dt><dd>Vista previa de cuenta regresiva</dd></div>}
         </dl>
         {unavailable && <p className="rounded-lg bg-secondary p-3 text-xs">No disponible para reservas</p>}
-        <button type="button" disabled={unavailable} aria-label={config.content.reserveButtonLabel} onClick={(event) => event.preventDefault()} className="w-full rounded-lg bg-primary px-4 py-3 font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50">{config.content.reserveButtonLabel}</button>
+        <button type="button" disabled={unavailable} aria-label={config.content.reserveButtonLabel} onClick={(event) => event.preventDefault()} style={{ backgroundColor: config.style.ctaBackgroundColor || undefined, color: config.style.ctaTextColor || undefined }} className="w-full rounded-lg bg-primary px-4 py-3 font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50">{config.content.reserveButtonLabel}</button>
       </div>
     </section>
   );

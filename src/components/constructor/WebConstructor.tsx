@@ -127,6 +127,10 @@ import {
 import { buildWhatsAppOrdersCatalogPublishedContract } from './modules/whatsappOrdersCatalogPublishedContract';
 import { resolveWhatsAppOrdersProductsForSelection } from './modules/whatsappOrdersCatalogOrganizer';
 import { createDefaultReservasWebConfig, getReservasWebConfigSettingKey } from './modules/reservasWebConfig';
+import {
+  ReservasWebPublicationValidationError,
+  serializeReservasWebContractForPublication
+} from './modules/reservasWebPublishedContract';
 
 const isReferenceDebugEnabled = () => import.meta.env.DEV || import.meta.env.VITE_SHOW_AI_REFERENCE_DEBUG === 'true';
 
@@ -6396,10 +6400,14 @@ const formatTimestampName = () => {
       const activeState = migratedState;
 
       const contract = generateRenderingContract(finalSiteName, activeState);
+      const publishedContract = serializeReservasWebContractForPublication(
+        contract,
+        secureReservasWebActivities
+      );
       const siteId = currentSiteId;
 
       // Sync check before publish
-      await checkDictionarySync(contract);
+      await checkDictionarySync(publishedContract);
 
       // 1. Sync Site State (SIP v6.2: Preserve current draft state during publish)
       const siteData: Partial<WebBuilderSite> = {
@@ -6438,20 +6446,20 @@ const formatTimestampName = () => {
         appId: appId || '11111111-1111-1111-1111-111111111111',
         siteId: siteId,
         siteName: finalSiteName,
-        content: contract,
+        content: publishedContract,
         isActive: true,
         metadata: {
           publishedAt: new Date().toISOString(),
           origin: 'Constructor Web',
           version: '6.2-Forensic',
-          regionalSettings: contract.regionalSettings
+          regionalSettings: publishedContract.regionalSettings
         }
       };
 
       logDebug('[PUBLISH_CONTRACT_INTEGRITY_CHECK]', {
         siteId,
-        sectionsCount: contract.sections.length,
-        productSnapshots: contract.sections
+        sectionsCount: publishedContract.sections.length,
+        productSnapshots: publishedContract.sections
           .filter((s: any) => s.tipo === 'products' || s.tipo === 'product_grid')
           .map((s: any) => ({
             id: s.id,
@@ -6462,7 +6470,7 @@ const formatTimestampName = () => {
       });
 
       // [PRODUCTS_LEGACY_FINAL_PUBLISHED_CONTRACT_DEBUG]
-      contract.sections
+      publishedContract.sections
         .filter((s: any) => s.tipo === 'products' || s.tipo === 'product_grid')
         .forEach((s: any) => {
           logDebug('[PRODUCTS_LEGACY_FINAL_PUBLISHED_CONTRACT_DEBUG]', {
@@ -6488,20 +6496,20 @@ const formatTimestampName = () => {
         web_builder_site_id: actualSite.id, // Fixed: use real DB ID to avoid FK violation
         slug: 'index',
         title: finalSiteName,
-        content: contract,
+        content: publishedContract,
         status: 'published',
         metadata: {
           origin_app: 'Constructor Web',
           version: '2.3-Atomic',
           published_at: new Date().toISOString(),
-          regionalSettings: contract.regionalSettings,
+          regionalSettings: publishedContract.regionalSettings,
           editor_state: activeState // Use migrated state
         }
       });
 
       // 4. ATOMIC SERIALIZATION V2.3: Save individual sections with Audit Data
       if (savedPage && savedPage.id) {
-        const pageSections = buildPageSectionsPayload(contract, savedPage.id!);
+        const pageSections = buildPageSectionsPayload(publishedContract, savedPage.id!);
         await upsertPageSections(savedPage.id!, pageSections);
       }
 
@@ -6649,6 +6657,9 @@ const formatTimestampName = () => {
       }
     } catch (error) {
       console.error('Error publishing site:', error);
+      if (error instanceof ReservasWebPublicationValidationError) {
+        setAuthNotice({ type: 'error', message: error.message });
+      }
       if (error instanceof SecureConstructorWriteError) {
         setAuthNotice({
           type: 'error',

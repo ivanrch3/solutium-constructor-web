@@ -20,6 +20,7 @@ export type ReservasWebSessionSummary = {
 
 export type ReservasWebActivitySummary = {
   id: string;
+  publicIdentifier?: string | null;
   catalogItemId: string | null;
   catalogItemName: string | null;
   catalogItemImageUrl: string | null;

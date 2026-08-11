@@ -17,7 +17,7 @@ const snapshot: ReservasWebPublishedSnapshot = {
 };
 
 const activity: PublicReservasWebActivity = {
-  publicId: 'public-activity-A', title: 'Taller público', shortDescription: 'Descripción pública', longDescription: null, image: null, facilitator: 'Ana', modality: 'Híbrida', location: 'San José', maps: 'https://maps.example.test/location', sessions: [{ startsAt: '2099-08-20T14:00:00.000Z', endsAt: '2099-08-20T15:00:00.000Z', sequence: 1 }], timezone: 'America/Costa_Rica', pricing: { isFree: false, regularPrice: 100, promotionalPrice: null, promotionEndsAt: null, effectivePrice: 80, currency: 'USD' }, booking: { enabled: true, closesAt: null, started: false, soldOut: false, waitlistAvailable: false }, capacity: { visible: true, total: 12, available: 5 }, countdownTarget: '2099-08-20T14:00:00.000Z'
+  publicId: 'public-activity-A', title: 'Taller público', shortDescription: 'Descripción pública', longDescription: null, image: null, facilitator: 'Ana', modality: 'Híbrida', location: 'San José', maps: 'https://maps.example.test/location', sessions: [{ startsAt: '2099-08-20T14:00:00.000Z', endsAt: '2099-08-20T15:00:00.000Z', sequence: 1 }], timezone: 'America/Costa_Rica', pricing: { isFree: false, regularPrice: 100, promotionalPrice: null, promotionEndsAt: null, effectivePrice: 80, currency: 'USD' }, paymentMethods: ['sinpe', 'card'], booking: { enabled: true, closesAt: null, started: false, soldOut: false, waitlistAvailable: false }, capacity: { visible: true, total: 12, available: 5 }, countdownTarget: '2099-08-20T14:00:00.000Z'
 };
 
 test('published contract only accepts public identifiers and never falls back to activityIds', () => {
@@ -74,5 +74,5 @@ test('countdown remains a presentation helper and Viewer stays public-read-only'
   const source = fs.readFileSync(new URL('../src/components/constructor/modules/PublicReservasWebModule.tsx', import.meta.url), 'utf8');
   const apiSource = fs.readFileSync(new URL('../src/services/reservasWebPublicApi.ts', import.meta.url), 'utf8');
   assert.doesNotMatch(source, /privateVirtualUrl|activityIds|POST|holds|reservations|whatsapp/i);
-  assert.doesNotMatch(apiSource, /Authorization|Bearer|\/reservations/i);
+  assert.doesNotMatch(apiSource, /Authorization|Bearer/i);
 });

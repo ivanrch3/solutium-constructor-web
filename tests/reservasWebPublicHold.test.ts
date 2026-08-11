@@ -33,11 +33,11 @@ test('hold failures retain only public error codes and the expiry countdown foll
   assert.equal(getHoldCountdownLabel('2099-08-20T14:00:00.000Z', now), null);
 });
 
-test('hold flow keeps the token only in memory and does not add reservation or PII behavior', () => {
+test('hold and reservation flow keeps tokens and PII only in memory', () => {
   const source = fs.readFileSync(new URL('../src/components/constructor/modules/ReservasWebBookingStart.tsx', import.meta.url), 'utf8');
   const api = fs.readFileSync(new URL('../src/services/reservasWebPublicApi.ts', import.meta.url), 'utf8');
-  assert.match(source, /idempotencyKeyRef/);
+  assert.match(source, /holdKey/);
   assert.match(source, /useState<PublicReservasWebHold/);
-  assert.doesNotMatch(source, /localStorage|sessionStorage|settingsValues|participant|contact|whatsapp|reservation/i);
-  assert.doesNotMatch(api, /\/reservations|Authorization|Bearer/i);
+  assert.doesNotMatch(source, /localStorage|sessionStorage|settingsValues|console\./i);
+  assert.doesNotMatch(api, /Authorization|Bearer/i);
 });

@@ -1,93 +1,33 @@
 import React from 'react';
-import {
-  createPublicReservasWebHold,
-  PublicReservasWebHoldError,
-  type PublicReservasWebActivity,
-  type PublicReservasWebHold
-} from '../../../services/reservasWebPublicApi';
-import { createReservasWebBookingDraft, ReservasWebBookingForm, type ReservasWebBookingDraft } from './ReservasWebBookingForm';
+import { checkPublicReservasWebContact, createPublicReservasWebHold, createPublicReservasWebReservation, PublicReservasWebHoldError, type PublicReservasWebActivity, type PublicReservasWebHold, type PublicReservasWebReservation } from '../../../services/reservasWebPublicApi';
+import { createReservasWebBookingDraft, ReservasWebBookingForm, type ReservasWebBookingDraft, validateReservasWebBookingDraft } from './ReservasWebBookingForm';
 
-type BookingState = 'idle' | 'choosing_quantity' | 'creating_hold' | 'hold_active' | 'hold_expired' | 'error';
-type ReservasWebBookingStartProps = { moduleId: string; publicIdentifier: string; activity: PublicReservasWebActivity; label: string; ctaBackgroundColor: string; ctaTextColor: string; onRefreshActivity: () => void };
+type State = 'idle' | 'choosing_quantity' | 'creating_hold' | 'form' | 'checking_contact' | 'review' | 'submitting' | 'success' | 'hold_expired' | 'error';
+type Props = { moduleId: string; publicIdentifier: string; activity: PublicReservasWebActivity; label: string; ctaBackgroundColor: string; ctaTextColor: string; onRefreshActivity: () => void };
+const key = () => crypto.randomUUID();
+export const getHoldCountdownLabel = (expiresAt: string, now = Date.now()) => { const ms = Date.parse(expiresAt) - now; if (!Number.isFinite(ms) || ms <= 0) return null; const seconds = Math.ceil(ms / 1000); return `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`; };
+const isAmbiguous = (error: unknown) => !(error instanceof PublicReservasWebHoldError) || error.status === 0 || error.status >= 500;
+const errorMessage = (error: unknown) => { const code = error instanceof PublicReservasWebHoldError ? error.code : ''; if (code === 'HOLD_EXPIRED') return 'El tiempo de reserva temporal terminó.'; if (code === 'NO_CAPACITY') return 'Ya no hay suficientes espacios disponibles.'; if (code === 'IDEMPOTENCY_CONFLICT') return 'No pudimos procesar este intento. Revisa tus datos y vuelve a intentarlo.'; if (code === 'PUBLIC_ACTIVITY_UNAVAILABLE' || code === 'BOOKING_CLOSED' || code === 'ACTIVITY_STARTED') return 'Esta actividad no está disponible para reserva.'; if (code === 'INVALID_PAYMENT_METHOD' || code === 'PAYMENT_METHOD_UNAVAILABLE') return 'El método de pago ya no está disponible.'; if (error instanceof PublicReservasWebHoldError && error.status === 429) return 'Hay demasiados intentos. Espera un momento.'; return isAmbiguous(error) ? 'No pudimos confirmar la respuesta. Puede intentar nuevamente.' : 'No pudimos completar la reserva. Inténtalo de nuevo.'; };
+const clearSensitive = (draft: ReservasWebBookingDraft): ReservasWebBookingDraft => ({ ...draft, participants: draft.participants.map(({ identificationNumber: _id, birthDate: _birth, ...person }) => ({ ...person, identificationNumber: '', birthDate: '' })) });
 
-const createIdempotencyKey = () => crypto.randomUUID();
-
-const publicErrorMessage = (error: unknown) => {
-  if (!(error instanceof PublicReservasWebHoldError)) return 'No se pudo iniciar la reserva temporal. Inténtalo de nuevo.';
-  if (error.code === 'NO_CAPACITY') return 'Ya no hay suficientes espacios disponibles para esa cantidad.';
-  if (error.code === 'PUBLIC_ACTIVITY_UNAVAILABLE') return 'Esta actividad no está disponible.';
-  if (error.status === 429) return 'Hay demasiados intentos. Espera un momento antes de continuar.';
-  if (error.code === 'INVALID_HOLD_REQUEST' || error.code.startsWith('INVALID_')) return 'La cantidad seleccionada no es válida.';
-  return 'No se pudo iniciar la reserva temporal. Inténtalo de nuevo.';
+const Review = ({ activity, draft, quantity, paymentMethod, warning, onPaymentMethod, onEdit, onSubmit, disabled }: { activity: PublicReservasWebActivity; draft: ReservasWebBookingDraft; quantity: number; paymentMethod: 'sinpe' | 'card' | null; warning: boolean; onPaymentMethod: (value: 'sinpe' | 'card') => void; onEdit: () => void; onSubmit: () => void; disabled: boolean }) => {
+  const paid = !activity.pricing.isFree; const methods = activity.paymentMethods;
+  return <section className="space-y-3 rounded-lg border border-border/60 p-3"><h3 className="font-semibold">Revisa tus datos</h3><p className="text-sm">{activity.title} · {quantity} participante{quantity === 1 ? '' : 's'}</p><p className="text-sm">Responsable: {draft.contactFirstName.trim()} {draft.contactLastName.trim()}</p><ul className="space-y-1 text-sm">{draft.participants.map((participant, index) => <li key={index}>Participante {index + 1}: {participant.firstName.trim()} {participant.lastName.trim()}</li>)}</ul>{warning && <p role="status" className="rounded-lg bg-secondary p-3 text-sm">Ya existen reservas asociadas a este WhatsApp. Puede continuar si está realizando una nueva reserva.</p>}{paid && methods.length === 0 && <p role="status" className="rounded-lg bg-secondary p-3 text-sm">Esta actividad no está disponible para reserva/pago.</p>}{paid && methods.length === 1 && <p className="text-sm">Método de pago: {methods[0] === 'sinpe' ? 'SINPE' : 'Tarjeta'}</p>}{paid && methods.length > 1 && <label className="block text-sm font-semibold">Método de pago<select value={paymentMethod || ''} disabled={disabled} onChange={(event) => onPaymentMethod(event.target.value as 'sinpe' | 'card')} className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 font-normal"><option value="">Selecciona un método</option>{methods.map((method) => <option key={method} value={method}>{method === 'sinpe' ? 'SINPE' : 'Tarjeta'}</option>)}</select></label>}<p className="text-sm">Total: {new Intl.NumberFormat('es', { style: 'currency', currency: activity.pricing.currency }).format(activity.pricing.effectivePrice * quantity)}</p><div className="flex gap-2"><button type="button" disabled={disabled} onClick={onEdit} className="rounded-lg border border-border px-3 py-2 text-sm">Editar datos</button><button type="button" disabled={disabled || (paid && (!paymentMethod || !methods.includes(paymentMethod)))} onClick={onSubmit} className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground">{disabled ? 'Confirmando…' : 'Confirmar reserva'}</button></div></section>;
 };
+const Result = ({ activity, reservation }: { activity: PublicReservasWebActivity; reservation: PublicReservasWebReservation }) => { const cardUrl = reservation.payment.method === 'card' && /^https:\/\/[^\s]+$/i.test(reservation.payment.paymentUrl || '') ? reservation.payment.paymentUrl : null; return <section className="space-y-3 rounded-lg border border-border/60 p-3"><h3 className="font-semibold">{reservation.status === 'confirmed' ? 'Reserva confirmada' : 'Espacios reservados — pago pendiente'}</h3><p>{activity.title} · {reservation.participantCount} participante{reservation.participantCount === 1 ? '' : 's'}</p><p>Referencia: {reservation.reservationReference}</p>{reservation.status === 'pending_payment' && <><p>Total: {new Intl.NumberFormat('es', { style: 'currency', currency: reservation.currency }).format(reservation.amount)}</p>{reservation.paymentDueAt && <p>Pago antes de: {new Date(reservation.paymentDueAt).toLocaleString('es')}</p>}{reservation.payment.method === 'sinpe' && <div className="text-sm">{reservation.payment.phone && <p>SINPE: {reservation.payment.phone}</p>}{reservation.payment.beneficiary && <p>Beneficiario: {reservation.payment.beneficiary}</p>}{reservation.payment.receiptWhatsapp && <p>Enviar comprobante a: {reservation.payment.receiptWhatsapp}</p>}</div>}{cardUrl && <a href={cardUrl} target="_blank" rel="noreferrer" className="inline-block rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground">Pagar con tarjeta</a>}</>}</section>; };
 
-const isAmbiguousFailure = (error: unknown) => !(error instanceof PublicReservasWebHoldError) || error.status === 0 || error.status >= 500;
-
-export const getHoldCountdownLabel = (expiresAt: string, now = Date.now()) => {
-  const milliseconds = Date.parse(expiresAt) - now;
-  if (!Number.isFinite(milliseconds) || milliseconds <= 0) return null;
-  const seconds = Math.ceil(milliseconds / 1000);
-  return `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
-};
-
-export const ReservasWebBookingStart = ({ moduleId, publicIdentifier, activity, label, ctaBackgroundColor, ctaTextColor, onRefreshActivity }: ReservasWebBookingStartProps) => {
+export const ReservasWebBookingStart = ({ moduleId, publicIdentifier, activity, label, ctaBackgroundColor, ctaTextColor, onRefreshActivity }: Props) => {
   const maximum = Math.max(1, Math.min(100, typeof activity.capacity.available === 'number' ? activity.capacity.available : 100));
-  const [state, setState] = React.useState<BookingState>('idle');
-  const [quantity, setQuantity] = React.useState(1);
-  const [hold, setHold] = React.useState<PublicReservasWebHold | null>(null);
-  const [message, setMessage] = React.useState<string | null>(null);
-  const [draft, setDraft] = React.useState<ReservasWebBookingDraft>(() => createReservasWebBookingDraft(1));
-  const idempotencyKeyRef = React.useRef<string | null>(null);
-  const [now, setNow] = React.useState(Date.now());
-
-  React.useEffect(() => {
-    if (state !== 'hold_active' || !hold) return;
-    const interval = window.setInterval(() => setNow(Date.now()), 1000);
-    return () => window.clearInterval(interval);
-  }, [hold, state]);
-
-  React.useEffect(() => {
-    if (state !== 'hold_active' || !hold || getHoldCountdownLabel(hold.expiresAt, now)) return;
-    setHold(null);
-    idempotencyKeyRef.current = null;
-    setMessage('El tiempo de reserva temporal terminó.');
-    setState('hold_expired');
-    onRefreshActivity();
-  }, [hold, now, onRefreshActivity, state]);
-
-  const startHold = async () => {
-    if (!activity.booking.enabled || state === 'creating_hold' || quantity < 1 || quantity > maximum) return;
-    const idempotencyKey = idempotencyKeyRef.current || createIdempotencyKey();
-    idempotencyKeyRef.current = idempotencyKey;
-    setState('creating_hold');
-    setMessage(null);
-    try {
-      const nextHold = await createPublicReservasWebHold(publicIdentifier, quantity, idempotencyKey);
-      setDraft((current) => createReservasWebBookingDraft(nextHold.quantity, current));
-      setHold(nextHold);
-      setState('hold_active');
-      onRefreshActivity();
-    } catch (error) {
-      if (!isAmbiguousFailure(error)) idempotencyKeyRef.current = null;
-      if (error instanceof PublicReservasWebHoldError && (error.code === 'NO_CAPACITY' || error.code === 'PUBLIC_ACTIVITY_UNAVAILABLE')) onRefreshActivity();
-      setMessage(publicErrorMessage(error));
-      setState('error');
-    }
-  };
-
-  if (state === 'hold_active' && hold) {
-    const countdown = getHoldCountdownLabel(hold.expiresAt, now);
-    return <ReservasWebBookingForm moduleId={moduleId} activityTitle={activity.title} quantity={hold.quantity} countdown={countdown || '00:00'} draft={draft} onDraftChange={setDraft} onChangeQuantity={() => { setHold(null); idempotencyKeyRef.current = null; setState('choosing_quantity'); }} />;
-  }
-
-  if (state === 'choosing_quantity' || state === 'creating_hold' || state === 'error') {
-    return <div className="space-y-3 rounded-lg border border-border/60 p-3">
-      <label className="block text-sm font-semibold" htmlFor={`${moduleId}-quantity`}>¿Cuántas personas desea reservar?</label>
-      <input id={`${moduleId}-quantity`} type="number" min={1} max={maximum} value={quantity} disabled={state === 'creating_hold'} onChange={(event) => setQuantity(Math.min(maximum, Math.max(1, Number(event.target.value) || 1)))} className="w-full rounded-lg border border-border bg-background px-3 py-2" />
-      {message && <p role="status" className="text-sm text-text/70">{message}</p>}
-      <div className="flex gap-2"><button type="button" disabled={state === 'creating_hold'} onClick={() => { idempotencyKeyRef.current = null; setMessage(null); setState('idle'); }} className="rounded-lg border border-border px-3 py-2 text-sm">Cancelar</button><button type="button" disabled={state === 'creating_hold'} onClick={() => void startHold()} style={{ backgroundColor: ctaBackgroundColor || undefined, color: ctaTextColor || undefined }} className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50">{state === 'creating_hold' ? 'Reservando…' : state === 'error' && idempotencyKeyRef.current ? 'Reintentar' : 'Continuar'}</button></div>
-    </div>;
-  }
-
-  return <div className="space-y-2"><button type="button" disabled={!activity.booking.enabled} onClick={() => { if (state !== 'hold_expired') setQuantity(1); setMessage(null); setState('choosing_quantity'); }} style={{ backgroundColor: ctaBackgroundColor || undefined, color: ctaTextColor || undefined }} className="w-full rounded-lg bg-primary px-4 py-3 font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50">{state === 'hold_expired' ? 'Reservar espacios de nuevo' : label}</button>{state === 'hold_expired' && message && <p role="status" className="text-sm text-text/70">{message}</p>}</div>;
+  const [state, setState] = React.useState<State>('idle'); const [quantity, setQuantity] = React.useState(1); const [hold, setHold] = React.useState<PublicReservasWebHold | null>(null); const [draft, setDraft] = React.useState(() => createReservasWebBookingDraft(1)); const [paymentMethod, setPaymentMethod] = React.useState<'sinpe' | 'card' | null>(null); const [warning, setWarning] = React.useState(false); const [message, setMessage] = React.useState<string | null>(null); const [result, setResult] = React.useState<PublicReservasWebReservation | null>(null); const [now, setNow] = React.useState(Date.now()); const holdKey = React.useRef<string | null>(null); const reservationKey = React.useRef<string | null>(null);
+  React.useEffect(() => { if (state !== 'form' && state !== 'review') return; const interval = window.setInterval(() => setNow(Date.now()), 1000); return () => window.clearInterval(interval); }, [state]);
+  React.useEffect(() => { if (!hold || (state !== 'form' && state !== 'review') || getHoldCountdownLabel(hold.expiresAt, now)) return; setHold(null); holdKey.current = null; reservationKey.current = null; setMessage('El tiempo de reserva temporal terminó.'); setState('hold_expired'); onRefreshActivity(); }, [hold, now, onRefreshActivity, state]);
+  const startHold = async () => { if (!activity.booking.enabled || state === 'creating_hold') return; const id = holdKey.current || key(); holdKey.current = id; setState('creating_hold'); setMessage(null); try { const next = await createPublicReservasWebHold(publicIdentifier, quantity, id); setDraft((current) => createReservasWebBookingDraft(next.quantity, current)); setHold(next); reservationKey.current = null; setState('form'); onRefreshActivity(); } catch (error) { if (!isAmbiguous(error)) holdKey.current = null; setMessage(errorMessage(error)); setState('error'); } };
+  const review = async () => { if (!hold || validateReservasWebBookingDraft(draft, hold.quantity) && Object.keys(validateReservasWebBookingDraft(draft, hold.quantity)).length) return; setState('checking_contact'); setWarning(false); try { setWarning(await checkPublicReservasWebContact(publicIdentifier, draft.contactWhatsapp)); } catch { /* contact warning must never block */ } finally { const methods = activity.paymentMethods; setPaymentMethod(activity.pricing.isFree ? null : methods.length === 1 ? methods[0] : paymentMethod); setState('review'); } };
+  const submit = async () => { if (!hold || !getHoldCountdownLabel(hold.expiresAt) || Object.keys(validateReservasWebBookingDraft(draft, hold.quantity)).length || draft.participants.length !== hold.quantity) return; const method = activity.pricing.isFree ? null : paymentMethod; if (!activity.pricing.isFree && (!method || !activity.paymentMethods.includes(method))) return; const id = reservationKey.current || key(); reservationKey.current = id; setState('submitting'); setMessage(null); try { const participants = draft.participants.map((participant) => ({ ...participant, sex: participant.sex as 'male' | 'female' | 'prefer_not_to_say' })); const response = await createPublicReservasWebReservation({ holdToken: hold.holdToken, idempotencyKey: id, contactFirstName: draft.contactFirstName.trim(), contactLastName: draft.contactLastName.trim(), contactWhatsapp: draft.contactWhatsapp.trim(), paymentMethod: method, participants }); setResult(response.reservation); setDraft(clearSensitive(draft)); setHold(null); holdKey.current = null; setState('success'); onRefreshActivity(); } catch (error) { if (error instanceof PublicReservasWebHoldError && error.code === 'HOLD_EXPIRED') { setHold(null); setState('hold_expired'); } else setState('review'); setMessage(errorMessage(error)); } };
+  if (state === 'success' && result) return <Result activity={activity} reservation={result} />;
+  if (state === 'form' && hold) return <ReservasWebBookingForm moduleId={moduleId} quantity={hold.quantity} countdown={getHoldCountdownLabel(hold.expiresAt, now) || '00:00'} draft={draft} onDraftChange={setDraft} onChangeQuantity={() => { setHold(null); holdKey.current = null; reservationKey.current = null; setState('choosing_quantity'); }} onReview={() => void review()} />;
+  if ((state === 'review' || state === 'submitting') && hold) return <Review activity={activity} draft={draft} quantity={hold.quantity} paymentMethod={paymentMethod} warning={warning} onPaymentMethod={setPaymentMethod} onEdit={() => setState('form')} onSubmit={() => void submit()} disabled={state === 'submitting'} />;
+  if (state === 'checking_contact') return <p role="status" className="rounded-lg bg-secondary p-3 text-sm">Verificando datos…</p>;
+  if (state === 'choosing_quantity' || state === 'creating_hold' || state === 'error') return <div className="space-y-3 rounded-lg border border-border/60 p-3"><label className="block text-sm font-semibold">¿Cuántas personas desea reservar?<input type="number" min={1} max={maximum} value={quantity} disabled={state === 'creating_hold'} onChange={(event) => setQuantity(Math.min(maximum, Math.max(1, Number(event.target.value) || 1)))} className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2" /></label>{message && <p role="status" className="text-sm text-text/70">{message}</p>}<div className="flex gap-2"><button type="button" disabled={state === 'creating_hold'} onClick={() => setState('idle')} className="rounded-lg border border-border px-3 py-2 text-sm">Cancelar</button><button type="button" disabled={state === 'creating_hold'} onClick={() => void startHold()} style={{ backgroundColor: ctaBackgroundColor || undefined, color: ctaTextColor || undefined }} className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground">{state === 'creating_hold' ? 'Reservando…' : state === 'error' && holdKey.current ? 'Reintentar' : 'Continuar'}</button></div></div>;
+  return <div className="space-y-2"><button type="button" disabled={!activity.booking.enabled} onClick={() => { setQuantity(1); setMessage(null); setState('choosing_quantity'); }} style={{ backgroundColor: ctaBackgroundColor || undefined, color: ctaTextColor || undefined }} className="w-full rounded-lg bg-primary px-4 py-3 font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50">{state === 'hold_expired' ? 'Reservar espacios de nuevo' : label}</button>{message && <p role="status" className="text-sm text-text/70">{message}</p>}</div>;
 };

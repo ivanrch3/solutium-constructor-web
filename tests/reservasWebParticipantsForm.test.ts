@@ -36,11 +36,11 @@ test('validates the canonical backend contact and participant fields without tre
   assert.ok(validateReservasWebBookingDraft(validDraft(), 2, '2026-08-11').participants);
 });
 
-test('participants form has no persistence, logging, or reservation submission', () => {
+test('participants form keeps PII in memory and delegates submission to the public booking flow', () => {
   const form = fs.readFileSync(new URL('../src/components/constructor/modules/ReservasWebBookingForm.tsx', import.meta.url), 'utf8');
   const start = fs.readFileSync(new URL('../src/components/constructor/modules/ReservasWebBookingStart.tsx', import.meta.url), 'utf8');
   assert.doesNotMatch(form, /localStorage|sessionStorage|settingsValues|console\.|fetch\(|\/reservations|holdToken/i);
-  assert.doesNotMatch(start, /\/reservations|localStorage|sessionStorage|console\./i);
-  assert.match(start, /createReservasWebBookingDraft\(nextHold\.quantity, current\)/);
+  assert.doesNotMatch(start, /localStorage|sessionStorage|console\./i);
+  assert.match(start, /createReservasWebBookingDraft\(next\.quantity, current\)/);
   assert.match(start, /Reservar espacios de nuevo/);
 });

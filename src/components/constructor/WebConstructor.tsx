@@ -31,7 +31,7 @@ import * as registryModules from './registry';
 import {
   MODULE_INFO,
   HEADER_MODULE, MENU_MODULE, FOOTER_MODULE, SPACER_MODULE,
-  PRODUCTS_MODULE, WHATSAPP_ORDERS_MODULE, HERO_MODULE, HERO2_MODULE, FEATURES_MODULE, ABOUT_MODULE,
+  PRODUCTS_MODULE, WHATSAPP_ORDERS_MODULE, RESERVAS_WEB_MODULE, HERO_MODULE, HERO2_MODULE, FEATURES_MODULE, ABOUT_MODULE,
   PROCESS_MODULE, GALLERY_MODULE, VIDEO_MODULE, TESTIMONIALS_MODULE,
   STATS_MODULE, NEWSLETTER_MODULE, CONTACT_MODULE, TEAM_MODULE,
   CTA_MODULE, DYNAMIC_CARDS_MODULE, PRICING_MODULE, FAQ_MODULE, TRUSTED_LOGOS_MODULE, GENIUS_WEB_WA_MODULE,
@@ -125,6 +125,7 @@ import {
 } from './modules/whatsappOrdersCatalogConfig';
 import { buildWhatsAppOrdersCatalogPublishedContract } from './modules/whatsappOrdersCatalogPublishedContract';
 import { resolveWhatsAppOrdersProductsForSelection } from './modules/whatsappOrdersCatalogOrganizer';
+import { createDefaultReservasWebConfig, getReservasWebConfigSettingKey } from './modules/reservasWebConfig';
 
 const isReferenceDebugEnabled = () => import.meta.env.DEV || import.meta.env.VITE_SHOW_AI_REFERENCE_DEBUG === 'true';
 
@@ -4035,6 +4036,11 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         createDefaultWhatsAppOrdersCatalogConfig();
     }
 
+    if (module.type === 'reservas_web') {
+      initialValues[getReservasWebConfigSettingKey(moduleId)] =
+        createDefaultReservasWebConfig();
+    }
+
     // Element settings
     newElements.forEach(element => {
       if (element.settings) {
@@ -7136,6 +7142,7 @@ const formatTimestampName = () => {
                                     { icon: MODULE_INFO.contact.icon, label: "Contacto", mod: CONTACT_MODULE },
                                     { icon: MODULE_INFO.genius_web_wa.icon, label: "Genius Web-WA", mod: GENIUS_WEB_WA_MODULE },
                                     { icon: MODULE_INFO.whatsapp_orders.icon, label: "Pedidos por WhatsApp", mod: WHATSAPP_ORDERS_MODULE, disabled: whatsappOrdersAvailability.known && !whatsappOrdersAvailability.allowed, note: whatsappOrdersAvailability.known && !whatsappOrdersAvailability.allowed ? whatsappOrdersAvailability.message : null },
+                                    { icon: MODULE_INFO.reservas_web.icon, label: "Reservas Web", mod: RESERVAS_WEB_MODULE },
                                     { icon: MODULE_INFO.newsletter.icon, label: "Newsletter", mod: NEWSLETTER_MODULE },
                                     { icon: MODULE_INFO.pricing.icon, label: "Planes", mod: PRICING_MODULE },
                                     { icon: MODULE_INFO.header.icon, label: "Publicidad", mod: HEADER_MODULE },
@@ -7232,6 +7239,7 @@ const formatTimestampName = () => {
                                       <ModuleItem icon={React.createElement(MODULE_INFO.contact.icon, { size: 18 })} label="Contacto" onClick={() => addModule(CONTACT_MODULE)} />
                                       <ModuleItem icon={React.createElement(MODULE_INFO.genius_web_wa.icon, { size: 18 })} label="Genius Web-WA" onClick={() => addModule(GENIUS_WEB_WA_MODULE)} />
                                       <ModuleItem icon={React.createElement(MODULE_INFO.whatsapp_orders.icon, { size: 18 })} label="Pedidos por WhatsApp" note={whatsappOrdersAvailability.known && !whatsappOrdersAvailability.allowed ? whatsappOrdersAvailability.message : null} disabled={whatsappOrdersAvailability.known && !whatsappOrdersAvailability.allowed} onClick={() => addModule(WHATSAPP_ORDERS_MODULE)} />
+                                      <ModuleItem icon={React.createElement(MODULE_INFO.reservas_web.icon, { size: 18 })} label="Reservas Web" onClick={() => addModule(RESERVAS_WEB_MODULE)} />
                                       <ModuleItem icon={React.createElement(MODULE_INFO.newsletter.icon, { size: 18 })} label="Newsletter" onClick={() => addModule(NEWSLETTER_MODULE)} />
                                       <ModuleItem icon={React.createElement(MODULE_INFO.pricing.icon, { size: 18 })} label="Planes" onClick={() => addModule(PRICING_MODULE)} />
                                       <ModuleItem icon={React.createElement(MODULE_INFO.header.icon, { size: 18 })} label="Publicidad" onClick={() => addModule(HEADER_MODULE)} />

@@ -5,6 +5,7 @@ import {
   type PublicReservasWebActivity,
   type PublicReservasWebHold
 } from '../../../services/reservasWebPublicApi';
+import { createReservasWebBookingDraft, ReservasWebBookingForm, type ReservasWebBookingDraft } from './ReservasWebBookingForm';
 
 type BookingState = 'idle' | 'choosing_quantity' | 'creating_hold' | 'hold_active' | 'hold_expired' | 'error';
 type ReservasWebBookingStartProps = { moduleId: string; publicIdentifier: string; activity: PublicReservasWebActivity; label: string; ctaBackgroundColor: string; ctaTextColor: string; onRefreshActivity: () => void };
@@ -35,6 +36,7 @@ export const ReservasWebBookingStart = ({ moduleId, publicIdentifier, activity, 
   const [quantity, setQuantity] = React.useState(1);
   const [hold, setHold] = React.useState<PublicReservasWebHold | null>(null);
   const [message, setMessage] = React.useState<string | null>(null);
+  const [draft, setDraft] = React.useState<ReservasWebBookingDraft>(() => createReservasWebBookingDraft(1));
   const idempotencyKeyRef = React.useRef<string | null>(null);
   const [now, setNow] = React.useState(Date.now());
 
@@ -61,6 +63,7 @@ export const ReservasWebBookingStart = ({ moduleId, publicIdentifier, activity, 
     setMessage(null);
     try {
       const nextHold = await createPublicReservasWebHold(publicIdentifier, quantity, idempotencyKey);
+      setDraft((current) => createReservasWebBookingDraft(nextHold.quantity, current));
       setHold(nextHold);
       setState('hold_active');
       onRefreshActivity();
@@ -74,7 +77,7 @@ export const ReservasWebBookingStart = ({ moduleId, publicIdentifier, activity, 
 
   if (state === 'hold_active' && hold) {
     const countdown = getHoldCountdownLabel(hold.expiresAt, now);
-    return <p aria-live="polite" className="rounded-lg bg-secondary p-3 text-sm">Tus espacios están reservados por {countdown || '00:00'}.</p>;
+    return <ReservasWebBookingForm moduleId={moduleId} activityTitle={activity.title} quantity={hold.quantity} countdown={countdown || '00:00'} draft={draft} onDraftChange={setDraft} onChangeQuantity={() => { setHold(null); idempotencyKeyRef.current = null; setState('choosing_quantity'); }} />;
   }
 
   if (state === 'choosing_quantity' || state === 'creating_hold' || state === 'error') {
@@ -86,5 +89,5 @@ export const ReservasWebBookingStart = ({ moduleId, publicIdentifier, activity, 
     </div>;
   }
 
-  return <div className="space-y-2"><button type="button" disabled={!activity.booking.enabled} onClick={() => { setQuantity(1); setMessage(null); setState('choosing_quantity'); }} style={{ backgroundColor: ctaBackgroundColor || undefined, color: ctaTextColor || undefined }} className="w-full rounded-lg bg-primary px-4 py-3 font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50">{label}</button>{state === 'hold_expired' && message && <p role="status" className="text-sm text-text/70">{message}</p>}</div>;
+  return <div className="space-y-2"><button type="button" disabled={!activity.booking.enabled} onClick={() => { if (state !== 'hold_expired') setQuantity(1); setMessage(null); setState('choosing_quantity'); }} style={{ backgroundColor: ctaBackgroundColor || undefined, color: ctaTextColor || undefined }} className="w-full rounded-lg bg-primary px-4 py-3 font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50">{state === 'hold_expired' ? 'Reservar espacios de nuevo' : label}</button>{state === 'hold_expired' && message && <p role="status" className="text-sm text-text/70">{message}</p>}</div>;
 };

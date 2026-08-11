@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { EditorState, WebModule } from '../../types/constructor';
 import { Product, Customer, TrustedCompanyLogo } from '../../types/schema';
+import type { ReservasWebActivitySummary } from '../../types/reservasWeb';
 import type { SecureCatalogCategory } from '../../services/secureLaunchSession';
 import { SiteContent } from '../../types';
 import { useEditorStore } from '../../store/editorStore';
@@ -70,6 +71,7 @@ interface CanvasProps {
   catalogCategories?: SecureCatalogCategory[];
   customers: Customer[];
   trustedCompanyLogos?: TrustedCompanyLogo[];
+  reservasWebActivities?: ReservasWebActivitySummary[];
   isDevMode: boolean;
   logoUrl?: string | null;
   logoWhiteUrl?: string | null;
@@ -94,6 +96,7 @@ export const Canvas: React.FC<CanvasProps> = ({
   catalogCategories = [],
   customers, 
   trustedCompanyLogos = [],
+  reservasWebActivities = [],
   isDevMode, 
   logoUrl, 
   logoWhiteUrl, 
@@ -1029,7 +1032,7 @@ export const Canvas: React.FC<CanvasProps> = ({
                         isPreviewMode={isCleanPreviewMode}
                       />
                     )}
-                    {section.type === 'reservas_web' && <ReservasWebModule />}
+                    {section.type === 'reservas_web' && <ReservasWebModule moduleId={section.id} settingsValues={finalSettings} reservasWebActivities={reservasWebActivities} />}
                     {section.type === 'whatsapp_orders' && (
                       <WhatsAppOrdersModule
                         moduleId={section.id}

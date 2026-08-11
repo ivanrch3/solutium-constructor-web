@@ -1,6 +1,17 @@
-export const ReservasWebModule = () => (
-  <section className="p-8 text-center bg-[var(--section-bg,var(--background))] text-[var(--foreground)]">
-    <h2 className="text-xl font-bold">Reservas Web</h2>
-    <p className="mt-2 text-sm opacity-70">Configura una actividad para este módulo.</p>
-  </section>
+import type { ReservasWebActivitySummary } from '../../../types/reservasWeb';
+import { getReservasWebConfigSettingKey, normalizeReservasWebConfig } from './reservasWebConfig';
+import { ReservasWebPreview } from './ReservasWebPreview';
+
+type ReservasWebModuleProps = {
+  moduleId: string;
+  settingsValues: Record<string, unknown>;
+  reservasWebActivities?: ReservasWebActivitySummary[];
+};
+
+export const ReservasWebModule = ({ moduleId, settingsValues, reservasWebActivities = [] }: ReservasWebModuleProps) => (
+  <ReservasWebPreview
+    moduleId={moduleId}
+    config={normalizeReservasWebConfig(settingsValues[getReservasWebConfigSettingKey(moduleId)])}
+    reservasWebActivities={reservasWebActivities}
+  />
 );

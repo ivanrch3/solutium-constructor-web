@@ -7334,6 +7334,7 @@ const formatTimestampName = () => {
                         catalogCategories={secureCatalogCategories}
                         customers={customers}
                         trustedCompanyLogos={trustedCompanyLogos}
+                        reservasWebActivities={secureReservasWebActivities}
                         isDevMode={projectId === 'dev-project-id'}
                         logoUrl={logoUrl}
                         logoWhiteUrl={logoWhiteUrl}
@@ -7422,6 +7423,7 @@ const formatTimestampName = () => {
                         catalogCategories={secureCatalogCategories}
                         customers={customers}
                         trustedCompanyLogos={trustedCompanyLogos}
+                        reservasWebActivities={secureReservasWebActivities}
                         isDevMode={projectId === 'dev-project-id'}
                         logoUrl={logoUrl}
                         logoWhiteUrl={logoWhiteUrl}

@@ -26,11 +26,13 @@ import { motion, AnimatePresence } from 'motion/react';
 import { EditorState, WebModule, ModuleElement, SettingDefinition, SettingGroupType } from '../../types/constructor';
 import { Product, Customer, TrustedCompanyLogo } from '../../types/schema';
 import type { SecureCatalogCategory } from '../../services/secureLaunchSession';
+import type { ReservasWebActivitySummary } from '../../types/reservasWeb';
 import { useEditorStore } from '../../store/editorStore';
 import { MODULE_INFO, GROUP_LABELS, BENTO_MODULE } from './registry';
 import { SettingControl } from './SettingControl';
 import { GlobalSettingsPanel } from './GlobalSettingsPanel';
 import { BentoCellEditor } from './BentoCellEditor';
+import { ReservasWebSettings } from './modules/ReservasWebSettings';
 import { resolveModuleDisplayLabel } from '../../utils/menuNavigation';
 import {
   CONSTRUCTOR_MODULE_ANIMATIONS_ENABLED,
@@ -914,6 +916,7 @@ interface StructurePanelProps {
   catalogCategories?: SecureCatalogCategory[];
   customers?: Customer[];
   trustedCompanyLogos?: TrustedCompanyLogo[];
+  reservasWebActivities?: ReservasWebActivitySummary[];
   isMobile?: boolean;
   activeTab?: string;
   useSplitLayout?: boolean;
@@ -934,6 +937,7 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
   catalogCategories = [],
   customers,
   trustedCompanyLogos,
+  reservasWebActivities = [],
   isMobile,
   activeTab = 'constructor',
   useSplitLayout = false,
@@ -1590,6 +1594,15 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                   </motion.div>
                 )}
               </AnimatePresence>
+
+              {isModuleExpanded && module.type === 'reservas_web' && !isCollapsed && (
+                <ReservasWebSettings
+                  moduleId={module.id}
+                  settingsValues={editorState.settingsValues}
+                  reservasWebActivities={reservasWebActivities}
+                  onSettingChange={onSettingChange}
+                />
+              )}
 
               {/* Elements List */}
               <AnimatePresence>

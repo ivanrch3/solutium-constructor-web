@@ -52,6 +52,7 @@ import {
   saveLocalDraftSnapshot
 } from '../../services/localDraftSnapshotService';
 import { Product, Customer, PageSection, TrustedCompanyLogo } from '../../types/schema';
+import type { ReservasWebActivitySummary } from '../../types/reservasWeb';
 import type { SecureCatalogCategory } from '../../services/secureLaunchSession';
 import { MOCK_PRODUCTS, MOCK_CUSTOMERS } from '../../constants/mockData';
 import { MainSidebar, ModuleItem } from './MainSidebar';
@@ -675,6 +676,7 @@ interface WebConstructorProps {
   secureCatalogCategories?: SecureCatalogCategory[];
   secureCustomers?: Customer[];
   secureTrustedCompanyLogos?: TrustedCompanyLogo[];
+  secureReservasWebActivities?: ReservasWebActivitySummary[];
   useSecureCatalogContext?: boolean;
 }
 
@@ -834,6 +836,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   secureCatalogCategories = [],
   secureCustomers = [],
   secureTrustedCompanyLogos = [],
+  secureReservasWebActivities = [],
   useSecureCatalogContext = false
 }) => {
   const {
@@ -7314,6 +7317,7 @@ const formatTimestampName = () => {
                         catalogCategories={secureCatalogCategories}
                         customers={customers}
                         trustedCompanyLogos={trustedCompanyLogos}
+                        reservasWebActivities={secureReservasWebActivities}
                         isMobile={true}
                         activeTab={activeTab}
                         activeViewport={viewport}
@@ -7370,6 +7374,7 @@ const formatTimestampName = () => {
                     catalogCategories={secureCatalogCategories}
                     customers={customers}
                     trustedCompanyLogos={trustedCompanyLogos}
+                    reservasWebActivities={secureReservasWebActivities}
                     activeTab={activeTab}
                     useSplitLayout={useConstructorSplitLayout}
                     activeViewport={viewport}

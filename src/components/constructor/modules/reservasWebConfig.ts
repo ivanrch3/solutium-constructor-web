@@ -37,3 +37,11 @@ export const normalizeReservasWebConfig = (input: unknown): ReservasWebConfigV1 
 };
 
 export const getReservasWebConfigSettingKey = (moduleId: string): string => `${moduleId}_${RESERVAS_WEB_CONFIG_SETTING}`;
+
+export const setReservasWebActivityIds = (input: unknown, activityIds: unknown): ReservasWebConfigV1 => {
+  const config = normalizeReservasWebConfig(input);
+  return {
+    ...config,
+    activities: { mode: 'selected', activityIds: uniqueIds(activityIds) }
+  };
+};

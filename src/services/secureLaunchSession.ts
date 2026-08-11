@@ -1,3 +1,5 @@
+import type { ReservasWebActivitySummary } from '../types/reservasWeb';
+
 export interface SecureLaunchSessionPayload {
   publicRenderContext?: Record<string, any> | null;
   projectContact?: Record<string, any> | null;
@@ -371,6 +373,7 @@ export interface ConstructorContextResult {
   products?: any[];
   catalogProducts?: any[];
   catalogCategories?: SecureCatalogCategory[];
+  reservasWebActivities?: ReservasWebActivitySummary[];
   trustedLogos?: any[];
   customers?: any[];
   clients?: any[];
@@ -424,6 +427,7 @@ export const fetchConstructorContext = async ({
       products: Array.isArray(result.products) ? result.products : [],
       catalogProducts: Array.isArray(result.catalogProducts) ? result.catalogProducts : [],
       catalogCategories: Array.isArray(result.catalogCategories) ? result.catalogCategories : [],
+      reservasWebActivities: Array.isArray(result.reservasWebActivities) ? result.reservasWebActivities : [],
       trustedLogos: Array.isArray(result.trustedLogos) ? result.trustedLogos : [],
       customers: Array.isArray(result.customers) ? result.customers : [],
       clients: Array.isArray(result.clients) ? result.clients : [],

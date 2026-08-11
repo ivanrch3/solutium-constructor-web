@@ -959,6 +959,8 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
   const [shiningGroup, setShiningGroup] = React.useState<string | null>(null);
   const [expandedBentoItem, setExpandedBentoItem] = React.useState<number | null>(null);
   const [isBentoAddExpanded, setIsBentoAddExpanded] = React.useState(false);
+  const [localReservasWebActivities, setLocalReservasWebActivities] = React.useState(reservasWebActivities);
+  React.useEffect(() => setLocalReservasWebActivities(reservasWebActivities), [reservasWebActivities]);
 
   const resolveElementSettingsPrefix = React.useCallback((moduleId: string, elementId: string) => {
     if (!moduleId || !elementId) return elementId;
@@ -1598,8 +1600,11 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
               {isModuleExpanded && module.type === 'reservas_web' && !isCollapsed && (
                 <ReservasWebSettings
                   moduleId={module.id}
+                  projectId={projectId}
+                  products={products}
                   settingsValues={editorState.settingsValues}
-                  reservasWebActivities={reservasWebActivities}
+                  reservasWebActivities={localReservasWebActivities}
+                  onActivitiesRefreshed={setLocalReservasWebActivities}
                   onSettingChange={onSettingChange}
                 />
               )}

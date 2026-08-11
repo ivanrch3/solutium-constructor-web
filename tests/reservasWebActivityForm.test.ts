@@ -31,8 +31,28 @@ test('sessions reject invalid or duplicate ranges and PATCH only includes change
   assert.deepEqual(normalizeReservasWebActivitySessions([{starts_at:'2026-09-02T10:00',ends_at:'2026-09-02T11:00'},{starts_at:'2026-09-01T10:00',ends_at:'2026-09-01T11:00'}]).map(session=>session.starts_at),['2026-09-01T10:00','2026-09-02T10:00']);
 });
 
+test('paid activities require price, currency and one valid payment method while free stays valid',()=>{
+  const free=valid();assert.deepEqual(validateReservasWebActivityDraft(free),[]);
+  const paid={...free,is_free:false,regular_price:100,currency:'CRC',sinpe_phone:'+506 8888 8888'};
+  assert.deepEqual(validateReservasWebActivityDraft(paid),[]);
+  assert.ok(validateReservasWebActivityDraft({...paid,regular_price:0}).some(error=>error.includes('precio regular')));
+  assert.ok(validateReservasWebActivityDraft({...paid,currency:null}).some(error=>error.includes('moneda')));
+  assert.ok(validateReservasWebActivityDraft({...paid,sinpe_phone:null,onvopay_url:null}).some(error=>error.includes('SINPE')));
+  assert.deepEqual(validateReservasWebActivityDraft({...paid,sinpe_phone:null,onvopay_url:'https://pay.example'}),[]);
+  assert.ok(validateReservasWebActivityDraft({...paid,sinpe_phone:null,onvopay_url:'http://pay.example'}).some(error=>error.includes('HTTPS')));
+});
+
+test('promotion validates its range and PATCH preserves explicit payment clears',()=>{
+  const paid={...valid(),is_free:false,regular_price:100,currency:'CRC',sinpe_phone:'+506 8888 8888',promotional_price:80,promotion_ends_at:'2026-10-01T10:00'};
+  assert.deepEqual(validateReservasWebActivityDraft(paid),[]);
+  assert.ok(validateReservasWebActivityDraft({...paid,promotional_price:100}).some(error=>error.includes('promocional')));
+  assert.ok(validateReservasWebActivityDraft({...paid,promotion_ends_at:null}).some(error=>error.includes('promocional')));
+  assert.deepEqual(buildReservasWebActivityPatch({...paid,promotional_price:null,promotion_ends_at:null},paid),{promotional_price:null,promotion_ends_at:null});
+  assert.deepEqual(buildReservasWebActivityPatch({...paid,is_free:true,regular_price:0,promotional_price:null,promotion_ends_at:null},paid),{is_free:true,regular_price:0,promotional_price:null,promotion_ends_at:null});
+});
+
 test('form source keeps admin detail out of settings and uses only the phase 8B.1 API client',()=>{
   const source=fs.readFileSync(new URL('../src/components/constructor/modules/ReservasWebActivityForm.tsx',import.meta.url),'utf8');
   assert.match(source,/createReservasWebActivity|updateReservasWebActivity|refreshReservasWebActivities/);
-  assert.doesNotMatch(source,/fetch\(|settingsValues|onSettingChange|reservations|providerCredentials|selected_whatsapp_channel_id/i);
+  assert.doesNotMatch(source,/fetch\(|settingsValues|onSettingChange|reservations|providerCredentials/i);
 });

@@ -2,6 +2,7 @@ import React from 'react';
 import type { ReservasWebPublishedSnapshot } from './reservasWebPublishedContract';
 import { getPublicReservasWebActivity, type PublicReservasWebActivity } from '../../../services/reservasWebPublicApi';
 import { getPrimaryPublicReservasWebActivityIdentifier } from './reservasWebPublicContract';
+import { ReservasWebBookingStart } from './ReservasWebBookingStart';
 
 type PublicReservasWebModuleProps = { moduleId: string; snapshot: ReservasWebPublishedSnapshot | null; enabled: boolean };
 
@@ -28,7 +29,7 @@ const formatPrice = (activity: PublicReservasWebActivity) => activity.pricing.is
   ? 'Gratis'
   : new Intl.NumberFormat('es', { style: 'currency', currency: activity.pricing.currency }).format(activity.pricing.effectivePrice);
 
-export const PublicReservasWebActivityContent = ({ moduleId, snapshot, activity }: { moduleId: string; snapshot: ReservasWebPublishedSnapshot; activity: PublicReservasWebActivity }) => {
+export const PublicReservasWebActivityContent = ({ moduleId, snapshot, activity, onRefreshActivity = () => {} }: { moduleId: string; snapshot: ReservasWebPublishedSnapshot; activity: PublicReservasWebActivity; onRefreshActivity?: () => void }) => {
   const countdown = snapshot.display.showCountdown ? getPublicReservasWebCountdown(activity.countdownTarget) : null;
   const bookingMessage = activity.booking.enabled ? 'Las reservas en línea estarán disponibles próximamente.' : 'Esta actividad no está disponible.';
   const sessions = activity.sessions.map((session) => formatSession(session, activity.timezone)).filter((session): session is string => Boolean(session));
@@ -47,8 +48,8 @@ export const PublicReservasWebActivityContent = ({ moduleId, snapshot, activity 
         {activity.capacity.visible && snapshot.display.showAvailableCapacity && typeof activity.capacity.available === 'number' && <div><dt className="font-semibold">Disponibilidad</dt><dd>Cupos disponibles: {activity.capacity.available}</dd></div>}
         {countdown && <div><dt className="font-semibold">Cuenta regresiva</dt><dd>{countdown}</dd></div>}
       </dl>
-      <p id={`${moduleId}-booking-status`} className="rounded-lg bg-secondary p-3 text-xs">{bookingMessage}</p>
-      <button type="button" disabled aria-describedby={`${moduleId}-booking-status`} style={{ backgroundColor: snapshot.style.ctaBackgroundColor || undefined, color: snapshot.style.ctaTextColor || undefined }} className="w-full rounded-lg bg-primary px-4 py-3 font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50">{snapshot.content.reserveButtonLabel}</button>
+      {!activity.booking.enabled && <p id={`${moduleId}-booking-status`} className="rounded-lg bg-secondary p-3 text-xs">{bookingMessage}</p>}
+      <ReservasWebBookingStart moduleId={moduleId} publicIdentifier={activity.publicId} activity={activity} label={snapshot.content.reserveButtonLabel} ctaBackgroundColor={snapshot.style.ctaBackgroundColor} ctaTextColor={snapshot.style.ctaTextColor} onRefreshActivity={onRefreshActivity} />
     </div>
   </section>;
 };
@@ -61,6 +62,7 @@ export const PublicReservasWebModule = ({ moduleId, snapshot, enabled }: PublicR
     status: enabled && identifier ? 'loading' : 'unavailable',
     activity: null
   }));
+  const [refreshVersion, setRefreshVersion] = React.useState(0);
 
   React.useEffect(() => {
     if (!enabled || !identifier) {
@@ -68,17 +70,17 @@ export const PublicReservasWebModule = ({ moduleId, snapshot, enabled }: PublicR
       return;
     }
     const controller = new AbortController();
-    setState({ status: 'loading', activity: null });
+    setState((current) => current.activity ? current : { status: 'loading', activity: null });
     void getPublicReservasWebActivity(identifier, controller.signal).then((activity) => {
       if (!controller.signal.aborted) setState(activity ? { status: 'ready', activity } : { status: 'unavailable', activity: null });
     }).catch(() => {
       if (!controller.signal.aborted) setState({ status: 'error', activity: null });
     });
     return () => controller.abort();
-  }, [enabled, identifier]);
+  }, [enabled, identifier, refreshVersion]);
 
   if (state.status === 'loading') return <PublicReservasWebUnavailable moduleId={moduleId} message="Cargando actividad…" />;
   if (state.status === 'unavailable') return <PublicReservasWebUnavailable moduleId={moduleId} message="Esta actividad no está disponible." />;
   if (state.status === 'error') return <PublicReservasWebUnavailable moduleId={moduleId} message="No se pudo cargar la actividad. Inténtalo de nuevo más tarde." />;
-  return snapshot && state.activity ? <PublicReservasWebActivityContent moduleId={moduleId} snapshot={snapshot} activity={state.activity} /> : <PublicReservasWebUnavailable moduleId={moduleId} message="Esta actividad no está disponible." />;
+  return snapshot && state.activity ? <PublicReservasWebActivityContent moduleId={moduleId} snapshot={snapshot} activity={state.activity} onRefreshActivity={() => setRefreshVersion((version) => version + 1)} /> : <PublicReservasWebUnavailable moduleId={moduleId} message="Esta actividad no está disponible." />;
 };

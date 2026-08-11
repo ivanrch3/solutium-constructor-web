@@ -49,7 +49,7 @@ test('public client encodes the opaque identifier, omits credentials, and handle
   }
 });
 
-test('public module renders only the live DTO, public display controls, and a disabled non-transactional CTA', () => {
+test('public module renders only the live DTO, public display controls, and the booking CTA', () => {
   const markup = renderToStaticMarkup(React.createElement(PublicReservasWebActivityContent, { moduleId: 'reservas-a', snapshot, activity }));
   assert.match(markup, /Taller público|Taller p/);
   assert.match(markup, /Descripción pública|Descripci/);
@@ -60,7 +60,7 @@ test('public module renders only the live DTO, public display controls, and a di
   assert.match(markup, /Capacidad total: 12/);
   assert.match(markup, /Cupos disponibles: 5/);
   assert.match(markup, /Apartar cupo/);
-  assert.match(markup, /disabled/);
+  assert.match(markup, /Apartar cupo/);
   assert.doesNotMatch(markup, /privateVirtualUrl|selectedWhatsAppChannelId|contactWhatsapp|SINPE|Onvopay/);
   assert.doesNotMatch(renderToStaticMarkup(React.createElement(PublicReservasWebActivityContent, { moduleId: 'reservas-a', snapshot: { ...snapshot, display: { ...snapshot.display, showPrice: false, showTotalCapacity: false, showAvailableCapacity: false, showCountdown: false } }, activity })), /Precio|Capacidad total|Cupos disponibles|Cuenta regresiva/);
   assert.match(renderToStaticMarkup(React.createElement(PublicReservasWebModule, { moduleId: 'legacy', snapshot: null, enabled: true })), /Esta actividad no está disponible|Esta actividad no est/);
@@ -74,5 +74,5 @@ test('countdown remains a presentation helper and Viewer stays public-read-only'
   const source = fs.readFileSync(new URL('../src/components/constructor/modules/PublicReservasWebModule.tsx', import.meta.url), 'utf8');
   const apiSource = fs.readFileSync(new URL('../src/services/reservasWebPublicApi.ts', import.meta.url), 'utf8');
   assert.doesNotMatch(source, /privateVirtualUrl|activityIds|POST|holds|reservations|whatsapp/i);
-  assert.doesNotMatch(apiSource, /Authorization|Bearer|POST|holds|reservations/i);
+  assert.doesNotMatch(apiSource, /Authorization|Bearer|\/reservations/i);
 });

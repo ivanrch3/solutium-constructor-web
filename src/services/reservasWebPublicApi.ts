@@ -25,6 +25,15 @@ export class PublicReservasWebApiError extends Error {
   }
 }
 
+export class PublicReservasWebHoldError extends Error {
+  constructor(public readonly status: number, public readonly code: string) {
+    super('PUBLIC_RESERVAS_WEB_HOLD_FAILED');
+    this.name = 'PublicReservasWebHoldError';
+  }
+}
+
+export type PublicReservasWebHold = { holdToken: string; quantity: number; expiresAt: string; availableCapacity: number; idempotentReplay: boolean };
+
 export const buildPublicReservasWebActivityUrl = (publicIdentifier: string, baseUrl = getAppMadreBaseUrl()) =>
   `${baseUrl.replace(/\/+$/, '')}/api/public/reservas-web/activities/${encodeURIComponent(publicIdentifier)}`;
 
@@ -89,4 +98,37 @@ export const getPublicReservasWebActivity = async (
 
   const payload = await response.json().catch(() => null) as { success?: boolean; activity?: unknown } | null;
   return payload?.success === true ? sanitizeActivity(payload.activity) : null;
+};
+
+export const createPublicReservasWebHold = async (
+  publicIdentifier: string,
+  quantity: number,
+  idempotencyKey: string,
+  signal?: AbortSignal,
+  baseUrl = getAppMadreBaseUrl()
+): Promise<PublicReservasWebHold> => {
+  const identifier = publicIdentifier.trim();
+  if (!identifier || !Number.isInteger(quantity) || quantity < 1 || quantity > 100 || !idempotencyKey.trim()) {
+    throw new PublicReservasWebHoldError(400, 'INVALID_HOLD_REQUEST');
+  }
+
+  const response = await fetch(`${buildPublicReservasWebActivityUrl(identifier, baseUrl)}/holds`, {
+    method: 'POST',
+    headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+    credentials: 'omit',
+    body: JSON.stringify({ quantity, idempotencyKey: idempotencyKey.trim() }),
+    signal
+  });
+  const payload = await response.json().catch(() => null) as Record<string, unknown> | null;
+  const code = asText(payload?.error) || 'PUBLIC_RESERVAS_REQUEST_FAILED';
+  if (!response.ok || payload?.success !== true) throw new PublicReservasWebHoldError(response.status, code);
+
+  const holdToken = asText(payload.holdToken);
+  const expiresAt = asText(payload.expiresAt);
+  const responseQuantity = asOptionalNumber(payload.quantity);
+  const availableCapacity = asOptionalNumber(payload.availableCapacity);
+  if (!holdToken || !expiresAt || !responseQuantity || availableCapacity === undefined) {
+    throw new PublicReservasWebHoldError(502, 'PUBLIC_RESERVAS_REQUEST_FAILED');
+  }
+  return { holdToken, expiresAt, quantity: responseQuantity, availableCapacity, idempotentReplay: payload.idempotentReplay === true };
 };

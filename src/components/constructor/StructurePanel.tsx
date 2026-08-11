@@ -26,7 +26,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { EditorState, WebModule, ModuleElement, SettingDefinition, SettingGroupType } from '../../types/constructor';
 import { Product, Customer, TrustedCompanyLogo } from '../../types/schema';
 import type { SecureCatalogCategory } from '../../services/secureLaunchSession';
-import type { ReservasWebActivitySummary } from '../../types/reservasWeb';
+import type { ReservasWebActivitySummary, ReservasWebEligibleWhatsAppChannel } from '../../types/reservasWeb';
 import { useEditorStore } from '../../store/editorStore';
 import { MODULE_INFO, GROUP_LABELS, BENTO_MODULE } from './registry';
 import { SettingControl } from './SettingControl';
@@ -917,6 +917,7 @@ interface StructurePanelProps {
   customers?: Customer[];
   trustedCompanyLogos?: TrustedCompanyLogo[];
   reservasWebActivities?: ReservasWebActivitySummary[];
+  reservasWebEligibleWhatsAppChannels?: ReservasWebEligibleWhatsAppChannel[];
   isMobile?: boolean;
   activeTab?: string;
   useSplitLayout?: boolean;
@@ -938,6 +939,7 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
   customers,
   trustedCompanyLogos,
   reservasWebActivities = [],
+  reservasWebEligibleWhatsAppChannels = [],
   isMobile,
   activeTab = 'constructor',
   useSplitLayout = false,
@@ -1604,6 +1606,7 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                   products={products}
                   settingsValues={editorState.settingsValues}
                   reservasWebActivities={localReservasWebActivities}
+                  reservasWebEligibleWhatsAppChannels={reservasWebEligibleWhatsAppChannels}
                   onActivitiesRefreshed={setLocalReservasWebActivities}
                   onSettingChange={onSettingChange}
                 />

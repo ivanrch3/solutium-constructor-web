@@ -72,6 +72,11 @@ test('Reservas Web settings only persists one selected activity id and safely su
     moduleId: 'module-a', settingsValues: {}, reservasWebActivities: undefined, onSettingChange: () => {}
   })), /No hay actividades configuradas para Reservas Web/);
   assert.match(secureContextSource, /reservasWebActivities: Array\.isArray\(result\.reservasWebActivities\) \? result\.reservasWebActivities : \[\]/);
+  assert.match(secureContextSource, /reservasWebEligibleWhatsAppChannels: Array\.isArray\(result\.reservasWebEligibleWhatsAppChannels\) \? result\.reservasWebEligibleWhatsAppChannels : \[\]/);
   assert.doesNotMatch(JSON.stringify(selectedA), /catalogItem|sessionsSummary|whatsappReadiness|privateVirtualUrl|customerId/i);
+  assert.equal('eligibleWhatsAppChannels' in selectedA, false);
+  assert.equal('selectedWhatsappChannelId' in selectedA, false);
+  assert.equal('phoneNumber' in selectedA, false);
+  assert.equal('readiness' in selectedA, false);
   assert.doesNotMatch(settingsSource, /fetch\(|privateVirtualUrl|contactWhatsapp|identification|birthDate/i);
 });

@@ -52,7 +52,7 @@ import {
   saveLocalDraftSnapshot
 } from '../../services/localDraftSnapshotService';
 import { Product, Customer, PageSection, TrustedCompanyLogo } from '../../types/schema';
-import type { ReservasWebActivitySummary } from '../../types/reservasWeb';
+import type { ReservasWebActivitySummary, ReservasWebEligibleWhatsAppChannel } from '../../types/reservasWeb';
 import type { SecureCatalogCategory } from '../../services/secureLaunchSession';
 import { MOCK_PRODUCTS, MOCK_CUSTOMERS } from '../../constants/mockData';
 import { MainSidebar, ModuleItem } from './MainSidebar';
@@ -677,6 +677,7 @@ interface WebConstructorProps {
   secureCustomers?: Customer[];
   secureTrustedCompanyLogos?: TrustedCompanyLogo[];
   secureReservasWebActivities?: ReservasWebActivitySummary[];
+  secureReservasWebEligibleWhatsAppChannels?: ReservasWebEligibleWhatsAppChannel[];
   useSecureCatalogContext?: boolean;
 }
 
@@ -837,6 +838,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   secureCustomers = [],
   secureTrustedCompanyLogos = [],
   secureReservasWebActivities = [],
+  secureReservasWebEligibleWhatsAppChannels = [],
   useSecureCatalogContext = false
 }) => {
   const {
@@ -7318,6 +7320,7 @@ const formatTimestampName = () => {
                         customers={customers}
                         trustedCompanyLogos={trustedCompanyLogos}
                         reservasWebActivities={secureReservasWebActivities}
+                        reservasWebEligibleWhatsAppChannels={secureReservasWebEligibleWhatsAppChannels}
                         isMobile={true}
                         activeTab={activeTab}
                         activeViewport={viewport}
@@ -7376,6 +7379,7 @@ const formatTimestampName = () => {
                     customers={customers}
                     trustedCompanyLogos={trustedCompanyLogos}
                     reservasWebActivities={secureReservasWebActivities}
+                    reservasWebEligibleWhatsAppChannels={secureReservasWebEligibleWhatsAppChannels}
                     activeTab={activeTab}
                     useSplitLayout={useConstructorSplitLayout}
                     activeViewport={viewport}

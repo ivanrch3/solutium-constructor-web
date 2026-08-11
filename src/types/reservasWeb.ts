@@ -4,6 +4,14 @@ export type ReservasWebWhatsAppReadiness =
   | 'selection_required'
   | 'invalid_selection';
 
+export type ReservasWebEligibleWhatsAppChannel = {
+  id: string;
+  displayLabel: string;
+  phoneNumber: string | null;
+  mode: 'genius' | 'flash';
+  connected: boolean;
+};
+
 export type ReservasWebSessionSummary = {
   count: number;
   firstStartsAt: string | null;

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { Product } from '../../../types/schema';
-import type { ReservasWebActivitySummary, ReservasWebWhatsAppReadiness } from '../../../types/reservasWeb';
+import type { ReservasWebActivitySummary, ReservasWebEligibleWhatsAppChannel, ReservasWebWhatsAppReadiness } from '../../../types/reservasWeb';
 import { getReservasWebActivity, type ReservasWebActivityAdminDetail } from '../../../services/reservasWebAdminApi';
 import { ReservasWebActivityForm, type ReservasWebActivityFormMode } from './ReservasWebActivityForm';
 import {
@@ -33,12 +33,12 @@ export const formatReservasWebPrice = (activity: ReservasWebActivitySummary): st
   return amount === null ? 'Precio no disponible' : new Intl.NumberFormat('es', { style: 'currency', currency: activity.currency || 'USD' }).format(amount);
 };
 
-type ReservasWebSettingsProps = { moduleId: string; projectId?: string | null; products?: Product[]; settingsValues: Record<string, unknown>; reservasWebActivities?: ReservasWebActivitySummary[]; onActivitiesRefreshed?: (activities: ReservasWebActivitySummary[]) => void; onSettingChange: (elementId: string, settingId: string, value: unknown) => void; };
+type ReservasWebSettingsProps = { moduleId: string; projectId?: string | null; products?: Product[]; settingsValues: Record<string, unknown>; reservasWebActivities?: ReservasWebActivitySummary[]; reservasWebEligibleWhatsAppChannels?: ReservasWebEligibleWhatsAppChannel[]; onActivitiesRefreshed?: (activities: ReservasWebActivitySummary[]) => void; onSettingChange: (elementId: string, settingId: string, value: unknown) => void; };
 type ToggleKey = keyof ReservasWebConfigV1['display'];
 
 const asSummary = (detail: ReservasWebActivityAdminDetail): ReservasWebActivitySummary => ({ id: detail.id, catalogItemId: detail.catalogItemId, catalogItemName: detail.catalogItem?.name || null, catalogItemImageUrl: detail.catalogItem?.imageUrl || null, title: detail.title || '', shortDescription: detail.shortDescription, facilitator: detail.facilitator, modality: detail.modality, status: detail.status, timezone: detail.timezone, sessionsSummary: { count: detail.sessions.length, firstStartsAt: detail.sessions[0]?.startAt || detail.sessions[0]?.starts_at || null, firstEndsAt: detail.sessions[0]?.endAt || detail.sessions[0]?.ends_at || null }, totalCapacity: detail.totalCapacity, isFree: detail.isFree, regularPrice: detail.regularPrice, promotionalPrice: detail.promotionalPrice, promotionEndsAt: detail.promotionEndsAt, currency: detail.currency, selectedWhatsAppChannelId: detail.selectedWhatsappChannelId, whatsappReadiness: ['ready','unavailable','selection_required','invalid_selection'].includes(detail.readiness.whatsapp) ? detail.readiness.whatsapp as ReservasWebWhatsAppReadiness : 'unavailable' });
 
-export const ReservasWebSettings = ({ moduleId, projectId = null, products = [], settingsValues, reservasWebActivities = [], onActivitiesRefreshed, onSettingChange }: ReservasWebSettingsProps) => {
+export const ReservasWebSettings = ({ moduleId, projectId = null, products = [], settingsValues, reservasWebActivities = [], reservasWebEligibleWhatsAppChannels = [], onActivitiesRefreshed, onSettingChange }: ReservasWebSettingsProps) => {
   const configKey = getReservasWebConfigSettingKey(moduleId);
   const config = normalizeReservasWebConfig(settingsValues[configKey]);
   const selectedActivityId = config.activities.activityIds[0] || '';
@@ -56,7 +56,7 @@ export const ReservasWebSettings = ({ moduleId, projectId = null, products = [],
     <div className="mt-3 space-y-3 rounded-xl border border-border/40 bg-surface p-3 text-sm text-text">
       <section className="space-y-2"><h3 className="text-xs font-semibold">Actividad</h3>
         <div className="flex gap-2"><button type="button" disabled={!projectId} onClick={() => setForm({ mode: 'create' })} className="rounded border border-primary/40 px-2 py-1 font-semibold text-primary disabled:opacity-40">Crear actividad</button><button type="button" disabled={!projectId || !selectedActivityId || loadingDetail} onClick={openEdit} className="rounded border border-border px-2 py-1 font-semibold disabled:opacity-40">{loadingDetail ? 'Cargando…' : 'Editar actividad'}</button></div>
-        {form && projectId && <ReservasWebActivityForm mode={form.mode} projectId={projectId} products={products} detail={form.detail} onClose={() => setForm(null)} onSaved={saved} />}
+        {form && projectId && <ReservasWebActivityForm mode={form.mode} projectId={projectId} products={products} detail={form.detail} eligibleWhatsAppChannels={reservasWebEligibleWhatsAppChannels} onClose={() => setForm(null)} onSaved={saved} />}
         <label className="block space-y-1"><span className="text-xs">Actividad</span><select value={selectedActivityId} onChange={(event) => persistActivityId(event.target.value || null)} className="w-full rounded-lg border border-border bg-background px-3 py-2"><option value="">Selecciona una actividad</option>{reservasWebActivities.map((activity) => <option key={activity.id} value={activity.id}>{activity.title} · {activity.catalogItemName || 'Sin item de catálogo'} · {activity.modality || 'Sin modalidad'}</option>)}</select></label>
         {reservasWebActivities.length === 0 && <p className="rounded-lg bg-secondary/50 p-3 text-xs">No hay actividades configuradas para Reservas Web.</p>}
         {selectedActivityId && !selectedActivity && <div className="space-y-2 rounded-lg border border-border/40 bg-secondary/50 p-3 text-xs"><p>La actividad seleccionada ya no está disponible.</p><button type="button" onClick={() => persistActivityId(null)} className="font-semibold text-primary underline">Limpiar selección</button></div>}

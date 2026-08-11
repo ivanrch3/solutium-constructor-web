@@ -22,7 +22,7 @@ import { useEditorStore } from './store/editorStore';
 import { Viewer } from './components/Viewer';
 import { logDebug } from './utils/debug';
 import { Profile, Project, Asset, WebBuilderSite, PublishedSite, Product, Customer, TrustedCompanyLogo } from './types/schema';
-import type { ReservasWebActivitySummary } from './types/reservasWeb';
+import type { ReservasWebActivitySummary, ReservasWebEligibleWhatsAppChannel } from './types/reservasWeb';
 import { getAssets } from './services/dataService';
 import { BrandColorsInput, normalizeProjectBrandColors } from './utils/projectTheme';
 import { extractWhatsAppOrdersCapability } from './utils/whatsappOrdersAvailability';
@@ -812,6 +812,7 @@ const AppContent: React.FC = () => {
   const [secureCatalogCustomers, setSecureCatalogCustomers] = useState<Customer[]>([]);
   const [secureTrustedLogos, setSecureTrustedLogos] = useState<TrustedCompanyLogo[]>([]);
   const [secureReservasWebActivities, setSecureReservasWebActivities] = useState<ReservasWebActivitySummary[]>([]);
+  const [secureReservasWebEligibleWhatsAppChannels, setSecureReservasWebEligibleWhatsAppChannels] = useState<ReservasWebEligibleWhatsAppChannel[]>([]);
   const [hasSecureConstructorCatalogContext, setHasSecureConstructorCatalogContext] = useState(false);
   const [pagesLoadError, setPagesLoadError] = useState<string | null>(null);
   const [pagesLoading, setPagesLoading] = useState(false);
@@ -1429,6 +1430,7 @@ const AppContent: React.FC = () => {
       setSecureCatalogCustomers(contextLogos.customers);
       setSecureTrustedLogos(contextLogos.trustedLogos);
       setSecureReservasWebActivities(contextResult.reservasWebActivities ?? []);
+      setSecureReservasWebEligibleWhatsAppChannels(contextResult.reservasWebEligibleWhatsAppChannels ?? []);
       setHasSecureConstructorCatalogContext(true);
       setPagesLoadError(null);
       setPages(allPages);
@@ -2505,6 +2507,7 @@ const AppContent: React.FC = () => {
             secureCustomers={secureCatalogCustomers}
             secureTrustedCompanyLogos={secureTrustedLogos}
             secureReservasWebActivities={secureReservasWebActivities}
+            secureReservasWebEligibleWhatsAppChannels={secureReservasWebEligibleWhatsAppChannels}
             useSecureCatalogContext={hasSecureConstructorCatalogContext}
           />
         );

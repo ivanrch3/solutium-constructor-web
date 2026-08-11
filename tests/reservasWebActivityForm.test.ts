@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
-import { buildReservasWebActivityPatch, createReservasWebActivityDraft, normalizeReservasWebActivitySessions, validateReservasWebActivityDraft } from '../src/components/constructor/modules/ReservasWebActivityForm';
+import React from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import type { ReservasWebEligibleWhatsAppChannel } from '../src/types/reservasWeb';
+import { buildReservasWebActivityPatch, createReservasWebActivityDraft, getReservasWebGeniusModeLabel, normalizeReservasWebActivitySessions, ReservasWebActivityForm, validateReservasWebActivityDraft } from '../src/components/constructor/modules/ReservasWebActivityForm';
 
 const valid = () => ({ ...createReservasWebActivityDraft(), catalog_item_id: 'catalog', title_override: 'Taller', modality: 'presencial' as const, physical_location: 'Sala', total_capacity: 8, sessions: [{ starts_at: '2026-09-01T10:00', ends_at: '2026-09-01T11:00' }] });
 
@@ -55,4 +58,26 @@ test('form source keeps admin detail out of settings and uses only the phase 8B.
   const source=fs.readFileSync(new URL('../src/components/constructor/modules/ReservasWebActivityForm.tsx',import.meta.url),'utf8');
   assert.match(source,/createReservasWebActivity|updateReservasWebActivity|refreshReservasWebActivities/);
   assert.doesNotMatch(source,/fetch\(|settingsValues|onSettingChange|reservations|providerCredentials/i);
+});
+
+test('Genius selector uses only the secure eligible channel collection and preserves differential channel PATCHes',()=>{
+  const channels: ReservasWebEligibleWhatsAppChannel[]=[{id:'genius-1',displayLabel:'Genius principal',phoneNumber:'+50611111111',mode:'genius',connected:true},{id:'flash-1',displayLabel:'Genius Flash',phoneNumber:'+50622222222',mode:'flash',connected:true}];
+  const base=valid();
+  assert.deepEqual(validateReservasWebActivityDraft(base,[]),[]);
+  assert.ok(validateReservasWebActivityDraft(base,channels).some(error=>error.includes('Selecciona una conexión Genius')));
+  assert.deepEqual(validateReservasWebActivityDraft({...base,selected_whatsapp_channel_id:'genius-1'},channels),[]);
+  assert.ok(validateReservasWebActivityDraft({...base,selected_whatsapp_channel_id:'missing'},channels).some(error=>error.includes('ya no está disponible')));
+  assert.deepEqual(buildReservasWebActivityPatch({...base,selected_whatsapp_channel_id:'genius-1'},{...base,selected_whatsapp_channel_id:'genius-1'}),{});
+  assert.deepEqual(buildReservasWebActivityPatch({...base,selected_whatsapp_channel_id:'flash-1'},base),{selected_whatsapp_channel_id:'flash-1'});
+  assert.equal(getReservasWebGeniusModeLabel('genius'),'Genius');assert.equal(getReservasWebGeniusModeLabel('flash'),'Genius Flash');
+  const render=(eligibleWhatsAppChannels: ReservasWebEligibleWhatsAppChannel[],detail?: any)=>renderToStaticMarkup(React.createElement(ReservasWebActivityForm,{mode:'create',projectId:'project-a',products:[],detail,eligibleWhatsAppChannels,onClose:()=>{},onSaved:()=>{}}));
+  assert.match(render([]),/Reservas Web requiere una conexión Genius activa/);
+  assert.doesNotMatch(render([]),/selected_whatsapp_channel_id/);
+  assert.match(render([channels[0]]),/Este canal se utilizará automáticamente/);
+  assert.match(render(channels),/Genius principal/);assert.match(render(channels),/\+50622222222/);assert.match(render(channels),/Genius Flash/);
+  const invalidDetail={id:'activity-a',catalogItemId:'catalog',title:'Taller',shortDescription:null,expandedDescription:null,facilitator:null,facilitatorWhatsapp:null,modality:'presencial',location:'Sala',mapsUrl:null,privateVirtualUrl:null,timezone:'America/Costa_Rica',bookingClosesAt:null,totalCapacity:8,isFree:true,regularPrice:0,promotionalPrice:null,promotionEndsAt:null,currency:null,sinpePhone:null,paymentReceiptWhatsapp:null,onvopayUrl:null,selectedWhatsappChannelId:'missing',status:'active',archivedAt:null,sessions:[{starts_at:'2026-09-01T10:00',ends_at:'2026-09-01T11:00',sequence:1}],readiness:{bookable:false,reasons:[],whatsapp:'invalid_selection'}};
+  assert.match(render([channels[0]],invalidDetail),/La conexión Genius seleccionada ya no está disponible/);
+  const source=fs.readFileSync(new URL('../src/components/constructor/modules/ReservasWebActivityForm.tsx',import.meta.url),'utf8');
+  assert.doesNotMatch(source,/settingsValues|providerCredentials|api_key|access_token/i);
+  assert.match(source,/Facilitador/);assert.match(source,/Número SINPE/);assert.match(source,/Número para recibir comprobantes/);
 });

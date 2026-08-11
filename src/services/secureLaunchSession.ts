@@ -1,4 +1,4 @@
-import type { ReservasWebActivitySummary } from '../types/reservasWeb';
+import type { ReservasWebActivitySummary, ReservasWebEligibleWhatsAppChannel } from '../types/reservasWeb';
 
 export interface SecureLaunchSessionPayload {
   publicRenderContext?: Record<string, any> | null;
@@ -374,6 +374,7 @@ export interface ConstructorContextResult {
   catalogProducts?: any[];
   catalogCategories?: SecureCatalogCategory[];
   reservasWebActivities?: ReservasWebActivitySummary[];
+  reservasWebEligibleWhatsAppChannels?: ReservasWebEligibleWhatsAppChannel[];
   trustedLogos?: any[];
   customers?: any[];
   clients?: any[];
@@ -428,6 +429,7 @@ export const fetchConstructorContext = async ({
       catalogProducts: Array.isArray(result.catalogProducts) ? result.catalogProducts : [],
       catalogCategories: Array.isArray(result.catalogCategories) ? result.catalogCategories : [],
       reservasWebActivities: Array.isArray(result.reservasWebActivities) ? result.reservasWebActivities : [],
+      reservasWebEligibleWhatsAppChannels: Array.isArray(result.reservasWebEligibleWhatsAppChannels) ? result.reservasWebEligibleWhatsAppChannels : [],
       trustedLogos: Array.isArray(result.trustedLogos) ? result.trustedLogos : [],
       customers: Array.isArray(result.customers) ? result.customers : [],
       clients: Array.isArray(result.clients) ? result.clients : [],

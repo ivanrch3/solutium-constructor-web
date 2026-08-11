@@ -28,6 +28,9 @@ export type ReservasWebActivitySummary = {
   facilitator: string | null;
   modality: string | null;
   status: string | null;
+  archivedAt?: string | null;
+  bookable?: boolean | null;
+  readinessReasons?: string[];
   timezone: string | null;
   sessionsSummary: ReservasWebSessionSummary;
   totalCapacity: number | null;
@@ -39,3 +42,6 @@ export type ReservasWebActivitySummary = {
   selectedWhatsAppChannelId: string | null;
   whatsappReadiness: ReservasWebWhatsAppReadiness;
 };
+
+export const isReservasWebActivityArchived = (activity: Pick<ReservasWebActivitySummary, 'status' | 'archivedAt'>) =>
+  Boolean(activity.archivedAt) || activity.status === 'archived';

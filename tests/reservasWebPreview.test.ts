@@ -41,6 +41,7 @@ test('Reservas Web preview is structural, isolated, and does not mutate configur
   assert.match(customCta, /Apartar cupo/);
   assert.doesNotMatch(selectedMarkup, /No disponible para reservas/);
   for (const readiness of ['unavailable', 'selection_required', 'invalid_selection'] as const) assert.match(render(selected, [createActivity({ whatsappReadiness: readiness })]), /No disponible para reservas/);
+  assert.match(render(selected, [createActivity({ status: 'archived', whatsappReadiness: 'ready' })]), /No disponible para reservas/);
   assert.match(render(setReservasWebActivityIds(createDefaultReservasWebConfig(), ['missing']), []), /La actividad seleccionada ya no está disponible/);
   assert.doesNotMatch(source, /fetch\(|POST|privateVirtualUrl|contactWhatsapp|identification|birthDate/);
   assert.equal(JSON.stringify(selected), before);

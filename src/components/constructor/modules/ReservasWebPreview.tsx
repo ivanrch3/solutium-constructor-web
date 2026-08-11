@@ -1,4 +1,4 @@
-import type { ReservasWebActivitySummary } from '../../../types/reservasWeb';
+import { isReservasWebActivityArchived, type ReservasWebActivitySummary } from '../../../types/reservasWeb';
 import type { ReservasWebConfigV1 } from './reservasWebConfig';
 
 type ReservasWebPreviewProps = {
@@ -36,7 +36,7 @@ export const ReservasWebPreview = ({ moduleId, config, reservasWebActivities = [
 
   const title = activity.title || activity.catalogItemName || 'Actividad';
   const price = formatPrice(activity);
-  const unavailable = activity.whatsappReadiness !== 'ready';
+  const unavailable = isReservasWebActivityArchived(activity) || activity.whatsappReadiness !== 'ready' || activity.bookable === false;
 
   return (
     <section data-module-id={moduleId} style={{ backgroundColor: config.style.surfaceColor || undefined, borderColor: config.style.borderColor || undefined, borderRadius: config.style.borderRadius }} className="mx-auto w-full max-w-xl overflow-hidden border bg-surface text-text shadow-sm">

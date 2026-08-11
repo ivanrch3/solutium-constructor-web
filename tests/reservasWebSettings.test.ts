@@ -7,6 +7,7 @@ import type { ReservasWebActivitySummary } from '../src/types/reservasWeb';
 import {
   formatReservasWebPrice,
   formatReservasWebSessionSummary,
+  getReservasWebActivityReadinessMessage,
   getReservasWebWhatsAppReadinessMessage,
   ReservasWebSettings
 } from '../src/components/constructor/modules/ReservasWebSettings';
@@ -57,6 +58,7 @@ test('Reservas Web settings only persists one selected activity id and safely su
   assert.deepEqual(missing.activities.activityIds, ['missing']);
   assert.notEqual(instanceAKey, instanceBKey);
   assert.equal(getReservasWebWhatsAppReadinessMessage('ready'), 'Canal Genius listo');
+  assert.match(getReservasWebActivityReadinessMessage({ ...activityA, status: 'archived' }), /archivada/);
   assert.match(getReservasWebWhatsAppReadinessMessage('unavailable'), /conexión Genius activa/);
   assert.match(getReservasWebWhatsAppReadinessMessage('selection_required'), /varias conexiones Genius/);
   assert.match(getReservasWebWhatsAppReadinessMessage('invalid_selection'), /ya no está disponible/);
@@ -71,6 +73,12 @@ test('Reservas Web settings only persists one selected activity id and safely su
   assert.match(renderToStaticMarkup(React.createElement(ReservasWebSettings, {
     moduleId: 'module-a', settingsValues: {}, reservasWebActivities: undefined, onSettingChange: () => {}
   })), /No hay actividades configuradas para Reservas Web/);
+  assert.match(renderToStaticMarkup(React.createElement(ReservasWebSettings, {
+    moduleId: 'module-a', settingsValues: { [instanceAKey]: selectedA }, reservasWebActivities: [{ ...activityA, status: 'archived' }], onSettingChange: () => {}
+  })), /Archivada/);
+  assert.doesNotMatch(renderToStaticMarkup(React.createElement(ReservasWebSettings, {
+    moduleId: 'module-a', settingsValues: {}, reservasWebActivities: [{ ...activityA, status: 'archived' }], onSettingChange: () => {}
+  })), /Actividad A/);
   assert.match(secureContextSource, /reservasWebActivities: Array\.isArray\(result\.reservasWebActivities\) \? result\.reservasWebActivities : \[\]/);
   assert.match(secureContextSource, /reservasWebEligibleWhatsAppChannels: Array\.isArray\(result\.reservasWebEligibleWhatsAppChannels\) \? result\.reservasWebEligibleWhatsAppChannels : \[\]/);
   assert.doesNotMatch(JSON.stringify(selectedA), /catalogItem|sessionsSummary|whatsappReadiness|privateVirtualUrl|customerId/i);
@@ -78,5 +86,6 @@ test('Reservas Web settings only persists one selected activity id and safely su
   assert.equal('selectedWhatsappChannelId' in selectedA, false);
   assert.equal('phoneNumber' in selectedA, false);
   assert.equal('readiness' in selectedA, false);
+  assert.equal('archivedAt' in selectedA, false);
   assert.doesNotMatch(settingsSource, /fetch\(|privateVirtualUrl|contactWhatsapp|identification|birthDate/i);
 });

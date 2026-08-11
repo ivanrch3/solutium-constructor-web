@@ -4,7 +4,7 @@ import test from 'node:test';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { ReservasWebEligibleWhatsAppChannel } from '../src/types/reservasWeb';
-import { buildReservasWebActivityPatch, createReservasWebActivityDraft, getReservasWebGeniusModeLabel, normalizeReservasWebActivitySessions, ReservasWebActivityForm, validateReservasWebActivityDraft } from '../src/components/constructor/modules/ReservasWebActivityForm';
+import { buildReservasWebActivityArchivePatch, buildReservasWebActivityPatch, createReservasWebActivityDraft, getReservasWebFinalReadiness, getReservasWebGeniusModeLabel, normalizeReservasWebActivitySessions, ReservasWebActivityForm, validateReservasWebActivityDraft } from '../src/components/constructor/modules/ReservasWebActivityForm';
 
 const valid = () => ({ ...createReservasWebActivityDraft(), catalog_item_id: 'catalog', title_override: 'Taller', modality: 'presencial' as const, physical_location: 'Sala', total_capacity: 8, sessions: [{ starts_at: '2026-09-01T10:00', ends_at: '2026-09-01T11:00' }] });
 
@@ -80,4 +80,19 @@ test('Genius selector uses only the secure eligible channel collection and prese
   const source=fs.readFileSync(new URL('../src/components/constructor/modules/ReservasWebActivityForm.tsx',import.meta.url),'utf8');
   assert.doesNotMatch(source,/settingsValues|providerCredentials|api_key|access_token/i);
   assert.match(source,/Facilitador/);assert.match(source,/Número SINPE/);assert.match(source,/Número para recibir comprobantes/);
+});
+
+test('administrative readiness and archive lifecycle keep backend authority and use isolated PATCHes',()=>{
+  const readiness=(bookable:boolean,whatsapp:'ready'|'unavailable'|'selection_required'|'invalid_selection',archivedAt:string|null=null,reasons:string[]=[]):any=>({archivedAt,readiness:{bookable,reasons,whatsapp}});
+  assert.equal(getReservasWebFinalReadiness(readiness(true,'ready')).state,'ready');
+  assert.match(getReservasWebFinalReadiness(readiness(false,'unavailable')).reasons.join(' '),/conexión Genius activa/);
+  assert.match(getReservasWebFinalReadiness(readiness(false,'selection_required')).reasons.join(' '),/Selecciona una conexión Genius/);
+  assert.match(getReservasWebFinalReadiness(readiness(false,'invalid_selection')).reasons.join(' '),/ya no está disponible/);
+  assert.equal(getReservasWebFinalReadiness(readiness(true,'ready','2026-09-01T00:00:00.000Z')).state,'archived');
+  const archivePatch=buildReservasWebActivityArchivePatch(true);assert.deepEqual(Object.keys(archivePatch),['archived_at']);assert.match(String(archivePatch.archived_at),/^\d{4}-\d\d-\d\dT.*Z$/);assert.deepEqual(buildReservasWebActivityArchivePatch(false),{archived_at:null});
+  const archivedDetail={id:'activity-a',catalogItemId:'catalog',title:'Taller',shortDescription:null,expandedDescription:null,facilitator:null,facilitatorWhatsapp:null,modality:'presencial',location:'Sala',mapsUrl:null,privateVirtualUrl:null,timezone:'America/Costa_Rica',bookingClosesAt:null,totalCapacity:8,isFree:true,regularPrice:0,promotionalPrice:null,promotionEndsAt:null,currency:null,sinpePhone:null,paymentReceiptWhatsapp:null,onvopayUrl:null,selectedWhatsappChannelId:null,status:'active',archivedAt:'2026-09-01T00:00:00.000Z',sessions:[{starts_at:'2026-09-01T10:00',ends_at:'2026-09-01T11:00',sequence:1}],readiness:{bookable:true,reasons:[],whatsapp:'ready'}};
+  const markup=renderToStaticMarkup(React.createElement(ReservasWebActivityForm,{mode:'edit',projectId:'project-a',products:[],detail:archivedDetail as any,eligibleWhatsAppChannels:[],onClose:()=>{},onSaved:()=>{}}));
+  assert.match(markup,/ARCHIVADA/);assert.match(markup,/Restaurar actividad/);assert.doesNotMatch(markup,/Archivar actividad/);
+  const source=fs.readFileSync(new URL('../src/components/constructor/modules/ReservasWebActivityForm.tsx',import.meta.url),'utf8');
+  assert.match(source,/Confirmar archivado/);assert.match(source,/updateReservasWebActivity\(projectId, detail.id, buildReservasWebActivityArchivePatch/);assert.doesNotMatch(source,/window\.confirm|delete\(|DELETE|reservations/i);
 });

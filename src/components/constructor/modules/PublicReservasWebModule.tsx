@@ -3,6 +3,7 @@ import type { ReservasWebPublishedSnapshot } from './reservasWebPublishedContrac
 import { getPublicReservasWebActivity, type PublicReservasWebActivity } from '../../../services/reservasWebPublicApi';
 import { getPrimaryPublicReservasWebActivityIdentifier } from './reservasWebPublicContract';
 import { ReservasWebBookingStart } from './ReservasWebBookingStart';
+import { ReservasWebWaitlistForm } from './ReservasWebWaitlistForm';
 
 type PublicReservasWebModuleProps = { moduleId: string; snapshot: ReservasWebPublishedSnapshot | null; enabled: boolean };
 
@@ -31,7 +32,7 @@ const formatPrice = (activity: PublicReservasWebActivity) => activity.pricing.is
 
 export const PublicReservasWebActivityContent = ({ moduleId, snapshot, activity, onRefreshActivity = () => {} }: { moduleId: string; snapshot: ReservasWebPublishedSnapshot; activity: PublicReservasWebActivity; onRefreshActivity?: () => void }) => {
   const countdown = snapshot.display.showCountdown ? getPublicReservasWebCountdown(activity.countdownTarget) : null;
-  const bookingMessage = activity.booking.enabled ? 'Las reservas en línea estarán disponibles próximamente.' : 'Esta actividad no está disponible.';
+  const unavailable = !activity.booking.enabled && !activity.waitlist.enabled;
   const sessions = activity.sessions.map((session) => formatSession(session, activity.timezone)).filter((session): session is string => Boolean(session));
 
   return <section data-module-id={moduleId} style={{ backgroundColor: snapshot.style.surfaceColor || undefined, borderColor: snapshot.style.borderColor || undefined, borderRadius: snapshot.style.borderRadius }} className="mx-auto w-full max-w-xl overflow-hidden border bg-surface text-text shadow-sm">
@@ -48,8 +49,8 @@ export const PublicReservasWebActivityContent = ({ moduleId, snapshot, activity,
         {activity.capacity.visible && snapshot.display.showAvailableCapacity && typeof activity.capacity.available === 'number' && <div><dt className="font-semibold">Disponibilidad</dt><dd>Cupos disponibles: {activity.capacity.available}</dd></div>}
         {countdown && <div><dt className="font-semibold">Cuenta regresiva</dt><dd>{countdown}</dd></div>}
       </dl>
-      {!activity.booking.enabled && <p id={`${moduleId}-booking-status`} className="rounded-lg bg-secondary p-3 text-xs">{bookingMessage}</p>}
-      <ReservasWebBookingStart moduleId={moduleId} publicIdentifier={activity.publicId} activity={activity} label={snapshot.content.reserveButtonLabel} ctaBackgroundColor={snapshot.style.ctaBackgroundColor} ctaTextColor={snapshot.style.ctaTextColor} onRefreshActivity={onRefreshActivity} />
+      {unavailable && <p id={`${moduleId}-booking-status`} className="rounded-lg bg-secondary p-3 text-xs">Esta actividad no está disponible.</p>}
+      {activity.booking.enabled ? <ReservasWebBookingStart moduleId={moduleId} publicIdentifier={activity.publicId} activity={activity} label={snapshot.content.reserveButtonLabel} ctaBackgroundColor={snapshot.style.ctaBackgroundColor} ctaTextColor={snapshot.style.ctaTextColor} onRefreshActivity={onRefreshActivity} /> : activity.waitlist.enabled ? <ReservasWebWaitlistForm moduleId={moduleId} publicIdentifier={activity.publicId} enabled={activity.waitlist.enabled} ctaBackgroundColor={snapshot.style.ctaBackgroundColor} ctaTextColor={snapshot.style.ctaTextColor} onRefreshActivity={onRefreshActivity} /> : null}
     </div>
   </section>;
 };

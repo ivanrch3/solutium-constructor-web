@@ -17,7 +17,7 @@ const snapshot: ReservasWebPublishedSnapshot = {
 };
 
 const activity: PublicReservasWebActivity = {
-  publicId: 'public-activity-A', title: 'Taller público', shortDescription: 'Descripción pública', longDescription: null, image: null, facilitator: 'Ana', modality: 'Híbrida', location: 'San José', maps: 'https://maps.example.test/location', sessions: [{ startsAt: '2099-08-20T14:00:00.000Z', endsAt: '2099-08-20T15:00:00.000Z', sequence: 1 }], timezone: 'America/Costa_Rica', pricing: { isFree: false, regularPrice: 100, promotionalPrice: null, promotionEndsAt: null, effectivePrice: 80, currency: 'USD' }, paymentMethods: ['sinpe', 'card'], booking: { enabled: true, closesAt: null, started: false, soldOut: false, waitlistAvailable: false }, capacity: { visible: true, total: 12, available: 5 }, countdownTarget: '2099-08-20T14:00:00.000Z'
+  publicId: 'public-activity-A', title: 'Taller público', shortDescription: 'Descripción pública', longDescription: null, image: null, facilitator: 'Ana', modality: 'Híbrida', location: 'San José', maps: 'https://maps.example.test/location', sessions: [{ startsAt: '2099-08-20T14:00:00.000Z', endsAt: '2099-08-20T15:00:00.000Z', sequence: 1 }], timezone: 'America/Costa_Rica', pricing: { isFree: false, regularPrice: 100, promotionalPrice: null, promotionEndsAt: null, effectivePrice: 80, currency: 'USD' }, paymentMethods: ['sinpe', 'card'], booking: { enabled: true, closesAt: null, started: false, soldOut: false, waitlistAvailable: false }, waitlist: { enabled: false }, capacity: { visible: true, total: 12, available: 5 }, countdownTarget: '2099-08-20T14:00:00.000Z'
 };
 
 test('published contract only accepts public identifiers and never falls back to activityIds', () => {

@@ -15,6 +15,7 @@ export type PublicReservasWebActivity = {
   pricing: { isFree: boolean; regularPrice: number; promotionalPrice: number | null; promotionEndsAt: string | null; effectivePrice: number; currency: string };
   paymentMethods: Array<'sinpe' | 'card'>;
   booking: { enabled: boolean; closesAt: string | null; started: boolean; soldOut: boolean; waitlistAvailable: boolean };
+  waitlist: { enabled: boolean };
   capacity: { visible: boolean; total?: number; available?: number };
   countdownTarget: string | null;
 };
@@ -36,6 +37,8 @@ export class PublicReservasWebHoldError extends Error {
 export type PublicReservasWebHold = { holdToken: string; quantity: number; expiresAt: string; availableCapacity: number; idempotentReplay: boolean };
 export type PublicReservasWebReservationInput = { holdToken: string; idempotencyKey: string; contactFirstName: string; contactLastName: string; contactWhatsapp: string; paymentMethod: 'sinpe' | 'card' | null; participants: Array<{ firstName: string; lastName: string; sex: 'male' | 'female' | 'prefer_not_to_say'; birthDate: string; identificationNumber: string }> };
 export type PublicReservasWebReservation = { reservationReference: string; status: 'confirmed' | 'pending_payment'; confirmedAt: string | null; reservedAt: string | null; paymentDueAt: string | null; participantCount: number; amount: number; currency: string; payment: { method: 'free' } | { method: 'sinpe'; phone?: string; beneficiary?: string; receiptWhatsapp?: string } | { method: 'card'; paymentUrl?: string } };
+export type PublicReservasWebWaitlistInput = { idempotencyKey: string; quantity: number; contactFirstName: string; contactLastName: string; contactWhatsapp: string };
+export type PublicReservasWebWaitlist = { status: 'waiting' | 'notified' | 'withdrawn'; quantity: number; createdAt: string | null };
 
 export const buildPublicReservasWebActivityUrl = (publicIdentifier: string, baseUrl = getAppMadreBaseUrl()) =>
   `${baseUrl.replace(/\/+$/, '')}/api/public/reservas-web/activities/${encodeURIComponent(publicIdentifier)}`;
@@ -54,6 +57,7 @@ const sanitizeActivity = (value: unknown): PublicReservasWebActivity | null => {
   const pricing = asRecord(activity.pricing);
   const booking = asRecord(activity.booking);
   const capacity = asRecord(activity.capacity);
+  const waitlist = asRecord(activity.waitlist);
   const paymentMethods = Array.isArray(activity.paymentMethods) ? activity.paymentMethods.filter((method): method is 'sinpe' | 'card' => method === 'sinpe' || method === 'card') : [];
   const sessions = Array.isArray(activity.sessions)
     ? activity.sessions.map((entry) => {
@@ -79,9 +83,21 @@ const sanitizeActivity = (value: unknown): PublicReservasWebActivity | null => {
     pricing: { isFree: pricing.isFree === true, regularPrice: asNumber(pricing.regularPrice), promotionalPrice: asText(pricing.promotionalPrice) === null ? asOptionalNumber(pricing.promotionalPrice) ?? null : asOptionalNumber(pricing.promotionalPrice) ?? null, promotionEndsAt: asText(pricing.promotionEndsAt), effectivePrice: asNumber(pricing.effectivePrice), currency: asText(pricing.currency) || 'USD' },
     paymentMethods,
     booking: { enabled: booking.enabled === true, closesAt: asText(booking.closesAt), started: booking.started === true, soldOut: booking.soldOut === true, waitlistAvailable: booking.waitlistAvailable === true },
+    waitlist: { enabled: waitlist.enabled === true },
     capacity: { visible: capacity.visible === true, ...(asOptionalNumber(capacity.total) !== undefined ? { total: asOptionalNumber(capacity.total) } : {}), ...(asOptionalNumber(capacity.available) !== undefined ? { available: asOptionalNumber(capacity.available) } : {}) },
     countdownTarget: asText(activity.countdownTarget)
   };
+};
+
+export const joinPublicReservasWebWaitlist = async (publicIdentifier: string, input: PublicReservasWebWaitlistInput, signal?: AbortSignal, baseUrl = getAppMadreBaseUrl()): Promise<{ waitlist: PublicReservasWebWaitlist; idempotentReplay: boolean }> => {
+  const identifier = publicIdentifier.trim();
+  if (!identifier || !Number.isInteger(input.quantity) || input.quantity < 1 || input.quantity > 100 || !input.idempotencyKey.trim()) throw new PublicReservasWebHoldError(400, 'INVALID_WAITLIST_REQUEST');
+  const response = await fetch(`${buildPublicReservasWebActivityUrl(identifier, baseUrl)}/waitlist`, { method: 'POST', headers: { Accept: 'application/json', 'Content-Type': 'application/json' }, credentials: 'omit', body: JSON.stringify(input), signal });
+  const payload = await response.json().catch(() => null) as Record<string, unknown> | null;
+  if (!response.ok || payload?.success !== true) throw new PublicReservasWebHoldError(response.status, asText(payload?.error) || 'PUBLIC_RESERVAS_REQUEST_FAILED');
+  const waitlist = asRecord(payload.waitlist); const status = asText(waitlist.status); const quantity = asOptionalNumber(waitlist.quantity);
+  if ((status !== 'waiting' && status !== 'notified' && status !== 'withdrawn') || quantity === undefined) throw new PublicReservasWebHoldError(502, 'PUBLIC_RESERVAS_REQUEST_FAILED');
+  return { waitlist: { status, quantity, createdAt: asText(waitlist.createdAt) }, idempotentReplay: payload.idempotentReplay === true };
 };
 
 export const checkPublicReservasWebContact = async (publicIdentifier: string, whatsapp: string, signal?: AbortSignal, baseUrl = getAppMadreBaseUrl()): Promise<boolean> => {

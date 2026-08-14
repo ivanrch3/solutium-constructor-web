@@ -8,7 +8,7 @@ type ReservasWebModuleProps = {
   reservasWebActivities?: ReservasWebActivitySummary[];
 };
 
-export const ReservasWebModule = ({ moduleId, settingsValues, reservasWebActivities = [] }: ReservasWebModuleProps) => (
+export const ReservasWebModule = ({ moduleId, settingsValues = {}, reservasWebActivities = [] }: ReservasWebModuleProps) => (
   <ReservasWebPreview
     moduleId={moduleId}
     config={normalizeReservasWebConfig(settingsValues[getReservasWebConfigSettingKey(moduleId)])}

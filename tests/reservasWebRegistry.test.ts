@@ -18,5 +18,5 @@ test('Reservas Web is registered with canonical defaults and a safe Canvas fallb
   assert.match(constructorSource, /getReservasWebConfigSettingKey\(moduleId\)[\s\S]*createDefaultReservasWebConfig\(\)/);
   assert.doesNotMatch(JSON.stringify(config), /customerId|reservationId|holdId|whatsapp.*token/i);
   assert.equal(PRODUCTS_MODULE.type, 'products');
-  assert.match(renderToStaticMarkup(React.createElement(ReservasWebModule)), /Configura una actividad para este módulo\./);
+  assert.match(renderToStaticMarkup(React.createElement(ReservasWebModule)), /Selecciona una actividad para configurar Reservas Web\./);
 });

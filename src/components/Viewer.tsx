@@ -31,6 +31,8 @@ import { BentoModule } from './constructor/modules/BentoModule';
 import { ComparisonModule } from './constructor/modules/ComparisonModule';
 import { CompositionSectionModule } from './constructor/modules/CompositionSectionModule';
 import { SpecialEventModule } from './constructor/modules/SpecialEventModule';
+import { PublicReservasWebModule } from './constructor/modules/PublicReservasWebModule';
+import { readReservasWebPublishedSnapshot } from './constructor/modules/reservasWebPublicContract';
 import { AlertCircle } from 'lucide-react';
 import { logDebug } from '../utils/debug';
 import { bridgeModuleContent } from '../utils/hydrationBridge';
@@ -736,6 +738,13 @@ export const Viewer: React.FC<ViewerProps> = ({
 
         const renderedSection = (() => {
         switch (normalizedType) {
+          case 'reservas_web':
+            return <PublicReservasWebModule
+              key={moduleId}
+              moduleId={moduleId}
+              snapshot={readReservasWebPublishedSnapshot(section.settings?.el_reservas_web_config)}
+              enabled={isPublishedViewer}
+            />;
           case 'header':
           case 'conversion':
             return <HeaderModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} />;

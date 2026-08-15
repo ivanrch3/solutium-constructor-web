@@ -31,7 +31,7 @@ import * as registryModules from './registry';
 import {
   MODULE_INFO,
   HEADER_MODULE, MENU_MODULE, FOOTER_MODULE, SPACER_MODULE,
-  PRODUCTS_MODULE, WHATSAPP_ORDERS_MODULE, HERO_MODULE, HERO2_MODULE, FEATURES_MODULE, ABOUT_MODULE,
+  PRODUCTS_MODULE, WHATSAPP_ORDERS_MODULE, RESERVAS_WEB_MODULE, HERO_MODULE, HERO2_MODULE, FEATURES_MODULE, ABOUT_MODULE,
   PROCESS_MODULE, GALLERY_MODULE, VIDEO_MODULE, TESTIMONIALS_MODULE,
   STATS_MODULE, NEWSLETTER_MODULE, CONTACT_MODULE, TEAM_MODULE,
   CTA_MODULE, DYNAMIC_CARDS_MODULE, PRICING_MODULE, FAQ_MODULE, TRUSTED_LOGOS_MODULE, GENIUS_WEB_WA_MODULE,
@@ -52,6 +52,7 @@ import {
   saveLocalDraftSnapshot
 } from '../../services/localDraftSnapshotService';
 import { Product, Customer, PageSection, TrustedCompanyLogo } from '../../types/schema';
+import type { ReservasWebActivitySummary, ReservasWebEligibleWhatsAppChannel } from '../../types/reservasWeb';
 import type { SecureCatalogCategory } from '../../services/secureLaunchSession';
 import { MOCK_PRODUCTS, MOCK_CUSTOMERS } from '../../constants/mockData';
 import { MainSidebar, ModuleItem } from './MainSidebar';
@@ -130,6 +131,11 @@ import {
 } from './modules/whatsappOrdersCatalogConfig';
 import { buildWhatsAppOrdersCatalogPublishedContract } from './modules/whatsappOrdersCatalogPublishedContract';
 import { resolveWhatsAppOrdersProductsForSelection } from './modules/whatsappOrdersCatalogOrganizer';
+import { createDefaultReservasWebConfig, getReservasWebConfigSettingKey } from './modules/reservasWebConfig';
+import {
+  ReservasWebPublicationValidationError,
+  serializeReservasWebContractForPublication
+} from './modules/reservasWebPublishedContract';
 
 const isReferenceDebugEnabled = () => import.meta.env.DEV || import.meta.env.VITE_SHOW_AI_REFERENCE_DEBUG === 'true';
 
@@ -679,6 +685,8 @@ interface WebConstructorProps {
   secureCatalogCategories?: SecureCatalogCategory[];
   secureCustomers?: Customer[];
   secureTrustedCompanyLogos?: TrustedCompanyLogo[];
+  secureReservasWebActivities?: ReservasWebActivitySummary[];
+  secureReservasWebEligibleWhatsAppChannels?: ReservasWebEligibleWhatsAppChannel[];
   useSecureCatalogContext?: boolean;
 }
 
@@ -838,6 +846,8 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   secureCatalogCategories = [],
   secureCustomers = [],
   secureTrustedCompanyLogos = [],
+  secureReservasWebActivities = [],
+  secureReservasWebEligibleWhatsAppChannels = [],
   useSecureCatalogContext = false
 }) => {
   const {
@@ -4040,6 +4050,11 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         createDefaultWhatsAppOrdersCatalogConfig();
     }
 
+    if (module.type === 'reservas_web') {
+      initialValues[getReservasWebConfigSettingKey(moduleId)] =
+        createDefaultReservasWebConfig();
+    }
+
     // Element settings
     newElements.forEach(element => {
       if (element.settings) {
@@ -6332,10 +6347,14 @@ const formatTimestampName = () => {
       const activeState = migratedState;
 
       const contract = generateRenderingContract(finalSiteName, activeState);
+      const publishedContract = serializeReservasWebContractForPublication(
+        contract,
+        secureReservasWebActivities
+      );
       const siteId = currentSiteId;
 
       // Sync check before publish
-      await checkDictionarySync(contract);
+      await checkDictionarySync(publishedContract);
 
       // 1. Sync Site State (SIP v6.2: Preserve current draft state during publish)
       const siteData: Partial<WebBuilderSite> = {
@@ -6374,20 +6393,20 @@ const formatTimestampName = () => {
         appId: appId || '11111111-1111-1111-1111-111111111111',
         siteId: siteId,
         siteName: finalSiteName,
-        content: contract,
+        content: publishedContract,
         isActive: true,
         metadata: {
           publishedAt: new Date().toISOString(),
           origin: 'Constructor Web',
           version: '6.2-Forensic',
-          regionalSettings: contract.regionalSettings
+          regionalSettings: publishedContract.regionalSettings
         }
       };
 
       logDebug('[PUBLISH_CONTRACT_INTEGRITY_CHECK]', {
         siteId,
-        sectionsCount: contract.sections.length,
-        productSnapshots: contract.sections
+        sectionsCount: publishedContract.sections.length,
+        productSnapshots: publishedContract.sections
           .filter((s: any) => s.tipo === 'products' || s.tipo === 'product_grid')
           .map((s: any) => ({
             id: s.id,
@@ -6398,7 +6417,7 @@ const formatTimestampName = () => {
       });
 
       // [PRODUCTS_LEGACY_FINAL_PUBLISHED_CONTRACT_DEBUG]
-      contract.sections
+      publishedContract.sections
         .filter((s: any) => s.tipo === 'products' || s.tipo === 'product_grid')
         .forEach((s: any) => {
           logDebug('[PRODUCTS_LEGACY_FINAL_PUBLISHED_CONTRACT_DEBUG]', {
@@ -6424,20 +6443,20 @@ const formatTimestampName = () => {
         web_builder_site_id: actualSite.id, // Fixed: use real DB ID to avoid FK violation
         slug: 'index',
         title: finalSiteName,
-        content: contract,
+        content: publishedContract,
         status: 'published',
         metadata: {
           origin_app: 'Constructor Web',
           version: '2.3-Atomic',
           published_at: new Date().toISOString(),
-          regionalSettings: contract.regionalSettings,
+          regionalSettings: publishedContract.regionalSettings,
           editor_state: activeState // Use migrated state
         }
       });
 
       // 4. ATOMIC SERIALIZATION V2.3: Save individual sections with Audit Data
       if (savedPage && savedPage.id) {
-        const pageSections = buildPageSectionsPayload(contract, savedPage.id!);
+        const pageSections = buildPageSectionsPayload(publishedContract, savedPage.id!);
         await upsertPageSections(savedPage.id!, pageSections);
       }
 
@@ -6585,6 +6604,9 @@ const formatTimestampName = () => {
       }
     } catch (error) {
       console.error('Error publishing site:', error);
+      if (error instanceof ReservasWebPublicationValidationError) {
+        setAuthNotice({ type: 'error', message: error.message });
+      }
       if (error instanceof SecureConstructorWriteError) {
         setAuthNotice({
           type: 'error',
@@ -7083,6 +7105,7 @@ const formatTimestampName = () => {
                                     { icon: MODULE_INFO.contact.icon, label: "Contacto", mod: CONTACT_MODULE },
                                     { icon: MODULE_INFO.genius_web_wa.icon, label: "Genius Web-WA", mod: GENIUS_WEB_WA_MODULE },
                                     { icon: MODULE_INFO.whatsapp_orders.icon, label: "Pedidos por WhatsApp", mod: WHATSAPP_ORDERS_MODULE, disabled: whatsappOrdersAvailability.known && !whatsappOrdersAvailability.allowed, note: whatsappOrdersAvailability.known && !whatsappOrdersAvailability.allowed ? whatsappOrdersAvailability.message : null },
+                                    { icon: MODULE_INFO.reservas_web.icon, label: "Reservas Web", mod: RESERVAS_WEB_MODULE },
                                     { icon: MODULE_INFO.newsletter.icon, label: "Newsletter", mod: NEWSLETTER_MODULE },
                                     { icon: MODULE_INFO.pricing.icon, label: "Planes", mod: PRICING_MODULE },
                                     { icon: MODULE_INFO.header.icon, label: "Publicidad", mod: HEADER_MODULE },
@@ -7180,6 +7203,7 @@ const formatTimestampName = () => {
                                       <ModuleItem icon={React.createElement(MODULE_INFO.contact.icon, { size: 18 })} label="Contacto" onClick={() => addModule(CONTACT_MODULE)} />
                                       <ModuleItem icon={React.createElement(MODULE_INFO.genius_web_wa.icon, { size: 18 })} label="Genius Web-WA" onClick={() => addModule(GENIUS_WEB_WA_MODULE)} />
                                       <ModuleItem icon={React.createElement(MODULE_INFO.whatsapp_orders.icon, { size: 18 })} label="Pedidos por WhatsApp" note={whatsappOrdersAvailability.known && !whatsappOrdersAvailability.allowed ? whatsappOrdersAvailability.message : null} disabled={whatsappOrdersAvailability.known && !whatsappOrdersAvailability.allowed} onClick={() => addModule(WHATSAPP_ORDERS_MODULE)} />
+                                      <ModuleItem icon={React.createElement(MODULE_INFO.reservas_web.icon, { size: 18 })} label="Reservas Web" onClick={() => addModule(RESERVAS_WEB_MODULE)} />
                                       <ModuleItem icon={React.createElement(MODULE_INFO.newsletter.icon, { size: 18 })} label="Newsletter" onClick={() => addModule(NEWSLETTER_MODULE)} />
                                       <ModuleItem icon={React.createElement(MODULE_INFO.pricing.icon, { size: 18 })} label="Planes" onClick={() => addModule(PRICING_MODULE)} />
                                       <ModuleItem icon={React.createElement(MODULE_INFO.header.icon, { size: 18 })} label="Publicidad" onClick={() => addModule(HEADER_MODULE)} />
@@ -7255,6 +7279,8 @@ const formatTimestampName = () => {
                         catalogCategories={secureCatalogCategories}
                         customers={customers}
                         trustedCompanyLogos={trustedCompanyLogos}
+                        reservasWebActivities={secureReservasWebActivities}
+                        reservasWebEligibleWhatsAppChannels={secureReservasWebEligibleWhatsAppChannels}
                         isMobile={true}
                         activeTab={activeTab}
                         activeViewport={viewport}
@@ -7271,6 +7297,7 @@ const formatTimestampName = () => {
                         catalogCategories={secureCatalogCategories}
                         customers={customers}
                         trustedCompanyLogos={trustedCompanyLogos}
+                        reservasWebActivities={secureReservasWebActivities}
                         isDevMode={projectId === 'dev-project-id'}
                         logoUrl={logoUrl}
                         logoWhiteUrl={logoWhiteUrl}
@@ -7311,6 +7338,8 @@ const formatTimestampName = () => {
                     catalogCategories={secureCatalogCategories}
                     customers={customers}
                     trustedCompanyLogos={trustedCompanyLogos}
+                    reservasWebActivities={secureReservasWebActivities}
+                    reservasWebEligibleWhatsAppChannels={secureReservasWebEligibleWhatsAppChannels}
                     activeTab={activeTab}
                     useSplitLayout={useConstructorSplitLayout}
                     activeViewport={viewport}
@@ -7358,6 +7387,7 @@ const formatTimestampName = () => {
                         catalogCategories={secureCatalogCategories}
                         customers={customers}
                         trustedCompanyLogos={trustedCompanyLogos}
+                        reservasWebActivities={secureReservasWebActivities}
                         isDevMode={projectId === 'dev-project-id'}
                         logoUrl={logoUrl}
                         logoWhiteUrl={logoWhiteUrl}

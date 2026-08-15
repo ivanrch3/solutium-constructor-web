@@ -26,11 +26,13 @@ import { motion, AnimatePresence } from 'motion/react';
 import { EditorState, WebModule, ModuleElement, SettingDefinition, SettingGroupType } from '../../types/constructor';
 import { Product, Customer, TrustedCompanyLogo } from '../../types/schema';
 import type { SecureCatalogCategory } from '../../services/secureLaunchSession';
+import type { ReservasWebActivitySummary, ReservasWebEligibleWhatsAppChannel } from '../../types/reservasWeb';
 import { useEditorStore } from '../../store/editorStore';
 import { MODULE_INFO, GROUP_LABELS, BENTO_MODULE } from './registry';
 import { SettingControl } from './SettingControl';
 import { GlobalSettingsPanel } from './GlobalSettingsPanel';
 import { BentoCellEditor } from './BentoCellEditor';
+import { ReservasWebSettings } from './modules/ReservasWebSettings';
 import { resolveModuleDisplayLabel } from '../../utils/menuNavigation';
 import {
   CONSTRUCTOR_MODULE_ANIMATIONS_ENABLED,
@@ -914,6 +916,8 @@ interface StructurePanelProps {
   catalogCategories?: SecureCatalogCategory[];
   customers?: Customer[];
   trustedCompanyLogos?: TrustedCompanyLogo[];
+  reservasWebActivities?: ReservasWebActivitySummary[];
+  reservasWebEligibleWhatsAppChannels?: ReservasWebEligibleWhatsAppChannel[];
   isMobile?: boolean;
   activeTab?: string;
   useSplitLayout?: boolean;
@@ -934,6 +938,8 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
   catalogCategories = [],
   customers,
   trustedCompanyLogos,
+  reservasWebActivities = [],
+  reservasWebEligibleWhatsAppChannels = [],
   isMobile,
   activeTab = 'constructor',
   useSplitLayout = false,
@@ -955,6 +961,8 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
   const [shiningGroup, setShiningGroup] = React.useState<string | null>(null);
   const [expandedBentoItem, setExpandedBentoItem] = React.useState<number | null>(null);
   const [isBentoAddExpanded, setIsBentoAddExpanded] = React.useState(false);
+  const [localReservasWebActivities, setLocalReservasWebActivities] = React.useState(reservasWebActivities);
+  React.useEffect(() => setLocalReservasWebActivities(reservasWebActivities), [reservasWebActivities]);
 
   const resolveElementSettingsPrefix = React.useCallback((moduleId: string, elementId: string) => {
     if (!moduleId || !elementId) return elementId;
@@ -1590,6 +1598,19 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                   </motion.div>
                 )}
               </AnimatePresence>
+
+              {isModuleExpanded && module.type === 'reservas_web' && !isCollapsed && (
+                <ReservasWebSettings
+                  moduleId={module.id}
+                  projectId={projectId}
+                  products={products}
+                  settingsValues={editorState.settingsValues}
+                  reservasWebActivities={localReservasWebActivities}
+                  reservasWebEligibleWhatsAppChannels={reservasWebEligibleWhatsAppChannels}
+                  onActivitiesRefreshed={setLocalReservasWebActivities}
+                  onSettingChange={onSettingChange}
+                />
+              )}
 
               {/* Elements List */}
               <AnimatePresence>

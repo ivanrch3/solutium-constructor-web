@@ -55,7 +55,8 @@ import {
   Monitor,
   Layout,
   RotateCcw,
-  Columns2
+  Columns2,
+  CalendarDays
 } from 'lucide-react';
 import { WebModule, SettingGroupType, SettingDefinition } from '../../types/constructor';
 import { createCompositionPresetSchema } from './modules/compositionPresets';
@@ -4173,6 +4174,15 @@ export const SPECIAL_EVENT_MODULE: WebModule = {
     { id: 'el_special_event_gallery', name: 'Galería', type: 'content', groups: ['contenido', 'interaccion'], settings: { contenido: [], interaccion: [{ id: 'enableReactions', label: 'Activar reacciones', type: 'boolean', defaultValue: true }] } }
   ]
 };
+export const RESERVAS_WEB_MODULE: WebModule = {
+  id: 'mod_reservas_web_1',
+  type: 'reservas_web',
+  iconKey: 'reservas_web',
+  name: 'Reservas Web',
+  globalGroups: [],
+  globalSettings: {},
+  elements: []
+};
 
 export const GROUP_LABELS: Record<SettingGroupType, string> = {
   contenido: 'Contenido',
@@ -4202,6 +4212,7 @@ export const MODULE_INFO: Record<string, {
   spacer: { label: 'Espaciadores', icon: SeparatorHorizontal },
   products: { label: 'Productos y Servicios', icon: ShoppingBag },
   whatsapp_orders: { label: 'Pedidos por WhatsApp', icon: MessageSquare },
+  reservas_web: { label: 'Reservas Web', icon: CalendarDays },
   products_showcase: {
     label: 'EXPERIMENTAL: Catalogo V2',
     icon: ShoppingBag,

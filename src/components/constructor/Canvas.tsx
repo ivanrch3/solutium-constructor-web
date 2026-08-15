@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { EditorState, WebModule } from '../../types/constructor';
 import { Product, Customer, TrustedCompanyLogo } from '../../types/schema';
+import type { ReservasWebActivitySummary } from '../../types/reservasWeb';
 import type { SecureCatalogCategory } from '../../services/secureLaunchSession';
 import { SiteContent } from '../../types';
 import { useEditorStore } from '../../store/editorStore';
@@ -19,6 +20,7 @@ import { isDarkColor } from './utils';
 import { logDebug } from '../../utils/debug';
 import { WhatsAppOrdersAvailability } from '../../utils/whatsappOrdersAvailability';
 import { ProductsModule } from './modules/ProductsModule';
+import { ReservasWebModule } from './modules/ReservasWebModule';
 import { WhatsAppOrdersModule } from './modules/WhatsAppOrdersModule';
 import { HeroModule } from './modules/HeroModule';
 import { Hero2Module } from './modules/Hero2Module';
@@ -70,6 +72,7 @@ interface CanvasProps {
   catalogCategories?: SecureCatalogCategory[];
   customers: Customer[];
   trustedCompanyLogos?: TrustedCompanyLogo[];
+  reservasWebActivities?: ReservasWebActivitySummary[];
   isDevMode: boolean;
   logoUrl?: string | null;
   logoWhiteUrl?: string | null;
@@ -94,6 +97,7 @@ export const Canvas: React.FC<CanvasProps> = ({
   catalogCategories = [],
   customers, 
   trustedCompanyLogos = [],
+  reservasWebActivities = [],
   isDevMode, 
   logoUrl, 
   logoWhiteUrl, 
@@ -1029,6 +1033,7 @@ export const Canvas: React.FC<CanvasProps> = ({
                         isPreviewMode={isCleanPreviewMode}
                       />
                     )}
+                    {section.type === 'reservas_web' && <ReservasWebModule moduleId={section.id} settingsValues={finalSettings} reservasWebActivities={reservasWebActivities} />}
                     {section.type === 'whatsapp_orders' && (
                       <WhatsAppOrdersModule
                         moduleId={section.id}
@@ -1262,7 +1267,7 @@ export const Canvas: React.FC<CanvasProps> = ({
                       />
                     )}
                     {/* Fallback debug for unrendered modules */}
-                    {!['products', 'whatsapp_orders', 'products_showcase', 'hero', 'hero2', 'features', 'about', 'process', 'gallery', 'special_event', 'video', 'testimonials', 'stats', 'team', 'pricing', 'faq', 'contact', 'genius_web_wa', 'clients', 'trusted_logos', 'cta', 'dynamic_cards', 'newsletter', 'conversion', 'navegacion', 'menu', 'footer', 'spacer', 'bento', 'composition_section', 'comparative'].includes(section.type) && (
+                    {!['products', 'reservas_web', 'whatsapp_orders', 'products_showcase', 'hero', 'hero2', 'features', 'about', 'process', 'gallery', 'special_event', 'video', 'testimonials', 'stats', 'team', 'pricing', 'faq', 'contact', 'genius_web_wa', 'clients', 'trusted_logos', 'cta', 'dynamic_cards', 'newsletter', 'conversion', 'navegacion', 'menu', 'footer', 'spacer', 'bento', 'composition_section', 'comparative'].includes(section.type) && (
                       <div className="p-8 border-2 border-dashed border-rose-200 rounded-2xl bg-rose-50 text-rose-500 text-center">
                         <p className="font-bold">Módulo no reconocido: {section.type}</p>
                         <p className="text-xs opacity-60">ID: {section.id} | Template: {section.templateId}</p>

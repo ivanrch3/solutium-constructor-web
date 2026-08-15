@@ -20,7 +20,9 @@ const readinessMessages: Record<ReservasWebWhatsAppReadiness, string> = {
 export const getReservasWebWhatsAppReadinessMessage = (readiness: ReservasWebWhatsAppReadiness): string => readinessMessages[readiness];
 export const getReservasWebActivityReadinessMessage = (activity: ReservasWebActivitySummary): string => {
   if (isReservasWebActivityArchived(activity)) return 'Esta actividad está archivada y no puede recibir nuevas reservas.';
-  if (activity.bookable === true) return 'LISTA PARA RESERVAS · No hay configuraciones pendientes.';
+  if (activity.bookable === true) return activity.status === 'active'
+    ? 'LISTA PARA RESERVAS · No hay configuraciones pendientes.'
+    : 'LISTA PARA PUBLICAR · No hay configuraciones pendientes.';
   return getReservasWebWhatsAppReadinessMessage(activity.whatsappReadiness);
 };
 

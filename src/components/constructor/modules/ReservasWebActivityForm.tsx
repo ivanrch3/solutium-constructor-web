@@ -73,9 +73,11 @@ const errorMessage = (error: unknown) => {
 
 export const getReservasWebGeniusModeLabel = (mode: ReservasWebEligibleWhatsAppChannel['mode']) => mode === 'flash' ? 'Genius Flash' : 'Genius';
 const readinessReasonMessages: Record<string, string> = { WHATSAPP_CHANNEL_UNAVAILABLE: 'Falta una conexión Genius activa.', CHANNEL_SELECTION_REQUIRED: 'Selecciona una conexión Genius.', WHATSAPP_CHANNEL_INVALID: 'La conexión Genius seleccionada ya no está disponible.', SESSION_INVALID: 'Falta una sesión válida.', LOCATION_REQUIRED: 'Falta ubicación.', PRIVATE_VIRTUAL_URL_REQUIRED: 'Falta enlace virtual.', PAYMENT_CONFIGURATION_INVALID: 'La configuración de pago está incompleta.' };
-export const getReservasWebFinalReadiness = (detail: Pick<ReservasWebActivityAdminDetail, 'archivedAt' | 'readiness'>) => {
+export const getReservasWebFinalReadiness = (detail: Pick<ReservasWebActivityAdminDetail, 'archivedAt' | 'status' | 'readiness'>) => {
   if (detail.archivedAt) return { state: 'archived' as const, title: 'ARCHIVADA', message: 'Esta actividad está archivada y no puede recibir nuevas reservas.', reasons: [] };
-  if (detail.readiness.bookable) return { state: 'ready' as const, title: 'LISTA PARA RESERVAS', message: 'No hay configuraciones pendientes.', reasons: [] };
+  if (detail.readiness.bookable) return detail.status === 'active'
+    ? { state: 'ready' as const, title: 'LISTA PARA RESERVAS', message: 'No hay configuraciones pendientes.', reasons: [] }
+    : { state: 'ready_to_publish' as const, title: 'LISTA PARA PUBLICAR', message: 'Publica el sitio para activar esta actividad.', reasons: [] };
   const reasons = detail.readiness.reasons.map(reason => readinessReasonMessages[reason] || null).filter((reason): reason is string => Boolean(reason));
   if (!reasons.length && detail.readiness.whatsapp !== 'ready') reasons.push(detail.readiness.whatsapp === 'unavailable' ? 'Falta una conexión Genius activa.' : detail.readiness.whatsapp === 'selection_required' ? 'Selecciona una conexión Genius.' : 'La conexión Genius seleccionada ya no está disponible.');
   return { state: 'not_ready' as const, title: 'NO LISTA', message: 'Hay configuraciones pendientes.', reasons };

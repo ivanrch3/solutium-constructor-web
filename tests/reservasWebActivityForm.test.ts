@@ -83,8 +83,9 @@ test('Genius selector uses only the secure eligible channel collection and prese
 });
 
 test('administrative readiness and archive lifecycle keep backend authority and use isolated PATCHes',()=>{
-  const readiness=(bookable:boolean,whatsapp:'ready'|'unavailable'|'selection_required'|'invalid_selection',archivedAt:string|null=null,reasons:string[]=[]):any=>({archivedAt,readiness:{bookable,reasons,whatsapp}});
-  assert.equal(getReservasWebFinalReadiness(readiness(true,'ready')).state,'ready');
+  const readiness=(bookable:boolean,whatsapp:'ready'|'unavailable'|'selection_required'|'invalid_selection',archivedAt:string|null=null,reasons:string[]=[],status='draft'):any=>({archivedAt,status,readiness:{bookable,reasons,whatsapp}});
+  assert.equal(getReservasWebFinalReadiness(readiness(true,'ready')).state,'ready_to_publish');
+  assert.equal(getReservasWebFinalReadiness(readiness(true,'ready',null,[],'active')).state,'ready');
   assert.match(getReservasWebFinalReadiness(readiness(false,'unavailable')).reasons.join(' '),/conexión Genius activa/);
   assert.match(getReservasWebFinalReadiness(readiness(false,'selection_required')).reasons.join(' '),/Selecciona una conexión Genius/);
   assert.match(getReservasWebFinalReadiness(readiness(false,'invalid_selection')).reasons.join(' '),/ya no está disponible/);

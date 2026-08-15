@@ -7,16 +7,17 @@ import { ReservasWebWaitlistForm } from './ReservasWebWaitlistForm';
 
 type PublicReservasWebModuleProps = { moduleId: string; snapshot: ReservasWebPublishedSnapshot | null; enabled: boolean };
 
-export const getPublicReservasWebCountdown = (target: string | null, now = Date.now()): string | null => {
+const localDay = (value: number, timeZone: string) => new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(value));
+export const getPublicReservasWebCountdown = (target: string | null, now = Date.now(), timeZone = 'America/Costa_Rica'): string | null => {
   if (!target) return null;
   const targetTime = Date.parse(target);
   if (!Number.isFinite(targetTime) || targetTime <= now) return null;
   const difference = targetTime - now;
+  if (localDay(targetTime, timeZone) === localDay(now, timeZone)) return 'El taller es hoy';
   const days = Math.floor(difference / 86_400_000);
-  if (days === 0) return 'El taller es hoy';
   const hours = Math.floor((difference % 86_400_000) / 3_600_000);
   const minutes = Math.floor((difference % 3_600_000) / 60_000);
-  return `${days} d ${hours} h ${minutes} min`;
+  return days > 0 ? `${days} d ${hours} h ${minutes} min` : hours > 0 ? `${hours} h ${minutes} min` : `${Math.max(1, minutes)} min`;
 };
 
 const formatSession = (session: PublicReservasWebActivity['sessions'][number], timezone: string) => {
@@ -31,7 +32,7 @@ const formatPrice = (activity: PublicReservasWebActivity) => activity.pricing.is
   : new Intl.NumberFormat('es', { style: 'currency', currency: activity.pricing.currency }).format(activity.pricing.effectivePrice);
 
 export const PublicReservasWebActivityContent = ({ moduleId, snapshot, activity, onRefreshActivity = () => {} }: { moduleId: string; snapshot: ReservasWebPublishedSnapshot; activity: PublicReservasWebActivity; onRefreshActivity?: () => void }) => {
-  const countdown = snapshot.display.showCountdown ? getPublicReservasWebCountdown(activity.countdownTarget) : null;
+  const countdown = snapshot.display.showCountdown ? getPublicReservasWebCountdown(activity.countdownTarget, Date.now(), activity.timezone) : null;
   const unavailable = !activity.booking.enabled && !activity.waitlist.enabled;
   const sessions = activity.sessions.map((session) => formatSession(session, activity.timezone)).filter((session): session is string => Boolean(session));
 

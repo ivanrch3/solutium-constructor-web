@@ -12,7 +12,7 @@ export type PublicReservasWebActivity = {
   maps: string | null;
   sessions: Array<{ startsAt: string; endsAt: string; sequence: number }>;
   timezone: string;
-  pricing: { isFree: boolean; regularPrice: number; promotionalPrice: number | null; promotionEndsAt: string | null; effectivePrice: number; currency: string; paymentMode: 'full' | 'deposit'; requiredAmount: number; pendingBalance: number; depositRefundable: boolean | null };
+  pricing: { isFree: boolean; regularPrice: number; promotionalPrice: number | null; promotionEndsAt: string | null; effectivePrice: number; currency: string; paymentOptions?: Array<'full' | 'deposit'>; depositAmountPerPerson?: number | null; depositRefundable: boolean | null; paymentMode?: 'full' | 'deposit'; requiredAmount?: number; pendingBalance?: number };
   paymentMethods: Array<'sinpe' | 'card'>;
   booking: { enabled: boolean; closesAt: string | null; started: boolean; soldOut: boolean; waitlistAvailable: boolean };
   waitlist: { enabled: boolean };
@@ -35,7 +35,7 @@ export class PublicReservasWebHoldError extends Error {
 }
 
 export type PublicReservasWebHold = { holdToken: string; quantity: number; expiresAt: string; availableCapacity: number; idempotentReplay: boolean };
-export type PublicReservasWebReservationInput = { holdToken: string; idempotencyKey: string; contactFirstName: string; contactLastName: string; contactWhatsapp: string; paymentMethod: 'sinpe' | 'card' | null; participants: Array<{ firstName: string; lastName: string; sex: 'male' | 'female' | 'prefer_not_to_say'; birthDate: string; identificationNumber: string }> };
+export type PublicReservasWebReservationInput = { holdToken: string; idempotencyKey: string; contactFirstName: string; contactLastName: string; contactWhatsapp: string; paymentMethod: 'sinpe' | 'card' | null; paymentMode?: 'full' | 'deposit' | null; participants: Array<{ firstName: string; lastName: string; sex: 'male' | 'female' | 'prefer_not_to_say'; birthDate: string; identificationNumber: string }> };
 export type PublicReservasWebReservation = { reservationReference: string; status: 'confirmed' | 'pending_payment'; confirmedAt: string | null; reservedAt: string | null; paymentDueAt: string | null; participantCount: number; totalAmount: number; requiredAmount: number; pendingBalance: number; paymentMode: 'full' | 'deposit'; depositRefundable: boolean | null; currency: string; payment: { method: 'free' } | { method: 'sinpe'; phone?: string; beneficiary?: string; receiptWhatsapp?: string } | { method: 'card'; paymentUrl?: string } };
 export type PublicReservasWebWaitlistInput = { idempotencyKey: string; quantity: number; contactFirstName: string; contactLastName: string; contactWhatsapp: string };
 export type PublicReservasWebWaitlist = { status: 'waiting' | 'notified' | 'withdrawn'; quantity: number; createdAt: string | null };
@@ -80,7 +80,7 @@ const sanitizeActivity = (value: unknown): PublicReservasWebActivity | null => {
     maps: asText(activity.maps),
     sessions,
     timezone: asText(activity.timezone) || 'UTC',
-    pricing: { isFree: pricing.isFree === true, regularPrice: asNumber(pricing.regularPrice), promotionalPrice: asText(pricing.promotionalPrice) === null ? asOptionalNumber(pricing.promotionalPrice) ?? null : asOptionalNumber(pricing.promotionalPrice) ?? null, promotionEndsAt: asText(pricing.promotionEndsAt), effectivePrice: asNumber(pricing.effectivePrice), currency: asText(pricing.currency) || 'USD', paymentMode: pricing.paymentMode === 'deposit' ? 'deposit' : 'full', requiredAmount: asNumber(pricing.requiredAmount ?? pricing.effectivePrice), pendingBalance: asNumber(pricing.pendingBalance), depositRefundable: typeof pricing.depositRefundable === 'boolean' ? pricing.depositRefundable : null },
+    pricing: { isFree: pricing.isFree === true, regularPrice: asNumber(pricing.regularPrice), promotionalPrice: asText(pricing.promotionalPrice) === null ? asOptionalNumber(pricing.promotionalPrice) ?? null : asOptionalNumber(pricing.promotionalPrice) ?? null, promotionEndsAt: asText(pricing.promotionEndsAt), effectivePrice: asNumber(pricing.effectivePrice), currency: asText(pricing.currency) || 'USD', paymentOptions: Array.isArray(pricing.paymentOptions) ? pricing.paymentOptions.filter((mode): mode is 'full' | 'deposit' => mode === 'full' || mode === 'deposit') : [pricing.paymentMode === 'deposit' ? 'deposit' : 'full'], depositAmountPerPerson: asOptionalNumber(pricing.depositAmountPerPerson) ?? null, depositRefundable: typeof pricing.depositRefundable === 'boolean' ? pricing.depositRefundable : null, paymentMode: pricing.paymentMode === 'deposit' ? 'deposit' : 'full', requiredAmount: asNumber(pricing.requiredAmount ?? pricing.effectivePrice), pendingBalance: asNumber(pricing.pendingBalance) },
     paymentMethods,
     booking: { enabled: booking.enabled === true, closesAt: asText(booking.closesAt), started: booking.started === true, soldOut: booking.soldOut === true, waitlistAvailable: booking.waitlistAvailable === true },
     waitlist: { enabled: waitlist.enabled === true },

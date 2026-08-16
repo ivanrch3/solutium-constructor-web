@@ -36,17 +36,28 @@ test('sessions reject invalid or duplicate ranges and PATCH only includes change
 
 test('paid activities require price, currency and one valid payment method while free stays valid',()=>{
   const free=valid();assert.deepEqual(validateReservasWebActivityDraft(free),[]);
-  const paid={...free,is_free:false,regular_price:100,currency:'CRC',sinpe_phone:'+506 8888 8888'};
+  const paid={...free,is_free:false,regular_price:100,currency:'CRC',sinpe_phone:'+506 8888 8888',sinpe_beneficiary:'Tesorería'};
   assert.deepEqual(validateReservasWebActivityDraft(paid),[]);
   assert.ok(validateReservasWebActivityDraft({...paid,regular_price:0}).some(error=>error.includes('precio regular')));
   assert.ok(validateReservasWebActivityDraft({...paid,currency:null}).some(error=>error.includes('moneda')));
+  assert.deepEqual(validateReservasWebActivityDraft({...paid,payment_mode:'deposit',deposit_amount:10,deposit_refundable:false}),[]);
+  assert.ok(validateReservasWebActivityDraft({...paid,payment_mode:'deposit',deposit_amount:100,deposit_refundable:false}).some(error=>error.includes('monto de reserva')));
   assert.ok(validateReservasWebActivityDraft({...paid,sinpe_phone:null,onvopay_url:null}).some(error=>error.includes('SINPE')));
+  assert.ok(validateReservasWebActivityDraft({...paid,sinpe_beneficiary:null,onvopay_url:null}).some(error=>error.includes('SINPE')));
   assert.deepEqual(validateReservasWebActivityDraft({...paid,sinpe_phone:null,onvopay_url:'https://pay.example'}),[]);
   assert.ok(validateReservasWebActivityDraft({...paid,sinpe_phone:null,onvopay_url:'http://pay.example'}).some(error=>error.includes('HTTPS')));
 });
 
+test('activity image uses the catalog by default and permits only an explicit HTTPS override',()=>{
+  const base=valid();
+  assert.equal(createReservasWebActivityDraft().image_source,'catalog_item');
+  assert.deepEqual(validateReservasWebActivityDraft({...base,image_source:'url',custom_image_url:'https://images.example/activity.jpg'}),[]);
+  assert.ok(validateReservasWebActivityDraft({...base,image_source:'url',custom_image_url:'http://images.example/activity.jpg'}).some(error=>error.includes('imagen personalizada')));
+  assert.deepEqual(buildReservasWebActivityPatch({...base,image_source:'url',custom_image_url:'https://images.example/activity.jpg'},base),{image_source:'url',custom_image_url:'https://images.example/activity.jpg'});
+});
+
 test('promotion validates its range and PATCH preserves explicit payment clears',()=>{
-  const paid={...valid(),is_free:false,regular_price:100,currency:'CRC',sinpe_phone:'+506 8888 8888',promotional_price:80,promotion_ends_at:'2026-10-01T10:00'};
+  const paid={...valid(),is_free:false,regular_price:100,currency:'CRC',sinpe_phone:'+506 8888 8888',sinpe_beneficiary:'Tesorería',promotional_price:80,promotion_ends_at:'2026-10-01T10:00'};
   assert.deepEqual(validateReservasWebActivityDraft(paid),[]);
   assert.ok(validateReservasWebActivityDraft({...paid,promotional_price:100}).some(error=>error.includes('promocional')));
   assert.ok(validateReservasWebActivityDraft({...paid,promotion_ends_at:null}).some(error=>error.includes('promocional')));

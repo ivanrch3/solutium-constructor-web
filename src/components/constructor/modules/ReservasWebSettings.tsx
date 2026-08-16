@@ -31,7 +31,7 @@ export const formatReservasWebSessionSummary = (activity: ReservasWebActivitySum
   if (!count) return 'Sin sesiones programadas';
   if (!firstStartsAt) return `${count} sesión${count === 1 ? '' : 'es'}`;
   const date = new Date(firstStartsAt);
-  return `${Number.isNaN(date.getTime()) ? firstStartsAt : date.toLocaleString('es', { dateStyle: 'medium', timeStyle: 'short' })}${count > 1 ? ` · ${count} sesiones` : ''}`;
+  return `${Number.isNaN(date.getTime()) ? firstStartsAt : date.toLocaleString('es', { dateStyle: 'medium', timeStyle: 'short', timeZone: activity.timezone || undefined })}${count > 1 ? ` · ${count} sesiones` : ''}`;
 };
 
 export const formatReservasWebPrice = (activity: ReservasWebActivitySummary): string => {
@@ -53,7 +53,6 @@ export const ReservasWebSettings = ({ moduleId, projectId = null, products = [],
   const selectableActivities = reservasWebActivities.filter(activity => !isReservasWebActivityArchived(activity) || activity.id === selectedActivityId);
   const persist = (nextConfig: ReservasWebConfigV1) => onSettingChange(moduleId, 'el_reservas_web_config', nextConfig);
   const updateDisplay = (key: ToggleKey, value: boolean) => persist({ ...config, display: { ...config.display, [key]: value } });
-  const updateStyle = (key: keyof ReservasWebConfigV1['style'], value: string | number) => persist({ ...config, style: { ...config.style, [key]: value } });
   const persistActivityId = (activityId: string | null) => persist(setReservasWebActivityIds(config, activityId ? [activityId] : []));
   const [form, setForm] = useState<{ mode: ReservasWebActivityFormMode; detail?: ReservasWebActivityAdminDetail } | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
@@ -63,27 +62,21 @@ export const ReservasWebSettings = ({ moduleId, projectId = null, products = [],
   return (
     <div className="mt-3 space-y-3 rounded-xl border border-border/40 bg-surface p-3 text-sm text-text">
       <section className="space-y-2"><h3 className="text-xs font-semibold">Actividad</h3>
+        <label className="block space-y-1"><span className="text-xs">Actividad</span><select value={selectedActivityId} onChange={(event) => persistActivityId(event.target.value || null)} className="w-full rounded-lg border border-border bg-background px-3 py-2"><option value="">Selecciona una actividad</option>{selectableActivities.map((activity) => <option key={activity.id} value={activity.id}>{activity.title} · {activity.catalogItemName || 'Sin item de catálogo'} · {activity.modality || 'Sin modalidad'}{isReservasWebActivityArchived(activity) ? ' · Archivada' : ''}</option>)}</select></label>
         <div className="flex gap-2"><button type="button" disabled={!projectId} onClick={() => setForm({ mode: 'create' })} className="rounded border border-primary/40 px-2 py-1 font-semibold text-primary disabled:opacity-40">Crear actividad</button><button type="button" disabled={!projectId || !selectedActivityId || loadingDetail} onClick={openEdit} className="rounded border border-border px-2 py-1 font-semibold disabled:opacity-40">{loadingDetail ? 'Cargando…' : 'Editar actividad'}</button></div>
         {form && projectId && <ReservasWebActivityForm mode={form.mode} projectId={projectId} products={products} detail={form.detail} eligibleWhatsAppChannels={reservasWebEligibleWhatsAppChannels} onClose={() => setForm(null)} onSaved={saved} />}
-        <label className="block space-y-1"><span className="text-xs">Actividad</span><select value={selectedActivityId} onChange={(event) => persistActivityId(event.target.value || null)} className="w-full rounded-lg border border-border bg-background px-3 py-2"><option value="">Selecciona una actividad</option>{selectableActivities.map((activity) => <option key={activity.id} value={activity.id}>{activity.title} · {activity.catalogItemName || 'Sin item de catálogo'} · {activity.modality || 'Sin modalidad'}{isReservasWebActivityArchived(activity) ? ' · Archivada' : ''}</option>)}</select></label>
         {reservasWebActivities.length === 0 && <p className="rounded-lg bg-secondary/50 p-3 text-xs">No hay actividades configuradas para Reservas Web.</p>}
         {selectedActivityId && !selectedActivity && <div className="space-y-2 rounded-lg border border-border/40 bg-secondary/50 p-3 text-xs"><p>La actividad seleccionada ya no está disponible.</p><button type="button" onClick={() => persistActivityId(null)} className="font-semibold text-primary underline">Limpiar selección</button></div>}
         {selectedActivity && <div className="space-y-2 rounded-lg border border-border/40 p-3 text-xs"><p className="font-semibold">{selectedActivity.catalogItemName || 'Sin item de catálogo'}{isReservasWebActivityArchived(selectedActivity) ? ' · Archivada' : ''}</p><p>{selectedActivity.facilitator || 'Facilitador no definido'} · {selectedActivity.modality || 'Modalidad no definida'}</p><p>{formatReservasWebSessionSummary(selectedActivity)}</p><p>Capacidad total: {selectedActivity.totalCapacity ?? 'No definida'}</p><p>{formatReservasWebPrice(selectedActivity)}</p><p>{getReservasWebActivityReadinessMessage(selectedActivity)}</p><button type="button" onClick={() => persistActivityId(null)} className="font-semibold text-primary underline">Cambiar actividad</button></div>}
       </section>
 
-      <section className="space-y-2 border-t border-border/40 pt-3"><h3 className="text-xs font-semibold">Visualización</h3>
+      {(selectedActivity || form) && <><section className="space-y-2 border-t border-border/40 pt-3"><h3 className="text-xs font-semibold">Visualización</h3>
         {([['showPrice', 'Mostrar precio'], ['showTotalCapacity', 'Mostrar capacidad total'], ['showAvailableCapacity', 'Mostrar disponibilidad'], ['showCountdown', 'Mostrar cuenta regresiva']] as const).map(([key, label]) => <label key={key} className="flex items-center justify-between gap-3"><span>{label}</span><input type="checkbox" checked={config.display[key]} onChange={(event) => updateDisplay(key, event.target.checked)} /></label>)}
       </section>
 
       <section className="space-y-2 border-t border-border/40 pt-3"><h3 className="text-xs font-semibold">Botón</h3>
         <label className="block space-y-1"><span className="text-xs">Texto del CTA</span><input value={config.content.reserveButtonLabel} maxLength={60} onChange={(event) => persist({ ...config, content: { reserveButtonLabel: event.target.value } })} className="w-full rounded-lg border border-border bg-background px-3 py-2" /></label>
-      </section>
-
-      <section className="space-y-2 border-t border-border/40 pt-3"><h3 className="text-xs font-semibold">Estilo</h3>
-        <div className="grid grid-cols-2 gap-2"><label className="text-xs">Fondo<input aria-label="Color de fondo" type="color" value={config.style.surfaceColor || '#ffffff'} onChange={(event) => updateStyle('surfaceColor', event.target.value)} className="mt-1 block w-full" /></label><label className="text-xs">Borde<input aria-label="Color de borde" type="color" value={config.style.borderColor || '#cccccc'} onChange={(event) => updateStyle('borderColor', event.target.value)} className="mt-1 block w-full" /></label><label className="text-xs">CTA<input aria-label="Color CTA" type="color" value={config.style.ctaBackgroundColor || '#2563eb'} onChange={(event) => updateStyle('ctaBackgroundColor', event.target.value)} className="mt-1 block w-full" /></label><label className="text-xs">Texto CTA<input aria-label="Color texto CTA" type="color" value={config.style.ctaTextColor || '#ffffff'} onChange={(event) => updateStyle('ctaTextColor', event.target.value)} className="mt-1 block w-full" /></label></div>
-        <label className="block text-xs">Radio {config.style.borderRadius}px<input aria-label="Radio del borde" type="range" min="0" max="32" value={config.style.borderRadius} onChange={(event) => updateStyle('borderRadius', Number(event.target.value))} className="block w-full" /></label>
-        <label className="block text-xs">Espaciado {config.style.padding}px<input aria-label="Espaciado interno" type="range" min="12" max="40" value={config.style.padding} onChange={(event) => updateStyle('padding', Number(event.target.value))} className="block w-full" /></label>
-      </section>
+      </section></>}
     </div>
   );
 };

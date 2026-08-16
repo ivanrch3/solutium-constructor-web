@@ -40,6 +40,7 @@ test('Reservas Web preview is structural, isolated, and does not mutate configur
   assert.doesNotMatch(noCountdown, /Vista previa de cuenta regresiva/);
   assert.match(customCta, /Apartar cupo/);
   assert.doesNotMatch(selectedMarkup, /No disponible para reservas/);
+  assert.match(render(selected, [createActivity({ status: 'draft', whatsappReadiness: 'ready', bookable: true, timezone: 'America/Costa_Rica', sessionsSummary: { count: 1, firstStartsAt: '2026-08-17T17:00:00.000Z', firstEndsAt: '2026-08-17T18:00:00.000Z' } })]), /Actividad A/);
   for (const readiness of ['unavailable', 'selection_required', 'invalid_selection'] as const) assert.match(render(selected, [createActivity({ whatsappReadiness: readiness })]), /No disponible para reservas/);
   assert.match(render(selected, [createActivity({ status: 'archived', whatsappReadiness: 'ready' })]), /No disponible para reservas/);
   assert.match(render(setReservasWebActivityIds(createDefaultReservasWebConfig(), ['missing']), []), /La actividad seleccionada ya no está disponible/);

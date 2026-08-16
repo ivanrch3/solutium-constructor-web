@@ -63,6 +63,7 @@ test('Reservas Web settings only persists one selected activity id and safely su
   assert.match(getReservasWebWhatsAppReadinessMessage('selection_required'), /varias conexiones Genius/);
   assert.match(getReservasWebWhatsAppReadinessMessage('invalid_selection'), /ya no está disponible/);
   assert.match(formatReservasWebSessionSummary(activityA), /2026|ago|20/i);
+  assert.match(formatReservasWebSessionSummary({ ...activityA, sessionsSummary: { count: 1, firstStartsAt: '2026-08-17T17:00:00.000Z', firstEndsAt: null }, timezone: 'America/Costa_Rica' }), /11:00|11\.00/);
   assert.match(formatReservasWebPrice(activityA), /40/);
   assert.match(renderToStaticMarkup(React.createElement(ReservasWebSettings, {
     moduleId: 'module-a', settingsValues: { [instanceAKey]: selectedA }, reservasWebActivities: [activityA], onSettingChange: () => {}
@@ -70,9 +71,11 @@ test('Reservas Web settings only persists one selected activity id and safely su
   assert.match(renderToStaticMarkup(React.createElement(ReservasWebSettings, {
     moduleId: 'module-a', settingsValues: { [instanceAKey]: missing }, reservasWebActivities: [], onSettingChange: () => {}
   })), /La actividad seleccionada ya no está disponible/);
-  assert.match(renderToStaticMarkup(React.createElement(ReservasWebSettings, {
+  const emptyMarkup = renderToStaticMarkup(React.createElement(ReservasWebSettings, {
     moduleId: 'module-a', settingsValues: {}, reservasWebActivities: undefined, onSettingChange: () => {}
-  })), /No hay actividades configuradas para Reservas Web/);
+  }));
+  assert.match(emptyMarkup, /No hay actividades configuradas para Reservas Web/);
+  assert.doesNotMatch(emptyMarkup, /Visualización|Texto del CTA/);
   assert.match(renderToStaticMarkup(React.createElement(ReservasWebSettings, {
     moduleId: 'module-a', settingsValues: { [instanceAKey]: selectedA }, reservasWebActivities: [{ ...activityA, status: 'archived' }], onSettingChange: () => {}
   })), /Archivada/);
@@ -88,4 +91,7 @@ test('Reservas Web settings only persists one selected activity id and safely su
   assert.equal('readiness' in selectedA, false);
   assert.equal('archivedAt' in selectedA, false);
   assert.doesNotMatch(settingsSource, /fetch\(|privateVirtualUrl|contactWhatsapp|identification|birthDate/i);
+  assert.ok(settingsSource.indexOf('Selecciona una actividad') < settingsSource.indexOf('Crear actividad'));
+  assert.match(settingsSource, /selectedActivity \|\| form/);
+  assert.doesNotMatch(settingsSource, /Color de fondo|Color de borde|Color CTA|Radio del borde|Espaciado interno/);
 });

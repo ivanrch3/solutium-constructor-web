@@ -53,6 +53,8 @@ export type ReservasWebActivityAdminDetail = {
   promotionEndsAt: string | null;
   currency: string | null;
   paymentMode: 'full' | 'deposit';
+  allowFullPayment: boolean;
+  allowDepositPayment: boolean;
   depositAmount: number | null;
   depositRefundable: boolean | null;
   sinpePhone: string | null;
@@ -93,6 +95,8 @@ type ReservasWebActivityWritableFields = {
   promotion_ends_at?: string | null;
   currency?: string | null;
   payment_mode?: 'full' | 'deposit';
+  allow_full_payment?: boolean;
+  allow_deposit_payment?: boolean;
   deposit_amount?: number | null;
   deposit_refundable?: boolean | null;
   sinpe_phone?: string | null;

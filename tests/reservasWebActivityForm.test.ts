@@ -15,6 +15,17 @@ test('basic activity draft starts in free create mode and validates catalog, tit
   assert.deepEqual(validateReservasWebActivityDraft(valid()),[]);
 });
 
+test('payment options support full, deposit, both and a semantic dirty baseline',()=>{
+  const original={...valid(),is_free:false,regular_price:100,currency:'CRC',sinpe_phone:'88888888',sinpe_beneficiary:'Ana',allow_full_payment:true,allow_deposit_payment:false,deposit_amount:null,deposit_refundable:null};
+  assert.deepEqual(validateReservasWebActivityDraft(original),[]);
+  const deposit={...original,allow_full_payment:false,allow_deposit_payment:true,deposit_amount:25,deposit_refundable:false};
+  assert.deepEqual(validateReservasWebActivityDraft(deposit),[]);
+  assert.deepEqual(validateReservasWebActivityDraft({...original,allow_full_payment:true,allow_deposit_payment:true,deposit_amount:25,deposit_refundable:true}),[]);
+  assert.ok(validateReservasWebActivityDraft({...original,allow_full_payment:false,allow_deposit_payment:false}).some(error=>error.includes('opción de pago')));
+  assert.equal(hasReservasWebActivityDraftChanges({...original,allow_deposit_payment:true,deposit_amount:25,deposit_refundable:false},original),true);
+  assert.equal(hasReservasWebActivityDraftChanges(original,original),false);
+});
+
 test('modality requires only its corresponding location or private virtual URL',()=>{
   const presencial=valid();assert.deepEqual(validateReservasWebActivityDraft(presencial),[]);
   assert.ok(validateReservasWebActivityDraft({...presencial,physical_location:null}).some(error=>error.includes('ubicación')));
@@ -70,8 +81,8 @@ test('paid activities require price, currency and one valid payment method while
   assert.deepEqual(validateReservasWebActivityDraft(paid),[]);
   assert.ok(validateReservasWebActivityDraft({...paid,regular_price:0}).some(error=>error.includes('precio regular')));
   assert.ok(validateReservasWebActivityDraft({...paid,currency:null}).some(error=>error.includes('moneda')));
-  assert.deepEqual(validateReservasWebActivityDraft({...paid,payment_mode:'deposit',deposit_amount:10,deposit_refundable:false}),[]);
-  assert.ok(validateReservasWebActivityDraft({...paid,payment_mode:'deposit',deposit_amount:100,deposit_refundable:false}).some(error=>error.includes('monto de reserva')));
+  assert.deepEqual(validateReservasWebActivityDraft({...paid,allow_full_payment:false,allow_deposit_payment:true,deposit_amount:10,deposit_refundable:false}),[]);
+  assert.ok(validateReservasWebActivityDraft({...paid,allow_full_payment:false,allow_deposit_payment:true,deposit_amount:100,deposit_refundable:false}).some(error=>error.includes('monto de reserva')));
   assert.ok(validateReservasWebActivityDraft({...paid,sinpe_phone:null,onvopay_url:null}).some(error=>error.includes('SINPE')));
   assert.ok(validateReservasWebActivityDraft({...paid,sinpe_beneficiary:null,onvopay_url:null}).some(error=>error.includes('SINPE')));
   assert.deepEqual(validateReservasWebActivityDraft({...paid,sinpe_phone:null,onvopay_url:'https://pay.example'}),[]);

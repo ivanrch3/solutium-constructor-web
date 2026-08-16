@@ -6605,7 +6605,7 @@ const formatTimestampName = () => {
     } catch (error) {
       console.error('Error publishing site:', error);
       if (error instanceof ReservasWebPublicationValidationError) {
-        setAuthNotice({ type: 'error', message: error.message });
+        setAuthNotice({ type: 'error', title: 'No se pudo publicar Reservas Web', message: error.message });
       }
       if (error instanceof SecureConstructorWriteError) {
         setAuthNotice({

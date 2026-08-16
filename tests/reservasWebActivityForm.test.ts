@@ -4,7 +4,7 @@ import test from 'node:test';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { ReservasWebEligibleWhatsAppChannel } from '../src/types/reservasWeb';
-import { buildReservasWebActivityArchivePatch, buildReservasWebActivityPatch, createReservasWebActivityDraft, formatReservasWebDateTimeLocalInput, getReservasWebFinalReadiness, getReservasWebGeniusModeLabel, hasReservasWebActivityDraftChanges, normalizeReservasWebActivitySessions, ReservasWebActivityForm, validateReservasWebActivityDraft } from '../src/components/constructor/modules/ReservasWebActivityForm';
+import { buildReservasWebActivityArchivePatch, buildReservasWebActivityPatch, createReservasWebActivityDraft, formatReservasWebDateTimeLocalInput, getReservasWebFinalReadiness, getReservasWebGeniusModeLabel, getReservasWebOnvopayUrl, hasReservasWebActivityDraftChanges, normalizeReservasWebActivitySessions, ReservasWebActivityForm, validateReservasWebActivityDraft } from '../src/components/constructor/modules/ReservasWebActivityForm';
 
 const valid = () => ({ ...createReservasWebActivityDraft(), catalog_item_id: 'catalog', title_override: 'Taller', modality: 'presencial' as const, physical_location: 'Sala', total_capacity: 8, sessions: [{ starts_at: '2026-09-01T10:00', ends_at: '2026-09-01T11:00' }] });
 
@@ -143,4 +143,18 @@ test('administrative readiness and archive lifecycle keep backend authority and 
   assert.match(markup,/ARCHIVADA/);assert.match(markup,/Restaurar actividad/);assert.doesNotMatch(markup,/Archivar actividad/);
   const source=fs.readFileSync(new URL('../src/components/constructor/modules/ReservasWebActivityForm.tsx',import.meta.url),'utf8');
   assert.match(source,/Confirmar archivado/);assert.match(source,/updateReservasWebActivity\(projectId, detail.id, buildReservasWebActivityArchivePatch/);assert.doesNotMatch(source,/window\.confirm|delete\(|DELETE|reservations/i);
+});
+
+test('Onvopay mode URLs are visible only for enabled modes, dirty tracked, and retain legacy fallback routing',()=>{
+  const paid={...valid(),is_free:false,regular_price:100,currency:'CRC',sinpe_phone:null,sinpe_beneficiary:null,onvopay_url:'https://legacy.example',onvopay_full_url:'https://full.example',onvopay_deposit_url:'https://deposit.example'};
+  assert.equal(getReservasWebOnvopayUrl(paid,'full'),'https://full.example');
+  assert.equal(getReservasWebOnvopayUrl(paid,'deposit'),'https://deposit.example');
+  assert.equal(getReservasWebOnvopayUrl({...paid,onvopay_deposit_url:null},'deposit'),'https://legacy.example');
+  assert.equal(hasReservasWebActivityDraftChanges({...paid,onvopay_full_url:'https://full-next.example'},paid),true);
+  assert.deepEqual(buildReservasWebActivityPatch({...paid,onvopay_deposit_url:'https://deposit-next.example'},paid),{onvopay_deposit_url:'https://deposit-next.example'});
+  assert.deepEqual(validateReservasWebActivityDraft({...paid,allow_full_payment:true,allow_deposit_payment:false,onvopay_full_url:'https://full.example',onvopay_deposit_url:null}),[]);
+  assert.deepEqual(validateReservasWebActivityDraft({...paid,allow_full_payment:false,allow_deposit_payment:true,onvopay_full_url:null,onvopay_deposit_url:'https://deposit.example',deposit_amount:25,deposit_refundable:false}),[]);
+  const source=fs.readFileSync(new URL('../src/components/constructor/modules/ReservasWebActivityForm.tsx',import.meta.url),'utf8');
+  assert.doesNotMatch(source,/URL de pago con tarjeta \(Onvopay\)/);
+  assert.match(source,/URL de pago total \(Onvopay\)/);assert.match(source,/URL de pago parcial \/ reserva \(Onvopay\)/);
 });

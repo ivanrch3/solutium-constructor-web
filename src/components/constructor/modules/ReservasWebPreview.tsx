@@ -36,7 +36,9 @@ export const ReservasWebPreview = ({ moduleId, config, reservasWebActivities = [
 
   const title = activity.title || activity.catalogItemName || 'Actividad';
   const price = formatPrice(activity);
-  const unavailable = isReservasWebActivityArchived(activity) || activity.whatsappReadiness !== 'ready' || activity.bookable === false;
+  // Constructor preview intentionally accepts a configured draft. Public booking
+  // still applies the stricter active/readiness checks on the public endpoint.
+  const unavailable = isReservasWebActivityArchived(activity) || activity.whatsappReadiness !== 'ready';
 
   return (
     <section data-module-id={moduleId} className="mx-auto w-full max-w-xl overflow-hidden rounded-2xl border bg-surface text-text shadow-sm">

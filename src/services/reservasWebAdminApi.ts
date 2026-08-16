@@ -61,6 +61,8 @@ export type ReservasWebActivityAdminDetail = {
   sinpeBeneficiary: string | null;
   paymentReceiptWhatsapp: string | null;
   onvopayUrl: string | null;
+  onvopayFullUrl?: string | null;
+  onvopayDepositUrl?: string | null;
   selectedWhatsappChannelId: string | null;
   status: string;
   archivedAt: string | null;
@@ -103,6 +105,8 @@ type ReservasWebActivityWritableFields = {
   sinpe_beneficiary?: string | null;
   payment_receipt_whatsapp?: string | null;
   onvopay_url?: string | null;
+  onvopay_full_url?: string | null;
+  onvopay_deposit_url?: string | null;
   selected_whatsapp_channel_id?: string | null;
   status?: string | null;
   archived_at?: string | null;

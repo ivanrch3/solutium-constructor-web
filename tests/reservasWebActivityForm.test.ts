@@ -4,7 +4,7 @@ import test from 'node:test';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { ReservasWebEligibleWhatsAppChannel } from '../src/types/reservasWeb';
-import { buildReservasWebActivityArchivePatch, buildReservasWebActivityPatch, createReservasWebActivityDraft, formatReservasWebDateTimeLocalInput, getReservasWebFinalReadiness, getReservasWebGeniusModeLabel, normalizeReservasWebActivitySessions, ReservasWebActivityForm, validateReservasWebActivityDraft } from '../src/components/constructor/modules/ReservasWebActivityForm';
+import { buildReservasWebActivityArchivePatch, buildReservasWebActivityPatch, createReservasWebActivityDraft, formatReservasWebDateTimeLocalInput, getReservasWebFinalReadiness, getReservasWebGeniusModeLabel, hasReservasWebActivityDraftChanges, normalizeReservasWebActivitySessions, ReservasWebActivityForm, validateReservasWebActivityDraft } from '../src/components/constructor/modules/ReservasWebActivityForm';
 
 const valid = () => ({ ...createReservasWebActivityDraft(), catalog_item_id: 'catalog', title_override: 'Taller', modality: 'presencial' as const, physical_location: 'Sala', total_capacity: 8, sessions: [{ starts_at: '2026-09-01T10:00', ends_at: '2026-09-01T11:00' }] });
 
@@ -50,6 +50,18 @@ test('edit hydration uses the activity timezone and preserves the local datetime
   assert.equal(draft.sessions[0].ends_at,'2026-08-17T12:30');
   assert.deepEqual(buildReservasWebActivityPatch(draft,draft),{});
   assert.deepEqual(normalizeReservasWebActivitySessions(draft.sessions),draft.sessions);
+});
+
+test('save uses a semantic dirty baseline and returns to disabled after reverting activity fields or sessions',()=>{
+  const baseline=valid();
+  assert.equal(hasReservasWebActivityDraftChanges(baseline,baseline),false);
+  assert.equal(hasReservasWebActivityDraftChanges({...baseline,title_override:'Otro título'},baseline),true);
+  assert.equal(hasReservasWebActivityDraftChanges({...baseline,title_override:baseline.title_override},baseline),false);
+  assert.equal(hasReservasWebActivityDraftChanges({...baseline,sessions:[{starts_at:'2026-09-01T10:30',ends_at:'2026-09-01T11:00'}]},baseline),true);
+  assert.equal(hasReservasWebActivityDraftChanges({...baseline,sessions:[...baseline.sessions]},baseline),false);
+  assert.equal(hasReservasWebActivityDraftChanges({...baseline,short_description_override:null},{...baseline,short_description_override:''}),false);
+  const source=fs.readFileSync(new URL('../src/components/constructor/modules/ReservasWebActivityForm.tsx',import.meta.url),'utf8');
+  assert.match(source,/disabled=\{!canSave\}/);assert.match(source,/setBaseline\(normalizedDraft\)/);assert.match(source,/grid-cols-3/);assert.match(source,/Archivar actividad.*Guardar actividad.*Cerrar/);
 });
 
 test('paid activities require price, currency and one valid payment method while free stays valid',()=>{

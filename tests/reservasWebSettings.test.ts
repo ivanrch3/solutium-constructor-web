@@ -65,9 +65,10 @@ test('Reservas Web settings only persists one selected activity id and safely su
   assert.match(formatReservasWebSessionSummary(activityA), /2026|ago|20/i);
   assert.match(formatReservasWebSessionSummary({ ...activityA, sessionsSummary: { count: 1, firstStartsAt: '2026-08-17T17:00:00.000Z', firstEndsAt: null }, timezone: 'America/Costa_Rica' }), /11:00|11\.00/);
   assert.match(formatReservasWebPrice(activityA), /40/);
-  assert.match(renderToStaticMarkup(React.createElement(ReservasWebSettings, {
+  const selectedMarkup = renderToStaticMarkup(React.createElement(ReservasWebSettings, {
     moduleId: 'module-a', settingsValues: { [instanceAKey]: selectedA }, reservasWebActivities: [activityA], onSettingChange: () => {}
-  })), /Catálogo A/);
+  }));
+  assert.match(selectedMarkup, /Catálogo A/);assert.match(selectedMarkup, /Editar actividad/);assert.doesNotMatch(selectedMarkup, /Visualización|Texto del CTA|Guardar actividad|Cerrar/);
   assert.match(renderToStaticMarkup(React.createElement(ReservasWebSettings, {
     moduleId: 'module-a', settingsValues: { [instanceAKey]: missing }, reservasWebActivities: [], onSettingChange: () => {}
   })), /La actividad seleccionada ya no está disponible/);
@@ -92,6 +93,8 @@ test('Reservas Web settings only persists one selected activity id and safely su
   assert.equal('archivedAt' in selectedA, false);
   assert.doesNotMatch(settingsSource, /fetch\(|privateVirtualUrl|contactWhatsapp|identification|birthDate/i);
   assert.ok(settingsSource.indexOf('Selecciona una actividad') < settingsSource.indexOf('Crear actividad'));
-  assert.match(settingsSource, /selectedActivity \|\| form/);
+  assert.match(settingsSource, /selectedActivity && !form/);
+  assert.doesNotMatch(settingsSource, /Crear actividad<\/button><button[^>]*>\{loadingDetail/);
+  assert.match(settingsSource,/display=\{config\.display\}/);assert.match(settingsSource,/onReserveButtonLabelChange/);
   assert.doesNotMatch(settingsSource, /Color de fondo|Color de borde|Color CTA|Radio del borde|Espaciado interno/);
 });

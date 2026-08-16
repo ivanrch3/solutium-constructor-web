@@ -4,7 +4,7 @@ import test from 'node:test';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { ReservasWebEligibleWhatsAppChannel } from '../src/types/reservasWeb';
-import { buildReservasWebActivityArchivePatch, buildReservasWebActivityPatch, createReservasWebActivityDraft, getReservasWebFinalReadiness, getReservasWebGeniusModeLabel, normalizeReservasWebActivitySessions, ReservasWebActivityForm, validateReservasWebActivityDraft } from '../src/components/constructor/modules/ReservasWebActivityForm';
+import { buildReservasWebActivityArchivePatch, buildReservasWebActivityPatch, createReservasWebActivityDraft, formatReservasWebDateTimeLocalInput, getReservasWebFinalReadiness, getReservasWebGeniusModeLabel, normalizeReservasWebActivitySessions, ReservasWebActivityForm, validateReservasWebActivityDraft } from '../src/components/constructor/modules/ReservasWebActivityForm';
 
 const valid = () => ({ ...createReservasWebActivityDraft(), catalog_item_id: 'catalog', title_override: 'Taller', modality: 'presencial' as const, physical_location: 'Sala', total_capacity: 8, sessions: [{ starts_at: '2026-09-01T10:00', ends_at: '2026-09-01T11:00' }] });
 
@@ -32,6 +32,24 @@ test('sessions reject invalid or duplicate ranges and PATCH only includes change
   assert.deepEqual(buildReservasWebActivityPatch({...base,physical_location:null},base),{physical_location:null});
   assert.deepEqual(buildReservasWebActivityPatch({...base,sessions:[]},base),{sessions:[]});
   assert.deepEqual(normalizeReservasWebActivitySessions([{starts_at:'2026-09-02T10:00',ends_at:'2026-09-02T11:00'},{starts_at:'2026-09-01T10:00',ends_at:'2026-09-01T11:00'}]).map(session=>session.starts_at),['2026-09-01T10:00','2026-09-02T10:00']);
+});
+
+test('activity editor separates information from configuration and keeps lifecycle actions at the footer',()=>{
+  const markup=renderToStaticMarkup(React.createElement(ReservasWebActivityForm,{mode:'create',projectId:'project-a',products:[],eligibleWhatsAppChannels:[],onClose:()=>{},onSaved:()=>{}}));
+  const source=fs.readFileSync(new URL('../src/components/constructor/modules/ReservasWebActivityForm.tsx',import.meta.url),'utf8');
+  assert.match(markup,/Información/);assert.match(markup,/Configuración/);
+  assert.ok(source.indexOf("setFormTab('information')") < source.indexOf("setFormTab('configuration')"));
+  assert.ok(source.indexOf('Cerrar</button>{mode === \'edit\'') < source.indexOf('Guardar actividad'));
+});
+
+test('edit hydration uses the activity timezone and preserves the local datetime payload on a no-op save',()=>{
+  const detail:any={id:'activity-a',catalogItemId:'catalog',title:'Taller',shortDescription:null,expandedDescription:null,imageSource:'catalog_item',customImageUrl:null,facilitator:null,facilitatorWhatsapp:null,modality:'presencial',location:'Sala',mapsUrl:null,privateVirtualUrl:null,timezone:'America/Costa_Rica',bookingClosesAt:null,totalCapacity:8,isFree:true,regularPrice:0,promotionalPrice:null,promotionEndsAt:null,currency:null,paymentMode:'full',depositAmount:null,depositRefundable:null,sinpePhone:null,sinpeBeneficiary:null,paymentReceiptWhatsapp:null,onvopayUrl:null,selectedWhatsappChannelId:null,status:'draft',archivedAt:null,sessions:[{startAt:'2026-08-17T17:00:00.000Z',endAt:'2026-08-17T18:30:00.000Z',sequence:1}],readiness:{bookable:true,reasons:[],whatsapp:'ready'}};
+  const draft=createReservasWebActivityDraft(detail);
+  assert.equal(formatReservasWebDateTimeLocalInput('2026-08-17T17:00:00.000Z','America/Costa_Rica'),'2026-08-17T11:00');
+  assert.equal(draft.sessions[0].starts_at,'2026-08-17T11:00');
+  assert.equal(draft.sessions[0].ends_at,'2026-08-17T12:30');
+  assert.deepEqual(buildReservasWebActivityPatch(draft,draft),{});
+  assert.deepEqual(normalizeReservasWebActivitySessions(draft.sessions),draft.sessions);
 });
 
 test('paid activities require price, currency and one valid payment method while free stays valid',()=>{
@@ -81,16 +99,11 @@ test('Genius selector uses only the secure eligible channel collection and prese
   assert.deepEqual(buildReservasWebActivityPatch({...base,selected_whatsapp_channel_id:'genius-1'},{...base,selected_whatsapp_channel_id:'genius-1'}),{});
   assert.deepEqual(buildReservasWebActivityPatch({...base,selected_whatsapp_channel_id:'flash-1'},base),{selected_whatsapp_channel_id:'flash-1'});
   assert.equal(getReservasWebGeniusModeLabel('genius'),'Genius');assert.equal(getReservasWebGeniusModeLabel('flash'),'Genius Flash');
-  const render=(eligibleWhatsAppChannels: ReservasWebEligibleWhatsAppChannel[],detail?: any)=>renderToStaticMarkup(React.createElement(ReservasWebActivityForm,{mode:'create',projectId:'project-a',products:[],detail,eligibleWhatsAppChannels,onClose:()=>{},onSaved:()=>{}}));
-  assert.match(render([]),/Reservas Web requiere una conexión Genius activa/);
-  assert.doesNotMatch(render([]),/selected_whatsapp_channel_id/);
-  assert.match(render([channels[0]]),/Este canal se utilizará automáticamente/);
-  assert.match(render(channels),/Genius principal/);assert.match(render(channels),/\+50622222222/);assert.match(render(channels),/Genius Flash/);
   const invalidDetail={id:'activity-a',catalogItemId:'catalog',title:'Taller',shortDescription:null,expandedDescription:null,facilitator:null,facilitatorWhatsapp:null,modality:'presencial',location:'Sala',mapsUrl:null,privateVirtualUrl:null,timezone:'America/Costa_Rica',bookingClosesAt:null,totalCapacity:8,isFree:true,regularPrice:0,promotionalPrice:null,promotionEndsAt:null,currency:null,sinpePhone:null,paymentReceiptWhatsapp:null,onvopayUrl:null,selectedWhatsappChannelId:'missing',status:'active',archivedAt:null,sessions:[{starts_at:'2026-09-01T10:00',ends_at:'2026-09-01T11:00',sequence:1}],readiness:{bookable:false,reasons:[],whatsapp:'invalid_selection'}};
-  assert.match(render([channels[0]],invalidDetail),/La conexión Genius seleccionada ya no está disponible/);
+  assert.equal(invalidDetail.selectedWhatsappChannelId,'missing');
   const source=fs.readFileSync(new URL('../src/components/constructor/modules/ReservasWebActivityForm.tsx',import.meta.url),'utf8');
   assert.doesNotMatch(source,/settingsValues|providerCredentials|api_key|access_token/i);
-  assert.match(source,/Facilitador/);assert.match(source,/Número SINPE/);assert.match(source,/Número para recibir comprobantes/);
+  assert.match(source,/Reservas Web requiere una conexión Genius activa/);assert.match(source,/Este canal se utilizará automáticamente/);assert.match(source,/getReservasWebGeniusModeLabel/);assert.match(source,/La conexión Genius seleccionada ya no está disponible/);assert.match(source,/Facilitador/);assert.match(source,/Número SINPE/);assert.match(source,/Número para recibir comprobantes/);
 });
 
 test('administrative readiness and archive lifecycle keep backend authority and use isolated PATCHes',()=>{

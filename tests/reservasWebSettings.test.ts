@@ -68,7 +68,7 @@ test('Reservas Web settings only persists one selected activity id and safely su
   const selectedMarkup = renderToStaticMarkup(React.createElement(ReservasWebSettings, {
     moduleId: 'module-a', settingsValues: { [instanceAKey]: selectedA }, reservasWebActivities: [activityA], onSettingChange: () => {}
   }));
-  assert.match(selectedMarkup, /Catálogo A/);assert.match(selectedMarkup, /Editar actividad/);assert.doesNotMatch(selectedMarkup, /Visualización|Texto del CTA|Guardar actividad|Cerrar/);
+  assert.match(selectedMarkup, /Catálogo A/);assert.match(selectedMarkup, /Editar actividad/);assert.match(selectedMarkup, /Archivar/);assert.doesNotMatch(selectedMarkup, /Cambiar actividad|Visualización|Texto del CTA|Guardar actividad|Cerrar/);
   assert.match(renderToStaticMarkup(React.createElement(ReservasWebSettings, {
     moduleId: 'module-a', settingsValues: { [instanceAKey]: missing }, reservasWebActivities: [], onSettingChange: () => {}
   })), /La actividad seleccionada ya no está disponible/);
@@ -94,6 +94,10 @@ test('Reservas Web settings only persists one selected activity id and safely su
   assert.doesNotMatch(settingsSource, /fetch\(|privateVirtualUrl|contactWhatsapp|identification|birthDate/i);
   assert.ok(settingsSource.indexOf('Selecciona una actividad') < settingsSource.indexOf('Crear actividad'));
   assert.match(settingsSource, /selectedActivity && !form/);
+  assert.match(settingsSource, /archiveConfirmationInitiallyOpen/);
+  assert.match(settingsSource, /flex flex-wrap gap-2/);
+  assert.match(fs.readFileSync(new URL('../src/components/constructor/modules/ReservasWebActivityForm.tsx', import.meta.url), 'utf8'), /grid grid-cols-1 gap-2.*sm:grid-cols-3/);
+  assert.doesNotMatch(settingsSource, />Cambiar actividad</);
   assert.doesNotMatch(settingsSource, /Crear actividad<\/button><button[^>]*>\{loadingDetail/);
   assert.match(settingsSource,/display=\{config\.display\}/);assert.match(settingsSource,/onReserveButtonLabelChange/);
   assert.doesNotMatch(settingsSource, /Color de fondo|Color de borde|Color CTA|Radio del borde|Espaciado interno/);

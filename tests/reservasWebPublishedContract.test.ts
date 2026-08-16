@@ -67,6 +67,22 @@ test('serializes administrative activity IDs into opaque public identifiers with
   assert.equal(JSON.stringify(activities), activitiesBefore);
 });
 
+test('publication preserves both canonical capacity display flags in either state', () => {
+  const selected = setReservasWebActivityIds(createDefaultReservasWebConfig(), ['uuid-a']);
+  const cases = [
+    { key: 'showTotalCapacity' as const, value: true },
+    { key: 'showTotalCapacity' as const, value: false },
+    { key: 'showAvailableCapacity' as const, value: true },
+    { key: 'showAvailableCapacity' as const, value: false }
+  ];
+
+  for (const { key, value } of cases) {
+    const config = { ...selected, display: { ...selected.display, [key]: value } };
+    const snapshot = serializeReservasWebForPublication(config, [activity('uuid-a', 'public-A')]);
+    assert.equal(snapshot.display[key], value);
+  }
+});
+
 test('rejects incomplete or archived public publication states without falling back to internal IDs', () => {
   const selected = setReservasWebActivityIds(createDefaultReservasWebConfig(), ['uuid-a']);
   const cases: Array<{ config: unknown; activities: ReservasWebActivitySummary[]; message: RegExp }> = [

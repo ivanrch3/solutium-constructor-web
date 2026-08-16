@@ -4,6 +4,7 @@ import test from 'node:test';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { createReservasWebBookingDraft, ReservasWebBookingForm, resolveReservasWebResponsible, validateReservasWebBookingDraft } from '../src/components/constructor/modules/ReservasWebBookingForm';
+import { normalizeReservasWebBookingQuantity } from '../src/components/constructor/modules/ReservasWebBookingStart';
 
 const complete = (quantity = 1) => ({ ...createReservasWebBookingDraft(quantity), contactFirstName: 'Otra', contactLastName: 'Persona', contactWhatsapp: '+506 8888-8888', participants: Array.from({ length: quantity }, (_, index) => ({ firstName: index ? 'María' : 'Iván', lastName: 'Romero', sex: 'prefer_not_to_say' as const, birthDate: '2000-01-02', identificationNumber: `ID-${index + 1}` })) });
 
@@ -30,4 +31,51 @@ test('another responsible requires a name, last name and WhatsApp while preservi
 test('participants form keeps PII in memory and maps the selected responsible only at public submission', () => {
   const form = fs.readFileSync(new URL('../src/components/constructor/modules/ReservasWebBookingForm.tsx', import.meta.url), 'utf8'); const start = fs.readFileSync(new URL('../src/components/constructor/modules/ReservasWebBookingStart.tsx', import.meta.url), 'utf8');
   assert.doesNotMatch(form, /localStorage|sessionStorage|settingsValues|console\.|fetch\(|\/reservations|holdToken/i); assert.doesNotMatch(start, /localStorage|sessionStorage|console\./i); assert.match(start, /resolveReservasWebResponsible\(draft\)/); assert.match(start, /contactFirstName: responsible\.firstName\.trim\(\)/); assert.match(start, /createReservasWebBookingDraft\(next\.quantity, current\)/);
+});
+
+test('booking quantity supports temporary empty editing, clamps on normalization, and uses explicit controls', () => {
+  const start = fs.readFileSync(new URL('../src/components/constructor/modules/ReservasWebBookingStart.tsx', import.meta.url), 'utf8');
+  assert.equal(normalizeReservasWebBookingQuantity('', 8), 1);
+  assert.equal(normalizeReservasWebBookingQuantity('3', 8), 3);
+  assert.equal(normalizeReservasWebBookingQuantity('99', 8), 8);
+  assert.match(start, /inputMode="numeric"/);
+  assert.match(start, /aria-label="Disminuir cantidad"/);
+  assert.match(start, /aria-label="Aumentar cantidad"/);
+  assert.match(start, /type="button" aria-label="Disminuir cantidad"/);
+  assert.match(start, /type="button" aria-label="Aumentar cantidad"/);
+  assert.doesNotMatch(start, /type="number"/);
+  assert.match(start, /createPublicReservasWebHold\(publicIdentifier, nextQuantity, key\(\)\)/);
+});
+
+test('WhatsApp selector is compact when closed and retains full country labels in its dropdown', () => {
+  const draft = complete(1);
+  const markup = renderToStaticMarkup(React.createElement(ReservasWebBookingForm, { moduleId: 'module-a', quantity: 1, countdown: '02:59', draft, onDraftChange: () => {}, onChangeQuantity: () => {} }));
+  assert.match(markup, />\+506<\/button>/);
+  assert.doesNotMatch(markup, /Costa Rica \(\+506\)/);
+  const form = fs.readFileSync(new URL('../src/components/constructor/modules/ReservasWebBookingForm.tsx', import.meta.url), 'utf8');
+  assert.match(form, /\{country\.countryName\} \(\{country\.callingCode\}\)/);
+  assert.match(form, /className="min-w-0 flex-1/);
+  assert.match(form, /text-white disabled:text-text\/50/);
+});
+
+test('a valid FREE booking reaches exactly one reservation attempt on the first Confirmar tap', () => {
+  const start = fs.readFileSync(new URL('../src/components/constructor/modules/ReservasWebBookingStart.tsx', import.meta.url), 'utf8');
+  const draft = complete(1);
+  assert.deepEqual(validateReservasWebBookingDraft(draft, 1, '2026-08-11'), {});
+  assert.equal((start.match(/onClick=\{onSubmit\}/g) || []).length, 1);
+  assert.equal((start.match(/createPublicReservasWebReservation\(\{/g) || []).length, 1);
+  assert.match(start, /const mode = activity\.pricing\.isFree \? null : paymentMode/);
+  assert.match(start, /if \(!activity\.pricing\.isFree && \(!paymentMethod/);
+  assert.match(start, /<button type="button" disabled=\{disabled \|\| \(paid &&/);
+  const submitBody = start.slice(start.indexOf('const submit ='), start.indexOf("  if (state === 'success'"));
+  assert.doesNotMatch(submitBody, /preventDefault|setTimeout|retry|double.?click/i);
+});
+
+test('booking controls retain structural safeguards for mobile through desktop widths', () => {
+  const start = fs.readFileSync(new URL('../src/components/constructor/modules/ReservasWebBookingStart.tsx', import.meta.url), 'utf8');
+  const form = fs.readFileSync(new URL('../src/components/constructor/modules/ReservasWebBookingForm.tsx', import.meta.url), 'utf8');
+  assert.match(start, /className="min-w-0 flex-1 rounded-lg border border-border bg-background px-3 py-2 text-center"/);
+  assert.match(start, /className="mt-1 flex items-center gap-2"/);
+  assert.match(form, /className="relative shrink-0"/);
+  assert.match(form, /className="min-w-0 flex-1 rounded-lg border border-border bg-background px-3 py-2 font-normal"/);
 });

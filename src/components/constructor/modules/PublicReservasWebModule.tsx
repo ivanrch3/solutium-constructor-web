@@ -30,6 +30,7 @@ const formatSession = (session: PublicReservasWebActivity['sessions'][number], t
 const formatPrice = (activity: PublicReservasWebActivity) => activity.pricing.isFree
   ? 'Gratis'
   : new Intl.NumberFormat('es', { style: 'currency', currency: activity.pricing.currency }).format(activity.pricing.effectivePrice);
+const formatMoney = (amount: number, currency: string) => new Intl.NumberFormat('es', { style: 'currency', currency }).format(amount);
 
 export const PublicReservasWebActivityContent = ({ moduleId, snapshot, activity, onRefreshActivity = () => {} }: { moduleId: string; snapshot: ReservasWebPublishedSnapshot; activity: PublicReservasWebActivity; onRefreshActivity?: () => void }) => {
   const countdown = snapshot.display.showCountdown ? getPublicReservasWebCountdown(activity.countdownTarget, Date.now(), activity.timezone) : null;
@@ -45,7 +46,7 @@ export const PublicReservasWebActivityContent = ({ moduleId, snapshot, activity,
         {activity.modality && <div><dt className="font-semibold">Modalidad</dt><dd>{activity.modality}</dd></div>}
         {sessions.length > 0 && <div><dt className="font-semibold">Sesiones</dt><dd className="space-y-1">{sessions.map((session, index) => <div key={`${session}-${index}`}>{session}</div>)}</dd></div>}
         {activity.location && <div><dt className="font-semibold">Ubicación</dt><dd>{activity.maps ? <a href={activity.maps} target="_blank" rel="noreferrer" className="underline">{activity.location}</a> : activity.location}</dd></div>}
-        {snapshot.display.showPrice && <div><dt className="font-semibold">Precio</dt><dd>{formatPrice(activity)}</dd></div>}
+        {snapshot.display.showPrice && <><div><dt className="font-semibold">Precio por persona</dt><dd>{formatPrice(activity)}</dd></div>{!activity.pricing.isFree && <div><dt className="font-semibold">Pago requerido para reservar</dt><dd>{formatMoney(activity.pricing.requiredAmount, activity.pricing.currency)} por persona</dd>{activity.pricing.paymentMode === 'deposit' && <><dd>Saldo pendiente por persona: {formatMoney(activity.pricing.pendingBalance, activity.pricing.currency)}</dd><dd>El monto de reserva es {activity.pricing.depositRefundable ? 'reembolsable' : 'no reembolsable'}.</dd></>}</div>}</>}
         {activity.capacity.visible && snapshot.display.showTotalCapacity && typeof activity.capacity.total === 'number' && <div><dt className="font-semibold">Cupos</dt><dd>Capacidad total: {activity.capacity.total}</dd></div>}
         {activity.capacity.visible && snapshot.display.showAvailableCapacity && typeof activity.capacity.available === 'number' && <div><dt className="font-semibold">Disponibilidad</dt><dd>Cupos disponibles: {activity.capacity.available}</dd></div>}
         {countdown && <div><dt className="font-semibold">Cuenta regresiva</dt><dd>{countdown}</dd></div>}

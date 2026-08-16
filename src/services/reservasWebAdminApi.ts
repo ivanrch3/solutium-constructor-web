@@ -36,6 +36,8 @@ export type ReservasWebActivityAdminDetail = {
   title: string | null;
   shortDescription: string | null;
   expandedDescription: string | null;
+  imageSource: 'catalog_item' | 'url' | string | null;
+  customImageUrl: string | null;
   facilitator: string | null;
   facilitatorWhatsapp: string | null;
   modality: string;
@@ -50,7 +52,11 @@ export type ReservasWebActivityAdminDetail = {
   promotionalPrice: number | null;
   promotionEndsAt: string | null;
   currency: string | null;
+  paymentMode: 'full' | 'deposit';
+  depositAmount: number | null;
+  depositRefundable: boolean | null;
   sinpePhone: string | null;
+  sinpeBeneficiary: string | null;
   paymentReceiptWhatsapp: string | null;
   onvopayUrl: string | null;
   selectedWhatsappChannelId: string | null;
@@ -70,6 +76,8 @@ type ReservasWebActivityWritableFields = {
   title_override?: string | null;
   short_description_override?: string | null;
   long_description_override?: string | null;
+  image_source?: 'catalog_item' | 'url';
+  custom_image_url?: string | null;
   facilitator_name?: string | null;
   facilitator_whatsapp?: string | null;
   modality: 'presencial' | 'virtual' | 'hybrid';
@@ -84,7 +92,11 @@ type ReservasWebActivityWritableFields = {
   promotional_price?: number | null;
   promotion_ends_at?: string | null;
   currency?: string | null;
+  payment_mode?: 'full' | 'deposit';
+  deposit_amount?: number | null;
+  deposit_refundable?: boolean | null;
   sinpe_phone?: string | null;
+  sinpe_beneficiary?: string | null;
   payment_receipt_whatsapp?: string | null;
   onvopay_url?: string | null;
   selected_whatsapp_channel_id?: string | null;

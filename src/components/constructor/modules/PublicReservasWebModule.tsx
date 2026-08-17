@@ -39,6 +39,7 @@ export const PublicReservasWebActivityContent = ({ moduleId, snapshot, activity,
   const depositAmount = activity.pricing.paymentOptions?.includes('deposit') ? activity.pricing.depositAmountPerPerson : null;
   const requiredReservationAmount = typeof depositAmount === 'number' ? depositAmount : activity.pricing.requiredAmount;
   const available = activity.capacity.available;
+  const showNumericAvailability = activity.capacity.visible && snapshot.display.showAvailableCapacity && typeof available === 'number' && available > 0 && available <= 10;
 
   return <section data-module-id={moduleId} style={{ backgroundColor: snapshot.style.surfaceColor || undefined, borderColor: snapshot.style.borderColor || undefined, borderRadius: snapshot.style.borderRadius }} className="mx-auto w-full max-w-xl overflow-hidden border bg-surface text-text shadow-sm">
     {activity.image ? <img src={activity.image} alt={activity.title} className="block w-full aspect-[3/1] object-cover" /> : <div role="img" aria-label={`Imagen no disponible para ${activity.title}`} className="w-full aspect-[3/1] bg-secondary" />}
@@ -50,8 +51,8 @@ export const PublicReservasWebActivityContent = ({ moduleId, snapshot, activity,
         {sessions.length > 0 && <div><dt className="font-semibold">Sesiones</dt><dd className="space-y-1">{sessions.map((session, index) => <div key={`${session}-${index}`}>{session}</div>)}</dd></div>}
         {activity.location && <div><dt className="font-semibold">Ubicación</dt><dd>{activity.maps ? <a href={activity.maps} target="_blank" rel="noreferrer" className="underline">{activity.location}</a> : activity.location}</dd></div>}
         {snapshot.display.showPrice && <><div><dt className="font-semibold">Precio por persona</dt><dd>{formatPrice(activity)}</dd></div>{!activity.pricing.isFree && typeof requiredReservationAmount === 'number' && <div><dt className="font-semibold">Pago requerido para reservar</dt><dd>{formatMoney(requiredReservationAmount, activity.pricing.currency)} por persona</dd>{typeof depositAmount === 'number' && <dd>El monto de reserva es {activity.pricing.depositRefundable ? 'reembolsable' : 'no reembolsable'}.</dd>}</div>}</>}
-        {activity.capacity.visible && <div><dt className="font-semibold">Cupos</dt><dd>Cupo limitado</dd></div>}
-        {activity.capacity.visible && snapshot.display.showAvailableCapacity && typeof available === 'number' && available > 0 && available <= 10 && <div><dt className="font-semibold">Disponibilidad</dt><dd>{available === 1 ? 'Queda 1 espacio' : `Quedan ${available} espacios`}</dd></div>}
+        {activity.capacity.visible && !showNumericAvailability && <div><dt className="font-semibold">Cupos</dt><dd>Limitados</dd></div>}
+        {showNumericAvailability && <div><dt className="font-semibold">Disponibilidad</dt><dd>{available === 1 ? 'Queda 1 espacio' : `Quedan ${available} espacios`}</dd></div>}
         {countdown && <div><dt className="font-semibold">Inicio del evento en:</dt><dd>{countdown}</dd></div>}
       </dl>
       {unavailable && <p id={`${moduleId}-booking-status`} className="rounded-lg bg-secondary p-3 text-xs">Esta actividad no está disponible.</p>}

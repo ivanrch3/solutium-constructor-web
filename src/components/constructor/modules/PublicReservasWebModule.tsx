@@ -38,7 +38,7 @@ export const PublicReservasWebActivityContent = ({ moduleId, snapshot, activity,
   const sessions = activity.sessions.map((session) => formatSession(session, activity.timezone)).filter((session): session is string => Boolean(session));
 
   return <section data-module-id={moduleId} style={{ backgroundColor: snapshot.style.surfaceColor || undefined, borderColor: snapshot.style.borderColor || undefined, borderRadius: snapshot.style.borderRadius }} className="mx-auto w-full max-w-xl overflow-hidden border bg-surface text-text shadow-sm">
-    {activity.image ? <img src={activity.image} alt={activity.title} className="h-52 w-full object-cover" /> : <div role="img" aria-label={`Imagen no disponible para ${activity.title}`} className="h-44 w-full bg-secondary" />}
+    {activity.image ? <img src={activity.image} alt={activity.title} className="block w-full aspect-[3/1] object-cover" /> : <div role="img" aria-label={`Imagen no disponible para ${activity.title}`} className="w-full aspect-[3/1] bg-secondary" />}
     <div style={{ padding: snapshot.style.padding }} className="space-y-4">
       <div className="space-y-2"><h2 className="text-xl font-bold">{activity.title}</h2>{activity.shortDescription && <p className="text-sm text-text/70">{activity.shortDescription}</p>}</div>
       <dl className="space-y-2 text-sm">

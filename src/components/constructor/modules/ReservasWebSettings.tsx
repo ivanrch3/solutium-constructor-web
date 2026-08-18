@@ -3,6 +3,7 @@ import type { Product } from '../../../types/schema';
 import { isReservasWebActivityArchived, type ReservasWebActivitySummary, type ReservasWebEligibleWhatsAppChannel, type ReservasWebWhatsAppReadiness } from '../../../types/reservasWeb';
 import { getReservasWebActivity, type ReservasWebActivityAdminDetail } from '../../../services/reservasWebAdminApi';
 import { ReservasWebActivityForm, type ReservasWebActivityFormMode } from './ReservasWebActivityForm';
+import { formatReservasWebMoney } from '../../../utils/reservasWebMoney';
 import {
   getReservasWebConfigSettingKey,
   normalizeReservasWebConfig,
@@ -37,7 +38,7 @@ export const formatReservasWebSessionSummary = (activity: ReservasWebActivitySum
 export const formatReservasWebPrice = (activity: ReservasWebActivitySummary): string => {
   if (activity.isFree) return 'Gratis';
   const amount = activity.promotionalPrice ?? activity.regularPrice;
-  return amount === null ? 'Precio no disponible' : new Intl.NumberFormat('es', { style: 'currency', currency: activity.currency || 'USD' }).format(amount);
+  return amount === null ? 'Precio no disponible' : formatReservasWebMoney(amount, activity.currency);
 };
 
 type ReservasWebSettingsProps = { moduleId: string; projectId?: string | null; products?: Product[]; settingsValues: Record<string, unknown>; reservasWebActivities?: ReservasWebActivitySummary[]; reservasWebEligibleWhatsAppChannels?: ReservasWebEligibleWhatsAppChannel[]; onActivitiesRefreshed?: (activities: ReservasWebActivitySummary[]) => void; onSettingChange: (elementId: string, settingId: string, value: unknown) => void; };

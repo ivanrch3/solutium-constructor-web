@@ -1,13 +1,14 @@
 import React from 'react';
 import { checkPublicReservasWebContact, createPublicReservasWebHold, createPublicReservasWebReservation, type PublicReservasWebActivity, type PublicReservasWebHold, type PublicReservasWebReservation } from '../../../services/reservasWebPublicApi';
 import { createReservasWebBookingDraft, ReservasWebBookingForm, resolveReservasWebResponsible, type ReservasWebBookingDraft, validateReservasWebBookingDraft } from './ReservasWebBookingForm';
+import { formatReservasWebMoney } from '../../../utils/reservasWebMoney';
 
 type State = 'idle' | 'choosing_quantity' | 'creating_hold' | 'form' | 'checking_contact' | 'review' | 'submitting' | 'success' | 'hold_expired' | 'error';
 type Props = { moduleId: string; publicIdentifier: string; activity: PublicReservasWebActivity; label: string; ctaBackgroundColor: string; ctaTextColor: string; onRefreshActivity: () => void };
 const key = () => crypto.randomUUID();
 export const getHoldCountdownLabel = (expiresAt: string, now = Date.now()) => { const ms = Date.parse(expiresAt) - now; if (!Number.isFinite(ms) || ms <= 0) return null; const seconds = Math.ceil(ms / 1000); return `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`; };
 export const isReservasWebHoldExpired = (expiresAt: string, now = Date.now()) => getHoldCountdownLabel(expiresAt, now) === null;
-const money = (value: number, currency: string) => new Intl.NumberFormat('es', { style: 'currency', currency }).format(value);
+const money = (value: number, currency: string) => formatReservasWebMoney(value, currency);
 const clearSensitive = (draft: ReservasWebBookingDraft): ReservasWebBookingDraft => ({ ...draft, participants: draft.participants.map(({ identificationNumber: _id, ...person }) => ({ ...person, identificationNumber: '' })) });
 const paymentFor = (activity: PublicReservasWebActivity, quantity: number, mode: 'full' | 'deposit') => { const total = activity.pricing.effectivePrice * quantity; const requiredAmount = mode === 'deposit' ? Number(activity.pricing.depositAmountPerPerson || 0) * quantity : total; return { total, requiredAmount, pendingBalance: Math.max(0, total - requiredAmount) }; };
 export const normalizeReservasWebBookingQuantity = (value: string, maximum: number) => Math.min(maximum, Math.max(1, Number.parseInt(value, 10) || 1));

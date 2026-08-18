@@ -72,7 +72,7 @@ test('save uses a semantic dirty baseline and returns to disabled after revertin
   assert.equal(hasReservasWebActivityDraftChanges({...baseline,sessions:[...baseline.sessions]},baseline),false);
   assert.equal(hasReservasWebActivityDraftChanges({...baseline,short_description_override:null},{...baseline,short_description_override:''}),false);
   const source=fs.readFileSync(new URL('../src/components/constructor/modules/ReservasWebActivityForm.tsx',import.meta.url),'utf8');
-  assert.match(source,/disabled=\{!canSave\}/);assert.match(source,/setBaseline\(normalizedDraft\)/);assert.match(source,/grid-cols-3/);assert.match(source,/Archivar actividad.*Guardar actividad.*Cerrar/);
+  assert.match(source,/disabled=\{!canSave\}/);assert.match(source,/setBaseline\(normalizedDraft\)/);assert.match(source,/grid-cols-3/);assert.match(source,/Archivar actividad.*Guardar actividad.*Cerrar/);assert.match(source,/sinpe_beneficiary: detail\.sinpeBeneficiary/);
 });
 
 test('paid activities require price, currency and one valid payment method while free stays valid',()=>{

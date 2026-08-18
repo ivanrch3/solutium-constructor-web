@@ -1,5 +1,6 @@
 import { isReservasWebActivityArchived, type ReservasWebActivitySummary } from '../../../types/reservasWeb';
 import type { ReservasWebConfigV1 } from './reservasWebConfig';
+import { formatReservasWebMoney } from '../../../utils/reservasWebMoney';
 
 type ReservasWebPreviewProps = {
   moduleId: string;
@@ -21,10 +22,9 @@ const formatSessionSummary = (activity: ReservasWebActivitySummary): string => {
 
 const formatPrice = (activity: ReservasWebActivitySummary): { regular: string; promotional: string | null } => {
   if (activity.isFree) return { regular: 'Gratis', promotional: null };
-  const formatter = new Intl.NumberFormat('es', { style: 'currency', currency: activity.currency || 'USD' });
-  const regular = activity.regularPrice === null ? 'Precio no disponible' : formatter.format(activity.regularPrice);
+  const regular = activity.regularPrice === null ? 'Precio no disponible' : formatReservasWebMoney(activity.regularPrice, activity.currency);
   const promotionIsActive = activity.promotionalPrice !== null && (!activity.promotionEndsAt || new Date(activity.promotionEndsAt).getTime() >= Date.now());
-  return { regular, promotional: promotionIsActive ? formatter.format(activity.promotionalPrice!) : null };
+  return { regular, promotional: promotionIsActive ? formatReservasWebMoney(activity.promotionalPrice!, activity.currency) : null };
 };
 
 export const ReservasWebPreview = ({ moduleId, config, reservasWebActivities = [] }: ReservasWebPreviewProps) => {

@@ -4,6 +4,7 @@ import { getPublicReservasWebActivity, type PublicReservasWebActivity } from '..
 import { getPrimaryPublicReservasWebActivityIdentifier } from './reservasWebPublicContract';
 import { ReservasWebBookingStart } from './ReservasWebBookingStart';
 import { ReservasWebWaitlistForm } from './ReservasWebWaitlistForm';
+import { formatReservasWebMoney } from '../../../utils/reservasWebMoney';
 
 type PublicReservasWebModuleProps = { moduleId: string; snapshot: ReservasWebPublishedSnapshot | null; enabled: boolean };
 
@@ -29,8 +30,8 @@ const formatSession = (session: PublicReservasWebActivity['sessions'][number], t
 
 const formatPrice = (activity: PublicReservasWebActivity) => activity.pricing.isFree
   ? 'Gratis'
-  : new Intl.NumberFormat('es', { style: 'currency', currency: activity.pricing.currency }).format(activity.pricing.effectivePrice);
-const formatMoney = (amount: number, currency: string) => new Intl.NumberFormat('es', { style: 'currency', currency }).format(amount);
+  : formatReservasWebMoney(activity.pricing.effectivePrice, activity.pricing.currency);
+const formatMoney = (amount: number, currency: string) => formatReservasWebMoney(amount, currency);
 
 export const PublicReservasWebActivityContent = ({ moduleId, snapshot, activity, onRefreshActivity = () => {} }: { moduleId: string; snapshot: ReservasWebPublishedSnapshot; activity: PublicReservasWebActivity; onRefreshActivity?: () => void }) => {
   const countdown = snapshot.display.showCountdown ? getPublicReservasWebCountdown(activity.countdownTarget, Date.now(), activity.timezone) : null;
@@ -50,7 +51,7 @@ export const PublicReservasWebActivityContent = ({ moduleId, snapshot, activity,
         {activity.modality && activity.modality.toLocaleLowerCase('es') !== 'presencial' && <div><dt className="font-semibold">Modalidad</dt><dd>{activity.modality}</dd></div>}
         {sessions.length > 0 && <div><dt className="font-semibold">Sesiones</dt><dd className="space-y-1">{sessions.map((session, index) => <div key={`${session}-${index}`}>{session}</div>)}</dd></div>}
         {activity.location && <div><dt className="font-semibold">Ubicación</dt><dd>{activity.maps ? <a href={activity.maps} target="_blank" rel="noreferrer" className="underline">{activity.location}</a> : activity.location}</dd></div>}
-        {snapshot.display.showPrice && <><div><dt className="font-semibold">Precio por persona</dt><dd>{formatPrice(activity)}</dd></div>{!activity.pricing.isFree && typeof requiredReservationAmount === 'number' && <div><dt className="font-semibold">Pago requerido para reservar</dt><dd>{formatMoney(requiredReservationAmount, activity.pricing.currency)} por persona</dd>{typeof depositAmount === 'number' && <dd>El monto de reserva es {activity.pricing.depositRefundable ? 'reembolsable' : 'no reembolsable'}.</dd>}</div>}</>}
+        {snapshot.display.showPrice && <><div><dt className="font-semibold">Precio por persona</dt><dd>{formatPrice(activity)}</dd></div>{!activity.pricing.isFree && typeof requiredReservationAmount === 'number' && <div><dt className="font-semibold">Monto para reservar</dt><dd>{formatMoney(requiredReservationAmount, activity.pricing.currency)} por persona</dd>{typeof depositAmount === 'number' && <dd>El monto de reserva es {activity.pricing.depositRefundable ? 'reembolsable' : 'no reembolsable'}.</dd>}</div>}</>}
         {activity.capacity.visible && !showNumericAvailability && <div><dt className="font-semibold">Cupos</dt><dd>Limitados</dd></div>}
         {showNumericAvailability && <div><dt className="font-semibold">Disponibilidad</dt><dd>{available === 1 ? 'Queda 1 espacio' : `Quedan ${available} espacios`}</dd></div>}
         {countdown && <div><dt className="font-semibold">Inicio del evento en:</dt><dd>{countdown}</dd></div>}

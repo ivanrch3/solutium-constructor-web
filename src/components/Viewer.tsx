@@ -1141,7 +1141,7 @@ export const Viewer: React.FC<ViewerProps> = ({
           case 'navegacion':
             // SIP v5.5 (Protocolo 12.0): Specialized routing for dual-type modules
             if (moduleId.startsWith('mod_footer_1')) {
-              return <FooterModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} />;
+              return <FooterModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} logoUrl={globalMenuLogoUrl} logoWhiteUrl={globalMenuLogoWhiteUrl} />;
             }
             return (
               <MenuModule
@@ -1168,7 +1168,7 @@ export const Viewer: React.FC<ViewerProps> = ({
                 willRender: true
               });
             }
-            return <FooterModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} />;
+            return <FooterModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} logoUrl={globalMenuLogoUrl} logoWhiteUrl={globalMenuLogoWhiteUrl} />;
           default:
             return null;
         }

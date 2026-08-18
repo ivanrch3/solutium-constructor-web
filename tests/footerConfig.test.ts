@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { composeFooterCopyright, createDefaultFooterV2Config, getFooterConfigKey, hasFooterV2Config, isValidFooterV2Config, migrateLegacyFooterToV2, normalizeFooterV2Config } from '../src/components/constructor/modules/footerConfig';
+import { composeFooterCopyright, createDefaultFooterV2Config, getFooterConfigKey, hasFooterV2Config, isValidFooterV2Config, migrateLegacyFooterToV2, normalizeFooterV2Config, resolveFooterBrandLogo } from '../src/components/constructor/modules/footerConfig';
 import { buildPublishedModuleSettings } from '../src/utils/publishedModuleSettings';
 
 const config = createDefaultFooterV2Config({ name: 'Acme', email: 'hola@acme.test', whatsapp: '+506 8888 8888' });
@@ -19,6 +19,12 @@ const editedCopyright = { ...config.bottomBar, copyright: 'Solutium' };
 assert.equal(editedCopyright.yearMode, config.bottomBar.yearMode);
 assert.equal(editedCopyright.fixedYear, config.bottomBar.fixedYear);
 assert.equal(Object.prototype.hasOwnProperty.call(config.bottomBar, 'title'), false);
+const projectBrand = config.columns[0] as Extract<typeof config.columns[number], { type: 'brand' }>;
+assert.equal(resolveFooterBrandLogo(projectBrand, 'https://cdn.test/project.svg', null, null), 'https://cdn.test/project.svg');
+assert.equal(resolveFooterBrandLogo(projectBrand, null, null, 'https://cdn.test/project-fallback.svg'), 'https://cdn.test/project-fallback.svg');
+assert.equal(resolveFooterBrandLogo({ ...projectBrand, logoSource: 'custom', customLogoUrl: 'https://cdn.test/custom.svg' }, 'https://cdn.test/project.svg', null, null), 'https://cdn.test/custom.svg');
+assert.equal(resolveFooterBrandLogo({ ...projectBrand, logoSource: 'custom', customLogoUrl: '' }, 'https://cdn.test/project.svg', null, null), '');
+assert.equal(resolveFooterBrandLogo({ ...projectBrand, showLogo: false }, 'https://cdn.test/project.svg', null, null), '');
 
 const partial = normalizeFooterV2Config({ version: 2, columns: [{ id: 'stable', type: 'hours', days: [{ label: 'Lunes', closed: true }] }, { type: 'invalid' }, { type: 'text', content: 'Texto' }, { type: 'social', links: [] }, { type: 'menu', links: [] }] });
 assert.ok(partial);

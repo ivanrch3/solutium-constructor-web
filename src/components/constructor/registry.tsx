@@ -330,7 +330,7 @@ export const FOOTER_MODULE: WebModule = {
   type: 'footer',
   iconKey: 'footer',
   name: 'Pie de página',
-  globalGroups: ['estructura', 'estilo'],
+  globalGroups: ['estructura', 'estilo', 'tipografia', 'multimedia'],
   globalSettings: {
     estructura: [
       { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 40, min: 40, max: 160, unit: 'px' },
@@ -343,7 +343,15 @@ export const FOOTER_MODULE: WebModule = {
       { id: 'border_top', label: 'Borde Superior', type: 'boolean', defaultValue: true },
       { id: 'border_color', label: 'Color de Borde', type: 'color', defaultValue: '#E2E8F0' }
     ],
-    contenido: [], tipografia: [], multimedia: [], interaccion: []
+    tipografia: [
+      { id: 'footer_title_size', label: 'Tamaño de títulos', type: 'range', defaultValue: 18, min: 12, max: 32, step: 1, unit: 'px', subsection: 'Títulos' },
+      { id: 'footer_title_weight', label: 'Peso de títulos', type: 'select', defaultValue: 700, options: [{ label: '400 · Normal', value: 400 }, { label: '500 · Medium', value: 500 }, { label: '600 · Semibold', value: 600 }, { label: '700 · Bold', value: 700 }, { label: '800 · Extra Bold', value: 800 }], subsection: 'Títulos' },
+      { id: 'footer_subtitle_size', label: 'Tamaño de subtítulos / texto secundario', type: 'range', defaultValue: 14, min: 10, max: 24, step: 1, unit: 'px', subsection: 'Subtítulos / texto secundario' },
+      { id: 'footer_subtitle_weight', label: 'Peso de subtítulos / texto secundario', type: 'select', defaultValue: 400, options: [{ label: '400 · Normal', value: 400 }, { label: '500 · Medium', value: 500 }, { label: '600 · Semibold', value: 600 }, { label: '700 · Bold', value: 700 }, { label: '800 · Extra Bold', value: 800 }], subsection: 'Subtítulos / texto secundario' }
+    ],
+    multimedia: [
+      { id: 'footer_logo_scale', label: 'Tamaño del logo', type: 'range', defaultValue: 100, min: 50, max: 100, step: 5, unit: '%', description: 'Ajusta el tamaño del logo dentro de su espacio sin modificar la estructura del pie de página.' }
+    ], contenido: [], interaccion: []
   },
   elements: [
     { id: 'el_footer_columns', name: 'Columnas', type: 'structure', groups: ['estructura', 'contenido', 'multimedia'], settings: {

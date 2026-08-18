@@ -176,4 +176,19 @@ export const resolveFooterBrandLogo = (
   if (column.logoSource === 'custom') return text(column.customLogoUrl).trim();
   return text(legacyLogoUrl || logoUrl || logoWhiteUrl || projectLogoUrl).trim();
 };
+export const normalizeFooterLogoScale = (value: unknown, fallback = 100) => {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return fallback;
+  return Math.min(100, Math.max(50, Math.round(numeric / 5) * 5));
+};
+export const normalizeFooterTypographySize = (value: unknown, fallback: number, min = 10, max = 48) => {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return fallback;
+  return Math.min(max, Math.max(min, Math.round(numeric)));
+};
+export const normalizeFooterFontWeight = (value: unknown, fallback: number) => {
+  const aliases: Record<string, number> = { light: 300, normal: 400, medium: 500, semibold: 600, bold: 700, extrabold: 800, black: 900 };
+  const numeric = typeof value === 'string' && aliases[value] ? aliases[value] : Number(value);
+  return [400, 500, 600, 700, 800].includes(numeric) ? numeric : fallback;
+};
 export const getFooterDayDefaults = () => DAYS.map((label) => ({ id: createId('footer_day'), label, closed: false, open: '09:00', close: '17:00' }));

@@ -5,7 +5,8 @@ import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
 import { TextRenderer } from '../TextRenderer';
 import { InlineEditableText } from '../InlineEditableText';
 import { useEditorStore } from '../../../store/editorStore';
-import { resolveFooterSocialLinks } from '../../../utils/socialUtils';
+import { resolveFooterSocialLinks, SOCIAL_PLATFORMS, normalizeSocialPlatform } from '../../../utils/socialUtils';
+import { normalizeFooterV2Config, type FooterColumn, type FooterLink } from './footerConfig';
 import { SectionAnimation } from '../animations/SectionAnimation';
 import { normalizeSectionAnimation } from '../../../constants/moduleAnimations';
 
@@ -22,6 +23,59 @@ const resolveThemeColor = (
   if (!darkMode) return safeValue || lightDefault;
   if (!safeValue || safeValue.toLowerCase() === safeLight) return darkDefault;
   return safeValue;
+};
+
+const footerHref = (value: string, type: 'phone' | 'email' | 'whatsapp') => {
+  const clean = String(value || '').trim();
+  if (!clean) return '';
+  if (clean.startsWith('tel:') || clean.startsWith('mailto:') || clean.startsWith('http://') || clean.startsWith('https://')) return clean;
+  if (type === 'phone') return `tel:${clean.replace(/[^+\d]/g, '')}`;
+  if (type === 'email') return `mailto:${clean}`;
+  return `https://wa.me/${clean.replace(/\D/g, '')}`;
+};
+
+const V2FooterLink: React.FC<{ link: FooterLink }> = ({ link }) => (
+  <a href={link.url} target={link.target} rel={link.target === '_blank' ? 'noreferrer' : undefined} className="break-words opacity-70 transition-opacity hover:opacity-100 hover:underline">{link.label}</a>
+);
+
+const FooterV2Renderer: React.FC<{
+  config: ReturnType<typeof normalizeFooterV2Config>;
+  moduleId: string;
+  project?: any;
+  logoUrl?: string | null;
+  logoWhiteUrl?: string | null;
+  isPreviewMode: boolean;
+  bgColor: string;
+  textColor: string;
+  borderTop: any;
+  borderColor: string;
+  maxWidth: number;
+  sectionAnimation: any;
+  animationSpeed: number;
+  darkMode: boolean;
+}> = ({ config, project, logoUrl, logoWhiteUrl, isPreviewMode, bgColor, textColor, borderTop, borderColor, maxWidth, sectionAnimation, animationSpeed, darkMode }) => {
+  if (!config) return null;
+  const desktopClass = ({ 1: '@lg:grid-cols-1', 2: '@lg:grid-cols-2', 3: '@lg:grid-cols-3', 4: '@lg:grid-cols-4' } as Record<number, string>)[config.columns.length] || '@lg:grid-cols-1';
+  const titleColor = darkMode ? '#FFFFFF' : 'var(--text-color)';
+  const renderColumn = (column: FooterColumn) => {
+    const heading = column.type !== 'brand' ? column.title : undefined;
+    const header = heading ? <h4 className="break-words font-bold uppercase tracking-widest" style={{ color: titleColor }}>{heading}</h4> : null;
+    if (column.type === 'brand') {
+      const image = column.logoSource === 'custom' ? column.customLogoUrl : (logoUrl || logoWhiteUrl || project?.logoUrl);
+      return <div className="min-w-0 space-y-4">{column.showLogo && image && <img src={image} alt={column.name || 'Logo'} className="h-auto max-w-full object-contain" referrerPolicy="no-referrer" />}{column.showName && column.name && <h4 className="break-words text-lg font-bold" style={{ color: titleColor }}>{column.name}</h4>}{column.showDescription && column.description && <p className="break-words text-sm leading-relaxed opacity-80">{column.description}</p>}</div>;
+    }
+    if (column.type === 'menu') return <div className="min-w-0 space-y-4">{header}<ul className="space-y-3 text-sm">{column.links.map((link) => <li key={link.id}><V2FooterLink link={link} /></li>)}</ul></div>;
+    if (column.type === 'contact') return <div className="min-w-0 space-y-4">{header}<div className="space-y-3 text-sm">{column.showPhone && column.phone && <a className="block break-words opacity-80 hover:underline" href={footerHref(column.phone, 'phone')}>{column.phone}</a>}{column.showWhatsapp && column.whatsapp && <a className="block break-words opacity-80 hover:underline" href={footerHref(column.whatsapp, 'whatsapp')}>{column.whatsapp}</a>}{column.showEmail && column.email && <a className="block break-words opacity-80 hover:underline" href={footerHref(column.email, 'email')}>{column.email}</a>}{column.showAddress && column.address && <span className="block break-words opacity-80">{column.address}</span>}</div></div>;
+    if (column.type === 'social') return <div className="min-w-0 space-y-4">{header}<div className={column.presentation === 'icon_label' ? 'space-y-3 text-sm' : 'flex flex-wrap items-center gap-4'}>{column.links.filter((link) => link.url).map((link) => { const platform = normalizeSocialPlatform(link.platform) || 'website'; const definition = SOCIAL_PLATFORMS[platform as keyof typeof SOCIAL_PLATFORMS]; const label = link.label || definition?.label || platform; return <a key={link.id} href={link.url} target="_blank" rel="noreferrer" className="inline-flex max-w-full items-center gap-2 break-words opacity-80 hover:opacity-100">{definition?.icon && getIconElement(definition.icon)}{column.presentation === 'icon_label' && <span>{label}</span>}</a>; })}</div></div>;
+    if (column.type === 'text') return <div className="min-w-0 space-y-4">{header}{column.content && <p className="break-words whitespace-pre-wrap text-sm leading-relaxed opacity-80">{column.content}</p>}</div>;
+    return <div className="min-w-0 space-y-4">{header}<div className="space-y-2 text-sm">{column.days.map((day) => <div key={day.id} className="flex flex-wrap justify-between gap-2"><span>{day.label}</span><span className="opacity-75">{day.closed ? 'Cerrado' : `${day.open || ''} - ${day.close || ''}`}</span></div>)}</div></div>;
+  };
+  const getIconElement = (iconName?: string) => { const Icon = (LucideIcons as any)[iconName || 'Globe']; return Icon ? <Icon size={18} /> : null; };
+  const currentYear = new Date().getFullYear();
+  const bottomCopyright = config.bottomBar.copyright
+    ? config.bottomBar.copyright.replace(/\{year\}/g, String(config.bottomBar.yearMode === 'fixed' ? config.bottomBar.fixedYear || currentYear : currentYear))
+    : `© ${config.bottomBar.yearMode === 'fixed' ? config.bottomBar.fixedYear || currentYear : currentYear} ${project?.name || ''}`.trim();
+  return <SectionAnimation animation={sectionAnimation} speed={animationSpeed}><footer className="w-full py-12 @md:py-16 @lg:py-20" style={{ backgroundColor: bgColor, color: textColor, borderTopWidth: borderTop ? '1px' : '0px', borderTopStyle: 'solid', borderTopColor: borderColor }}><div className="mx-auto px-6" style={{ maxWidth: `${maxWidth}px` }}><div className={`grid grid-cols-1 @md:grid-cols-2 ${desktopClass} gap-8 @lg:gap-10 mb-16`}>{config.columns.map((column) => <div key={column.id}>{renderColumn(column)}</div>)}</div>{config.bottomBar.enabled && <div className="flex flex-col items-center justify-between gap-4 border-t border-current/30 pt-8 @md:flex-row"><p className="break-words text-xs font-medium opacity-70">{bottomCopyright}</p><div className="flex flex-wrap items-center justify-center gap-6 text-xs font-medium">{config.bottomBar.legalLinks.map((link) => <V2FooterLink key={link.id} link={link} />)}</div></div>}</div></footer></SectionAnimation>;
 };
 
 export const FooterModule: React.FC<{ 
@@ -56,6 +110,11 @@ export const FooterModule: React.FC<{
   const rawBorderColor = getVal(null, 'border_color', '#E2E8F0');
   const borderColor = resolveThemeColor(rawBorderColor, '#E2E8F0', 'rgba(255,255,255,0.1)', darkMode);
   const sectionTitleColor = resolveThemeColor(undefined, '#0F172A', '#FFFFFF', darkMode);
+  const project = (useEditorStore.getState() as any).project;
+  const v2Config = normalizeFooterV2Config(settingsValues[`${moduleId}_el_footer_config`], project);
+  if (v2Config) {
+    return <FooterV2Renderer config={v2Config} moduleId={moduleId} project={project} logoUrl={logoUrl} logoWhiteUrl={logoWhiteUrl} isPreviewMode={isPreviewMode} bgColor={bgColor} textColor={textColor} borderTop={borderTop} borderColor={borderColor} maxWidth={maxWidth} sectionAnimation={sectionAnimation} animationSpeed={globalThemeSectionAnimationSpeed} darkMode={darkMode} />;
+  }
 
   // Element: Brand
   const showLogo = getVal(`${moduleId}_el_footer_brand`, 'show_logo', true);
@@ -77,7 +136,6 @@ export const FooterModule: React.FC<{
 
   // Element: Social
   const rawSocialLinks = getVal(`${moduleId}_el_footer_social`, 'social_links', []);
-  const project = (useEditorStore.getState() as any).project;
   const socialLinks = resolveFooterSocialLinks(rawSocialLinks, project?.socials, { debug: !isPreviewMode && (window as any).SOLUTIUM_DEBUG_RENDER, moduleId });
   
   const rawIconColor = getVal(`${moduleId}_el_footer_social`, 'icon_color', '#64748B');

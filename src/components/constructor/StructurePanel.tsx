@@ -77,6 +77,8 @@ import {
   resolveWhatsAppOrdersCatalog
 } from './modules/whatsappOrdersCatalogOrganizer';
 import { WhatsAppOrdersCatalogOrganizerControl } from './modules/WhatsAppOrdersCatalogOrganizerControl';
+import { FooterColumnsControl } from './modules/FooterColumnsControl';
+import { hasFooterV2Config } from './modules/footerConfig';
 
 const COMPOSITION_ADDABLE_TYPES: CompositionElementType[] = [
   'heading',
@@ -1451,8 +1453,14 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
           const isBento = module.type === 'bento'
             || (module as any).templateId === 'mod_bento_1'
             || module.id.startsWith('mod_bento_1');
+          const isFooterV2 = module.type === 'footer'
+            && hasFooterV2Config(editorState.settingsValues, module.id);
+          const isFooterColumnsElementId = (elementId: string) => (
+            elementId === 'el_footer_columns' || elementId === `${module.id}_el_footer_columns`
+          );
           const allElements = [globalElement, ...module.elements].filter((element) => (
-            !isBento || (element.id !== 'el_bento_items' && element.id !== `${module.id}_el_bento_items`)
+            (!isBento || (element.id !== 'el_bento_items' && element.id !== `${module.id}_el_bento_items`))
+            && (!isFooterV2 || isFooterColumnsElementId(element.id) || element.type === 'global')
           ));
           const isCompositionSection = module.type === 'composition_section';
 
@@ -1747,18 +1755,33 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
 
                                 {!(isBentoItemsElement && selectedBentoCellIndex !== null) && getOrderedSettingGroups(module, element).map(group => {
                                   if (module.type === 'dynamic_cards' && isDynamicCardsRepeaterElement(module.id, element.id)) return null;
-                                  const hasSettings = element.type === 'global'
-                                    ? !!module.globalSettings?.[group]?.length
-                                    : !!element.settings?.[group]?.length;
-                                  const isAvailable = element.type === 'global'
-                                    ? element.groups.includes(group) || hasSettings
-                                    : element.groups.includes(group);
+                                   const hasSettings = element.type === 'global'
+                                     ? !!module.globalSettings?.[group]?.length
+                                     : !!element.settings?.[group]?.length;
+                                   const isAvailable = element.type === 'global'
+                                     ? element.groups.includes(group) || hasSettings
+                                     : element.groups.includes(group);
+                                   const isFooterColumnsElement = module.type === 'footer'
+                                     && isFooterColumnsElementId(element.id);
 
-                                   if (!isAvailable || !hasSettings) return null;
+                                   if (isFooterColumnsElement && group !== 'estructura') return null;
+                                   if (!isAvailable || (!hasSettings && !isFooterColumnsElement)) return null;
 
                                    const isDirectWhatsAppOrdersCatalog = module.type === 'whatsapp_orders'
                                      && element.id === 'el_whatsapp_orders_catalog'
                                      && group === 'contenido';
+                                   if (isFooterColumnsElement && group === 'estructura') {
+                                     return (
+                                       <div key={group} className="rounded-lg border border-border/30 bg-surface p-3 shadow-sm">
+                                         <FooterColumnsControl
+                                           moduleId={module.id}
+                                           settingsValues={editorState.settingsValues}
+                                           project={project}
+                                           onSettingChange={onSettingChange}
+                                         />
+                                       </div>
+                                     );
+                                   }
                                    if (isDirectWhatsAppOrdersCatalog) {
                                      return (
                                        <WhatsAppOrdersCatalogScopeControl

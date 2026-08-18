@@ -123,6 +123,7 @@ import {
   migrateEditorStateToPersistentModuleIds
 } from '../../utils/constructorStateMigration';
 import { buildPublishedModuleSettings } from '../../utils/publishedModuleSettings';
+import { createDefaultFooterV2Config, getFooterConfigKey } from './modules/footerConfig';
 import {
   createDefaultWhatsAppOrdersCatalogConfig,
   getWhatsAppOrdersCatalogConfigSettingKey,
@@ -4052,6 +4053,10 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     if (module.type === 'reservas_web') {
       initialValues[getReservasWebConfigSettingKey(moduleId)] =
         createDefaultReservasWebConfig();
+    }
+
+    if (module.type === 'footer') {
+      initialValues[getFooterConfigKey(moduleId)] = createDefaultFooterV2Config(project);
     }
 
     // Element settings

@@ -6,7 +6,7 @@ import { TextRenderer } from '../TextRenderer';
 import { InlineEditableText } from '../InlineEditableText';
 import { useEditorStore } from '../../../store/editorStore';
 import { resolveFooterSocialLinks, SOCIAL_PLATFORMS, normalizeSocialPlatform } from '../../../utils/socialUtils';
-import { composeFooterCopyright, normalizeFooterV2Config, type FooterColumn, type FooterLink } from './footerConfig';
+import { composeFooterCopyright, normalizeFooterV2Config, resolveFooterBrandLogo, type FooterColumn, type FooterLink } from './footerConfig';
 import { SectionAnimation } from '../animations/SectionAnimation';
 import { normalizeSectionAnimation } from '../../../constants/moduleAnimations';
 
@@ -61,7 +61,7 @@ const FooterV2Renderer: React.FC<{
     const heading = column.type !== 'brand' ? column.title : undefined;
     const header = heading ? <h4 className="break-words font-bold uppercase tracking-widest" style={{ color: titleColor }}>{heading}</h4> : null;
     if (column.type === 'brand') {
-      const image = column.logoSource === 'custom' ? column.customLogoUrl : (logoUrl || logoWhiteUrl || project?.logoUrl);
+      const image = resolveFooterBrandLogo(column, logoUrl, logoWhiteUrl, project?.logoUrl);
       return <div className="min-w-0 space-y-4">{column.showLogo && image && <img src={image} alt={column.name || 'Logo'} className="h-auto max-w-full object-contain" referrerPolicy="no-referrer" />}{column.showName && column.name && <h4 className="break-words text-lg font-bold" style={{ color: titleColor }}>{column.name}</h4>}{column.showDescription && column.description && <p className="break-words text-sm leading-relaxed opacity-80">{column.description}</p>}</div>;
     }
     if (column.type === 'menu') return <div className="min-w-0 space-y-4">{header}<ul className="space-y-3 text-sm">{column.links.map((link) => <li key={link.id}><V2FooterLink link={link} /></li>)}</ul></div>;

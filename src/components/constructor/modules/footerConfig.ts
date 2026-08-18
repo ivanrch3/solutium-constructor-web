@@ -167,12 +167,13 @@ export const composeFooterCopyright = (bottomBar: FooterBottomBar, currentYear: 
 };
 export const resolveFooterBrandLogo = (
   column: FooterColumn,
+  legacyLogoUrl?: string | null,
   logoUrl?: string | null,
   logoWhiteUrl?: string | null,
   projectLogoUrl?: string | null
 ) => {
   if (column.type !== 'brand' || !column.showLogo) return '';
   if (column.logoSource === 'custom') return text(column.customLogoUrl).trim();
-  return text(logoUrl || logoWhiteUrl || projectLogoUrl).trim();
+  return text(legacyLogoUrl || logoUrl || logoWhiteUrl || projectLogoUrl).trim();
 };
 export const getFooterDayDefaults = () => DAYS.map((label) => ({ id: createId('footer_day'), label, closed: false, open: '09:00', close: '17:00' }));

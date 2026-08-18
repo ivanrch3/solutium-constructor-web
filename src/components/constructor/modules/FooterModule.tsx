@@ -41,6 +41,7 @@ const V2FooterLink: React.FC<{ link: FooterLink }> = ({ link }) => (
 const FooterV2Renderer: React.FC<{
   config: ReturnType<typeof normalizeFooterV2Config>;
   moduleId: string;
+  settingsValues: Record<string, any>;
   project?: any;
   logoUrl?: string | null;
   logoWhiteUrl?: string | null;
@@ -53,7 +54,7 @@ const FooterV2Renderer: React.FC<{
   sectionAnimation: any;
   animationSpeed: number;
   darkMode: boolean;
-}> = ({ config, project, logoUrl, logoWhiteUrl, isPreviewMode, bgColor, textColor, borderTop, borderColor, maxWidth, sectionAnimation, animationSpeed, darkMode }) => {
+}> = ({ config, moduleId, settingsValues, project, logoUrl, logoWhiteUrl, isPreviewMode, bgColor, textColor, borderTop, borderColor, maxWidth, sectionAnimation, animationSpeed, darkMode }) => {
   if (!config) return null;
   const desktopClass = ({ 1: '@lg:grid-cols-1', 2: '@lg:grid-cols-2', 3: '@lg:grid-cols-3', 4: '@lg:grid-cols-4' } as Record<number, string>)[config.columns.length] || '@lg:grid-cols-1';
   const titleColor = darkMode ? '#FFFFFF' : 'var(--text-color)';
@@ -61,7 +62,8 @@ const FooterV2Renderer: React.FC<{
     const heading = column.type !== 'brand' ? column.title : undefined;
     const header = heading ? <h4 className="break-words font-bold uppercase tracking-widest" style={{ color: titleColor }}>{heading}</h4> : null;
     if (column.type === 'brand') {
-      const image = resolveFooterBrandLogo(column, logoUrl, logoWhiteUrl, project?.logoUrl);
+      const legacyLogoUrl = settingsValues[`${moduleId}_el_footer_brand_logo_img`] ?? settingsValues.el_footer_brand_logo_img;
+      const image = resolveFooterBrandLogo(column, legacyLogoUrl, logoUrl, logoWhiteUrl, project?.logoUrl);
       return <div className="min-w-0 space-y-4">{column.showLogo && image && <img src={image} alt={column.name || 'Logo'} className="h-auto max-w-full object-contain" referrerPolicy="no-referrer" />}{column.showName && column.name && <h4 className="break-words text-lg font-bold" style={{ color: titleColor }}>{column.name}</h4>}{column.showDescription && column.description && <p className="break-words text-sm leading-relaxed opacity-80">{column.description}</p>}</div>;
     }
     if (column.type === 'menu') return <div className="min-w-0 space-y-4">{header}<ul className="space-y-3 text-sm">{column.links.map((link) => <li key={link.id}><V2FooterLink link={link} /></li>)}</ul></div>;
@@ -110,7 +112,7 @@ export const FooterModule: React.FC<{
   const project = (useEditorStore.getState() as any).project;
   const v2Config = normalizeFooterV2Config(settingsValues[`${moduleId}_el_footer_config`], project);
   if (v2Config) {
-    return <FooterV2Renderer config={v2Config} moduleId={moduleId} project={project} logoUrl={logoUrl} logoWhiteUrl={logoWhiteUrl} isPreviewMode={isPreviewMode} bgColor={bgColor} textColor={textColor} borderTop={borderTop} borderColor={borderColor} maxWidth={maxWidth} sectionAnimation={sectionAnimation} animationSpeed={globalThemeSectionAnimationSpeed} darkMode={darkMode} />;
+    return <FooterV2Renderer config={v2Config} moduleId={moduleId} settingsValues={settingsValues} project={project} logoUrl={logoUrl} logoWhiteUrl={logoWhiteUrl} isPreviewMode={isPreviewMode} bgColor={bgColor} textColor={textColor} borderTop={borderTop} borderColor={borderColor} maxWidth={maxWidth} sectionAnimation={sectionAnimation} animationSpeed={globalThemeSectionAnimationSpeed} darkMode={darkMode} />;
   }
 
   // Element: Brand

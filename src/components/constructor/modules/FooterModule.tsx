@@ -6,7 +6,7 @@ import { TextRenderer } from '../TextRenderer';
 import { InlineEditableText } from '../InlineEditableText';
 import { useEditorStore } from '../../../store/editorStore';
 import { resolveFooterSocialLinks, SOCIAL_PLATFORMS, normalizeSocialPlatform } from '../../../utils/socialUtils';
-import { normalizeFooterV2Config, type FooterColumn, type FooterLink } from './footerConfig';
+import { composeFooterCopyright, normalizeFooterV2Config, type FooterColumn, type FooterLink } from './footerConfig';
 import { SectionAnimation } from '../animations/SectionAnimation';
 import { normalizeSectionAnimation } from '../../../constants/moduleAnimations';
 
@@ -71,10 +71,7 @@ const FooterV2Renderer: React.FC<{
     return <div className="min-w-0 space-y-4">{header}<div className="space-y-2 text-sm">{column.days.map((day) => <div key={day.id} className="flex flex-wrap justify-between gap-2"><span>{day.label}</span><span className="opacity-75">{day.closed ? 'Cerrado' : `${day.open || ''} - ${day.close || ''}`}</span></div>)}</div></div>;
   };
   const getIconElement = (iconName?: string) => { const Icon = (LucideIcons as any)[iconName || 'Globe']; return Icon ? <Icon size={18} /> : null; };
-  const currentYear = new Date().getFullYear();
-  const bottomCopyright = config.bottomBar.copyright
-    ? config.bottomBar.copyright.replace(/\{year\}/g, String(config.bottomBar.yearMode === 'fixed' ? config.bottomBar.fixedYear || currentYear : currentYear))
-    : `© ${config.bottomBar.yearMode === 'fixed' ? config.bottomBar.fixedYear || currentYear : currentYear} ${project?.name || ''}`.trim();
+  const bottomCopyright = composeFooterCopyright(config.bottomBar, new Date().getFullYear());
   return <SectionAnimation animation={sectionAnimation} speed={animationSpeed}><footer className="w-full py-12 @md:py-16 @lg:py-20" style={{ backgroundColor: bgColor, color: textColor, borderTopWidth: borderTop ? '1px' : '0px', borderTopStyle: 'solid', borderTopColor: borderColor }}><div className="mx-auto px-6" style={{ maxWidth: `${maxWidth}px` }}><div className={`grid grid-cols-1 @md:grid-cols-2 ${desktopClass} gap-8 @lg:gap-10 mb-16`}>{config.columns.map((column) => <div key={column.id}>{renderColumn(column)}</div>)}</div>{config.bottomBar.enabled && <div className="flex flex-col items-center justify-between gap-4 border-t border-current/30 pt-8 @md:flex-row"><p className="break-words text-xs font-medium opacity-70">{bottomCopyright}</p><div className="flex flex-wrap items-center justify-center gap-6 text-xs font-medium">{config.bottomBar.legalLinks.map((link) => <V2FooterLink key={link.id} link={link} />)}</div></div>}</div></footer></SectionAnimation>;
 };
 

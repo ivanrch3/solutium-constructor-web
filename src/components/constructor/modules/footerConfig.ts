@@ -159,4 +159,10 @@ export const getFooterConfigKey = (moduleId: string) => `${moduleId}_${FOOTER_CO
 export const hasFooterV2Config = (settingsValues: Record<string, any>, moduleId: string) => (
   isValidFooterV2Config(settingsValues?.[getFooterConfigKey(moduleId)])
 );
+export const composeFooterCopyright = (bottomBar: FooterBottomBar, currentYear: number) => {
+  const year = bottomBar.yearMode === 'fixed' && Number.isFinite(bottomBar.fixedYear)
+    ? String(bottomBar.fixedYear)
+    : String(currentYear);
+  return [year, text(bottomBar.copyright).trim()].filter(Boolean).join(' ');
+};
 export const getFooterDayDefaults = () => DAYS.map((label) => ({ id: createId('footer_day'), label, closed: false, open: '09:00', close: '17:00' }));

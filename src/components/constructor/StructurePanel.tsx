@@ -77,8 +77,8 @@ import {
   resolveWhatsAppOrdersCatalog
 } from './modules/whatsappOrdersCatalogOrganizer';
 import { WhatsAppOrdersCatalogOrganizerControl } from './modules/WhatsAppOrdersCatalogOrganizerControl';
-import { FooterColumnsControl } from './modules/FooterColumnsControl';
-import { hasFooterV2Config } from './modules/footerConfig';
+import { FooterBottomBarControl, FooterColumnsControl } from './modules/FooterColumnsControl';
+import { hasFooterV2Config, normalizeFooterV2Config } from './modules/footerConfig';
 
 const COMPOSITION_ADDABLE_TYPES: CompositionElementType[] = [
   'heading',
@@ -1458,9 +1458,14 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
           const isFooterColumnsElementId = (elementId: string) => (
             elementId === 'el_footer_columns' || elementId === `${module.id}_el_footer_columns`
           );
+          const isFooterBottomV2ElementId = (elementId: string) => (
+            elementId === 'el_footer_bottom_v2' || elementId === `${module.id}_el_footer_bottom_v2`
+          );
           const allElements = [globalElement, ...module.elements].filter((element) => (
             (!isBento || (element.id !== 'el_bento_items' && element.id !== `${module.id}_el_bento_items`))
-            && (!isFooterV2 || isFooterColumnsElementId(element.id) || element.type === 'global')
+            && (isFooterV2
+              ? (isFooterColumnsElementId(element.id) || isFooterBottomV2ElementId(element.id) || element.type === 'global')
+              : (!isFooterColumnsElementId(element.id) && !isFooterBottomV2ElementId(element.id)))
           ));
           const isCompositionSection = module.type === 'composition_section';
 
@@ -1763,9 +1768,12 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                                      : element.groups.includes(group);
                                    const isFooterColumnsElement = module.type === 'footer'
                                      && isFooterColumnsElementId(element.id);
+                                   const isFooterBottomV2Element = module.type === 'footer'
+                                     && isFooterBottomV2ElementId(element.id);
 
                                    if (isFooterColumnsElement && group !== 'estructura') return null;
-                                   if (!isAvailable || (!hasSettings && !isFooterColumnsElement)) return null;
+                                   if (isFooterBottomV2Element && group !== 'contenido') return null;
+                                   if (!isAvailable || (!hasSettings && !isFooterColumnsElement && !isFooterBottomV2Element)) return null;
 
                                    const isDirectWhatsAppOrdersCatalog = module.type === 'whatsapp_orders'
                                      && element.id === 'el_whatsapp_orders_catalog'
@@ -1778,6 +1786,18 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                                            settingsValues={editorState.settingsValues}
                                            project={project}
                                            onSettingChange={onSettingChange}
+                                         />
+                                       </div>
+                                     );
+                                   }
+                                   if (isFooterBottomV2Element && group === 'contenido') {
+                                     const footerConfig = normalizeFooterV2Config(editorState.settingsValues[`${module.id}_el_footer_config`], project);
+                                     if (!footerConfig) return null;
+                                     return (
+                                       <div key={group} className="rounded-lg border border-border/30 bg-surface p-3 shadow-sm">
+                                         <FooterBottomBarControl
+                                           config={footerConfig}
+                                           onChange={(next) => onSettingChange(module.id, 'el_footer_config', next)}
                                          />
                                        </div>
                                      );

@@ -349,6 +349,9 @@ export const FOOTER_MODULE: WebModule = {
     { id: 'el_footer_columns', name: 'Columnas', type: 'structure', groups: ['estructura', 'contenido', 'multimedia'], settings: {
       estructura: [], contenido: [], multimedia: [], estilo: [], tipografia: [], interaccion: []
     }},
+    { id: 'el_footer_bottom_v2', name: 'Barra Inferior', type: 'structure', groups: ['contenido', 'estructura'], settings: {
+      contenido: [], estructura: [], estilo: [], tipografia: [], multimedia: [], interaccion: []
+    }},
     { id: 'el_footer_brand', name: 'Identidad', type: 'multimedia', groups: ['contenido', 'multimedia', 'estructura', 'tipografia'], settings: {
       contenido: [
         { id: 'show_logo', label: 'Mostrar Logo', type: 'boolean', defaultValue: true },

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { createDefaultFooterV2Config, getFooterConfigKey, hasFooterV2Config, isValidFooterV2Config, migrateLegacyFooterToV2, normalizeFooterV2Config } from '../src/components/constructor/modules/footerConfig';
+import { composeFooterCopyright, createDefaultFooterV2Config, getFooterConfigKey, hasFooterV2Config, isValidFooterV2Config, migrateLegacyFooterToV2, normalizeFooterV2Config } from '../src/components/constructor/modules/footerConfig';
 import { buildPublishedModuleSettings } from '../src/utils/publishedModuleSettings';
 
 const config = createDefaultFooterV2Config({ name: 'Acme', email: 'hola@acme.test', whatsapp: '+506 8888 8888' });
@@ -12,6 +12,13 @@ assert.deepEqual(config.columns.map((column) => column.type), ['brand', 'menu', 
 assert.equal(config.bottomBar.enabled, true);
 assert.equal(config.bottomBar.yearMode, 'current');
 assert.equal(new Set(config.columns.map((column) => column.id)).size, 4);
+assert.equal(composeFooterCopyright({ ...config.bottomBar, copyright: 'Solutium', yearMode: 'current' }, 2026), '2026 Solutium');
+assert.equal(composeFooterCopyright({ ...config.bottomBar, copyright: 'Solutium', yearMode: 'fixed', fixedYear: 2024 }, 2026), '2024 Solutium');
+assert.equal(composeFooterCopyright({ ...config.bottomBar, copyright: '', yearMode: 'current' }, 2026), '2026');
+const editedCopyright = { ...config.bottomBar, copyright: 'Solutium' };
+assert.equal(editedCopyright.yearMode, config.bottomBar.yearMode);
+assert.equal(editedCopyright.fixedYear, config.bottomBar.fixedYear);
+assert.equal(Object.prototype.hasOwnProperty.call(config.bottomBar, 'title'), false);
 
 const partial = normalizeFooterV2Config({ version: 2, columns: [{ id: 'stable', type: 'hours', days: [{ label: 'Lunes', closed: true }] }, { type: 'invalid' }, { type: 'text', content: 'Texto' }, { type: 'social', links: [] }, { type: 'menu', links: [] }] });
 assert.ok(partial);
@@ -57,5 +64,7 @@ const published = buildPublishedModuleSettings({ footer_1_el_footer_config: conf
 assert.equal((published.el_footer_config as any).version, 2);
 assert.equal((published.el_footer_config as any).columns.length, 4);
 assert.equal((published.el_footer_config as any).columns[0].id, config.columns[0].id);
+assert.equal((published.el_footer_config as any).bottomBar.yearMode, 'current');
+assert.equal(Object.keys(published).includes('bottomBar'), false);
 
 console.log('footerConfig tests passed');

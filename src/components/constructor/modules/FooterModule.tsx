@@ -6,7 +6,7 @@ import { TextRenderer } from '../TextRenderer';
 import { InlineEditableText } from '../InlineEditableText';
 import { useEditorStore } from '../../../store/editorStore';
 import { resolveFooterSocialLinks, SOCIAL_PLATFORMS, normalizeSocialPlatform } from '../../../utils/socialUtils';
-import { composeFooterCopyright, normalizeFooterV2Config, resolveFooterBrandLogo, type FooterColumn, type FooterLink } from './footerConfig';
+import { composeFooterCopyright, normalizeFooterFontWeight, normalizeFooterLogoScale, normalizeFooterTypographySize, normalizeFooterV2Config, resolveFooterBrandLogo, type FooterColumn, type FooterLink } from './footerConfig';
 import { SectionAnimation } from '../animations/SectionAnimation';
 import { normalizeSectionAnimation } from '../../../constants/moduleAnimations';
 
@@ -58,19 +58,26 @@ const FooterV2Renderer: React.FC<{
   if (!config) return null;
   const desktopClass = ({ 1: '@lg:grid-cols-1', 2: '@lg:grid-cols-2', 3: '@lg:grid-cols-3', 4: '@lg:grid-cols-4' } as Record<number, string>)[config.columns.length] || '@lg:grid-cols-1';
   const titleColor = darkMode ? '#FFFFFF' : 'var(--text-color)';
+  const titleSize = normalizeFooterTypographySize(settingsValues[`${moduleId}_global_footer_title_size`], 18, 12, 32);
+  const titleWeight = normalizeFooterFontWeight(settingsValues[`${moduleId}_global_footer_title_weight`], 700);
+  const subtitleSize = normalizeFooterTypographySize(settingsValues[`${moduleId}_global_footer_subtitle_size`], 14, 10, 24);
+  const subtitleWeight = normalizeFooterFontWeight(settingsValues[`${moduleId}_global_footer_subtitle_weight`], 400);
+  const logoScale = normalizeFooterLogoScale(settingsValues[`${moduleId}_global_footer_logo_scale`]);
+  const titleTextStyle = { color: titleColor, fontSize: `${titleSize}px`, fontWeight: titleWeight };
+  const secondaryTextStyle = { fontSize: `${subtitleSize}px`, fontWeight: subtitleWeight };
   const renderColumn = (column: FooterColumn) => {
     const heading = column.type !== 'brand' ? column.title : undefined;
-    const header = heading ? <h4 className="break-words font-bold uppercase tracking-widest" style={{ color: titleColor }}>{heading}</h4> : null;
+    const header = heading ? <h4 className="break-words uppercase tracking-widest" style={titleTextStyle}>{heading}</h4> : null;
     if (column.type === 'brand') {
       const legacyLogoUrl = settingsValues[`${moduleId}_el_footer_brand_logo_img`] ?? settingsValues.el_footer_brand_logo_img;
       const image = resolveFooterBrandLogo(column, legacyLogoUrl, logoUrl, logoWhiteUrl, project?.logoUrl);
-      return <div className="min-w-0 space-y-4">{column.showLogo && image && <img src={image} alt={column.name || 'Logo'} className="h-auto max-w-full object-contain" referrerPolicy="no-referrer" />}{column.showName && column.name && <h4 className="break-words text-lg font-bold" style={{ color: titleColor }}>{column.name}</h4>}{column.showDescription && column.description && <p className="break-words text-sm leading-relaxed opacity-80">{column.description}</p>}</div>;
+      return <div className="min-w-0 space-y-4">{column.showLogo && image && <div className="flex w-full items-start justify-start"><img src={image} alt={column.name || 'Logo'} className="h-auto max-w-full object-contain" style={{ maxWidth: `${logoScale}%` }} referrerPolicy="no-referrer" /></div>}{column.showName && column.name && <h4 className="break-words" style={titleTextStyle}>{column.name}</h4>}{column.showDescription && column.description && <p className="break-words leading-relaxed opacity-80" style={secondaryTextStyle}>{column.description}</p>}</div>;
     }
-    if (column.type === 'menu') return <div className="min-w-0 space-y-4">{header}<ul className="space-y-3 text-sm">{column.links.map((link) => <li key={link.id}><V2FooterLink link={link} /></li>)}</ul></div>;
-    if (column.type === 'contact') return <div className="min-w-0 space-y-4">{header}<div className="space-y-3 text-sm">{column.showPhone && column.phone && <a className="block break-words opacity-80 hover:underline" href={footerHref(column.phone, 'phone')}>{column.phone}</a>}{column.showWhatsapp && column.whatsapp && <a className="block break-words opacity-80 hover:underline" href={footerHref(column.whatsapp, 'whatsapp')}>{column.whatsapp}</a>}{column.showEmail && column.email && <a className="block break-words opacity-80 hover:underline" href={footerHref(column.email, 'email')}>{column.email}</a>}{column.showAddress && column.address && <span className="block break-words opacity-80">{column.address}</span>}</div></div>;
-    if (column.type === 'social') return <div className="min-w-0 space-y-4">{header}<div className={column.presentation === 'icon_label' ? 'space-y-3 text-sm' : 'flex flex-wrap items-center gap-4'}>{column.links.filter((link) => link.url).map((link) => { const platform = normalizeSocialPlatform(link.platform) || 'website'; const definition = SOCIAL_PLATFORMS[platform as keyof typeof SOCIAL_PLATFORMS]; const label = link.label || definition?.label || platform; return <a key={link.id} href={link.url} target="_blank" rel="noreferrer" className="inline-flex max-w-full items-center gap-2 break-words opacity-80 hover:opacity-100">{definition?.icon && getIconElement(definition.icon)}{column.presentation === 'icon_label' && <span>{label}</span>}</a>; })}</div></div>;
-    if (column.type === 'text') return <div className="min-w-0 space-y-4">{header}{column.content && <p className="break-words whitespace-pre-wrap text-sm leading-relaxed opacity-80">{column.content}</p>}</div>;
-    return <div className="min-w-0 space-y-4">{header}<div className="space-y-2 text-sm">{column.days.map((day) => <div key={day.id} className="flex flex-wrap justify-between gap-2"><span>{day.label}</span><span className="opacity-75">{day.closed ? 'Cerrado' : `${day.open || ''} - ${day.close || ''}`}</span></div>)}</div></div>;
+    if (column.type === 'menu') return <div className="min-w-0 space-y-4">{header}<ul className="space-y-3" style={secondaryTextStyle}>{column.links.map((link) => <li key={link.id}><V2FooterLink link={link} /></li>)}</ul></div>;
+    if (column.type === 'contact') return <div className="min-w-0 space-y-4">{header}<div className="space-y-3" style={secondaryTextStyle}>{column.showPhone && column.phone && <a className="block break-words opacity-80 hover:underline" href={footerHref(column.phone, 'phone')}>{column.phone}</a>}{column.showWhatsapp && column.whatsapp && <a className="block break-words opacity-80 hover:underline" href={footerHref(column.whatsapp, 'whatsapp')}>{column.whatsapp}</a>}{column.showEmail && column.email && <a className="block break-words opacity-80 hover:underline" href={footerHref(column.email, 'email')}>{column.email}</a>}{column.showAddress && column.address && <span className="block break-words opacity-80">{column.address}</span>}</div></div>;
+    if (column.type === 'social') return <div className="min-w-0 space-y-4">{header}<div className={column.presentation === 'icon_label' ? 'space-y-3' : 'flex flex-wrap items-center gap-4'} style={secondaryTextStyle}>{column.links.filter((link) => link.url).map((link) => { const platform = normalizeSocialPlatform(link.platform) || 'website'; const definition = SOCIAL_PLATFORMS[platform as keyof typeof SOCIAL_PLATFORMS]; const label = link.label || definition?.label || platform; return <a key={link.id} href={link.url} target="_blank" rel="noreferrer" className="inline-flex max-w-full items-center gap-2 break-words opacity-80 hover:opacity-100">{definition?.icon && getIconElement(definition.icon)}{column.presentation === 'icon_label' && <span>{label}</span>}</a>; })}</div></div>;
+    if (column.type === 'text') return <div className="min-w-0 space-y-4">{header}{column.content && <p className="break-words whitespace-pre-wrap leading-relaxed opacity-80" style={secondaryTextStyle}>{column.content}</p>}</div>;
+    return <div className="min-w-0 space-y-4">{header}<div className="space-y-2" style={secondaryTextStyle}>{column.days.map((day) => <div key={day.id} className="flex flex-wrap justify-between gap-2"><span>{day.label}</span><span className="opacity-75">{day.closed ? 'Cerrado' : `${day.open || ''} - ${day.close || ''}`}</span></div>)}</div></div>;
   };
   const getIconElement = (iconName?: string) => { const Icon = (LucideIcons as any)[iconName || 'Globe']; return Icon ? <Icon size={18} /> : null; };
   const bottomCopyright = composeFooterCopyright(config.bottomBar, new Date().getFullYear());

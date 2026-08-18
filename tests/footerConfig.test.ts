@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { composeFooterCopyright, createDefaultFooterV2Config, getFooterConfigKey, hasFooterV2Config, isValidFooterV2Config, migrateLegacyFooterToV2, normalizeFooterV2Config, resolveFooterBrandLogo } from '../src/components/constructor/modules/footerConfig';
+import { composeFooterCopyright, createDefaultFooterV2Config, getFooterConfigKey, hasFooterV2Config, isValidFooterV2Config, migrateLegacyFooterToV2, normalizeFooterFontWeight, normalizeFooterLogoScale, normalizeFooterTypographySize, normalizeFooterV2Config, resolveFooterBrandLogo } from '../src/components/constructor/modules/footerConfig';
 import { buildPublishedModuleSettings } from '../src/utils/publishedModuleSettings';
 
 const config = createDefaultFooterV2Config({ name: 'Acme', email: 'hola@acme.test', whatsapp: '+506 8888 8888' });
@@ -28,6 +28,18 @@ assert.equal(resolveFooterBrandLogo({ ...projectBrand, logoSource: 'custom', cus
 assert.equal(resolveFooterBrandLogo({ ...projectBrand, logoSource: 'custom', customLogoUrl: '' }, 'https://cdn.test/legacy.svg', 'https://cdn.test/project.svg', null, 'https://cdn.test/project-fallback.svg'), '');
 assert.equal(resolveFooterBrandLogo({ ...projectBrand, showLogo: false }, 'https://cdn.test/legacy.svg', 'https://cdn.test/project.svg', null, null), '');
 assert.equal(resolveFooterBrandLogo(projectBrand, null, null, null, null), '');
+assert.equal(normalizeFooterLogoScale(undefined), 100);
+assert.equal(normalizeFooterLogoScale(50), 50);
+assert.equal(normalizeFooterLogoScale(75), 75);
+assert.equal(normalizeFooterLogoScale(100), 100);
+assert.equal(normalizeFooterLogoScale(20), 50);
+assert.equal(normalizeFooterLogoScale(120), 100);
+assert.equal(normalizeFooterLogoScale(73), 75);
+assert.equal(normalizeFooterTypographySize(undefined, 18, 12, 32), 18);
+assert.equal(normalizeFooterTypographySize(24, 18, 12, 32), 24);
+assert.equal(normalizeFooterFontWeight(undefined, 700), 700);
+assert.equal(normalizeFooterFontWeight('semibold', 700), 600);
+assert.equal(normalizeFooterFontWeight(800, 700), 800);
 
 const partial = normalizeFooterV2Config({ version: 2, columns: [{ id: 'stable', type: 'hours', days: [{ label: 'Lunes', closed: true }] }, { type: 'invalid' }, { type: 'text', content: 'Texto' }, { type: 'social', links: [] }, { type: 'menu', links: [] }] });
 assert.ok(partial);
@@ -69,11 +81,24 @@ assert.ok('error' in blockedNewsletter);
 const tooManyMenus = migrateLegacyFooterToV2({ ...legacySettings, footer_1_el_footer_nav_columns: [{ title: 'A' }, { title: 'B' }] }, 'footer_1');
 assert.ok('error' in tooManyMenus);
 
-const published = buildPublishedModuleSettings({ footer_1_el_footer_config: config, unrelated: true }, 'footer_1');
+const published = buildPublishedModuleSettings({
+  footer_1_el_footer_config: config,
+  footer_1_global_footer_title_size: 24,
+  footer_1_global_footer_title_weight: 700,
+  footer_1_global_footer_subtitle_size: 12,
+  footer_1_global_footer_subtitle_weight: 500,
+  footer_1_global_footer_logo_scale: 75,
+  unrelated: true
+}, 'footer_1');
 assert.equal((published.el_footer_config as any).version, 2);
 assert.equal((published.el_footer_config as any).columns.length, 4);
 assert.equal((published.el_footer_config as any).columns[0].id, config.columns[0].id);
 assert.equal((published.el_footer_config as any).bottomBar.yearMode, 'current');
+assert.equal(published.global_footer_title_size, 24);
+assert.equal(published.global_footer_title_weight, 700);
+assert.equal(published.global_footer_subtitle_size, 12);
+assert.equal(published.global_footer_subtitle_weight, 500);
+assert.equal(published.global_footer_logo_scale, 75);
 assert.equal(Object.keys(published).includes('bottomBar'), false);
 
 console.log('footerConfig tests passed');

@@ -80,6 +80,14 @@ import { WhatsAppOrdersCatalogOrganizerControl } from './modules/WhatsAppOrdersC
 import { FooterBottomBarControl, FooterColumnsControl } from './modules/FooterColumnsControl';
 import { hasFooterV2Config, normalizeFooterV2Config } from './modules/footerConfig';
 
+const FOOTER_V2_GLOBAL_SETTING_IDS = new Set([
+  'footer_title_size',
+  'footer_title_weight',
+  'footer_subtitle_size',
+  'footer_subtitle_weight',
+  'footer_logo_scale'
+]);
+
 const COMPOSITION_ADDABLE_TYPES: CompositionElementType[] = [
   'heading',
   'paragraph',
@@ -1760,8 +1768,11 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
 
                                 {!(isBentoItemsElement && selectedBentoCellIndex !== null) && getOrderedSettingGroups(module, element).map(group => {
                                   if (module.type === 'dynamic_cards' && isDynamicCardsRepeaterElement(module.id, element.id)) return null;
+                                   const footerGlobalSettings = element.type === 'global'
+                                     ? module.globalSettings?.[group]?.filter((setting) => !(module.type === 'footer' && !isFooterV2 && FOOTER_V2_GLOBAL_SETTING_IDS.has(setting.id)))
+                                     : undefined;
                                    const hasSettings = element.type === 'global'
-                                     ? !!module.globalSettings?.[group]?.length
+                                     ? !!footerGlobalSettings?.length
                                      : !!element.settings?.[group]?.length;
                                    const isAvailable = element.type === 'global'
                                      ? element.groups.includes(group) || hasSettings
@@ -1905,7 +1916,7 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                                                 };
 
                                                 const settingsToRender = element.type === 'global'
-                                                  ? module.globalSettings?.[group]
+                                                  ? footerGlobalSettings
                                                   : element.settings?.[group];
                                                 const hasAnimationSettings = Boolean(
                                                   settingsToRender?.some((setting) => isConstructorAnimationSetting(setting))
@@ -1963,10 +1974,23 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                                                     element.type === 'global') || module.type === 'whatsapp_orders') &&
                                                     setting.subsection &&
                                                     settingsToRender[settingIndex - 1]?.subsection !== setting.subsection;
+                                                  const showFooterTypographySubsection = module.type === 'footer'
+                                                    && isFooterV2
+                                                    && element.type === 'global'
+                                                    && group === 'tipografia'
+                                                    && setting.subsection
+                                                    && settingsToRender[settingIndex - 1]?.subsection !== setting.subsection;
 
                                                   return (
                                                     <React.Fragment key={setting.id}>
                                                       {showDynamicCardsSubsection && (
+                                                        <div className="border-t border-border/40 pt-3 first:border-t-0 first:pt-0">
+                                                          <p className="text-[9px] font-black uppercase tracking-wider text-primary/70">
+                                                            {setting.subsection}
+                                                          </p>
+                                                        </div>
+                                                      )}
+                                                      {showFooterTypographySubsection && (
                                                         <div className="border-t border-border/40 pt-3 first:border-t-0 first:pt-0">
                                                           <p className="text-[9px] font-black uppercase tracking-wider text-primary/70">
                                                             {setting.subsection}

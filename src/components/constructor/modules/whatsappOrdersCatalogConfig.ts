@@ -1,5 +1,9 @@
 export const WHATSAPP_ORDERS_CATALOG_CONFIG_VERSION = 2;
 export const WHATSAPP_ORDERS_CATALOG_CONFIG_SETTING = 'el_whatsapp_orders_catalog_config';
+export const WHATSAPP_ORDERS_PRODUCT_IMAGE_SCALE_DEFAULT = 100;
+export const WHATSAPP_ORDERS_PRODUCT_IMAGE_SCALE_MIN = 50;
+export const WHATSAPP_ORDERS_PRODUCT_IMAGE_SCALE_MAX = 100;
+export const WHATSAPP_ORDERS_PRODUCT_IMAGE_SCALE_STEP = 5;
 
 export type WhatsAppOrdersCatalogScope =
   | { mode: 'all' }
@@ -21,6 +25,7 @@ export type WhatsAppOrdersCatalogView = 'grid' | 'list';
 
 export type WhatsAppOrdersCatalogDisplay = {
   defaultView: WhatsAppOrdersCatalogView;
+  productImageScale: number;
 };
 
 export type WhatsAppOrdersVisitorView = {
@@ -56,6 +61,27 @@ const normalizeNonEmptyString = (value: unknown): string | null => {
   if (typeof value !== 'string') return null;
   const normalized = value.trim();
   return normalized || null;
+};
+
+export const normalizeWhatsAppOrdersProductImageScale = (value: unknown): number => {
+  if (value === undefined || value === null || (typeof value === 'string' && value.trim() === '')) {
+    return WHATSAPP_ORDERS_PRODUCT_IMAGE_SCALE_DEFAULT;
+  }
+
+  if (typeof value !== 'number' && typeof value !== 'string') {
+    return WHATSAPP_ORDERS_PRODUCT_IMAGE_SCALE_DEFAULT;
+  }
+
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return WHATSAPP_ORDERS_PRODUCT_IMAGE_SCALE_DEFAULT;
+
+  return Math.min(
+    WHATSAPP_ORDERS_PRODUCT_IMAGE_SCALE_MAX,
+    Math.max(
+      WHATSAPP_ORDERS_PRODUCT_IMAGE_SCALE_MIN,
+      Math.round(parsed / WHATSAPP_ORDERS_PRODUCT_IMAGE_SCALE_STEP) * WHATSAPP_ORDERS_PRODUCT_IMAGE_SCALE_STEP
+    )
+  );
 };
 
 const normalizeUniqueIdList = (value: unknown): string[] => {
@@ -159,7 +185,7 @@ export const createDefaultWhatsAppOrdersCatalogConfig = (): WhatsAppOrdersCatalo
   version: WHATSAPP_ORDERS_CATALOG_CONFIG_VERSION,
   scope: { mode: 'all' },
   order: { mode: 'alphabetical' },
-  display: { defaultView: 'grid' },
+  display: { defaultView: 'grid', productImageScale: WHATSAPP_ORDERS_PRODUCT_IMAGE_SCALE_DEFAULT },
   visitorView: { allowViewSwitch: false }
 });
 
@@ -167,7 +193,7 @@ export const DEFAULT_WHATSAPP_ORDERS_CATALOG_CONFIG: Readonly<WhatsAppOrdersCata
   version: WHATSAPP_ORDERS_CATALOG_CONFIG_VERSION,
   scope: Object.freeze({ mode: 'all' }),
   order: Object.freeze({ mode: 'alphabetical' }),
-  display: Object.freeze({ defaultView: 'grid' }),
+  display: Object.freeze({ defaultView: 'grid', productImageScale: WHATSAPP_ORDERS_PRODUCT_IMAGE_SCALE_DEFAULT }),
   visitorView: Object.freeze({ allowViewSwitch: false })
 }) as Readonly<WhatsAppOrdersCatalogConfigV2>;
 
@@ -187,7 +213,8 @@ export const normalizeWhatsAppOrdersCatalogConfig = (
     display: {
       defaultView: isWhatsAppOrdersCatalogView(explicitView)
         ? explicitView
-        : resolveLegacyWhatsAppOrdersView(legacy) || 'grid'
+        : resolveLegacyWhatsAppOrdersView(legacy) || 'grid',
+      productImageScale: normalizeWhatsAppOrdersProductImageScale(display?.productImageScale)
     },
     visitorView: {
       allowViewSwitch: typeof visitorView?.allowViewSwitch === 'boolean'
@@ -304,7 +331,7 @@ export const setWhatsAppOrdersCatalogDefaultView = (
 
   return {
     ...normalizedConfig,
-    display: { defaultView }
+    display: { ...normalizedConfig.display, defaultView }
   };
 };
 
@@ -318,5 +345,20 @@ export const setWhatsAppOrdersCatalogAllowViewSwitch = (
   return {
     ...normalizedConfig,
     visitorView: { allowViewSwitch }
+  };
+};
+
+export const setWhatsAppOrdersCatalogProductImageScale = (
+  config: unknown,
+  productImageScale: unknown
+): WhatsAppOrdersCatalogConfigV2 => {
+  const normalizedConfig = normalizeWhatsAppOrdersCatalogConfig(config);
+
+  return {
+    ...normalizedConfig,
+    display: {
+      ...normalizedConfig.display,
+      productImageScale: normalizeWhatsAppOrdersProductImageScale(productImageScale)
+    }
   };
 };

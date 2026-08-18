@@ -4043,8 +4043,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       });
     }
 
-    // V2 is instance-scoped and intentionally has no editor control yet.
-    // A factory prevents nested defaults from being shared by new modules.
+    // V2 is instance-scoped; a factory prevents nested defaults from being shared by new modules.
     if (module.type === 'whatsapp_orders') {
       initialValues[getWhatsAppOrdersCatalogConfigSettingKey(moduleId)] =
         createDefaultWhatsAppOrdersCatalogConfig();

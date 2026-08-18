@@ -629,6 +629,7 @@ export const WhatsAppOrdersModule: React.FC<{
     [hasExplicitPublishedCatalogConfig, legacyLayout, moduleId, publishedCatalogConfig, settingsValues]
   );
   const catalogScope = catalogConfig.scope;
+  const productImageScale = catalogConfig.display.productImageScale;
   const defaultCatalogView = React.useMemo(
     () => hasExplicitPublishedCatalogConfig
       ? catalogConfig.display.defaultView
@@ -1456,13 +1457,14 @@ export const WhatsAppOrdersModule: React.FC<{
                         layout === 'list'
                           ? 'h-28 w-28 self-center sm:h-36 sm:w-44'
                           : 'aspect-[4/3] w-full'
-                      }`}
+                      } flex items-center justify-center`}
                     >
                       {productImageUrl ? (
                         <img
                           src={productImageUrl}
                           alt={product.name}
                           className="h-full w-full object-contain object-center"
+                          style={{ width: `${productImageScale}%`, height: `${productImageScale}%` }}
                           referrerPolicy="no-referrer"
                           onError={() => {
                             if (product.primaryImageAssetId) void retryCatalogImage(product.primaryImageAssetId);

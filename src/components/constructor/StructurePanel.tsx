@@ -63,6 +63,7 @@ import {
   resolveEffectiveWhatsAppOrdersCatalogView,
   setWhatsAppOrdersCatalogAllowViewSwitch,
   setWhatsAppOrdersCatalogDefaultView,
+  setWhatsAppOrdersCatalogProductImageScale,
   setWhatsAppOrdersCatalogScope,
   writeWhatsAppOrdersCatalogConfig
 } from './modules/whatsappOrdersCatalogConfig';
@@ -431,6 +432,10 @@ const WhatsAppOrdersCatalogScopeControl: React.FC<WhatsAppOrdersCatalogScopeCont
     persistConfig(setWhatsAppOrdersCatalogAllowViewSwitch(config, allowViewSwitch));
   };
 
+  const setProductImageScale = (productImageScale: string) => {
+    persistConfig(setWhatsAppOrdersCatalogProductImageScale(config, productImageScale));
+  };
+
   return (
     <div className="space-y-3 rounded-lg border border-primary/15 bg-primary/5 p-3">
       <div>
@@ -627,6 +632,31 @@ const WhatsAppOrdersCatalogScopeControl: React.FC<WhatsAppOrdersCatalogScopeCont
           <span className="mt-0.5 block leading-relaxed text-text/55">Muestra un selector para alternar entre Cuadrícula y Lista.</span>
         </span>
       </label>
+
+      <div className="border-t border-primary/10 pt-3">
+        <p className="text-[11px] font-bold text-text">Multimedia</p>
+        <label className="mt-2 block rounded-md border border-border/50 bg-surface px-2.5 py-2 text-[10px] text-text/75">
+          <span className="flex items-center justify-between gap-3 font-semibold">
+            <span>Tamaño de imagen</span>
+            <output className="rounded bg-primary/10 px-1.5 py-0.5 text-primary" aria-live="polite">
+              {config.display.productImageScale}%
+            </output>
+          </span>
+          <span className="mt-1 block leading-relaxed text-text/55">
+            Ajusta el tamaño de la imagen dentro de su área, sin modificar el tamaño de la tarjeta.
+          </span>
+          <input
+            type="range"
+            min={50}
+            max={100}
+            step={5}
+            value={config.display.productImageScale}
+            onChange={(event) => setProductImageScale(event.target.value)}
+            aria-label="Tamaño de imagen"
+            className="mt-2 w-full accent-primary"
+          />
+        </label>
+      </div>
     </div>
   );
 };

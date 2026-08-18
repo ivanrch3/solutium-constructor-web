@@ -51,7 +51,7 @@ test('published snapshot keeps asset IDs and strips signed URLs', () => {
       version: 2,
       scope: { mode: 'all' },
       order: { mode: 'alphabetical' },
-      display: { defaultView: 'grid' },
+      display: { defaultView: 'grid', productImageScale: 100 },
       visitorView: { allowViewSwitch: true }
     },
     categories: [],
@@ -74,7 +74,7 @@ test('published snapshot keeps asset IDs and strips signed URLs', () => {
 
 test('published snapshots retain legacy data but exclude transport and storage internals', () => {
   const contract = buildWhatsAppOrdersCatalogPublishedContract({
-    config: { version: 2, scope: { mode: 'all' }, order: { mode: 'alphabetical' }, display: { defaultView: 'list' }, visitorView: { allowViewSwitch: false } },
+    config: { version: 2, scope: { mode: 'all' }, order: { mode: 'alphabetical' }, display: { defaultView: 'list', productImageScale: 100 }, visitorView: { allowViewSwitch: false } },
     categories: [],
     products: [{
       id: 'legacy-product',

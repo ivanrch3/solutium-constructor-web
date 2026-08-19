@@ -7,7 +7,7 @@ import { InlineEditableText } from '../InlineEditableText';
 import { useEditorStore } from '../../../store/editorStore';
 import { SectionAnimation } from '../animations/SectionAnimation';
 import { normalizeSectionAnimation } from '../../../constants/moduleAnimations';
-import { buildVideoEmbedUrl, getEmbedFrameReferrerPolicy, resolveVideoProviderFromUrl } from '../../../utils/videoEmbed';
+import { getEmbedFrameReferrerPolicy, getVideoAspectRatioCss, resolveVideoAspectRatio, resolveVideoSource } from '../../../utils/videoEmbed';
 
 export const VideoModule: React.FC<{ 
   moduleId: string, 
@@ -57,7 +57,7 @@ export const VideoModule: React.FC<{
 
   // Global Settings
   const layout = getVal(null, 'layout', 'centered');
-  const aspectRatio = getVal(null, 'aspect_ratio', '16/9');
+  const configuredAspectRatio = getVal(null, 'aspect_ratio', 'auto');
   const paddingY = parseFloat(getVal(null, 'padding_y', 100)) || 100;
   const maxWidth = parseFloat(getVal(null, 'max_width', 1000)) || 1000;
   const darkMode = toBoolean(getVal(null, 'dark_mode', false));
@@ -140,30 +140,25 @@ export const VideoModule: React.FC<{
     }
   }, [maskShape]);
 
-  const getAspectRatioPadding = (ratio: string) => {
-    switch (ratio) {
-      case '16/9': return '56.25%';
-      case '9/16': return '177.77%';
-      case '4/3': return '75%';
-      default: return '56.25%';
-    }
-  };
-
-  const videoProvider = useMemo(
-    () => resolveVideoProviderFromUrl(typeof videoUrl === 'string' ? videoUrl : ''),
-    [videoUrl]
-  );
+  const videoSource = useMemo(() => resolveVideoSource(typeof videoUrl === 'string' ? videoUrl : '', {
+    autoplay,
+    loop,
+    controls,
+    hoverToPlay: hoverToPlay && isHovered,
+  }), [videoUrl, autoplay, loop, controls, hoverToPlay, isHovered]);
+  const aspectRatio = resolveVideoAspectRatio(configuredAspectRatio, videoSource.aspectRatio);
+  const videoProvider = videoSource.provider;
   const isYouTube = videoProvider === 'youtube';
   const isVimeo = videoProvider === 'vimeo';
 
   const getEmbedUrl = (url: any, forceAutoplay = false) => {
     if (typeof url !== 'string' || !url) return '';
-    return buildVideoEmbedUrl(url, {
+    return resolveVideoSource(url, {
       autoplay: forceAutoplay || autoplay,
       loop,
       controls,
       hoverToPlay: hoverToPlay && isHovered,
-    }) || url;
+    }).embedUrl || url;
   };
 
   const handlePlayClick = () => {
@@ -307,7 +302,7 @@ export const VideoModule: React.FC<{
 
   const videoContainer = (
     <motion.div 
-      className={`relative overflow-hidden group ${shadow ? 'shadow-2xl' : ''} ${maskClass} cursor-pointer`}
+      className={`relative overflow-hidden group ${shadow ? 'shadow-2xl' : ''} ${maskClass} cursor-pointer ${aspectRatio === '9/16' ? 'max-w-md mx-auto' : ''}`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onClick={(e) => {
@@ -319,7 +314,7 @@ export const VideoModule: React.FC<{
       style={{ 
         y,
         borderRadius: maskShape === 'circle' ? '50%' : `${radius}px`,
-        paddingBottom: getAspectRatioPadding(aspectRatio),
+        aspectRatio: getVideoAspectRatioCss(aspectRatio),
         borderWidth: '1px',
         borderStyle: 'solid',
         borderColor: borderColor
@@ -465,7 +460,7 @@ export const VideoModule: React.FC<{
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.9, opacity: 0 }}
                 className="w-full max-w-6xl relative"
-                style={{ paddingBottom: getAspectRatioPadding(aspectRatio) }}
+                style={{ aspectRatio: getVideoAspectRatioCss(aspectRatio) }}
                 onClick={(e) => e.stopPropagation()}
               >
                 {renderVideo(true)}

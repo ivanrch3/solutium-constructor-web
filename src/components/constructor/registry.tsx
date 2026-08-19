@@ -1897,7 +1897,8 @@ export const VIDEO_MODULE: WebModule = {
         { label: 'Dividido (Texto + Video)', value: 'split' },
         { label: 'Video de Fondo (Hero)', value: 'background' }
       ]},
-      { id: 'aspect_ratio', label: 'Relación de Aspecto', type: 'select', defaultValue: '16/9', options: [
+      { id: 'aspect_ratio', label: 'Relación de Aspecto', type: 'select', defaultValue: 'auto', options: [
+        { label: 'Automático', value: 'auto' },
         { label: '16:9 (Panorámico)', value: '16/9' },
         { label: '4:3 (Clásico)', value: '4/3' },
         { label: '9:16 (Vertical)', value: '9/16' }

@@ -1907,6 +1907,7 @@ export const VIDEO_MODULE: WebModule = {
       { id: 'section_gradient', label: 'Gradiente de Fondo', type: 'boolean', defaultValue: false },
       { id: 'bg_gradient', label: 'Gradiente Personalizado', type: 'gradient', defaultValue: 'linear-gradient(to bottom, #FFFFFF, #F8FAFC)', showIf: { settingId: 'section_gradient', value: true } },
       { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 40, min: 40, max: 200, unit: 'px' },
+      { id: 'content_media_gap', label: 'Espacio entre texto y video', type: 'range', defaultValue: 40, min: 0, max: 80, step: 4, unit: 'px' },
       { id: 'max_width', label: 'Ancho Máximo Contenido', type: 'range', defaultValue: 1000, min: 600, max: 1400, unit: 'px' }
     ],
     multimedia: [

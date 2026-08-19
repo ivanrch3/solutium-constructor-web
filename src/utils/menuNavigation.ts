@@ -234,10 +234,14 @@ export const mergeAutomaticMenuItemsWithExisting = (
 
     if (!existingLink) return autoLink;
 
+    const preservesGeneratedLabel = existingLink.source !== 'auto'
+      || existingLink.isCustomized
+      || existingLink.customLabel;
+
     return {
       ...existingLink,
       ...autoLink,
-      label: existingLink.label || autoLink.label,
+      label: preservesGeneratedLabel ? (existingLink.label || autoLink.label) : autoLink.label,
       icon: existingLink.icon || existingLink.iconName || existingLink.iconId || autoLink.icon,
       badge: existingLink.badge || autoLink.badge,
       customLabel: existingLink.customLabel || undefined,
@@ -246,4 +250,38 @@ export const mergeAutomaticMenuItemsWithExisting = (
       isCustomized: existingLink.isCustomized || existingLink.customLabel || existingLink.customIcon || existingLink.customBadge || undefined
     };
   }));
+};
+
+export const rebuildAutomaticMenuLinks = ({
+  modules,
+  settingsValues,
+  currentLinks
+}: {
+  modules: ModuleLike[];
+  settingsValues: Record<string, any>;
+  currentLinks: MenuItemLike[];
+}) => {
+  const normalizedCurrentLinks = dedupeMenuLinks(currentLinks);
+  const autoAnchors = new Set(
+    (Array.isArray(modules) ? modules : [])
+      .filter((module) => isMenuEligibleModule(module))
+      .flatMap((module) => [`#${module.id}`, resolveSectionHref(module.id)])
+  );
+
+  const manualLinks = normalizedCurrentLinks.filter((link) => {
+    if (!link || typeof link !== 'object') return false;
+    if (link.is_title) return true;
+    if (link.source === 'auto') return false;
+    const url = String(link.href || link.url || '').trim();
+    if (!url.startsWith('#')) return true;
+    return !autoAnchors.has(url);
+  });
+
+  const visibleLinks = buildAutomaticMenuItems({ modules, settingsValues });
+  const mergedVisibleLinks = mergeAutomaticMenuItemsWithExisting(
+    visibleLinks,
+    normalizedCurrentLinks
+  );
+
+  return dedupeMenuLinks([...mergedVisibleLinks, ...manualLinks]);
 };

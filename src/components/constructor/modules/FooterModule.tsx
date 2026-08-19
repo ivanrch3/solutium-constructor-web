@@ -6,7 +6,7 @@ import { TextRenderer } from '../TextRenderer';
 import { InlineEditableText } from '../InlineEditableText';
 import { useEditorStore } from '../../../store/editorStore';
 import { resolveFooterSocialLinks, SOCIAL_PLATFORMS, normalizeSocialPlatform } from '../../../utils/socialUtils';
-import { composeFooterCopyright, normalizeFooterFontWeight, normalizeFooterLogoScale, normalizeFooterTypographySize, normalizeFooterV2Config, resolveFooterBrandLogo, type FooterColumn, type FooterLink } from './footerConfig';
+import { composeFooterCopyright, normalizeFooterLogoScale, normalizeFooterV2Config, resolveFooterBrandLogo, resolveFooterContactIconName, resolveFooterFontFamily, resolveFooterFontWeightToken, resolveFooterSocialLayoutClass, resolveFooterTypographyToken, type FooterColumn, type FooterLink } from './footerConfig';
 import { SectionAnimation } from '../animations/SectionAnimation';
 import { normalizeSectionAnimation } from '../../../constants/moduleAnimations';
 
@@ -58,13 +58,19 @@ const FooterV2Renderer: React.FC<{
   if (!config) return null;
   const desktopClass = ({ 1: '@lg:grid-cols-1', 2: '@lg:grid-cols-2', 3: '@lg:grid-cols-3', 4: '@lg:grid-cols-4' } as Record<number, string>)[config.columns.length] || '@lg:grid-cols-1';
   const titleColor = darkMode ? '#FFFFFF' : 'var(--text-color)';
-  const titleSize = normalizeFooterTypographySize(settingsValues[`${moduleId}_global_footer_title_size`], 18, 12, 32);
-  const titleWeight = normalizeFooterFontWeight(settingsValues[`${moduleId}_global_footer_title_weight`], 700);
-  const subtitleSize = normalizeFooterTypographySize(settingsValues[`${moduleId}_global_footer_subtitle_size`], 14, 10, 24);
-  const subtitleWeight = normalizeFooterFontWeight(settingsValues[`${moduleId}_global_footer_subtitle_weight`], 400);
+  const titleSizeToken = resolveFooterTypographyToken(settingsValues[`${moduleId}_global_footer_title_size`], 't3');
+  const titleWeightToken = resolveFooterFontWeightToken(settingsValues[`${moduleId}_global_footer_title_weight`], 'extrabold');
+  const subtitleSizeToken = resolveFooterTypographyToken(settingsValues[`${moduleId}_global_footer_subtitle_size`], 's');
+  const subtitleWeightToken = resolveFooterFontWeightToken(settingsValues[`${moduleId}_global_footer_subtitle_weight`], 'normal');
+  const titleFamily = resolveFooterFontFamily(settingsValues[`${moduleId}_global_footer_title_font_family`]);
+  const subtitleFamily = resolveFooterFontFamily(settingsValues[`${moduleId}_global_footer_subtitle_font_family`]);
+  const titleScale = TYPOGRAPHY_SCALE[titleSizeToken];
+  const titleWeight = FONT_WEIGHTS[titleWeightToken];
+  const subtitleScale = TYPOGRAPHY_SCALE[subtitleSizeToken];
+  const subtitleWeight = FONT_WEIGHTS[subtitleWeightToken];
   const logoScale = normalizeFooterLogoScale(settingsValues[`${moduleId}_global_footer_logo_scale`]);
-  const titleTextStyle = { color: titleColor, fontSize: `${titleSize}px`, fontWeight: titleWeight };
-  const secondaryTextStyle = { fontSize: `${subtitleSize}px`, fontWeight: subtitleWeight };
+  const titleTextStyle = { color: titleColor, fontSize: `${titleScale.fontSize}px`, lineHeight: titleScale.lineHeight, fontWeight: titleWeight.value, ...(titleFamily ? { fontFamily: titleFamily } : {}) };
+  const secondaryTextStyle = { fontSize: `${subtitleScale.fontSize}px`, lineHeight: subtitleScale.lineHeight, fontWeight: subtitleWeight.value, ...(subtitleFamily ? { fontFamily: subtitleFamily } : {}) };
   const renderColumn = (column: FooterColumn) => {
     const heading = column.type !== 'brand' ? column.title : undefined;
     const header = heading ? <h4 className="break-words uppercase tracking-widest" style={titleTextStyle}>{heading}</h4> : null;
@@ -74,8 +80,11 @@ const FooterV2Renderer: React.FC<{
       return <div className="min-w-0 space-y-4">{column.showLogo && image && <div className="flex w-full items-start justify-start"><img src={image} alt={column.name || 'Logo'} className="h-auto max-w-full object-contain" style={{ maxWidth: `${logoScale}%` }} referrerPolicy="no-referrer" /></div>}{column.showName && column.name && <h4 className="break-words" style={titleTextStyle}>{column.name}</h4>}{column.showDescription && column.description && <p className="break-words leading-relaxed opacity-80" style={secondaryTextStyle}>{column.description}</p>}</div>;
     }
     if (column.type === 'menu') return <div className="min-w-0 space-y-4">{header}<ul className="space-y-3" style={secondaryTextStyle}>{column.links.map((link) => <li key={link.id}><V2FooterLink link={link} /></li>)}</ul></div>;
-    if (column.type === 'contact') return <div className="min-w-0 space-y-4">{header}<div className="space-y-3" style={secondaryTextStyle}>{column.showPhone && column.phone && <a className="block break-words opacity-80 hover:underline" href={footerHref(column.phone, 'phone')}>{column.phone}</a>}{column.showWhatsapp && column.whatsapp && <a className="block break-words opacity-80 hover:underline" href={footerHref(column.whatsapp, 'whatsapp')}>{column.whatsapp}</a>}{column.showEmail && column.email && <a className="block break-words opacity-80 hover:underline" href={footerHref(column.email, 'email')}>{column.email}</a>}{column.showAddress && column.address && <span className="block break-words opacity-80">{column.address}</span>}</div></div>;
-    if (column.type === 'social') return <div className="min-w-0 space-y-4">{header}<div className={column.presentation === 'icon_label' ? 'space-y-3' : 'flex flex-wrap items-center gap-4'} style={secondaryTextStyle}>{column.links.filter((link) => link.url).map((link) => { const platform = normalizeSocialPlatform(link.platform) || 'website'; const definition = SOCIAL_PLATFORMS[platform as keyof typeof SOCIAL_PLATFORMS]; const label = link.label || definition?.label || platform; return <a key={link.id} href={link.url} target="_blank" rel="noreferrer" className="inline-flex max-w-full items-center gap-2 break-words opacity-80 hover:opacity-100">{definition?.icon && getIconElement(definition.icon)}{column.presentation === 'icon_label' && <span>{label}</span>}</a>; })}</div></div>;
+    if (column.type === 'contact') {
+      const contactItem = (content: React.ReactNode, field: 'phone' | 'whatsapp' | 'email' | 'address') => <span className="inline-flex min-w-0 items-start gap-2 break-words">{column.showIcons && <span className="shrink-0 opacity-80" aria-hidden="true">{getIconElement(resolveFooterContactIconName(field))}</span>}<span className="min-w-0">{content}</span></span>;
+      return <div className="min-w-0 space-y-4">{header}<div className="flex flex-col gap-3" style={secondaryTextStyle}>{column.showPhone && column.phone && <a className="block min-w-0 break-words opacity-80 hover:underline" href={footerHref(column.phone, 'phone')}>{contactItem(column.phone, 'phone')}</a>}{column.showWhatsapp && column.whatsapp && <a className="block min-w-0 break-words opacity-80 hover:underline" href={footerHref(column.whatsapp, 'whatsapp')}>{contactItem(column.whatsapp, 'whatsapp')}</a>}{column.showEmail && column.email && <a className="block min-w-0 break-words opacity-80 hover:underline" href={footerHref(column.email, 'email')}>{contactItem(column.email, 'email')}</a>}{column.showAddress && column.address && contactItem(column.address, 'address')}</div></div>;
+    }
+    if (column.type === 'social') return <div className="min-w-0 space-y-4">{header}<div className={resolveFooterSocialLayoutClass(column.presentation)} style={secondaryTextStyle}>{column.links.filter((link) => link.url).map((link) => { const platform = normalizeSocialPlatform(link.platform) || 'website'; const definition = SOCIAL_PLATFORMS[platform as keyof typeof SOCIAL_PLATFORMS]; const label = link.label || definition?.label || platform; return <a key={link.id} href={link.url} target="_blank" rel="noreferrer" className="inline-flex max-w-full items-center gap-2 break-words opacity-80 hover:opacity-100">{definition?.icon && getIconElement(definition.icon)}{column.presentation === 'icon_label' && <span>{label}</span>}</a>; })}</div></div>;
     if (column.type === 'text') return <div className="min-w-0 space-y-4">{header}{column.content && <p className="break-words whitespace-pre-wrap leading-relaxed opacity-80" style={secondaryTextStyle}>{column.content}</p>}</div>;
     return <div className="min-w-0 space-y-4">{header}<div className="space-y-2" style={secondaryTextStyle}>{column.days.map((day) => <div key={day.id} className="flex flex-wrap justify-between gap-2"><span>{day.label}</span><span className="opacity-75">{day.closed ? 'Cerrado' : `${day.open || ''} - ${day.close || ''}`}</span></div>)}</div></div>;
   };

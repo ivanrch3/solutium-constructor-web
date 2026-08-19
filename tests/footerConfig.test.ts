@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { composeFooterCopyright, createDefaultFooterV2Config, getFooterConfigKey, hasFooterV2Config, isValidFooterV2Config, migrateLegacyFooterToV2, normalizeFooterFontWeight, normalizeFooterLogoScale, normalizeFooterTypographySize, normalizeFooterV2Config, resolveFooterBrandLogo } from '../src/components/constructor/modules/footerConfig';
+import { composeFooterCopyright, createDefaultFooterV2Config, getFooterConfigKey, hasFooterV2Config, isValidFooterV2Config, migrateLegacyFooterToV2, normalizeFooterFontWeight, normalizeFooterLogoScale, normalizeFooterTypographySize, normalizeFooterV2Config, resolveFooterBrandLogo, resolveFooterContactIconName, resolveFooterFontFamily, resolveFooterFontWeightToken, resolveFooterSocialLayoutClass, resolveFooterTypographyToken } from '../src/components/constructor/modules/footerConfig';
 import { buildPublishedModuleSettings } from '../src/utils/publishedModuleSettings';
 
 const config = createDefaultFooterV2Config({ name: 'Acme', email: 'hola@acme.test', whatsapp: '+506 8888 8888' });
@@ -40,6 +40,20 @@ assert.equal(normalizeFooterTypographySize(24, 18, 12, 32), 24);
 assert.equal(normalizeFooterFontWeight(undefined, 700), 700);
 assert.equal(normalizeFooterFontWeight('semibold', 700), 600);
 assert.equal(normalizeFooterFontWeight(800, 700), 800);
+assert.equal(resolveFooterTypographyToken('t3', 's'), 't3');
+assert.equal(resolveFooterTypographyToken(18, 's'), 't3');
+assert.equal(resolveFooterTypographyToken(14, 'p'), 's');
+assert.equal(resolveFooterFontWeightToken('extrabold', 'normal'), 'extrabold');
+assert.equal(resolveFooterFontWeightToken(700, 'normal'), 'extrabold');
+assert.equal(resolveFooterFontWeightToken(400, 'normal'), 'normal');
+assert.equal(resolveFooterFontFamily('inherit'), undefined);
+assert.equal(resolveFooterFontFamily('serif'), 'serif');
+assert.equal(resolveFooterContactIconName('phone'), 'Phone');
+assert.equal(resolveFooterContactIconName('whatsapp'), 'MessageCircle');
+assert.equal(resolveFooterContactIconName('email'), 'Mail');
+assert.equal(resolveFooterContactIconName('address'), 'MapPin');
+assert.equal(resolveFooterSocialLayoutClass('icon'), 'flex flex-wrap items-center gap-4');
+assert.equal(resolveFooterSocialLayoutClass('icon_label'), 'flex flex-col gap-3');
 
 const partial = normalizeFooterV2Config({ version: 2, columns: [{ id: 'stable', type: 'hours', days: [{ label: 'Lunes', closed: true }] }, { type: 'invalid' }, { type: 'text', content: 'Texto' }, { type: 'social', links: [] }, { type: 'menu', links: [] }] });
 assert.ok(partial);
@@ -84,9 +98,11 @@ assert.ok('error' in tooManyMenus);
 const published = buildPublishedModuleSettings({
   footer_1_el_footer_config: config,
   footer_1_global_footer_title_size: 24,
-  footer_1_global_footer_title_weight: 700,
-  footer_1_global_footer_subtitle_size: 12,
-  footer_1_global_footer_subtitle_weight: 500,
+  footer_1_global_footer_title_weight: 'extrabold',
+  footer_1_global_footer_title_font_family: 'inherit',
+  footer_1_global_footer_subtitle_size: 's',
+  footer_1_global_footer_subtitle_weight: 'normal',
+  footer_1_global_footer_subtitle_font_family: 'serif',
   footer_1_global_footer_logo_scale: 75,
   unrelated: true
 }, 'footer_1');
@@ -95,9 +111,11 @@ assert.equal((published.el_footer_config as any).columns.length, 4);
 assert.equal((published.el_footer_config as any).columns[0].id, config.columns[0].id);
 assert.equal((published.el_footer_config as any).bottomBar.yearMode, 'current');
 assert.equal(published.global_footer_title_size, 24);
-assert.equal(published.global_footer_title_weight, 700);
-assert.equal(published.global_footer_subtitle_size, 12);
-assert.equal(published.global_footer_subtitle_weight, 500);
+assert.equal(published.global_footer_title_weight, 'extrabold');
+assert.equal(published.global_footer_title_font_family, 'inherit');
+assert.equal(published.global_footer_subtitle_size, 's');
+assert.equal(published.global_footer_subtitle_weight, 'normal');
+assert.equal(published.global_footer_subtitle_font_family, 'serif');
 assert.equal(published.global_footer_logo_scale, 75);
 assert.equal(Object.keys(published).includes('bottomBar'), false);
 

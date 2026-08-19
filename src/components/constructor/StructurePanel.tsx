@@ -81,8 +81,10 @@ import { FooterBottomBarControl, FooterColumnsControl } from './modules/FooterCo
 import { hasFooterV2Config, normalizeFooterV2Config } from './modules/footerConfig';
 
 const FOOTER_V2_GLOBAL_SETTING_IDS = new Set([
+  'footer_title_font_family',
   'footer_title_size',
   'footer_title_weight',
+  'footer_subtitle_font_family',
   'footer_subtitle_size',
   'footer_subtitle_weight',
   'footer_logo_scale'

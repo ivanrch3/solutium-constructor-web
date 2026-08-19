@@ -1,4 +1,5 @@
 import { SOCIAL_PLATFORMS, normalizeSocialPlatform, resolveFooterSocialLinks } from '../../../utils/socialUtils';
+import { FONT_WEIGHTS, TYPOGRAPHY_SCALE, type FontWeightToken, type TypographySizeToken } from '../../../constants/typography';
 
 export type FooterColumnType = 'brand' | 'menu' | 'contact' | 'social' | 'text' | 'hours';
 export type FooterLinkKind = 'internal' | 'external';
@@ -191,4 +192,36 @@ export const normalizeFooterFontWeight = (value: unknown, fallback: number) => {
   const numeric = typeof value === 'string' && aliases[value] ? aliases[value] : Number(value);
   return [400, 500, 600, 700, 800].includes(numeric) ? numeric : fallback;
 };
+export const resolveFooterTypographyToken = (value: unknown, fallback: TypographySizeToken): TypographySizeToken => {
+  if (typeof value === 'string' && value in TYPOGRAPHY_SCALE) return value as TypographySizeToken;
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return fallback;
+  return (Object.entries(TYPOGRAPHY_SCALE).sort(([, a], [, b]) => Math.abs(a.fontSize - numeric) - Math.abs(b.fontSize - numeric))[0]?.[0] || fallback) as TypographySizeToken;
+};
+export const resolveFooterFontWeightToken = (value: unknown, fallback: FontWeightToken): FontWeightToken => {
+  if (typeof value === 'string') {
+    if (value in FONT_WEIGHTS) return value as FontWeightToken;
+    if (value === 'bold') return 'extrabold';
+  }
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return fallback;
+  if (numeric <= 300) return 'light';
+  if (numeric <= 500) return 'normal';
+  if (numeric <= 650) return 'semibold';
+  if (numeric <= 800) return 'extrabold';
+  return 'black';
+};
+export const resolveFooterFontFamily = (value: unknown): string | undefined => {
+  if (value === 'sans-serif' || value === 'serif' || value === 'monospace') return value;
+  return undefined;
+};
+export const resolveFooterContactIconName = (field: 'phone' | 'whatsapp' | 'email' | 'address') => ({
+  phone: 'Phone',
+  whatsapp: 'MessageCircle',
+  email: 'Mail',
+  address: 'MapPin'
+}[field]);
+export const resolveFooterSocialLayoutClass = (presentation: 'icon' | 'icon_label') => (
+  presentation === 'icon_label' ? 'flex flex-col gap-3' : 'flex flex-wrap items-center gap-4'
+);
 export const getFooterDayDefaults = () => DAYS.map((label) => ({ id: createId('footer_day'), label, closed: false, open: '09:00', close: '17:00' }));

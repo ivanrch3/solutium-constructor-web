@@ -344,10 +344,12 @@ export const FOOTER_MODULE: WebModule = {
       { id: 'border_color', label: 'Color de Borde', type: 'color', defaultValue: '#E2E8F0' }
     ],
     tipografia: [
-      { id: 'footer_title_size', label: 'Tamaño de títulos', type: 'range', defaultValue: 18, min: 12, max: 32, step: 1, unit: 'px', subsection: 'Títulos' },
-      { id: 'footer_title_weight', label: 'Peso de títulos', type: 'select', defaultValue: 700, options: [{ label: '400 · Normal', value: 400 }, { label: '500 · Medium', value: 500 }, { label: '600 · Semibold', value: 600 }, { label: '700 · Bold', value: 700 }, { label: '800 · Extra Bold', value: 800 }], subsection: 'Títulos' },
-      { id: 'footer_subtitle_size', label: 'Tamaño de subtítulos / texto secundario', type: 'range', defaultValue: 14, min: 10, max: 24, step: 1, unit: 'px', subsection: 'Subtítulos / texto secundario' },
-      { id: 'footer_subtitle_weight', label: 'Peso de subtítulos / texto secundario', type: 'select', defaultValue: 400, options: [{ label: '400 · Normal', value: 400 }, { label: '500 · Medium', value: 500 }, { label: '600 · Semibold', value: 600 }, { label: '700 · Bold', value: 700 }, { label: '800 · Extra Bold', value: 800 }], subsection: 'Subtítulos / texto secundario' }
+      { id: 'footer_title_font_family', label: 'Familia del título', type: 'select', defaultValue: 'inherit', options: [{ label: 'Heredada del tema', value: 'inherit' }, { label: 'Sans', value: 'sans-serif' }, { label: 'Serif', value: 'serif' }, { label: 'Monoespaciada', value: 'monospace' }], subsection: 'Títulos' },
+      { id: 'footer_title_size', label: 'Tamaño del título', type: 'typography_size', defaultValue: 't3', allowedLevels: ['t1', 't2', 't3'], subsection: 'Títulos' },
+      { id: 'footer_title_weight', label: 'Peso del título', type: 'font_weight', defaultValue: 'extrabold', subsection: 'Títulos' },
+      { id: 'footer_subtitle_font_family', label: 'Familia del texto secundario', type: 'select', defaultValue: 'inherit', options: [{ label: 'Heredada del tema', value: 'inherit' }, { label: 'Sans', value: 'sans-serif' }, { label: 'Serif', value: 'serif' }, { label: 'Monoespaciada', value: 'monospace' }], subsection: 'Texto secundario' },
+      { id: 'footer_subtitle_size', label: 'Tamaño del texto secundario', type: 'typography_size', defaultValue: 's', allowedLevels: ['t3', 'p', 's'], subsection: 'Texto secundario' },
+      { id: 'footer_subtitle_weight', label: 'Peso del texto secundario', type: 'font_weight', defaultValue: 'normal', subsection: 'Texto secundario' }
     ],
     multimedia: [
       { id: 'footer_logo_scale', label: 'Tamaño del logo', type: 'range', defaultValue: 100, min: 50, max: 100, step: 5, unit: '%', description: 'Ajusta el tamaño del logo dentro de su espacio sin modificar la estructura del pie de página.' }

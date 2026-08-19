@@ -104,6 +104,7 @@ import {
   mergeAutomaticMenuItemsWithExisting,
   normalizeConstructorModuleOrder,
   normalizeHeaderPositionValue,
+  rebuildAutomaticMenuLinks,
   resolveSectionHref,
   resolveMenuMode,
   resolveShowInMenuState
@@ -4248,10 +4249,17 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       newModules[targetIndex] = temp;
       const orderedModules = normalizeConstructorModuleOrder(newModules);
 
-      return {
+      let nextState: EditorState = {
         ...prev,
         addedModules: orderedModules
       };
+
+      const menuModule = orderedModules.find(module => module.type === 'navegacion' || module.type === 'menu');
+      if (menuModule) {
+        nextState = rebuildMenuLinksIfNeeded(nextState, menuModule.id, orderedModules);
+      }
+
+      return nextState;
     });
   };
 
@@ -4376,36 +4384,26 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     setModuleToDelete(null);
   };
 
-  const rebuildMenuLinksIfNeeded = (state: EditorState, menuModuleId: string) => {
+  const rebuildMenuLinksIfNeeded = (
+    state: EditorState,
+    menuModuleId: string,
+    modulesOverride?: WebModule[]
+  ) => {
     const menuItemsElId = `${menuModuleId}_el_menu_items`;
     const menuLinksKey = `${menuItemsElId}_links`;
     const currentLinks = dedupeMenuLinks(state.settingsValues[menuLinksKey] || []);
-    const autoAnchors = new Set(
-      (state.addedModules || [])
-        .filter((module) => isMenuEligibleModule(module))
-        .flatMap((module) => [`#${module.id}`, resolveSectionHref(module.id)])
-    );
-
-    const manualLinks = currentLinks.filter((link) => {
-      if (!link || typeof link !== 'object') return false;
-      if (link.is_title) return true;
-      if (link.source === 'auto') return false;
-      const url = String(link.href || link.url || '').trim();
-      if (!url.startsWith('#')) return true;
-      return !autoAnchors.has(url);
+    const modules = modulesOverride || state.addedModules || [];
+    const rebuiltLinks = rebuildAutomaticMenuLinks({
+      modules,
+      settingsValues: state.settingsValues,
+      currentLinks
     });
-
-    const visibleLinks = buildAutomaticMenuItems({
-      modules: state.addedModules || [],
-      settingsValues: state.settingsValues
-    });
-    const mergedVisibleLinks = mergeAutomaticMenuItemsWithExisting(visibleLinks, currentLinks);
 
     return {
       ...state,
       settingsValues: {
         ...state.settingsValues,
-        [menuLinksKey]: dedupeMenuLinks([...mergedVisibleLinks, ...manualLinks])
+        [menuLinksKey]: rebuiltLinks
       }
     };
   };

@@ -9,6 +9,13 @@ import { SectionAnimation } from '../animations/SectionAnimation';
 import { normalizeSectionAnimation } from '../../../constants/moduleAnimations';
 import { getEmbedFrameReferrerPolicy, getVideoAspectRatioCss, resolveVideoAspectRatio, resolveVideoSource } from '../../../utils/videoEmbed';
 
+export const normalizeVideoContentMediaGap = (value: unknown, fallback = 40): number => {
+  const parsed = typeof value === 'number' ? value : parseFloat(String(value ?? ''));
+  const safeFallback = Math.min(80, Math.max(0, fallback));
+  if (!Number.isFinite(parsed)) return safeFallback;
+  return Math.min(80, Math.max(0, parsed));
+};
+
 export const VideoModule: React.FC<{ 
   moduleId: string, 
   settingsValues: Record<string, any>,
@@ -58,6 +65,9 @@ export const VideoModule: React.FC<{
   // Global Settings
   const layout = getVal(null, 'layout', 'centered');
   const configuredAspectRatio = getVal(null, 'aspect_ratio', 'auto');
+  const contentMediaGap = normalizeVideoContentMediaGap(
+    getVal(null, 'content_media_gap', getVal(`${moduleId}_el_video_text`, 'margin_b', 40))
+  );
   const paddingY = parseFloat(getVal(null, 'padding_y', 100)) || 100;
   const maxWidth = parseFloat(getVal(null, 'max_width', 1000)) || 1000;
   const darkMode = toBoolean(getVal(null, 'dark_mode', false));
@@ -109,8 +119,6 @@ export const VideoModule: React.FC<{
   const titleColor = resolveThemeColor(rawTitleColor, '#0F172A', '#FFFFFF', darkMode);
   const subtitleColor = resolveThemeColor('#64748B', '#64748B', '#94A3B8', darkMode);
   const eyebrowColor = getVal(`${moduleId}_el_video_text`, 'eyebrow_color', 'var(--primary-color)');
-  const marginB = parseFloat(getVal(`${moduleId}_el_video_text`, 'margin_b', 40)) || 40;
-
   const titleHighlightType = getVal(`${moduleId}_el_video_text`, 'title_highlight_type', 'gradient');
   const titleHighlightColor = getVal(`${moduleId}_el_video_text`, 'title_highlight_color', '#3B82F6');
   const titleHighlightGradient = getVal(`${moduleId}_el_video_text`, 'title_highlight_gradient', 'linear-gradient(to right, #3B82F6, #2563EB)');
@@ -224,7 +232,7 @@ export const VideoModule: React.FC<{
     return (
       <div 
         className={`flex flex-col w-full ${textAlign === 'center' ? 'items-center text-center' : textAlign === 'right' ? 'items-end text-right' : 'items-start text-left'}`}
-        style={{ marginBottom: isOverlay ? 0 : `${marginB}px` }}
+        style={{ marginBottom: isOverlay ? 0 : `${contentMediaGap}px` }}
       >
         {eyebrow && (
           <span 

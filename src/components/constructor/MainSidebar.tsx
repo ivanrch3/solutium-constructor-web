@@ -35,6 +35,7 @@ import {
   CTA_MODULE,
   DYNAMIC_CARDS_MODULE,
   PRICING_MODULE,
+  PLAN_COMPARISON_MODULE,
   CONTACT_MODULE,
   GENIUS_WEB_WA_MODULE,
   NEWSLETTER_MODULE,
@@ -251,6 +252,7 @@ export const MainSidebar: React.FC<MainSidebarProps> = ({
                     <ModuleItem icon={React.createElement(MODULE_INFO.reservas_web.icon, { size: 18 })} label="Reservas Web" onClick={() => onAddModule(RESERVAS_WEB_MODULE)} />
                     <ModuleItem icon={React.createElement(MODULE_INFO.newsletter.icon, { size: 18 })} label="Newsletter" onClick={() => onAddModule(NEWSLETTER_MODULE)} />
                     <ModuleItem icon={React.createElement(MODULE_INFO.pricing.icon, { size: 18 })} label="Planes" onClick={() => onAddModule(PRICING_MODULE)} />
+                    <ModuleItem icon={React.createElement(MODULE_INFO.plan_comparison.icon, { size: 18 })} label="Comparador de planes" onClick={() => onAddModule(PLAN_COMPARISON_MODULE)} />
                     <ModuleItem icon={React.createElement(MODULE_INFO.header.icon, { size: 18 })} label="Publicidad" onClick={() => onAddModule(HEADER_MODULE)} />
                     <ModuleItem icon={React.createElement(MODULE_INFO.products.icon, { size: 18 })} label="Productos y Servicios" onClick={() => onAddModule(PRODUCTS_MODULE)} />
                   </div>

@@ -56,10 +56,12 @@ import {
   Layout,
   RotateCcw,
   Columns2,
+  Table2,
   CalendarDays
 } from 'lucide-react';
 import { WebModule, SettingGroupType, SettingDefinition } from '../../types/constructor';
 import { createCompositionPresetSchema } from './modules/compositionPresets';
+import { createDefaultPlanComparisonConfig } from './modules/planComparisonConfig';
 
 const HIGHLIGHT_SETTINGS = (prefix: string = 'title'): SettingDefinition[] => [
   { id: `${prefix}_highlight_type`, label: 'Tipo de Resaltado (**texto**)', type: 'select', defaultValue: 'gradient', options: [
@@ -4138,6 +4140,58 @@ export const COMPARISON_MODULE: WebModule = {
   ]
 };
 
+const COMPARISON_FONT_FAMILY_SETTINGS = (prefix: string, subsection: string): SettingDefinition[] => [
+  { id: `${prefix}_font_family`, label: 'Familia tipográfica', type: 'select', defaultValue: 'inherit', subsection, options: [
+    { label: 'Heredada del tema', value: 'inherit' },
+    { label: 'Sans', value: 'sans-serif' },
+    { label: 'Serif', value: 'serif' },
+    { label: 'Monoespaciada', value: 'monospace' }
+  ] },
+  { id: `${prefix}_size`, label: 'Escala', type: 'typography_size', defaultValue: prefix.includes('title') ? 't2' : 'p', subsection, allowedLevels: ['t1', 't2', 't3', 'p', 's'] },
+  { id: `${prefix}_weight`, label: 'Peso', type: 'font_weight', defaultValue: prefix.includes('title') || prefix.includes('name') ? 'extrabold' : 'normal', subsection },
+  { id: `${prefix}_color`, label: 'Color', type: 'color', defaultValue: 'var(--brand-text)', subsection }
+];
+
+export const PLAN_COMPARISON_MODULE: WebModule = {
+  id: 'mod_plan_comparison_1',
+  type: 'plan_comparison',
+  iconKey: 'plan_comparison',
+  name: 'Comparador de planes',
+  globalGroups: ['estructura', 'estilo', 'tipografia', 'interaccion'],
+  globalSettings: {
+    contenido: [],
+    estructura: [
+      { id: 'padding_y', label: 'Padding vertical', type: 'range', defaultValue: 56, min: 32, max: 160, unit: 'px' },
+      { id: 'max_width', label: 'Ancho máximo', type: 'range', defaultValue: 1200, min: 760, max: 1600, unit: 'px' },
+      { id: 'row_padding', label: 'Densidad de filas', type: 'range', defaultValue: 18, min: 10, max: 32, unit: 'px' }
+    ],
+    estilo: [
+      { id: 'show_shadow', label: 'Mostrar sombra', type: 'boolean', defaultValue: true },
+      { id: 'border_radius', label: 'Radio de bordes', type: 'range', defaultValue: 12, min: 0, max: 32, unit: 'px' },
+      { id: 'featured_color', label: 'Color de plan destacado', type: 'color', defaultValue: 'var(--primary-color)' }
+    ],
+    tipografia: [
+      ...COMPARISON_FONT_FAMILY_SETTINGS('header_eyebrow', 'Encabezado'),
+      ...COMPARISON_FONT_FAMILY_SETTINGS('header_title', 'Encabezado'),
+      ...COMPARISON_FONT_FAMILY_SETTINGS('header_description', 'Encabezado'),
+      ...COMPARISON_FONT_FAMILY_SETTINGS('plan_name', 'Planes'),
+      ...COMPARISON_FONT_FAMILY_SETTINGS('plan_price', 'Planes'),
+      ...COMPARISON_FONT_FAMILY_SETTINGS('plan_description', 'Planes'),
+      ...COMPARISON_FONT_FAMILY_SETTINGS('section_title', 'Secciones'),
+      ...COMPARISON_FONT_FAMILY_SETTINGS('feature_name', 'Características'),
+      ...COMPARISON_FONT_FAMILY_SETTINGS('feature_description', 'Características'),
+      ...COMPARISON_FONT_FAMILY_SETTINGS('cell_value', 'Valores de celda'),
+      ...COMPARISON_FONT_FAMILY_SETTINGS('cta', 'CTA')
+    ],
+    multimedia: [],
+    interaccion: [
+      { id: 'section_collapse_enabled', label: 'Permitir colapsar secciones', type: 'boolean', defaultValue: true }
+    ]
+  },
+  elements: [],
+  content: { configKey: 'global_config', defaultConfig: createDefaultPlanComparisonConfig() }
+};
+
 export const COMPOSITION_SECTION_MODULE: WebModule = {
   id: 'mod_composition_section_1',
   type: 'composition_section',
@@ -4257,6 +4311,7 @@ export const MODULE_INFO: Record<string, {
   pricing: { label: 'Planes', icon: Tags },
   faq: { label: 'FAQ', icon: MessageCircleQuestion },
   comparative: { label: 'Comparativo', icon: Columns2 },
+  plan_comparison: { label: 'Comparador de planes', icon: Table2 },
   clients: {
     label: 'Clientes',
     icon: Handshake,

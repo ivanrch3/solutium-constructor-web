@@ -48,6 +48,7 @@ import { FooterModule } from './modules/FooterModule';
 import { SpacerModule } from './modules/SpacerModule';
 import { BentoModule } from './modules/BentoModule';
 import { ComparisonModule } from './modules/ComparisonModule';
+import { PlanComparisonModule } from './modules/PlanComparisonModule';
 import { CompositionSectionModule } from './modules/CompositionSectionModule';
 import { SpecialEventModule } from './modules/SpecialEventModule';
 import { ParallaxScrollContext } from './ParallaxBackground';
@@ -1137,6 +1138,13 @@ export const Canvas: React.FC<CanvasProps> = ({
                         isPreviewMode={isCleanPreviewMode}
                       />
                     )}
+                    {section.type === 'plan_comparison' && (
+                      <PlanComparisonModule
+                        moduleId={section.id}
+                        settingsValues={finalSettings}
+                        isPreviewMode={isCleanPreviewMode}
+                      />
+                    )}
                     {section.type === 'faq' && (
                       <FAQModule 
                         moduleId={section.id}
@@ -1267,7 +1275,7 @@ export const Canvas: React.FC<CanvasProps> = ({
                       />
                     )}
                     {/* Fallback debug for unrendered modules */}
-                    {!['products', 'reservas_web', 'whatsapp_orders', 'products_showcase', 'hero', 'hero2', 'features', 'about', 'process', 'gallery', 'special_event', 'video', 'testimonials', 'stats', 'team', 'pricing', 'faq', 'contact', 'genius_web_wa', 'clients', 'trusted_logos', 'cta', 'dynamic_cards', 'newsletter', 'conversion', 'navegacion', 'menu', 'footer', 'spacer', 'bento', 'composition_section', 'comparative'].includes(section.type) && (
+                    {!['products', 'reservas_web', 'whatsapp_orders', 'products_showcase', 'hero', 'hero2', 'features', 'about', 'process', 'gallery', 'special_event', 'video', 'testimonials', 'stats', 'team', 'pricing', 'plan_comparison', 'faq', 'contact', 'genius_web_wa', 'clients', 'trusted_logos', 'cta', 'dynamic_cards', 'newsletter', 'conversion', 'navegacion', 'menu', 'footer', 'spacer', 'bento', 'composition_section', 'comparative'].includes(section.type) && (
                       <div className="p-8 border-2 border-dashed border-rose-200 rounded-2xl bg-rose-50 text-rose-500 text-center">
                         <p className="font-bold">Módulo no reconocido: {section.type}</p>
                         <p className="text-xs opacity-60">ID: {section.id} | Template: {section.templateId}</p>

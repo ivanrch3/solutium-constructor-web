@@ -79,6 +79,7 @@ import {
 import { WhatsAppOrdersCatalogOrganizerControl } from './modules/WhatsAppOrdersCatalogOrganizerControl';
 import { FooterBottomBarControl, FooterColumnsControl } from './modules/FooterColumnsControl';
 import { hasFooterV2Config, normalizeFooterV2Config } from './modules/footerConfig';
+import { PlanComparisonControl } from './modules/PlanComparisonControl';
 
 const FOOTER_V2_GLOBAL_SETTING_IDS = new Set([
   'footer_title_font_family',
@@ -1003,6 +1004,7 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
   const [shiningGroup, setShiningGroup] = React.useState<string | null>(null);
   const [expandedBentoItem, setExpandedBentoItem] = React.useState<number | null>(null);
   const [isBentoAddExpanded, setIsBentoAddExpanded] = React.useState(false);
+  const [expandedPlanComparisonTypographySubsection, setExpandedPlanComparisonTypographySubsection] = React.useState<string | null>(null);
   const [localReservasWebActivities, setLocalReservasWebActivities] = React.useState(reservasWebActivities);
   React.useEffect(() => setLocalReservasWebActivities(reservasWebActivities), [reservasWebActivities]);
 
@@ -1471,7 +1473,14 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
           const isFooterBottomV2ElementId = (elementId: string) => (
             elementId === 'el_footer_bottom_v2' || elementId === `${module.id}_el_footer_bottom_v2`
           );
-          const allElements = [globalElement, ...module.elements].filter((element) => (
+          const planComparisonElement: ModuleElement = {
+            id: `${module.id}_comparison`,
+            name: 'Comparación',
+            type: 'content',
+            groups: ['contenido'],
+            settings: { contenido: [] }
+          };
+          const allElements = [globalElement, ...(module.type === 'plan_comparison' ? [planComparisonElement] : module.elements)].filter((element) => (
             (!isBento || (element.id !== 'el_bento_items' && element.id !== `${module.id}_el_bento_items`))
             && (isFooterV2
               ? (isFooterColumnsElementId(element.id) || isFooterBottomV2ElementId(element.id) || element.type === 'global')
@@ -1783,10 +1792,13 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                                      && isFooterColumnsElementId(element.id);
                                    const isFooterBottomV2Element = module.type === 'footer'
                                      && isFooterBottomV2ElementId(element.id);
+                                   const isPlanComparisonElement = module.type === 'plan_comparison'
+                                     && element.name === 'Comparación'
+                                     && element.type === 'content';
 
                                    if (isFooterColumnsElement && group !== 'estructura') return null;
                                    if (isFooterBottomV2Element && group !== 'contenido') return null;
-                                   if (!isAvailable || (!hasSettings && !isFooterColumnsElement && !isFooterBottomV2Element)) return null;
+                                   if (!isAvailable || (!hasSettings && !isFooterColumnsElement && !isFooterBottomV2Element && !isPlanComparisonElement)) return null;
 
                                    const isDirectWhatsAppOrdersCatalog = module.type === 'whatsapp_orders'
                                      && element.id === 'el_whatsapp_orders_catalog'
@@ -1811,6 +1823,18 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                                          <FooterBottomBarControl
                                            config={footerConfig}
                                            onChange={(next) => onSettingChange(module.id, 'el_footer_config', next)}
+                                         />
+                                       </div>
+                                     );
+                                   }
+                                   if (isPlanComparisonElement && group === 'contenido') {
+                                     return (
+                                       <div key={group} className="rounded-lg border border-border/30 bg-surface p-3 shadow-sm">
+                                         <PlanComparisonControl
+                                           moduleId={module.id}
+                                           settingsValues={editorState.settingsValues}
+                                           availableModules={editorState.addedModules}
+                                           onSettingChange={onSettingChange}
                                          />
                                        </div>
                                      );
@@ -1877,7 +1901,7 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                                             exit={{ height: 0, opacity: 0 }}
                                             className="overflow-hidden"
                                           >
-                                            <div className="p-3 pt-0 space-y-4 border-t border-border/30 mt-1">
+                                            <div className={`p-3 space-y-4 border-t border-border/30 mt-1 ${module.type === 'plan_comparison' && element.type === 'global' && group === 'tipografia' ? 'pt-2' : 'pt-0'}`}>
                                               {module.type === 'whatsapp_orders'
                                                 && element.type === 'global'
                                                 && group === 'estructura' && (
@@ -1982,7 +2006,25 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                                                     && group === 'tipografia'
                                                     && setting.subsection
                                                     && settingsToRender[settingIndex - 1]?.subsection !== setting.subsection;
-
+                                                  const showPlanComparisonTypographySubsection = module.type === 'plan_comparison'
+                                                    && element.type === 'global'
+                                                    && group === 'tipografia'
+                                                    && setting.subsection
+                                                    && settingsToRender[settingIndex - 1]?.subsection !== setting.subsection;
+                                                  const planComparisonTypographyKey = setting.subsection
+                                                    ? `${module.id}:${setting.subsection}`
+                                                    : null;
+                                                  const isPlanComparisonTypographyExpanded = Boolean(
+                                                      setting.subsection
+                                                    && expandedPlanComparisonTypographySubsection === planComparisonTypographyKey
+                                                  );
+                                                  const shouldRenderPlanComparisonTypographySetting = !(
+                                                    module.type === 'plan_comparison'
+                                                    && element.type === 'global'
+                                                    && group === 'tipografia'
+                                                    && setting.subsection
+                                                    && !isPlanComparisonTypographyExpanded
+                                                  );
                                                   return (
                                                     <React.Fragment key={setting.id}>
                                                       {showDynamicCardsSubsection && (
@@ -1999,20 +2041,33 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                                                           </p>
                                                         </div>
                                                       )}
-                                                      <SettingControl
-                                                        setting={finalSetting}
-                                                        value={editorState.settingsValues[`${prefix}_${setting.id}`]}
-                                                        onChange={(val) => onSettingChange(prefix, setting.id, val)}
-                                                        projectId={projectId}
-                                                        products={products}
-                                                        customers={customers}
-                                                        trustedCompanyLogos={trustedCompanyLogos}
-                                                        projectColors={projectColors}
-                                                        contextId={prefix}
-                                                        moduleType={module.type}
-                                                        settingsValues={editorState.settingsValues}
-                                                        availableModules={editorState.addedModules}
-                                                      />
+                                                      {showPlanComparisonTypographySubsection && (
+                                                        <button
+                                                          type="button"
+                                                          onClick={() => setExpandedPlanComparisonTypographySubsection((current) => isPlanComparisonTypographyExpanded ? null : planComparisonTypographyKey)}
+                                                          aria-expanded={isPlanComparisonTypographyExpanded}
+                                                          className="flex w-full items-center justify-between border-t border-border/40 px-1 pt-3 text-left first:border-t-0 first:pt-0"
+                                                        >
+                                                          <span className="text-[9px] font-black uppercase tracking-wider text-primary/70">{setting.subsection}</span>
+                                                          {isPlanComparisonTypographyExpanded ? <ChevronDown size={13} className="text-primary/60" /> : <ChevronRight size={13} className="text-primary/60" />}
+                                                        </button>
+                                                      )}
+                                                      {shouldRenderPlanComparisonTypographySetting && (
+                                                        <SettingControl
+                                                          setting={finalSetting}
+                                                          value={editorState.settingsValues[`${prefix}_${setting.id}`]}
+                                                          onChange={(val) => onSettingChange(prefix, setting.id, val)}
+                                                          projectId={projectId}
+                                                          products={products}
+                                                          customers={customers}
+                                                          trustedCompanyLogos={trustedCompanyLogos}
+                                                          projectColors={projectColors}
+                                                          contextId={prefix}
+                                                          moduleType={module.type}
+                                                          settingsValues={editorState.settingsValues}
+                                                          availableModules={editorState.addedModules}
+                                                        />
+                                                      )}
                                                     </React.Fragment>
                                                   );
                                                 })}

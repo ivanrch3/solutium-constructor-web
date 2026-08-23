@@ -35,8 +35,9 @@ import {
   PROCESS_MODULE, GALLERY_MODULE, VIDEO_MODULE, TESTIMONIALS_MODULE,
   STATS_MODULE, NEWSLETTER_MODULE, CONTACT_MODULE, TEAM_MODULE,
   CTA_MODULE, DYNAMIC_CARDS_MODULE, PRICING_MODULE, FAQ_MODULE, TRUSTED_LOGOS_MODULE, GENIUS_WEB_WA_MODULE,
-  BENTO_MODULE, COMPARISON_MODULE, COMPOSITION_SECTION_MODULE, SPECIAL_EVENT_MODULE
+  BENTO_MODULE, COMPARISON_MODULE, PLAN_COMPARISON_MODULE, COMPOSITION_SECTION_MODULE, SPECIAL_EVENT_MODULE
 } from './registry';
+import { createDefaultPlanComparisonConfig } from './modules/planComparisonConfig';
 import { saveWebBuilderSiteDraft, publishWebBuilderSite, getProducts, getCustomers, getTrustedCompanyLogos, normalizeTrustedCompanyLogos, upsertPage, upsertPageSections, logEvolutionRequest, getPageBySiteId, generatePreviewServerSide } from '../../services/dataService';
 import { sendToMother } from '../../services/handshakeService';
 import { resolveProductPrimaryImageUrl } from '../../utils/productImage';
@@ -300,7 +301,7 @@ const MASTER_DICTIONARY = {
   modules: [
     'hero', 'hero2', 'features', 'about', 'process', 'gallery', 'video', 'testimonials',
     'stats', 'newsletter', 'contact', 'genius_web_wa', 'team', 'cta', 'dynamic_cards', 'pricing', 'faq', 'clients', 'trusted_logos',
-    'bento', 'comparative', 'header', 'menu', 'footer', 'spacer', 'products', 'whatsapp_orders'
+    'bento', 'comparative', 'plan_comparison', 'header', 'menu', 'footer', 'spacer', 'products', 'whatsapp_orders'
   ],
   styles: [
     'border_radius', 'box_shadow', 'font_family', 'button_styles',
@@ -2451,6 +2452,8 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         return TRUSTED_LOGOS_MODULE;
       case 'comparative':
         return COMPARISON_MODULE;
+      case 'plan_comparison':
+        return PLAN_COMPARISON_MODULE;
       case 'footer':
         return FOOTER_MODULE;
       case 'video':
@@ -4058,6 +4061,10 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
 
     if (module.type === 'footer') {
       initialValues[getFooterConfigKey(moduleId)] = createDefaultFooterV2Config(project);
+    }
+
+    if (module.type === 'plan_comparison') {
+      initialValues[`${moduleId}_global_config`] = createDefaultPlanComparisonConfig();
     }
 
     // Element settings
@@ -7110,6 +7117,7 @@ const formatTimestampName = () => {
                                     { icon: MODULE_INFO.reservas_web.icon, label: "Reservas Web", mod: RESERVAS_WEB_MODULE },
                                     { icon: MODULE_INFO.newsletter.icon, label: "Newsletter", mod: NEWSLETTER_MODULE },
                                     { icon: MODULE_INFO.pricing.icon, label: "Planes", mod: PRICING_MODULE },
+                                    { icon: MODULE_INFO.plan_comparison.icon, label: "Comparador de planes", mod: PLAN_COMPARISON_MODULE },
                                     { icon: MODULE_INFO.header.icon, label: "Publicidad", mod: HEADER_MODULE },
                                     { icon: MODULE_INFO.products.icon, label: "Productos y Servicios", mod: PRODUCTS_MODULE }
                                   ]},
@@ -7208,6 +7216,7 @@ const formatTimestampName = () => {
                                       <ModuleItem icon={React.createElement(MODULE_INFO.reservas_web.icon, { size: 18 })} label="Reservas Web" onClick={() => addModule(RESERVAS_WEB_MODULE)} />
                                       <ModuleItem icon={React.createElement(MODULE_INFO.newsletter.icon, { size: 18 })} label="Newsletter" onClick={() => addModule(NEWSLETTER_MODULE)} />
                                       <ModuleItem icon={React.createElement(MODULE_INFO.pricing.icon, { size: 18 })} label="Planes" onClick={() => addModule(PRICING_MODULE)} />
+                                      <ModuleItem icon={React.createElement(MODULE_INFO.plan_comparison.icon, { size: 18 })} label="Comparador de planes" onClick={() => addModule(PLAN_COMPARISON_MODULE)} />
                                       <ModuleItem icon={React.createElement(MODULE_INFO.header.icon, { size: 18 })} label="Publicidad" onClick={() => addModule(HEADER_MODULE)} />
                                       <ModuleItem icon={React.createElement(MODULE_INFO.products.icon, { size: 18 })} label="Productos y Servicios" onClick={() => addModule(PRODUCTS_MODULE)} />
                                     </div>

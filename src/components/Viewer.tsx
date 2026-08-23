@@ -29,6 +29,7 @@ import { SpacerModule } from './constructor/modules/SpacerModule';
 import { MenuModule } from './constructor/modules/MenuModule';
 import { BentoModule } from './constructor/modules/BentoModule';
 import { ComparisonModule } from './constructor/modules/ComparisonModule';
+import { PlanComparisonModule } from './constructor/modules/PlanComparisonModule';
 import { CompositionSectionModule } from './constructor/modules/CompositionSectionModule';
 import { SpecialEventModule } from './constructor/modules/SpecialEventModule';
 import { PublicReservasWebModule } from './constructor/modules/PublicReservasWebModule';
@@ -786,6 +787,8 @@ export const Viewer: React.FC<ViewerProps> = ({
             return <TeamModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} />;
           case 'pricing':
             return <PricingModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} />;
+          case 'plan_comparison':
+            return <PlanComparisonModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} isPreviewMode={true} />;
           case 'faq':
             return <FAQModule key={moduleId} moduleId={moduleId} settingsValues={finalSettingsValues} />;
           case 'contact':

@@ -1834,6 +1834,14 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                                            moduleId={module.id}
                                            settingsValues={editorState.settingsValues}
                                            availableModules={editorState.addedModules}
+                                           onEditPricing={(pricingModuleId) => {
+                                             selectSection(pricingModuleId);
+                                             setEditorState((prev) => ({
+                                               ...prev,
+                                               expandedModuleId: pricingModuleId,
+                                               selectedElementId: `${pricingModuleId}_el_pricing_plans`
+                                             }));
+                                           }}
                                            onSettingChange={onSettingChange}
                                          />
                                        </div>

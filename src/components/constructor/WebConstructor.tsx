@@ -38,6 +38,7 @@ import {
   BENTO_MODULE, COMPARISON_MODULE, PLAN_COMPARISON_MODULE, COMPOSITION_SECTION_MODULE, SPECIAL_EVENT_MODULE
 } from './registry';
 import { createDefaultPlanComparisonConfig } from './modules/planComparisonConfig';
+import { createPricingPlanId, ensurePricingPlanIds, getPricingPlansSettingKey, reconcileAllLinkedPlanComparisons } from './modules/pricingPlanComparisonLink';
 import { saveWebBuilderSiteDraft, publishWebBuilderSite, getProducts, getCustomers, getTrustedCompanyLogos, normalizeTrustedCompanyLogos, upsertPage, upsertPageSections, logEvolutionRequest, getPageBySiteId, generatePreviewServerSide } from '../../services/dataService';
 import { sendToMother } from '../../services/handshakeService';
 import { resolveProductPrimaryImageUrl } from '../../utils/productImage';
@@ -4312,6 +4313,22 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         duplicatedSettingsValues[duplicatedKey] = cloneDuplicatedSettingValue(key, value, source.type);
       });
 
+      if (source.type === 'pricing') {
+        const pricingPlansKeys = new Set([
+          getPricingPlansSettingKey(duplicatedModuleId, duplicatedSettingsValues),
+          `${duplicatedModuleId}_global_plans`
+        ]);
+        pricingPlansKeys.forEach((pricingPlansKey) => {
+          if (!Array.isArray(duplicatedSettingsValues[pricingPlansKey])) return;
+          duplicatedSettingsValues[pricingPlansKey] = ensurePricingPlanIds(
+            duplicatedSettingsValues[pricingPlansKey].map((plan: any) => ({
+              ...(plan || {}),
+              id: createPricingPlanId()
+            }))
+          );
+        });
+      }
+
       duplicatedSettingsValues[getShowInMenuKey(duplicatedModuleId)] = false;
 
       const newModules = [...addedModules];
@@ -4451,6 +4468,16 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         [settingKey]: value
       };
 
+      const pricingModule = prev.addedModules.find((module) => (
+        module.type === 'pricing' && (
+          elementOrModuleId === module.id ||
+          elementOrModuleId === `${module.id}_el_pricing_plans`
+        )
+      ));
+      if (pricingModule && (settingId === 'plans' || settingId === 'global_plans')) {
+        nextSettingsValues[settingKey] = ensurePricingPlanIds(value);
+      }
+
       if (settingId === 'bg_parallax_enabled' && value === true) {
         const parallaxImageKey = `${elementOrModuleId}_bg_parallax_img`;
         const parallaxOpacityKey = `${elementOrModuleId}_bg_parallax_opacity`;
@@ -4508,6 +4535,24 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       return nextState;
     });
   };
+
+  useEffect(() => {
+    const reconciledSettings = reconcileAllLinkedPlanComparisons({
+      addedModules: editorState.addedModules,
+      settingsValues: editorState.settingsValues
+    });
+    if (areSettingsEquivalent(editorState.settingsValues, reconciledSettings)) return;
+
+    updateEditorState((prev) => {
+      const nextSettings = reconcileAllLinkedPlanComparisons({
+        addedModules: prev.addedModules,
+        settingsValues: prev.settingsValues
+      });
+      return areSettingsEquivalent(prev.settingsValues, nextSettings)
+        ? prev
+        : { ...prev, settingsValues: nextSettings };
+    });
+  }, [editorState.addedModules, editorState.settingsValues]);
 
   const handleMobileTabChange = (tab: 'constructor' | 'structure' | 'preview') => {
     setMobileTab(tab);

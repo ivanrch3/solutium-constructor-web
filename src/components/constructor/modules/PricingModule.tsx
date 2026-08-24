@@ -10,6 +10,7 @@ import { getButtonTypographyStyle, getLegacyButtonTypographyStyle, parseNumSafe 
 import { InlineEditableText } from '../InlineEditableText';
 import { useEditorStore } from '../../../store/editorStore';
 import { normalizeSectionAnimation } from '../../../constants/moduleAnimations';
+import { getPricingPlansSettingKey } from './pricingPlanComparisonLink';
 
 const toBoolean = (value: unknown) => {
   return value === true || value === 'true' || value === 1 || value === '1';
@@ -156,7 +157,8 @@ export const PricingModule: React.FC<{
     { icon: 'CreditCard', text: 'Pagos Seguros' }
   ]);
 
-  const plansSettings = settingsValues[`${moduleId}_el_pricing_plans_plans`] || settingsValues[`${moduleId}_global_plans`];
+  const plansSettingKey = getPricingPlansSettingKey(moduleId, settingsValues);
+  const plansSettings = settingsValues[plansSettingKey];
 
   const plans = plansSettings || [
     {
@@ -427,7 +429,7 @@ export const PricingModule: React.FC<{
                       onSave={(val) => {
                         const newPlans = [...plans];
                         newPlans[i] = { ...newPlans[i], name: val };
-                        updateSectionSettings(moduleId, { [`${moduleId}_global_plans`]: newPlans });
+                        updateSectionSettings(moduleId, { [plansSettingKey]: newPlans });
                       }}
                       tagName="span"
                     />
@@ -444,7 +446,7 @@ export const PricingModule: React.FC<{
                       onSave={(val) => {
                         const newPlans = [...plans];
                         newPlans[i] = { ...newPlans[i], description: val };
-                        updateSectionSettings(moduleId, { [`${moduleId}_global_plans`]: newPlans });
+                        updateSectionSettings(moduleId, { [plansSettingKey]: newPlans });
                       }}
                       tagName="span"
                     />

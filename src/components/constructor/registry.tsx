@@ -1038,7 +1038,7 @@ export const HERO_MODULE: WebModule = {
         { id: 'rotation_y', label: 'Rotación Y (Grados)', type: 'range', defaultValue: 15, min: -45, max: 45 }
       ],
       interaccion: [
-        { id: 'floating_anim', label: 'Animación Flotante', type: 'boolean', defaultValue: true }
+        { id: 'floating_anim', label: 'Animación Flotante', type: 'boolean', defaultValue: false }
       ],
       contenido: [], tipografia: []
     }},

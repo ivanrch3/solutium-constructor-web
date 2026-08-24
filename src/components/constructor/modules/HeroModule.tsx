@@ -15,6 +15,8 @@ import { getProjectThemeFromSettings, resolveBrandColor } from '../../../utils/p
 
 import { logDebug } from '../../../utils/debug';
 
+export const HERO_FLOATING_ANIMATION_DEFAULT = false;
+
 export const HeroModule: React.FC<{ 
   moduleId: string, 
   settingsValues: Record<string, any>,
@@ -360,7 +362,7 @@ export const HeroModule: React.FC<{
   const transparentMedia = toBoolean(getVal(`${moduleId}_el_hero_media`, 'transparent_media', false));
   const perspective = parseNumSafe(getVal(`${moduleId}_el_hero_media`, 'perspective', 1000), 1000);
   const rotationY = parseNumSafe(getVal(`${moduleId}_el_hero_media`, 'rotation_y', 15), 15);
-  const floatingAnim = getVal(`${moduleId}_el_hero_media`, 'floating_anim', true);
+  const floatingAnim = getVal(`${moduleId}_el_hero_media`, 'floating_anim', HERO_FLOATING_ANIMATION_DEFAULT);
   const isLikelyTransparentVisual = mediaType === 'image' && typeof visualImage === 'string' && (
     /\.png($|[?#])/i.test(visualImage) ||
     /\.svg($|[?#])/i.test(visualImage) ||

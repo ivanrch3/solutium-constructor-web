@@ -12,7 +12,8 @@ type AnimationLikeSetting = {
 const BOOLEAN_ANIMATION_SETTING_IDS = new Set([
   'entrance_anim',
   'entrance_animation',
-  'stagger_anim'
+  'stagger_anim',
+  'floating_anim'
 ]);
 
 const SELECT_ANIMATION_SETTING_IDS = new Set([
@@ -29,7 +30,8 @@ const SETTING_KEY_SUFFIX_OVERRIDES: Array<{ suffix: string; value: any }> = [
   { suffix: '_section_animation', value: 'none' },
   { suffix: '_entrance_animation', value: false },
   { suffix: '_entrance_anim', value: false },
-  { suffix: '_stagger_anim', value: false }
+  { suffix: '_stagger_anim', value: false },
+  { suffix: '_floating_anim', value: false }
 ];
 
 export const isConstructorAnimationSetting = (setting?: AnimationLikeSetting | null) => {

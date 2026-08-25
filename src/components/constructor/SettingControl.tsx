@@ -28,6 +28,7 @@ import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../constants/typography';
 import { MOCK_PRODUCTS, MOCK_CUSTOMERS } from '../../constants/mockData';
 import { PexelsImagePickerModal, SelectedPexelsImageMetadata } from './media/PexelsImagePickerModal';
 import { resolveConstructorAnimationControlState } from '../../utils/constructorAnimationPolicy';
+import { buildInternalSectionOptions, resolveSectionLinkControlMode } from '../../utils/internalSectionOptions';
 
 import { normalizeSocialPlatform, SOCIAL_PLATFORMS, getIconForPlatform } from '../../utils/socialUtils';
 
@@ -452,6 +453,13 @@ export const SettingControl: React.FC<SettingControlProps> = ({
   const shouldShowPexels = setting.type === 'image' && !shouldHidePexelsButton(setting, moduleType);
   const preferredOrientation = inferPexelsOrientation(setting, moduleType);
   const contextModuleId = getModuleIdFromContext(contextId);
+  const linkedLinkType = setting.linkTypeSettingId && contextId
+    ? settingsValues?.[`${contextId}_${setting.linkTypeSettingId}`]
+    : undefined;
+  const linkedToInternalSection = setting.linkTypeSettingId
+    && resolveSectionLinkControlMode(linkedLinkType) === 'internal';
+  const isInternalSectionLink = setting.internalSectionSource === 'siteSections' && linkedToInternalSection;
+  const shouldHideForInternalLink = setting.hideForInternalLink && linkedToInternalSection;
   const shouldPauseDynamicCardsEditing =
     moduleType === 'dynamic_cards' &&
     !!contextModuleId &&
@@ -520,6 +528,10 @@ export const SettingControl: React.FC<SettingControlProps> = ({
     : {};
 
   const resolveDynamicOptions = (targetSetting: SettingDefinition, targetValue: any = currentValue) => {
+    if (targetSetting.internalSectionSource === 'siteSections') {
+      return buildInternalSectionOptions(availableModules, contextModuleId, targetValue);
+    }
+
     if (targetSetting.dynamicOptionsSource === 'siteSections') {
       const options = (availableModules || [])
         .filter((module) => {
@@ -916,6 +928,7 @@ export const SettingControl: React.FC<SettingControlProps> = ({
         </div>
       );
     case 'select':
+      if (shouldHideForInternalLink) return null;
       const selectOptions = animationControlState.forcedOptions || resolveDynamicOptions(setting);
       return (
         <div className={`space-y-1.5 ${isDisabled ? 'opacity-50 pointer-events-none grayscale' : ''}`}>
@@ -1638,6 +1651,28 @@ export const SettingControl: React.FC<SettingControlProps> = ({
       );
     case 'text':
     default:
+      if (shouldHideForInternalLink) return null;
+      if (isInternalSectionLink) {
+        const sectionOptions = resolveDynamicOptions(setting);
+        return (
+          <div className={`space-y-1.5 ${isDisabled ? 'opacity-50 pointer-events-none grayscale' : ''}`}>
+            <div className="flex items-center justify-between">
+              <label className="text-[10px] font-bold text-text/40">Sección de destino</label>
+              {isDisabled && <span className="text-[8px] font-bold text-red-500/60 italic">{setting.disabledMessage}</span>}
+            </div>
+            <select
+              value={effectiveCurrentValue}
+              disabled={isDisabled}
+              onChange={(e) => onChange(e.target.value)}
+              className="w-full p-1.5 border border-border rounded-md text-[10px] font-medium focus:outline-none focus:border-primary/30 bg-surface"
+            >
+              {sectionOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
+        );
+      }
       return (
         <div className={`space-y-1.5 ${isDisabled ? 'opacity-50 pointer-events-none grayscale' : ''}`}>
           <div className="flex items-center justify-between">

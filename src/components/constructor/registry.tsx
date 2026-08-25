@@ -1402,13 +1402,28 @@ export const FEATURES_MODULE: WebModule = {
         }
       ],
       multimedia: [
+        { id: 'image_size', label: 'Tamaño de Imagen', type: 'select', defaultValue: 'medium', options: [
+          { label: 'Pequeña', value: 'small' }, { label: 'Mediana', value: 'medium' }, { label: 'Grande', value: 'large' }, { label: 'Ancho completo', value: 'full' }
+        ]},
+        { id: 'image_aspect', label: 'Proporción de Imagen', type: 'select', defaultValue: '16:9', options: [
+          { label: 'Automática', value: 'auto' }, { label: 'Cuadrada', value: 'square' }, { label: '4:3', value: '4:3' }, { label: '16:9', value: '16:9' }, { label: '3:2', value: '3:2' }
+        ]},
+        { id: 'image_fit', label: 'Ajuste de Imagen', type: 'select', defaultValue: 'cover', options: [{ label: 'Cubrir', value: 'cover' }, { label: 'Contener', value: 'contain' }]},
+        { id: 'image_position', label: 'Posición de Imagen', type: 'select', defaultValue: 'center', options: [
+          { label: 'Centro', value: 'center' }, { label: 'Arriba', value: 'top' }, { label: 'Abajo', value: 'bottom' }, { label: 'Izquierda', value: 'left' }, { label: 'Derecha', value: 'right' }
+        ]},
+        { id: 'media_align', label: 'Alineación Multimedia', type: 'select', defaultValue: 'left', options: [{ label: 'Izquierda', value: 'left' }, { label: 'Centro', value: 'center' }, { label: 'Derecha', value: 'right' }]},
+        { id: 'media_gap', label: 'Separación multimedia / contenido', type: 'range', defaultValue: 24, min: 0, max: 64, unit: 'px' },
         { id: 'icon_style', label: 'Estilo de Icono', type: 'select', defaultValue: 'soft', options: [
           { label: 'Simple', value: 'simple' },
           { label: 'Fondo Suave', value: 'soft' },
           { label: 'Fondo Sólido', value: 'solid' },
           { label: 'Contorno', value: 'outline' }
         ]},
-        { id: 'icon_size', label: 'Tamaño de Icono', type: 'range', defaultValue: 24, min: 16, max: 48 },
+        { id: 'icon_size', label: 'Tamaño de Icono', type: 'range', defaultValue: 24, min: 16, max: 96, unit: 'px' },
+        { id: 'icon_container_size', label: 'Tamaño del contenedor de icono', type: 'range', defaultValue: 48, min: 32, max: 96, unit: 'px' },
+        { id: 'icon_align', label: 'Alineación de Icono', type: 'select', defaultValue: 'left', options: [{ label: 'Izquierda', value: 'left' }, { label: 'Centro', value: 'center' }, { label: 'Derecha', value: 'right' }]},
+        { id: 'icon_position', label: 'Posición de Icono', type: 'select', defaultValue: 'top', options: [{ label: 'Arriba', value: 'top' }, { label: 'Izquierda', value: 'left' }, { label: 'Derecha', value: 'right' }]},
         { id: 'icon_color', label: 'Color de Icono', type: 'color', defaultValue: '#3B82F6' },
         { id: 'icon_bg', label: 'Fondo de Icono', type: 'color', defaultValue: 'rgba(59, 130, 246, 0.1)' },
         { id: 'icon_radius', label: 'Redondeado Icono', type: 'range', defaultValue: 12, min: 0, max: 30 }
@@ -1429,11 +1444,17 @@ export const FEATURES_MODULE: WebModule = {
         { id: 'title_weight', label: 'Peso Título Card', type: 'font_weight', defaultValue: 'extrabold' },
         { id: 'desc_size', label: 'Tamaño Descripción', type: 'typography_size', defaultValue: 'p', allowedLevels: ['t3', 'p', 's'] },
         { id: 'desc_weight', label: 'Peso Descripción', type: 'font_weight', defaultValue: 'normal' },
-        { id: 'text_align', label: 'Alineación Texto', type: 'text_align', defaultValue: 'inherit' }
+        { id: 'text_align', label: 'Alineación Texto', type: 'text_align', defaultValue: 'inherit' },
+        { id: 'title_color', label: 'Color del título', type: 'color', defaultValue: '#0F172A' },
+        { id: 'desc_color', label: 'Color de la descripción', type: 'color', defaultValue: '#64748B' },
+        { id: 'link_size', label: 'Tamaño del enlace', type: 'typography_size', defaultValue: 's', allowedLevels: ['p', 's'] },
+        { id: 'link_weight', label: 'Peso del enlace', type: 'font_weight', defaultValue: 'bold' },
+        { id: 'link_color', label: 'Color del enlace', type: 'color', defaultValue: '#3B82F6' }
       ],
       estructura: [
         { id: 'card_padding', label: 'Padding Interno', type: 'range', defaultValue: 32, min: 16, max: 60 },
-        { id: 'card_radius', label: 'Redondeado Tarjeta', type: 'range', defaultValue: 24, min: 0, max: 60 }
+        { id: 'card_radius', label: 'Redondeado Tarjeta', type: 'range', defaultValue: 24, min: 0, max: 60 },
+        { id: 'text_gap', label: 'Separación título / descripción', type: 'range', defaultValue: 8, min: 0, max: 32, unit: 'px' }
       ],
       interaccion: []
     }}

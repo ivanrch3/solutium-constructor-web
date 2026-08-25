@@ -9,6 +9,15 @@ import { SectionAnimation } from '../animations/SectionAnimation';
 import { useEditorStore } from '../../../store/editorStore';
 import { normalizeSectionAnimation } from '../../../constants/moduleAnimations';
 import { logDebug } from '../../../utils/debug';
+import {
+  FEATURES_VISUAL_DEFAULTS,
+  IMAGE_SIZE_STYLES,
+  resolveFeatureImageAspect,
+  resolveFeatureImageSize,
+  resolveFeatureObjectFit,
+  resolveFeatureObjectPosition,
+  resolveFeatureNumber
+} from './featuresVisualControls';
 
 const FeatureCard = ({ 
   feature, 
@@ -28,6 +37,21 @@ const FeatureCard = ({
   iconRadius, 
   iconColor,
   iconStyle,
+  iconContainerSize,
+  iconAlign,
+  iconPosition,
+  imageSize,
+  imageAspect,
+  imageFit,
+  imagePosition,
+  mediaAlign,
+  mediaGap,
+  textGap,
+  titleColor,
+  descColor,
+  linkSize,
+  linkWeight,
+  linkColor,
   cardTitleSize,
   cardTitleWeight,
   cardDescSize,
@@ -56,26 +80,61 @@ const FeatureCard = ({
 
   const finalCardBg = cardBg;
   const finalCardBorder = cardBorder;
-  const finalTitleColor = darkMode ? '#FFFFFF' : undefined;
-  const finalDescColor = darkMode ? '#94A3B8' : '#64748B';
+  const finalTitleColor = titleColor || (darkMode ? '#FFFFFF' : '#0F172A');
+  const finalDescColor = descColor || (darkMode ? '#94A3B8' : '#64748B');
 
   const safeIconRadius = parseFloat(iconRadius as any) || 0;
-  const safeIconSize = parseFloat(iconSize as any) || 24;
+  const safeIconSize = resolveFeatureNumber(iconSize, FEATURES_VISUAL_DEFAULTS.icon_size, 16, 96);
+  const safeIconContainerSize = resolveFeatureNumber(iconContainerSize, FEATURES_VISUAL_DEFAULTS.icon_container_size, 32, 96);
   const safeCardPadding = parseFloat(cardPadding as any) || 32;
   const safeCardRadius = parseFloat(cardRadius as any) || 24;
+  const safeMediaGap = resolveFeatureNumber(mediaGap, FEATURES_VISUAL_DEFAULTS.media_gap, 0, 64);
+  const safeTextGap = resolveFeatureNumber(textGap, FEATURES_VISUAL_DEFAULTS.text_gap, 0, 32);
+  const resolvedImageSize = resolveFeatureImageSize(imageSize);
+  const imageSizeStyle = IMAGE_SIZE_STYLES[resolvedImageSize];
+  const listImageWidth = { small: 72, medium: 96, large: 128, full: 160 }[resolvedImageSize];
+  const imageAspectStyle = resolveFeatureImageAspect(imageAspect);
+  const objectFit = resolveFeatureObjectFit(imageFit);
+  const objectPosition = resolveFeatureObjectPosition(imagePosition);
+  const mediaAlignmentStyle: React.CSSProperties = mediaAlign === 'center'
+    ? { alignSelf: 'center' }
+    : mediaAlign === 'right' ? { alignSelf: 'flex-end' } : { alignSelf: 'flex-start' };
+  const iconAlignmentStyle: React.CSSProperties = iconAlign === 'center'
+    ? { alignSelf: 'center' }
+    : iconAlign === 'right' ? { alignSelf: 'flex-end' } : { alignSelf: 'flex-start' };
+  const contentLayout = iconPosition === 'left' || iconPosition === 'right' ? 'flex-row' : 'flex-col';
+  const mediaOrder = iconPosition === 'right' ? 2 : 0;
+  const contentOrder = iconPosition === 'right' ? 0 : 1;
+  const linkTypography = {
+    ...(() => {
+      const size = TYPOGRAPHY_SCALE[linkSize as keyof typeof TYPOGRAPHY_SCALE] || TYPOGRAPHY_SCALE.s;
+      const weight = FONT_WEIGHTS[linkWeight as keyof typeof FONT_WEIGHTS] || FONT_WEIGHTS.normal;
+      return { fontSize: `${size.fontSize}px`, lineHeight: size.lineHeight, fontWeight: weight.value };
+    })()
+  };
 
   const renderMedia = () => {
     if (feature.media_type === 'image') {
       const featureImg = feature.image || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAwIiBoZWlnaHQ9IjYwMCIgdmlld0JveD0iMCAwIDgwMCA2MDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjgwMCIgaGVpZ2h0PSI2MDAiIGZpbGw9IiNFMkU4RjAiLz48cGF0aCBkPSJNMzAwIDMwMEw0MDAgMjAwTDUwMCAzMDBWNDAwSDMwMFYzMDBaIiBmaWxsPSIjOTRBM0NCIi8+PC9zdmc+';
       return (
         <div 
-          className={`overflow-hidden mb-6 ${isList ? 'w-24 h-24' : 'w-full aspect-video'}`}
-          style={{ borderRadius: `${safeIconRadius}px` }}
+          className="overflow-hidden"
+          style={{
+            ...mediaAlignmentStyle,
+            borderRadius: `${safeIconRadius}px`,
+            width: isList ? `${listImageWidth}px` : imageSizeStyle.width,
+            maxWidth: '100%',
+            maxHeight: imageSizeStyle.maxHeight ? `${imageSizeStyle.maxHeight}px` : undefined,
+            aspectRatio: imageAspectStyle,
+            marginBottom: isList || iconPosition !== 'top' ? 0 : `${safeMediaGap}px`,
+            order: mediaOrder
+          }}
         >
           <img 
             src={featureImg} 
             alt={feature.title} 
-            className="w-full h-full object-cover"
+            className="w-full h-full"
+            style={{ objectFit, objectPosition }}
             referrerPolicy="no-referrer"
           />
         </div>
@@ -83,8 +142,8 @@ const FeatureCard = ({
     }
 
     const iconContainerStyle: React.CSSProperties = {
-      width: `${safeIconSize * 2}px`,
-      height: `${safeIconSize * 2}px`,
+      width: `${safeIconContainerSize}px`,
+      height: `${safeIconContainerSize}px`,
       borderRadius: `${safeIconRadius}px`,
       display: 'flex',
       alignItems: 'center',
@@ -104,9 +163,9 @@ const FeatureCard = ({
     }
 
     return (
-      <div 
-        className={`transition-transform duration-500 group-hover:scale-110 ${isList ? 'mb-0' : 'mb-6'}`}
-        style={iconContainerStyle}
+      <div
+        className="transition-transform duration-500 group-hover:scale-110"
+        style={{ ...iconContainerStyle, ...iconAlignmentStyle, order: mediaOrder, marginBottom: isList || iconPosition !== 'top' ? 0 : `${safeMediaGap}px` }}
       >
         <IconComponent 
           size={iconSize} 
@@ -120,34 +179,37 @@ const FeatureCard = ({
     return (
       <motion.div
         variants={staggerAnim ? itemVariants : {}}
-        className={`flex flex-col @5xl:flex-row items-center gap-12 @5xl:gap-24 py-12 ${zigzagReverse ? '@5xl:flex-row-reverse' : ''}`}
+        className={`flex flex-col @5xl:flex-row items-center py-12 ${zigzagReverse ? '@5xl:flex-row-reverse' : ''}`}
+        style={{ gap: `${safeMediaGap}px` }}
       >
-        <div className="flex-1 w-full">
+        <div className="flex-1 w-full" style={{ order: zigzagReverse ? 1 : 0, alignSelf: mediaAlign === 'center' ? 'center' : mediaAlign === 'right' ? 'flex-end' : 'flex-start' }}>
           <div 
             className="relative overflow-hidden shadow-2xl"
-            style={{ borderRadius: `${cardRadius}px` }}
+            style={{ borderRadius: `${cardRadius}px`, width: imageSizeStyle.width, maxWidth: '100%', maxHeight: imageSizeStyle.maxHeight ? `${imageSizeStyle.maxHeight}px` : undefined, aspectRatio: imageAspectStyle, flex: resolvedImageSize === 'small' || resolvedImageSize === 'medium' ? '0 1 240px' : '1 1 0%' }}
           >
             <img 
               src={feature.image || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAwIiBoZWlnaHQ9IjYwMCIgdmlld0JveD0iMCAwIDgwMCA2MDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjgwMCIgaGVpZ2h0PSI2MDAiIGZpbGw9IiNFMkU4RjAiLz48cGF0aCBkPSJNMzAwIDMwMEw0MDAgMjAwTDUwMCAzMDBWNDAwSDMwMFYzMDBaIiBmaWxsPSIjOTRBM0NCIi8+PC9zdmc+'} 
               alt={feature.title} 
-              className="w-full h-auto block"
+              className="w-full h-full block"
+              style={{ objectFit, objectPosition }}
               referrerPolicy="no-referrer"
             />
           </div>
         </div>
-        <div className="flex-1 text-left">
+        <div className="flex-1" style={{ order: zigzagReverse ? 0 : 1, textAlign: cardTextAlign !== 'inherit' ? cardTextAlign : undefined, display: iconPosition === 'top' ? 'block' : 'grid', gap: `${safeMediaGap}px` }}>
           <div 
-            className="w-12 h-12 rounded-2xl flex items-center justify-center mb-6"
-            style={{ backgroundColor: iconBg, color: iconColor }}
+            className={`rounded-2xl flex items-center justify-center ${iconPosition === 'top' ? '' : 'mb-0'}`}
+            style={{ width: `${safeIconContainerSize}px`, height: `${safeIconContainerSize}px`, borderRadius: `${safeIconRadius}px`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, ...iconAlignmentStyle, backgroundColor: iconBg, color: iconColor, marginBottom: iconPosition === 'top' ? `${safeMediaGap}px` : 0 }}
           >
-            <IconComponent size={24} />
+            <IconComponent size={safeIconSize} />
           </div>
           <h3 
-            className="mb-4"
+            className=""
             style={{ 
               fontSize: `${TYPOGRAPHY_SCALE[cardTitleSize as keyof typeof TYPOGRAPHY_SCALE]?.fontSize || 28}px`,
               fontWeight: FONT_WEIGHTS[cardTitleWeight as keyof typeof FONT_WEIGHTS]?.value || 800,
-              color: finalTitleColor
+              color: finalTitleColor,
+              marginBottom: `${safeTextGap}px`
             }}
           >
             <InlineEditableText
@@ -160,10 +222,12 @@ const FeatureCard = ({
             />
           </h3>
           <p 
-            className="text-lg leading-relaxed mb-8"
+            className="leading-relaxed"
             style={{ 
               fontSize: `${TYPOGRAPHY_SCALE[cardDescSize as keyof typeof TYPOGRAPHY_SCALE]?.fontSize || 18}px`,
-              color: finalDescColor
+              fontWeight: FONT_WEIGHTS[cardDescWeight as keyof typeof FONT_WEIGHTS]?.value || 400,
+              color: finalDescColor,
+              textAlign: cardTextAlign !== 'inherit' ? cardTextAlign : undefined
             }}
           >
             <InlineEditableText
@@ -180,7 +244,8 @@ const FeatureCard = ({
               href={feature.link_url}
               target={feature.link_target === '_blank' ? '_blank' : '_self'}
               rel={feature.link_target === '_blank' ? 'noopener noreferrer' : undefined}
-              className="inline-flex items-center gap-2 font-bold text-primary group/link"
+              className="inline-flex items-center gap-2 group/link"
+              style={{ ...linkTypography, color: linkColor }}
             >
               {feature.link_text || 'Saber más'}
               <ArrowRight size={18} className="group-hover/link:translate-x-1 transition-transform" />
@@ -203,7 +268,7 @@ const FeatureCard = ({
         selectSection(moduleId);
         selectElement(`${moduleId}_el_feature_card`);
       }}
-      className={`group relative transition-all duration-300 ${bentoClass} flex ${isList ? 'flex-row gap-6 items-start' : 'flex-col'}`}
+      className={`group relative transition-all duration-300 ${bentoClass} flex ${isList ? 'flex-row' : contentLayout} items-start`}
       style={{ 
         backgroundColor: finalCardBg,
         padding: `${safeCardPadding}px`,
@@ -211,7 +276,8 @@ const FeatureCard = ({
         borderWidth: '1px',
         borderStyle: 'solid',
         borderColor: finalCardBorder,
-        boxShadow: getShadowClass(cardShadow) === 'shadow-none' ? 'none' : undefined
+        boxShadow: getShadowClass(cardShadow) === 'shadow-none' ? 'none' : undefined,
+        gap: `${safeMediaGap}px`
       }}
     >
       {(CardWrapper as any) === 'a' && (
@@ -220,14 +286,16 @@ const FeatureCard = ({
 
       {renderMedia()}
       
-      <div className="flex-1">
+      <div className="flex-1" style={{ order: contentOrder }}>
         <h3 
-          className="group-hover:text-primary transition-colors mb-2"
+          className="group-hover:text-primary transition-colors"
           style={{ 
             fontSize: `${TYPOGRAPHY_SCALE[cardTitleSize as keyof typeof TYPOGRAPHY_SCALE]?.fontSize || 20}px`,
             fontWeight: FONT_WEIGHTS[cardTitleWeight as keyof typeof FONT_WEIGHTS]?.value || 800,
             textAlign: cardTextAlign !== 'inherit' ? cardTextAlign : undefined,
-            color: finalTitleColor
+            color: finalTitleColor,
+            marginBottom: `${safeTextGap}px`,
+            order: contentOrder
           }}
         >
           <InlineEditableText
@@ -240,12 +308,13 @@ const FeatureCard = ({
           />
         </h3>
         <p 
-          className="leading-relaxed mb-4"
+          className="leading-relaxed"
           style={{ 
             fontSize: `${TYPOGRAPHY_SCALE[cardDescSize as keyof typeof TYPOGRAPHY_SCALE]?.fontSize || 16}px`,
             fontWeight: FONT_WEIGHTS[cardDescWeight as keyof typeof FONT_WEIGHTS]?.value || 400,
             textAlign: cardTextAlign !== 'inherit' ? cardTextAlign : undefined,
-            color: finalDescColor
+            color: finalDescColor,
+            order: contentOrder
           }}
         >
           <InlineEditableText
@@ -258,7 +327,7 @@ const FeatureCard = ({
           />
         </p>
         {hasLink && feature.link_text && (
-          <div className="inline-flex items-center gap-1 text-sm font-bold text-primary mt-auto">
+          <div className="inline-flex items-center gap-1 mt-auto" style={{ ...linkTypography, color: linkColor }}>
             <InlineEditableText
               moduleId={moduleId}
               settingId={`item_${index}_link_text`}
@@ -375,14 +444,29 @@ export const FeaturesModule: React.FC<{
   const cardDescSize = getVal(`${moduleId}_el_feature_card`, 'desc_size', 'p');
   const cardDescWeight = getVal(`${moduleId}_el_feature_card`, 'desc_weight', 'normal');
   const cardTextAlign = getVal(`${moduleId}_el_feature_card`, 'text_align', 'inherit');
+  const titleColor = getVal(`${moduleId}_el_feature_card`, 'title_color', darkMode ? '#FFFFFF' : '#0F172A');
+  const descColor = getVal(`${moduleId}_el_feature_card`, 'desc_color', darkMode ? '#94A3B8' : '#64748B');
+  const linkSize = getVal(`${moduleId}_el_feature_card`, 'link_size', 's');
+  const linkWeight = getVal(`${moduleId}_el_feature_card`, 'link_weight', 'bold');
+  const linkColor = getVal(`${moduleId}_el_feature_card`, 'link_color', '#3B82F6');
 
   // Icon Style
-  const iconSize = getVal(`${moduleId}_el_feature_card`, 'icon_size', 24);
+  const iconSize = getVal(`${moduleId}_el_feature_card`, 'icon_size', FEATURES_VISUAL_DEFAULTS.icon_size);
+  const iconContainerSize = getVal(`${moduleId}_el_feature_card`, 'icon_container_size', FEATURES_VISUAL_DEFAULTS.icon_container_size);
+  const iconAlign = getVal(`${moduleId}_el_feature_card`, 'icon_align', FEATURES_VISUAL_DEFAULTS.icon_align);
+  const iconPosition = getVal(`${moduleId}_el_feature_card`, 'icon_position', FEATURES_VISUAL_DEFAULTS.icon_position);
   const iconColor = getVal(`${moduleId}_el_feature_card`, 'icon_color', '#3B82F6');
   const rawIconBg = getVal(`${moduleId}_el_feature_card`, 'icon_bg', 'rgba(59, 130, 246, 0.1)');
   const iconBg = resolveThemeColor(rawIconBg, 'rgba(59, 130, 246, 0.1)', 'rgba(255,255,255,0.05)', darkMode);
   const iconRadius = getVal(`${moduleId}_el_feature_card`, 'icon_radius', 12);
   const iconStyle = getVal(`${moduleId}_el_feature_card`, 'icon_style', 'soft');
+  const imageSize = getVal(`${moduleId}_el_feature_card`, 'image_size', FEATURES_VISUAL_DEFAULTS.image_size);
+  const imageAspect = getVal(`${moduleId}_el_feature_card`, 'image_aspect', FEATURES_VISUAL_DEFAULTS.image_aspect);
+  const imageFit = getVal(`${moduleId}_el_feature_card`, 'image_fit', FEATURES_VISUAL_DEFAULTS.image_fit);
+  const imagePosition = getVal(`${moduleId}_el_feature_card`, 'image_position', FEATURES_VISUAL_DEFAULTS.image_position);
+  const mediaAlign = getVal(`${moduleId}_el_feature_card`, 'media_align', FEATURES_VISUAL_DEFAULTS.media_align);
+  const mediaGap = getVal(`${moduleId}_el_feature_card`, 'media_gap', FEATURES_VISUAL_DEFAULTS.media_gap);
+  const textGap = getVal(`${moduleId}_el_feature_card`, 'text_gap', FEATURES_VISUAL_DEFAULTS.text_gap);
 
   const features = getVal(`${moduleId}_el_feature_card`, 'items', []);
 
@@ -543,6 +627,22 @@ export const FeaturesModule: React.FC<{
                 itemVariants={itemVariants}
                 iconBg={iconBg}
                 iconColor={iconColor}
+                iconSize={iconSize}
+                iconContainerSize={iconContainerSize}
+                iconAlign={iconAlign}
+                iconPosition={iconPosition}
+                imageSize={imageSize}
+                imageAspect={imageAspect}
+                imageFit={imageFit}
+                imagePosition={imagePosition}
+                mediaAlign={mediaAlign}
+                mediaGap={mediaGap}
+                textGap={textGap}
+                titleColor={titleColor}
+                descColor={descColor}
+                linkSize={linkSize}
+                linkWeight={linkWeight}
+                linkColor={linkColor}
                 cardTitleSize={cardTitleSize}
                 cardTitleWeight={cardTitleWeight}
                 cardDescSize={cardDescSize}
@@ -594,6 +694,21 @@ export const FeaturesModule: React.FC<{
                 iconRadius={iconRadius}
                 iconColor={iconColor}
                 iconStyle={iconStyle}
+                iconContainerSize={iconContainerSize}
+                iconAlign={iconAlign}
+                iconPosition={iconPosition}
+                imageSize={imageSize}
+                imageAspect={imageAspect}
+                imageFit={imageFit}
+                imagePosition={imagePosition}
+                mediaAlign={mediaAlign}
+                mediaGap={mediaGap}
+                textGap={textGap}
+                titleColor={titleColor}
+                descColor={descColor}
+                linkSize={linkSize}
+                linkWeight={linkWeight}
+                linkColor={linkColor}
                 cardTitleSize={cardTitleSize}
                 cardTitleWeight={cardTitleWeight}
                 cardDescSize={cardDescSize}

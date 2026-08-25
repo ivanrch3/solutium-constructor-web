@@ -900,10 +900,10 @@ export const HeroModule: React.FC<{
 
         {layout === 'reverse' && (
           <div className="grid grid-cols-1 @5xl:grid-cols-2 gap-16 @5xl:gap-24 items-center">
-            <div className="order-2 @5xl:order-1">
+            <div>
               {renderVisual()}
             </div>
-            <div className="order-1 @5xl:order-2">
+            <div>
               {renderContent('left')}
             </div>
           </div>

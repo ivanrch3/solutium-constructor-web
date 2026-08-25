@@ -25,6 +25,9 @@ export interface SettingDefinition {
   preserveCurrentOption?: boolean;
   fallbackOptions?: { label: string; value: any }[];
   dynamicOptionsSource?: 'siteSections';
+  internalSectionSource?: 'siteSections';
+  linkTypeSettingId?: string;
+  hideForInternalLink?: boolean;
   min?: number;
   max?: number;
   step?: number;

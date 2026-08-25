@@ -1047,11 +1047,23 @@ export const HERO_MODULE: WebModule = {
         { id: 'show_primary', label: 'Mostrar Botón Primario', type: 'boolean', defaultValue: true, subsection: 'Botón Primario' },
         { id: 'primary_text', label: 'Texto', type: 'text', defaultValue: 'Comenzar Ahora', subsection: 'Botón Primario', showIf: { settingId: 'show_primary', value: true } },
         { id: 'primary_icon', label: 'Icono', type: 'icon', defaultValue: 'ArrowRight', subsection: 'Botón Primario', showIf: { settingId: 'show_primary', value: true } },
-        ...BUTTON_LINK_SETTINGS('primary', '#').map(setting => ({ ...setting, subsection: 'Botón Primario', showIf: { settingId: 'show_primary', value: true } })),
+        ...BUTTON_LINK_SETTINGS('primary', '#').map(setting => ({
+          ...setting,
+          subsection: 'Botón Primario',
+          ...(setting.id === 'primary_url' ? { internalSectionSource: 'siteSections' as const, linkTypeSettingId: 'primary_link_type' } : {}),
+          ...(setting.id === 'primary_target' ? { hideForInternalLink: true, linkTypeSettingId: 'primary_link_type' } : {}),
+          showIf: { settingId: 'show_primary', value: true }
+        })),
         { id: 'show_secondary', label: 'Mostrar Botón Secundario', type: 'boolean', defaultValue: true, subsection: 'Botón Secundario' },
         { id: 'secondary_text', label: 'Texto', type: 'text', defaultValue: 'Saber Más', subsection: 'Botón Secundario', showIf: { settingId: 'show_secondary', value: true } },
         { id: 'secondary_icon', label: 'Icono', type: 'icon', defaultValue: '', subsection: 'Botón Secundario', showIf: { settingId: 'show_secondary', value: true } },
-        ...BUTTON_LINK_SETTINGS('secondary', '#').map(setting => ({ ...setting, subsection: 'Botón Secundario', showIf: { settingId: 'show_secondary', value: true } }))
+        ...BUTTON_LINK_SETTINGS('secondary', '#').map(setting => ({
+          ...setting,
+          subsection: 'Botón Secundario',
+          ...(setting.id === 'secondary_url' ? { internalSectionSource: 'siteSections' as const, linkTypeSettingId: 'secondary_link_type' } : {}),
+          ...(setting.id === 'secondary_target' ? { hideForInternalLink: true, linkTypeSettingId: 'secondary_link_type' } : {}),
+          showIf: { settingId: 'show_secondary', value: true }
+        }))
       ],
       estilo: [
         { id: 'primary_bg', label: 'Fondo', type: 'color', defaultValue: '#3B82F6', subsection: 'Botón Primario', showIf: { settingId: 'show_primary', value: true } },

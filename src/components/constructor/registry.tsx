@@ -3136,7 +3136,9 @@ export const DYNAMIC_CARDS_MODULE: WebModule = {
     estructura: [
       { id: 'height_desktop', label: 'Altura desktop', type: 'range', defaultValue: 560, min: 160, max: 800, unit: 'px', subsection: 'Altura' },
       { id: 'height_tablet', label: 'Altura tablet', type: 'range', defaultValue: 480, min: 120, max: 700, unit: 'px', subsection: 'Altura' },
-      { id: 'height_mobile', label: 'Altura móvil', type: 'range', defaultValue: 420, min: 80, max: 620, unit: 'px', subsection: 'Altura' }
+      { id: 'height_mobile', label: 'Altura móvil', type: 'range', defaultValue: 420, min: 80, max: 620, unit: 'px', subsection: 'Altura' },
+      { id: 'margin_top', label: 'Espacio superior', type: 'range', defaultValue: 0, min: 0, max: 120, step: 2, unit: 'px', subsection: 'Espaciado exterior' },
+      { id: 'margin_bottom', label: 'Espacio inferior', type: 'range', defaultValue: 0, min: 0, max: 120, step: 2, unit: 'px', subsection: 'Espaciado exterior' }
     ],
     interaccion: [
       { id: 'navigation_mode', label: 'Modo de navegacion', type: 'select', defaultValue: 'auto_dots', options: [

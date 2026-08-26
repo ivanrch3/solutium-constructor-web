@@ -3,6 +3,7 @@ import * as LucideIcons from 'lucide-react';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { FONT_WEIGHTS, TYPOGRAPHY_SCALE } from '../../../constants/typography';
 import { parseNumSafe } from '../utils';
+import { DYNAMIC_CARDS_EXTERNAL_SPACING_DEFAULTS, resolveDynamicCardsExternalSpacing } from './dynamicCardsLayout';
 
 type DynamicCard = {
   enabled?: boolean;
@@ -381,6 +382,8 @@ export const DynamicCardsModule: React.FC<{
   const heightDesktop = clampRange(getVal(null, 'height_desktop', 560), 560, 160, 800);
   const heightTablet = clampRange(getVal(null, 'height_tablet', 480), 480, 120, 700);
   const heightMobile = clampRange(getVal(null, 'height_mobile', 420), 420, 80, 620);
+  const spacingTop = resolveDynamicCardsExternalSpacing(getVal(null, 'margin_top', DYNAMIC_CARDS_EXTERNAL_SPACING_DEFAULTS.top), DYNAMIC_CARDS_EXTERNAL_SPACING_DEFAULTS.top);
+  const spacingBottom = resolveDynamicCardsExternalSpacing(getVal(null, 'margin_bottom', DYNAMIC_CARDS_EXTERNAL_SPACING_DEFAULTS.bottom), DYNAMIC_CARDS_EXTERNAL_SPACING_DEFAULTS.bottom);
   const useGlobalPrimaryTextStyles = getGlobalBool('use_global_primary_text_styles', 'use_global_text_styles', true);
   const globalTitleSize = parseNumSafe(getVal(null, 'global_title_size', 54), 54);
   const globalTitleWeight = getVal(null, 'global_title_weight', 'black');
@@ -791,7 +794,7 @@ export const DynamicCardsModule: React.FC<{
   };
 
   return (
-    <section id={moduleId} className={`dynamic-cards-module w-full relative overflow-hidden @container ${isAnimationPaused ? 'dc-editing-paused' : ''}`}>
+    <section id={moduleId} className={`dynamic-cards-module w-full relative overflow-hidden @container ${isAnimationPaused ? 'dc-editing-paused' : ''}`} style={{ marginTop: `${spacingTop}px`, marginBottom: `${spacingBottom}px` }}>
       <style>{`
         .dynamic-cards-stage { height: var(--dc-height-desktop, 560px); min-height: var(--dc-height-desktop, 560px); }
         .dynamic-cards-viewport {

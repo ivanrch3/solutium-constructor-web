@@ -19,6 +19,7 @@ export interface SettingDefinition {
   type: SettingType;
   defaultValue: any;
   subsection?: string;
+  group?: SettingGroupType;
   options?: { label: string; value: any; icon?: string }[];
   dynamicOptionsFrom?: string;
   dynamicOptionsExclude?: any[];

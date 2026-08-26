@@ -34,6 +34,7 @@ import { GlobalSettingsPanel } from './GlobalSettingsPanel';
 import { BentoCellEditor } from './BentoCellEditor';
 import { ReservasWebSettings } from './modules/ReservasWebSettings';
 import { resolveModuleDisplayLabel } from '../../utils/menuNavigation';
+import { reorderBentoItems, resolveBentoAutoRows, resolveBentoRowHeight, resolveBentoSelectedIndex, BENTO_ROW_HEIGHT } from '../../utils/bentoCore';
 import {
   CONSTRUCTOR_MODULE_ANIMATIONS_ENABLED,
   CONSTRUCTOR_ANIMATION_DISABLED_MESSAGE,
@@ -799,12 +800,16 @@ const normalizeBentoWorkspaceRows = (currentValue: any, items: any[], desktopCol
   return nextRows;
 };
 
-const createBentoPanelElementPreset = (kind: string, existingItems: any[], desktopColumns = BENTO_DESKTOP_COLUMNS) => {
+const createBentoPanelElementPreset = (kind: string, existingItems: any[], desktopColumns = BENTO_DESKTOP_COLUMNS, rowHeight = BENTO_ROW_HEIGHT) => {
   const withLayout = (item: any, desktopW: number, desktopH: number, tabletW = Math.min(desktopW, BENTO_TABLET_COLUMNS), mobileW = BENTO_MOBILE_COLUMNS) => {
     const safeDesktopW = Math.min(desktopW, desktopColumns);
-    const desktopPos = findFirstFreeBentoPosition(existingItems, safeDesktopW, desktopH, desktopColumns, 'desktop');
-    const tabletPos = findFirstFreeBentoPosition(existingItems, tabletW, desktopH, BENTO_TABLET_COLUMNS, 'tablet');
-    const mobilePos = findFirstFreeBentoPosition(existingItems, mobileW, desktopH, BENTO_MOBILE_COLUMNS, 'mobile');
+    const nextItem = { height_mode: 'auto', show_border: false, hover_effect: 'none', vertical_align: 'center', ...item };
+    const desktopRows = nextItem.height_mode === 'auto' ? resolveBentoAutoRows(nextItem, 'desktop', rowHeight, 20, safeDesktopW) : desktopH;
+    const tabletRows = nextItem.height_mode === 'auto' ? resolveBentoAutoRows(nextItem, 'tablet', rowHeight, 20, tabletW) : desktopH;
+    const mobileRows = nextItem.height_mode === 'auto' ? resolveBentoAutoRows(nextItem, 'mobile', rowHeight, 20, mobileW) : desktopH;
+    const desktopPos = findFirstFreeBentoPosition(existingItems, safeDesktopW, desktopRows, desktopColumns, 'desktop');
+    const tabletPos = findFirstFreeBentoPosition(existingItems, tabletW, tabletRows, BENTO_TABLET_COLUMNS, 'tablet');
+    const mobilePos = findFirstFreeBentoPosition(existingItems, mobileW, mobileRows, BENTO_MOBILE_COLUMNS, 'mobile');
 
     return {
       id: createBentoCellId(),
@@ -815,20 +820,21 @@ const createBentoPanelElementPreset = (kind: string, existingItems: any[], deskt
       element_padding_y: 20,
       content_align: 'center',
       clickActionType: 'none',
-      ...item,
+      ...nextItem,
       col_span: safeDesktopW,
-      row_span: desktopH,
+      row_span: desktopRows,
       desktop_span: safeDesktopW,
-      desktop_rows: desktopH,
+      desktop_rows: desktopRows,
       tablet_span: tabletW,
       mobile_span: mobileW,
       x: desktopPos.x,
       y: desktopPos.y,
       layouts: {
-        desktop: { x: desktopPos.x, y: desktopPos.y, w: safeDesktopW, h: desktopH, columns: desktopColumns },
-        tablet: { x: tabletPos.x, y: tabletPos.y, w: tabletW, h: desktopH, columns: BENTO_TABLET_COLUMNS },
-        mobile: { x: mobilePos.x, y: mobilePos.y, w: mobileW, h: desktopH, columns: BENTO_MOBILE_COLUMNS }
+        desktop: { x: desktopPos.x, y: desktopPos.y, w: safeDesktopW, h: desktopRows, columns: desktopColumns },
+        tablet: { x: tabletPos.x, y: tabletPos.y, w: tabletW, h: tabletRows, columns: BENTO_TABLET_COLUMNS },
+        mobile: { x: mobilePos.x, y: mobilePos.y, w: mobileW, h: mobileRows, columns: BENTO_MOBILE_COLUMNS }
       },
+      layout_sources: { desktop: 'explicit', tablet: 'derived', mobile: 'derived' },
       layout_columns: {
         desktop: desktopColumns,
         tablet: BENTO_TABLET_COLUMNS,
@@ -2169,7 +2175,12 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                                     onClick={() => {
                                       const bentoItems = editorState.settingsValues[`${module.id}_el_bento_items_items`] || [];
                                       const desktopColumns = getBentoDesktopColumns(editorState.settingsValues, module.id);
-                                      const newItem = createBentoPanelElementPreset(item.type, bentoItems, desktopColumns);
+                                      const layoutVersionKey = `${module.id}_global_layout_version`;
+                                      const rowHeight = resolveBentoRowHeight(
+                                        editorState.settingsValues[layoutVersionKey],
+                                        editorState.settingsValues[layoutVersionKey] !== undefined
+                                      );
+                                      const newItem = createBentoPanelElementPreset(item.type, bentoItems, desktopColumns, rowHeight);
                                       const newItems = [...bentoItems, newItem];
                                       const nextWorkspaceRows = normalizeBentoWorkspaceRows(
                                         editorState.settingsValues[`${module.id}_el_bento_items_workspace_rows`],
@@ -2223,6 +2234,27 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
 
                          const visibleBentoItems = bentoItems.map((item: any, itemIndex: number) => ({ item, itemIndex }));
 
+                         const moveBentoItem = (fromIndex: number, toIndex: number) => {
+                           const selectedId = selectedBentoCellIndex !== null ? bentoItems[selectedBentoCellIndex]?.id : undefined;
+                           const newItems = reorderBentoItems(bentoItems, fromIndex, toIndex);
+                           if (newItems === bentoItems) return;
+                           const desktopColumns = getBentoDesktopColumns(editorState.settingsValues, module.id);
+                           const nextWorkspaceRows = normalizeBentoWorkspaceRows(
+                             editorState.settingsValues[`${module.id}_el_bento_items_workspace_rows`],
+                             newItems,
+                             desktopColumns
+                           );
+                           onSettingChange(`${module.id}_el_bento_items`, 'items', newItems);
+                           onSettingChange(`${module.id}_el_bento_items`, 'workspace_rows', nextWorkspaceRows);
+                           if (selectedId) {
+                             const nextSelectedIndex = resolveBentoSelectedIndex(newItems, selectedId);
+                             if (nextSelectedIndex >= 0) {
+                               setSelectedBentoCellIndex(nextSelectedIndex);
+                               setExpandedBentoItem(nextSelectedIndex);
+                             }
+                           }
+                         };
+
                          return (
                            <>
                               {visibleBentoItems.map(({ item, itemIndex }: { item: any; itemIndex: number }) => {
@@ -2266,6 +2298,32 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                                            <p className="text-[9px] text-text/40 uppercase font-medium">{item.type === 'text' ? (item.text_style || 'texto') : elementOption.label}</p>
                                         </div>
                                         <div className="flex shrink-0 items-center gap-1">
+                                          <button
+                                            type="button"
+                                            disabled={itemIndex === 0}
+                                            onClick={(event) => {
+                                              event.stopPropagation();
+                                              moveBentoItem(itemIndex, itemIndex - 1);
+                                            }}
+                                            className="rounded-lg p-1.5 text-text/30 transition-colors hover:bg-primary/10 hover:text-primary disabled:cursor-not-allowed disabled:opacity-20"
+                                            title="Subir elemento"
+                                            aria-label="Subir elemento"
+                                          >
+                                            <ChevronUp size={13} />
+                                          </button>
+                                          <button
+                                            type="button"
+                                            disabled={itemIndex === bentoItems.length - 1}
+                                            onClick={(event) => {
+                                              event.stopPropagation();
+                                              moveBentoItem(itemIndex, itemIndex + 1);
+                                            }}
+                                            className="rounded-lg p-1.5 text-text/30 transition-colors hover:bg-primary/10 hover:text-primary disabled:cursor-not-allowed disabled:opacity-20"
+                                            title="Bajar elemento"
+                                            aria-label="Bajar elemento"
+                                          >
+                                            <ChevronDown size={13} />
+                                          </button>
                                           <button
                                             type="button"
                                             onClick={(event) => {

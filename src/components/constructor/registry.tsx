@@ -3907,6 +3907,10 @@ export const BENTO_MODULE: WebModule = {
   globalGroups: ['estructura', 'estilo', 'interaccion', 'multimedia'],
   globalSettings: {
     estructura: [
+      { id: 'layout_version', label: 'Densidad del layout', type: 'select', defaultValue: 2, options: [
+        { label: 'Compacto (20 px)', value: 2 },
+        { label: 'Legacy (80 px)', value: 1 }
+      ] },
       { id: 'columns', label: 'Columnas del lienzo', type: 'range', defaultValue: 24, min: 12, max: 32, step: 1 },
       { id: 'gap', label: 'Espaciado (Gap)', type: 'range', defaultValue: 20, min: 0, max: 100, unit: 'px' },
       { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 40, min: 0, max: 200, unit: 'px' },
@@ -3986,7 +3990,7 @@ export const BENTO_MODULE: WebModule = {
             { label: 'Párrafo', value: 'paragraph' },
             { label: 'Texto pequeño', value: 'small' },
             { label: 'Caption / etiqueta', value: 'caption' }
-          ], showIf: { settingId: 'type', value: 'text' } },
+          ], showIf: { settingId: 'type', value: ['text', 'card'] } },
           { id: 'title', label: 'Título / Valor', type: 'text', defaultValue: 'Nueva Celda' },
           { id: 'description', label: 'Descripción / Texto', type: 'text', defaultValue: 'Describe el contenido de este bloque.', showIf: { settingId: 'type', value: ['visual'], operator: 'neq' } },
           { id: 'title_size', label: 'Tamaño del título', type: 'typography_size', defaultValue: 't3', allowedLevels: ['t1', 't2', 't3', 'p', 's'] },
@@ -3997,17 +4001,17 @@ export const BENTO_MODULE: WebModule = {
             { label: 'Sans', value: 'sans-serif' },
             { label: 'Serif', value: 'serif' },
             { label: 'Monoespaciada', value: 'monospace' }
-          ], showIf: { settingId: 'type', value: 'text' } },
+          ], showIf: { settingId: 'type', value: ['text', 'card'], operator: 'includes' } },
           { id: 'description_size', label: 'Tamaño del texto', type: 'typography_size', defaultValue: 'p', allowedLevels: ['t3', 'p', 's'] },
-          { id: 'description_weight', label: 'Peso del texto', type: 'font_weight', defaultValue: 'normal', showIf: { settingId: 'type', value: 'icon' } },
-          { id: 'description_color', label: 'Color del texto', type: 'color', defaultValue: '#64748B', showIf: { settingId: 'type', value: 'icon' } },
+          { id: 'description_weight', label: 'Peso del texto', type: 'font_weight', defaultValue: 'normal', showIf: { settingId: 'type', value: ['text', 'card', 'icon', 'list', 'accordion'], operator: 'includes' } },
+          { id: 'description_color', label: 'Color del texto', type: 'color', defaultValue: '#64748B', showIf: { settingId: 'type', value: ['text', 'card', 'icon', 'list', 'accordion'], operator: 'includes' } },
           { id: 'content_align', label: 'Alineación del contenido', type: 'select', defaultValue: 'center', options: [
             { label: 'Izquierda', value: 'left' },
             { label: 'Centro', value: 'center' },
             { label: 'Derecha', value: 'right' }
           ]},
-          { id: 'line_height', label: 'Interlineado', type: 'range', defaultValue: 1.4, min: 1, max: 2, step: 0.05, showIf: { settingId: 'type', value: 'text' } },
-          { id: 'letter_spacing', label: 'Espaciado de letras', type: 'range', defaultValue: 0, min: -5, max: 10, step: 0.5, unit: 'px', showIf: { settingId: 'type', value: 'text' } },
+          { id: 'line_height', label: 'Interlineado', type: 'range', defaultValue: 1.4, min: 1, max: 2, step: 0.05, showIf: { settingId: 'type', value: ['text', 'card'], operator: 'includes' } },
+          { id: 'letter_spacing', label: 'Espaciado de letras', type: 'range', defaultValue: 0, min: -5, max: 10, step: 0.5, unit: 'px', showIf: { settingId: 'type', value: ['text', 'card'], operator: 'includes' } },
           
           // Metric específicos (Dato principal)
           { id: 'metric_value', label: 'Valor Numérico', type: 'text', defaultValue: '', showIf: { settingId: 'type', value: 'metric' } },
@@ -4060,8 +4064,17 @@ export const BENTO_MODULE: WebModule = {
 
 
           // Estructura (Per item, breakpoint specific labels)
+          { id: 'height_mode', label: 'Altura', type: 'select', defaultValue: 'auto', group: 'estructura', options: [
+            { label: 'Automática', value: 'auto' },
+            { label: 'Manual', value: 'manual' }
+          ] },
+          { id: 'vertical_align', label: 'Alineación vertical', type: 'select', defaultValue: 'center', group: 'estructura', options: [
+            { label: 'Arriba', value: 'start' },
+            { label: 'Centro', value: 'center' },
+            { label: 'Abajo', value: 'end' }
+          ] },
           { id: 'desktop_span', label: 'Ancho Desktop (Columnas)', type: 'range', defaultValue: 8, min: 1, max: 24 },
-          { id: 'desktop_rows', label: 'Alto Desktop (Filas)', type: 'range', defaultValue: 2, min: 1, max: 8 },
+          { id: 'desktop_rows', label: 'Alto Desktop (Filas)', type: 'range', defaultValue: 2, min: 1, max: 8, showIf: { settingId: 'height_mode', value: 'manual' } },
           { id: 'tablet_span', label: 'Ancho Tablet (Columnas)', type: 'range', defaultValue: 3, min: 1, max: 6 },
           { id: 'mobile_span', label: 'Ancho Móvil (Columnas)', type: 'range', defaultValue: 4, min: 1, max: 4 },
           
@@ -4102,6 +4115,22 @@ export const BENTO_MODULE: WebModule = {
             { label: 'Auto', value: 'auto' },
             { label: 'Forzar Blanco', value: 'white' },
             { label: 'Forzar Negro', value: 'black' }
+          ]},
+          { id: 'show_border', label: 'Mostrar borde', type: 'boolean', defaultValue: false, group: 'estilo' },
+          { id: 'border_style', label: 'Estilo de borde', type: 'select', defaultValue: 'solid', showIf: { settingId: 'show_border', value: true }, options: [
+            { label: 'Sólido', value: 'solid' },
+            { label: 'Discontinuo', value: 'dashed' },
+            { label: 'Punteado', value: 'dotted' },
+            { label: 'Doble', value: 'double' },
+            { label: 'Suave', value: 'soft' }
+          ] },
+          { id: 'border_width', label: 'Grosor', type: 'range', defaultValue: 1, min: 1, max: 6, step: 1, unit: 'px', showIf: { settingId: 'show_border', value: true } },
+          { id: 'card_border', label: 'Color del borde', type: 'color', defaultValue: 'rgba(0,0,0,0.05)', showIf: { settingId: 'show_border', value: true } },
+          { id: 'hover_effect', label: 'Efecto Hover', type: 'select', defaultValue: 'none', group: 'interaccion', options: [
+            { label: 'Ninguno', value: 'none' },
+            { label: 'Elevar / Lift', value: 'lift' },
+            { label: 'Zoom', value: 'zoom' },
+            { label: 'Pulse', value: 'pulse' }
           ]},
 
           // Multimedia

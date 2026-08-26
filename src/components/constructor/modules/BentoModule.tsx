@@ -12,6 +12,20 @@ import { SectionAnimation } from '../animations/SectionAnimation';
 import { normalizeSectionAnimation } from '../../../constants/moduleAnimations';
 import { appendReferralParamToSolutiumUrl, extractReferralCodeFromSearch } from '../../../utils/referralLinks';
 import { resolveBentoIconSpacing, type BentoIconDevice } from '../../../utils/bentoIconSpacing';
+import {
+  resolveBentoAutoRows,
+  resolveBentoBorderVisibility,
+  resolveBentoHoverEffectDefault,
+  hasExplicitShowBorder,
+  resolveBentoRowHeight,
+  resolveBentoVerticalAlign,
+  getBentoItemId,
+  reconcileBentoLayoutById,
+  hasExplicitBentoLayout,
+  resolveBentoBorderStyle,
+  resolveBentoBorderWidth,
+  resolveBentoBorderColor
+} from '../../../utils/bentoCore';
 import '/node_modules/react-grid-layout/css/styles.css';
 import '/node_modules/react-resizable/css/styles.css';
 
@@ -32,7 +46,6 @@ const BENTO_TABLET_COLUMNS = 6;
 const BENTO_MOBILE_COLUMNS = 4;
 const BENTO_BASE_VISIBLE_ROWS = 7;
 const BENTO_MAX_EDITABLE_ROWS = 240;
-const BENTO_ROW_HEIGHT = 80;
 
 
 const isBentoDebugEnabled = () => {
@@ -114,6 +127,12 @@ const getBentoResponsiveMinRows = (
   rowHeight: number,
   rowGap: number
 ) => {
+  if (item?.height_mode === 'auto') {
+    const span = breakpoint === 'desktop'
+      ? item.desktop_span || item.col_span
+      : breakpoint === 'tablet' ? item.tablet_span || item.col_span : item.mobile_span || item.col_span;
+    return resolveBentoAutoRows(item, breakpoint, rowHeight, rowGap, span);
+  }
   const type = item?.type || 'text';
   if (breakpoint === 'desktop' && type !== 'icon') return 1;
 
@@ -370,6 +389,7 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave, bre
     show_description = true,
     content_position = 'center',
     align_items = 'start',
+    vertical_align,
     icon_visual_type = 'icon',
     icon_size,
     icon_color = '#2563EB',
@@ -422,7 +442,7 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave, bre
     start: 'justify-start',
     center: 'justify-center',
     end: 'justify-end'
-  }[align_items as string] || 'justify-start';
+  }[resolveBentoVerticalAlign(vertical_align, align_items)] || 'justify-start';
 
   const resolvedContentPosition = content_align || content_position;
   const alignClass = {
@@ -434,7 +454,7 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave, bre
   switch (type) {
     case 'hero':
       return (
-        <div className={`flex flex-col z-10 w-full h-full justify-center gap-6 ${alignClass}`}>
+        <div className={`flex flex-col z-10 w-full h-full ${verticalContentClass} gap-6 ${alignClass}`}>
           {eyebrow && (
             <span className="text-[12px] font-bold tracking-[0.3em] uppercase opacity-70 mb-1 block">
               {eyebrow}
@@ -494,7 +514,7 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave, bre
     case 'metric':
     case 'stat':
       return (
-        <div className="flex flex-col gap-1 z-10 w-full h-full justify-center items-center text-center p-2">
+        <div className={`flex flex-col gap-1 z-10 w-full h-full ${verticalContentClass} items-center text-center p-2`}>
           {item.icon && (
             <div className="p-2 bg-primary/10 rounded-xl text-primary mb-1">
                <IconComponent size={24} />
@@ -557,7 +577,7 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave, bre
 
     case 'button':
       return (
-        <div className="flex z-10 w-full h-full items-center justify-center">
+        <div className={`flex z-10 w-full h-full items-center ${verticalContentClass}`}>
           <a
             href={btn_url || '#'}
             target={btn_target === '_blank' ? '_blank' : undefined}
@@ -580,7 +600,7 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave, bre
 
     case 'badge':
       return (
-        <div className="flex z-10 w-full h-full items-center justify-center">
+        <div className={`flex z-10 w-full h-full items-center ${verticalContentClass}`}>
           <span className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-5 py-2 text-xs font-black uppercase tracking-[0.2em] text-primary">
             <LucideIcons.Tag size={14} />
             <InlineEditableText
@@ -695,7 +715,7 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave, bre
         : String(item.list_items || 'Primer punto\nSegundo punto\nTercer punto').split('\n').filter(Boolean);
 
       return (
-        <div className="flex flex-col z-10 w-full h-full gap-4">
+        <div className={`flex flex-col z-10 w-full h-full ${verticalContentClass} gap-4`}>
           <h3 className="text-lg leading-tight" style={{ color: finalTitleColor, fontWeight: finalTitleWeight }}>
             <InlineEditableText
               moduleId={moduleId}
@@ -761,7 +781,7 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave, bre
 
     case 'step':
       return (
-        <div className="flex flex-col gap-4 z-10 w-full h-full justify-center text-left">
+        <div className={`flex flex-col gap-4 z-10 w-full h-full ${verticalContentClass} text-left`}>
           <div className="flex items-center justify-between">
             <div 
               className="w-12 h-12 rounded-2xl flex items-center justify-center text-white text-xl shadow-lg"
@@ -799,7 +819,7 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave, bre
     case 'trust_signal':
     case 'testimonial':
       return (
-        <div className="flex flex-col gap-3 z-10 w-full h-full justify-center">
+        <div className={`flex flex-col gap-3 z-10 w-full h-full ${verticalContentClass}`}>
           <div className="flex gap-0.5">
             {[...Array(item.rating || 5)].map((_, i) => (
               <LucideIcons.Star key={i} size={12} className="fill-yellow-400 text-yellow-400" />
@@ -827,7 +847,7 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave, bre
 
     case 'feature':
       return (
-        <div className="flex flex-col gap-4 z-10 w-full h-full justify-center">
+        <div className={`flex flex-col gap-4 z-10 w-full h-full ${verticalContentClass}`}>
           <div className="flex items-center gap-4">
              {item.icon && (
                <div className="w-14 h-14 bg-primary/5 rounded-2xl flex items-center justify-center text-primary shadow-sm">
@@ -894,7 +914,7 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave, bre
 
     case 'compact':
       return (
-        <div className="flex flex-col gap-4 z-10 w-full h-full justify-center">
+        <div className={`flex flex-col gap-4 z-10 w-full h-full ${verticalContentClass}`}>
           <div className="flex items-center gap-4">
              <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary shrink-0">
                <IconComponent size={20} />
@@ -934,7 +954,7 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave, bre
     case 'icon_text':
     case 'standard':
       return (
-        <div className={`flex flex-col z-10 w-full h-full ${isHero ? 'gap-6 justify-center' : 'gap-4'}`}>
+        <div className={`flex flex-col z-10 w-full h-full ${verticalContentClass} ${isHero ? 'gap-6' : 'gap-4'}`}>
           <div className={`${isHero ? 'w-16 h-16' : 'w-12 h-12'} bg-primary/10 rounded-2xl flex items-center justify-center text-primary shrink-0`}>
             <IconComponent size={isHero ? 40 : 32} />
           </div>
@@ -996,7 +1016,7 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave, bre
 
     case 'cta':
       return (
-        <div className="flex flex-col gap-6 z-10 w-full h-full justify-center p-4">
+        <div className={`flex flex-col gap-6 z-10 w-full h-full ${verticalContentClass} p-4`}>
           <div className="space-y-2">
             {item.headline ? (
               <>
@@ -1179,7 +1199,7 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave, bre
     default: // 'text'
       return (
         <div
-          className={`flex flex-col gap-3 z-10 w-full h-full ${alignClass}`}
+          className={`flex flex-col gap-3 z-10 w-full h-full ${verticalContentClass} ${alignClass}`}
           style={{ fontFamily: font_family === 'inherit' ? undefined : font_family }}
         >
           {eyebrow && (
@@ -1215,7 +1235,7 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave, bre
           )}
           {description && (
             <p 
-              className="flex-1"
+              className=""
               style={{ 
                 fontSize: `${TYPOGRAPHY_SCALE[finalDescSize as keyof typeof TYPOGRAPHY_SCALE]?.fontSize || 16}px`,
                 color: finalDescColor,
@@ -1269,6 +1289,10 @@ export const BentoModule: React.FC<{
   // const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const selectedIndex = selectedBentoCellIndex;
   const setSelectedIndex = setSelectedBentoCellIndex;
+
+  const layoutVersionKey = `${moduleId}_global_layout_version`;
+  const hasExplicitLayoutVersion = settingsValues[layoutVersionKey] !== undefined;
+  const bentoRowHeight = resolveBentoRowHeight(settingsValues[layoutVersionKey], hasExplicitLayoutVersion);
 
   const containerRef = useRef(null);
   const { scrollYProgress } = useParallaxScrollProgress(containerRef);
@@ -1367,14 +1391,13 @@ export const BentoModule: React.FC<{
     ...normalizeLayoutEntry(layout)
   });
 
-  const getLayoutItemId = (item: any, index: number) => String(item?.id || index);
+  const getLayoutItemId = (item: any, _index: number) => getBentoItemId(item);
 
   const findItemIndexByLayoutId = (items: any[], layoutId: string) => {
     const byStableId = items.findIndex((item, index) => getLayoutItemId(item, index) === layoutId);
     if (byStableId >= 0) return byStableId;
 
-    const numericIndex = Number.parseInt(layoutId, 10);
-    return Number.isInteger(numericIndex) && numericIndex >= 0 && numericIndex < items.length ? numericIndex : -1;
+    return -1;
   };
 
   const areLayoutsEqual = (a: any[] = [], b: any[] = []) => {
@@ -1477,7 +1500,7 @@ export const BentoModule: React.FC<{
             ...baseLayout,
             h: Math.max(
               baseLayout.h,
-              getBentoResponsiveMinRows(item, breakpoint as 'tablet' | 'mobile', BENTO_ROW_HEIGHT, gap)
+              getBentoResponsiveMinRows(item, breakpoint as 'tablet' | 'mobile', bentoRowHeight, gap)
             )
           }
         };
@@ -1509,11 +1532,10 @@ export const BentoModule: React.FC<{
             desktopLayout: scaleLegacyDesktopLayout(item, desktopSource, columns)
           };
         })
-        .sort((left, right) => (
-          left.desktopLayout.y - right.desktopLayout.y ||
-          left.desktopLayout.x - right.desktopLayout.x ||
-          left.index - right.index
-        ));
+        // When a responsive layout is derived (no saved breakpoint layout),
+        // the item array is the logical reading order. Explicit breakpoint
+        // layouts continue to take precedence above this fallback.
+        .sort((left, right) => left.index - right.index);
 
       const fallbackLayouts = new Map<number, { x: number; y: number; w: number; h: number }>();
       const packedLayouts = packResponsiveLayouts(
@@ -1523,7 +1545,7 @@ export const BentoModule: React.FC<{
             : (item.desktop_rows || item.row_span || 2);
           const h = Math.max(
             savedH,
-            getBentoResponsiveMinRows(item, breakpoint as 'tablet' | 'mobile', BENTO_ROW_HEIGHT, gap)
+            getBentoResponsiveMinRows(item, breakpoint as 'tablet' | 'mobile', bentoRowHeight, gap)
           );
           const w = breakpoint === 'mobile'
             ? cols
@@ -1539,35 +1561,28 @@ export const BentoModule: React.FC<{
       return fallbackLayouts;
     };
 
-    const collisionSafeResponsiveLayouts = buildCollisionSafeResponsiveLayouts();
     const responsiveFallbackLayouts = buildResponsiveFallbackLayouts();
 
     return items.map((item: any, index: number) => {
       const layoutId = getLayoutItemId(item, index);
 
       // 1. Try saved layouts object
-      if (item.layouts && item.layouts[breakpoint]) {
-        if (collisionSafeResponsiveLayouts?.has(index)) {
-          return {
-            i: layoutId,
-            ...collisionSafeResponsiveLayouts.get(index)
-          };
-        }
+      if (hasExplicitBentoLayout(item, breakpoint as 'desktop' | 'tablet' | 'mobile')) {
         const savedLayout = item.layouts[breakpoint];
         const scaledLayout = breakpoint === 'desktop'
           ? scaleLegacyDesktopLayout(item, savedLayout, cols)
           : clampLayoutEntry(savedLayout, cols);
-        const responsiveMinRows = getBentoResponsiveMinRows(
+        const responsiveMinRows = item.height_mode === 'manual' ? 1 : getBentoResponsiveMinRows(
           item,
           breakpoint as 'desktop' | 'tablet' | 'mobile',
-          BENTO_ROW_HEIGHT,
+          bentoRowHeight,
           gap
         );
         return {
           i: layoutId,
           ...savedLayout,
           ...scaledLayout,
-          h: Math.max(scaledLayout.h, responsiveMinRows)
+        h: item.height_mode === 'manual' ? scaledLayout.h : Math.max(scaledLayout.h, responsiveMinRows)
         };
       }
 
@@ -1589,10 +1604,10 @@ export const BentoModule: React.FC<{
       const fallbackLayout = breakpoint === 'desktop'
         ? scaleLegacyDesktopLayout(item, { x: item.x || 0, y: item.y || 0, w, h }, cols)
         : clampLayoutEntry({ x: item.x || 0, y: item.y || 0, w, h }, cols);
-      const responsiveMinRows = getBentoResponsiveMinRows(
+      const responsiveMinRows = item.height_mode === 'manual' ? 1 : getBentoResponsiveMinRows(
         item,
         breakpoint as 'desktop' | 'tablet' | 'mobile',
-        BENTO_ROW_HEIGHT,
+        bentoRowHeight,
         gap
       );
 
@@ -1600,12 +1615,12 @@ export const BentoModule: React.FC<{
       return {
         i: layoutId,
         ...fallbackLayout,
-        h: Math.max(fallbackLayout.h, responsiveMinRows)
+        h: item.height_mode === 'manual' ? fallbackLayout.h : Math.max(fallbackLayout.h, responsiveMinRows)
       };
     });
   };
 
-  const currentBreakpointRef = useRef('lg');
+  const currentBreakpointRef = useRef(constructorViewport === 'desktop' ? 'lg' : constructorViewport === 'tablet' ? 'md' : 'xs');
   const lastPersistedLayoutSignatureRef = useRef('');
   const pendingLayoutRef = useRef<{ currentLayout: readonly any[]; allLayouts?: any } | null>(null);
   const layoutPersistTimerRef = useRef<number | null>(null);
@@ -1666,7 +1681,7 @@ export const BentoModule: React.FC<{
     sm: getBentoLayoutForBreakpoint(rawItems, 'tablet', BENTO_TABLET_COLUMNS),
     xs: getBentoLayoutForBreakpoint(rawItems, 'mobile', BENTO_MOBILE_COLUMNS),
     xxs: getBentoLayoutForBreakpoint(rawItems, 'mobile', 1)
-  }), [rawItems, columns]);
+  }), [rawItems, columns, gap, bentoRowHeight]);
 
   const persistLayoutChange = (currentLayout: readonly any[], allLayouts?: any) => {
     if (!onSettingChange || isPreviewMode) return;
@@ -1687,7 +1702,7 @@ export const BentoModule: React.FC<{
 
     if (lastPersistedLayoutSignatureRef.current === currentSignature) return;
 
-    const newItems = [...rawItems];
+    let newItems = [...rawItems];
     let changed = false;
 
     normalizedCurrentLayout.forEach((l: any) => {
@@ -1704,15 +1719,14 @@ export const BentoModule: React.FC<{
           existingEntry.w !== entry.w ||
           existingEntry.h !== entry.h
         ) {
-          newItems[idx] = {
-            ...newItems[idx],
-            layouts: { ...existingLayouts, [currentBP]: { x: entry.x, y: entry.y, w: entry.w, h: entry.h, columns: currentCols } },
-            layout_columns: { ...(newItems[idx].layout_columns || {}), [currentBP]: currentCols },
-            // Keep legacy synced for desktop compatibility
-            ...(currentBP === 'desktop' ? { x: entry.x, y: entry.y, col_span: entry.w, row_span: entry.h, desktop_span: entry.w, desktop_rows: entry.h } : {}),
-            ...(currentBP === 'tablet' ? { tablet_span: entry.w } : {}),
-            ...(currentBP === 'mobile' ? { mobile_span: entry.w } : {})
-          };
+          newItems = reconcileBentoLayoutById(newItems, {
+            i: l.i,
+            x: entry.x,
+            y: entry.y,
+            w: entry.w,
+            h: entry.h,
+            columns: currentCols
+          }, currentBP);
           changed = true;
         }
       }
@@ -1800,6 +1814,15 @@ export const BentoModule: React.FC<{
     const defaultDesktopSpan = currentLayoutKey === 'desktop' ? droppedLayout.w : 8;
     const defaultTabletSpan = currentLayoutKey === 'tablet' ? droppedLayout.w : Math.min(defaultDesktopSpan, BENTO_TABLET_COLUMNS);
     const defaultMobileSpan = currentLayoutKey === 'mobile' ? droppedLayout.w : BENTO_MOBILE_COLUMNS;
+    const defaultItemContent = {
+      type,
+      title: type === 'stat' ? '99+' : (type === 'cta' ? '¡Únete ahora!' : 'Nuevo Bloque'),
+      description: 'Personaliza este bloque desde el panel de ajustes.',
+      padding: 32
+    };
+    const defaultDesktopRows = resolveBentoAutoRows(defaultItemContent, 'desktop', bentoRowHeight, gap, defaultDesktopSpan);
+    const defaultTabletRows = resolveBentoAutoRows(defaultItemContent, 'tablet', bentoRowHeight, gap, defaultTabletSpan);
+    const defaultMobileRows = resolveBentoAutoRows(defaultItemContent, 'mobile', bentoRowHeight, gap, defaultMobileSpan);
     
     const newItem = {
       id: createBentoCellId(),
@@ -1807,15 +1830,28 @@ export const BentoModule: React.FC<{
       title: type === 'stat' ? '99+' : (type === 'cta' ? '¡Únete ahora!' : 'Nuevo Bloque'),
       description: 'Personaliza este bloque desde el panel de ajustes.',
       col_span: defaultDesktopSpan,
-      row_span: droppedLayout.h,
+      hover_effect: 'none',
+      show_border: false,
+      height_mode: 'auto',
+      vertical_align: 'center',
+      row_span: defaultDesktopRows,
       desktop_span: defaultDesktopSpan,
-      desktop_rows: droppedLayout.h,
+      desktop_rows: defaultDesktopRows,
       tablet_span: defaultTabletSpan,
       mobile_span: defaultMobileSpan,
       x: currentLayoutKey === 'desktop' ? droppedLayout.x : 0,
       y: currentLayoutKey === 'desktop' ? droppedLayout.y : 0,
       layouts: {
-        [currentLayoutKey]: { ...droppedLayout, columns: currentCols }
+        [currentLayoutKey]: {
+          ...droppedLayout,
+          h: currentLayoutKey === 'desktop' ? defaultDesktopRows : currentLayoutKey === 'tablet' ? defaultTabletRows : defaultMobileRows,
+          columns: currentCols
+        }
+      },
+      layout_sources: {
+        desktop: currentLayoutKey === 'desktop' ? 'explicit' : 'derived',
+        tablet: currentLayoutKey === 'tablet' ? 'explicit' : 'derived',
+        mobile: currentLayoutKey === 'mobile' ? 'explicit' : 'derived'
       },
       layout_columns: {
         [currentLayoutKey]: currentCols
@@ -1845,7 +1881,7 @@ export const BentoModule: React.FC<{
   };
 
   const getLayoutEntryForBreakpoint = (item: any, breakpoint: 'desktop' | 'tablet' | 'mobile', colsForBreakpoint: number) => {
-    if (item.layouts?.[breakpoint]) {
+    if (hasExplicitBentoLayout(item, breakpoint)) {
       const layout = breakpoint === 'desktop'
         ? scaleLegacyDesktopLayout(item, item.layouts[breakpoint], colsForBreakpoint)
         : clampLayoutEntry(item.layouts[breakpoint], colsForBreakpoint);
@@ -1853,7 +1889,7 @@ export const BentoModule: React.FC<{
         ...layout,
         h: Math.max(
           layout.h,
-          getBentoResponsiveMinRows(item, breakpoint, BENTO_ROW_HEIGHT, gap)
+          getBentoResponsiveMinRows(item, breakpoint, bentoRowHeight, gap)
         )
       };
     }
@@ -1872,7 +1908,7 @@ export const BentoModule: React.FC<{
       ...layout,
       h: Math.max(
         layout.h,
-        getBentoResponsiveMinRows(item, breakpoint, BENTO_ROW_HEIGHT, gap)
+        getBentoResponsiveMinRows(item, breakpoint, bentoRowHeight, gap)
       )
     };
   };
@@ -1914,7 +1950,7 @@ export const BentoModule: React.FC<{
     BENTO_MAX_EDITABLE_ROWS
   );
   const visibleEditorRows = shouldShowEmptyState ? BENTO_BASE_VISIBLE_ROWS : workspaceRows;
-  const visibleEditorMinHeight = (visibleEditorRows * BENTO_ROW_HEIGHT) + ((visibleEditorRows - 1) * gap);
+  const visibleEditorMinHeight = (visibleEditorRows * bentoRowHeight) + ((visibleEditorRows - 1) * gap);
   const isSelected = !isPreviewMode && settingsValues.isSelected; // Some canvases pass this
   const [activeClickOverlay, setActiveClickOverlay] = useState<BentoClickOverlayState | null>(null);
 
@@ -2147,7 +2183,7 @@ export const BentoModule: React.FC<{
                 <div 
                   key={i} 
                   className="border border-primary/30 rounded-[28px]" 
-                  style={{ height: `${BENTO_ROW_HEIGHT}px` }}
+                  style={{ height: `${bentoRowHeight}px` }}
                 />
               ))}
             </div>
@@ -2177,7 +2213,7 @@ export const BentoModule: React.FC<{
             style={{ minHeight: !isPreviewMode ? `${visibleEditorMinHeight}px` : undefined }}
             breakpoints={{ lg: 992, md: 768, sm: 600, xs: 360, xxs: 0 }}
             cols={{ lg: columns, md: BENTO_TABLET_COLUMNS, sm: BENTO_TABLET_COLUMNS, xs: BENTO_MOBILE_COLUMNS, xxs: 1 }}
-            rowHeight={BENTO_ROW_HEIGHT}
+            rowHeight={bentoRowHeight}
             margin={[gap, gap]}
             containerPadding={[0, 0]}
             isDraggable={false}
@@ -2236,14 +2272,26 @@ export const BentoModule: React.FC<{
                 card_shadow = 'sm',
                 padding = 32,
                 align_items = 'start',
-                hover_effect = 'lift',
+                hover_effect,
+                border_style = 'solid',
+                border_width = 1,
                 z_index = 1,
-                text_contrast = 'auto'
+                text_contrast = 'auto',
+                vertical_align
               } = item;
 
               const IconComponent = (LucideIcons as any)[icon] || Sparkles;
               const resolvedCardBg = resolveThemeColor(card_bg, '#FFFFFF', '#1E293B', darkMode);
               const resolvedCardBorder = resolveThemeColor(card_border, 'rgba(0,0,0,0.05)', 'rgba(255,255,255,0.1)', darkMode);
+              const resolvedBorderStyle = resolveBentoBorderStyle(border_style);
+              const resolvedBorderWidth = resolveBentoBorderWidth(border_width, resolvedBorderStyle);
+              const resolvedBorderColor = resolveBentoBorderColor(resolvedCardBorder, resolvedBorderStyle);
+              const resolvedHoverEffect = resolveBentoHoverEffectDefault(item) as string;
+              const showBorder = resolveBentoBorderVisibility(item);
+              const isHeroType = type === 'hero' || priority === 'hero';
+              const shouldRenderBorder = hasExplicitShowBorder(item)
+                ? showBorder
+                : showBorder && card_style !== 'transparent' && !isHeroType;
 
               const isSafeGradient = (val: any) => typeof val === 'string' && !val.includes('NaN');
               const finalBg = (card_style === 'solid' || card_style === 'glow') ? resolvedCardBg : 
@@ -2251,11 +2299,10 @@ export const BentoModule: React.FC<{
                               card_style === 'glass' ? (darkMode ? 'rgba(30, 41, 59, 0.7)' : 'rgba(255, 255, 255, 0.7)') : 
                               'transparent';
               const glowShadow = card_style === 'glow'
-                ? `0 20px 60px -24px ${resolvedCardBg}, 0 0 0 1px ${resolvedCardBorder}`
+                ? `0 20px 60px -24px ${resolvedCardBg}${showBorder ? `, 0 0 0 1px ${resolvedCardBorder}` : ''}`
                 : undefined;
               
               // Hero styling is handled within BentoCellContent or specifically here for its container
-              const isHeroType = type === 'hero' || priority === 'hero';
               const specialBg = isHeroType ? 'linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%)' : undefined;
 
               const shadowClass = {
@@ -2264,19 +2311,29 @@ export const BentoModule: React.FC<{
                 lg: 'shadow-2xl',
                 xl: 'shadow-[0_20px_50px_rgba(0,0,0,0.1)]'
               }[card_shadow as string] || 'shadow-sm';
+              // An explicit false is a strict borderless contract in clean preview/viewer.
+              // The configured card shadow may otherwise read as a one-pixel perimeter.
+              const resolvedShadowClass = hasExplicitShowBorder(item) && !showBorder
+                ? 'shadow-none'
+                : shadowClass;
 
-              const alignClass = {
-                'start': 'justify-start items-start text-left',
-                'center': 'justify-center items-center text-center',
-                'end': 'justify-end items-end text-right'
-              }[align_items as string] || 'justify-start items-start';
+              const resolvedVerticalAlign = resolveBentoVerticalAlign(vertical_align, align_items);
+              const alignClass = `${({
+                start: 'justify-start',
+                center: 'justify-center',
+                end: 'justify-end'
+              } as Record<string, string>)[resolvedVerticalAlign] || 'justify-start'} ${({
+                start: 'items-start text-left',
+                center: 'items-center text-center',
+                end: 'items-end text-right'
+              } as Record<string, string>)[align_items as string] || 'items-start'}`;
 
               const hoverClass = isPreviewMode ? {
                 lift: 'hover:-translate-y-2 hover:shadow-2xl',
                 zoom: 'hover:scale-[1.02]',
                 pulse: 'hover:ring-4 hover:ring-primary/20',
                 none: ''
-              }[hover_effect as string] || '' : '';
+              }[resolvedHoverEffect] || '' : '';
 
               const isSelected = !isPreviewMode && selectedIndex === i;
               const rglKey = getLayoutItemId(item, i);
@@ -2323,14 +2380,16 @@ export const BentoModule: React.FC<{
                         executeBentoClickAction(item);
                       }
                     }}
-                    className={`w-full h-full overflow-hidden group flex flex-col ${!isPreviewMode || isCardClickable ? 'cursor-pointer' : ''} relative ${isDragging ? 'transition-none' : 'transition-all duration-300'} ${shadowClass} ${hoverClass} ${alignClass} ${card_style === 'glass' ? 'backdrop-blur-xl' : ''} ${
-                      isSelected ? `ring-4 ring-primary ring-offset-4 ${isDragging ? '' : 'scale-[1.01]'} z-50 shadow-2xl` : 'z-10'
+                    className={`w-full h-full overflow-hidden group flex flex-col ${!isPreviewMode || isCardClickable ? 'cursor-pointer' : ''} relative ${isDragging ? 'transition-none' : 'transition-all duration-300'} ${resolvedShadowClass} ${hoverClass} ${alignClass} ${card_style === 'glass' ? 'backdrop-blur-xl' : ''} ${
+                      isSelected ? `outline outline-2 outline-primary outline-offset-2 ${isDragging ? '' : 'scale-[1.01]'} z-50 shadow-2xl` : 'z-10'
                     }`}
                     style={{
                       backgroundColor: specialBg ? undefined : (card_style !== 'gradient' ? finalBg : undefined),
                       backgroundImage: specialBg || (card_style === 'gradient' ? finalBg : undefined),
                       borderRadius: `${card_radius}px`,
-                      border: (card_style === 'transparent' || isHeroType) ? 'none' : `1px solid ${resolvedCardBorder}`,
+                      borderStyle: shouldRenderBorder ? (resolvedBorderStyle === 'soft' ? 'solid' : resolvedBorderStyle) : 'none',
+                      borderWidth: shouldRenderBorder ? `${resolvedBorderWidth}px` : '0px',
+                      borderColor: shouldRenderBorder ? resolvedBorderColor : 'transparent',
                       padding: (type === 'visual' || type === 'icon') ? 0 : `${padding}px`,
                       boxShadow: glowShadow,
                       zIndex: isSelected ? 50 : z_index
@@ -2341,7 +2400,7 @@ export const BentoModule: React.FC<{
                       <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
                         <img 
                           src={card_image} 
-                          className={`w-full h-full transition-transform duration-700 ${hover_effect === 'zoom' ? 'group-hover:scale-110' : ''} object-cover`}
+                          className={`w-full h-full transition-transform duration-700 ${resolvedHoverEffect === 'zoom' ? 'group-hover:scale-110' : ''} object-cover`}
                           referrerPolicy="no-referrer"
                           alt=""
                           style={{ objectFit: image_fit }}
@@ -2357,7 +2416,7 @@ export const BentoModule: React.FC<{
 
                     {/* Decorative element for Hero (Legacy Icon) */}
                     {isHeroType && !card_image && (
-                      <div className="absolute -right-8 -bottom-8 opacity-10 rotate-12 transition-transform group-hover:scale-110 duration-700">
+                      <div className={`absolute -right-8 -bottom-8 opacity-10 rotate-12 transition-transform duration-700 ${resolvedHoverEffect === 'zoom' ? 'group-hover:scale-110' : ''}`}>
                         <IconComponent size={180} />
                       </div>
                     )}

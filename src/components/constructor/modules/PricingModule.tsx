@@ -11,6 +11,13 @@ import { InlineEditableText } from '../InlineEditableText';
 import { useEditorStore } from '../../../store/editorStore';
 import { normalizeSectionAnimation } from '../../../constants/moduleAnimations';
 import { getPricingPlansSettingKey } from './pricingPlanComparisonLink';
+import {
+  resolveIconName,
+  resolvePricingImageAlt,
+  resolvePricingImageSrc,
+  resolvePricingPlanVisualType
+} from '../../../utils/pricingPlanVisual';
+import { resolvePricingColumnCount, resolvePricingGridClass } from '../../../utils/pricingLayout';
 
 const toBoolean = (value: unknown) => {
   return value === true || value === 'true' || value === 1 || value === '1';
@@ -62,13 +69,6 @@ export const PricingModule: React.FC<{
   };
 
   // Global Settings
-  const columns = parseNumSafe(getVal(null, 'columns', 3), 3);
-  const desktopColumns = Math.max(1, Math.min(4, columns));
-  const pricingGridClass =
-    desktopColumns >= 4 ? 'grid-cols-1 @md:grid-cols-2 @5xl:grid-cols-4' :
-    desktopColumns === 3 ? 'grid-cols-1 @md:grid-cols-2 @5xl:grid-cols-3' :
-    desktopColumns === 2 ? 'grid-cols-1 @md:grid-cols-2' :
-    'grid-cols-1';
   const gap = parseNumSafe(getVal(null, 'gap', 32), 32);
   const darkMode = toBoolean(getVal(null, 'dark_mode', false));
   const rawBgColor = getVal(null, 'bg_color', '#F8FAFC');
@@ -193,6 +193,8 @@ export const PricingModule: React.FC<{
       highlight: false
     }
   ];
+  const desktopColumns = resolvePricingColumnCount(plans.length);
+  const pricingGridClass = resolvePricingGridClass(desktopColumns);
 
   const getTypographyStyle = (sizeToken: string, weightToken: string, alignToken?: string) => {
     const size = TYPOGRAPHY_SCALE[sizeToken as keyof typeof TYPOGRAPHY_SCALE] || TYPOGRAPHY_SCALE.p;
@@ -206,8 +208,9 @@ export const PricingModule: React.FC<{
     } as React.CSSProperties;
   };
 
-  const getIcon = (iconName: string, size = 20) => {
-    const IconComp = (LucideIcons as any)[iconName] || (LucideIcons as any)[iconName.replace('Check', '')] || Check;
+  const getIcon = (iconName: unknown, size = 20) => {
+    const resolvedName = resolveIconName(iconName);
+    const IconComp = (LucideIcons as any)[resolvedName] || Check;
     return <IconComp size={size} />;
   };
 
@@ -252,7 +255,7 @@ export const PricingModule: React.FC<{
     >
       <div className="max-w-7xl mx-auto px-8 @container">
         {/* Header */}
-        <div 
+        <div
           className={`mb-12 flex flex-col ${headerAlign === 'center' ? 'items-center text-center' : 'items-start text-left'}`}
           style={{ marginBottom: `${headerMarginB}px` }}
         >
@@ -380,6 +383,9 @@ export const PricingModule: React.FC<{
             const displayedPeriod = isYearly ? '/a\u00f1o' : '/mes';
             const priceFontSize = TYPOGRAPHY_SCALE[priceSize as keyof typeof TYPOGRAPHY_SCALE]?.fontSize || 48;
             const priceFontWeight = FONT_WEIGHTS[priceWeight as keyof typeof FONT_WEIGHTS]?.value || 800;
+            const visualType = resolvePricingPlanVisualType(plan.visual_type);
+            const imageSrc = resolvePricingImageSrc(plan.image);
+            const imageSize = Math.max(40, Math.min(160, parseNumSafe(plan.image_size, 72)));
 
             return (
               <motion.div
@@ -411,12 +417,26 @@ export const PricingModule: React.FC<{
                 )}
 
                 <div className="mb-8">
-                  <div 
-                    className="w-14 h-14 rounded-2xl flex items-center justify-center mb-6 transition-transform group-hover:rotate-6 duration-300"
-                    style={{ backgroundColor: `${highlightColor}10`, color: highlightColor }}
-                  >
-                    {getIcon(plan.icon, 28)}
-                  </div>
+                  {visualType === 'image' ? (
+                    imageSrc ? (
+                      <div className="mb-6 flex items-center justify-start">
+                        <img
+                          src={imageSrc}
+                          alt={resolvePricingImageAlt(plan.image_alt, plan.name)}
+                          className="block object-contain"
+                          style={{ width: `${imageSize}px`, height: `${imageSize}px` }}
+                          referrerPolicy="no-referrer"
+                        />
+                      </div>
+                    ) : null
+                  ) : (
+                    <div
+                      className="w-14 h-14 rounded-2xl flex items-center justify-center mb-6 transition-transform group-hover:rotate-6 duration-300"
+                      style={{ backgroundColor: `${highlightColor}10`, color: highlightColor }}
+                    >
+                      {getIcon(plan.icon, 28)}
+                    </div>
+                  )}
                   <h3 
                     className="text-2xl font-black mb-2"
                     style={{ color: planTitleColor }}

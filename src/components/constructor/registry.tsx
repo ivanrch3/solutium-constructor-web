@@ -3413,7 +3413,6 @@ export const PRICING_MODULE: WebModule = {
   globalSettings: {
     contenido: [],
     estructura: [
-      { id: 'columns', label: 'Columnas (Desktop)', type: 'range', defaultValue: 3, min: 1, max: 4 },
       { id: 'gap', label: 'Espaciado entre Tarjetas', type: 'range', defaultValue: 32, min: 16, max: 60, unit: 'px' },
       { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 40, min: 40, max: 200, unit: 'px' }
     ],
@@ -3487,7 +3486,14 @@ export const PRICING_MODULE: WebModule = {
             { id: 'features', label: 'Características (una por línea, usa "-" para negativas)', type: 'textarea', defaultValue: '' },
             { id: 'cta', label: 'Texto del Botón', type: 'text', defaultValue: 'Elegir Plan' },
             ...BUTTON_LINK_SETTINGS('cta'),
-            { id: 'icon', label: 'Icono (Lucide)', type: 'icon', defaultValue: 'Zap' },
+            { id: 'visual_type', label: 'Tipo visual', type: 'select', defaultValue: 'icon', options: [
+              { label: 'Ícono', value: 'icon' },
+              { label: 'Imagen', value: 'image' }
+            ] },
+            { id: 'icon', label: 'Ícono', type: 'icon', defaultValue: 'Zap', showIf: { settingId: 'visual_type', value: 'icon' } },
+            { id: 'image', label: 'Imagen', type: 'image', defaultValue: '', showIf: { settingId: 'visual_type', value: 'image' } },
+            { id: 'image_alt', label: 'Texto alternativo', type: 'text', defaultValue: '', showIf: { settingId: 'visual_type', value: 'image' } },
+            { id: 'image_size', label: 'Tamaño de imagen', type: 'range', defaultValue: 72, min: 40, max: 160, unit: 'px', showIf: { settingId: 'visual_type', value: 'image' } },
             { id: 'highlight', label: 'Destacar Plan', type: 'boolean', defaultValue: false },
             { id: 'badge', label: 'Etiqueta (Badge)', type: 'text', defaultValue: '' }
           ]

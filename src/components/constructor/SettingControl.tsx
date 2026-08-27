@@ -31,6 +31,13 @@ import { resolveConstructorAnimationControlState } from '../../utils/constructor
 import { buildInternalSectionOptions, resolveSectionLinkControlMode } from '../../utils/internalSectionOptions';
 
 import { normalizeSocialPlatform, SOCIAL_PLATFORMS, getIconForPlatform } from '../../utils/socialUtils';
+import { evaluateRepeaterShowIf, getRepeaterFieldIdentity } from '../../utils/repeaterField';
+import {
+  filterLucideIconNames,
+  getAvailableLucideIconNames,
+  isValidLucideIconExport,
+  normalizeLucideIconSearch
+} from '../../utils/lucideIconPicker';
 
 interface SettingControlProps {
   setting: SettingDefinition;
@@ -109,10 +116,11 @@ const ICON_FAVORITES = [
   'Image', 'Headphones', 'Clock', 'Calendar', 'MapPin', 'Link'
 ];
 
-const normalizeIconName = (name: string) => name.toLowerCase().replace(/[^a-z0-9]/g, '');
+const AVAILABLE_ICON_NAMES = getAvailableLucideIconNames(LucideIcons as Record<string, unknown>);
+const SOCIAL_ICON_NAMES = AVAILABLE_ICON_NAMES.filter(name => SOCIAL_ICONS.includes(name));
 
 const categorizeIconName = (iconName: string): typeof ICON_CATEGORY_ORDER[number] => {
-  const normalized = normalizeIconName(iconName);
+  const normalized = normalizeLucideIconSearch(iconName);
   for (const entry of ICON_CATEGORY_KEYWORDS) {
     if (entry.keywords.some(keyword => normalized.includes(keyword))) {
       return entry.category;
@@ -1053,16 +1061,9 @@ export const SettingControl: React.FC<SettingControlProps> = ({
     case 'icon':
       const [searchTerm, setSearchTerm] = useState('');
       const [activeIconCategory, setActiveIconCategory] = useState<string>('Favoritos');
-      
-      let allIconNames = Object.keys(LucideIcons).filter(name => 
-        typeof (LucideIcons as any)[name] === 'function' || 
-        (typeof (LucideIcons as any)[name] === 'object' && (LucideIcons as any)[name].$$typeof)
-      );
-
-      // SIP v11.5: Filter social icons if socialOnly is enabled
-      if ((setting as any).socialOnly) {
-        allIconNames = allIconNames.filter(name => SOCIAL_ICONS.includes(name));
-      }
+      const allIconNames = (setting as any).socialOnly
+        ? SOCIAL_ICON_NAMES
+        : AVAILABLE_ICON_NAMES;
       
       const iconCategories = useMemo(() => {
         const grouped = new Map<string, string[]>();
@@ -1086,13 +1087,10 @@ export const SettingControl: React.FC<SettingControlProps> = ({
         return grouped;
       }, [allIconNames]);
 
-      const normalizedSearch = searchTerm.trim().toLowerCase();
+      const normalizedSearch = normalizeLucideIconSearch(searchTerm);
 
       const searchResults = useMemo(() => {
-        if (!normalizedSearch) return [];
-        return [...allIconNames]
-          .filter(name => name.toLowerCase().includes(normalizedSearch))
-          .sort((a, b) => a.localeCompare(b));
+        return filterLucideIconNames(allIconNames, normalizedSearch);
       }, [allIconNames, normalizedSearch]);
 
       const visibleCategories = useMemo(
@@ -1104,7 +1102,13 @@ export const SettingControl: React.FC<SettingControlProps> = ({
       const resolvedCategory = iconCategories.has(activeIconCategory) ? activeIconCategory : fallbackCategory;
       const displayedIcons = normalizedSearch ? searchResults : (iconCategories.get(resolvedCategory) || []);
       
-      const SelectedIconComp = currentValue ? (LucideIcons as any)[currentValue] : null;
+      const selectedIconName = typeof currentValue === 'string' && isValidLucideIconExport(
+        currentValue,
+        (LucideIcons as Record<string, unknown>)[currentValue]
+      )
+        ? currentValue
+        : '';
+      const SelectedIconComp = selectedIconName ? (LucideIcons as any)[selectedIconName] : null;
 
       return (
         <div className="space-y-2">
@@ -1117,18 +1121,18 @@ export const SettingControl: React.FC<SettingControlProps> = ({
                 showPicker ? 'border-primary bg-primary/5' : 'border-border bg-surface hover:border-border/80'
               }`}
             >
-              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${currentValue ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-secondary text-text/20'}`}>
+              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${selectedIconName ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-secondary text-text/20'}`}>
                 {SelectedIconComp ? <SelectedIconComp size={20} /> : <Plus size={20} />}
               </div>
               <div className="flex-1 text-left min-w-0">
                 <p className="text-[11px] font-bold text-text truncate">
-                  {currentValue || 'Seleccionar Ícono'}
+                  {selectedIconName || 'Seleccionar Ícono'}
                 </p>
                 <p className="text-[9px] text-text/40 font-medium">
                   {showPicker ? 'Cerrar selector' : 'Click para cambiar'}
                 </p>
               </div>
-              {currentValue && (
+              {selectedIconName && (
                 <div 
                   onClick={(e) => { e.stopPropagation(); onChange(''); }}
                   className="p-1.5 hover:bg-red-50 text-text/30 hover:text-red-500 rounded-lg transition-colors"
@@ -1186,7 +1190,7 @@ export const SettingControl: React.FC<SettingControlProps> = ({
                     <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 max-h-[320px] overflow-y-auto custom-scrollbar pr-1">
                     {displayedIcons.map(iconName => {
                       const IconComp = (LucideIcons as any)[iconName];
-                      const isSelected = currentValue === iconName;
+                      const isSelected = selectedIconName === iconName;
                       return (
                         <button
                           key={iconName}
@@ -1257,13 +1261,15 @@ export const SettingControl: React.FC<SettingControlProps> = ({
       };
       const renderRepeaterField = (field: SettingDefinition, item: any, index: number) => (
         (() => {
+          if (!evaluateRepeaterShowIf(item, field.showIf, setting.fields || [])) return null;
           const fieldValue = field.id === 'icon'
             ? (item.icon ?? item.iconName ?? item.iconId ?? '')
             : item[field.id];
+          const identity = getRepeaterFieldIdentity(contextId, item, index, field.id);
 
           return (
         <SettingControl
-          key={field.id}
+          key={identity.fieldKey}
           setting={getDynamicCardsLockMessage(field)
             ? { ...field, disabledMessage: getDynamicCardsLockMessage(field) }
             : field}
@@ -1274,7 +1280,7 @@ export const SettingControl: React.FC<SettingControlProps> = ({
           trustedCompanyLogos={trustedCompanyLogos}
           projectColors={projectColors}
           project={project}
-          contextId={contextId}
+          contextId={identity.itemContextId}
           moduleType={moduleType}
           settingsValues={settingsValues}
           availableModules={availableModules}
@@ -1359,10 +1365,11 @@ export const SettingControl: React.FC<SettingControlProps> = ({
                 : 'bg-secondary/30 border-border';
               const openItemIndex = openRepeaterItems[repeaterStateKey];
               const isItemOpen = openItemIndex === undefined ? index === 0 : openItemIndex === index;
-              const itemSectionKey = `${repeaterStateKey}:${index}`;
+              const itemKey = item?.id || index;
+              const itemSectionKey = `${repeaterStateKey}:${itemKey}`;
 
               return (
-              <details key={index} className={`${itemToneClass} border rounded-xl relative group overflow-hidden transition-colors`} open={isItemOpen}>
+              <details key={itemKey} className={`${itemToneClass} border rounded-xl relative group overflow-hidden transition-colors`} open={isItemOpen}>
                 <summary
                   className="flex cursor-pointer list-none items-center justify-between gap-2 p-3"
                   onClick={(event) => {

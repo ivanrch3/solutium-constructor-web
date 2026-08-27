@@ -15,6 +15,7 @@ import { logDebug } from '../../utils/debug';
 import { resolveBentoIconSpacing, updateBentoIconSpacing, type BentoIconDevice } from '../../utils/bentoIconSpacing';
 import { resolveBentoAutoRows, resolveBentoEditorTab, resolveBentoRowHeight, resolveBentoSettingId } from '../../utils/bentoCore';
 import { SettingControl } from './SettingControl';
+import { BentoCompositeEditor } from './modules/BentoCompositeEditor';
 
 const PILLAR_ICONS: Record<string, React.ReactNode> = {
   contenido: <Type size={16} />,
@@ -622,7 +623,8 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
     list: ['title', 'list_items', 'icon', 'title_size', 'title_weight', 'title_color', 'height_mode', 'vertical_align', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'card_style', 'card_bg', 'card_gradient', 'card_image', 'card_overlay', 'card_radius', 'card_shadow', 'show_border', 'card_border', 'hover_effect'],
     accordion: ['title', 'description', 'title_size', 'title_weight', 'title_color', 'height_mode', 'vertical_align', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'card_style', 'card_bg', 'card_gradient', 'card_image', 'card_overlay', 'card_radius', 'card_shadow', 'show_border', 'card_border', 'hover_effect'],
     marquee: ['title', 'title_size', 'title_weight', 'title_color', 'height_mode', 'vertical_align', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'card_style', 'card_bg', 'card_gradient', 'card_image', 'card_overlay', 'card_radius', 'card_shadow', 'show_border', 'card_border', 'hover_effect'],
-    card: ['title', 'description', 'icon', 'title_size', 'title_weight', 'title_color', 'font_family', 'description_size', 'description_weight', 'description_color', 'line_height', 'letter_spacing', 'height_mode', 'vertical_align', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'card_style', 'card_bg', 'card_gradient', 'card_image', 'card_overlay', 'card_radius', 'card_shadow', 'text_contrast', 'show_border', 'card_border', 'hover_effect']
+    card: ['title', 'description', 'icon', 'title_size', 'title_weight', 'title_color', 'font_family', 'description_size', 'description_weight', 'description_color', 'line_height', 'letter_spacing', 'height_mode', 'vertical_align', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'card_style', 'card_bg', 'card_gradient', 'card_image', 'card_overlay', 'card_radius', 'card_shadow', 'text_contrast', 'show_border', 'card_border', 'hover_effect'],
+    composite: ['height_mode', 'vertical_align', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'composite_layout', 'composite_gap', 'composite_align', 'card_style', 'card_bg', 'card_gradient', 'card_image', 'card_overlay', 'card_radius', 'card_shadow', 'text_contrast', 'show_border', 'card_border', 'hover_effect']
   };
 
   const shouldShowFieldForType = (field: any) => {
@@ -940,7 +942,7 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
 
       const autoHeightRelevantFields = new Set([
         'height_mode', 'type', 'title', 'description', 'list_items', 'image', 'icon', 'icon_size',
-        'icon_image_size', 'padding', 'desktop_span', 'tablet_span', 'mobile_span'
+        'icon_image_size', 'padding', 'desktop_span', 'tablet_span', 'mobile_span', 'composite_elements', 'composite_layout', 'composite_gap', 'composite_align'
       ]);
       if (nextItem.height_mode === 'auto' && autoHeightRelevantFields.has(settingId)) {
         const existingLayouts = nextItem.layouts || {};
@@ -1281,6 +1283,16 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
     </div>
   );
   const activeBentoTabConfig = BENTO_EDITOR_TABS.find((tab) => tab.id === activeBentoTab) || BENTO_EDITOR_TABS[0];
+  const compositeContentEditor = selectedType === 'composite' && activeBentoTab === 'contenido' ? (
+    <BentoCompositeEditor
+      value={selectedBentoItem?.composite_elements}
+      onChange={(value) => handleFieldChange(`${selectedSection.id}_el_bento_items_${selectedBentoCellIndex}`, 'composite_elements', value)}
+      project={project}
+      projectColors={projectColors}
+      moduleType={selectedSection.type}
+      contextId={`${selectedSection.id}_el_bento_items_${selectedBentoCellIndex}`}
+    />
+  ) : null;
   const iconAdvancedDesignControls = selectedType === 'icon' && activeBentoTab === 'diseno' && (
     <section className="space-y-3 rounded-xl border border-gray-100 bg-gray-50/70 p-3">
       <h4 className="text-[10px] font-black uppercase tracking-wider text-gray-700">Espaciado visual del ícono</h4>
@@ -1352,6 +1364,7 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
           <div className="space-y-5 p-3">
             {movementControls}
             {bentoEditorTabs}
+            {compositeContentEditor}
             {activeBentoTabConfig.pillars.map(pillar => {
               const fields = settingsByPillar[pillar];
               if (!fields || fields.length === 0) return null;
@@ -1378,6 +1391,7 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
             {movementControls}
             <div className={movementControls ? 'mt-3' : ''}>{bentoEditorTabs}</div>
           </div>
+          {compositeContentEditor}
           {activeBentoTabConfig.pillars.map(pillar => {
             const fields = settingsByPillar[pillar];
             if (!fields || fields.length === 0) return null;

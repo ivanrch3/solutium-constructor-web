@@ -81,6 +81,7 @@ import { WhatsAppOrdersCatalogOrganizerControl } from './modules/WhatsAppOrdersC
 import { FooterBottomBarControl, FooterColumnsControl } from './modules/FooterColumnsControl';
 import { hasFooterV2Config, normalizeFooterV2Config } from './modules/footerConfig';
 import { PlanComparisonControl } from './modules/PlanComparisonControl';
+import { createBentoCompositeElements, normalizeBentoCompositeListItems, regenerateBentoCompositeElementIds, regenerateBentoCompositeListItemIds } from '../../utils/bentoComposite';
 
 const FOOTER_V2_GLOBAL_SETTING_IDS = new Set([
   'footer_title_font_family',
@@ -114,7 +115,8 @@ const BENTO_ELEMENT_OPTIONS = [
   { type: 'list', label: 'Lista', icon: <Layers size={14} /> },
   { type: 'accordion', label: 'Acordeón', icon: <ChevronDown size={14} /> },
   { type: 'marquee', label: 'Cinta animada', icon: <Sparkles size={14} /> },
-  { type: 'card', label: 'Tarjeta simple', icon: <Box size={14} /> }
+  { type: 'card', label: 'Tarjeta simple', icon: <Box size={14} /> },
+  { type: 'composite', label: 'Bloque compuesto', icon: <Layers size={14} /> }
 ];
 
 const BENTO_DESKTOP_COLUMNS = 24;
@@ -880,6 +882,14 @@ const createBentoPanelElementPreset = (kind: string, existingItems: any[], deskt
       return withLayout({ type: 'marquee', title: 'PROMO • NUEVO • 24/7', card_style: 'transparent', padding: 12 }, 16, 1, 6, 4);
     case 'card':
       return withLayout({ type: 'card', title: 'Tarjeta simple', description: 'Combina texto, estilo e imagen de fondo.', icon: 'PanelTop' }, 8, 2, 3, 4);
+    case 'composite':
+      return withLayout({
+        type: 'composite',
+        composite_elements: createBentoCompositeElements(),
+        composite_layout: 'vertical',
+        composite_gap: 12,
+        composite_align: 'start'
+      }, 10, 2, 6, 4);
     case 'text':
     default:
       return withLayout({ type: 'text', text_style: 'heading', title: 'Título del texto', description: 'Escribe aquí tu contenido...', icon: 'Type' }, 8, 2, 3, 4);
@@ -896,6 +906,14 @@ const cloneBentoValue = (value: any) => {
 
 const createDuplicatedBentoItem = (sourceItem: any, existingItems: any[], desktopColumns = BENTO_DESKTOP_COLUMNS) => {
   const clonedItem = cloneBentoValue(sourceItem);
+  if (clonedItem.type === 'composite' && Array.isArray(clonedItem.composite_elements)) {
+    clonedItem.composite_elements = regenerateBentoCompositeElementIds(
+      clonedItem.composite_elements,
+      (type, index) => `${createBentoCellId()}_${type}_${index + 1}`
+    ).map((element: any) => element.type === 'list'
+      ? { ...element, items: regenerateBentoCompositeListItemIds(normalizeBentoCompositeListItems(element.items), createBentoCellId()) }
+      : element);
+  }
   const sourceDesktop = getBentoPlacementLayout(sourceItem, 'desktop', desktopColumns);
   const sourceTablet = getBentoPlacementLayout(sourceItem, 'tablet', BENTO_TABLET_COLUMNS);
   const sourceMobile = getBentoPlacementLayout(sourceItem, 'mobile', BENTO_MOBILE_COLUMNS);

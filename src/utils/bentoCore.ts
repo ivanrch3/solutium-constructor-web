@@ -1,3 +1,5 @@
+import { estimateBentoCompositeHeight } from './bentoComposite';
+
 export type BentoBreakpoint = 'desktop' | 'tablet' | 'mobile';
 
 export const BENTO_ROW_HEIGHT = 80;
@@ -11,7 +13,7 @@ const BENTO_STRUCTURE_SETTING_IDS = new Set([
   'height_mode', 'vertical_align', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span',
   'element_padding_y', 'card_padding_linked', 'card_padding_top', 'card_padding_right',
   'card_padding_bottom', 'card_padding_left', 'icon_content_gap', 'text_content_gap', 'padding',
-  'align_items', 'content_align'
+  'align_items', 'content_align', 'composite_layout', 'composite_gap', 'composite_align'
 ]);
 const BENTO_CONTENT_SETTING_IDS = new Set([
   'image', 'icon', 'icon_image', 'card_image', 'title', 'description', 'eyebrow', 'headline',
@@ -160,6 +162,9 @@ export const resolveBentoAutoRows = (
 
   let minHeight = 0;
   switch (item.type || 'text') {
+    case 'composite':
+      minHeight = estimateBentoCompositeHeight(item, breakpoint);
+      break;
     case 'visual':
       minHeight = breakpoint === 'mobile' ? 220 : 260;
       break;

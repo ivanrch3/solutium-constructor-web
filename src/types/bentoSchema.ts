@@ -1,4 +1,4 @@
-export type BentoItemType = "text" | "image" | "icon_text" | "stat" | "metric" | "cta" | "video" | "hero" | "compact" | "visual" | "feature" | "step" | "app_card" | "testimonial" | "trust_signal";
+export type BentoItemType = "text" | "image" | "icon_text" | "stat" | "metric" | "cta" | "video" | "hero" | "compact" | "visual" | "feature" | "step" | "app_card" | "testimonial" | "trust_signal" | "composite";
 export type BentoCardStyle = "solid" | "gradient" | "glass" | "glow" | "transparent";
 export type BentoTone = "professional" | "friendly" | "premium" | "tech" | "minimal";
 
@@ -32,6 +32,10 @@ export interface BentoItem {
   show_description?: boolean;
   content_position?: 'left' | 'center' | 'right';
   align_items?: 'start' | 'center' | 'end';
+  composite_elements?: Array<Record<string, any>>;
+  composite_layout?: 'vertical' | 'horizontal';
+  composite_gap?: number;
+  composite_align?: 'start' | 'center' | 'end';
   text_contrast?: 'auto' | 'white' | 'black';
   layouts?: {
     desktop?: { x: number; y: number; w: number; h: number };

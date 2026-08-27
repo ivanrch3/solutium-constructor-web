@@ -4092,6 +4092,16 @@ export const BENTO_MODULE: WebModule = {
             { label: 'Centro', value: 'center' },
             { label: 'Abajo', value: 'end' }
           ]},
+          { id: 'composite_layout', label: 'Distribución interna', type: 'select', defaultValue: 'vertical', group: 'estructura', options: [
+            { label: 'Vertical', value: 'vertical' },
+            { label: 'Horizontal', value: 'horizontal' }
+          ], showIf: { settingId: 'type', value: 'composite' } },
+          { id: 'composite_gap', label: 'Espacio entre elementos', type: 'range', defaultValue: 12, min: 0, max: 48, unit: 'px', group: 'estructura', showIf: { settingId: 'type', value: 'composite' } },
+          { id: 'composite_align', label: 'Alineación interna', type: 'select', defaultValue: 'start', group: 'estructura', options: [
+            { label: 'Izquierda', value: 'start' },
+            { label: 'Centro', value: 'center' },
+            { label: 'Derecha', value: 'end' }
+          ], showIf: { settingId: 'type', value: 'composite' } },
 
           // Estilo
           { id: 'card_style', label: 'Estilo de Tarjeta', type: 'select', defaultValue: 'solid', options: [

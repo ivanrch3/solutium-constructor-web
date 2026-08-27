@@ -26,7 +26,7 @@ export const validateBentoSchema = (input: any): BentoSchema => {
 };
 
 export const normalizeBentoItem = (item: any): BentoItem => {
-  const type: BentoItemType = ["text", "image", "icon_text", "stat", "cta", "video"].includes(item.type) 
+  const type: BentoItemType = ["text", "image", "icon_text", "stat", "cta", "video", "composite"].includes(item.type)
     ? item.type 
     : "icon_text";
     
@@ -44,7 +44,13 @@ export const normalizeBentoItem = (item: any): BentoItem => {
     btn_url: item.btn_url || item.url || undefined,
     card_style: item.card_style || "solid",
     badge: item.badge || undefined,
-    highlight: !!item.highlight
+    highlight: !!item.highlight,
+    ...(type === 'composite' ? {
+      composite_elements: item.composite_elements,
+      composite_layout: item.composite_layout,
+      composite_gap: item.composite_gap,
+      composite_align: item.composite_align
+    } : {})
   };
 };
 

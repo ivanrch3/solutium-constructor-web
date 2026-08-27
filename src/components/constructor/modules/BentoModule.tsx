@@ -12,6 +12,8 @@ import { SectionAnimation } from '../animations/SectionAnimation';
 import { normalizeSectionAnimation } from '../../../constants/moduleAnimations';
 import { appendReferralParamToSolutiumUrl, extractReferralCodeFromSearch } from '../../../utils/referralLinks';
 import { resolveBentoIconSpacing, type BentoIconDevice } from '../../../utils/bentoIconSpacing';
+import { BentoCompositeContent } from './BentoCompositeContent';
+import { createBentoCompositeElements } from '../../../utils/bentoComposite';
 import {
   resolveBentoAutoRows,
   resolveBentoBorderVisibility,
@@ -452,6 +454,8 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave, bre
   }[resolvedContentPosition as string] || 'items-center text-center';
 
   switch (type) {
+    case 'composite':
+      return <BentoCompositeContent item={item} darkMode={darkMode} breakpoint={breakpoint} isPreviewMode={isPreviewMode} />;
     case 'hero':
       return (
         <div className={`flex flex-col z-10 w-full h-full ${verticalContentClass} gap-6 ${alignClass}`}>
@@ -1818,7 +1822,13 @@ export const BentoModule: React.FC<{
       type,
       title: type === 'stat' ? '99+' : (type === 'cta' ? '¡Únete ahora!' : 'Nuevo Bloque'),
       description: 'Personaliza este bloque desde el panel de ajustes.',
-      padding: 32
+      padding: 32,
+      ...(type === 'composite' ? {
+        composite_elements: createBentoCompositeElements(),
+        composite_layout: 'vertical',
+        composite_gap: 12,
+        composite_align: 'start'
+      } : {})
     };
     const defaultDesktopRows = resolveBentoAutoRows(defaultItemContent, 'desktop', bentoRowHeight, gap, defaultDesktopSpan);
     const defaultTabletRows = resolveBentoAutoRows(defaultItemContent, 'tablet', bentoRowHeight, gap, defaultTabletSpan);
@@ -1834,6 +1844,7 @@ export const BentoModule: React.FC<{
       show_border: false,
       height_mode: 'auto',
       vertical_align: 'center',
+      ...(type === 'composite' ? { composite_elements: createBentoCompositeElements(), composite_layout: 'vertical', composite_gap: 12, composite_align: 'start' } : {}),
       row_span: defaultDesktopRows,
       desktop_span: defaultDesktopSpan,
       desktop_rows: defaultDesktopRows,

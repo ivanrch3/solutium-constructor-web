@@ -987,7 +987,7 @@ export const SettingControl: React.FC<SettingControlProps> = ({
                 className="w-4 h-4 rounded-full border border-black/5 shadow-inner" 
                 style={{ backgroundColor: currentValue }} 
               />
-              <span className="text-[11px] font-mono font-bold text-text/60 leading-none">{currentValue}</span>
+              {!setting.hideTechnicalValue && <span className="text-[11px] font-mono font-bold text-text/60 leading-none">{currentValue}</span>}
               {showPicker ? <LucideIcons.ChevronUp size={12} className="text-primary" /> : <LucideIcons.ChevronDown size={12} className="text-text/30" />}
             </button>
           </div>

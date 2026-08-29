@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   createBentoCompositeElements,
+  normalizeBentoCompositeElements,
   estimateBentoCompositeHeight,
   normalizeBentoCompositeListItems,
   regenerateBentoCompositeListItemIds,
@@ -10,6 +11,10 @@ import {
   reorderBentoCompositeElements,
   resolveBentoCompositeLayout,
   updateBentoCompositeElement,
+  BENTO_BUTTON_SIZE_PRESETS,
+  getBentoButtonSizePreset,
+  resolveBentoButtonSize,
+  resolveBentoCompositeTextAlign,
 } from '../src/utils/bentoComposite.ts';
 
 test('composite defaults contain eight stable subelements', () => {
@@ -70,4 +75,26 @@ test('list items normalize legacy strings and support stable repeater operations
   const duplicated = regenerateBentoCompositeListItemIds(reordered, 'copy');
   assert.deepEqual(duplicated.map((item) => item.id), ['copy_1', 'copy_2']);
   assert.notEqual(duplicated[0].id, items[1].id);
+});
+
+test('button size presets control physical size and default legacy buttons to medium', () => {
+  assert.equal(resolveBentoButtonSize(undefined), 'medium');
+  assert.equal(resolveBentoButtonSize('invalid'), 'medium');
+  assert.deepEqual(getBentoButtonSizePreset(undefined), BENTO_BUTTON_SIZE_PRESETS.medium);
+  assert.ok(BENTO_BUTTON_SIZE_PRESETS.small.fontSize < BENTO_BUTTON_SIZE_PRESETS.medium.fontSize);
+  assert.ok(BENTO_BUTTON_SIZE_PRESETS.large.paddingX > BENTO_BUTTON_SIZE_PRESETS.medium.paddingX);
+});
+
+test('legacy composite buttons preserve data while receiving medium rendering defaults', () => {
+  const legacy = createBentoCompositeElements().find((element) => element.type === 'button_primary')!;
+  const normalized = normalizeBentoCompositeElements([{ ...legacy, buttonSize: undefined, font_size: 's', font_weight: '900' }]);
+  assert.equal(getBentoButtonSizePreset(normalized[0].buttonSize), BENTO_BUTTON_SIZE_PRESETS.medium);
+  assert.equal(normalized[0].font_size, 's');
+  assert.equal(normalized[0].font_weight, '900');
+});
+
+test('composite alignment maps to text alignment for all supported values', () => {
+  assert.equal(resolveBentoCompositeTextAlign('start'), 'left');
+  assert.equal(resolveBentoCompositeTextAlign('center'), 'center');
+  assert.equal(resolveBentoCompositeTextAlign('end'), 'right');
 });

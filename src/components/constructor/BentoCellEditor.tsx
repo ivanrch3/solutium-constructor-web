@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { logDebug } from '../../utils/debug';
 import { resolveBentoIconSpacing, updateBentoIconSpacing, type BentoIconDevice } from '../../utils/bentoIconSpacing';
-import { resolveBentoAutoRows, resolveBentoEditorTab, resolveBentoRowHeight, resolveBentoSettingId } from '../../utils/bentoCore';
+import { getBentoItemId, resolveBentoAutoRows, resolveBentoEditorTab, resolveBentoRowHeight, resolveBentoSettingId } from '../../utils/bentoCore';
 import { SettingControl } from './SettingControl';
 import { BentoCompositeEditor } from './modules/BentoCompositeEditor';
 
@@ -360,7 +360,7 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
     interaccion: false
   });
   const [expandedSubsections, setExpandedSubsections] = React.useState<Record<string, boolean>>({});
-  const [activeBentoTab, setActiveBentoTab] = React.useState<(typeof BENTO_EDITOR_TABS)[number]['id']>('contenido');
+  const [bentoTabByElementId, setBentoTabByElementId] = React.useState<Record<string, (typeof BENTO_EDITOR_TABS)[number]['id']>>({});
   const [activeIconSettingsTab, setActiveIconSettingsTab] = React.useState<IconSettingsTab>('structure');
   const [iconLayoutDevice, setIconLayoutDevice] = React.useState<BentoIconDevice>('desktop');
   const [iconSpacingDevice, setIconSpacingDevice] = React.useState<BentoIconDevice>('desktop');
@@ -388,9 +388,14 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
 
   const selectedBentoItem = getSelectedBentoItem();
   const selectedType = selectedBentoItem?.type || 'text';
+  const selectedBentoItemId = selectedBentoItem ? getBentoItemId(selectedBentoItem) : null;
+  const activeBentoTab = selectedBentoItemId ? bentoTabByElementId[selectedBentoItemId] || 'estructura' : 'estructura';
+  const setActiveBentoTab = (tab: (typeof BENTO_EDITOR_TABS)[number]['id']) => {
+    if (!selectedBentoItemId) return;
+    setBentoTabByElementId((previous) => ({ ...previous, [selectedBentoItemId]: tab }));
+  };
 
   React.useEffect(() => {
-    setActiveBentoTab('contenido');
     if (selectedType === 'icon') {
       setActiveIconSettingsTab('structure');
       setIconLayoutDevice('desktop');

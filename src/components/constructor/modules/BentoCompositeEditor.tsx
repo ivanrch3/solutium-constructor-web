@@ -5,6 +5,7 @@ import {
   normalizeBentoCompositeListItems,
   reorderBentoCompositeListItems,
   reorderBentoCompositeElements,
+  BENTO_BUTTON_SIZE_PRESETS,
   updateBentoCompositeElement,
   type BentoCompositeElement,
 } from '../../../utils/bentoComposite';
@@ -36,7 +37,10 @@ export const BentoCompositeEditor = ({ value, onChange, project, projectColors =
   const elements = normalizeBentoCompositeElements(value);
   const [expandedId, setExpandedId] = useState<string | null>(elements.find((element) => element.type === 'title')?.id || null);
   const update = (id: string, updates: Record<string, unknown>) => onChange(updateBentoCompositeElement(elements, id, updates));
-  const move = (index: number, delta: number) => onChange(reorderBentoCompositeElements(elements, index, index + delta));
+  const move = (index: number, delta: number) => {
+    onChange(reorderBentoCompositeElements(elements, index, index + delta));
+    setExpandedId(null);
+  };
   const native = (element: BentoCompositeElement, id: string, label: string, type: string, extra: Record<string, unknown> = {}) => (
     <SettingControl
       setting={{ id, label, type, defaultValue: element[id] ?? '', ...extra } as any}
@@ -59,6 +63,19 @@ export const BentoCompositeEditor = ({ value, onChange, project, projectColors =
     </label>
   );
 
+  const buttonSize = (element: BentoCompositeElement) => <div className="space-y-1.5">
+    <span className="text-[10px] font-semibold text-gray-600">Tamaño del botón</span>
+    <div className="grid grid-cols-3 gap-1.5" role="group" aria-label="Tamaño del botón">
+      {Object.entries(BENTO_BUTTON_SIZE_PRESETS).map(([size, preset]) => <button key={size} type="button" aria-pressed={(element.buttonSize || 'medium') === size} onClick={() => update(element.id, { buttonSize: size })} className={`rounded-lg border px-2 py-1.5 text-[10px] font-bold ${(element.buttonSize || 'medium') === size ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-600'}`}>{preset.label}</button>)}
+    </div>
+  </div>;
+
+  const buttonTypography = (element: BentoCompositeElement) => <div className="grid grid-cols-2 gap-2">
+    {native(element, 'font_family', 'Familia tipográfica', 'select', { options: [{ label: 'Heredada del tema', value: 'inherit' }, { label: 'Sans', value: 'sans-serif' }, { label: 'Serif', value: 'serif' }, { label: 'Monoespaciada', value: 'monospace' }] })}
+    {native(element, 'font_weight', 'Peso', 'font_weight')}
+    {native(element, 'color', 'Color', 'color', { hideTechnicalValue: true })}
+  </div>;
+
   const typography = (element: BentoCompositeElement) => (
     <div className="grid grid-cols-2 gap-2">
       {native(element, 'font_family', 'Familia tipográfica', 'select', { options: [{ label: 'Heredada del tema', value: 'inherit' }, { label: 'Sans', value: 'sans-serif' }, { label: 'Serif', value: 'serif' }, { label: 'Monoespaciada', value: 'monospace' }] })}
@@ -74,12 +91,18 @@ export const BentoCompositeEditor = ({ value, onChange, project, projectColors =
     if (element.type === 'image') return <div className="space-y-2">{native(element, 'src', 'Imagen', 'image')}{field(element, 'alt', 'Texto alternativo')}</div>;
     if (element.type === 'icon') return <div className="space-y-2">{native(element, 'name', 'Ícono', 'icon')}{native(element, 'color', 'Color', 'color')}{native(element, 'size', 'Tamaño', 'range', { min: 16, max: 96, unit: 'px' })}</div>;
     if (element.type === 'list') return <ListEditor element={element} update={update} />;
-    if (element.type === 'button_primary' || element.type === 'button_secondary') return (
+    /* if (false && (element.type === 'button_primary' || element.type === 'button_secondary')) return (
       <div className="space-y-2">
         {field(element, 'text', 'Texto')}{field(element, 'url', 'URL')}<div className="pt-2"><span className="text-[10px] font-bold text-gray-600">Tipografía</span>{typography(element)}</div>
         <label className="block space-y-1 text-[10px] font-semibold text-gray-600"><span>Destino</span><select value={element.target || '_self'} onChange={(event) => update(element.id, { target: event.target.value })} className="w-full rounded-lg border border-gray-200 px-2.5 py-2 text-xs font-normal"><option value="_self">Misma pestaña</option><option value="_blank">Nueva pestaña</option></select></label>
       </div>
     );
+    */
+    if (element.type === 'button_primary' || element.type === 'button_secondary') return <div className="space-y-2">
+      {field(element, 'text', 'Texto')}{field(element, 'url', 'URL')}{buttonSize(element)}
+      <div className="pt-2"><span className="text-[10px] font-bold text-gray-600">Tipografía</span>{buttonTypography(element)}</div>
+      <label className="block space-y-1 text-[10px] font-semibold text-gray-600"><span>Destino</span><select value={element.target || '_self'} onChange={(event) => update(element.id, { target: event.target.value })} className="w-full rounded-lg border border-gray-200 px-2.5 py-2 text-xs font-normal"><option value="_self">Misma pestaña</option><option value="_blank">Nueva pestaña</option></select></label>
+    </div>;
     return <div className="space-y-2">{field(element, 'text', 'Texto')}{typography(element)}</div>;
   };
 

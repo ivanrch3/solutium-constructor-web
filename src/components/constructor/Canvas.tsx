@@ -1429,6 +1429,9 @@ export const Canvas: React.FC<CanvasProps> = ({
                         settingsValues={finalSettings}
                         content={section.content}
                         onSettingChange={onSettingChange}
+                        onRequestPreviewAutoFocus={autoZoomEnabled && viewport === 'desktop'
+                          ? () => requestPreviewAutoFocus({ id: section.id, type: 'bento' })
+                          : undefined}
                         isPreviewMode={isCleanPreviewMode}
                         previewScale={effectivePreviewScale}
                         constructorViewport={viewport}

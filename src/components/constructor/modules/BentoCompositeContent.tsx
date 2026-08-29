@@ -29,8 +29,7 @@ export const BentoCompositeContent = ({ item, darkMode, breakpoint = 'desktop', 
       fontSize: `${getFontSize(element.font_size, element.type === 'title' ? 't3' : 'p')}px`,
       fontWeight: element.font_weight || (element.type === 'title' ? 800 : 400),
       lineHeight: element.line_height || 1.45,
-      letterSpacing: `${Number(element.letter_spacing) || 0}px`,
-      fontFamily: element.font_family && element.font_family !== 'inherit' ? element.font_family : undefined
+      letterSpacing: `${Number(element.letter_spacing) || 0}px`
     } as React.CSSProperties;
 
     if (element.type === 'image') {
@@ -50,7 +49,7 @@ export const BentoCompositeContent = ({ item, darkMode, breakpoint = 'desktop', 
     }
     const isSecondary = element.type === 'button_secondary';
     const preset = getBentoButtonSizePreset(element.buttonSize);
-    return <a key={element.id} href={element.url || '#'} target={element.target === '_blank' ? '_blank' : undefined} rel={element.target === '_blank' ? 'noopener noreferrer' : undefined} onClick={(event) => { event.stopPropagation(); if (!isPreviewMode) event.preventDefault(); }} className={`inline-flex items-center justify-center gap-2 rounded-xl font-bold transition-colors ${isSecondary || element.style === 'outline' ? 'border border-primary bg-transparent text-primary' : element.style === 'ghost' ? 'bg-transparent text-primary' : 'bg-primary text-white'}`} style={{ padding: `${preset.paddingY}px ${preset.paddingX}px`, minHeight: `${preset.minHeight}px`, fontSize: `${preset.fontSize}px`, fontFamily: element.font_family && element.font_family !== 'inherit' ? element.font_family : undefined, fontWeight: element.font_weight || 700, color: element.color || undefined }}>{element.text}<ArrowRight size={preset.fontSize + 2} /></a>;
+    return <a key={element.id} href={element.url || '#'} target={element.target === '_blank' ? '_blank' : undefined} rel={element.target === '_blank' ? 'noopener noreferrer' : undefined} onClick={(event) => { event.stopPropagation(); if (!isPreviewMode) event.preventDefault(); }} className={`inline-flex items-center justify-center gap-2 rounded-xl font-bold transition-colors ${isSecondary || element.style === 'outline' ? 'border border-primary bg-transparent text-primary' : element.style === 'ghost' ? 'bg-transparent text-primary' : 'bg-primary text-white'}`} style={{ padding: `${preset.paddingY}px ${preset.paddingX}px`, minHeight: `${preset.minHeight}px`, fontSize: `${preset.fontSize}px`, fontWeight: element.font_weight || 700, color: element.color || undefined }}>{element.text}<ArrowRight size={preset.fontSize + 2} /></a>;
   };
 
   const renderGroup = (group: BentoCompositeElement[], groupClassName = '') => (

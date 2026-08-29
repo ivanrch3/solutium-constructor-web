@@ -31,7 +31,7 @@ import {
   resolveBentoEffectiveRows,
   resolveBentoEffectiveWidth,
   resolveBentoResizeHandles,
-  resolveBentoWidthMode,
+  resolveBentoDefaultWidthPreset,
   resolveBentoHeightMode
 } from '../../../utils/bentoCore';
 import '/node_modules/react-grid-layout/css/styles.css';
@@ -1288,7 +1288,7 @@ export const BentoModule: React.FC<{
   const hasExplicitLayoutVersion = settingsValues[layoutVersionKey] !== undefined;
   const bentoRowHeight = resolveBentoRowHeight(settingsValues[layoutVersionKey], hasExplicitLayoutVersion);
   const [gridWidth, setGridWidth] = useState(1280);
-  const [intrinsicSizes, setIntrinsicSizes] = useState<Record<string, { width: number; height: number }>>({});
+  const [intrinsicSizes, setIntrinsicSizes] = useState<Record<string, { height: number }>>({});
 
   const containerRef = useRef(null);
   const { scrollYProgress } = useParallaxScrollProgress(containerRef);
@@ -1425,8 +1425,7 @@ export const BentoModule: React.FC<{
     return padding * 2;
   };
   const resolveEffectiveWidth = (item: any, breakpoint: 'desktop' | 'tablet' | 'mobile', cols: number) => {
-    const measured = getIntrinsicSize(item, breakpoint);
-    return resolveBentoEffectiveWidth(item, breakpoint, cols, measured?.width ? measured.width + getIntrinsicPadding(item) : undefined, gridWidth, gap);
+    return resolveBentoEffectiveWidth(item, breakpoint, cols);
   };
   const resolveEffectiveRows = (item: any, breakpoint: 'desktop' | 'tablet' | 'mobile', savedRows: unknown, colSpan?: number) => {
     const measured = getIntrinsicSize(item, breakpoint);
@@ -1575,7 +1574,7 @@ export const BentoModule: React.FC<{
         const hasMeasuredSize = Boolean(getIntrinsicSize(item, breakpoint));
         const scaledLayout = {
           ...scaledLayoutBase,
-          w: hasMeasuredSize || item.layout_sources?.[breakpoint] !== 'derived'
+          w: item.width_preset !== undefined || hasMeasuredSize || item.layout_sources?.[breakpoint] !== 'derived'
             ? resolveEffectiveWidth(item, breakpoint as 'desktop' | 'tablet' | 'mobile', cols)
             : scaledLayoutBase.w
         };
@@ -1686,12 +1685,11 @@ export const BentoModule: React.FC<{
           const id = (entry.target as HTMLElement).dataset.bentoIntrinsicContent;
           if (!id) return;
           const rect = entry.target.getBoundingClientRect();
-          const width = Number.isFinite(rect.width) ? Math.max(0, rect.width) : 0;
           const height = Number.isFinite(rect.height) ? Math.max(0, rect.height) : 0;
           const key = `${id}:${effectiveBreakpoint}`;
           const previous = next[key];
-          if (!previous || Math.abs(previous.width - width) > 1 || Math.abs(previous.height - height) > 1) {
-            next[key] = { width, height };
+          if (!previous || Math.abs(previous.height - height) > 1) {
+            next[key] = { height };
             changed = true;
           }
         });
@@ -1704,7 +1702,7 @@ export const BentoModule: React.FC<{
 
   const decorateLayouts = (entries: any[], breakpoint: 'desktop' | 'tablet' | 'mobile') => entries.map((entry) => {
     const item = rawItems.find((candidate: any) => getBentoItemId(candidate) === String(entry.i));
-    const resizeHandles = resolveBentoResizeHandles(item, Boolean(isPreviewMode));
+    const resizeHandles = resolveBentoResizeHandles(item, Boolean(isPreviewMode), breakpoint, breakpoint === 'desktop' ? columns : breakpoint === 'tablet' ? BENTO_TABLET_COLUMNS : BENTO_MOBILE_COLUMNS);
     return { ...entry, isResizable: resizeHandles.length > 0, resizeHandles };
   });
   const layouts = useMemo(() => ({
@@ -1731,13 +1729,11 @@ export const BentoModule: React.FC<{
       const itemIndex = findItemIndexByLayoutId(nextItems, String(entry.i));
       const item = nextItems[itemIndex];
       if (!item || !getIntrinsicSize(item, breakpointKey)) return;
-      const autoWidth = resolveBentoWidthMode(item) === 'auto';
       const autoHeight = resolveBentoHeightMode(item) === 'auto';
-      if (!autoWidth && !autoHeight) return;
+      if (!autoHeight) return;
       const existing = item.layouts?.[breakpointKey];
       const differs = !existing
-        || (autoWidth && Number(existing.w) !== Number(entry.w))
-        || (autoHeight && Number(existing.h) !== Number(entry.h));
+        || Number(existing.h) !== Number(entry.h);
       if (!differs) return;
       nextItems = reconcileBentoLayoutById(nextItems, {
         i: String(entry.i),
@@ -1871,9 +1867,10 @@ export const BentoModule: React.FC<{
     const currentLayoutKey = BENTO_BREAKPOINT_TO_LAYOUT[currentBreakpoint] || 'desktop';
     const currentCols = getColumnsForBreakpoint(currentBreakpoint);
     const droppedLayout = clampLayoutEntry(item, currentCols);
-    const defaultDesktopSpan = currentLayoutKey === 'desktop' ? droppedLayout.w : 8;
-    const defaultTabletSpan = currentLayoutKey === 'tablet' ? droppedLayout.w : Math.min(defaultDesktopSpan, BENTO_TABLET_COLUMNS);
-    const defaultMobileSpan = currentLayoutKey === 'mobile' ? droppedLayout.w : BENTO_MOBILE_COLUMNS;
+    const defaultWidthPreset = resolveBentoDefaultWidthPreset(type);
+    const defaultDesktopSpan = resolveBentoEffectiveWidth({ width_preset: defaultWidthPreset }, 'desktop', columns);
+    const defaultTabletSpan = resolveBentoEffectiveWidth({ width_preset: defaultWidthPreset }, 'tablet', BENTO_TABLET_COLUMNS);
+    const defaultMobileSpan = resolveBentoEffectiveWidth({ width_preset: defaultWidthPreset }, 'mobile', BENTO_MOBILE_COLUMNS);
     const defaultItemContent = {
       type,
       title: type === 'stat' ? '99+' : (type === 'cta' ? '¡Únete ahora!' : 'Nuevo Bloque'),
@@ -1899,7 +1896,7 @@ export const BentoModule: React.FC<{
       hover_effect: 'none',
       show_border: false,
       height_mode: 'auto',
-      width_mode: 'auto',
+      width_preset: defaultWidthPreset,
       vertical_align: 'center',
       ...(type === 'composite' ? { composite_elements: createBentoCompositeElements(), composite_layout: 'vertical', composite_gap: 12, composite_align: 'start' } : {}),
       row_span: defaultDesktopRows,
@@ -1956,7 +1953,7 @@ export const BentoModule: React.FC<{
       const hasMeasuredSize = Boolean(getIntrinsicSize(item, breakpoint));
       return {
         ...layout,
-        w: hasMeasuredSize || item.layout_sources?.[breakpoint] !== 'derived'
+        w: item.width_preset !== undefined || hasMeasuredSize || item.layout_sources?.[breakpoint] !== 'derived'
           ? resolveEffectiveWidth(item, breakpoint, colsForBreakpoint)
           : layout.w,
         h: hasMeasuredSize || item.layout_sources?.[breakpoint] !== 'derived'

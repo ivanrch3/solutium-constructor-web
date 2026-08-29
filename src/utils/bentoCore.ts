@@ -4,14 +4,13 @@ export type BentoBreakpoint = 'desktop' | 'tablet' | 'mobile';
 
 export const BENTO_ROW_HEIGHT = 80;
 export const BENTO_COMPACT_ROW_HEIGHT = 20;
-export const BENTO_INTRINSIC_EPSILON_PX = 1;
 
 export type BentoLayoutVersion = 1 | 2;
 
 export type BentoEditorTab = 'estructura' | 'contenido' | 'diseno';
 
 const BENTO_STRUCTURE_SETTING_IDS = new Set([
-  'height_mode', 'vertical_align', 'width_mode', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span',
+  'height_mode', 'vertical_align', 'width_preset', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span',
   'element_padding_y', 'card_padding_linked', 'card_padding_top', 'card_padding_right',
   'card_padding_bottom', 'card_padding_left', 'icon_content_gap', 'text_content_gap', 'padding',
   'align_items', 'content_align', 'composite_layout', 'composite_gap', 'composite_align'
@@ -51,6 +50,60 @@ export const resolveBentoRowHeight = (value: unknown, hasExplicitValue = true) =
 );
 
 export type BentoSizeMode = 'auto' | 'manual';
+export type BentoWidthPreset = 'narrow' | 'medium' | 'wide' | 'full' | 'custom';
+
+const BENTO_WIDTH_PRESET_BASE_COLUMNS: Record<Exclude<BentoWidthPreset, 'custom'>, { desktop: number; tablet: number; mobile: number }> = {
+  narrow: { desktop: 3, tablet: 3, mobile: 4 },
+  medium: { desktop: 5, tablet: 4, mobile: 4 },
+  wide: { desktop: 8, tablet: 6, mobile: 4 },
+  full: { desktop: 12, tablet: 6, mobile: 4 }
+};
+
+const BENTO_DEFAULT_PRESET_BY_TYPE: Record<string, Exclude<BentoWidthPreset, 'custom'>> = {
+  button: 'narrow', badge: 'narrow', metric: 'narrow',
+  icon: 'medium', text: 'medium', card: 'medium', list: 'medium', accordion: 'medium',
+  visual: 'wide', composite: 'wide', hero: 'full'
+};
+
+export const resolveBentoDefaultWidthPreset = (type?: unknown): Exclude<BentoWidthPreset, 'custom'> => (
+  BENTO_DEFAULT_PRESET_BY_TYPE[String(type || 'text')] || 'medium'
+);
+
+export const resolveBentoWidthPreset = (
+  item: Record<string, any> = {},
+  breakpoint: BentoBreakpoint,
+  columns: number
+): BentoWidthPreset => {
+  const explicit = item.width_preset;
+  if (explicit === 'narrow' || explicit === 'medium' || explicit === 'wide' || explicit === 'full' || explicit === 'custom') {
+    return explicit;
+  }
+
+  // Recent auto-width records are normalized read-time from their derived snapshot.
+  if (item.width_mode === 'auto') {
+    const derivedWidth = Number(item.layouts?.[breakpoint]?.w);
+    if (Number.isFinite(derivedWidth) && derivedWidth > 0) {
+      const matched = (Object.keys(BENTO_WIDTH_PRESET_BASE_COLUMNS) as Array<Exclude<BentoWidthPreset, 'custom'>>)
+        .find((preset) => resolveBentoPresetColumns(preset, breakpoint, columns) === Math.round(derivedWidth));
+      return matched || 'custom';
+    }
+    return 'medium';
+  }
+
+  // Missing/manual width_mode is legacy custom and must preserve existing spans.
+  return 'custom';
+};
+
+export const resolveBentoPresetColumns = (
+  preset: Exclude<BentoWidthPreset, 'custom'>,
+  breakpoint: BentoBreakpoint,
+  actualColumns: number
+) => {
+  const safeColumns = Math.max(1, Math.floor(toNumber(actualColumns, breakpoint === 'desktop' ? 24 : breakpoint === 'tablet' ? 6 : 4)));
+  const base = BENTO_WIDTH_PRESET_BASE_COLUMNS[preset][breakpoint];
+  const scale = breakpoint === 'desktop' ? safeColumns / 12 : 1;
+  return Math.max(1, Math.min(safeColumns, Math.round(base * scale)));
+};
 
 /** Explicit modes win; legacy items remain manual-width compatible. */
 export const resolveBentoWidthMode = (item?: Record<string, unknown>): BentoSizeMode => (
@@ -64,25 +117,19 @@ export const resolveBentoHeightMode = (item?: Record<string, unknown>): BentoSiz
 export const resolveBentoEffectiveWidth = (
   item: Record<string, any> = {},
   breakpoint: BentoBreakpoint,
-  columns: number,
-  intrinsicWidthPx?: number,
-  containerWidthPx?: number,
-  gap = 20
+  columns: number
 ) => {
   const safeColumns = Math.max(1, toNumber(columns, 1));
-  if (resolveBentoWidthMode(item) === 'auto') {
-    if (Number.isFinite(intrinsicWidthPx) && Number.isFinite(containerWidthPx) && containerWidthPx > 0) {
-      return intrinsicWidthToGridColumns(intrinsicWidthPx, containerWidthPx, safeColumns, gap);
+  const preset = resolveBentoWidthPreset(item, breakpoint, safeColumns);
+  if (preset !== 'custom') return resolveBentoPresetColumns(preset, breakpoint, safeColumns);
+  if (item.width_preset === undefined && item.width_mode === 'auto') {
+    const derivedWidth = Number(item.layouts?.[breakpoint]?.w);
+    if (Number.isFinite(derivedWidth) && derivedWidth > 0) {
+      return Math.max(1, Math.min(safeColumns, Math.round(derivedWidth)));
     }
-    // Auto has no permission to use the full grid as a hidden manual default.
-    // One column is only the pre-measurement placeholder; ResizeObserver replaces it.
-    return 1;
   }
-  const value = breakpoint === 'desktop'
-    ? item.desktop_span || item.col_span
-    : breakpoint === 'tablet'
-      ? item.tablet_span || item.col_span
-      : item.mobile_span || item.col_span;
+  const value = breakpoint === 'desktop' ? item.desktop_span || item.col_span
+    : breakpoint === 'tablet' ? item.tablet_span || item.col_span : item.mobile_span || item.col_span;
   return Math.max(1, Math.min(safeColumns, toNumber(value, safeColumns)));
 };
 
@@ -101,29 +148,6 @@ export const resolveBentoEffectiveRows = (
     ? intrinsicHeightToGridRows(intrinsicHeightPx as number, rowHeight, rowGap, verticalPaddingPx)
     : resolveBentoAutoRows(item, breakpoint, rowHeight, rowGap, colSpan);
 
-export const calculateBentoColumnWidth = (containerWidthPx: number, columns: number, gap = 0) => {
-  const safeContainer = Number.isFinite(containerWidthPx) ? Math.max(0, containerWidthPx) : 0;
-  const safeColumns = Math.max(1, Math.floor(toNumber(columns, 1)));
-  const safeGap = Number.isFinite(gap) ? Math.max(0, gap) : 0;
-  return Math.max(0, (safeContainer - (Math.max(0, safeColumns - 1) * safeGap)) / safeColumns);
-};
-
-export const intrinsicWidthToGridColumns = (
-  intrinsicWidthPx: number,
-  containerWidthPx: number,
-  columns: number,
-  gap = 0,
-  minColumns = 1
-) => {
-  const safeWidth = Number.isFinite(intrinsicWidthPx) ? Math.max(0, intrinsicWidthPx) : 0;
-  const safeColumns = Math.max(1, Math.floor(toNumber(columns, 1)));
-  const safeGap = Number.isFinite(gap) ? Math.max(0, gap) : 0;
-  const columnWidth = calculateBentoColumnWidth(containerWidthPx, safeColumns, safeGap);
-  if (columnWidth <= 0) return Math.max(1, Math.min(safeColumns, minColumns));
-  const required = Math.ceil((safeWidth + safeGap) / (columnWidth + safeGap));
-  return Math.max(Math.max(1, minColumns), Math.min(safeColumns, required));
-};
-
 export const intrinsicHeightToGridRows = (
   intrinsicHeightPx: number,
   rowHeight: number,
@@ -138,9 +162,14 @@ export const intrinsicHeightToGridRows = (
   return Math.max(1, Math.ceil((contentHeight + safeGap) / (safeRowHeight + safeGap)));
 };
 
-export const resolveBentoResizeHandles = (item: Record<string, any> = {}, isPreviewMode = false) => {
+export const resolveBentoResizeHandles = (
+  item: Record<string, any> = {},
+  isPreviewMode = false,
+  breakpoint: BentoBreakpoint = 'desktop',
+  columns = breakpoint === 'desktop' ? 24 : breakpoint === 'tablet' ? 6 : 4
+) => {
   if (isPreviewMode) return [] as string[];
-  const widthManual = resolveBentoWidthMode(item) === 'manual';
+  const widthManual = resolveBentoWidthPreset(item, breakpoint, columns) === 'custom';
   const heightManual = resolveBentoHeightMode(item) === 'manual';
   if (widthManual && heightManual) return ['se'];
   if (widthManual) return ['e'];
@@ -338,7 +367,7 @@ export const reconcileBentoLayoutById = <T extends Record<string, any>>(
 ) => items.map((item) => {
   if (getBentoItemId(item) !== String(layout.i)) return item;
   const { i: _itemId, ...nextLayout } = layout;
-  const widthManual = resolveBentoWidthMode(item) === 'manual';
+  const widthManual = resolveBentoWidthPreset(item, breakpoint, layout.columns || 24) === 'custom';
   const heightManual = resolveBentoHeightMode(item) === 'manual';
   const nextSources = { ...(item.layout_sources || {}), [breakpoint]: widthManual || heightManual ? 'explicit' : 'derived' };
   const sizeFields = breakpoint === 'desktop'

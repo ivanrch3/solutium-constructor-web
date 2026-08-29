@@ -91,13 +91,6 @@ export const BentoCompositeEditor = ({ value, onChange, project, projectColors =
     if (element.type === 'image') return <div className="space-y-2">{native(element, 'src', 'Imagen', 'image')}{field(element, 'alt', 'Texto alternativo')}</div>;
     if (element.type === 'icon') return <div className="space-y-2">{native(element, 'name', 'Ícono', 'icon')}{native(element, 'color', 'Color', 'color')}{native(element, 'size', 'Tamaño', 'range', { min: 16, max: 96, unit: 'px' })}</div>;
     if (element.type === 'list') return <ListEditor element={element} update={update} />;
-    /* if (false && (element.type === 'button_primary' || element.type === 'button_secondary')) return (
-      <div className="space-y-2">
-        {field(element, 'text', 'Texto')}{field(element, 'url', 'URL')}<div className="pt-2"><span className="text-[10px] font-bold text-gray-600">Tipografía</span>{typography(element)}</div>
-        <label className="block space-y-1 text-[10px] font-semibold text-gray-600"><span>Destino</span><select value={element.target || '_self'} onChange={(event) => update(element.id, { target: event.target.value })} className="w-full rounded-lg border border-gray-200 px-2.5 py-2 text-xs font-normal"><option value="_self">Misma pestaña</option><option value="_blank">Nueva pestaña</option></select></label>
-      </div>
-    );
-    */
     if (element.type === 'button_primary' || element.type === 'button_secondary') return <div className="space-y-2">
       {field(element, 'text', 'Texto')}{field(element, 'url', 'URL')}{buttonSize(element)}
       <div className="pt-2"><span className="text-[10px] font-bold text-gray-600">Tipografía</span>{buttonTypography(element)}</div>

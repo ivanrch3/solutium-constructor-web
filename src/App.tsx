@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
+import { AlertCircle } from 'lucide-react';
 import { sendToMother, startHandshake, syncSupabaseRuntimeConfig } from './services/handshakeService';
 import { configService } from './services/configService';
 import { getSupabase, getSupabaseConfig, initSupabase } from './services/supabaseClient';
@@ -27,6 +28,11 @@ import { getAssets } from './services/dataService';
 import { BrandColorsInput, normalizeProjectBrandColors } from './utils/projectTheme';
 import { extractWhatsAppOrdersCapability } from './utils/whatsappOrdersAvailability';
 import { normalizeCatalogProductImageFields } from './utils/productImage';
+import {
+  canMountPublishedViewer,
+  shouldShowConstructorBranding,
+  type PublishedRenderState
+} from './utils/publishedRenderState';
 import {
   beginSupabaseHandshakeAttempt,
   isQuotaExceededError,
@@ -800,7 +806,11 @@ const AppContent: React.FC = () => {
     queryParams.get('mode') === 'render' ||
     queryParams.get('external_render') === 'true' ||
     queryParams.get('published') === 'true';
+  const isExternalRenderMode = queryParams.get('external_render') === 'true';
   const [isHandshakeComplete, setIsHandshakeComplete] = useState(false);
+  const [publishedRenderState, setPublishedRenderState] = useState<PublishedRenderState>(
+    isExternalRenderMode ? 'loading' : 'idle'
+  );
   const [projectId, setProjectId] = useState<string | null>(null);
   const [appId, setAppId] = useState<string | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -1984,9 +1994,7 @@ const AppContent: React.FC = () => {
       logDebug(`[GATEWAY v5.2] Detectado renderizado externo para Satélite: ${satelliteId}, Asset: ${assetId}`);
       setProjectId(satelliteId);
       if (assetId) {
-        // Preparamos el estado para que el constructor cargue este asset
-        setSelectedPage({ siteId: assetId, name: 'Cargando sitio...' } as any);
-        setCurrentView('viewer');
+        setPublishedRenderState('loading');
 
         void fetchPublishedSiteById(assetId)
           .then((publishedSite) => {
@@ -2023,11 +2031,14 @@ const AppContent: React.FC = () => {
               isActive: publishedSite.isActive ?? publishedSite.is_active ?? true,
               status: 'published'
             } as any);
+            setPublishedRenderState('ready');
             setCurrentView('viewer');
             setIsHandshakeComplete(true);
           })
           .catch((error) => {
             console.error('[PUBLISHED_RENDER_FETCH_ERROR]', error);
+            setSelectedPage(null);
+            setPublishedRenderState('error');
             setIsHandshakeComplete(true);
             setCurrentView('viewer');
           });
@@ -2301,6 +2312,10 @@ const AppContent: React.FC = () => {
   };
 
   if (!isHandshakeComplete) {
+    if (isExternalRenderMode && publishedRenderState === 'loading') {
+      return <div className="fixed inset-0 z-[10000] bg-transparent" aria-busy="true" />;
+    }
+
     if (secureLaunchError) {
       return (
         <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center p-6 font-sans">
@@ -2316,6 +2331,10 @@ const AppContent: React.FC = () => {
     }
 
     if (isPublicRenderMode) {
+      if (!shouldShowConstructorBranding(isExternalRenderMode)) {
+        return <div className="fixed inset-0 z-[10000] bg-transparent" aria-busy="true" />;
+      }
+
       return (
         <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-white">
           <AbstractLoadingIndicator label="Cargando sitio" compact />
@@ -2382,6 +2401,20 @@ const AppContent: React.FC = () => {
             </button>
           </div>
         )}
+      </div>
+    );
+  }
+
+  if (isExternalRenderMode && publishedRenderState === 'error') {
+    return (
+      <div className="min-h-screen bg-secondary flex flex-col items-center justify-center p-6 text-center">
+        <div className="bg-surface p-12 rounded-3xl shadow-xl border border-border max-w-md w-full flex flex-col items-center border-rose-200">
+          <div className="w-20 h-20 bg-rose-100 rounded-full flex items-center justify-center mb-6">
+            <AlertCircle className="w-10 h-10 text-rose-600" />
+          </div>
+          <h1 className="text-2xl font-bold text-text mb-4">No se pudo cargar este sitio.</h1>
+          <p className="text-text/60 mb-8 leading-relaxed text-sm">Intenta recargar la pagina en unos segundos.</p>
+        </div>
       </div>
     );
   }
@@ -2512,6 +2545,10 @@ const AppContent: React.FC = () => {
           />
         );
       case 'viewer':
+        if (!canMountPublishedViewer(isExternalRenderMode, publishedRenderState)) {
+          return <div className="fixed inset-0 z-[10000] bg-transparent" aria-busy="true" />;
+        }
+
         if (!selectedPage) return (
           <div className="min-h-screen bg-background flex items-center justify-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>

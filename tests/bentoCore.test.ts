@@ -15,7 +15,8 @@ import {
   resolveBentoBorderStyle,
   resolveBentoBorderWidth,
   resolveBentoBorderColor,
-  resolveBentoEditorTab
+  resolveBentoEditorTab,
+  resolveBentoGridContentHeight
 } from '../src/utils/bentoCore.ts';
 
 test('new Bento defaults use no hover and legacy lift remains intact', () => {
@@ -139,6 +140,23 @@ test('layout version keeps legacy at 80px and compact at 20px', () => {
   const compactRows = resolveBentoAutoRows({ type: 'text', title: 'Título', description: 'Descripción corta', padding: 0 }, 'mobile', 20, 20, 4);
   const legacyRows = resolveBentoAutoRows({ type: 'text', title: 'Título', description: 'Descripción corta', padding: 0 }, 'mobile', 80, 20, 4);
   assert.ok(compactRows * 20 + (compactRows - 1) * 20 < legacyRows * 80 + (legacyRows - 1) * 20);
+});
+
+test('grid content height follows the lowest occupied item and keeps breakpoint geometry independent', () => {
+  const desktop = [
+    { x: 0, y: 0, w: 8, h: 2 },
+    { x: 8, y: 8, w: 8, h: 4 }
+  ];
+  const movedUp = [
+    { x: 0, y: 0, w: 8, h: 2 },
+    { x: 8, y: 4, w: 8, h: 4 }
+  ];
+  const mobile = [{ x: 0, y: 0, w: 4, h: 6 }];
+
+  assert.equal(resolveBentoGridContentHeight(desktop, 20, 12, 16), 388);
+  assert.equal(resolveBentoGridContentHeight(movedUp, 20, 12, 16), 260);
+  assert.equal(resolveBentoGridContentHeight(mobile, 20, 8, 16), 176);
+  assert.equal(resolveBentoGridContentHeight([], 20, 12, 16), 16);
 });
 
 test('new auto alignment defaults to center while legacy falls back to start', () => {

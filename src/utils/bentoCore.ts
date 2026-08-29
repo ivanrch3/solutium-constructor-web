@@ -49,6 +49,25 @@ export const resolveBentoRowHeight = (value: unknown, hasExplicitValue = true) =
   resolveBentoLayoutVersion(value, hasExplicitValue) === 2 ? BENTO_COMPACT_ROW_HEIGHT : BENTO_ROW_HEIGHT
 );
 
+/** Physical height of the occupied grid plus the configured bottom padding. */
+export const resolveBentoGridContentHeight = (
+  layout: Array<{ y?: unknown; h?: unknown }> = [],
+  rowHeight = BENTO_ROW_HEIGHT,
+  rowGap = 20,
+  paddingBottom = 0
+) => {
+  const safeRowHeight = Math.max(toNumber(rowHeight, BENTO_ROW_HEIGHT), 1);
+  const safeGap = Math.max(toNumber(rowGap, 0), 0);
+  const safePaddingBottom = Math.max(toNumber(paddingBottom, 0), 0);
+  const bottomRow = layout.reduce((max, item) => (
+    Math.max(max, Math.max(toNumber(item?.y, 0), 0) + Math.max(toNumber(item?.h, 1), 1))
+  ), 0);
+  const gridHeight = bottomRow > 0
+    ? (bottomRow * safeRowHeight) + ((bottomRow - 1) * safeGap)
+    : 0;
+  return gridHeight + safePaddingBottom;
+};
+
 export const hasExplicitBentoLayout = (item: Record<string, any> = {}, breakpoint: BentoBreakpoint) => (
   Boolean(item.layouts?.[breakpoint]) && item.layout_sources?.[breakpoint] !== 'derived'
 );

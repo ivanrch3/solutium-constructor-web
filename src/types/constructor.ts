@@ -44,6 +44,7 @@ export interface SettingDefinition {
   minItemsMessage?: string;
   useFieldSections?: boolean;
   hideLabel?: boolean;
+  hideTechnicalValue?: boolean;
   alternateItemTone?: boolean;
   /** Used for typography_size to filter available levels (e.g. ['t1', 't2']) */
   allowedLevels?: string[];

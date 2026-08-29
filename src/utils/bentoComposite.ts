@@ -17,6 +17,16 @@ export type BentoCompositeElement = {
 
 export type BentoCompositeListItem = { id: string; text: string };
 
+export type BentoButtonSize = 'small' | 'medium' | 'large';
+export const BENTO_BUTTON_SIZE_PRESETS: Record<BentoButtonSize, { label: string; fontSize: number; paddingX: number; paddingY: number; minHeight: number }> = {
+  small: { label: 'Pequeño', fontSize: 11, paddingX: 12, paddingY: 6, minHeight: 32 },
+  medium: { label: 'Mediano', fontSize: 12, paddingX: 16, paddingY: 8, minHeight: 36 },
+  large: { label: 'Grande', fontSize: 14, paddingX: 20, paddingY: 10, minHeight: 44 }
+};
+export const resolveBentoButtonSize = (value: unknown): BentoButtonSize => value === 'small' || value === 'large' ? value : 'medium';
+export const getBentoButtonSizePreset = (value: unknown) => BENTO_BUTTON_SIZE_PRESETS[resolveBentoButtonSize(value)];
+export const resolveBentoCompositeTextAlign = (value: unknown): 'left' | 'center' | 'right' => value === 'center' ? 'center' : value === 'end' || value === 'right' ? 'right' : 'left';
+
 export const normalizeBentoCompositeListItems = (value: unknown): BentoCompositeListItem[] => (
   Array.isArray(value)
     ? value.map((item, index) => typeof item === 'string'
@@ -60,8 +70,8 @@ export const createBentoCompositeElements = (createId: (type: BentoCompositeElem
   { id: createId('title', 3), type: 'title', enabled: true, text: 'Tu título', font_size: 't3', font_weight: '800', color: 'var(--color-foreground, #0F172A)', line_height: 1.2, letter_spacing: 0 },
   { id: createId('description', 4), type: 'description', enabled: true, text: 'Agrega una descripción para este bloque.', font_size: 'p', font_weight: '400', color: 'var(--color-muted-foreground, #64748B)', line_height: 1.45, letter_spacing: 0 },
   { id: createId('list', 5), type: 'list', enabled: false, items: [{ id: 'composite_list_1', text: 'Primer punto' }, { id: 'composite_list_2', text: 'Segundo punto' }] },
-  { id: createId('button_primary', 6), type: 'button_primary', enabled: false, text: 'Ver más', url: '#', target: '_self', style: 'solid' },
-  { id: createId('button_secondary', 7), type: 'button_secondary', enabled: false, text: 'Saber más', url: '#', target: '_self', style: 'outline' }
+  { id: createId('button_primary', 6), type: 'button_primary', enabled: false, text: 'Ver más', url: '#', target: '_self', style: 'solid', buttonSize: 'medium' },
+  { id: createId('button_secondary', 7), type: 'button_secondary', enabled: false, text: 'Saber más', url: '#', target: '_self', style: 'outline', buttonSize: 'medium' }
 ];
 
 export const normalizeBentoCompositeElements = (value: unknown): BentoCompositeElement[] => {

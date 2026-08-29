@@ -21,9 +21,10 @@ import {
   resolveBentoEffectiveRows,
   resolveBentoEffectiveWidth,
   resolveBentoHeightMode,
-  resolveBentoWidthMode
-  ,calculateBentoColumnWidth
-  ,intrinsicWidthToGridColumns
+  resolveBentoWidthMode,
+  resolveBentoWidthPreset,
+  resolveBentoPresetColumns,
+  resolveBentoDefaultWidthPreset
   ,intrinsicHeightToGridRows
   ,resolveBentoResizeHandles
 } from '../src/utils/bentoCore.ts';
@@ -176,23 +177,33 @@ test('Bento auto sizing ignores stale manual rows while manual sizing preserves 
   assert.equal(resolveBentoEffectiveRows(manualItem, 'desktop', 12, 80, 20, 8), 12);
 });
 
-test('Bento auto width uses intrinsic content while legacy/manual width keeps spans', () => {
+test('Bento width presets determine spans without measuring content', () => {
   assert.equal(resolveBentoWidthMode({}), 'manual');
   assert.equal(resolveBentoWidthMode({ width_mode: 'auto' }), 'auto');
-  assert.equal(resolveBentoEffectiveWidth({ width_mode: 'auto', desktop_span: 4 }, 'desktop', 24), 1);
-  assert.equal(resolveBentoEffectiveWidth({ width_mode: 'auto' }, 'desktop', 24, 260, 1200, 20), 6);
+  assert.equal(resolveBentoEffectiveWidth({ width_preset: 'narrow' }, 'desktop', 24), 6);
+  assert.equal(resolveBentoEffectiveWidth({ width_preset: 'medium' }, 'desktop', 24), 10);
+  assert.equal(resolveBentoEffectiveWidth({ width_preset: 'wide' }, 'desktop', 24), 16);
+  assert.equal(resolveBentoEffectiveWidth({ width_preset: 'full' }, 'desktop', 24), 24);
   assert.equal(resolveBentoEffectiveWidth({ desktop_span: 4 }, 'desktop', 24), 4);
-  assert.equal(resolveBentoEffectiveWidth({ width_mode: 'auto', mobile_span: 2 }, 'mobile', 4, 100, 360, 8), 2);
+  assert.equal(resolveBentoEffectiveWidth({ width_preset: 'medium' }, 'mobile', 4), 4);
+  assert.equal(resolveBentoPresetColumns('narrow', 'tablet', 6), 3);
+  assert.equal(resolveBentoPresetColumns('wide', 'mobile', 4), 4);
 });
 
-test('intrinsic sizing converts pixels to grid units with gaps and protects resize axes', () => {
-  assert.equal(calculateBentoColumnWidth(1200, 24, 20), 30.833333333333332);
-  assert.equal(intrinsicWidthToGridColumns(260, 1200, 24, 20), 6);
+test('width preset defaults and legacy auto normalization are deterministic', () => {
+  assert.equal(resolveBentoDefaultWidthPreset('button'), 'narrow');
+  assert.equal(resolveBentoDefaultWidthPreset('composite'), 'wide');
+  assert.equal(resolveBentoWidthPreset({ width_mode: 'auto', layouts: { desktop: { w: 10 } } }, 'desktop', 24), 'medium');
+  assert.equal(resolveBentoWidthPreset({ width_mode: 'auto', layouts: { desktop: { w: 7 } } }, 'desktop', 24), 'custom');
+  assert.equal(resolveBentoEffectiveWidth({ width_mode: 'auto', layouts: { desktop: { w: 7 } } }, 'desktop', 24), 7);
+});
+
+test('intrinsic height conversion and resize axes follow the width preset contract', () => {
   assert.equal(intrinsicHeightToGridRows(88, 20, 20, 32), 4);
-  assert.deepEqual(resolveBentoResizeHandles({ width_mode: 'auto', height_mode: 'auto' }), []);
-  assert.deepEqual(resolveBentoResizeHandles({ width_mode: 'manual', height_mode: 'auto' }), ['e']);
-  assert.deepEqual(resolveBentoResizeHandles({ width_mode: 'auto', height_mode: 'manual' }), ['s']);
-  assert.deepEqual(resolveBentoResizeHandles({ width_mode: 'manual', height_mode: 'manual' }), ['se']);
+  assert.deepEqual(resolveBentoResizeHandles({ width_preset: 'medium', height_mode: 'auto' }), []);
+  assert.deepEqual(resolveBentoResizeHandles({ width_preset: 'custom', height_mode: 'auto' }), ['e']);
+  assert.deepEqual(resolveBentoResizeHandles({ width_preset: 'medium', height_mode: 'manual' }), ['s']);
+  assert.deepEqual(resolveBentoResizeHandles({ width_preset: 'custom', height_mode: 'manual' }), ['se']);
 });
 
 test('derived auto dimensions never overwrite manual preferences during movement', () => {

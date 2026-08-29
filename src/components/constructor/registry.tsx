@@ -4079,14 +4079,17 @@ export const BENTO_MODULE: WebModule = {
             { label: 'Centro', value: 'center' },
             { label: 'Abajo', value: 'end' }
           ] },
-          { id: 'width_mode', label: 'Ancho', type: 'select', defaultValue: 'manual', group: 'estructura', options: [
-            { label: 'Automático', value: 'auto' },
-            { label: 'Manual', value: 'manual' }
+          { id: 'width_preset', label: 'Ancho', type: 'select', defaultValue: 'medium', group: 'estructura', options: [
+            { label: 'Estrecho', value: 'narrow' },
+            { label: 'Medio', value: 'medium' },
+            { label: 'Ancho', value: 'wide' },
+            { label: 'Completo', value: 'full' },
+            { label: 'Personalizado', value: 'custom' }
           ] },
-          { id: 'desktop_span', label: 'Ancho Desktop (Columnas)', type: 'range', defaultValue: 8, min: 1, max: 24, showIf: { settingId: 'width_mode', value: 'manual' } },
+          { id: 'desktop_span', label: 'Ancho Desktop (Columnas)', type: 'range', defaultValue: 8, min: 1, max: 24, showIf: { settingId: 'width_preset', value: 'custom' } },
           { id: 'desktop_rows', label: 'Alto Desktop (Filas)', type: 'range', defaultValue: 2, min: 1, max: 8, showIf: { settingId: 'height_mode', value: 'manual' } },
-          { id: 'tablet_span', label: 'Ancho Tablet (Columnas)', type: 'range', defaultValue: 3, min: 1, max: 6 },
-          { id: 'mobile_span', label: 'Ancho Móvil (Columnas)', type: 'range', defaultValue: 4, min: 1, max: 4 },
+          { id: 'tablet_span', label: 'Ancho Tablet (Columnas)', type: 'range', defaultValue: 3, min: 1, max: 6, showIf: { settingId: 'width_preset', value: 'custom' } },
+          { id: 'mobile_span', label: 'Ancho Móvil (Columnas)', type: 'range', defaultValue: 4, min: 1, max: 4, showIf: { settingId: 'width_preset', value: 'custom' } },
           
           { id: 'element_padding_y', label: 'Separación vertical del elemento', type: 'range', defaultValue: 20, min: 0, max: 120, unit: 'px', showIf: { settingId: 'type', value: 'icon' } },
           { id: 'card_padding_linked', label: 'Usar el mismo valor en todos los lados', type: 'boolean', defaultValue: true, subsection: 'Espaciado de la tarjeta', showIf: { settingId: 'type', value: 'icon' } },

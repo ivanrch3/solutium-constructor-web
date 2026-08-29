@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { logDebug } from '../../utils/debug';
 import { resolveBentoIconSpacing, updateBentoIconSpacing, type BentoIconDevice } from '../../utils/bentoIconSpacing';
-import { getBentoItemId, resolveBentoAutoRows, resolveBentoEditorTab, resolveBentoRowHeight, resolveBentoSettingId } from '../../utils/bentoCore';
+import { getBentoItemId, resolveBentoAutoRows, resolveBentoDefaultWidthPreset, resolveBentoEditorTab, resolveBentoPresetColumns, resolveBentoRowHeight, resolveBentoSettingId, resolveBentoWidthPreset, type BentoWidthPreset } from '../../utils/bentoCore';
 import { SettingControl } from './SettingControl';
 import { BentoCompositeEditor } from './modules/BentoCompositeEditor';
 
@@ -619,17 +619,17 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
   };
 
   const visibleFieldsByType: Record<string, string[]> = {
-    text: ['text_style', 'title', 'description', 'title_size', 'title_weight', 'title_color', 'description_size', 'description_weight', 'description_color', 'content_align', 'line_height', 'letter_spacing', 'card_image', 'card_overlay', 'height_mode', 'vertical_align', 'width_mode', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'card_style', 'card_bg', 'card_gradient', 'card_radius', 'card_shadow', 'text_contrast', 'show_border', 'card_border', 'hover_effect'],
-    visual: ['image', 'image_fit', 'card_image', 'card_overlay', 'height_mode', 'vertical_align', 'width_mode', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'card_style', 'card_bg', 'card_gradient', 'card_radius', 'card_shadow', 'show_border', 'card_border', 'hover_effect'],
-    button: ['button_text', 'btn_url', 'height_mode', 'vertical_align', 'width_mode', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'card_style', 'card_bg', 'card_gradient', 'card_image', 'card_overlay', 'card_radius', 'card_shadow', 'show_border', 'card_border', 'hover_effect'],
-    icon: ['title', 'description', 'icon_visual_type', 'icon', 'icon_color', 'icon_size', 'show_icon_bg', 'icon_bg', 'icon_image', 'icon_image_size', 'title_size', 'title_weight', 'title_color', 'description_size', 'description_weight', 'description_color', 'content_align', 'height_mode', 'vertical_align', 'width_mode', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'element_padding_y', 'card_padding_linked', 'card_padding_top', 'card_padding_right', 'card_padding_bottom', 'card_padding_left', 'icon_content_gap', 'text_content_gap', 'padding', 'card_style', 'card_bg', 'card_gradient', 'card_image', 'card_overlay', 'card_radius', 'card_shadow', 'text_contrast', 'show_border', 'card_border', 'hover_effect'],
-    badge: ['title', 'icon', 'title_size', 'title_weight', 'title_color', 'height_mode', 'vertical_align', 'width_mode', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'card_style', 'card_bg', 'card_gradient', 'card_image', 'card_overlay', 'card_radius', 'card_shadow', 'show_border', 'card_border', 'hover_effect'],
-    metric: ['metric_value', 'metric_prefix', 'metric_suffix', 'metric_label', 'accent_color', 'icon', 'height_mode', 'vertical_align', 'width_mode', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'card_style', 'card_bg', 'card_gradient', 'card_image', 'card_overlay', 'card_radius', 'card_shadow', 'show_border', 'card_border', 'hover_effect'],
-    list: ['title', 'list_items', 'icon', 'title_size', 'title_weight', 'title_color', 'height_mode', 'vertical_align', 'width_mode', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'card_style', 'card_bg', 'card_gradient', 'card_image', 'card_overlay', 'card_radius', 'card_shadow', 'show_border', 'card_border', 'hover_effect'],
-    accordion: ['title', 'description', 'title_size', 'title_weight', 'title_color', 'height_mode', 'vertical_align', 'width_mode', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'card_style', 'card_bg', 'card_gradient', 'card_image', 'card_overlay', 'card_radius', 'card_shadow', 'show_border', 'card_border', 'hover_effect'],
-    marquee: ['title', 'title_size', 'title_weight', 'title_color', 'height_mode', 'vertical_align', 'width_mode', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'card_style', 'card_bg', 'card_gradient', 'card_image', 'card_overlay', 'card_radius', 'card_shadow', 'show_border', 'card_border', 'hover_effect'],
-    card: ['title', 'description', 'icon', 'title_size', 'title_weight', 'title_color', 'description_size', 'description_weight', 'description_color', 'line_height', 'letter_spacing', 'height_mode', 'vertical_align', 'width_mode', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'card_style', 'card_bg', 'card_gradient', 'card_image', 'card_overlay', 'card_radius', 'card_shadow', 'text_contrast', 'show_border', 'card_border', 'hover_effect'],
-    composite: ['height_mode', 'vertical_align', 'width_mode', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'composite_layout', 'composite_gap', 'composite_align', 'card_style', 'card_bg', 'card_gradient', 'card_image', 'card_overlay', 'card_radius', 'card_shadow', 'text_contrast', 'show_border', 'card_border', 'hover_effect']
+    text: ['text_style', 'title', 'description', 'title_size', 'title_weight', 'title_color', 'description_size', 'description_weight', 'description_color', 'content_align', 'line_height', 'letter_spacing', 'card_image', 'card_overlay', 'height_mode', 'vertical_align', 'width_preset', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'card_style', 'card_bg', 'card_gradient', 'card_radius', 'card_shadow', 'text_contrast', 'show_border', 'card_border', 'hover_effect'],
+    visual: ['image', 'image_fit', 'card_image', 'card_overlay', 'height_mode', 'vertical_align', 'width_preset', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'card_style', 'card_bg', 'card_gradient', 'card_radius', 'card_shadow', 'show_border', 'card_border', 'hover_effect'],
+    button: ['button_text', 'btn_url', 'height_mode', 'vertical_align', 'width_preset', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'card_style', 'card_bg', 'card_gradient', 'card_image', 'card_overlay', 'card_radius', 'card_shadow', 'show_border', 'card_border', 'hover_effect'],
+    icon: ['title', 'description', 'icon_visual_type', 'icon', 'icon_color', 'icon_size', 'show_icon_bg', 'icon_bg', 'icon_image', 'icon_image_size', 'title_size', 'title_weight', 'title_color', 'description_size', 'description_weight', 'description_color', 'content_align', 'height_mode', 'vertical_align', 'width_preset', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'element_padding_y', 'card_padding_linked', 'card_padding_top', 'card_padding_right', 'card_padding_bottom', 'card_padding_left', 'icon_content_gap', 'text_content_gap', 'padding', 'card_style', 'card_bg', 'card_gradient', 'card_image', 'card_overlay', 'card_radius', 'card_shadow', 'text_contrast', 'show_border', 'card_border', 'hover_effect'],
+    badge: ['title', 'icon', 'title_size', 'title_weight', 'title_color', 'height_mode', 'vertical_align', 'width_preset', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'card_style', 'card_bg', 'card_gradient', 'card_image', 'card_overlay', 'card_radius', 'card_shadow', 'show_border', 'card_border', 'hover_effect'],
+    metric: ['metric_value', 'metric_prefix', 'metric_suffix', 'metric_label', 'accent_color', 'icon', 'height_mode', 'vertical_align', 'width_preset', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'card_style', 'card_bg', 'card_gradient', 'card_image', 'card_overlay', 'card_radius', 'card_shadow', 'show_border', 'card_border', 'hover_effect'],
+    list: ['title', 'list_items', 'icon', 'title_size', 'title_weight', 'title_color', 'height_mode', 'vertical_align', 'width_preset', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'card_style', 'card_bg', 'card_gradient', 'card_image', 'card_overlay', 'card_radius', 'card_shadow', 'show_border', 'card_border', 'hover_effect'],
+    accordion: ['title', 'description', 'title_size', 'title_weight', 'title_color', 'height_mode', 'vertical_align', 'width_preset', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'card_style', 'card_bg', 'card_gradient', 'card_image', 'card_overlay', 'card_radius', 'card_shadow', 'show_border', 'card_border', 'hover_effect'],
+    marquee: ['title', 'title_size', 'title_weight', 'title_color', 'height_mode', 'vertical_align', 'width_preset', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'card_style', 'card_bg', 'card_gradient', 'card_image', 'card_overlay', 'card_radius', 'card_shadow', 'show_border', 'card_border', 'hover_effect'],
+    card: ['title', 'description', 'icon', 'title_size', 'title_weight', 'title_color', 'description_size', 'description_weight', 'description_color', 'line_height', 'letter_spacing', 'height_mode', 'vertical_align', 'width_preset', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'card_style', 'card_bg', 'card_gradient', 'card_image', 'card_overlay', 'card_radius', 'card_shadow', 'text_contrast', 'show_border', 'card_border', 'hover_effect'],
+    composite: ['height_mode', 'vertical_align', 'width_preset', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span', 'padding', 'composite_layout', 'composite_gap', 'composite_align', 'card_style', 'card_bg', 'card_gradient', 'card_image', 'card_overlay', 'card_radius', 'card_shadow', 'text_contrast', 'show_border', 'card_border', 'hover_effect']
   };
 
   const shouldShowFieldForType = (field: any) => {
@@ -640,7 +640,7 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
     }
     if (selectedType === 'icon' && iconVisualType !== 'image' && ['icon_image', 'icon_image_size'].includes(field.id)) return false;
     if (field.id === 'font_family') return false;
-    if (['desktop_span', 'tablet_span', 'mobile_span'].includes(field.id) && selectedBentoItem?.width_mode === 'auto') return false;
+    if (['desktop_span', 'tablet_span', 'mobile_span'].includes(field.id) && selectedBentoItem?.width_preset && selectedBentoItem.width_preset !== 'custom') return false;
     if (['desktop_rows'].includes(field.id) && selectedBentoItem?.height_mode !== 'manual') return false;
     if (['border_style', 'border_width'].includes(field.id)) return true;
     return visibleFields.includes(field.id);
@@ -769,8 +769,8 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
   );
 
   const structureFieldOrder = [
-    'height_mode', 'width_mode', 'vertical_align', 'align_items', 'composite_align',
-    'composite_layout', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span',
+    'height_mode', 'desktop_rows', 'width_preset', 'vertical_align', 'align_items', 'composite_align',
+    'composite_layout', 'desktop_span', 'tablet_span', 'mobile_span',
     'padding'
   ];
   if (settingsByPillar.estructura) {
@@ -881,6 +881,23 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
         };
       }
 
+      if (settingId === 'width_preset') {
+        const nextPreset = value as BentoWidthPreset;
+        if (nextPreset === 'custom' && currentItem.width_preset !== 'custom') {
+          const currentPreset = resolveBentoWidthPreset(currentItem, activeLayoutKey, activeLayoutKey === 'desktop' ? desktopColumns : activeLayoutKey === 'tablet' ? BENTO_TABLET_COLUMNS : BENTO_MOBILE_COLUMNS);
+          const preset = currentPreset === 'custom' ? resolveBentoDefaultWidthPreset(currentItem.type) : currentPreset;
+          nextItem = {
+            ...nextItem,
+            width_preset: 'custom',
+            desktop_span: resolveBentoPresetColumns(preset, 'desktop', desktopColumns),
+            tablet_span: resolveBentoPresetColumns(preset, 'tablet', BENTO_TABLET_COLUMNS),
+            mobile_span: resolveBentoPresetColumns(preset, 'mobile', BENTO_MOBILE_COLUMNS)
+          };
+        } else if (nextPreset !== 'custom') {
+          nextItem = { ...nextItem, width_preset: nextPreset };
+        }
+      }
+
       if (Number.isFinite(numericValue) && ['desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span'].includes(settingId)) {
         const existingLayouts = currentItem.layouts || {};
         const updateLayoutSize = (
@@ -923,6 +940,7 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
           const layout = updateLayoutSize('desktop', desktopColumns, { w: numericValue });
           nextItem = {
             ...nextItem,
+            width_preset: 'custom',
             x: layout.x,
             y: layout.y,
             col_span: layout.w,
@@ -946,6 +964,7 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
           const layout = updateLayoutSize('tablet', BENTO_TABLET_COLUMNS, { w: numericValue });
           nextItem = {
             ...nextItem,
+            width_preset: 'custom',
             tablet_span: layout.w,
             layouts: { ...existingLayouts, tablet: layout },
             layout_columns: { ...(currentItem.layout_columns || {}), tablet: BENTO_TABLET_COLUMNS }
@@ -955,48 +974,12 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
           const layout = updateLayoutSize('mobile', BENTO_MOBILE_COLUMNS, { w: numericValue });
           nextItem = {
             ...nextItem,
+            width_preset: 'custom',
             mobile_span: layout.w,
             layouts: { ...existingLayouts, mobile: layout },
             layout_columns: { ...(currentItem.layout_columns || {}), mobile: BENTO_MOBILE_COLUMNS }
           };
         }
-      }
-
-      const autoHeightRelevantFields = new Set([
-        'height_mode', 'type', 'title', 'description', 'list_items', 'image', 'icon', 'icon_size',
-        'icon_image_size', 'padding', 'desktop_span', 'tablet_span', 'mobile_span', 'composite_elements', 'composite_layout', 'composite_gap', 'composite_align'
-      ]);
-      if (nextItem.height_mode === 'auto' && autoHeightRelevantFields.has(settingId)) {
-        const existingLayouts = nextItem.layouts || {};
-        const autoLayouts = ([activeLayoutKey] as const).reduce((acc, breakpoint) => {
-          const existing = existingLayouts[breakpoint] || {};
-          const cols = breakpoint === 'desktop' ? desktopColumns : breakpoint === 'tablet' ? BENTO_TABLET_COLUMNS : BENTO_MOBILE_COLUMNS;
-          const width = Number(existing.w || (breakpoint === 'desktop' ? nextItem.desktop_span || nextItem.col_span : breakpoint === 'tablet' ? nextItem.tablet_span || nextItem.col_span : nextItem.mobile_span || BENTO_MOBILE_COLUMNS));
-          acc[breakpoint] = {
-            ...existing,
-            x: Number(existing.x ?? nextItem.x ?? 0) || 0,
-            y: Number(existing.y ?? nextItem.y ?? 0) || 0,
-            w: Math.max(1, Math.min(width, cols)),
-            h: resolveBentoAutoRows(nextItem, breakpoint, rowHeight, 20, width),
-            columns: cols
-          };
-          return acc;
-        }, {} as Record<string, any>);
-        const activeAutoLayout = autoLayouts[activeLayoutKey];
-        nextItem = {
-          ...nextItem,
-          layouts: { ...existingLayouts, ...autoLayouts },
-          ...(activeLayoutKey === 'desktop' ? {
-            x: activeAutoLayout.x,
-            y: activeAutoLayout.y,
-            row_span: activeAutoLayout.h,
-            desktop_rows: activeAutoLayout.h
-          } : activeLayoutKey === 'tablet' ? {
-            tablet_span: activeAutoLayout.w
-          } : {
-            mobile_span: activeAutoLayout.w
-          })
-        };
       }
 
       newItems[index] = nextItem;

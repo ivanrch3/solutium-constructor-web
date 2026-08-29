@@ -58,9 +58,9 @@ export const BentoCompositeContent = ({ item, darkMode, breakpoint = 'desktop', 
     </div>
   );
 
-  return <div className="relative z-20 flex h-full w-full min-w-0">
+  return <div className="relative z-20 inline-flex min-w-0 max-w-full">
     {isHorizontal
-      ? <div className="flex h-full w-full items-center" style={{ gap: `${gap}px`, justifyContent: align }}><div className="flex min-w-0 flex-1 items-center justify-center" style={{ gap: `${gap}px` }}>{visual.map(renderElement)}</div>{renderGroup(content, 'flex-1')}</div>
-      : <div className="flex h-full w-full flex-col" style={{ gap: `${gap}px`, alignItems: align, textAlign }}>{elements.map(renderElement)}</div>}
+      ? <div className="inline-flex max-w-full items-center" style={{ gap: `${gap}px`, justifyContent: align }}><div className="flex min-w-0 items-center justify-center" style={{ gap: `${gap}px` }}>{visual.map(renderElement)}</div>{renderGroup(content)}</div>
+      : <div className="inline-flex max-w-full flex-col" style={{ gap: `${gap}px`, alignItems: align, textAlign }}>{elements.map(renderElement)}</div>}
   </div>;
 };

@@ -73,6 +73,21 @@ test('auto zoom uses visual rect dimensions without applying scale twice', () =>
   }), 1.01);
 });
 
+test('auto zoom converts visual geometry through the effective and base preview scales', () => {
+  assert.equal(calculatePreviewAutoZoom({
+    targetWidth: 300,
+    targetHeight: 150,
+    viewportWidth: 900,
+    viewportHeight: 600,
+    currentZoom: 1,
+    currentEffectiveScale: 0.5,
+    basePreviewScale: 0.5,
+    minZoom: MIN_AUTO_ZOOM,
+    maxZoom: MAX_AUTO_ZOOM,
+    padding: 50
+  }), 2.5);
+});
+
 test('invalid dimensions never produce NaN or Infinity', () => {
   const invalidValues = [0, -1, Number.NaN, Number.POSITIVE_INFINITY];
   for (const value of invalidValues) {

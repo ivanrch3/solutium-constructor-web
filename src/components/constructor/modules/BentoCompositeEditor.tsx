@@ -78,7 +78,6 @@ export const BentoCompositeEditor = ({ value, onChange, project, projectColors =
 
   const typography = (element: BentoCompositeElement) => (
     <div className="grid grid-cols-2 gap-2">
-      {native(element, 'font_family', 'Familia tipográfica', 'select', { options: [{ label: 'Heredada del tema', value: 'inherit' }, { label: 'Sans', value: 'sans-serif' }, { label: 'Serif', value: 'serif' }, { label: 'Monoespaciada', value: 'monospace' }] })}
       {native(element, 'font_size', 'Tamaño', 'typography_size', { allowedLevels: element.type === 'title' ? ['t1', 't2', 't3', 'p', 's'] : ['t3', 'p', 's'] })}
       {native(element, 'font_weight', 'Peso', 'font_weight')}
       {native(element, 'color', 'Color', 'color')}

@@ -16,7 +16,11 @@ import {
   resolveBentoBorderWidth,
   resolveBentoBorderColor,
   resolveBentoEditorTab,
-  resolveBentoGridContentHeight
+  resolveBentoGridContentHeight,
+  resolveBentoEffectiveRows,
+  resolveBentoEffectiveWidth,
+  resolveBentoHeightMode,
+  resolveBentoWidthMode
 } from '../src/utils/bentoCore.ts';
 
 test('new Bento defaults use no hover and legacy lift remains intact', () => {
@@ -157,6 +161,22 @@ test('grid content height follows the lowest occupied item and keeps breakpoint 
   assert.equal(resolveBentoGridContentHeight(movedUp, 20, 12, 16), 260);
   assert.equal(resolveBentoGridContentHeight(mobile, 20, 8, 16), 176);
   assert.equal(resolveBentoGridContentHeight([], 20, 12, 16), 16);
+});
+
+test('Bento auto sizing ignores stale manual rows while manual sizing preserves them', () => {
+  const autoItem = { type: 'text', title: 'Corto', description: '', padding: 0, height_mode: 'auto' };
+  const manualItem = { ...autoItem, height_mode: 'manual' };
+  assert.equal(resolveBentoHeightMode(autoItem), 'auto');
+  assert.equal(resolveBentoEffectiveRows(autoItem, 'desktop', 12, 80, 20, 8), 1);
+  assert.equal(resolveBentoEffectiveRows(manualItem, 'desktop', 12, 80, 20, 8), 12);
+});
+
+test('Bento auto width fills the active grid while legacy/manual width keeps spans', () => {
+  assert.equal(resolveBentoWidthMode({}), 'manual');
+  assert.equal(resolveBentoWidthMode({ width_mode: 'auto' }), 'auto');
+  assert.equal(resolveBentoEffectiveWidth({ width_mode: 'auto', desktop_span: 4 }, 'desktop', 24), 24);
+  assert.equal(resolveBentoEffectiveWidth({ desktop_span: 4 }, 'desktop', 24), 4);
+  assert.equal(resolveBentoEffectiveWidth({ width_mode: 'auto', mobile_span: 2 }, 'mobile', 4), 4);
 });
 
 test('new auto alignment defaults to center while legacy falls back to start', () => {

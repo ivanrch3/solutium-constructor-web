@@ -10,7 +10,7 @@ export type BentoLayoutVersion = 1 | 2;
 export type BentoEditorTab = 'estructura' | 'contenido' | 'diseno';
 
 const BENTO_STRUCTURE_SETTING_IDS = new Set([
-  'height_mode', 'vertical_align', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span',
+  'height_mode', 'vertical_align', 'width_mode', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span',
   'element_padding_y', 'card_padding_linked', 'card_padding_top', 'card_padding_right',
   'card_padding_bottom', 'card_padding_left', 'icon_content_gap', 'text_content_gap', 'padding',
   'align_items', 'content_align', 'composite_layout', 'composite_gap', 'composite_align'
@@ -48,6 +48,43 @@ export const resolveBentoLayoutVersion = (value: unknown, hasExplicitValue = tru
 export const resolveBentoRowHeight = (value: unknown, hasExplicitValue = true) => (
   resolveBentoLayoutVersion(value, hasExplicitValue) === 2 ? BENTO_COMPACT_ROW_HEIGHT : BENTO_ROW_HEIGHT
 );
+
+export type BentoSizeMode = 'auto' | 'manual';
+
+/** Explicit modes win; legacy items remain manual-width compatible. */
+export const resolveBentoWidthMode = (item?: Record<string, unknown>): BentoSizeMode => (
+  item?.width_mode === 'auto' ? 'auto' : 'manual'
+);
+
+export const resolveBentoHeightMode = (item?: Record<string, unknown>): BentoSizeMode => (
+  item?.height_mode === 'manual' ? 'manual' : 'auto'
+);
+
+export const resolveBentoEffectiveWidth = (
+  item: Record<string, any> = {},
+  breakpoint: BentoBreakpoint,
+  columns: number
+) => {
+  const safeColumns = Math.max(1, toNumber(columns, 1));
+  if (resolveBentoWidthMode(item) === 'auto') return safeColumns;
+  const value = breakpoint === 'desktop'
+    ? item.desktop_span || item.col_span
+    : breakpoint === 'tablet'
+      ? item.tablet_span || item.col_span
+      : item.mobile_span || item.col_span;
+  return Math.max(1, Math.min(safeColumns, toNumber(value, safeColumns)));
+};
+
+export const resolveBentoEffectiveRows = (
+  item: Record<string, any> = {},
+  breakpoint: BentoBreakpoint,
+  savedRows: unknown,
+  rowHeight = BENTO_ROW_HEIGHT,
+  rowGap = 20,
+  colSpan?: number
+) => resolveBentoHeightMode(item) === 'manual'
+  ? Math.max(1, toNumber(savedRows, 1))
+  : resolveBentoAutoRows(item, breakpoint, rowHeight, rowGap, colSpan);
 
 /** Physical height of the occupied grid plus the configured bottom padding. */
 export const resolveBentoGridContentHeight = (

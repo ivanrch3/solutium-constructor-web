@@ -74,21 +74,6 @@ const isBentoDebugEnabled = () => {
   }
 };
 
-const getBentoWorkspaceRows = (value: any, breakpoint: 'desktop' | 'tablet' | 'mobile') => {
-  const rawRows = typeof value === 'object' && value !== null ? value[breakpoint] : value;
-  const parsedRows = Number(rawRows);
-  return Number.isFinite(parsedRows) ? parsedRows : BENTO_BASE_VISIBLE_ROWS;
-};
-
-const buildBentoWorkspaceRowsValue = (
-  currentValue: any,
-  breakpoint: 'desktop' | 'tablet' | 'mobile',
-  rows: number
-) => ({
-  ...(typeof currentValue === 'object' && currentValue !== null ? currentValue : {}),
-  [breakpoint]: rows
-});
-
 const createBentoCellId = () => {
   const randomId = globalThis.crypto?.randomUUID?.() || Math.random().toString(36).slice(2);
   return `bento_cell_${randomId}`;
@@ -1676,8 +1661,6 @@ export const BentoModule: React.FC<{
   };
 
   const rawItems = useMemo(() => getItemsFromMultipleSources(), [settingsValues, moduleId]);
-  const workspaceRowsSettingKey = `${moduleId}_el_bento_items_workspace_rows`;
-  const workspaceRowsSetting = settingsValues[workspaceRowsSettingKey];
 
   const layouts = useMemo(() => ({
     lg: getBentoLayoutForBreakpoint(rawItems, 'desktop', columns),
@@ -1739,22 +1722,6 @@ export const BentoModule: React.FC<{
     if (changed) {
       lastPersistedLayoutSignatureRef.current = currentSignature;
       onSettingChange(`${moduleId}_el_bento_items`, 'items', newItems);
-      const nextOccupiedRows = Math.ceil(normalizedCurrentLayout.reduce((maxRows: number, entry: any) => {
-        return Math.max(maxRows, (Number(entry?.y) || 0) + Math.max(Number(entry?.h) || 1, 1));
-      }, 0));
-      const currentWorkspaceRows = getBentoWorkspaceRows(workspaceRowsSetting, currentBP);
-      const nextWorkspaceRows = clampNumber(
-        Math.max(BENTO_BASE_VISIBLE_ROWS, currentWorkspaceRows, nextOccupiedRows),
-        BENTO_BASE_VISIBLE_ROWS,
-        BENTO_MAX_EDITABLE_ROWS
-      );
-      if (nextWorkspaceRows !== currentWorkspaceRows) {
-        onSettingChange(
-          `${moduleId}_el_bento_items`,
-          'workspace_rows',
-          buildBentoWorkspaceRowsValue(workspaceRowsSetting, currentBP, nextWorkspaceRows)
-        );
-      }
     }
   };
 
@@ -1949,19 +1916,6 @@ export const BentoModule: React.FC<{
   const showHeader = headerEyebrow || headerTitle || headerSubtitle;
 
   const shouldShowEmptyState = !isPreviewMode && rawItems.length === 0;
-  const activeLayoutForHeight = layouts[effectiveBreakpoint as keyof typeof layouts] || [];
-  const activeLayoutKeyForHeight = BENTO_BREAKPOINT_TO_LAYOUT[effectiveBreakpoint] || 'desktop';
-  const occupiedRows = Math.ceil(activeLayoutForHeight.reduce((maxRows: number, item: any) => {
-    return Math.max(maxRows, (Number(item?.y) || 0) + Math.max(Number(item?.h) || 1, 1));
-  }, 0));
-  const storedWorkspaceRows = getBentoWorkspaceRows(workspaceRowsSetting, activeLayoutKeyForHeight);
-  const workspaceRows = clampNumber(
-    Math.max(BENTO_BASE_VISIBLE_ROWS, storedWorkspaceRows, occupiedRows),
-    BENTO_BASE_VISIBLE_ROWS,
-    BENTO_MAX_EDITABLE_ROWS
-  );
-  const visibleEditorRows = shouldShowEmptyState ? BENTO_BASE_VISIBLE_ROWS : workspaceRows;
-  const visibleEditorMinHeight = (visibleEditorRows * bentoRowHeight) + ((visibleEditorRows - 1) * gap);
   const isSelected = !isPreviewMode && settingsValues.isSelected; // Some canvases pass this
   const [activeClickOverlay, setActiveClickOverlay] = useState<BentoClickOverlayState | null>(null);
 
@@ -2190,7 +2144,7 @@ export const BentoModule: React.FC<{
                 gap: `${gap}px`,
               }}
             >
-              {Array.from({ length: columns * visibleEditorRows }).map((_, i) => (
+              {Array.from({ length: columns * Math.max(BENTO_BASE_VISIBLE_ROWS, 1) }).map((_, i) => (
                 <div 
                   key={i} 
                   className="border border-primary/30 rounded-[28px]" 
@@ -2204,11 +2158,11 @@ export const BentoModule: React.FC<{
         {/* Visual editing grid */}
         <div 
           ref={gridContainerRef}
-          className={`w-full transition-all duration-500 relative ${!isPreviewMode ? 'min-h-[400px] border-2 border-dashed border-gray-200 rounded-[40px] hover:border-primary/40' : ''} ${!isPreviewMode && rawItems.length === 0 ? 'bg-blue-50/10 border-blue-200/50' : ''}`} 
+          className={`w-full transition-all duration-500 relative ${!isPreviewMode && shouldShowEmptyState ? 'min-h-[400px]' : ''} ${!isPreviewMode ? 'border-2 border-dashed border-gray-200 rounded-[40px] hover:border-primary/40' : ''} ${!isPreviewMode && rawItems.length === 0 ? 'bg-blue-50/10 border-blue-200/50' : ''}`}
           style={{ 
             opacity: 1,
             visibility: 'visible',
-            minHeight: !isPreviewMode ? `${visibleEditorMinHeight}px` : 'auto'
+            minHeight: !isPreviewMode && shouldShowEmptyState ? '400px' : undefined
           }}
         >
           <ResponsiveGridLayout
@@ -2221,7 +2175,7 @@ export const BentoModule: React.FC<{
             layouts={layouts}
             breakpoint={isPublicRenderMode ? undefined : forcedBreakpoint}
             width={gridWidth}
-            style={{ minHeight: !isPreviewMode ? `${visibleEditorMinHeight}px` : undefined }}
+            style={{ minHeight: !isPreviewMode && shouldShowEmptyState ? '400px' : undefined }}
             breakpoints={{ lg: 992, md: 768, sm: 600, xs: 360, xxs: 0 }}
             cols={{ lg: columns, md: BENTO_TABLET_COLUMNS, sm: BENTO_TABLET_COLUMNS, xs: BENTO_MOBILE_COLUMNS, xxs: 1 }}
             rowHeight={bentoRowHeight}

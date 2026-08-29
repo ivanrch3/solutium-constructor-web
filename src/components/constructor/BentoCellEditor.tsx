@@ -768,6 +768,20 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
     }))
   );
 
+  const structureFieldOrder = [
+    'height_mode', 'width_mode', 'vertical_align', 'align_items', 'composite_align',
+    'composite_layout', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span',
+    'padding'
+  ];
+  if (settingsByPillar.estructura) {
+    settingsByPillar.estructura.sort((left, right) => {
+      const leftIndex = structureFieldOrder.indexOf(left.setting.id);
+      const rightIndex = structureFieldOrder.indexOf(right.setting.id);
+      return (leftIndex < 0 ? structureFieldOrder.length : leftIndex)
+        - (rightIndex < 0 ? structureFieldOrder.length : rightIndex);
+    });
+  }
+
   const iconSettingsByTab = Object.values(settingsByPillar)
     .flat()
     .reduce((tabs, field) => {

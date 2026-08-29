@@ -4,6 +4,7 @@ export type BentoBreakpoint = 'desktop' | 'tablet' | 'mobile';
 
 export const BENTO_ROW_HEIGHT = 80;
 export const BENTO_COMPACT_ROW_HEIGHT = 20;
+export const BENTO_INTRINSIC_EPSILON_PX = 1;
 
 export type BentoLayoutVersion = 1 | 2;
 
@@ -63,10 +64,20 @@ export const resolveBentoHeightMode = (item?: Record<string, unknown>): BentoSiz
 export const resolveBentoEffectiveWidth = (
   item: Record<string, any> = {},
   breakpoint: BentoBreakpoint,
-  columns: number
+  columns: number,
+  intrinsicWidthPx?: number,
+  containerWidthPx?: number,
+  gap = 20
 ) => {
   const safeColumns = Math.max(1, toNumber(columns, 1));
-  if (resolveBentoWidthMode(item) === 'auto') return safeColumns;
+  if (resolveBentoWidthMode(item) === 'auto') {
+    if (Number.isFinite(intrinsicWidthPx) && Number.isFinite(containerWidthPx) && containerWidthPx > 0) {
+      return intrinsicWidthToGridColumns(intrinsicWidthPx, containerWidthPx, safeColumns, gap);
+    }
+    // Auto has no permission to use the full grid as a hidden manual default.
+    // One column is only the pre-measurement placeholder; ResizeObserver replaces it.
+    return 1;
+  }
   const value = breakpoint === 'desktop'
     ? item.desktop_span || item.col_span
     : breakpoint === 'tablet'
@@ -81,10 +92,61 @@ export const resolveBentoEffectiveRows = (
   savedRows: unknown,
   rowHeight = BENTO_ROW_HEIGHT,
   rowGap = 20,
-  colSpan?: number
+  colSpan?: number,
+  intrinsicHeightPx?: number,
+  verticalPaddingPx = 0
 ) => resolveBentoHeightMode(item) === 'manual'
   ? Math.max(1, toNumber(savedRows, 1))
-  : resolveBentoAutoRows(item, breakpoint, rowHeight, rowGap, colSpan);
+  : Number.isFinite(intrinsicHeightPx)
+    ? intrinsicHeightToGridRows(intrinsicHeightPx as number, rowHeight, rowGap, verticalPaddingPx)
+    : resolveBentoAutoRows(item, breakpoint, rowHeight, rowGap, colSpan);
+
+export const calculateBentoColumnWidth = (containerWidthPx: number, columns: number, gap = 0) => {
+  const safeContainer = Number.isFinite(containerWidthPx) ? Math.max(0, containerWidthPx) : 0;
+  const safeColumns = Math.max(1, Math.floor(toNumber(columns, 1)));
+  const safeGap = Number.isFinite(gap) ? Math.max(0, gap) : 0;
+  return Math.max(0, (safeContainer - (Math.max(0, safeColumns - 1) * safeGap)) / safeColumns);
+};
+
+export const intrinsicWidthToGridColumns = (
+  intrinsicWidthPx: number,
+  containerWidthPx: number,
+  columns: number,
+  gap = 0,
+  minColumns = 1
+) => {
+  const safeWidth = Number.isFinite(intrinsicWidthPx) ? Math.max(0, intrinsicWidthPx) : 0;
+  const safeColumns = Math.max(1, Math.floor(toNumber(columns, 1)));
+  const safeGap = Number.isFinite(gap) ? Math.max(0, gap) : 0;
+  const columnWidth = calculateBentoColumnWidth(containerWidthPx, safeColumns, safeGap);
+  if (columnWidth <= 0) return Math.max(1, Math.min(safeColumns, minColumns));
+  const required = Math.ceil((safeWidth + safeGap) / (columnWidth + safeGap));
+  return Math.max(Math.max(1, minColumns), Math.min(safeColumns, required));
+};
+
+export const intrinsicHeightToGridRows = (
+  intrinsicHeightPx: number,
+  rowHeight: number,
+  rowGap = 0,
+  verticalPaddingPx = 0
+) => {
+  const safeHeight = Number.isFinite(intrinsicHeightPx) ? Math.max(0, intrinsicHeightPx) : 0;
+  const safeRowHeight = Math.max(1, toNumber(rowHeight, BENTO_ROW_HEIGHT));
+  const safeGap = Number.isFinite(rowGap) ? Math.max(0, rowGap) : 0;
+  const safePadding = Number.isFinite(verticalPaddingPx) ? Math.max(0, verticalPaddingPx) : 0;
+  const contentHeight = Math.max(0, safeHeight + safePadding);
+  return Math.max(1, Math.ceil((contentHeight + safeGap) / (safeRowHeight + safeGap)));
+};
+
+export const resolveBentoResizeHandles = (item: Record<string, any> = {}, isPreviewMode = false) => {
+  if (isPreviewMode) return [] as string[];
+  const widthManual = resolveBentoWidthMode(item) === 'manual';
+  const heightManual = resolveBentoHeightMode(item) === 'manual';
+  if (widthManual && heightManual) return ['se'];
+  if (widthManual) return ['e'];
+  if (heightManual) return ['s'];
+  return [] as string[];
+};
 
 /** Physical height of the occupied grid plus the configured bottom padding. */
 export const resolveBentoGridContentHeight = (
@@ -107,6 +169,11 @@ export const resolveBentoGridContentHeight = (
 
 export const hasExplicitBentoLayout = (item: Record<string, any> = {}, breakpoint: BentoBreakpoint) => (
   Boolean(item.layouts?.[breakpoint]) && item.layout_sources?.[breakpoint] !== 'derived'
+);
+
+/** A derived layout is still a valid persisted render snapshot, just not a manual preference. */
+export const hasPersistedBentoLayout = (item: Record<string, any> = {}, breakpoint: BentoBreakpoint) => (
+  Boolean(item.layouts?.[breakpoint])
 );
 
 export const resolveBentoVerticalAlign = (value: unknown, legacyValue?: unknown) => {
@@ -271,13 +338,27 @@ export const reconcileBentoLayoutById = <T extends Record<string, any>>(
 ) => items.map((item) => {
   if (getBentoItemId(item) !== String(layout.i)) return item;
   const { i: _itemId, ...nextLayout } = layout;
+  const widthManual = resolveBentoWidthMode(item) === 'manual';
+  const heightManual = resolveBentoHeightMode(item) === 'manual';
+  const nextSources = { ...(item.layout_sources || {}), [breakpoint]: widthManual || heightManual ? 'explicit' : 'derived' };
+  const sizeFields = breakpoint === 'desktop'
+    ? (widthManual && heightManual
+      ? { x: layout.x, y: layout.y, col_span: layout.w, row_span: layout.h, desktop_span: layout.w, desktop_rows: layout.h }
+      : widthManual
+        ? { x: layout.x, y: layout.y, col_span: layout.w, desktop_span: layout.w }
+        : heightManual
+          ? { x: layout.x, y: layout.y, row_span: layout.h, desktop_rows: layout.h }
+          : { x: layout.x, y: layout.y })
+    : {};
   return {
     ...item,
     layouts: { ...(item.layouts || {}), [breakpoint]: nextLayout },
-    layout_sources: { ...(item.layout_sources || {}), [breakpoint]: 'explicit' },
+    layout_sources: nextSources,
     layout_columns: { ...(item.layout_columns || {}), [breakpoint]: layout.columns },
     ...(breakpoint === 'desktop'
-      ? { x: layout.x, y: layout.y, col_span: layout.w, row_span: layout.h, desktop_span: layout.w, desktop_rows: layout.h }
-      : breakpoint === 'tablet' ? { tablet_span: layout.w } : { mobile_span: layout.w })
+      ? sizeFields
+      : breakpoint === 'tablet'
+        ? (widthManual ? { tablet_span: layout.w } : {})
+        : (widthManual ? { mobile_span: layout.w } : {}))
   };
 });

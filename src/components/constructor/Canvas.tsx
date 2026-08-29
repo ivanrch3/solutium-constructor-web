@@ -175,6 +175,8 @@ export const Canvas: React.FC<CanvasProps> = ({
   const autoFocusSuspendedRef = React.useRef(false);
   const autoFocusResizeObserverRef = React.useRef<ResizeObserver | null>(null);
   const autoFocusFrameRef = React.useRef<number | null>(null);
+  const autoFocusOperationRef = React.useRef(0);
+  const autoFocusScrollLockRef = React.useRef(false);
   const hasMountedSelectionRef = React.useRef(false);
   const userZoomRef = React.useRef(userZoom);
   userZoomRef.current = userZoom;
@@ -429,7 +431,7 @@ export const Canvas: React.FC<CanvasProps> = ({
 
   React.useEffect(() => {
     const node = canvasScrollContainerRef.current;
-    if (!node || !canUsePreviewZoom) return;
+    if (!node || !canUsePreviewZoom || autoFocusScrollLockRef.current) return;
 
     window.requestAnimationFrame(() => {
       const maxScrollLeft = Math.max(0, node.scrollWidth - node.clientWidth);
@@ -480,7 +482,7 @@ export const Canvas: React.FC<CanvasProps> = ({
     setUserZoom((currentZoom) => {
       const node = canvasScrollContainerRef.current;
       const clampedZoom = clampZoom(nextZoom);
-      if (node && currentZoom !== clampedZoom) {
+      if (node && currentZoom !== clampedZoom && !automatic) {
         const centerXRatio = node.scrollWidth > 0
           ? (node.scrollLeft + node.clientWidth / 2) / node.scrollWidth
           : 0.5;
@@ -503,6 +505,8 @@ export const Canvas: React.FC<CanvasProps> = ({
     setAutoZoomEnabled(enabled);
     writePreviewAutoZoomPreference(enabled, typeof window === 'undefined' ? undefined : window.localStorage);
     if (!enabled) {
+      autoFocusOperationRef.current += 1;
+      autoFocusScrollLockRef.current = false;
       autoFocusTargetRef.current = null;
       if (autoFocusFrameRef.current !== null) {
         window.cancelAnimationFrame(autoFocusFrameRef.current);
@@ -539,14 +543,17 @@ export const Canvas: React.FC<CanvasProps> = ({
       targetTop: targetRect.top,
       targetWidth: targetRect.width,
       targetHeight: targetRect.height
+      ,maxScrollLeft: Math.max(0, node.scrollWidth - node.clientWidth)
+      ,maxScrollTop: Math.max(0, node.scrollHeight - node.clientHeight)
     });
     node.scrollLeft = nextScroll.left;
     node.scrollTop = nextScroll.top;
     updateScrollMetrics();
   };
 
-  const runPreviewAutoFocus = (target: PreviewAutoFocusTarget, allowZoomIn: boolean) => {
+  const runPreviewAutoFocus = (target: PreviewAutoFocusTarget, allowZoomIn: boolean, operationId = autoFocusOperationRef.current) => {
     if (!canUsePreviewAutoFocus(autoZoomEnabled, viewport) || !canUsePreviewZoom || autoFocusSuspendedRef.current) return;
+    if (operationId !== autoFocusOperationRef.current) return;
     const node = canvasScrollContainerRef.current;
     const targetElement = Array.from(document.querySelectorAll<HTMLElement>('[data-preview-focus-id]'))
       .find((element) => element.dataset.previewFocusId === target.id);
@@ -559,22 +566,34 @@ export const Canvas: React.FC<CanvasProps> = ({
       viewportWidth: node.clientWidth,
       viewportHeight: node.clientHeight,
       currentZoom: userZoomRef.current,
+      currentEffectiveScale: effectivePreviewScale,
+      basePreviewScale: useVirtualDesktopPreview ? desktopPreviewScale : 1,
       minZoom: zoomLimits.min,
       maxZoom: zoomLimits.max,
       padding: target.preferredPadding || 48
     });
     if (shouldApplyPreviewAutoZoom(nextZoom, userZoomRef.current, allowZoomIn)) {
+      autoFocusScrollLockRef.current = true;
       setZoomAroundCenter(nextZoom, true);
       window.requestAnimationFrame(() => {
         window.requestAnimationFrame(() => centerPreviewTarget(targetElement));
       });
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => {
+          if (operationId === autoFocusOperationRef.current) autoFocusScrollLockRef.current = false;
+        });
+      });
       return;
     }
+    autoFocusScrollLockRef.current = true;
     centerPreviewTarget(targetElement);
+    autoFocusScrollLockRef.current = false;
   };
 
   const requestPreviewAutoFocus = (target: PreviewAutoFocusTarget) => {
     if (!canUsePreviewAutoFocus(autoZoomEnabled, viewport) || !canUsePreviewZoom) return;
+    const operationId = autoFocusOperationRef.current + 1;
+    autoFocusOperationRef.current = operationId;
     autoFocusTargetRef.current = target;
     autoFocusSuspendedRef.current = false;
     if (autoFocusFrameRef.current !== null) {
@@ -586,7 +605,7 @@ export const Canvas: React.FC<CanvasProps> = ({
 
     let attempts = 0;
     const locateTarget = () => {
-      if (!isCurrentPreviewAutoFocusRequest(target.id, autoFocusTargetRef.current?.id || null) || attempts >= 12) {
+      if (operationId !== autoFocusOperationRef.current || !isCurrentPreviewAutoFocusRequest(target.id, autoFocusTargetRef.current?.id || null) || attempts >= 12) {
         autoFocusFrameRef.current = null;
         return;
       }
@@ -598,8 +617,8 @@ export const Canvas: React.FC<CanvasProps> = ({
         return;
       }
       autoFocusFrameRef.current = null;
-      runPreviewAutoFocus(target, true);
-      const observer = new ResizeObserver(() => runPreviewAutoFocus(target, false));
+      runPreviewAutoFocus(target, true, operationId);
+      const observer = new ResizeObserver(() => runPreviewAutoFocus(target, false, operationId));
       observer.observe(targetElement);
       autoFocusResizeObserverRef.current = observer;
     };
@@ -609,6 +628,8 @@ export const Canvas: React.FC<CanvasProps> = ({
   React.useEffect(() => {
     if (viewport === 'desktop' && autoZoomEnabled) return;
     autoFocusTargetRef.current = null;
+    autoFocusOperationRef.current += 1;
+    autoFocusScrollLockRef.current = false;
     if (autoFocusFrameRef.current !== null) {
       window.cancelAnimationFrame(autoFocusFrameRef.current);
       autoFocusFrameRef.current = null;
@@ -618,6 +639,8 @@ export const Canvas: React.FC<CanvasProps> = ({
   }, [autoZoomEnabled, viewport]);
 
   React.useEffect(() => () => {
+    autoFocusOperationRef.current += 1;
+    autoFocusScrollLockRef.current = false;
     if (autoFocusFrameRef.current !== null) window.cancelAnimationFrame(autoFocusFrameRef.current);
     autoFocusResizeObserverRef.current?.disconnect();
   }, []);
@@ -707,7 +730,7 @@ export const Canvas: React.FC<CanvasProps> = ({
             }
 
             if (autoZoomEnabled && isAutoFocusableSection(targetId)) {
-              requestPreviewAutoFocus({ id: targetId, type: 'bento' });
+              requestPreviewAutoFocus({ id: `section:${targetId}`, type: 'bento' });
             } else {
               targetElement.scrollIntoView({
                 behavior: 'smooth',
@@ -744,7 +767,7 @@ export const Canvas: React.FC<CanvasProps> = ({
     }
     if (!canUsePreviewAutoFocus(autoZoomEnabled, viewport) || !selectedSectionId || editorState.recentlyAddedModuleId === selectedSectionId) return;
     if (isAutoFocusableSection(selectedSectionId)) {
-      requestPreviewAutoFocus({ id: selectedSectionId, type: 'bento' });
+      requestPreviewAutoFocus({ id: `section:${selectedSectionId}`, type: 'bento' });
     }
   }, [selectedSectionId]);
 
@@ -1177,7 +1200,7 @@ export const Canvas: React.FC<CanvasProps> = ({
                     key={section.id} 
                     id={normalizeSectionAnchorId(section.id)}
                     data-module-id={section.id}
-                    data-preview-focus-id={isAutoFocusableSection(section.id) ? section.id : undefined}
+                    data-preview-focus-id={isAutoFocusableSection(section.id) ? `section:${section.id}` : undefined}
                     ref={isLast ? lastModuleRef : null} 
                     onClick={(e) => {
                       if (isCleanPreviewMode) return;
@@ -1430,7 +1453,7 @@ export const Canvas: React.FC<CanvasProps> = ({
                         content={section.content}
                         onSettingChange={onSettingChange}
                         onRequestPreviewAutoFocus={autoZoomEnabled && viewport === 'desktop'
-                          ? () => requestPreviewAutoFocus({ id: section.id, type: 'bento' })
+                          ? (targetId) => requestPreviewAutoFocus({ id: targetId || `section:${section.id}`, type: 'bento' })
                           : undefined}
                         isPreviewMode={isCleanPreviewMode}
                         previewScale={effectivePreviewScale}

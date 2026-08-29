@@ -4083,7 +4083,7 @@ export const BENTO_MODULE: WebModule = {
             { label: 'Automático', value: 'auto' },
             { label: 'Manual', value: 'manual' }
           ] },
-          { id: 'desktop_span', label: 'Ancho Desktop (Columnas)', type: 'range', defaultValue: 8, min: 1, max: 24 },
+          { id: 'desktop_span', label: 'Ancho Desktop (Columnas)', type: 'range', defaultValue: 8, min: 1, max: 24, showIf: { settingId: 'width_mode', value: 'manual' } },
           { id: 'desktop_rows', label: 'Alto Desktop (Filas)', type: 'range', defaultValue: 2, min: 1, max: 8, showIf: { settingId: 'height_mode', value: 'manual' } },
           { id: 'tablet_span', label: 'Ancho Tablet (Columnas)', type: 'range', defaultValue: 3, min: 1, max: 6 },
           { id: 'mobile_span', label: 'Ancho Móvil (Columnas)', type: 'range', defaultValue: 4, min: 1, max: 4 },

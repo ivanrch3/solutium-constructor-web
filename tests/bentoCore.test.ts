@@ -10,6 +10,7 @@ import {
   resolveBentoRowHeight,
   resolveBentoVerticalAlign,
   hasExplicitBentoLayout,
+  hasPersistedBentoLayout,
   resolveBentoSelectedIndex,
   resolveBentoSettingId,
   resolveBentoBorderStyle,
@@ -21,6 +22,10 @@ import {
   resolveBentoEffectiveWidth,
   resolveBentoHeightMode,
   resolveBentoWidthMode
+  ,calculateBentoColumnWidth
+  ,intrinsicWidthToGridColumns
+  ,intrinsicHeightToGridRows
+  ,resolveBentoResizeHandles
 } from '../src/utils/bentoCore.ts';
 
 test('new Bento defaults use no hover and legacy lift remains intact', () => {
@@ -171,12 +176,49 @@ test('Bento auto sizing ignores stale manual rows while manual sizing preserves 
   assert.equal(resolveBentoEffectiveRows(manualItem, 'desktop', 12, 80, 20, 8), 12);
 });
 
-test('Bento auto width fills the active grid while legacy/manual width keeps spans', () => {
+test('Bento auto width uses intrinsic content while legacy/manual width keeps spans', () => {
   assert.equal(resolveBentoWidthMode({}), 'manual');
   assert.equal(resolveBentoWidthMode({ width_mode: 'auto' }), 'auto');
-  assert.equal(resolveBentoEffectiveWidth({ width_mode: 'auto', desktop_span: 4 }, 'desktop', 24), 24);
+  assert.equal(resolveBentoEffectiveWidth({ width_mode: 'auto', desktop_span: 4 }, 'desktop', 24), 1);
+  assert.equal(resolveBentoEffectiveWidth({ width_mode: 'auto' }, 'desktop', 24, 260, 1200, 20), 6);
   assert.equal(resolveBentoEffectiveWidth({ desktop_span: 4 }, 'desktop', 24), 4);
-  assert.equal(resolveBentoEffectiveWidth({ width_mode: 'auto', mobile_span: 2 }, 'mobile', 4), 4);
+  assert.equal(resolveBentoEffectiveWidth({ width_mode: 'auto', mobile_span: 2 }, 'mobile', 4, 100, 360, 8), 2);
+});
+
+test('intrinsic sizing converts pixels to grid units with gaps and protects resize axes', () => {
+  assert.equal(calculateBentoColumnWidth(1200, 24, 20), 30.833333333333332);
+  assert.equal(intrinsicWidthToGridColumns(260, 1200, 24, 20), 6);
+  assert.equal(intrinsicHeightToGridRows(88, 20, 20, 32), 4);
+  assert.deepEqual(resolveBentoResizeHandles({ width_mode: 'auto', height_mode: 'auto' }), []);
+  assert.deepEqual(resolveBentoResizeHandles({ width_mode: 'manual', height_mode: 'auto' }), ['e']);
+  assert.deepEqual(resolveBentoResizeHandles({ width_mode: 'auto', height_mode: 'manual' }), ['s']);
+  assert.deepEqual(resolveBentoResizeHandles({ width_mode: 'manual', height_mode: 'manual' }), ['se']);
+});
+
+test('derived auto dimensions never overwrite manual preferences during movement', () => {
+  const item = {
+    id: 'auto', width_mode: 'auto', height_mode: 'auto', desktop_span: 7, desktop_rows: 5,
+    layouts: { desktop: { x: 0, y: 0, w: 24, h: 12 } }
+  };
+  const [next] = reconcileBentoLayoutById([item], { i: 'auto', x: 3, y: 4, w: 12, h: 9, columns: 24 }, 'desktop');
+  assert.equal(next.desktop_span, 7);
+  assert.equal(next.desktop_rows, 5);
+  assert.equal(next.layouts.desktop.w, 12);
+  assert.equal(next.layouts.desktop.h, 9);
+  assert.equal((next as any).layout_sources.desktop, 'derived');
+});
+
+test('persisted derived layout survives save/reload without becoming manual memory', () => {
+  const measuredLayout = { i: 'auto', x: 0, y: 0, w: 6, h: 4, columns: 24 };
+  const [saved] = reconcileBentoLayoutById([{
+    id: 'auto', width_mode: 'auto', height_mode: 'auto', desktop_span: 8, desktop_rows: 3
+  }], measuredLayout, 'desktop');
+  assert.equal(hasPersistedBentoLayout(saved, 'desktop'), true);
+  assert.equal(hasExplicitBentoLayout(saved, 'desktop'), false);
+  assert.equal((saved as any).layouts.desktop.w, 6);
+  assert.equal((saved as any).layouts.desktop.h, 4);
+  assert.equal(saved.desktop_span, 8);
+  assert.equal(saved.desktop_rows, 3);
 });
 
 test('new auto alignment defaults to center while legacy falls back to start', () => {

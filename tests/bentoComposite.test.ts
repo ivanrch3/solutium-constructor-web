@@ -20,7 +20,9 @@ import {
   BENTO_EDITOR_TAB_ORDER,
   resolveBentoEditorItemLabel,
   shouldRenderBentoImagePlaceholder,
+  resolveBentoCompositeContainerSizing,
 } from '../src/utils/bentoComposite.ts';
+import { intrinsicHeightToGridRows, resolveBentoEffectiveRows } from '../src/utils/bentoCore.ts';
 import { resolveModuleDisplayLabel, resolveModuleEditorLabel } from '../src/utils/menuNavigation.ts';
 
 test('composite defaults contain eight stable subelements', () => {
@@ -51,6 +53,11 @@ test('horizontal composition becomes vertical on mobile', () => {
   assert.equal(resolveBentoCompositeLayout('horizontal', 'desktop'), 'horizontal');
   assert.equal(resolveBentoCompositeLayout('horizontal', 'tablet'), 'horizontal');
   assert.equal(resolveBentoCompositeLayout('horizontal', 'mobile'), 'vertical');
+});
+
+test('mobile composite sizing is explicitly constrained while desktop preserves intrinsic composition', () => {
+  assert.deepEqual(resolveBentoCompositeContainerSizing('mobile'), { width: '100%', maxWidth: '100%', minWidth: 0 });
+  assert.deepEqual(resolveBentoCompositeContainerSizing('desktop'), { maxWidth: '100%', minWidth: 0 });
 });
 
 test('composite auto height grows with content and uses the horizontal max', () => {
@@ -89,6 +96,22 @@ test('button size presets control physical size and default legacy buttons to me
   assert.deepEqual(getBentoButtonSizePreset(undefined), BENTO_BUTTON_SIZE_PRESETS.medium);
   assert.ok(BENTO_BUTTON_SIZE_PRESETS.small.fontSize < BENTO_BUTTON_SIZE_PRESETS.medium.fontSize);
   assert.ok(BENTO_BUTTON_SIZE_PRESETS.large.paddingX > BENTO_BUTTON_SIZE_PRESETS.medium.paddingX);
+  for (const key of ['fontSize', 'paddingX', 'paddingY', 'minHeight'] as const) {
+    assert.ok(BENTO_BUTTON_SIZE_PRESETS.small[key] < BENTO_BUTTON_SIZE_PRESETS.medium[key]);
+    assert.ok(BENTO_BUTTON_SIZE_PRESETS.medium[key] < BENTO_BUTTON_SIZE_PRESETS.large[key]);
+  }
+  assert.equal(BENTO_BUTTON_SIZE_PRESETS.medium.fontSize, 14);
+  assert.equal(BENTO_BUTTON_SIZE_PRESETS.medium.paddingX, 32);
+  assert.equal(BENTO_BUTTON_SIZE_PRESETS.medium.paddingY, 16);
+  assert.equal(BENTO_BUTTON_SIZE_PRESETS.medium.minHeight, 50);
+});
+
+test('measured mobile content drives derived rows after reflow instead of a stale desktop height', () => {
+  const item = { type: 'composite', height_mode: 'auto', padding: 16, border_width: 1 };
+  const desktopRows = resolveBentoEffectiveRows(item, 'desktop', 2, 20, 20, 8, 120, 34);
+  const mobileRows = resolveBentoEffectiveRows(item, 'mobile', 2, 20, 20, 4, 360, 34);
+  assert.ok(mobileRows > desktopRows);
+  assert.equal(mobileRows, intrinsicHeightToGridRows(360, 20, 20, 34));
 });
 
 test('legacy composite buttons preserve data while receiving medium rendering defaults', () => {

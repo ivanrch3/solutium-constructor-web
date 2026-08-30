@@ -36,6 +36,7 @@ import { PublicReservasWebModule } from './constructor/modules/PublicReservasWeb
 import { readReservasWebPublishedSnapshot } from './constructor/modules/reservasWebPublicContract';
 import { AlertCircle } from 'lucide-react';
 import { logDebug } from '../utils/debug';
+import { sendToMother } from '../services/handshakeService';
 import { bridgeModuleContent } from '../utils/hydrationBridge';
 import { getProducts } from '../services/dataService';
 import { Customer, Product, TrustedCompanyLogo } from '../types/schema';
@@ -522,6 +523,22 @@ export const Viewer: React.FC<ViewerProps> = ({
     () => normalizeConstructorModuleOrder(sections as any[]),
     [sections]
   );
+
+  useEffect(() => {
+    if (!isPublicRenderMode || !isPublishedViewer || !content || orderedSections.length === 0) return;
+    sendToMother({
+      type: 'SOLUTIUM_VIEWER_READY',
+      payload: {
+        site_id: site.siteId || site.id || null,
+        sections_count: orderedSections.length,
+        rendered: true
+      }
+    });
+    logDebug('[PUBLISHED_STAGE_VIEWER_READY]', {
+      siteId: site.siteId || site.id || null,
+      sectionsCount: orderedSections.length
+    });
+  }, [content, isPublishedViewer, isPublicRenderMode, orderedSections.length, site.id, site.siteId]);
 
   const updateMeasuredSectionHeights = React.useCallback(() => {
     const root = viewerRootRef.current;

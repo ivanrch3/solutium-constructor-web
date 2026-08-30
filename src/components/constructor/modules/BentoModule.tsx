@@ -13,7 +13,7 @@ import { normalizeSectionAnimation } from '../../../constants/moduleAnimations';
 import { appendReferralParamToSolutiumUrl, extractReferralCodeFromSearch } from '../../../utils/referralLinks';
 import { resolveBentoIconSpacing, type BentoIconDevice } from '../../../utils/bentoIconSpacing';
 import { BentoCompositeContent } from './BentoCompositeContent';
-import { createBentoCompositeElements } from '../../../utils/bentoComposite';
+import { createBentoCompositeElements, shouldRenderBentoImagePlaceholder } from '../../../utils/bentoComposite';
 import {
   resolveBentoAutoRows,
   resolveBentoBorderVisibility,
@@ -1116,11 +1116,14 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave, bre
               referrerPolicy="no-referrer"
               alt={title || 'Imagen principal'}
             />
-          ) : (
+          ) : shouldRenderBentoImagePlaceholder(visualImage, isPreviewMode) ? (
             <div className="absolute inset-0 flex items-center justify-center bg-slate-100 text-slate-300">
-              <LucideIcons.Image size={56} strokeWidth={1.5} />
+              <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-slate-300 px-6 py-5 text-slate-400">
+                <LucideIcons.Image size={42} strokeWidth={1.5} />
+                <span className="text-[10px] font-semibold uppercase tracking-wider">Imagen</span>
+              </div>
             </div>
-          )}
+          ) : null}
           {card_overlay > 0 && (
             <div className="absolute inset-0 bg-black" style={{ opacity: card_overlay / 100 }} />
           )}

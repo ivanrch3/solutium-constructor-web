@@ -15,7 +15,13 @@ import {
   getBentoButtonSizePreset,
   resolveBentoButtonSize,
   resolveBentoCompositeTextAlign,
+  BENTO_TITLE_ALLOWED_LEVELS,
+  BENTO_SECONDARY_TEXT_ALLOWED_LEVELS,
+  BENTO_EDITOR_TAB_ORDER,
+  resolveBentoEditorItemLabel,
+  shouldRenderBentoImagePlaceholder,
 } from '../src/utils/bentoComposite.ts';
+import { resolveModuleDisplayLabel, resolveModuleEditorLabel } from '../src/utils/menuNavigation.ts';
 
 test('composite defaults contain eight stable subelements', () => {
   const elements = createBentoCompositeElements();
@@ -97,4 +103,46 @@ test('composite alignment maps to text alignment for all supported values', () =
   assert.equal(resolveBentoCompositeTextAlign('start'), 'left');
   assert.equal(resolveBentoCompositeTextAlign('center'), 'center');
   assert.equal(resolveBentoCompositeTextAlign('end'), 'right');
+});
+
+test('composite typography levels follow title and secondary-text semantics', () => {
+  assert.deepEqual(BENTO_TITLE_ALLOWED_LEVELS, ['t1', 't2', 't3']);
+  assert.deepEqual(BENTO_SECONDARY_TEXT_ALLOWED_LEVELS, ['t3', 'p', 's']);
+});
+
+test('editor labels use custom metadata without changing element identity', () => {
+  const item = { id: 'stable-cell-id', admin_label: 'Oferta principal', title: 'Título visible' };
+  assert.equal(resolveBentoEditorItemLabel(item, 0), 'Oferta principal');
+  assert.equal(resolveBentoEditorItemLabel({ id: item.id }, 2), 'Elemento 3');
+  assert.equal(item.id, 'stable-cell-id');
+});
+
+test('composite editor keeps movement first while structure remains the default tab', () => {
+  assert.deepEqual(BENTO_EDITOR_TAB_ORDER, ['mover', 'estructura', 'contenido', 'diseno']);
+  assert.equal(BENTO_EDITOR_TAB_ORDER[1], 'estructura');
+});
+
+test('image placeholder is editor-only and requires an empty source', () => {
+  assert.equal(shouldRenderBentoImagePlaceholder('', false), true);
+  assert.equal(shouldRenderBentoImagePlaceholder(undefined, false), true);
+  assert.equal(shouldRenderBentoImagePlaceholder('https://example.com/image.png', false), false);
+  assert.equal(shouldRenderBentoImagePlaceholder('', true), false);
+});
+
+test('module editor labels remain separate from the public module name', () => {
+  const module = { id: 'bento-1', type: 'bento', name: 'Diseño libre', editor_label: 'Beneficios' };
+  assert.equal(resolveModuleEditorLabel(module), 'Beneficios');
+  const reloaded = JSON.parse(JSON.stringify(module));
+  assert.equal(reloaded.editor_label, 'Beneficios');
+  assert.equal(module.name, 'Diseño libre');
+  assert.equal(resolveModuleDisplayLabel(module), 'Diseño libre');
+  assert.equal(module.id, 'bento-1');
+});
+
+test('duplicated module labels can receive a suffix without changing identity fields', () => {
+  const source = { id: 'bento-1', type: 'bento', name: 'Diseño libre', editor_label: 'Beneficios' };
+  const duplicate = { ...source, id: 'bento-2', editor_label: `${source.editor_label} copia` };
+  assert.equal(duplicate.editor_label, 'Beneficios copia');
+  assert.equal(duplicate.name, source.name);
+  assert.notEqual(duplicate.id, source.id);
 });

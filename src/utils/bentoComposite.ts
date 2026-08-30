@@ -18,6 +18,18 @@ export type BentoCompositeElement = {
 export type BentoCompositeListItem = { id: string; text: string };
 
 export type BentoButtonSize = 'small' | 'medium' | 'large';
+export const BENTO_TITLE_ALLOWED_LEVELS = ['t1', 't2', 't3'] as const;
+export const BENTO_SECONDARY_TEXT_ALLOWED_LEVELS = ['t3', 'p', 's'] as const;
+export const BENTO_EDITOR_TAB_ORDER = ['mover', 'estructura', 'contenido', 'diseno'] as const;
+
+export const shouldRenderBentoImagePlaceholder = (source: unknown, isPreviewMode: boolean) => (
+  !isPreviewMode && !String(source || '').trim()
+);
+
+export const resolveBentoEditorItemLabel = (item: Record<string, unknown> | undefined, index: number) => (
+  String(item?.admin_label || `Elemento ${index + 1}`)
+);
+
 export const BENTO_BUTTON_SIZE_PRESETS: Record<BentoButtonSize, { label: string; fontSize: number; paddingX: number; paddingY: number; minHeight: number }> = {
   small: { label: 'Pequeño', fontSize: 11, paddingX: 12, paddingY: 6, minHeight: 32 },
   medium: { label: 'Mediano', fontSize: 12, paddingX: 16, paddingY: 8, minHeight: 36 },

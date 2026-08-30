@@ -7,6 +7,7 @@ type ModuleLike = {
   type: string;
   iconKey?: string;
   name?: string;
+  editor_label?: string;
   templateId?: string;
 };
 
@@ -172,6 +173,11 @@ export const resolveModuleDisplayLabel = (module: ModuleLike) => {
     (MODULE_INFO as any)[module.type];
 
   return moduleInfo?.label || module.name || module.type;
+};
+
+export const resolveModuleEditorLabel = (module: ModuleLike) => {
+  const editorLabel = String(module.editor_label || '').trim();
+  return editorLabel || resolveModuleDisplayLabel(module);
 };
 
 export const buildAutomaticMenuItems = ({

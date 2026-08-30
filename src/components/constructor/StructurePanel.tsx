@@ -20,7 +20,8 @@ import {
   Copy,
   Eye,
   EyeOff,
-  Plus
+  Plus,
+  Pencil
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { EditorState, WebModule, ModuleElement, SettingDefinition, SettingGroupType } from '../../types/constructor';
@@ -33,7 +34,7 @@ import { SettingControl } from './SettingControl';
 import { GlobalSettingsPanel } from './GlobalSettingsPanel';
 import { BentoCellEditor } from './BentoCellEditor';
 import { ReservasWebSettings } from './modules/ReservasWebSettings';
-import { resolveModuleDisplayLabel } from '../../utils/menuNavigation';
+import { resolveModuleDisplayLabel, resolveModuleEditorLabel } from '../../utils/menuNavigation';
 import { reorderBentoItems, resolveBentoAutoRows, resolveBentoRowHeight, resolveBentoSelectedIndex, BENTO_ROW_HEIGHT } from '../../utils/bentoCore';
 import {
   CONSTRUCTOR_MODULE_ANIMATIONS_ENABLED,
@@ -81,7 +82,7 @@ import { WhatsAppOrdersCatalogOrganizerControl } from './modules/WhatsAppOrdersC
 import { FooterBottomBarControl, FooterColumnsControl } from './modules/FooterColumnsControl';
 import { hasFooterV2Config, normalizeFooterV2Config } from './modules/footerConfig';
 import { PlanComparisonControl } from './modules/PlanComparisonControl';
-import { createBentoCompositeElements, normalizeBentoCompositeListItems, regenerateBentoCompositeElementIds, regenerateBentoCompositeListItemIds } from '../../utils/bentoComposite';
+import { createBentoCompositeElements, normalizeBentoCompositeListItems, regenerateBentoCompositeElementIds, regenerateBentoCompositeListItemIds, resolveBentoEditorItemLabel } from '../../utils/bentoComposite';
 
 const FOOTER_V2_GLOBAL_SETTING_IDS = new Set([
   'footer_title_font_family',
@@ -1028,6 +1029,10 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
   const [shiningGroup, setShiningGroup] = React.useState<string | null>(null);
   const [expandedBentoItem, setExpandedBentoItem] = React.useState<number | null>(null);
   const [isBentoAddExpanded, setIsBentoAddExpanded] = React.useState(false);
+  const [editingModuleId, setEditingModuleId] = React.useState<string | null>(null);
+  const [editingModuleLabel, setEditingModuleLabel] = React.useState('');
+  const [editingBentoItemId, setEditingBentoItemId] = React.useState<string | null>(null);
+  const [editingBentoItemLabel, setEditingBentoItemLabel] = React.useState('');
   const [expandedPlanComparisonTypographySubsection, setExpandedPlanComparisonTypographySubsection] = React.useState<string | null>(null);
   const [localReservasWebActivities, setLocalReservasWebActivities] = React.useState(reservasWebActivities);
   React.useEffect(() => setLocalReservasWebActivities(reservasWebActivities), [reservasWebActivities]);
@@ -1210,6 +1215,26 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
       ...prev,
       expandedModuleId: prev.expandedModuleId === moduleId ? null : moduleId
     }));
+  };
+
+  const saveModuleLabel = (module: WebModule) => {
+    const nextLabel = editingModuleLabel.trim();
+    setEditorState((previous) => ({
+      ...previous,
+      addedModules: previous.addedModules.map((candidate) => candidate.id === module.id
+        ? { ...candidate, editor_label: nextLabel || undefined }
+        : candidate)
+    }));
+    setEditingModuleId(null);
+  };
+
+  const saveBentoItemLabel = (moduleId: string, items: any[], index: number) => {
+    const nextLabel = editingBentoItemLabel.trim();
+    const nextItems = items.map((item, itemIndex) => itemIndex === index
+      ? { ...item, admin_label: nextLabel || undefined }
+      : item);
+    onSettingChange(`${moduleId}_el_bento_items`, 'items', nextItems);
+    setEditingBentoItemId(null);
   };
 
   const toggleElement = (elementId: string) => {
@@ -1565,11 +1590,41 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
 
                 {!isCollapsed && (
                   <>
-                    <span className={`text-[14px] font-bold flex-1 truncate ${
-                      isModuleExpanded ? 'text-primary' : 'text-text'
-                    }`}>
-                      {moduleInfo.label}
-                    </span>
+                    {editingModuleId === module.id ? (
+                      <input
+                        autoFocus
+                        value={editingModuleLabel}
+                        onChange={(event) => setEditingModuleLabel(event.target.value)}
+                        onClick={(event) => event.stopPropagation()}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter') saveModuleLabel(module);
+                          if (event.key === 'Escape') setEditingModuleId(null);
+                        }}
+                        onBlur={() => saveModuleLabel(module)}
+                        className="min-w-0 flex-1 rounded border border-primary/30 bg-surface px-2 py-1 text-sm font-bold text-text outline-none"
+                        aria-label="Nombre interno del módulo"
+                      />
+                    ) : (
+                      <span className={`text-[14px] font-bold flex-1 truncate ${
+                        isModuleExpanded ? 'text-primary' : 'text-text'
+                      }`}>
+                        {resolveModuleEditorLabel(module)}
+                      </span>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setEditingModuleId(module.id);
+                        setEditingModuleLabel(resolveModuleEditorLabel(module));
+                      }}
+                      className="rounded p-1 text-text/30 opacity-0 transition-all hover:bg-primary/10 hover:text-primary group-hover:opacity-100"
+                      title="Editar nombre interno"
+                      aria-label="Editar nombre interno del módulo"
+                    >
+                      <Pencil size={12} />
+                    </button>
 
                     {isMenuEligible && hasMenuModule && (
                       <button
@@ -2161,7 +2216,7 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="mt-4 mb-2"
+                    className="mt-2 ml-4 border-l-2 border-border/30 pl-3 space-y-1.5 overflow-hidden"
                   >
                     <div className="rounded-2xl border border-primary/10 bg-primary/5 p-2">
                       <button
@@ -2310,12 +2365,41 @@ export const StructurePanel: React.FC<StructurePanelProps> = ({
                                           {elementOption.icon}
                                         </div>
                                        <div className="flex-1 min-w-0">
-                                          <p className={`text-[11px] font-bold truncate ${isItemExpanded ? 'text-primary' : 'text-text'}`}>
-                                            {item.admin_label || item.title || `Elemento ${itemIndex + 1}`}
-                                          </p>
+                                          {editingBentoItemId === String(item.id || itemIndex) ? (
+                                            <input
+                                              autoFocus
+                                              value={editingBentoItemLabel}
+                                              onChange={(event) => setEditingBentoItemLabel(event.target.value)}
+                                              onClick={(event) => event.stopPropagation()}
+                                              onKeyDown={(event) => {
+                                                if (event.key === 'Enter') saveBentoItemLabel(module.id, bentoItems, itemIndex);
+                                                if (event.key === 'Escape') setEditingBentoItemId(null);
+                                              }}
+                                              onBlur={() => saveBentoItemLabel(module.id, bentoItems, itemIndex)}
+                                              className="w-full rounded border border-primary/30 bg-surface px-2 py-1 text-[11px] font-bold text-text outline-none"
+                                              aria-label={`Nombre interno del elemento ${itemIndex + 1}`}
+                                            />
+                                          ) : (
+                                            <p className={`text-[11px] font-bold truncate ${isItemExpanded ? 'text-primary' : 'text-text'}`}>
+                                              {resolveBentoEditorItemLabel(item, itemIndex)}
+                                            </p>
+                                          )}
                                            <p className="text-[9px] text-text/40 uppercase font-medium">{item.type === 'text' ? (item.text_style || 'texto') : elementOption.label}</p>
-                                        </div>
+                                       </div>
                                         <div className="flex shrink-0 items-center gap-1">
+                                          <button
+                                            type="button"
+                                            onClick={(event) => {
+                                              event.stopPropagation();
+                                              setEditingBentoItemId(String(item.id || itemIndex));
+                                              setEditingBentoItemLabel(resolveBentoEditorItemLabel(item, itemIndex));
+                                            }}
+                                            className="rounded-lg p-1.5 text-text/30 transition-colors hover:bg-primary/10 hover:text-primary"
+                                            title="Editar nombre interno"
+                                            aria-label={`Editar nombre interno del elemento ${itemIndex + 1}`}
+                                          >
+                                            <Pencil size={13} />
+                                          </button>
                                           <button
                                             type="button"
                                             disabled={itemIndex === 0}

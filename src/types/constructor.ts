@@ -70,6 +70,7 @@ export interface WebModule {
   type: string;
   iconKey?: string;
   name: string;
+  editor_label?: string;
   elements: ModuleElement[];
   globalGroups: SettingGroupType[];
   globalSettings?: Partial<Record<SettingGroupType, SettingDefinition[]>>;

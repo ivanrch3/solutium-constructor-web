@@ -6,6 +6,8 @@ import {
   reorderBentoCompositeListItems,
   reorderBentoCompositeElements,
   BENTO_BUTTON_SIZE_PRESETS,
+  BENTO_SECONDARY_TEXT_ALLOWED_LEVELS,
+  BENTO_TITLE_ALLOWED_LEVELS,
   updateBentoCompositeElement,
   type BentoCompositeElement,
 } from '../../../utils/bentoComposite';
@@ -35,7 +37,7 @@ const ListEditor = ({ element, update }: { element: BentoCompositeElement; updat
 
 export const BentoCompositeEditor = ({ value, onChange, project, projectColors = [], moduleType = 'bento', contextId = 'composite' }: Props) => {
   const elements = normalizeBentoCompositeElements(value);
-  const [expandedId, setExpandedId] = useState<string | null>(elements.find((element) => element.type === 'title')?.id || null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const update = (id: string, updates: Record<string, unknown>) => onChange(updateBentoCompositeElement(elements, id, updates));
   const move = (index: number, delta: number) => {
     onChange(reorderBentoCompositeElements(elements, index, index + delta));
@@ -78,7 +80,7 @@ export const BentoCompositeEditor = ({ value, onChange, project, projectColors =
 
   const typography = (element: BentoCompositeElement) => (
     <div className="grid grid-cols-2 gap-2">
-      {native(element, 'font_size', 'Tamaño', 'typography_size', { allowedLevels: element.type === 'title' ? ['t1', 't2', 't3', 'p', 's'] : ['t3', 'p', 's'] })}
+      {native(element, 'font_size', 'Tamaño', 'typography_size', { allowedLevels: element.type === 'title' ? BENTO_TITLE_ALLOWED_LEVELS : BENTO_SECONDARY_TEXT_ALLOWED_LEVELS })}
       {native(element, 'font_weight', 'Peso', 'font_weight')}
       {native(element, 'color', 'Color', 'color')}
       {native(element, 'line_height', 'Interlineado', 'range', { min: 1, max: 2, step: 0.05 })}

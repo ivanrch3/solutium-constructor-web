@@ -4302,6 +4302,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
         ...cloneConstructorData(source),
         id: duplicatedModuleId,
         templateId: source.templateId || source.id,
+        editor_label: source.editor_label ? `${source.editor_label} copia` : undefined,
         elements: duplicatedElements,
         content: cloneDuplicatedModuleContent(source)
       };

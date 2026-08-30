@@ -14,6 +14,7 @@ import {
 import { logDebug } from '../../utils/debug';
 import { resolveBentoIconSpacing, updateBentoIconSpacing, type BentoIconDevice } from '../../utils/bentoIconSpacing';
 import { getBentoItemId, resolveBentoAutoRows, resolveBentoDefaultWidthPreset, resolveBentoEditorTab, resolveBentoPresetColumns, resolveBentoRowHeight, resolveBentoSettingId, resolveBentoWidthPreset, type BentoWidthPreset } from '../../utils/bentoCore';
+import { BENTO_EDITOR_TAB_ORDER } from '../../utils/bentoComposite';
 import { SettingControl } from './SettingControl';
 import { BentoCompositeEditor } from './modules/BentoCompositeEditor';
 
@@ -45,9 +46,10 @@ const PILLAR_LABELS: Record<string, string> = {
 
 const PILLARS_ORDER: string[] = ['contenido', 'estructura', 'estilo', 'tipografia', 'multimedia', 'interaccion'];
 const BENTO_EDITOR_TABS = [
-  { id: 'estructura', label: 'Estructura', pillars: ['estructura'] },
-  { id: 'contenido', label: 'Contenido', pillars: ['contenido'] },
-  { id: 'diseno', label: 'Diseño', pillars: ['diseno'] }
+  { id: BENTO_EDITOR_TAB_ORDER[0], label: 'Mover', pillars: [] },
+  { id: BENTO_EDITOR_TAB_ORDER[1], label: 'Estructura', pillars: ['estructura'] },
+  { id: BENTO_EDITOR_TAB_ORDER[2], label: 'Contenido', pillars: ['contenido'] },
+  { id: BENTO_EDITOR_TAB_ORDER[3], label: 'Diseño', pillars: ['diseno'] }
 ] as const;
 const ICON_SETTINGS_TABS = [
   { id: 'structure', label: 'Estructura', pillars: ['estructura', 'estilo', 'interaccion'] },
@@ -675,10 +677,10 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
     if (!field.subsection && textGroupBySetting[field.id]) {
       nextField = { ...nextField, subsection: textGroupBySetting[field.id] };
     }
-    if (selectedType === 'icon' && field.id === 'title_size') {
+    if (field.id === 'title_size') {
       nextField = { ...nextField, allowedLevels: ['t1', 't2', 't3'] };
     }
-    if (selectedType === 'icon' && field.id === 'description_size') {
+    if (field.id === 'description_size') {
       nextField = { ...nextField, allowedLevels: ['t3', 'p', 's'] };
     }
     if (selectedType === 'icon' && field.id === 'desktop_span') {
@@ -1269,7 +1271,7 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
   );
 
   const bentoEditorTabs = (
-    <div className="grid grid-cols-3 gap-1 rounded-lg bg-gray-100 p-1" role="tablist" aria-label="Configuración del elemento Bento">
+    <div className="grid grid-cols-4 gap-1 rounded-lg bg-gray-100 p-1" role="tablist" aria-label="Configuración del elemento Bento">
       {BENTO_EDITOR_TABS.map((tab) => {
         const isActive = activeBentoTab === tab.id;
         return (
@@ -1367,8 +1369,8 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
       <div className="flex-1 overflow-y-auto custom-scrollbar">
         {embedded ? (
           <div className="space-y-5 p-3">
-            {movementControls}
             {bentoEditorTabs}
+            {activeBentoTab === 'mover' && <div className="mt-3">{movementControls}</div>}
             {compositeContentEditor}
             {activeBentoTabConfig.pillars.map(pillar => {
               const fields = settingsByPillar[pillar];
@@ -1393,8 +1395,8 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
         ) : (
           <>
           <div className="p-4 pb-2">
-            {movementControls}
-            <div className={movementControls ? 'mt-3' : ''}>{bentoEditorTabs}</div>
+            {bentoEditorTabs}
+            {activeBentoTab === 'mover' && <div className="mt-3">{movementControls}</div>}
           </div>
           {compositeContentEditor}
           {activeBentoTabConfig.pillars.map(pillar => {

@@ -2,7 +2,7 @@ import React from 'react';
 import * as LucideIcons from 'lucide-react';
 import { ArrowRight, Check, Sparkles } from 'lucide-react';
 import { TYPOGRAPHY_SCALE } from '../../../constants/typography';
-import { getBentoButtonSizePreset, normalizeBentoCompositeElements, normalizeBentoCompositeListItems, resolveBentoCompositeLayout, resolveBentoCompositeTextAlign, type BentoCompositeElement } from '../../../utils/bentoComposite';
+import { getBentoButtonSizePreset, normalizeBentoCompositeElements, normalizeBentoCompositeListItems, resolveBentoCompositeLayout, resolveBentoCompositeTextAlign, shouldRenderBentoImagePlaceholder, type BentoCompositeElement } from '../../../utils/bentoComposite';
 
 const getFontSize = (token: unknown, fallback: keyof typeof TYPOGRAPHY_SCALE) => (
   TYPOGRAPHY_SCALE[String(token) as keyof typeof TYPOGRAPHY_SCALE]?.fontSize
@@ -33,6 +33,14 @@ export const BentoCompositeContent = ({ item, darkMode, breakpoint = 'desktop', 
     } as React.CSSProperties;
 
     if (element.type === 'image') {
+      if (shouldRenderBentoImagePlaceholder(element.src, isPreviewMode)) {
+        return <div key={element.id} className="flex min-h-28 w-full max-w-[220px] items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-slate-100 text-slate-400">
+          <div className="flex flex-col items-center gap-1 text-[10px] font-semibold uppercase tracking-wider">
+            <LucideIcons.Image size={36} strokeWidth={1.5} />
+            <span>Imagen</span>
+          </div>
+        </div>;
+      }
       if (!element.src) return null;
       return <img key={element.id} src={element.src} alt={element.alt || ''} className="max-h-48 w-full max-w-[220px] object-contain" style={{ borderRadius: `${Number(element.radius) || 16}px` }} />;
     }

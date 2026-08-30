@@ -30,12 +30,13 @@ export const resolveBentoEditorItemLabel = (item: Record<string, unknown> | unde
   String(item?.admin_label || `Elemento ${index + 1}`)
 );
 
-export const BENTO_BUTTON_SIZE_PRESETS: Record<BentoButtonSize, { label: string; fontSize: number; paddingX: number; paddingY: number; minHeight: number }> = {
-  small: { label: 'Pequeño', fontSize: 11, paddingX: 12, paddingY: 6, minHeight: 32 },
-  medium: { label: 'Mediano', fontSize: 12, paddingX: 16, paddingY: 8, minHeight: 36 },
-  large: { label: 'Grande', fontSize: 14, paddingX: 20, paddingY: 10, minHeight: 44 }
-};
 export const resolveBentoButtonSize = (value: unknown): BentoButtonSize => value === 'small' || value === 'large' ? value : 'medium';
+// Medium matches the dominant content CTA contract used by Hero/CTA modules.
+export const BENTO_BUTTON_SIZE_PRESETS: Record<BentoButtonSize, { label: string; fontSize: number; paddingX: number; paddingY: number; minHeight: number; iconSize: number; iconGap: number }> = {
+  small: { label: 'Pequeño', fontSize: 13, paddingX: 28, paddingY: 14, minHeight: 44, iconSize: 16, iconGap: 8 },
+  medium: { label: 'Mediano', fontSize: 14, paddingX: 32, paddingY: 16, minHeight: 50, iconSize: 18, iconGap: 8 },
+  large: { label: 'Grande', fontSize: 16, paddingX: 38, paddingY: 20, minHeight: 60, iconSize: 20, iconGap: 10 }
+};
 export const getBentoButtonSizePreset = (value: unknown) => BENTO_BUTTON_SIZE_PRESETS[resolveBentoButtonSize(value)];
 export const resolveBentoCompositeTextAlign = (value: unknown): 'left' | 'center' | 'right' => value === 'center' ? 'center' : value === 'end' || value === 'right' ? 'right' : 'left';
 
@@ -66,6 +67,12 @@ export const BENTO_COMPOSITE_ELEMENT_TYPES: BentoCompositeElementType[] = [
 
 export const resolveBentoCompositeLayout = (layout: unknown, breakpoint: 'desktop' | 'tablet' | 'mobile' = 'desktop') => (
   layout === 'horizontal' && breakpoint !== 'mobile' ? 'horizontal' : 'vertical'
+);
+
+export const resolveBentoCompositeContainerSizing = (breakpoint: 'desktop' | 'tablet' | 'mobile' = 'desktop') => (
+  breakpoint === 'mobile'
+    ? { width: '100%', maxWidth: '100%', minWidth: 0 }
+    : { maxWidth: '100%', minWidth: 0 }
 );
 
 export const regenerateBentoCompositeElementIds = (
@@ -132,7 +139,7 @@ export const estimateBentoCompositeHeight = (item: Record<string, any> = {}, bre
     if (element.type === 'title') return textLines(element.text, charsPerLine) * 32;
     if (element.type === 'description') return textLines(element.text, charsPerLine) * 24;
     if (element.type === 'list') return Math.max(1, Array.isArray(element.items) ? element.items.length : 0) * 30;
-    return 44;
+    return getBentoButtonSizePreset(element.buttonSize).minHeight;
   };
   const sum = (items: BentoCompositeElement[]) => items.reduce((total, element) => total + elementHeight(element), 0) + Math.max(items.length - 1, 0) * gap;
   const isHorizontal = resolveBentoCompositeLayout(item.composite_layout, breakpoint) === 'horizontal';

@@ -1425,7 +1425,10 @@ export const BentoModule: React.FC<{
   const getIntrinsicPadding = (item: any) => {
     if (item?.type === 'visual' || item?.type === 'icon') return 0;
     const padding = Math.max(0, parseNumSafe(item?.padding, 32));
-    return padding * 2;
+    const border = resolveBentoBorderVisibility(item)
+      ? resolveBentoBorderWidth(item?.border_width, item?.border_style) * 2
+      : 0;
+    return (padding * 2) + border;
   };
   const resolveEffectiveWidth = (item: any, breakpoint: 'desktop' | 'tablet' | 'mobile', cols: number) => {
     return resolveBentoEffectiveWidth(item, breakpoint, cols);
@@ -1680,16 +1683,29 @@ export const BentoModule: React.FC<{
     if (isPreviewMode || typeof ResizeObserver === 'undefined') return;
     const node = gridContainerRef.current;
     if (!node) return;
-    const observer = new ResizeObserver((entries) => {
+    const measurementKey = BENTO_BREAKPOINT_TO_LAYOUT[effectiveBreakpoint] || 'desktop';
+    setIntrinsicSizes((current) => {
+      const next = { ...current };
+      let changed = false;
+      rawItems.forEach((item: any) => {
+        const key = `${getBentoItemId(item)}:${measurementKey}`;
+        if (key in next) {
+          delete next[key];
+          changed = true;
+        }
+      });
+      return changed ? next : current;
+    });
+    const measureTargets = (targets: Element[]) => {
       setIntrinsicSizes((current) => {
         let changed = false;
         const next = { ...current };
-        entries.forEach((entry) => {
-          const id = (entry.target as HTMLElement).dataset.bentoIntrinsicContent;
+        targets.forEach((target) => {
+          const id = (target as HTMLElement).dataset.bentoIntrinsicContent;
           if (!id) return;
-          const rect = entry.target.getBoundingClientRect();
+          const rect = target.getBoundingClientRect();
           const height = Number.isFinite(rect.height) ? Math.max(0, rect.height) : 0;
-          const key = `${id}:${effectiveBreakpoint}`;
+          const key = `${id}:${measurementKey}`;
           const previous = next[key];
           if (!previous || Math.abs(previous.height - height) > 1) {
             next[key] = { height };
@@ -1698,9 +1714,17 @@ export const BentoModule: React.FC<{
         });
         return changed ? next : current;
       });
+    };
+    const observer = new ResizeObserver((entries) => {
+      measureTargets(entries.map((entry) => entry.target));
     });
-    node.querySelectorAll<HTMLElement>('[data-bento-intrinsic-content]').forEach((target) => observer.observe(target));
-    return () => observer.disconnect();
+    const targets = Array.from(node.querySelectorAll<HTMLElement>('[data-bento-intrinsic-content]'));
+    targets.forEach((target) => observer.observe(target));
+    const initialMeasurementFrame = window.requestAnimationFrame(() => measureTargets(targets));
+    return () => {
+      window.cancelAnimationFrame(initialMeasurementFrame);
+      observer.disconnect();
+    };
   }, [rawItems, effectiveBreakpoint, isPreviewMode]);
 
   const decorateLayouts = (entries: any[], breakpoint: 'desktop' | 'tablet' | 'mobile') => entries.map((entry) => {
@@ -2479,7 +2503,7 @@ export const BentoModule: React.FC<{
                     {/* Content */}
                     <div
                       data-bento-intrinsic-content={getBentoItemId(item)}
-                      className="inline-flex min-w-0 max-w-full flex-col"
+                      className={`min-w-0 max-w-full flex-col ${type === 'composite' && (BENTO_BREAKPOINT_TO_LAYOUT[effectiveBreakpoint] || 'desktop') === 'mobile' ? 'flex w-full' : 'inline-flex'}`}
                     >
                     <BentoCellContent 
                         item={item} 

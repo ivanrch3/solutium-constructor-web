@@ -55,9 +55,10 @@ test('horizontal composition becomes vertical on mobile', () => {
   assert.equal(resolveBentoCompositeLayout('horizontal', 'mobile'), 'vertical');
 });
 
-test('mobile composite sizing is explicitly constrained while desktop preserves intrinsic composition', () => {
-  assert.deepEqual(resolveBentoCompositeContainerSizing('mobile'), { width: '100%', maxWidth: '100%', minWidth: 0 });
-  assert.deepEqual(resolveBentoCompositeContainerSizing('desktop'), { maxWidth: '100%', minWidth: 0 });
+test('composite root uses the full available width at every breakpoint', () => {
+  for (const breakpoint of ['desktop', 'tablet', 'mobile'] as const) {
+    assert.deepEqual(resolveBentoCompositeContainerSizing(breakpoint), { width: '100%', maxWidth: '100%', minWidth: 0 });
+  }
 });
 
 test('composite auto height grows with content and uses the horizontal max', () => {

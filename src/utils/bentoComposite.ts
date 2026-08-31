@@ -69,11 +69,11 @@ export const resolveBentoCompositeLayout = (layout: unknown, breakpoint: 'deskto
   layout === 'horizontal' && breakpoint !== 'mobile' ? 'horizontal' : 'vertical'
 );
 
-export const resolveBentoCompositeContainerSizing = (breakpoint: 'desktop' | 'tablet' | 'mobile' = 'desktop') => (
-  breakpoint === 'mobile'
-    ? { width: '100%', maxWidth: '100%', minWidth: 0 }
-    : { maxWidth: '100%', minWidth: 0 }
-);
+export const resolveBentoCompositeContainerSizing = (_breakpoint: 'desktop' | 'tablet' | 'mobile' = 'desktop') => ({
+  width: '100%',
+  maxWidth: '100%',
+  minWidth: 0
+});
 
 export const regenerateBentoCompositeElementIds = (
   elements: BentoCompositeElement[],

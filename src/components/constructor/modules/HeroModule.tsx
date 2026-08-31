@@ -12,6 +12,7 @@ import { getButtonTypographyStyle, getLegacyButtonTypographyStyle, parseNumSafe 
 import { useEditorStore } from '../../../store/editorStore';
 import { normalizeSectionAnimation } from '../../../constants/moduleAnimations';
 import { getProjectThemeFromSettings, resolveBrandColor } from '../../../utils/projectTheme';
+import { resolveHeroCtaLink } from '../../../utils/heroCtaLink';
 
 import { logDebug } from '../../../utils/debug';
 
@@ -387,14 +388,10 @@ export const HeroModule: React.FC<{
   const showPrimary = toBoolean(getVal(`${moduleId}_el_hero_ctas`, 'show_primary', true));
   const showSecondary = toBoolean(getVal(`${moduleId}_el_hero_ctas`, 'show_secondary', true));
 
-  const isValidCta = (text?: string, url?: string) => {
-    const safeText = String(text || '').trim();
-    const safeUrl = String(url || '').trim();
-    return safeText !== '' && (safeUrl === '' || safeUrl === '#' || safeUrl.startsWith('#') || safeUrl.startsWith('/') || /^https?:/i.test(safeUrl));
-  };
-
-  const hasPrimary = showPrimary && isValidCta(primaryText, primaryUrl);
-  const hasSecondary = showSecondary && isValidCta(secondaryText, secondaryUrl);
+  const primaryLink = resolveHeroCtaLink(primaryUrl, primaryType, primaryTarget);
+  const secondaryLink = resolveHeroCtaLink(secondaryUrl, secondaryType, secondaryTarget);
+  const hasPrimary = showPrimary && String(primaryText || '').trim() !== '' && primaryLink !== null;
+  const hasSecondary = showSecondary && String(secondaryText || '').trim() !== '' && secondaryLink !== null;
 
   const rawPrimaryBg = getVal(`${moduleId}_el_hero_ctas`, 'primary_bg', 'var(--primary-color)');
   const primaryBg = resolveBrandColor({
@@ -591,9 +588,9 @@ export const HeroModule: React.FC<{
         >
         {hasPrimary && (
             <motion.a 
-              href={primaryUrl || '#'}
-              target={primaryTarget === '_blank' ? '_blank' : undefined}
-              rel={primaryTarget === '_blank' ? 'noopener noreferrer' : undefined}
+              href={primaryLink?.href || '#'}
+              target={primaryLink?.target}
+              rel={primaryLink?.rel}
               whileHover={hoverEffect === 'lift' ? { y: -5 } : {}}
               whileTap={{ scale: 0.95 }}
               onClick={(e) => {
@@ -630,9 +627,9 @@ export const HeroModule: React.FC<{
 
         {hasSecondary && (
           <motion.a 
-            href={secondaryUrl || '#'}
-            target={secondaryTarget === '_blank' ? '_blank' : undefined}
-            rel={secondaryTarget === '_blank' ? 'noopener noreferrer' : undefined}
+            href={secondaryLink?.href || '#'}
+            target={secondaryLink?.target}
+            rel={secondaryLink?.rel}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={(e) => {

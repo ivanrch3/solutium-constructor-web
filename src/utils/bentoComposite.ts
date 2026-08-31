@@ -20,7 +20,7 @@ export type BentoCompositeListItem = { id: string; text: string };
 export type BentoButtonSize = 'small' | 'medium' | 'large';
 export const BENTO_TITLE_ALLOWED_LEVELS = ['t1', 't2', 't3'] as const;
 export const BENTO_SECONDARY_TEXT_ALLOWED_LEVELS = ['t3', 'p', 's'] as const;
-export const BENTO_EDITOR_TAB_ORDER = ['mover', 'estructura', 'contenido', 'diseno'] as const;
+export const BENTO_EDITOR_TAB_ORDER = ['contenido', 'estructura', 'diseno', 'mover'] as const;
 
 export const shouldRenderBentoImagePlaceholder = (source: unknown, isPreviewMode: boolean) => (
   !isPreviewMode && !String(source || '').trim()

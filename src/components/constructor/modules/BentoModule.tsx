@@ -29,6 +29,7 @@ import {
   resolveBentoBorderWidth,
   resolveBentoBorderColor,
   resolveBentoEffectiveRows,
+  updateBentoIntrinsicSize,
   resolveBentoEffectiveWidth,
   resolveBentoResizeHandles,
   resolveBentoDefaultWidthPreset,
@@ -1684,35 +1685,18 @@ export const BentoModule: React.FC<{
     const node = gridContainerRef.current;
     if (!node) return;
     const measurementKey = BENTO_BREAKPOINT_TO_LAYOUT[effectiveBreakpoint] || 'desktop';
-    setIntrinsicSizes((current) => {
-      const next = { ...current };
-      let changed = false;
-      rawItems.forEach((item: any) => {
-        const key = `${getBentoItemId(item)}:${measurementKey}`;
-        if (key in next) {
-          delete next[key];
-          changed = true;
-        }
-      });
-      return changed ? next : current;
-    });
     const measureTargets = (targets: Element[]) => {
       setIntrinsicSizes((current) => {
-        let changed = false;
-        const next = { ...current };
+        let next = current;
         targets.forEach((target) => {
           const id = (target as HTMLElement).dataset.bentoIntrinsicContent;
           if (!id) return;
           const rect = target.getBoundingClientRect();
           const height = Number.isFinite(rect.height) ? Math.max(0, rect.height) : 0;
-          const key = `${id}:${measurementKey}`;
-          const previous = next[key];
-          if (!previous || Math.abs(previous.height - height) > 1) {
-            next[key] = { height };
-            changed = true;
-          }
+          const updated = updateBentoIntrinsicSize(next, id, measurementKey, height);
+          if (updated !== next) next = updated;
         });
-        return changed ? next : current;
+        return next;
       });
     };
     const observer = new ResizeObserver((entries) => {
@@ -1739,48 +1723,6 @@ export const BentoModule: React.FC<{
     xs: decorateLayouts(getBentoLayoutForBreakpoint(rawItems, 'mobile', BENTO_MOBILE_COLUMNS), 'mobile'),
     xxs: decorateLayouts(getBentoLayoutForBreakpoint(rawItems, 'mobile', 1), 'mobile')
   }), [rawItems, columns, gap, effectiveRowHeight, intrinsicSizes, gridWidth, isPreviewMode]);
-
-  // Persist only measured auto geometry as a derived render snapshot. Manual
-  // span/row preferences remain untouched and are never replaced by this effect.
-  const lastPersistedDerivedSignatureRef = useRef('');
-  useEffect(() => {
-    if (isPreviewMode || !onSettingChange) return;
-    const breakpointKey = BENTO_BREAKPOINT_TO_LAYOUT[effectiveBreakpoint] || 'desktop';
-    const currentLayout = (layouts as any)[effectiveBreakpoint] || [];
-    const measuredItems = rawItems.filter((item: any) => Boolean(getIntrinsicSize(item, breakpointKey)));
-    if (measuredItems.length === 0) return;
-
-    let nextItems = [...rawItems];
-    let changed = false;
-    currentLayout.forEach((entry: any) => {
-      const itemIndex = findItemIndexByLayoutId(nextItems, String(entry.i));
-      const item = nextItems[itemIndex];
-      if (!item || !getIntrinsicSize(item, breakpointKey)) return;
-      const autoHeight = resolveBentoHeightMode(item) === 'auto';
-      if (!autoHeight) return;
-      const existing = item.layouts?.[breakpointKey];
-      const differs = !existing
-        || Number(existing.h) !== Number(entry.h);
-      if (!differs) return;
-      nextItems = reconcileBentoLayoutById(nextItems, {
-        i: String(entry.i),
-        x: Number(entry.x) || 0,
-        y: Number(entry.y) || 0,
-        w: Number(entry.w) || 1,
-        h: Number(entry.h) || 1,
-        columns: getColumnsForBreakpoint(effectiveBreakpoint)
-      }, breakpointKey);
-      changed = true;
-    });
-
-    if (!changed) return;
-    const signature = JSON.stringify(nextItems
-      .map((item: any) => ({ id: getBentoItemId(item), layout: item.layouts?.[breakpointKey], source: item.layout_sources?.[breakpointKey] }))
-      .sort((left, right) => left.id.localeCompare(right.id)));
-    if (signature === lastPersistedDerivedSignatureRef.current) return;
-    lastPersistedDerivedSignatureRef.current = signature;
-    onSettingChange(`${moduleId}_el_bento_items`, 'items', nextItems);
-  }, [effectiveBreakpoint, intrinsicSizes, isPreviewMode, layouts, moduleId, onSettingChange, rawItems]);
 
   const persistLayoutChange = (currentLayout: readonly any[], allLayouts?: any) => {
     if (!onSettingChange || isPreviewMode) return;

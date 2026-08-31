@@ -140,9 +140,9 @@ test('editor labels use custom metadata without changing element identity', () =
   assert.equal(item.id, 'stable-cell-id');
 });
 
-test('composite editor keeps movement first while structure remains the default tab', () => {
-  assert.deepEqual(BENTO_EDITOR_TAB_ORDER, ['mover', 'estructura', 'contenido', 'diseno']);
-  assert.equal(BENTO_EDITOR_TAB_ORDER[1], 'estructura');
+test('composite editor follows the semantic tab order with content as default', () => {
+  assert.deepEqual(BENTO_EDITOR_TAB_ORDER, ['contenido', 'estructura', 'diseno', 'mover']);
+  assert.equal(BENTO_EDITOR_TAB_ORDER[0], 'contenido');
 });
 
 test('image placeholder is editor-only and requires an empty source', () => {

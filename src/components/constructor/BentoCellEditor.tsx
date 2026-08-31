@@ -14,7 +14,6 @@ import {
 import { logDebug } from '../../utils/debug';
 import { resolveBentoIconSpacing, updateBentoIconSpacing, type BentoIconDevice } from '../../utils/bentoIconSpacing';
 import { getBentoItemId, resolveBentoAutoRows, resolveBentoDefaultWidthPreset, resolveBentoEditorTab, resolveBentoPresetColumns, resolveBentoRowHeight, resolveBentoSettingId, resolveBentoWidthPreset, type BentoWidthPreset } from '../../utils/bentoCore';
-import { BENTO_EDITOR_TAB_ORDER } from '../../utils/bentoComposite';
 import { SettingControl } from './SettingControl';
 import { BentoCompositeEditor } from './modules/BentoCompositeEditor';
 
@@ -46,10 +45,10 @@ const PILLAR_LABELS: Record<string, string> = {
 
 const PILLARS_ORDER: string[] = ['contenido', 'estructura', 'estilo', 'tipografia', 'multimedia', 'interaccion'];
 const BENTO_EDITOR_TABS = [
-  { id: BENTO_EDITOR_TAB_ORDER[0], label: 'Mover', pillars: [] },
-  { id: BENTO_EDITOR_TAB_ORDER[1], label: 'Estructura', pillars: ['estructura'] },
-  { id: BENTO_EDITOR_TAB_ORDER[2], label: 'Contenido', pillars: ['contenido'] },
-  { id: BENTO_EDITOR_TAB_ORDER[3], label: 'Diseño', pillars: ['diseno'] }
+  { id: 'contenido', label: 'Contenido', pillars: ['contenido'] },
+  { id: 'estructura', label: 'Estructura', pillars: ['estructura'] },
+  { id: 'diseno', label: 'Diseño', pillars: ['diseno'] },
+  { id: 'mover', label: 'Mover', pillars: [] }
 ] as const;
 const ICON_SETTINGS_TABS = [
   { id: 'structure', label: 'Estructura', pillars: ['estructura', 'estilo', 'interaccion'] },
@@ -391,7 +390,7 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
   const selectedBentoItem = getSelectedBentoItem();
   const selectedType = selectedBentoItem?.type || 'text';
   const selectedBentoItemId = selectedBentoItem ? getBentoItemId(selectedBentoItem) : null;
-  const activeBentoTab = selectedBentoItemId ? bentoTabByElementId[selectedBentoItemId] || 'estructura' : 'estructura';
+  const activeBentoTab = selectedBentoItemId ? bentoTabByElementId[selectedBentoItemId] || 'contenido' : 'contenido';
   const setActiveBentoTab = (tab: (typeof BENTO_EDITOR_TABS)[number]['id']) => {
     if (!selectedBentoItemId) return;
     setBentoTabByElementId((previous) => ({ ...previous, [selectedBentoItemId]: tab }));

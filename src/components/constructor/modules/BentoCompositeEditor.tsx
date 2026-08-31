@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { ChevronDown, ChevronRight, ChevronUp } from 'lucide-react';
 import {
   normalizeBentoCompositeElements,
@@ -18,7 +18,7 @@ const labels: Record<string, string> = {
   list: 'Lista', button_primary: 'Botón principal', button_secondary: 'Botón secundario'
 };
 
-type Props = { value: unknown; onChange: (value: BentoCompositeElement[]) => void; project?: any; projectColors?: string[]; moduleType?: string; contextId?: string };
+type Props = { value: unknown; onChange: (value: BentoCompositeElement[]) => void; project?: any; projectColors?: string[]; moduleType?: string; contextId?: string; activeSection?: string | null; onActiveSectionChange?: (section: string | null) => void };
 
 const ListEditor = ({ element, update }: { element: BentoCompositeElement; update: (id: string, updates: Record<string, unknown>) => void }) => {
   const items = normalizeBentoCompositeListItems(element.items);
@@ -35,13 +35,12 @@ const ListEditor = ({ element, update }: { element: BentoCompositeElement; updat
   </div>;
 };
 
-export const BentoCompositeEditor = ({ value, onChange, project, projectColors = [], moduleType = 'bento', contextId = 'composite' }: Props) => {
+export const BentoCompositeEditor = ({ value, onChange, project, projectColors = [], moduleType = 'bento', contextId = 'composite', activeSection = null, onActiveSectionChange }: Props) => {
   const elements = normalizeBentoCompositeElements(value);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const expandedId = elements.find((element) => element.type === activeSection)?.id || null;
   const update = (id: string, updates: Record<string, unknown>) => onChange(updateBentoCompositeElement(elements, id, updates));
   const move = (index: number, delta: number) => {
     onChange(reorderBentoCompositeElements(elements, index, index + delta));
-    setExpandedId(null);
   };
   const native = (element: BentoCompositeElement, id: string, label: string, type: string, extra: Record<string, unknown> = {}) => (
     <SettingControl
@@ -75,7 +74,8 @@ export const BentoCompositeEditor = ({ value, onChange, project, projectColors =
   const buttonTypography = (element: BentoCompositeElement) => <div className="grid grid-cols-2 gap-2">
     {native(element, 'font_family', 'Familia tipográfica', 'select', { options: [{ label: 'Heredada del tema', value: 'inherit' }, { label: 'Sans', value: 'sans-serif' }, { label: 'Serif', value: 'serif' }, { label: 'Monoespaciada', value: 'monospace' }] })}
     {native(element, 'font_weight', 'Peso', 'font_weight')}
-    {native(element, 'color', 'Color', 'color', { hideTechnicalValue: true })}
+    {native(element, 'background_color', 'Color del botón', 'color', { hideTechnicalValue: true })}
+    {native(element, 'text_color', 'Color del texto', 'color', { hideTechnicalValue: true })}
   </div>;
 
   const typography = (element: BentoCompositeElement) => (
@@ -108,7 +108,7 @@ export const BentoCompositeEditor = ({ value, onChange, project, projectColors =
         return <div key={element.id} className="overflow-hidden rounded-lg border border-gray-200 bg-white">
           <div className="flex items-center gap-2 px-2 py-2">
             <input aria-label={`Habilitar ${labels[element.type]}`} type="checkbox" checked={element.enabled} onChange={(event) => update(element.id, { enabled: event.target.checked })} />
-            <button type="button" onClick={() => setExpandedId(expanded ? null : element.id)} className="flex min-w-0 flex-1 items-center gap-1 text-left text-xs font-bold text-gray-700">{expanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}{labels[element.type]}</button>
+            <button type="button" onClick={() => onActiveSectionChange?.(expanded ? null : element.type)} className="flex min-w-0 flex-1 items-center gap-1 text-left text-xs font-bold text-gray-700">{expanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}{labels[element.type]}</button>
             <button type="button" aria-label={`Subir ${labels[element.type]}`} disabled={index === 0} onClick={() => move(index, -1)} className="text-gray-400 disabled:opacity-30"><ChevronUp size={14} /></button>
             <button type="button" aria-label={`Bajar ${labels[element.type]}`} disabled={index === elements.length - 1} onClick={() => move(index, 1)} className="text-gray-400 disabled:opacity-30"><ChevronDown size={14} /></button>
           </div>

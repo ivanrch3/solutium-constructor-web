@@ -1,3 +1,5 @@
+import { FONT_WEIGHTS, type FontWeightToken } from '../constants/typography';
+
 export type BentoCompositeElementType =
   | 'label'
   | 'image'
@@ -39,6 +41,25 @@ export const BENTO_BUTTON_SIZE_PRESETS: Record<BentoButtonSize, { label: string;
 };
 export const getBentoButtonSizePreset = (value: unknown) => BENTO_BUTTON_SIZE_PRESETS[resolveBentoButtonSize(value)];
 export const resolveBentoCompositeTextAlign = (value: unknown): 'left' | 'center' | 'right' => value === 'center' ? 'center' : value === 'end' || value === 'right' ? 'right' : 'left';
+
+export const resolveBentoFontWeightToken = (value: unknown, fallback: FontWeightToken = 'normal'): FontWeightToken => {
+  const normalized = String(value ?? '').trim().toLowerCase();
+  if (normalized in FONT_WEIGHTS) return normalized as FontWeightToken;
+  const numeric = Number(normalized);
+  const matchingToken = (Object.entries(FONT_WEIGHTS) as [FontWeightToken, { value: number }][])
+    .find(([, info]) => info.value === numeric)?.[0];
+  return matchingToken || fallback;
+};
+
+export const resolveBentoFontWeight = (value: unknown, fallback: FontWeightToken = 'normal') => (
+  FONT_WEIGHTS[resolveBentoFontWeightToken(value, fallback)].value
+);
+
+export const resolveBentoButtonColors = (element: Record<string, any>, isSecondary: boolean) => ({
+  background: element.background_color || (isSecondary ? 'transparent' : 'var(--color-primary, #2563EB)'),
+  text: element.text_color || element.color || (isSecondary ? 'var(--color-primary, #2563EB)' : 'var(--color-primary-foreground, #FFFFFF)'),
+  border: element.border_color || (isSecondary ? (element.background_color || 'var(--color-primary, #2563EB)') : element.background_color || 'transparent')
+});
 
 export const normalizeBentoCompositeListItems = (value: unknown): BentoCompositeListItem[] => (
   Array.isArray(value)
@@ -99,7 +120,8 @@ export const normalizeBentoCompositeElements = (value: unknown): BentoCompositeE
     ...element,
     id: element?.id || defaultId(element?.type || 'title', index),
     type: BENTO_COMPOSITE_ELEMENT_TYPES.includes(element?.type) ? element.type : 'title',
-    enabled: element?.enabled === true
+    enabled: element?.enabled === true,
+    ...(element?.font_weight !== undefined ? { font_weight: resolveBentoFontWeightToken(element.font_weight, element?.type === 'title' ? 'extrabold' : 'normal') } : {})
   }));
 };
 
@@ -127,7 +149,7 @@ export const estimateBentoCompositeHeight = (item: Record<string, any> = {}, bre
   const elements = normalizeBentoCompositeElements(item.composite_elements).filter((element) => element.enabled);
   const span = breakpoint === 'mobile' ? item.mobile_span || item.col_span || 4 : breakpoint === 'tablet' ? item.tablet_span || item.col_span || 3 : item.desktop_span || item.col_span || 8;
   const charsPerLine = breakpoint === 'mobile' ? 20 : Math.max(18, Math.round(Number(span) * 4.5));
-  const padding = Math.max(0, Number(item.padding) || 32);
+  const padding = Math.max(0, Number(item.vertical_padding ?? item.padding) || 32);
   const gap = Math.max(0, Number(item.composite_gap) || 12);
   const visualTypes = new Set(['image', 'icon']);
   const visual = elements.filter((element) => visualTypes.has(element.type));

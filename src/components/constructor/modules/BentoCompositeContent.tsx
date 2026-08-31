@@ -2,7 +2,7 @@ import React from 'react';
 import * as LucideIcons from 'lucide-react';
 import { ArrowRight, Check, Sparkles } from 'lucide-react';
 import { TYPOGRAPHY_SCALE } from '../../../constants/typography';
-import { getBentoButtonSizePreset, normalizeBentoCompositeElements, normalizeBentoCompositeListItems, resolveBentoCompositeContainerSizing, resolveBentoCompositeLayout, resolveBentoCompositeTextAlign, shouldRenderBentoImagePlaceholder, type BentoCompositeElement } from '../../../utils/bentoComposite';
+import { getBentoButtonSizePreset, normalizeBentoCompositeElements, normalizeBentoCompositeListItems, resolveBentoButtonColors, resolveBentoCompositeContainerSizing, resolveBentoCompositeLayout, resolveBentoCompositeTextAlign, resolveBentoFontWeight, shouldRenderBentoImagePlaceholder, type BentoCompositeElement } from '../../../utils/bentoComposite';
 
 const getFontSize = (token: unknown, fallback: keyof typeof TYPOGRAPHY_SCALE) => (
   TYPOGRAPHY_SCALE[String(token) as keyof typeof TYPOGRAPHY_SCALE]?.fontSize
@@ -12,7 +12,7 @@ const getFontSize = (token: unknown, fallback: keyof typeof TYPOGRAPHY_SCALE) =>
 
 const visualTypes = new Set(['image', 'icon']);
 
-export const BentoCompositeContent = ({ item, darkMode, breakpoint = 'desktop', isPreviewMode }: any) => {
+export const BentoCompositeContent = ({ item, darkMode, breakpoint = 'desktop', isPreviewMode, onImageLoad }: any) => {
   const elements = normalizeBentoCompositeElements(item?.composite_elements).filter((element) => element.enabled);
   const isHorizontal = resolveBentoCompositeLayout(item?.composite_layout, breakpoint) === 'horizontal';
   const gap = Math.max(0, Number(item?.composite_gap) || 12);
@@ -27,10 +27,11 @@ export const BentoCompositeContent = ({ item, darkMode, breakpoint = 'desktop', 
     const commonTextStyle = {
       color: element.color || color,
       fontSize: `${getFontSize(element.font_size, element.type === 'title' ? 't3' : 'p')}px`,
-      fontWeight: element.font_weight || (element.type === 'title' ? 800 : 400),
+      fontWeight: resolveBentoFontWeight(element.font_weight, element.type === 'title' ? 'extrabold' : 'normal'),
       lineHeight: element.line_height || 1.45,
       letterSpacing: `${Number(element.letter_spacing) || 0}px`
     } as React.CSSProperties;
+    const fontFamily = element.font_family && element.font_family !== 'inherit' ? element.font_family : undefined;
 
     if (element.type === 'image') {
       if (shouldRenderBentoImagePlaceholder(element.src, isPreviewMode)) {
@@ -42,22 +43,23 @@ export const BentoCompositeContent = ({ item, darkMode, breakpoint = 'desktop', 
         </div>;
       }
       if (!element.src) return null;
-      return <img key={element.id} src={element.src} alt={element.alt || ''} className="block h-auto max-h-48 w-auto max-w-full object-contain" style={{ borderRadius: `${Number(element.radius) || 16}px` }} />;
+      return <img key={element.id} src={element.src} alt={element.alt || ''} onLoad={onImageLoad} className="block h-auto max-h-48 w-auto max-w-full object-contain" style={{ borderRadius: `${Number(element.radius) || 16}px` }} />;
     }
     if (element.type === 'icon') {
       const Icon = (LucideIcons as any)[element.name] || Sparkles;
       return <div key={element.id} className="flex shrink-0 items-center justify-center rounded-2xl bg-primary/10" style={{ width: Number(element.size) || 36, height: Number(element.size) || 36, color: element.color || 'var(--color-primary, #2563EB)' }}><Icon size={Math.max(16, Number(element.size) - 8)} /></div>;
     }
-    if (element.type === 'label') return <span key={element.id} className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">{element.text}</span>;
-    if (element.type === 'title') return <h3 key={element.id} className="block w-auto min-w-0 max-w-full break-words" style={{ ...commonTextStyle, textAlign }}>{element.text}</h3>;
-    if (element.type === 'description') return <p key={element.id} className="block w-auto min-w-0 max-w-full break-words" style={{ ...commonTextStyle, color: element.color || mutedColor, textAlign }}>{element.text}</p>;
+    if (element.type === 'label') return <span key={element.id} className="block text-[10px] uppercase tracking-[0.2em]" style={{ ...commonTextStyle, fontFamily, color: element.color || 'var(--color-primary, #2563EB)' }}>{element.text}</span>;
+    if (element.type === 'title') return <h3 key={element.id} className="block w-auto min-w-0 max-w-full break-words" style={{ ...commonTextStyle, fontFamily, color: element.color || 'var(--color-foreground, #0F172A)', textAlign }}>{element.text}</h3>;
+    if (element.type === 'description') return <p key={element.id} className="block w-auto min-w-0 max-w-full break-words" style={{ ...commonTextStyle, fontFamily, color: element.color || mutedColor, textAlign }}>{element.text}</p>;
     if (element.type === 'list') {
       const items = normalizeBentoCompositeListItems(element.items);
       return <div key={element.id} className="w-auto min-w-0 max-w-full space-y-2" style={{ color: element.color || mutedColor }}>{items.map((entry) => <div key={entry.id} className="flex min-w-0 items-start gap-2 text-sm"><Check size={16} className="mt-0.5 shrink-0 text-primary" /><span className="min-w-0 break-words">{entry.text}</span></div>)}</div>;
     }
     const isSecondary = element.type === 'button_secondary';
     const preset = getBentoButtonSizePreset(element.buttonSize);
-    return <a key={element.id} href={element.url || '#'} target={element.target === '_blank' ? '_blank' : undefined} rel={element.target === '_blank' ? 'noopener noreferrer' : undefined} onClick={(event) => { event.stopPropagation(); if (!isPreviewMode) event.preventDefault(); }} className={`inline-flex max-w-full items-center justify-center whitespace-normal rounded-2xl font-bold transition-colors ${isSecondary || element.style === 'outline' ? 'border border-primary bg-transparent text-primary' : element.style === 'ghost' ? 'bg-transparent text-primary' : 'bg-primary text-white'}`} style={{ padding: `${preset.paddingY}px ${preset.paddingX}px`, minHeight: `${preset.minHeight}px`, fontSize: `${preset.fontSize}px`, fontWeight: element.font_weight || 700, color: element.color || undefined, gap: `${preset.iconGap}px`, borderRadius: '16px' }}>{element.text}<ArrowRight size={preset.iconSize} /></a>;
+    const buttonColors = resolveBentoButtonColors(element, isSecondary || element.style === 'outline');
+    return <a key={element.id} href={element.url || '#'} target={element.target === '_blank' ? '_blank' : undefined} rel={element.target === '_blank' ? 'noopener noreferrer' : undefined} onClick={(event) => { event.stopPropagation(); if (!isPreviewMode) event.preventDefault(); }} className="inline-flex max-w-full items-center justify-center whitespace-normal rounded-2xl transition-colors" style={{ padding: `${preset.paddingY}px ${preset.paddingX}px`, minHeight: `${preset.minHeight}px`, fontSize: `${preset.fontSize}px`, fontFamily, fontWeight: resolveBentoFontWeight(element.font_weight, 'semibold'), backgroundColor: buttonColors.background, color: buttonColors.text, border: `1px solid ${buttonColors.border}`, gap: `${preset.iconGap}px`, borderRadius: '16px' }}>{element.text}<ArrowRight size={preset.iconSize} /></a>;
   };
 
   const renderGroup = (group: BentoCompositeElement[], groupClassName = '') => (

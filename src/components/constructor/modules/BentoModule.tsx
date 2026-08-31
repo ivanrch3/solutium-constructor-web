@@ -33,7 +33,13 @@ import {
   resolveBentoEffectiveWidth,
   resolveBentoResizeHandles,
   resolveBentoDefaultWidthPreset,
-  resolveBentoHeightMode
+  resolveBentoHeightMode,
+  resolveBentoPadding,
+  resolveBentoLayoutBreakpoint,
+  normalizeBentoHeightState,
+  resolveBentoManualRows,
+  reconcileBentoRuntimeAutoLayout,
+  rectanglesOverlap
 } from '../../../utils/bentoCore';
 import '/node_modules/react-grid-layout/css/styles.css';
 import '/node_modules/react-resizable/css/styles.css';
@@ -100,85 +106,6 @@ const getAdaptiveTypography = (priority: string, colSpan: number, rowSpan: numbe
 
 const toBoolean = (value: unknown) => {
   return value === true || value === 'true' || value === 1 || value === '1';
-};
-
-const estimateTextLines = (value: any, charsPerLine: number) => {
-  const text = String(value || '').trim();
-  if (!text) return 0;
-  return Math.max(1, Math.ceil(text.length / Math.max(charsPerLine, 1)));
-};
-
-const getTypographyFontSize = (token: any, fallback: keyof typeof TYPOGRAPHY_SCALE) => {
-  const resolvedToken = token && token !== 'auto' ? token : fallback;
-  return TYPOGRAPHY_SCALE[resolvedToken as keyof typeof TYPOGRAPHY_SCALE]?.fontSize
-    || TYPOGRAPHY_SCALE[fallback]?.fontSize
-    || 16;
-};
-
-const getBentoResponsiveMinRows = (
-  item: any,
-  breakpoint: 'desktop' | 'tablet' | 'mobile',
-  rowHeight: number,
-  rowGap: number
-) => {
-  if (item?.height_mode === 'auto') {
-    const span = breakpoint === 'desktop'
-      ? item.desktop_span || item.col_span
-      : breakpoint === 'tablet' ? item.tablet_span || item.col_span : item.mobile_span || item.col_span;
-    return resolveBentoAutoRows(item, breakpoint, rowHeight, rowGap, span);
-  }
-  const type = item?.type || 'text';
-  if (breakpoint === 'desktop' && type !== 'icon') return 1;
-
-  const safeGap = Math.max(Number(rowGap) || 0, 0);
-  let minHeight = rowHeight;
-
-  if (type === 'icon') {
-    const isImage = item.icon_visual_type === 'image';
-    const iconSize = parseNumSafe(item.icon_size, 32);
-    const iconImageSize = parseNumSafe(item.icon_image_size, 72);
-    const visualSize = isImage ? iconImageSize : Math.max(iconSize + 16, 40);
-    const iconSpacing = resolveBentoIconSpacing(item, breakpoint);
-    const hasExplicitSpacing = Boolean(item?.icon_spacing?.[breakpoint])
-      || item?.card_padding !== undefined
-      || ['top', 'right', 'bottom', 'left'].some((side) => item?.[`card_padding_${side}`] !== undefined);
-    const textPadding = hasExplicitSpacing ? 0 : parseNumSafe(item.padding, 32);
-    const span = breakpoint === 'desktop'
-      ? parseNumSafe(item.desktop_span || item.col_span, 4)
-      : breakpoint === 'tablet'
-        ? parseNumSafe(item.tablet_span || item.col_span, 2)
-        : parseNumSafe(item.mobile_span || item.col_span, 4);
-    const baseCharsPerLine = breakpoint === 'mobile' ? 22 : Math.max(18, Math.round(span * 4.5));
-    const charsPerLine = Math.max(10, baseCharsPerLine - Math.ceil((iconSpacing.left + iconSpacing.right) / 16));
-    const titleFontSize = getTypographyFontSize(item.title_size, 't3');
-    const descFontSize = getTypographyFontSize(item.description_size || item.desc_size, 'p');
-    const titleLines = estimateTextLines(item.title, charsPerLine);
-    const descLines = estimateTextLines(item.description, charsPerLine);
-    const titleHeight = titleLines * titleFontSize * 1.25;
-    const descHeight = descLines * descFontSize * 1.45;
-    const textHeight = titleLines || descLines
-      ? titleHeight + descHeight + (titleLines && descLines ? iconSpacing.internalGap : 0) + (textPadding * 2)
-      : 0;
-
-    minHeight = visualSize + (textHeight ? iconSpacing.internalGap : 0) + textHeight + iconSpacing.top + iconSpacing.bottom;
-  } else if (type === 'visual') {
-    minHeight = breakpoint === 'mobile' ? 220 : 260;
-  } else if (type === 'list') {
-    const listItems = Array.isArray(item.list_items)
-      ? item.list_items
-      : String(item.list_items || '').split('\n').filter(Boolean);
-    minHeight = 80 + (listItems.length * 28);
-  } else if (type === 'accordion') {
-    minHeight = 140 + estimateTextLines(item.description, breakpoint === 'mobile' ? 28 : 44) * 20;
-  } else if (type === 'text' || type === 'card') {
-    const charsPerLine = breakpoint === 'mobile' ? 28 : 46;
-    minHeight = 96
-      + (estimateTextLines(item.title, charsPerLine) * 24)
-      + (estimateTextLines(item.description, charsPerLine) * 22)
-      + (parseNumSafe(item.padding, 32) * 2);
-  }
-
-  return Math.max(1, Math.ceil((minHeight + safeGap) / (rowHeight + safeGap)));
 };
 
 const clampBentoDesktopColumns = (value: any) => {
@@ -347,7 +274,7 @@ const hasBentoClickAction = (item: any) => {
   return false;
 };
 
-const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave, breakpoint = 'desktop' }: any) => {
+const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave, breakpoint = 'desktop', onImageLoad }: any) => {
   const {
     type,
     title,
@@ -446,7 +373,7 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave, bre
 
   switch (type) {
     case 'composite':
-      return <BentoCompositeContent item={item} darkMode={darkMode} breakpoint={breakpoint} isPreviewMode={isPreviewMode} />;
+      return <BentoCompositeContent item={item} darkMode={darkMode} breakpoint={breakpoint} isPreviewMode={isPreviewMode} onImageLoad={onImageLoad} />;
     case 'hero':
       return (
         <div className={`flex flex-col z-10 w-full h-full ${verticalContentClass} gap-6 ${alignClass}`}>
@@ -1424,19 +1351,23 @@ export const BentoModule: React.FC<{
 
   const getIntrinsicSize = (item: any, breakpoint: string) => intrinsicSizes[`${getBentoItemId(item)}:${breakpoint}`];
   const getIntrinsicPadding = (item: any) => {
-    if (item?.type === 'visual' || item?.type === 'icon') return 0;
-    const padding = Math.max(0, parseNumSafe(item?.padding, 32));
+    const hasExplicitAxisPadding = item?.horizontal_padding !== undefined || item?.vertical_padding !== undefined;
+    if (item?.type === 'icon' || (item?.type === 'visual' && !hasExplicitAxisPadding)) return 0;
+    const padding = resolveBentoPadding(item);
     const border = resolveBentoBorderVisibility(item)
       ? resolveBentoBorderWidth(item?.border_width, item?.border_style) * 2
       : 0;
-    return (padding * 2) + border;
+    return padding.top + padding.bottom + border;
   };
   const resolveEffectiveWidth = (item: any, breakpoint: 'desktop' | 'tablet' | 'mobile', cols: number) => {
     return resolveBentoEffectiveWidth(item, breakpoint, cols);
   };
   const resolveEffectiveRows = (item: any, breakpoint: 'desktop' | 'tablet' | 'mobile', savedRows: unknown, colSpan?: number) => {
     const measured = getIntrinsicSize(item, breakpoint);
-    return resolveBentoEffectiveRows(item, breakpoint, savedRows, effectiveRowHeight, gap, colSpan, measured?.height, getIntrinsicPadding(item));
+    const manualRows = resolveBentoHeightMode(item) === 'manual'
+      ? resolveBentoManualRows(item, breakpoint)
+      : savedRows;
+    return resolveBentoEffectiveRows(item, breakpoint, manualRows, effectiveRowHeight, gap, colSpan, measured?.height, getIntrinsicPadding(item));
   };
 
   const getBentoLayoutForBreakpoint = (items: any[], breakpoint: string, cols: number) => {
@@ -1569,7 +1500,7 @@ export const BentoModule: React.FC<{
 
     const responsiveFallbackLayouts = buildResponsiveFallbackLayouts();
 
-    return items.map((item: any, index: number) => {
+    const runtimeLayout = items.map((item: any, index: number) => {
       const layoutId = getLayoutItemId(item, index);
 
       // 1. Try saved layouts object
@@ -1585,9 +1516,7 @@ export const BentoModule: React.FC<{
             ? resolveEffectiveWidth(item, breakpoint as 'desktop' | 'tablet' | 'mobile', cols)
             : scaledLayoutBase.w
         };
-        const responsiveMinRows = hasMeasuredSize || item.layout_sources?.[breakpoint] !== 'derived'
-          ? resolveEffectiveRows(item, breakpoint as 'desktop' | 'tablet' | 'mobile', scaledLayout.h, scaledLayout.w)
-          : scaledLayout.h;
+        const responsiveMinRows = resolveEffectiveRows(item, breakpoint as 'desktop' | 'tablet' | 'mobile', scaledLayout.h, scaledLayout.w);
         return {
           i: layoutId,
           ...savedLayout,
@@ -1606,8 +1535,7 @@ export const BentoModule: React.FC<{
       // 2. Try legacy / specific span fields
       const w = resolveEffectiveWidth(item, breakpoint as 'desktop' | 'tablet' | 'mobile', cols);
       
-      const h = breakpoint === 'mobile' ? (item.mobile_rows || item.row_span || 2) : 
-                (item.desktop_rows || item.row_span || 2);
+      const h = resolveBentoManualRows(item, breakpoint as 'desktop' | 'tablet' | 'mobile');
 
       const fallbackLayout = breakpoint === 'desktop'
         ? scaleLegacyDesktopLayout(item, { x: item.x || 0, y: item.y || 0, w, h }, cols)
@@ -1621,6 +1549,7 @@ export const BentoModule: React.FC<{
         h: responsiveMinRows
       };
     });
+    return reconcileBentoRuntimeAutoLayout(runtimeLayout);
   };
 
   const currentBreakpointRef = useRef(constructorViewport === 'desktop' ? 'lg' : constructorViewport === 'tablet' ? 'md' : 'xs');
@@ -1629,6 +1558,10 @@ export const BentoModule: React.FC<{
   const layoutPersistTimerRef = useRef<number | null>(null);
   const gridContainerRef = useRef<HTMLDivElement | null>(null);
   const isInteractingWithLayoutRef = useRef(false);
+  const intrinsicMeasurementSequenceRef = useRef(0);
+  const intrinsicMeasurementReasonRef = useRef('observer');
+  const intrinsicMeasurementContextRef = useRef({ breakpoint: '', gridWidth: 0, columns: 0, gap: 0 });
+  const runtimeLayoutRevisionRef = useRef(0);
   const normalizedPreviewScale = Number.isFinite(previewScale) && previewScale > 0 ? previewScale : 1;
   const forcedBreakpoint = constructorViewport === 'desktop'
     ? 'lg'
@@ -1673,10 +1606,41 @@ export const BentoModule: React.FC<{
     return finalItems;
   };
 
-  const rawItems = useMemo(() => getItemsFromMultipleSources(), [settingsValues, moduleId]);
+  const rawItems = useMemo(
+    () => getItemsFromMultipleSources().map((item: any) => normalizeBentoHeightState(item)),
+    [settingsValues, moduleId]
+  );
   const effectiveRowHeight = rawItems.some((item: any) => item?.height_mode === 'auto')
     ? BENTO_COMPACT_ROW_HEIGHT
     : bentoRowHeight;
+
+  const measurementBreakpoint = resolveBentoLayoutBreakpoint(effectiveBreakpoint);
+  useEffect(() => {
+    const previousContext = intrinsicMeasurementContextRef.current;
+    intrinsicMeasurementReasonRef.current = previousContext.breakpoint && previousContext.breakpoint !== measurementBreakpoint
+      ? 'breakpoint change'
+      : previousContext.gridWidth && previousContext.gridWidth !== gridWidth
+        ? 'width change'
+        : previousContext.columns && previousContext.columns !== columns
+          ? 'columns change'
+          : previousContext.gap && previousContext.gap !== gap
+            ? 'padding/gap change'
+            : 'content change';
+    intrinsicMeasurementContextRef.current = { breakpoint: measurementBreakpoint, gridWidth, columns, gap };
+    const itemIds = new Set(rawItems.map((item: any) => getBentoItemId(item)));
+    setIntrinsicSizes((current) => {
+      const next = { ...current };
+      let changed = false;
+      Object.keys(next).forEach((key) => {
+        const [itemId, breakpoint] = key.split(':');
+        if (breakpoint === measurementBreakpoint && itemIds.has(itemId)) {
+          delete next[key];
+          changed = true;
+        }
+      });
+      return changed ? next : current;
+    });
+  }, [rawItems, measurementBreakpoint, gridWidth, columns, gap]);
 
   // The editor measures only the intrinsic content wrapper. Published output
   // keeps the deterministic grid fallback and never depends on this observer.
@@ -1684,18 +1648,53 @@ export const BentoModule: React.FC<{
     if (isPreviewMode || typeof ResizeObserver === 'undefined') return;
     const node = gridContainerRef.current;
     if (!node) return;
-    const measurementKey = BENTO_BREAKPOINT_TO_LAYOUT[effectiveBreakpoint] || 'desktop';
+    const measurementKey = measurementBreakpoint;
     const measureTargets = (targets: Element[]) => {
       setIntrinsicSizes((current) => {
         let next = current;
         targets.forEach((target) => {
           const id = (target as HTMLElement).dataset.bentoIntrinsicContent;
           if (!id) return;
-          const rect = target.getBoundingClientRect();
-          const height = Number.isFinite(rect.height) ? Math.max(0, rect.height) : 0;
+          const element = target as HTMLElement;
+          const rect = element.getBoundingClientRect();
+          const rectHeight = Number.isFinite(rect.height) ? Math.max(0, rect.height) : 0;
+          const naturalHeight = Math.max(rectHeight, element.scrollHeight || 0);
+          const height = Number.isFinite(naturalHeight) ? naturalHeight : 0;
+          const previousHeight = current[`${id}:${measurementKey}`]?.height ?? null;
           const updated = updateBentoIntrinsicSize(next, id, measurementKey, height);
-          if (updated !== next) next = updated;
+          if (updated !== next) {
+            next = updated;
+            const item = rawItems.find((candidate: any) => getBentoItemId(candidate) === id);
+            const rglItem = element.closest<HTMLElement>('.react-grid-item');
+            const bentoRoot = element.closest<HTMLElement>('[data-bento-rgl-item]');
+            const card = element.closest<HTMLElement>('[data-bento-card]');
+            const positioningArea = element.closest<HTMLElement>('[data-bento-positioning-area]');
+            const rows = item
+              ? resolveBentoEffectiveRows(item, measurementKey, 1, effectiveRowHeight, gap, undefined, height, getIntrinsicPadding(item))
+              : null;
+            intrinsicMeasurementSequenceRef.current += 1;
+            logDebug('[BENTO_HEIGHT_MEASUREMENT]', {
+              sequence: intrinsicMeasurementSequenceRef.current,
+              timestamp: new Date().toISOString(),
+              itemId: id,
+              breakpoint: measurementKey,
+              intrinsicContentHeightPx: height,
+              requiredHeightPx: item ? height + getIntrinsicPadding(item) : height,
+              previousIntrinsicHeightPx: previousHeight,
+              nextIntrinsicHeightPx: height,
+              effectiveWidthPx: rect.width,
+              rowHeight: effectiveRowHeight,
+              rowGap: gap,
+              previousRows: bentoRoot?.dataset.bentoRows || null,
+              nextRows: rows,
+              renderedRglHeightPx: rglItem?.getBoundingClientRect().height ?? null,
+              cardHeightPx: card?.getBoundingClientRect().height ?? null,
+              positioningAreaHeightPx: positioningArea?.getBoundingClientRect().height ?? null,
+              reason: intrinsicMeasurementReasonRef.current
+            });
+          }
         });
+        intrinsicMeasurementReasonRef.current = 'observer';
         return next;
       });
     };
@@ -1709,7 +1708,19 @@ export const BentoModule: React.FC<{
       window.cancelAnimationFrame(initialMeasurementFrame);
       observer.disconnect();
     };
-  }, [rawItems, effectiveBreakpoint, isPreviewMode]);
+  }, [rawItems, effectiveBreakpoint, gridWidth, columns, gap, isPreviewMode]);
+
+  const requestIntrinsicRemeasure = (itemId: string, breakpoint: string) => {
+    if (isPreviewMode || typeof window === 'undefined') return;
+    const canonicalBreakpoint = resolveBentoLayoutBreakpoint(breakpoint);
+    const target = Array.from(gridContainerRef.current?.querySelectorAll<HTMLElement>('[data-bento-intrinsic-content]') || [])
+      .find((candidate) => candidate.closest<HTMLElement>('[data-bento-rgl-item]')?.dataset.bentoRglItem === itemId);
+    if (!target) return;
+    intrinsicMeasurementReasonRef.current = 'image load';
+    const rect = target.getBoundingClientRect();
+    const height = Math.max(Number.isFinite(rect.height) ? Math.max(0, rect.height) : 0, target.scrollHeight || 0);
+    setIntrinsicSizes((current) => updateBentoIntrinsicSize(current, itemId, canonicalBreakpoint, height));
+  };
 
   const decorateLayouts = (entries: any[], breakpoint: 'desktop' | 'tablet' | 'mobile') => entries.map((entry) => {
     const item = rawItems.find((candidate: any) => getBentoItemId(candidate) === String(entry.i));
@@ -1723,6 +1734,84 @@ export const BentoModule: React.FC<{
     xs: decorateLayouts(getBentoLayoutForBreakpoint(rawItems, 'mobile', BENTO_MOBILE_COLUMNS), 'mobile'),
     xxs: decorateLayouts(getBentoLayoutForBreakpoint(rawItems, 'mobile', 1), 'mobile')
   }), [rawItems, columns, gap, effectiveRowHeight, intrinsicSizes, gridWidth, isPreviewMode]);
+
+  useEffect(() => {
+    if (isPreviewMode || !isBentoDebugEnabled() || selectedIndex === null || selectedIndex < 0) return;
+    const frame = window.requestAnimationFrame(() => {
+      const item = rawItems[selectedIndex];
+      if (!item) return;
+      const itemId = getBentoItemId(item);
+      const root = Array.from(gridContainerRef.current?.querySelectorAll<HTMLElement>('[data-bento-rgl-item]') || [])
+        .find((candidate) => candidate.dataset.bentoRglItem === itemId);
+      const card = root?.querySelector<HTMLElement>('[data-bento-card]');
+      const positioningArea = root?.querySelector<HTMLElement>('[data-bento-positioning-area]');
+      const intrinsicContent = root?.querySelector<HTMLElement>('[data-bento-intrinsic-content]');
+      const rglItem = root?.closest<HTMLElement>('.react-grid-item');
+      if (!root || !card || !positioningArea || !intrinsicContent || !rglItem) return;
+
+      const cardStyle = window.getComputedStyle(card);
+      const cardRect = card.getBoundingClientRect();
+      const areaRect = positioningArea.getBoundingClientRect();
+      const intrinsicRect = intrinsicContent.getBoundingClientRect();
+      const paddingTop = Number.parseFloat(cardStyle.paddingTop) || 0;
+      const paddingBottom = Number.parseFloat(cardStyle.paddingBottom) || 0;
+      const borderTop = Number.parseFloat(cardStyle.borderTopWidth) || 0;
+      const borderBottom = Number.parseFloat(cardStyle.borderBottomWidth) || 0;
+      const availableInnerHeight = cardRect.height - paddingTop - paddingBottom - borderTop - borderBottom;
+      const intrinsicContentHeight = intrinsicRect.height;
+      const debugBreakpoint = resolveBentoLayoutBreakpoint(currentBreakpointRef.current);
+      const activeLayout = (layouts as any)[currentBreakpointRef.current]?.find((entry: any) => String(entry.i) === String(itemId));
+      const verticalPaddingTotal = paddingTop + paddingBottom;
+      const borderTotal = borderTop + borderBottom;
+      const expectedRequiredHeight = intrinsicContentHeight + verticalPaddingTotal + borderTotal;
+      const renderedCardHeight = cardRect.height;
+      const metrics = {
+        ITEM_ID: itemId,
+        BREAKPOINT: debugBreakpoint,
+        WIDTH_PX: cardRect.width,
+        HEIGHT_MODE: resolveBentoHeightMode(item),
+        LAYOUT_SOURCE: item.layout_sources?.[debugBreakpoint] || null,
+        STORED_INTRINSIC_HEIGHT: intrinsicSizes[`${itemId}:${debugBreakpoint}`]?.height ?? null,
+        LAYOUT_H: activeLayout?.h ?? null,
+        DESKTOP_ROWS: item.desktop_rows ?? null,
+        TABLET_ROWS: item.tablet_rows ?? null,
+        MOBILE_ROWS: item.mobile_rows ?? null,
+        CARD_HEIGHT: renderedCardHeight,
+        CARD_PADDING_TOP: paddingTop,
+        CARD_PADDING_BOTTOM: paddingBottom,
+        POSITIONING_AREA_HEIGHT: areaRect.height,
+        INTRINSIC_CONTENT_HEIGHT: intrinsicContentHeight,
+        CONTENT_TOP_OFFSET: intrinsicRect.top - areaRect.top,
+        CONTENT_BOTTOM_OFFSET: areaRect.bottom - intrinsicRect.bottom,
+        ROW_HEIGHT: effectiveRowHeight,
+        ROW_GAP: gap,
+        EFFECTIVE_ROWS: activeLayout?.h ?? null,
+        RGL_RENDERED_HEIGHT: rglItem.getBoundingClientRect().height,
+        VERTICAL_PADDING_TOTAL: verticalPaddingTotal,
+        BORDER_TOTAL: borderTotal,
+        EXPECTED_REQUIRED_HEIGHT: expectedRequiredHeight,
+        RGL_RESIDUAL_HEIGHT: renderedCardHeight - expectedRequiredHeight,
+        availableInnerHeight,
+        unusedHeight: availableInnerHeight - intrinsicContentHeight
+      };
+      logDebug('[BENTO_VERTICAL_GEOMETRY]', metrics);
+      const runtimeLayout = ((layouts as any)[currentBreakpointRef.current] || []).map((entry: any) => ({
+        i: String(entry.i), x: Number(entry.x) || 0, y: Number(entry.y) || 0,
+        w: Number(entry.w) || 1, h: Number(entry.h) || 1
+      }));
+      const overlapCount = runtimeLayout.reduce((count: number, candidate: any, index: number) => (
+        count + runtimeLayout.slice(index + 1).filter((other: any) => rectanglesOverlap(candidate, other)).length
+      ), 0);
+      runtimeLayoutRevisionRef.current += 1;
+      logDebug('[BENTO_RUNTIME_LAYOUT]', {
+        LAYOUT_REVISION: runtimeLayoutRevisionRef.current,
+        BREAKPOINT: debugBreakpoint,
+        OVERLAP_COUNT: overlapCount,
+        RUNTIME_LAYOUT: runtimeLayout
+      });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [effectiveBreakpoint, effectiveRowHeight, gap, intrinsicSizes, isPreviewMode, layouts, rawItems, selectedIndex]);
 
   const persistLayoutChange = (currentLayout: readonly any[], allLayouts?: any) => {
     if (!onSettingChange || isPreviewMode) return;
@@ -1750,6 +1839,7 @@ export const BentoModule: React.FC<{
       const idx = findItemIndexByLayoutId(newItems, l.i);
       if (newItems[idx]) {
         const entry = clampLayoutEntry(l, currentCols);
+        const isAutoHeight = resolveBentoHeightMode(newItems[idx]) === 'auto';
         const existingLayouts = newItems[idx].layouts || {};
         const existingEntry = existingLayouts[currentBP] ? normalizeLayoutEntry(existingLayouts[currentBP]) : null;
         
@@ -1758,7 +1848,7 @@ export const BentoModule: React.FC<{
           existingEntry.x !== entry.x ||
           existingEntry.y !== entry.y ||
           existingEntry.w !== entry.w ||
-          existingEntry.h !== entry.h
+          (!isAutoHeight && existingEntry.h !== entry.h)
         ) {
           newItems = reconcileBentoLayoutById(newItems, {
             i: l.i,
@@ -1855,6 +1945,9 @@ export const BentoModule: React.FC<{
     const defaultDesktopRows = resolveBentoAutoRows(defaultItemContent, 'desktop', bentoRowHeight, gap, defaultDesktopSpan);
     const defaultTabletRows = resolveBentoAutoRows(defaultItemContent, 'tablet', bentoRowHeight, gap, defaultTabletSpan);
     const defaultMobileRows = resolveBentoAutoRows(defaultItemContent, 'mobile', bentoRowHeight, gap, defaultMobileSpan);
+    const newItemHeightMode = 'auto';
+    const newItemWidthPreset = defaultWidthPreset;
+    const newItemLayoutSource = 'derived';
     
     const newItem = {
       id: createBentoCellId(),
@@ -1870,8 +1963,10 @@ export const BentoModule: React.FC<{
       ...(type === 'composite' ? { composite_elements: createBentoCompositeElements(), composite_layout: 'vertical', composite_gap: 12, composite_align: 'start' } : {}),
       row_span: defaultDesktopRows,
       desktop_span: defaultDesktopSpan,
-      desktop_rows: defaultDesktopRows,
-      tablet_span: defaultTabletSpan,
+       desktop_rows: defaultDesktopRows,
+       tablet_rows: defaultTabletRows,
+       mobile_rows: defaultMobileRows,
+       tablet_span: defaultTabletSpan,
       mobile_span: defaultMobileSpan,
       x: currentLayoutKey === 'desktop' ? droppedLayout.x : 0,
       y: currentLayoutKey === 'desktop' ? droppedLayout.y : 0,
@@ -1883,9 +1978,9 @@ export const BentoModule: React.FC<{
         }
       },
       layout_sources: {
-        desktop: currentLayoutKey === 'desktop' ? 'explicit' : 'derived',
-        tablet: currentLayoutKey === 'tablet' ? 'explicit' : 'derived',
-        mobile: currentLayoutKey === 'mobile' ? 'explicit' : 'derived'
+        desktop: newItemLayoutSource,
+        tablet: newItemLayoutSource,
+        mobile: newItemLayoutSource
       },
       layout_columns: {
         [currentLayoutKey]: currentCols
@@ -1919,21 +2014,17 @@ export const BentoModule: React.FC<{
       const layout = breakpoint === 'desktop'
         ? scaleLegacyDesktopLayout(item, item.layouts[breakpoint], colsForBreakpoint)
         : clampLayoutEntry(item.layouts[breakpoint], colsForBreakpoint);
-      const hasMeasuredSize = Boolean(getIntrinsicSize(item, breakpoint));
       return {
         ...layout,
-        w: item.width_preset !== undefined || hasMeasuredSize || item.layout_sources?.[breakpoint] !== 'derived'
+        w: item.width_preset !== undefined || item.layout_sources?.[breakpoint] !== 'derived'
           ? resolveEffectiveWidth(item, breakpoint, colsForBreakpoint)
           : layout.w,
-        h: hasMeasuredSize || item.layout_sources?.[breakpoint] !== 'derived'
-          ? resolveEffectiveRows(item, breakpoint, layout.h, layout.w)
-          : layout.h
+        h: resolveEffectiveRows(item, breakpoint, layout.h, layout.w)
       };
     }
 
     const w = resolveEffectiveWidth(item, breakpoint, colsForBreakpoint);
-    const h = breakpoint === 'mobile' ? (item.mobile_rows || item.row_span || 2) :
-              (item.desktop_rows || item.row_span || 2);
+    const h = resolveBentoManualRows(item, breakpoint);
 
     const layout = breakpoint === 'desktop'
       ? scaleLegacyDesktopLayout(item, { x: item.x || 0, y: item.y || 0, w, h }, colsForBreakpoint)
@@ -2237,7 +2328,6 @@ export const BentoModule: React.FC<{
             containerPadding={[0, 0]}
             isDraggable={false}
             isResizable={!isPreviewMode}
-            resizeHandles={isPreviewMode ? [] : ['e', 's', 'se']}
             isDroppable={false}
             onLayoutChange={handleLayoutChange}
             onDragStart={() => {
@@ -2289,7 +2379,7 @@ export const BentoModule: React.FC<{
                 card_border = 'rgba(0,0,0,0.05)',
                 card_radius = 28,
                 card_shadow = 'sm',
-                padding = 32,
+                 padding = 32,
                 align_items = 'start',
                 hover_effect,
                 border_style = 'solid',
@@ -2336,7 +2426,11 @@ export const BentoModule: React.FC<{
                 ? 'shadow-none'
                 : shadowClass;
 
-              const resolvedVerticalAlign = resolveBentoVerticalAlign(vertical_align, align_items);
+               const isAutoHeight = resolveBentoHeightMode(item) === 'auto';
+               const resolvedVerticalAlign = isAutoHeight ? 'start' : resolveBentoVerticalAlign(vertical_align, align_items);
+               const hasExplicitAxisPadding = item?.horizontal_padding !== undefined || item?.vertical_padding !== undefined;
+               const cardPadding = resolveBentoPadding(item);
+               const shouldApplyCardPadding = type !== 'icon' && (type !== 'visual' || hasExplicitAxisPadding);
               const alignClass = `${({
                 start: 'justify-start',
                 center: 'justify-center',
@@ -2357,12 +2451,15 @@ export const BentoModule: React.FC<{
               const isSelected = !isPreviewMode && selectedIndex === i;
               const rglKey = getLayoutItemId(item, i);
               const cellKey = rglKey;
+              const runtimeRows = (layouts as any)[effectiveBreakpoint]?.find((entry: any) => String(entry.i) === String(rglKey))?.h;
               const isCardClickable = isPreviewMode && hasBentoClickAction(item);
 
               return (
                 <div 
                   key={rglKey} 
-                  className={`relative ${!isPreviewMode ? 'group/rgl' : ''}`}
+                  className={`relative h-full ${!isPreviewMode ? 'group/rgl' : ''}`}
+                  data-bento-rgl-item={getBentoItemId(item)}
+                  data-bento-rows={runtimeRows}
                   data-preview-focus-id={!isPreviewMode ? `cell:${moduleId}:${getBentoItemId(item)}` : undefined}
                   onClick={(e) => {
                     if (!isPreviewMode) {
@@ -2401,9 +2498,10 @@ export const BentoModule: React.FC<{
                         executeBentoClickAction(item);
                       }
                     }}
-                    className={`w-full h-full group flex flex-col ${!isPreviewMode || isCardClickable ? 'cursor-pointer' : ''} relative ${isDragging ? 'transition-none' : 'transition-all duration-300'} ${resolvedShadowClass} ${hoverClass} ${alignClass} ${card_style === 'glass' ? 'backdrop-blur-xl' : ''} ${
+                    className={`w-full h-full group flex flex-col ${!isPreviewMode || isCardClickable ? 'cursor-pointer' : ''} relative ${isDragging ? 'transition-none' : 'transition-all duration-300'} ${resolvedShadowClass} ${hoverClass} ${card_style === 'glass' ? 'backdrop-blur-xl' : ''} ${
                       isSelected ? `outline outline-2 outline-primary outline-offset-2 ${isDragging ? '' : 'scale-[1.01]'} z-50 shadow-2xl` : 'z-10'
                     }`}
+                    data-bento-card="true"
                     style={{
                       backgroundColor: specialBg ? undefined : (card_style !== 'gradient' ? finalBg : undefined),
                       backgroundImage: specialBg || (card_style === 'gradient' ? finalBg : undefined),
@@ -2411,7 +2509,10 @@ export const BentoModule: React.FC<{
                       borderStyle: shouldRenderBorder ? (resolvedBorderStyle === 'soft' ? 'solid' : resolvedBorderStyle) : 'none',
                       borderWidth: shouldRenderBorder ? `${resolvedBorderWidth}px` : '0px',
                       borderColor: shouldRenderBorder ? resolvedBorderColor : 'transparent',
-                      padding: (type === 'visual' || type === 'icon') ? 0 : `${padding}px`,
+                       paddingTop: shouldApplyCardPadding ? `${cardPadding.top}px` : 0,
+                       paddingRight: shouldApplyCardPadding ? `${cardPadding.right}px` : 0,
+                       paddingBottom: shouldApplyCardPadding ? `${cardPadding.bottom}px` : 0,
+                       paddingLeft: shouldApplyCardPadding ? `${cardPadding.left}px` : 0,
                       boxShadow: glowShadow,
                       zIndex: isSelected ? 50 : z_index
                     }}
@@ -2419,6 +2520,7 @@ export const BentoModule: React.FC<{
                     {/* Visual clipping layer: backgrounds and decorations never affect content measurement. */}
                     <div
                       aria-hidden="true"
+                      data-bento-visual-layer="true"
                       className="pointer-events-none absolute inset-0 z-0 overflow-hidden"
                       style={{ borderRadius: `${card_radius}px` }}
                     >
@@ -2447,11 +2549,11 @@ export const BentoModule: React.FC<{
                       )}
                     </div>
 
-                    {/* Content layer stays in normal flow; only this inner wrapper is measured. */}
-                    <div className="relative z-10 w-full min-w-0 max-w-full">
+                    {/* Positioning owns the card's available interior height; its child remains natural for measurement. */}
+                    <div className={`relative z-10 flex min-h-0 w-full min-w-0 max-w-full flex-1 flex-col ${alignClass}`} data-bento-positioning-area="true">
                       <div
                         data-bento-intrinsic-content={getBentoItemId(item)}
-                        className="block w-full min-w-0 max-w-full"
+                        className="block w-full min-w-0 max-w-full shrink-0"
                       >
                     <BentoCellContent 
                         item={item} 
@@ -2459,6 +2561,7 @@ export const BentoModule: React.FC<{
                         moduleId={moduleId}
                         breakpoint={BENTO_BREAKPOINT_TO_LAYOUT[effectiveBreakpoint] || 'desktop'}
                         isPreviewMode={isPreviewMode}
+                        onImageLoad={() => requestIntrinsicRemeasure(getBentoItemId(item), resolveBentoLayoutBreakpoint(effectiveBreakpoint))}
                         onSave={(field: string, val: string) => {
                           const newItems = [...rawItems];
                           newItems[i] = { ...newItems[i], [field]: val };

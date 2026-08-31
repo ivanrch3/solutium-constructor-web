@@ -338,13 +338,32 @@ export const reconcileMenuLinksForModuleChange = ({
   }
 
   const previousIds = new Set((previousModules || []).map((module) => module.id));
+  const nextIds = new Set((nextModules || []).map((module) => module.id));
   const newModules = (nextModules || []).filter((module) =>
     isMenuEligibleModule(module) && !previousIds.has(module.id)
   );
   const current = dedupeMenuLinks(currentLinks);
-  const currentTargets = new Set(current.flatMap(getMenuLinkTargets));
-  const newLinks = buildAutomaticMenuItems({ modules: newModules, settingsValues })
-    .filter((link) => !currentTargets.has(link.moduleId || link.targetSectionId || ''));
+  const survivingCurrentLinks = current.filter((link) => {
+    if (link.moduleId) return nextIds.has(String(link.moduleId));
 
-  return dedupeMenuLinks([...current, ...newLinks]);
+    const targetSectionId = String(link.targetSectionId || '').trim();
+    if (targetSectionId && previousIds.has(targetSectionId)) {
+      return nextIds.has(targetSectionId);
+    }
+
+    if (link.source === 'auto') {
+      const canonicalHref = String(link.href || link.url || '').trim();
+      const normalizedTarget = normalizeMenuLinkTarget(canonicalHref);
+      if (canonicalHref.startsWith('#section-') && previousIds.has(normalizedTarget)) {
+        return nextIds.has(normalizedTarget);
+      }
+    }
+
+    return true;
+  });
+  const currentTargets = new Set(survivingCurrentLinks.flatMap(getMenuLinkTargets));
+  const newLinks = buildAutomaticMenuItems({ modules: newModules, settingsValues })
+    .filter((link) => !getMenuLinkTargets(link).some((target) => currentTargets.has(target)));
+
+  return dedupeMenuLinks([...survivingCurrentLinks, ...newLinks]);
 };

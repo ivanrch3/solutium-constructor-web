@@ -4435,13 +4435,16 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     });
     const modules = modulesOverride || state.addedModules || [];
     const previousModules = previousModulesOverride || state.addedModules || [];
+    const hasExplicitConfiguration = hasExplicitMenuLinks(state.settingsValues, menuLinksKey);
     const rebuiltLinks = reconcileMenuLinksForModuleChange({
       nextModules: modules,
       previousModules,
       settingsValues: state.settingsValues,
       currentLinks,
-      hasExplicitConfiguration: hasExplicitMenuLinks(state.settingsValues, menuLinksKey)
+      hasExplicitConfiguration
     });
+
+    if (!hasExplicitConfiguration) return state;
 
     return {
       ...state,

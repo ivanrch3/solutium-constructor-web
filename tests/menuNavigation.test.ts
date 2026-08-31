@@ -158,3 +158,92 @@ test('reordering, renaming, and removing modules do not resurrect or duplicate l
   assert.deepEqual(reconcile(modules.map((module) => module.id === 'hero-1' ? { ...module, name: 'Renamed' } : module)).map((link) => link.moduleId), ['hero-1', 'video-b']);
   assert.deepEqual(reconcile([modules[0], modules[2]]).map((link) => link.moduleId), ['hero-1', 'video-b']);
 });
+
+test('removes explicit links for modules deleted from the page', () => {
+  const currentLinks = linksFor(modules.slice(0, 3));
+  const result = reconcileMenuLinksForModuleChange({
+    currentLinks,
+    previousModules: modules.slice(0, 3),
+    nextModules: [modules[0], modules[2]],
+    settingsValues: { menu_el_menu_items_links: currentLinks },
+    hasExplicitConfiguration: true
+  });
+
+  assert.deepEqual(result.map((link) => link.moduleId), ['hero-1', 'video-b']);
+});
+
+test('preserves external links and custom anchors when modules are deleted', () => {
+  const currentLinks = [
+    ...linksFor(modules.slice(0, 3)),
+    { id: 'external', label: 'Web', href: 'https://example.com', url: 'https://example.com' },
+    { id: 'anchor', label: 'Precios', href: '#custom-anchor', url: '#custom-anchor' }
+  ];
+  const result = reconcileMenuLinksForModuleChange({
+    currentLinks,
+    previousModules: modules.slice(0, 3),
+    nextModules: [modules[0], modules[2]],
+    settingsValues: { menu_el_menu_items_links: currentLinks },
+    hasExplicitConfiguration: true
+  });
+
+  assert.deepEqual(result.map((link) => link.moduleId).filter(Boolean), ['hero-1', 'video-b']);
+  assert.equal(result.some((link) => link.href === 'https://example.com'), true);
+  assert.equal(result.some((link) => link.href === '#custom-anchor'), true);
+});
+
+test('adds a new module after deleting another without resurrecting its link', () => {
+  const initialModules = modules.slice(0, 3);
+  const currentLinks = [linksFor(initialModules)[0], linksFor(initialModules)[2]];
+  const afterDelete = [modules[0], modules[2]];
+  const nextModules = [...afterDelete, { id: 'new-video', type: 'video', iconKey: 'video' }];
+  const result = reconcileMenuLinksForModuleChange({
+    currentLinks,
+    previousModules: afterDelete,
+    nextModules,
+    settingsValues: { menu_el_menu_items_links: currentLinks },
+    hasExplicitConfiguration: true
+  });
+
+  assert.deepEqual(result.map((link) => link.moduleId), ['hero-1', 'video-b', 'new-video']);
+});
+
+test('removing multiple modules preserves prior manual exclusions', () => {
+  const initialModules = modules.slice(0, 4);
+  const currentLinks = [linksFor(initialModules)[0], linksFor(initialModules)[1], linksFor(initialModules)[3]];
+  const result = reconcileMenuLinksForModuleChange({
+    currentLinks,
+    previousModules: initialModules,
+    nextModules: [modules[0], modules[2]],
+    settingsValues: { menu_el_menu_items_links: currentLinks },
+    hasExplicitConfiguration: true
+  });
+
+  assert.deepEqual(result.map((link) => link.moduleId), ['hero-1']);
+});
+
+test('a new module with the same type is identified by its new id', () => {
+  const previousModules = [{ id: 'video-1', type: 'video', iconKey: 'video' }];
+  const currentLinks = linksFor(previousModules);
+  const nextModules = [{ id: 'video-2', type: 'video', iconKey: 'video' }];
+  const result = reconcileMenuLinksForModuleChange({
+    currentLinks,
+    previousModules,
+    nextModules,
+    settingsValues: { menu_el_menu_items_links: currentLinks },
+    hasExplicitConfiguration: true
+  });
+
+  assert.deepEqual(result.map((link) => link.moduleId), ['video-2']);
+});
+
+test('legacy automatic menus reflect deleted modules', () => {
+  const result = reconcileMenuLinksForModuleChange({
+    currentLinks: linksFor(modules),
+    previousModules: modules,
+    nextModules: [modules[0], modules[2]],
+    settingsValues: {},
+    hasExplicitConfiguration: false
+  });
+
+  assert.deepEqual(result.map((link) => link.moduleId), ['hero-1', 'video-b']);
+});

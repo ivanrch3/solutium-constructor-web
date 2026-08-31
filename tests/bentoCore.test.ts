@@ -27,7 +27,82 @@ import {
   resolveBentoDefaultWidthPreset
   ,intrinsicHeightToGridRows
   ,resolveBentoResizeHandles
+  ,normalizeBentoHeightState
+  ,resolveBentoManualRows
+  ,resolveBentoLayoutBreakpoint
+  ,rectanglesOverlap
+  ,reconcileBentoRuntimeAutoLayout
 } from '../src/utils/bentoCore.ts';
+
+test('runtime reconciliation moves stacked items down without changing side-by-side items', () => {
+  const resolved = reconcileBentoRuntimeAutoLayout([
+    { i: 'a', x: 0, y: 0, w: 12, h: 8 },
+    { i: 'b', x: 0, y: 4, w: 12, h: 3 },
+    { i: 'c', x: 12, y: 0, w: 12, h: 3 }
+  ]);
+  assert.equal(resolved[1].y, 8);
+  assert.equal(resolved[2].y, 0);
+  assert.equal(resolved.filter((item, index) => resolved.slice(index + 1).some((other) => rectanglesOverlap(item, other))).length, 0);
+});
+
+test('runtime reconciliation preserves stable order across repeated growth and shrink', () => {
+  const first = reconcileBentoRuntimeAutoLayout([
+    { i: 'a', x: 0, y: 0, w: 12, h: 12 },
+    { i: 'b', x: 0, y: 2, w: 12, h: 4 }
+  ]);
+  const shrunk = reconcileBentoRuntimeAutoLayout([
+    { i: 'a', x: 0, y: 0, w: 12, h: 4 },
+    { i: 'b', x: 0, y: 2, w: 12, h: 4 }
+  ]);
+  assert.equal(first[1].y, 12);
+  assert.equal(shrunk[1].y, 4);
+  assert.equal(shrunk[0].i, 'a');
+  assert.equal(shrunk[1].i, 'b');
+});
+
+test('three stacked runtime items are all separated after the first item grows', () => {
+  const resolved = reconcileBentoRuntimeAutoLayout([
+    { i: 'a', x: 0, y: 0, w: 24, h: 10 },
+    { i: 'b', x: 0, y: 2, w: 24, h: 5 },
+    { i: 'c', x: 0, y: 4, w: 24, h: 6 }
+  ]);
+  assert.deepEqual(resolved.map((item) => item.y), [0, 10, 15]);
+});
+
+test('height state normalizes legacy rows once per breakpoint', () => {
+  const normalized = normalizeBentoHeightState<{ row_span: number; layouts: Record<string, { h: number }>; desktop_rows?: number; tablet_rows?: number; mobile_rows?: number }>({ row_span: 8, layouts: {
+    desktop: { h: 12 }, tablet: { h: 6 }, mobile: { h: 4 }
+  }});
+  assert.deepEqual(
+    [normalized.desktop_rows, normalized.tablet_rows, normalized.mobile_rows],
+    [12, 6, 4]
+  );
+  assert.equal(resolveBentoManualRows(normalized, 'tablet'), 6);
+  assert.equal(resolveBentoManualRows(normalized, 'mobile'), 4);
+});
+
+test('normalized manual rows do not use desktop as a live cross-breakpoint fallback', () => {
+  const normalized = normalizeBentoHeightState({ desktop_rows: 18, tablet_rows: 6, mobile_rows: 10 });
+  const changedDesktop = { ...normalized, desktop_rows: 24 };
+  assert.equal(resolveBentoManualRows(changedDesktop, 'tablet'), 6);
+  assert.equal(resolveBentoManualRows(changedDesktop, 'mobile'), 10);
+});
+
+test('effective layout breakpoint collapses RGL aliases to one product breakpoint', () => {
+  assert.equal(resolveBentoLayoutBreakpoint('lg'), 'desktop');
+  assert.equal(resolveBentoLayoutBreakpoint('md'), 'tablet');
+  assert.equal(resolveBentoLayoutBreakpoint('xs'), 'mobile');
+});
+
+test('auto runtime rows ignore every persisted/manual height field after measurement', () => {
+  const item = { height_mode: 'auto', layouts: { desktop: { h: 40 } }, row_span: 30, desktop_rows: 20, tablet_rows: 12, mobile_rows: 8 };
+  assert.equal(resolveBentoEffectiveRows(item, 'desktop', 40, 20, 20, 8, 80, 20), intrinsicHeightToGridRows(80, 20, 20, 20));
+});
+
+test('auto resize handles never expose a vertical handle', () => {
+  assert.deepEqual(resolveBentoResizeHandles({ height_mode: 'auto', width_preset: 'custom' }), ['e']);
+  assert.deepEqual(resolveBentoResizeHandles({ height_mode: 'auto', width_preset: 'medium' }), []);
+});
 
 test('new Bento defaults use no hover and legacy lift remains intact', () => {
   assert.equal(resolveBentoHoverEffectDefault({ hover_effect: 'none' }), 'none');
@@ -123,7 +198,7 @@ test('breakpoint layout reconciliation updates only the requested item and break
   const next = reconcileBentoLayoutById(reordered, { i: 'a', x: 0, y: 9, w: 4, h: 6, columns: 4 }, 'mobile');
   assert.deepEqual(next[0].layouts.desktop, items[1].layouts.desktop);
   assert.deepEqual(next[1].layouts.desktop, items[0].layouts.desktop);
-  assert.deepEqual(next[1].layouts.mobile, { x: 0, y: 9, w: 4, h: 6, columns: 4 });
+  assert.deepEqual(next[1].layouts.mobile, { x: 0, y: 9, w: 4, h: 2, columns: 4 });
   assert.equal((next[1] as any).layout_sources.mobile, 'explicit');
 });
 
@@ -215,7 +290,7 @@ test('derived auto dimensions never overwrite manual preferences during movement
   assert.equal(next.desktop_span, 7);
   assert.equal(next.desktop_rows, 5);
   assert.equal(next.layouts.desktop.w, 12);
-  assert.equal(next.layouts.desktop.h, 9);
+  assert.equal(next.layouts.desktop.h, 12);
   assert.equal((next as any).layout_sources.desktop, 'derived');
 });
 
@@ -227,7 +302,7 @@ test('persisted derived layout survives save/reload without becoming manual memo
   assert.equal(hasPersistedBentoLayout(saved, 'desktop'), true);
   assert.equal(hasExplicitBentoLayout(saved, 'desktop'), false);
   assert.equal((saved as any).layouts.desktop.w, 6);
-  assert.equal((saved as any).layouts.desktop.h, 4);
+  assert.equal((saved as any).layouts.desktop.h, undefined);
   assert.equal(saved.desktop_span, 8);
   assert.equal(saved.desktop_rows, 3);
 });

@@ -35,7 +35,7 @@ import { GlobalSettingsPanel } from './GlobalSettingsPanel';
 import { BentoCellEditor } from './BentoCellEditor';
 import { ReservasWebSettings } from './modules/ReservasWebSettings';
 import { resolveModuleDisplayLabel, resolveModuleEditorLabel } from '../../utils/menuNavigation';
-import { reorderBentoItems, resolveBentoAutoRows, resolveBentoRowHeight, resolveBentoSelectedIndex, BENTO_ROW_HEIGHT } from '../../utils/bentoCore';
+import { reorderBentoItems, resolveBentoAutoRows, resolveBentoManualRows, resolveBentoRowHeight, resolveBentoSelectedIndex, BENTO_ROW_HEIGHT } from '../../utils/bentoCore';
 import {
   CONSTRUCTOR_MODULE_ANIMATIONS_ENABLED,
   CONSTRUCTOR_ANIMATION_DISABLED_MESSAGE,
@@ -727,7 +727,7 @@ const getBentoPlacementLayout = (item: any, breakpoint: 'desktop' | 'tablet' | '
     : breakpoint === 'tablet'
       ? (item.tablet_span || item.col_span || 2)
       : (item.desktop_span || item.col_span || 4);
-  const height = breakpoint === 'mobile' ? (item.mobile_rows || item.row_span || 2) : (item.desktop_rows || item.row_span || 2);
+  const height = resolveBentoManualRows(item, breakpoint);
   const rawX = Number(savedLayout?.x ?? item.x ?? 0) || 0;
   const rawW = Number(savedLayout?.w ?? width) || 1;
   const normalizedW = Math.min(shouldScaleLegacyDesktop ? rawW * 2 : rawW, cols);
@@ -828,6 +828,8 @@ const createBentoPanelElementPreset = (kind: string, existingItems: any[], deskt
       row_span: desktopRows,
       desktop_span: safeDesktopW,
       desktop_rows: desktopRows,
+      tablet_rows: nextItem.tablet_rows ?? tabletRows,
+      mobile_rows: nextItem.mobile_rows ?? mobileRows,
       tablet_span: tabletW,
       mobile_span: mobileW,
       x: desktopPos.x,
@@ -837,7 +839,11 @@ const createBentoPanelElementPreset = (kind: string, existingItems: any[], deskt
         tablet: { x: tabletPos.x, y: tabletPos.y, w: tabletW, h: tabletRows, columns: BENTO_TABLET_COLUMNS },
         mobile: { x: mobilePos.x, y: mobilePos.y, w: mobileW, h: mobileRows, columns: BENTO_MOBILE_COLUMNS }
       },
-      layout_sources: { desktop: 'explicit', tablet: 'derived', mobile: 'derived' },
+      layout_sources: {
+        desktop: nextItem.height_mode === 'manual' || nextItem.width_preset === 'custom' ? 'explicit' : 'derived',
+        tablet: nextItem.height_mode === 'manual' || nextItem.width_preset === 'custom' ? 'explicit' : 'derived',
+        mobile: nextItem.height_mode === 'manual' || nextItem.width_preset === 'custom' ? 'explicit' : 'derived'
+      },
       layout_columns: {
         desktop: desktopColumns,
         tablet: BENTO_TABLET_COLUMNS,

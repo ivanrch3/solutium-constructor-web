@@ -4087,7 +4087,9 @@ export const BENTO_MODULE: WebModule = {
             { label: 'Personalizado', value: 'custom' }
           ] },
           { id: 'desktop_span', label: 'Ancho Desktop (Columnas)', type: 'range', defaultValue: 8, min: 1, max: 24, showIf: { settingId: 'width_preset', value: 'custom' } },
-          { id: 'desktop_rows', label: 'Alto Desktop (Filas)', type: 'range', defaultValue: 2, min: 1, max: 8, showIf: { settingId: 'height_mode', value: 'manual' } },
+          { id: 'desktop_rows', label: 'Alto Desktop (Filas)', type: 'range', defaultValue: 2, min: 1, max: 240, showIf: { settingId: 'height_mode', value: 'manual' } },
+          { id: 'tablet_rows', label: 'Alto Tablet (Filas)', type: 'range', defaultValue: 2, min: 1, max: 240, showIf: { settingId: 'height_mode', value: 'manual' } },
+          { id: 'mobile_rows', label: 'Alto Móvil (Filas)', type: 'range', defaultValue: 2, min: 1, max: 240, showIf: { settingId: 'height_mode', value: 'manual' } },
           { id: 'tablet_span', label: 'Ancho Tablet (Columnas)', type: 'range', defaultValue: 3, min: 1, max: 6, showIf: { settingId: 'width_preset', value: 'custom' } },
           { id: 'mobile_span', label: 'Ancho Móvil (Columnas)', type: 'range', defaultValue: 4, min: 1, max: 4, showIf: { settingId: 'width_preset', value: 'custom' } },
           
@@ -4100,6 +4102,8 @@ export const BENTO_MODULE: WebModule = {
           { id: 'icon_content_gap', label: 'Separación entre ícono y texto', type: 'range', defaultValue: 12, min: 0, max: 48, step: 2, unit: 'px', subsection: 'Espaciado del contenido', showIf: { settingId: 'type', value: 'icon' } },
           { id: 'text_content_gap', label: 'Separación entre título y descripción', type: 'range', defaultValue: 8, min: 0, max: 32, step: 2, unit: 'px', subsection: 'Espaciado del contenido', showIf: { settingId: 'type', value: 'icon' } },
           { id: 'padding', label: 'Padding Interno', type: 'range', defaultValue: 32, min: 0, max: 80, unit: 'px' },
+          { id: 'horizontal_padding', label: 'Padding Horizontal', type: 'range', defaultValue: 32, min: 0, max: 80, unit: 'px', group: 'estructura' },
+          { id: 'vertical_padding', label: 'Padding Vertical', type: 'range', defaultValue: 32, min: 0, max: 80, unit: 'px', group: 'estructura' },
           { id: 'align_items', label: 'Alineación Vertical', type: 'select', defaultValue: 'start', options: [
             { label: 'Arriba', value: 'start' },
             { label: 'Centro', value: 'center' },

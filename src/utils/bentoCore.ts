@@ -2,6 +2,12 @@ import { estimateBentoCompositeHeight } from './bentoComposite';
 
 export type BentoBreakpoint = 'desktop' | 'tablet' | 'mobile';
 
+export const resolveBentoLayoutBreakpoint = (value: unknown): BentoBreakpoint => {
+  if (value === 'mobile' || value === 'xs' || value === 'xxs') return 'mobile';
+  if (value === 'tablet' || value === 'md' || value === 'sm') return 'tablet';
+  return 'desktop';
+};
+
 export const BENTO_ROW_HEIGHT = 80;
 export const BENTO_COMPACT_ROW_HEIGHT = 20;
 
@@ -9,11 +15,46 @@ export type BentoLayoutVersion = 1 | 2;
 
 export type BentoEditorTab = 'estructura' | 'contenido' | 'diseno';
 
+export type BentoPadding = {
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
+  horizontal: number;
+  vertical: number;
+};
+
+const hasValue = (value: unknown) => value !== undefined && value !== null;
+const nonNegative = (value: unknown, fallback: number) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? Math.max(0, parsed) : fallback;
+};
+
+/** Resolve new axis padding while preserving the legacy Bento contracts. */
+export const resolveBentoPadding = (item: Record<string, any> = {}): BentoPadding => {
+  if (item.type === 'icon') {
+    const uniform = nonNegative(item.card_padding, 24);
+    const hasSides = hasValue(item.card_padding)
+      || ['top', 'right', 'bottom', 'left'].some((side) => hasValue(item[`card_padding_${side}`]));
+    const fallback = hasSides ? uniform : 0;
+    const top = nonNegative(item.card_padding_top, fallback);
+    const right = nonNegative(item.card_padding_right, fallback);
+    const bottom = nonNegative(item.card_padding_bottom, fallback);
+    const left = nonNegative(item.card_padding_left, fallback);
+    return { top, right, bottom, left, horizontal: (left + right) / 2, vertical: (top + bottom) / 2 };
+  }
+
+  const legacy = nonNegative(item.padding, 32);
+  const horizontal = nonNegative(item.horizontal_padding, legacy);
+  const vertical = nonNegative(item.vertical_padding, legacy);
+  return { top: vertical, right: horizontal, bottom: vertical, left: horizontal, horizontal, vertical };
+};
+
 const BENTO_STRUCTURE_SETTING_IDS = new Set([
-  'height_mode', 'vertical_align', 'width_preset', 'desktop_span', 'desktop_rows', 'tablet_span', 'mobile_span',
+  'height_mode', 'vertical_align', 'width_preset', 'desktop_span', 'desktop_rows', 'tablet_rows', 'mobile_rows', 'tablet_span', 'mobile_span',
   'element_padding_y', 'card_padding_linked', 'card_padding_top', 'card_padding_right',
   'card_padding_bottom', 'card_padding_left', 'icon_content_gap', 'text_content_gap', 'padding',
-  'align_items', 'content_align', 'composite_layout', 'composite_gap', 'composite_align'
+  'horizontal_padding', 'vertical_padding', 'align_items', 'content_align', 'composite_layout', 'composite_gap', 'composite_align'
 ]);
 const BENTO_CONTENT_SETTING_IDS = new Set([
   'image', 'icon', 'icon_image', 'card_image', 'title', 'description', 'eyebrow', 'headline',
@@ -114,6 +155,38 @@ export const resolveBentoHeightMode = (item?: Record<string, unknown>): BentoSiz
   item?.height_mode === 'manual' ? 'manual' : 'auto'
 );
 
+const BENTO_MANUAL_ROW_FIELDS: Record<BentoBreakpoint, string> = {
+  desktop: 'desktop_rows',
+  tablet: 'tablet_rows',
+  mobile: 'mobile_rows'
+};
+
+const getLegacyBentoRows = (item: Record<string, any>, breakpoint: BentoBreakpoint, fallback = 2) => {
+  const field = BENTO_MANUAL_ROW_FIELDS[breakpoint];
+  const layoutRows = item.layouts?.[breakpoint]?.h;
+  const desktopRows = item.desktop_rows ?? item.layouts?.desktop?.h;
+  const legacyRows = breakpoint === 'desktop'
+    ? item.row_span
+    : breakpoint === 'mobile'
+      ? item.row_span ?? desktopRows
+      : item.row_span ?? desktopRows;
+  return Math.max(1, toNumber(item[field] ?? layoutRows ?? legacyRows, fallback));
+};
+
+/** Materializes legacy height fields in memory without persisting derived geometry. */
+export const normalizeBentoHeightState = <T extends Record<string, any>>(item: T, fallback = 2): T => ({
+  ...item,
+  desktop_rows: getLegacyBentoRows(item, 'desktop', fallback),
+  tablet_rows: getLegacyBentoRows(item, 'tablet', fallback),
+  mobile_rows: getLegacyBentoRows(item, 'mobile', fallback)
+});
+
+export const resolveBentoManualRows = (
+  item: Record<string, any> = {},
+  breakpoint: BentoBreakpoint,
+  fallback = 2
+) => getLegacyBentoRows(item, breakpoint, fallback);
+
 export const resolveBentoEffectiveWidth = (
   item: Record<string, any> = {},
   breakpoint: BentoBreakpoint,
@@ -158,8 +231,12 @@ export const intrinsicHeightToGridRows = (
   const safeRowHeight = Math.max(1, toNumber(rowHeight, BENTO_ROW_HEIGHT));
   const safeGap = Number.isFinite(rowGap) ? Math.max(0, rowGap) : 0;
   const safePadding = Number.isFinite(verticalPaddingPx) ? Math.max(0, verticalPaddingPx) : 0;
-  const contentHeight = Math.max(0, safeHeight + safePadding);
-  return Math.max(1, Math.ceil((contentHeight + safeGap) / (safeRowHeight + safeGap)));
+  const requiredHeight = Math.max(0, safeHeight + safePadding);
+  const rows = Math.max(1, Math.ceil((requiredHeight + safeGap) / (safeRowHeight + safeGap)));
+  const renderedHeight = rows * safeRowHeight + Math.max(0, rows - 1) * safeGap;
+  // Protect against floating-point/subpixel under-allocation without adding a
+  // row at an exact grid boundary.
+  return renderedHeight + Number.EPSILON < requiredHeight ? rows + 1 : rows;
 };
 
 export type BentoIntrinsicSizes = Record<string, { height: number }>;
@@ -173,8 +250,47 @@ export const updateBentoIntrinsicSize = (
   const safeHeight = Number.isFinite(height) ? Math.max(0, height) : 0;
   const key = `${itemId}:${breakpoint}`;
   const previous = sizes[key];
-  if (previous && Math.abs(previous.height - safeHeight) <= 1) return sizes;
+  if (previous && Math.abs(previous.height - safeHeight) <= 0.1) return sizes;
   return { ...sizes, [key]: { height: safeHeight } };
+};
+
+export type BentoRuntimeRect = { i: string; x: number; y: number; w: number; h: number };
+
+export const rectanglesOverlap = (a: BentoRuntimeRect, b: BentoRuntimeRect) => (
+  a.x < b.x + b.w &&
+  a.x + a.w > b.x &&
+  a.y < b.y + b.h &&
+  a.y + a.h > b.y
+);
+
+/**
+ * Reconciles only runtime geometry. Product x/y values are never written back.
+ * Items retain their stable visual order and move down only when their actual
+ * rectangles overlap; side-by-side items keep the same y coordinate.
+ */
+export const reconcileBentoRuntimeAutoLayout = <T extends BentoRuntimeRect>(layout: readonly T[]) => {
+  const indexed = layout.map((entry, index) => ({ entry, index }));
+  const ordered = [...indexed].sort((left, right) => (
+    left.entry.y - right.entry.y || left.entry.x - right.entry.x || left.index - right.index
+  ));
+  const placed: BentoRuntimeRect[] = [];
+  const resolved = new Map<number, T>();
+
+  ordered.forEach(({ entry, index }) => {
+    let candidate = { ...entry, y: Math.max(0, entry.y) };
+    let blockers = placed.filter((previous) => rectanglesOverlap(candidate, previous));
+    while (blockers.length > 0) {
+      candidate = {
+        ...candidate,
+        y: Math.max(...blockers.map((blocker) => blocker.y + blocker.h))
+      };
+      blockers = placed.filter((previous) => rectanglesOverlap(candidate, previous));
+    }
+    placed.push(candidate);
+    resolved.set(index, candidate as T);
+  });
+
+  return layout.map((_, index) => resolved.get(index) as T);
 };
 
 export const resolveBentoResizeHandles = (
@@ -321,8 +437,11 @@ export const resolveBentoAutoRows = (
     breakpoint === 'desktop' ? item.desktop_span || item.col_span :
       breakpoint === 'tablet' ? item.tablet_span || item.col_span : item.mobile_span || item.col_span
   ), breakpoint === 'mobile' ? 4 : breakpoint === 'tablet' ? 3 : 8));
-  const charsPerLine = breakpoint === 'mobile' ? 20 : Math.max(18, Math.round(span * 4.5));
-  const padding = Math.max(0, toNumber(item.padding, 32));
+  const { horizontal, vertical } = resolveBentoPadding(item);
+  const charsPerLine = breakpoint === 'mobile'
+    ? Math.max(10, 20 - Math.ceil(horizontal / 16))
+    : Math.max(18, Math.round(span * 4.5) - Math.ceil(horizontal / 16));
+  const padding = vertical;
   const titleLines = estimateTextLines(item.title ?? item.metric_value, charsPerLine);
   const descriptionLines = estimateTextLines(item.description ?? item.metric_label, charsPerLine);
   const textHeight = titleLines * 28 + descriptionLines * 22 + (titleLines && descriptionLines ? 8 : 0);
@@ -385,6 +504,10 @@ export const reconcileBentoLayoutById = <T extends Record<string, any>>(
   const widthManual = resolveBentoWidthPreset(item, breakpoint, layout.columns || 24) === 'custom';
   const heightManual = resolveBentoHeightMode(item) === 'manual';
   const nextSources = { ...(item.layout_sources || {}), [breakpoint]: widthManual || heightManual ? 'explicit' : 'derived' };
+  const existingLayout = item.layouts?.[breakpoint] || {};
+  const persistedLayout = heightManual
+    ? nextLayout
+    : { ...existingLayout, x: layout.x, y: layout.y, w: layout.w, columns: layout.columns };
   const sizeFields = breakpoint === 'desktop'
     ? (widthManual && heightManual
       ? { x: layout.x, y: layout.y, col_span: layout.w, row_span: layout.h, desktop_span: layout.w, desktop_rows: layout.h }
@@ -396,13 +519,19 @@ export const reconcileBentoLayoutById = <T extends Record<string, any>>(
     : {};
   return {
     ...item,
-    layouts: { ...(item.layouts || {}), [breakpoint]: nextLayout },
+    layouts: { ...(item.layouts || {}), [breakpoint]: persistedLayout },
     layout_sources: nextSources,
     layout_columns: { ...(item.layout_columns || {}), [breakpoint]: layout.columns },
     ...(breakpoint === 'desktop'
       ? sizeFields
       : breakpoint === 'tablet'
-        ? (widthManual ? { tablet_span: layout.w } : {})
-        : (widthManual ? { mobile_span: layout.w } : {}))
+      ? {
+        ...(widthManual ? { tablet_span: layout.w } : {}),
+        ...(heightManual ? { tablet_rows: layout.h } : {})
+      }
+        : {
+          ...(widthManual ? { mobile_span: layout.w } : {}),
+          ...(heightManual ? { mobile_rows: layout.h } : {})
+        })
   };
 });

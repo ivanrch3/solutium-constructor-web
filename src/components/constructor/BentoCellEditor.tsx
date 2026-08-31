@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { logDebug } from '../../utils/debug';
 import { resolveBentoIconSpacing, updateBentoIconSpacing, type BentoIconDevice } from '../../utils/bentoIconSpacing';
-import { getBentoItemId, resolveBentoAutoRows, resolveBentoDefaultWidthPreset, resolveBentoEditorTab, resolveBentoPresetColumns, resolveBentoRowHeight, resolveBentoSettingId, resolveBentoWidthPreset, type BentoWidthPreset } from '../../utils/bentoCore';
+import { getBentoItemId, resolveBentoAutoRows, resolveBentoDefaultWidthPreset, resolveBentoEditorTab, resolveBentoManualRows, resolveBentoPadding, resolveBentoPresetColumns, resolveBentoRowHeight, resolveBentoSettingId, resolveBentoWidthPreset, type BentoWidthPreset } from '../../utils/bentoCore';
 import { SettingControl } from './SettingControl';
 import { BentoCompositeEditor } from './modules/BentoCompositeEditor';
 
@@ -362,6 +362,8 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
   });
   const [expandedSubsections, setExpandedSubsections] = React.useState<Record<string, boolean>>({});
   const [bentoTabByElementId, setBentoTabByElementId] = React.useState<Record<string, (typeof BENTO_EDITOR_TABS)[number]['id']>>({});
+  const [lastBentoTab, setLastBentoTab] = React.useState<(typeof BENTO_EDITOR_TABS)[number]['id']>('contenido');
+  const [activeCompositeEditorSection, setActiveCompositeEditorSection] = React.useState<string | null>(null);
   const [activeIconSettingsTab, setActiveIconSettingsTab] = React.useState<IconSettingsTab>('structure');
   const [iconLayoutDevice, setIconLayoutDevice] = React.useState<BentoIconDevice>('desktop');
   const [iconSpacingDevice, setIconSpacingDevice] = React.useState<BentoIconDevice>('desktop');
@@ -390,10 +392,11 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
   const selectedBentoItem = getSelectedBentoItem();
   const selectedType = selectedBentoItem?.type || 'text';
   const selectedBentoItemId = selectedBentoItem ? getBentoItemId(selectedBentoItem) : null;
-  const activeBentoTab = selectedBentoItemId ? bentoTabByElementId[selectedBentoItemId] || 'contenido' : 'contenido';
+  const activeBentoTab = selectedBentoItemId ? bentoTabByElementId[selectedBentoItemId] || lastBentoTab : lastBentoTab;
   const setActiveBentoTab = (tab: (typeof BENTO_EDITOR_TABS)[number]['id']) => {
     if (!selectedBentoItemId) return;
     setBentoTabByElementId((previous) => ({ ...previous, [selectedBentoItemId]: tab }));
+    setLastBentoTab(tab);
   };
 
   React.useEffect(() => {
@@ -503,9 +506,7 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
       : activeLayoutKey === 'tablet'
         ? (item.tablet_span || Math.min(item.col_span || 3, BENTO_TABLET_COLUMNS))
         : (item.mobile_span || BENTO_MOBILE_COLUMNS);
-    const defaultH = activeLayoutKey === 'mobile'
-      ? (item.mobile_rows || item.row_span || 2)
-      : (item.desktop_rows || item.row_span || 2);
+    const defaultH = resolveBentoManualRows(item, activeLayoutKey);
     const rawLayout = {
       x: Number(savedLayout?.x ?? item.x ?? 0) || 0,
       y: Number(savedLayout?.y ?? item.y ?? 0) || 0,
@@ -635,16 +636,21 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
 
   const shouldShowFieldForType = (field: any) => {
     const visibleFields = visibleFieldsByType[selectedType] || visibleFieldsByType.text;
+    const effectiveVisibleFields = selectedType === 'icon'
+      ? visibleFields
+      : [...visibleFields, 'tablet_rows', 'mobile_rows', 'horizontal_padding', 'vertical_padding'];
     const iconVisualType = selectedBentoItem?.icon_visual_type || 'icon';
     if (selectedType === 'icon' && iconVisualType === 'image') {
       if (['icon', 'icon_color', 'icon_size', 'show_icon_bg', 'icon_bg'].includes(field.id)) return false;
     }
     if (selectedType === 'icon' && iconVisualType !== 'image' && ['icon_image', 'icon_image_size'].includes(field.id)) return false;
+    if (selectedType !== 'icon' && field.id === 'padding') return false;
+    if (selectedType === 'icon' && ['horizontal_padding', 'vertical_padding'].includes(field.id)) return false;
     if (field.id === 'font_family') return false;
     if (['desktop_span', 'tablet_span', 'mobile_span'].includes(field.id) && selectedBentoItem?.width_preset && selectedBentoItem.width_preset !== 'custom') return false;
-    if (['desktop_rows'].includes(field.id) && selectedBentoItem?.height_mode !== 'manual') return false;
+    if (['desktop_rows', 'tablet_rows', 'mobile_rows'].includes(field.id) && selectedBentoItem?.height_mode !== 'manual') return false;
     if (['border_style', 'border_width'].includes(field.id)) return true;
-    return visibleFields.includes(field.id);
+    return effectiveVisibleFields.includes(field.id);
   };
 
   const settingsByPillar: Record<string, { label: string, setting: any, contextId: string }[]> = {};
@@ -770,9 +776,9 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
   );
 
   const structureFieldOrder = [
-    'height_mode', 'desktop_rows', 'width_preset', 'vertical_align', 'align_items', 'composite_align',
+    'height_mode', 'desktop_rows', 'tablet_rows', 'mobile_rows', 'width_preset', 'vertical_align', 'align_items', 'composite_align',
     'composite_layout', 'desktop_span', 'tablet_span', 'mobile_span',
-    'padding'
+    'horizontal_padding', 'vertical_padding'
   ];
   if (settingsByPillar.estructura) {
     settingsByPillar.estructura.sort((left, right) => {
@@ -915,9 +921,7 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
                   : breakpoint === 'tablet'
                     ? (currentItem.tablet_span || Math.min(currentItem.col_span || 3, BENTO_TABLET_COLUMNS))
                     : (currentItem.mobile_span || BENTO_MOBILE_COLUMNS);
-                const fallbackH = breakpoint === 'mobile'
-                  ? (currentItem.mobile_rows || currentItem.row_span || 2)
-                  : (currentItem.desktop_rows || currentItem.row_span || 2);
+                  const fallbackH = resolveBentoManualRows(currentItem, breakpoint);
                 return {
                   x: Number(savedLayout?.x ?? currentItem.x ?? 0) || 0,
                   y: Number(savedLayout?.y ?? currentItem.y ?? 0) || 0,
@@ -981,6 +985,33 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
             layout_columns: { ...(currentItem.layout_columns || {}), mobile: BENTO_MOBILE_COLUMNS }
           };
         }
+        if (settingId === 'tablet_rows') {
+          const layout = updateLayoutSize('tablet', BENTO_TABLET_COLUMNS, { h: numericValue });
+          nextItem = {
+            ...nextItem,
+            tablet_rows: layout.h,
+            layouts: { ...existingLayouts, tablet: layout },
+            layout_columns: { ...(currentItem.layout_columns || {}), tablet: BENTO_TABLET_COLUMNS }
+          };
+        }
+        if (settingId === 'mobile_rows') {
+          const layout = updateLayoutSize('mobile', BENTO_MOBILE_COLUMNS, { h: numericValue });
+          nextItem = {
+            ...nextItem,
+            mobile_rows: layout.h,
+            layouts: { ...existingLayouts, mobile: layout },
+            layout_columns: { ...(currentItem.layout_columns || {}), mobile: BENTO_MOBILE_COLUMNS }
+          };
+        }
+      }
+
+      if (settingId === 'height_mode' && value === 'manual') {
+        nextItem = {
+          ...nextItem,
+          desktop_rows: resolveBentoManualRows(currentItem, 'desktop'),
+          tablet_rows: resolveBentoManualRows(currentItem, 'tablet'),
+          mobile_rows: resolveBentoManualRows(currentItem, 'mobile')
+        };
       }
 
       newItems[index] = nextItem;
@@ -1004,14 +1035,29 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
     if (!show.result && !forceShowButtonField) return null;
 
     const persistedSettingId = resolveBentoSettingId(selectedBentoItem, setting.id);
+    const normalizedPadding = selectedBentoItem ? resolveBentoPadding(selectedBentoItem) : null;
+    const normalizedPaddingValue = setting.id === 'horizontal_padding'
+      ? normalizedPadding?.horizontal
+      : setting.id === 'vertical_padding'
+        ? normalizedPadding?.vertical
+        : undefined;
+    const normalizedRowValue = setting.id === 'desktop_rows' || setting.id === 'tablet_rows' || setting.id === 'mobile_rows'
+      ? resolveBentoManualRows(selectedBentoItem, setting.id === 'desktop_rows' ? 'desktop' : setting.id === 'tablet_rows' ? 'tablet' : 'mobile')
+      : undefined;
     const value = selectedBentoItem && selectedBentoItem[persistedSettingId] !== undefined
       ? selectedBentoItem[persistedSettingId]
-      : setting.defaultValue;
+      : normalizedRowValue ?? normalizedPaddingValue ?? setting.defaultValue;
 
     return (
       <div key={`${contextId}_${setting.id}`} className="space-y-1">
         <SettingControl
-          setting={{ ...setting, label: setting.subsection ? setting.label : label }}
+          setting={{
+            ...setting,
+            label: setting.subsection ? setting.label : label,
+            ...(setting.id === 'vertical_align' && selectedBentoItem?.height_mode !== 'manual'
+              ? { disabledMessage: 'Disponible con altura manual.' }
+              : {})
+          }}
           value={value}
           onChange={(val) => handleFieldChange(contextId, persistedSettingId, val)}
           projectId={project?.id || null}
@@ -1297,6 +1343,8 @@ export const BentoCellEditor: React.FC<BentoCellEditorProps> = ({
       projectColors={projectColors}
       moduleType={selectedSection.type}
       contextId={`${selectedSection.id}_el_bento_items_${selectedBentoCellIndex}`}
+      activeSection={activeCompositeEditorSection}
+      onActiveSectionChange={setActiveCompositeEditorSection}
     />
   ) : null;
   const iconAdvancedDesignControls = selectedType === 'icon' && activeBentoTab === 'diseno' && (

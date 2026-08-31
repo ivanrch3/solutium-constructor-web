@@ -120,7 +120,7 @@ test('legacy composite buttons preserve data while receiving medium rendering de
   const normalized = normalizeBentoCompositeElements([{ ...legacy, buttonSize: undefined, font_size: 's', font_weight: '900' }]);
   assert.equal(getBentoButtonSizePreset(normalized[0].buttonSize), BENTO_BUTTON_SIZE_PRESETS.medium);
   assert.equal(normalized[0].font_size, 's');
-  assert.equal(normalized[0].font_weight, '900');
+  assert.equal(normalized[0].font_weight, 'black');
 });
 
 test('composite alignment maps to text alignment for all supported values', () => {

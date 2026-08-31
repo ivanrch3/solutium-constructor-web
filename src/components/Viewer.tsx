@@ -525,7 +525,7 @@ export const Viewer: React.FC<ViewerProps> = ({
   );
 
   useEffect(() => {
-    if (!isPublicRenderMode || !isPublishedViewer || !content || orderedSections.length === 0) return;
+    if (!isPublicRenderMode || !isPublishedViewer || !content) return;
     sendToMother({
       type: 'SOLUTIUM_VIEWER_READY',
       payload: {

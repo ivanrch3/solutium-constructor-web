@@ -291,3 +291,60 @@ export const rebuildAutomaticMenuLinks = ({
 
   return dedupeMenuLinks([...mergedVisibleLinks, ...manualLinks]);
 };
+
+export const hasExplicitMenuLinks = (
+  settingsValues: Record<string, any> | undefined,
+  menuLinksKey: string
+) => Object.prototype.hasOwnProperty.call(settingsValues || {}, menuLinksKey);
+
+export const resolveMenuLinks = ({
+  settingsValues,
+  menuLinksKey,
+  automaticMenuItems
+}: {
+  settingsValues: Record<string, any>;
+  menuLinksKey: string;
+  automaticMenuItems: MenuItemLike[];
+}) => {
+  if (hasExplicitMenuLinks(settingsValues, menuLinksKey)) {
+    const storedValue = settingsValues[menuLinksKey];
+    const rawLinks = storedValue && typeof storedValue === 'object' && !Array.isArray(storedValue) && 'value' in storedValue
+      ? storedValue.value
+      : storedValue;
+    return dedupeMenuLinks(Array.isArray(rawLinks) ? rawLinks : []);
+  }
+  return dedupeMenuLinks(automaticMenuItems);
+};
+
+export const reconcileMenuLinksForModuleChange = ({
+  currentLinks,
+  previousModules,
+  nextModules,
+  settingsValues,
+  hasExplicitConfiguration
+}: {
+  currentLinks: MenuItemLike[];
+  previousModules: ModuleLike[];
+  nextModules: ModuleLike[];
+  settingsValues: Record<string, any>;
+  hasExplicitConfiguration: boolean;
+}) => {
+  if (!hasExplicitConfiguration) {
+    return rebuildAutomaticMenuLinks({
+      modules: nextModules,
+      settingsValues,
+      currentLinks
+    });
+  }
+
+  const previousIds = new Set((previousModules || []).map((module) => module.id));
+  const newModules = (nextModules || []).filter((module) =>
+    isMenuEligibleModule(module) && !previousIds.has(module.id)
+  );
+  const current = dedupeMenuLinks(currentLinks);
+  const currentTargets = new Set(current.flatMap(getMenuLinkTargets));
+  const newLinks = buildAutomaticMenuItems({ modules: newModules, settingsValues })
+    .filter((link) => !currentTargets.has(link.moduleId || link.targetSectionId || ''));
+
+  return dedupeMenuLinks([...current, ...newLinks]);
+};

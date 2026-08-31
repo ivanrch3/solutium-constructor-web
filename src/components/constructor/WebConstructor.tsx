@@ -103,10 +103,11 @@ import {
   isMenuModuleLike,
   isMenuEligibleModule,
   isUtilityMenuModule,
-  mergeAutomaticMenuItemsWithExisting,
+  hasExplicitMenuLinks,
   normalizeConstructorModuleOrder,
   normalizeHeaderPositionValue,
-  rebuildAutomaticMenuLinks,
+  reconcileMenuLinksForModuleChange,
+  resolveMenuLinks,
   resolveSectionHref,
   resolveMenuMode,
   resolveShowInMenuState
@@ -2551,6 +2552,11 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
     newElements.forEach(element => {
       Object.values(element.settings || {}).forEach(groupSettings => {
         groupSettings.forEach(setting => {
+          if (
+            (baseModule.type === 'menu' || baseModule.type === 'navegacion') &&
+            element.id.endsWith('_el_menu_items') &&
+            setting.id === 'links'
+          ) return;
           let val = resolveProjectAwareSettingDefault(setting, setting.defaultValue);
           const settingId = setting.id;
 
@@ -4073,6 +4079,11 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       if (element.settings) {
         Object.values(element.settings).forEach(groupSettings => {
           groupSettings.forEach(setting => {
+            if (
+              (module.type === 'menu' || module.type === 'navegacion') &&
+              element.id.endsWith('_el_menu_items') &&
+              setting.id === 'links'
+            ) return;
             let val = resolveProjectAwareSettingDefault(setting, setting.defaultValue);
 
             // Custom logic for specific settings
@@ -4197,12 +4208,12 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       if (!isPreviewMode && !isUtilityModule) {
         const menuMod = newModules.find(m => m.type === 'navegacion' || m.type === 'menu');
         if (menuMod) {
-          finalState = rebuildMenuLinksIfNeeded(finalState, menuMod.id);
+          finalState = rebuildMenuLinksIfNeeded(finalState, menuMod.id, newModules, prev.addedModules);
         }
       }
 
       if (!isPreviewMode && (module.type === 'navegacion' || module.type === 'menu')) {
-        finalState = rebuildMenuLinksIfNeeded(finalState, moduleId);
+        finalState = rebuildMenuLinksIfNeeded(finalState, moduleId, newModules, prev.addedModules);
       }
 
       return finalState;
@@ -4264,7 +4275,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
 
       const menuModule = orderedModules.find(module => module.type === 'navegacion' || module.type === 'menu');
       if (menuModule) {
-        nextState = rebuildMenuLinksIfNeeded(nextState, menuModule.id, orderedModules);
+        nextState = rebuildMenuLinksIfNeeded(nextState, menuModule.id, orderedModules, addedModules);
       }
 
       return nextState;
@@ -4361,7 +4372,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       if (!isPreviewMode) {
         const menuModule = orderedModules.find(module => module.type === 'navegacion' || module.type === 'menu');
         if (menuModule) {
-          nextState = rebuildMenuLinksIfNeeded(nextState, menuModule.id);
+          nextState = rebuildMenuLinksIfNeeded(nextState, menuModule.id, orderedModules, addedModules);
         }
       }
 
@@ -4401,7 +4412,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
       };
 
       if (menuModule) {
-        nextState = rebuildMenuLinksIfNeeded(nextState, menuModule.id);
+        nextState = rebuildMenuLinksIfNeeded(nextState, menuModule.id, newModules, prev.addedModules);
       }
 
       return nextState;
@@ -4412,16 +4423,24 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
   const rebuildMenuLinksIfNeeded = (
     state: EditorState,
     menuModuleId: string,
-    modulesOverride?: WebModule[]
+    modulesOverride?: WebModule[],
+    previousModulesOverride?: WebModule[]
   ) => {
     const menuItemsElId = `${menuModuleId}_el_menu_items`;
     const menuLinksKey = `${menuItemsElId}_links`;
-    const currentLinks = dedupeMenuLinks(state.settingsValues[menuLinksKey] || []);
-    const modules = modulesOverride || state.addedModules || [];
-    const rebuiltLinks = rebuildAutomaticMenuLinks({
-      modules,
+    const currentLinks = resolveMenuLinks({
       settingsValues: state.settingsValues,
-      currentLinks
+      menuLinksKey,
+      automaticMenuItems: []
+    });
+    const modules = modulesOverride || state.addedModules || [];
+    const previousModules = previousModulesOverride || state.addedModules || [];
+    const rebuiltLinks = reconcileMenuLinksForModuleChange({
+      nextModules: modules,
+      previousModules,
+      settingsValues: state.settingsValues,
+      currentLinks,
+      hasExplicitConfiguration: hasExplicitMenuLinks(state.settingsValues, menuLinksKey)
     });
 
     return {
@@ -5017,18 +5036,18 @@ const formatTimestampName = () => {
             settingsValues: currentState.settingsValues || {}
           });
           const manualLinksKey = `${module.id}_el_menu_items_links`;
-          const manualLinks = dedupeMenuLinks(
-            Array.isArray(currentState.settingsValues?.[manualLinksKey])
-              ? currentState.settingsValues[manualLinksKey]
-              : []
-          );
+          const manualLinks = resolveMenuLinks({
+            settingsValues: currentState.settingsValues || {},
+            menuLinksKey: manualLinksKey,
+            automaticMenuItems: []
+          });
           const currentLogo = getPlainValue(currentState.settingsValues?.[`${module.id}_el_menu_logo_logo_img`]);
           const shouldUseProjectLogo = (!currentLogo || String(currentLogo).trim() === '') && project?.logoUrl;
 
           settings['global_menu_mode'] = menuMode;
-          settings['el_menu_items_links'] = manualLinks.length > 0
+          settings['el_menu_items_links'] = hasExplicitMenuLinks(currentState.settingsValues, manualLinksKey)
             ? manualLinks
-            : mergeAutomaticMenuItemsWithExisting(automaticMenuItems, manualLinks);
+            : automaticMenuItems;
 
           if (shouldUseProjectLogo) {
             content.logo_url = project.logoUrl;

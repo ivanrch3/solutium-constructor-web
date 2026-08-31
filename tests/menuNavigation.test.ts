@@ -2,7 +2,10 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   buildAutomaticMenuItems,
+  hasExplicitMenuLinks,
+  reconcileMenuLinksForModuleChange,
   rebuildAutomaticMenuLinks,
+  resolveMenuLinks,
   resolveSectionHref,
 } from '../src/utils/menuNavigation.ts';
 
@@ -86,4 +89,72 @@ test('automatic links can be rebuilt at boundaries without changing their target
 
   assert.deepEqual(firstResult.map((link) => link.moduleId), firstOrder.map((module) => module.id));
   assert.deepEqual(lastResult.map((link) => link.moduleId), lastOrder.map((module) => module.id));
+});
+
+test('legacy menus without an explicit links setting remain automatic', () => {
+  const settings = {};
+  assert.equal(hasExplicitMenuLinks(settings, 'menu_el_menu_items_links'), false);
+  assert.deepEqual(
+    resolveMenuLinks({ settingsValues: settings, menuLinksKey: 'menu_el_menu_items_links', automaticMenuItems: linksFor(modules) })
+      .map((link) => link.moduleId),
+    modules.map((module) => module.id)
+  );
+});
+
+test('an explicit list is canonical and only a genuinely new module is appended', () => {
+  const initialModules = modules.slice(0, 3);
+  const nextModules = [...initialModules, { id: 'pricing-new', type: 'pricing', iconKey: 'pricing' }];
+  const currentLinks = [linksFor(initialModules)[0], linksFor(initialModules)[2]];
+  const settings = { 'menu_el_menu_items_links': currentLinks };
+
+  const result = reconcileMenuLinksForModuleChange({
+    currentLinks,
+    previousModules: initialModules,
+    nextModules,
+    settingsValues: settings,
+    hasExplicitConfiguration: hasExplicitMenuLinks(settings, 'menu_el_menu_items_links')
+  });
+
+  assert.deepEqual(result.map((link) => link.moduleId), ['hero-1', 'video-b', 'pricing-new']);
+  assert.equal(result.some((link) => link.moduleId === 'video-a'), false);
+});
+
+test('an explicit empty list stays empty until a new module is added', () => {
+  const key = 'menu_el_menu_items_links';
+  const settings = { [key]: [] };
+  assert.deepEqual(resolveMenuLinks({ settingsValues: settings, menuLinksKey: key, automaticMenuItems: linksFor(modules) }), []);
+
+  const result = reconcileMenuLinksForModuleChange({
+    currentLinks: [],
+    previousModules: modules,
+    nextModules: [...modules, { id: 'new-video', type: 'video', iconKey: 'video' }],
+    settingsValues: settings,
+    hasExplicitConfiguration: true
+  });
+  assert.deepEqual(result.map((link) => link.moduleId), ['new-video']);
+});
+
+test('explicit links wrapped with editor metadata still preserve an empty list', () => {
+  const key = 'menu_el_menu_items_links';
+  assert.deepEqual(resolveMenuLinks({
+    settingsValues: { [key]: { value: [] } },
+    menuLinksKey: key,
+    automaticMenuItems: linksFor(modules)
+  }), []);
+});
+
+test('reordering, renaming, and removing modules do not resurrect or duplicate links', () => {
+  const currentLinks = [linksFor(modules)[0], linksFor(modules)[2]];
+  const settings = { menu_el_menu_items_links: currentLinks };
+  const reconcile = (nextModules: typeof modules) => reconcileMenuLinksForModuleChange({
+    currentLinks,
+    previousModules: modules,
+    nextModules,
+    settingsValues: settings,
+    hasExplicitConfiguration: true
+  });
+
+  assert.deepEqual(reconcile([modules[2], modules[1], modules[0]]).map((link) => link.moduleId), ['hero-1', 'video-b']);
+  assert.deepEqual(reconcile(modules.map((module) => module.id === 'hero-1' ? { ...module, name: 'Renamed' } : module)).map((link) => link.moduleId), ['hero-1', 'video-b']);
+  assert.deepEqual(reconcile([modules[0], modules[2]]).map((link) => link.moduleId), ['hero-1', 'video-b']);
 });

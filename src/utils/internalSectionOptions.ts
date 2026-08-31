@@ -1,5 +1,5 @@
 import { WebModule } from '../types/constructor';
-import { resolveModuleDisplayLabel } from './menuNavigation';
+import { resolveModuleDisplayLabel, resolveSectionHref } from './menuNavigation';
 
 export type InternalSectionOption = { label: string; value: string };
 
@@ -20,7 +20,7 @@ export const buildInternalSectionOptions = (
       labelCounts.set(baseLabel, count);
       return {
         label: count > 1 ? `${baseLabel} (${count})` : baseLabel,
-        value: `#${module.id}`
+        value: resolveSectionHref(module.id)
       };
     });
 

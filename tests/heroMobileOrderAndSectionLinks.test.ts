@@ -18,7 +18,7 @@ const modules = [
   { id: 'features-2', type: 'features', iconKey: 'features', name: 'Características' }
 ] as any;
 const options = buildInternalSectionOptions(modules, 'hero-1');
-assert.deepEqual(options.map((option) => option.value), ['', '#features-1', '#features-2']);
+assert.deepEqual(options.map((option) => option.value), ['', '#section-features-1', '#section-features-2']);
 assert.equal(options[1].label, 'Características');
 assert.equal(options[2].label, 'Características (2)');
 assert.equal(options.every((option) => option.value === '' || option.value.startsWith('#')), true);

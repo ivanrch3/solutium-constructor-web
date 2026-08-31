@@ -1049,6 +1049,7 @@ export const HERO_MODULE: WebModule = {
         { id: 'primary_icon', label: 'Icono', type: 'icon', defaultValue: 'ArrowRight', subsection: 'Botón Primario', showIf: { settingId: 'show_primary', value: true } },
         ...BUTTON_LINK_SETTINGS('primary', '#').map(setting => ({
           ...setting,
+          ...(setting.id === 'primary_link_type' ? { label: 'Destino del botón' } : {}),
           subsection: 'Botón Primario',
           ...(setting.id === 'primary_url' ? { internalSectionSource: 'siteSections' as const, linkTypeSettingId: 'primary_link_type' } : {}),
           ...(setting.id === 'primary_target' ? { hideForInternalLink: true, linkTypeSettingId: 'primary_link_type' } : {}),
@@ -1059,6 +1060,7 @@ export const HERO_MODULE: WebModule = {
         { id: 'secondary_icon', label: 'Icono', type: 'icon', defaultValue: '', subsection: 'Botón Secundario', showIf: { settingId: 'show_secondary', value: true } },
         ...BUTTON_LINK_SETTINGS('secondary', '#').map(setting => ({
           ...setting,
+          ...(setting.id === 'secondary_link_type' ? { label: 'Destino del botón' } : {}),
           subsection: 'Botón Secundario',
           ...(setting.id === 'secondary_url' ? { internalSectionSource: 'siteSections' as const, linkTypeSettingId: 'secondary_link_type' } : {}),
           ...(setting.id === 'secondary_target' ? { hideForInternalLink: true, linkTypeSettingId: 'secondary_link_type' } : {}),

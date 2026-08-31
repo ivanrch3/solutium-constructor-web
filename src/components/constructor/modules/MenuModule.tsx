@@ -12,6 +12,7 @@ import {
   dedupeMenuLinks,
   normalizeMenuPositionValue,
   normalizeSectionAnchorId,
+  resolveMenuLinks,
   resolveSectionHref
 } from '../../../utils/menuNavigation';
 
@@ -114,11 +115,8 @@ export const MenuModule: React.FC<{
   })();
 
   // Element: Items
-  const rawLinks = getVal(`${moduleId}_el_menu_items`, 'links', []);
-  const manualLinks = dedupeMenuLinks(Array.isArray(rawLinks) ? rawLinks : []);
-  const links = manualLinks.length > 0
-    ? manualLinks
-    : dedupeMenuLinks(automaticMenuItems);
+  const menuLinksKey = `${moduleId}_el_menu_items_links`;
+  const links = resolveMenuLinks({ settingsValues, menuLinksKey, automaticMenuItems });
 
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
 

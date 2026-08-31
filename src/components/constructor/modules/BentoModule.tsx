@@ -2401,7 +2401,7 @@ export const BentoModule: React.FC<{
                         executeBentoClickAction(item);
                       }
                     }}
-                    className={`w-full h-full overflow-hidden group flex flex-col ${!isPreviewMode || isCardClickable ? 'cursor-pointer' : ''} relative ${isDragging ? 'transition-none' : 'transition-all duration-300'} ${resolvedShadowClass} ${hoverClass} ${alignClass} ${card_style === 'glass' ? 'backdrop-blur-xl' : ''} ${
+                    className={`w-full h-full group flex flex-col ${!isPreviewMode || isCardClickable ? 'cursor-pointer' : ''} relative ${isDragging ? 'transition-none' : 'transition-all duration-300'} ${resolvedShadowClass} ${hoverClass} ${alignClass} ${card_style === 'glass' ? 'backdrop-blur-xl' : ''} ${
                       isSelected ? `outline outline-2 outline-primary outline-offset-2 ${isDragging ? '' : 'scale-[1.01]'} z-50 shadow-2xl` : 'z-10'
                     }`}
                     style={{
@@ -2416,37 +2416,43 @@ export const BentoModule: React.FC<{
                       zIndex: isSelected ? 50 : z_index
                     }}
                   >
-                    {/* Background Image Logic */}
-                    {card_image && type !== 'visual' && (
-                      <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
-                        <img 
-                          src={card_image} 
-                          className={`w-full h-full transition-transform duration-700 ${resolvedHoverEffect === 'zoom' ? 'group-hover:scale-110' : ''} object-cover`}
-                          referrerPolicy="no-referrer"
-                          alt=""
-                          style={{ objectFit: image_fit }}
-                        />
-                        {card_overlay > 0 && (
-                          <div 
-                            className="absolute inset-0 bg-black" 
-                            style={{ opacity: card_overlay / 100 }}
-                          />
-                        )}
-                      </div>
-                    )}
-
-                    {/* Decorative element for Hero (Legacy Icon) */}
-                    {isHeroType && !card_image && (
-                      <div className={`absolute -right-8 -bottom-8 opacity-10 rotate-12 transition-transform duration-700 ${resolvedHoverEffect === 'zoom' ? 'group-hover:scale-110' : ''}`}>
-                        <IconComponent size={180} />
-                      </div>
-                    )}
-
-                    {/* Content */}
+                    {/* Visual clipping layer: backgrounds and decorations never affect content measurement. */}
                     <div
-                      data-bento-intrinsic-content={getBentoItemId(item)}
-                      className={`min-w-0 max-w-full flex-col ${type === 'composite' && (BENTO_BREAKPOINT_TO_LAYOUT[effectiveBreakpoint] || 'desktop') === 'mobile' ? 'flex w-full' : 'inline-flex'}`}
+                      aria-hidden="true"
+                      className="pointer-events-none absolute inset-0 z-0 overflow-hidden"
+                      style={{ borderRadius: `${card_radius}px` }}
                     >
+                      {card_image && type !== 'visual' && (
+                        <>
+                          <img
+                            src={card_image}
+                            className={`absolute inset-0 h-full w-full object-cover transition-transform duration-700 ${resolvedHoverEffect === 'zoom' ? 'group-hover:scale-110' : ''}`}
+                            referrerPolicy="no-referrer"
+                            alt=""
+                            style={{ objectFit: image_fit }}
+                          />
+                          {card_overlay > 0 && (
+                            <div
+                              className="absolute inset-0 bg-black"
+                              style={{ opacity: card_overlay / 100 }}
+                            />
+                          )}
+                        </>
+                      )}
+
+                      {isHeroType && !card_image && (
+                        <div className={`absolute -bottom-8 -right-8 rotate-12 opacity-10 transition-transform duration-700 ${resolvedHoverEffect === 'zoom' ? 'group-hover:scale-110' : ''}`}>
+                          <IconComponent size={180} />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Content layer stays in normal flow; only this inner wrapper is measured. */}
+                    <div className="relative z-10 w-full min-w-0 max-w-full">
+                      <div
+                        data-bento-intrinsic-content={getBentoItemId(item)}
+                        className="block w-full min-w-0 max-w-full"
+                      >
                     <BentoCellContent 
                         item={item} 
                         darkMode={darkMode} 
@@ -2461,6 +2467,7 @@ export const BentoModule: React.FC<{
                           }
                         }}
                     />
+                      </div>
                     </div>
                   </motion.div>
                 </div>

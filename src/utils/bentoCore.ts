@@ -162,6 +162,21 @@ export const intrinsicHeightToGridRows = (
   return Math.max(1, Math.ceil((contentHeight + safeGap) / (safeRowHeight + safeGap)));
 };
 
+export type BentoIntrinsicSizes = Record<string, { height: number }>;
+
+export const updateBentoIntrinsicSize = (
+  sizes: BentoIntrinsicSizes,
+  itemId: string,
+  breakpoint: BentoBreakpoint,
+  height: number
+): BentoIntrinsicSizes => {
+  const safeHeight = Number.isFinite(height) ? Math.max(0, height) : 0;
+  const key = `${itemId}:${breakpoint}`;
+  const previous = sizes[key];
+  if (previous && Math.abs(previous.height - safeHeight) <= 1) return sizes;
+  return { ...sizes, [key]: { height: safeHeight } };
+};
+
 export const resolveBentoResizeHandles = (
   item: Record<string, any> = {},
   isPreviewMode = false,

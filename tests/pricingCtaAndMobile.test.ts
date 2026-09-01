@@ -7,6 +7,7 @@ import {
   normalizePricingPlansForRender,
   resolvePricingIsMobile,
   resolvePricingMobilePlanIndex,
+  resolvePricingSwipePlan,
   shouldUsePricingMobileSwitch
 } from '../src/utils/pricingMobile';
 
@@ -67,4 +68,19 @@ test('legacy and new pricing plans share the effective visible collection', () =
   assert.equal(shouldUsePricingMobileSwitch(normalizePricingPlansForRender(newPlans).length), true);
   assert.equal(shouldUsePricingMobileSwitch(normalizePricingPlansForRender([...newPlans, { name: 'Extra' }]).length), false);
   assert.equal(shouldUsePricingMobileSwitch(normalizePricingPlansForRender(newPlans.slice(0, 1)).length), false);
+});
+
+test('mobile controls use the approved labels and directional swipe contract', () => {
+  assert.equal(resolvePricingSwipePlan({ currentPlan: 'free', offsetX: -90, velocityX: 0 }), 'pro');
+  assert.equal(resolvePricingSwipePlan({ currentPlan: 'pro', offsetX: 90, velocityX: 0 }), 'free');
+  assert.equal(resolvePricingSwipePlan({ currentPlan: 'free', offsetX: -12, velocityX: 0 }), 'free');
+  assert.equal(resolvePricingSwipePlan({ currentPlan: 'pro', offsetX: 12, velocityX: 0 }), 'pro');
+  assert.equal(resolvePricingSwipePlan({ currentPlan: 'free', offsetX: -10, velocityX: -600 }), 'pro');
+  assert.equal(resolvePricingSwipePlan({ currentPlan: 'pro', offsetX: 10, velocityX: 600 }), 'free');
+});
+
+test('pricing mobile presentation contract keeps desktop and one-or-many-plan layouts unchanged', () => {
+  assert.equal(shouldUsePricingMobileSwitch(1), false);
+  assert.equal(shouldUsePricingMobileSwitch(2), true);
+  assert.equal(shouldUsePricingMobileSwitch(3), false);
 });

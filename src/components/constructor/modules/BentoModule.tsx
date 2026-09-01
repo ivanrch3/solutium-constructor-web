@@ -41,8 +41,8 @@ import {
   reconcileBentoRuntimeAutoLayout,
   rectanglesOverlap
 } from '../../../utils/bentoCore';
-import '/node_modules/react-grid-layout/css/styles.css';
-import '/node_modules/react-resizable/css/styles.css';
+import 'react-grid-layout/css/styles.css';
+import 'react-resizable/css/styles.css';
 
 const ResponsiveGridLayout = Responsive;
 const BENTO_BREAKPOINT_TO_LAYOUT: Record<string, 'desktop' | 'tablet' | 'mobile'> = {

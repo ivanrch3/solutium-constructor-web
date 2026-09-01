@@ -3487,7 +3487,17 @@ export const PRICING_MODULE: WebModule = {
             { id: 'yearlyPrice', label: 'Precio Anual (por mes)', type: 'number', defaultValue: 0 },
             { id: 'features', label: 'Características (una por línea, usa "-" para negativas)', type: 'textarea', defaultValue: '' },
             { id: 'cta', label: 'Texto del Botón', type: 'text', defaultValue: 'Elegir Plan' },
-            ...BUTTON_LINK_SETTINGS('cta'),
+            ...BUTTON_LINK_SETTINGS('cta').map(setting => ({
+              ...setting,
+              ...(setting.id === 'cta_url' ? {
+                internalSectionSource: 'siteSections' as const,
+                linkTypeSettingId: 'cta_link_type'
+              } : {}),
+              ...(setting.id === 'cta_target' ? {
+                hideForInternalLink: true,
+                linkTypeSettingId: 'cta_link_type'
+              } : {})
+            })),
             { id: 'visual_type', label: 'Tipo visual', type: 'select', defaultValue: 'icon', options: [
               { label: 'Ícono', value: 'icon' },
               { label: 'Imagen', value: 'image' }

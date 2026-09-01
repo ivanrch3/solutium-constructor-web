@@ -21,6 +21,7 @@ import { getButtonTypographyStyle, getLegacyButtonTypographyStyle, parseNumSafe 
 import { useEditorStore } from '../../../store/editorStore';
 import { normalizeSectionAnimation } from '../../../constants/moduleAnimations';
 import { getProjectThemeFromSettings, resolveBrandColor } from '../../../utils/projectTheme';
+import { resolveHeroCtaLink } from '../../../utils/heroCtaLink';
 
 export const CTAModule: React.FC<{ 
   moduleId: string, 
@@ -197,14 +198,10 @@ export const CTAModule: React.FC<{
   const secondaryUrl = getVal(`${moduleId}_el_cta_actions`, 'secondary_url', '');
   const secondaryTarget = getVal(`${moduleId}_el_cta_actions`, 'secondary_target', '_self');
   
-  const isValidCta = (text?: string, url?: string) => {
-    const safeText = String(text || '').trim();
-    const safeUrl = String(url || '').trim();
-    return safeText !== '' && safeUrl !== '' && safeUrl !== '#';
-  };
-
-  const hasPrimary = isValidCta(primaryText, primaryUrl);
-  const hasSecondary = isValidCta(secondaryText, secondaryUrl);
+  const primaryLink = resolveHeroCtaLink(primaryUrl, primaryType, primaryTarget);
+  const secondaryLink = resolveHeroCtaLink(secondaryUrl, secondaryType, secondaryTarget);
+  const hasPrimary = String(primaryText || '').trim() !== '' && primaryLink !== null;
+  const hasSecondary = String(secondaryText || '').trim() !== '' && secondaryLink !== null;
   
   const placeholder = getVal(`${moduleId}_el_cta_actions`, 'placeholder', 'tu@email.com');
   const showSecondary = getVal(`${moduleId}_el_cta_actions`, 'show_secondary', true);
@@ -393,9 +390,9 @@ export const CTAModule: React.FC<{
       <div className={`flex flex-wrap gap-4 ${layout === 'centered' || layout === 'bento' ? 'justify-center' : 'justify-start'}`}>
         {hasPrimary && (
           <motion.a
-            href={primaryUrl}
-            target={primaryTarget === '_blank' ? '_blank' : undefined}
-            rel={primaryTarget === '_blank' ? 'noopener noreferrer' : undefined}
+            href={primaryLink?.href || '#'}
+            target={primaryLink?.target}
+            rel={primaryLink?.rel}
               whileHover={magneticButton ? { x: 5, y: -5, scale: 1.05 } : hoverEffect === 'scale' ? { scale: 1.05 } : {}}
               whileTap={{ scale: 0.95 }}
             onClick={(e) => {
@@ -431,9 +428,9 @@ export const CTAModule: React.FC<{
         
         {hasSecondary && showSecondary && (
           <motion.a
-            href={secondaryUrl}
-            target={secondaryTarget === '_blank' ? '_blank' : undefined}
-            rel={secondaryTarget === '_blank' ? 'noopener noreferrer' : undefined}
+            href={secondaryLink?.href || '#'}
+            target={secondaryLink?.target}
+            rel={secondaryLink?.rel}
             whileHover={{ x: 5 }}
             className="px-8 py-4 font-bold text-sm transition-all flex items-center gap-2"
             style={{ 

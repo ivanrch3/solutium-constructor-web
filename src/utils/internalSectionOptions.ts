@@ -1,5 +1,5 @@
 import { WebModule } from '../types/constructor';
-import { resolveModuleDisplayLabel, resolveSectionHref } from './menuNavigation';
+import { resolveModuleEditorLabel, resolveSectionHref } from './menuNavigation';
 
 export type InternalSectionOption = { label: string; value: string };
 
@@ -15,7 +15,7 @@ export const buildInternalSectionOptions = (
   const options = modules
     .filter((module) => module?.id && module.id !== currentModuleId)
     .map((module) => {
-      const baseLabel = resolveModuleDisplayLabel(module);
+      const baseLabel = resolveModuleEditorLabel(module);
       const count = (labelCounts.get(baseLabel) || 0) + 1;
       labelCounts.set(baseLabel, count);
       return {
@@ -26,12 +26,16 @@ export const buildInternalSectionOptions = (
 
   const baseOptions = [{ label: 'Seleccione una sección', value: '' }, ...options];
   const currentString = String(currentValue || '').trim();
-  const isAnchor = currentString.startsWith('#');
-  const hasCurrentOption = baseOptions.some((option) => option.value === currentString);
+  const currentCanonical = currentString ? resolveSectionHref(currentString) : '';
+  const matchedOption = options.find((option) => option.value === currentCanonical);
+  const optionsWithLegacySelection = matchedOption && currentString !== matchedOption.value
+    ? baseOptions.map((option) => option.value === matchedOption.value ? { ...option, value: currentString } : option)
+    : baseOptions;
+  const hasCurrentOption = optionsWithLegacySelection.some((option) => option.value === currentString);
 
-  if (isAnchor && !hasCurrentOption) {
-    return [{ label: `No disponible (${currentString})`, value: currentString }, ...baseOptions];
+  if (currentString && currentString !== '#' && !hasCurrentOption) {
+    return [{ label: `No disponible (${currentString})`, value: currentString }, ...optionsWithLegacySelection];
   }
 
-  return baseOptions;
+  return optionsWithLegacySelection;
 };

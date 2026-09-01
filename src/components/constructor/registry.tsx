@@ -2834,9 +2834,17 @@ export const CTA_MODULE: WebModule = {
           { label: 'Captura de Email (Lead)', value: 'lead_capture' }
         ]},
         { id: 'primary_text', label: 'Texto Botón / Acción', type: 'text', defaultValue: 'Empezar Ahora' },
-        ...BUTTON_LINK_SETTINGS('primary'),
+        ...BUTTON_LINK_SETTINGS('primary').map(setting => ({
+          ...setting,
+          ...(setting.id === 'primary_url' ? { internalSectionSource: 'siteSections' as const, linkTypeSettingId: 'primary_link_type' } : {}),
+          ...(setting.id === 'primary_target' ? { hideForInternalLink: true, linkTypeSettingId: 'primary_link_type' } : {})
+        })),
         { id: 'secondary_text', label: 'Texto Botón Secundario', type: 'text', defaultValue: 'Saber Más' },
-        ...BUTTON_LINK_SETTINGS('secondary'),
+        ...BUTTON_LINK_SETTINGS('secondary').map(setting => ({
+          ...setting,
+          ...(setting.id === 'secondary_url' ? { internalSectionSource: 'siteSections' as const, linkTypeSettingId: 'secondary_link_type' } : {}),
+          ...(setting.id === 'secondary_target' ? { hideForInternalLink: true, linkTypeSettingId: 'secondary_link_type' } : {})
+        })),
         { id: 'placeholder', label: 'Placeholder Email', type: 'text', defaultValue: 'tu@email.com' }
       ],
       estructura: [

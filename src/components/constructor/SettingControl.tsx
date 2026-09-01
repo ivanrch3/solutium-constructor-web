@@ -467,7 +467,8 @@ export const SettingControl: React.FC<SettingControlProps> = ({
     ? (repeaterItem?.[setting.linkTypeSettingId] ?? settingsValues?.[`${contextId}_${setting.linkTypeSettingId}`])
     : undefined;
   const linkedToInternalSection = setting.linkTypeSettingId
-    && resolveSectionLinkControlMode(linkedLinkType) === 'internal';
+    && (resolveSectionLinkControlMode(linkedLinkType) === 'internal'
+      || (linkedLinkType === undefined && String(currentValue || '').trim().startsWith('#')));
   const isInternalSectionLink = setting.internalSectionSource === 'siteSections' && linkedToInternalSection;
   const shouldHideForInternalLink = setting.hideForInternalLink && linkedToInternalSection;
   const shouldPauseDynamicCardsEditing =

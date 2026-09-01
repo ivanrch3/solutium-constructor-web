@@ -53,6 +53,7 @@ interface SettingControlProps {
   moduleType?: string;
   settingsValues?: Record<string, any>;
   availableModules?: WebModule[];
+  repeaterItem?: Record<string, any>;
 }
 
 // --- REFACTORED COLOR PICKER COMPONENTS ---
@@ -441,7 +442,8 @@ export const SettingControl: React.FC<SettingControlProps> = ({
   contextId,
   moduleType,
   settingsValues,
-  availableModules = []
+  availableModules = [],
+  repeaterItem
 }) => {
   const [isUploading, setIsUploading] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
@@ -462,7 +464,7 @@ export const SettingControl: React.FC<SettingControlProps> = ({
   const preferredOrientation = inferPexelsOrientation(setting, moduleType);
   const contextModuleId = getModuleIdFromContext(contextId);
   const linkedLinkType = setting.linkTypeSettingId && contextId
-    ? settingsValues?.[`${contextId}_${setting.linkTypeSettingId}`]
+    ? (repeaterItem?.[setting.linkTypeSettingId] ?? settingsValues?.[`${contextId}_${setting.linkTypeSettingId}`])
     : undefined;
   const linkedToInternalSection = setting.linkTypeSettingId
     && resolveSectionLinkControlMode(linkedLinkType) === 'internal';
@@ -1284,6 +1286,7 @@ export const SettingControl: React.FC<SettingControlProps> = ({
           moduleType={moduleType}
           settingsValues={settingsValues}
           availableModules={availableModules}
+          repeaterItem={item}
           onChange={(val) => {
             const newItems = [...items];
             let updatedItem = { ...item, [field.id]: val };

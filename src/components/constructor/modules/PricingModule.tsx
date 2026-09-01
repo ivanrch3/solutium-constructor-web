@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { motion } from 'motion/react';
+import { AnimatePresence, motion } from 'motion/react';
 import * as LucideIcons from 'lucide-react';
-import { Check, X, ShieldCheck, Zap, Clock, CreditCard } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Crown, X, ShieldCheck, Zap, Clock, CreditCard } from 'lucide-react';
 import { TYPOGRAPHY_SCALE, FONT_WEIGHTS } from '../../../constants/typography';
 import { TextRenderer } from '../TextRenderer';
 import { SectionAnimation } from '../animations/SectionAnimation';
@@ -18,6 +18,8 @@ import {
   resolvePricingPlanVisualType
 } from '../../../utils/pricingPlanVisual';
 import { resolvePricingColumnCount, resolvePricingGridClass } from '../../../utils/pricingLayout';
+import { getPricingMobileToggleLabel, normalizePricingPlansForRender, resolvePricingIsMobile, resolvePricingMobilePlanIndex, shouldUsePricingMobileSwitch } from '../../../utils/pricingMobile';
+import { resolveSectionHref } from '../../../utils/menuNavigation';
 
 const toBoolean = (value: unknown) => {
   return value === true || value === 'true' || value === 1 || value === '1';
@@ -58,10 +60,22 @@ function normalizePriceValue(value: unknown): string {
 export const PricingModule: React.FC<{ 
   moduleId: string, 
   settingsValues: Record<string, any>,
-  isPreviewMode?: boolean
-}> = ({ moduleId, settingsValues, isPreviewMode = false }) => {
+  isPreviewMode?: boolean,
+  constructorViewport?: 'desktop' | 'tablet' | 'mobile'
+}> = ({ moduleId, settingsValues, isPreviewMode = false, constructorViewport }) => {
   const { updateSectionSettings, selectSection, selectElement } = useEditorStore();
   const [isYearly, setIsYearly] = useState(false);
+  const [mobileVisiblePlan, setMobileVisiblePlan] = useState<'free' | 'pro'>('free');
+  const [windowWidth, setWindowWidth] = useState<number | undefined>(() => (
+    typeof window !== 'undefined' ? window.innerWidth : undefined
+  ));
+
+  React.useEffect(() => {
+    if (constructorViewport || typeof window === 'undefined') return;
+    const updateWidth = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', updateWidth);
+    return () => window.removeEventListener('resize', updateWidth);
+  }, [constructorViewport]);
 
   const getVal = (elementId: string | null, settingId: string, defaultValue: any) => {
     const key = elementId ? `${elementId}_${settingId}` : `${moduleId}_global_${settingId}`;
@@ -160,7 +174,7 @@ export const PricingModule: React.FC<{
   const plansSettingKey = getPricingPlansSettingKey(moduleId, settingsValues);
   const plansSettings = settingsValues[plansSettingKey];
 
-  const plans = plansSettings || [
+  const rawPlans = plansSettings || [
     {
       name: 'Básico',
       description: 'Ideal para individuos y proyectos pequeños.',
@@ -193,8 +207,40 @@ export const PricingModule: React.FC<{
       highlight: false
     }
   ];
+  const plans = normalizePricingPlansForRender(rawPlans);
+  const updateRenderedPlan = (plan: any, field: string, value: string) => {
+    if (!Array.isArray(rawPlans)) return;
+    const rawIndex = rawPlans.indexOf(plan);
+    if (rawIndex < 0) return;
+    const newPlans = [...rawPlans];
+    newPlans[rawIndex] = { ...newPlans[rawIndex], [field]: value };
+    updateSectionSettings(moduleId, { [plansSettingKey]: newPlans });
+  };
+  const isMobile = resolvePricingIsMobile({ constructorViewport, windowWidth });
   const desktopColumns = resolvePricingColumnCount(plans.length);
   const pricingGridClass = resolvePricingGridClass(desktopColumns);
+  const mobileSwitchCondition = isMobile && shouldUsePricingMobileSwitch(plans.length);
+  const hasMobilePlanSwitch = mobileSwitchCondition;
+  const mobileVisiblePlanIndex = resolvePricingMobilePlanIndex(mobileVisiblePlan);
+  const mobileToggleLabel = getPricingMobileToggleLabel(mobileVisiblePlan, plans);
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const debugEnabled = new URLSearchParams(window.location.search).get('debug_pricing_mobile') === 'true';
+    if (!debugEnabled) return;
+    console.debug('[PRICING_MOBILE_DEBUG]', {
+      moduleId,
+      constructorViewport,
+      windowWidth,
+      isMobile,
+      rawPlansCount: Array.isArray(rawPlans) ? rawPlans.length : 0,
+      normalizedPlansCount: plans.length,
+      planIds: plans.map((plan) => plan.id ?? plan.planId ?? null),
+      planNames: plans.map((plan) => plan.name ?? null),
+      mobileSwitchCondition,
+      mobileVisiblePlan
+    });
+  }, [constructorViewport, isMobile, mobileSwitchCondition, moduleId, mobileVisiblePlan, plans, rawPlans, windowWidth]);
 
   const getTypographyStyle = (sizeToken: string, weightToken: string, alignToken?: string) => {
     const size = TYPOGRAPHY_SCALE[sizeToken as keyof typeof TYPOGRAPHY_SCALE] || TYPOGRAPHY_SCALE.p;
@@ -363,6 +409,32 @@ export const PricingModule: React.FC<{
               </button>
             </div>
           )}
+
+          {isMobile && hasMobilePlanSwitch && (
+            <button
+              type="button"
+              aria-label={mobileVisiblePlan === 'free' ? `Mostrar ${mobileToggleLabel}` : `Volver a ${mobileToggleLabel}`}
+              aria-pressed={mobileVisiblePlan === 'pro'}
+              onClick={() => setMobileVisiblePlan((current) => current === 'free' ? 'pro' : 'free')}
+              className="relative mt-4 inline-flex w-full max-w-sm items-center justify-center gap-2 rounded-2xl px-12 py-3.5 text-sm font-black transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+              style={mobileVisiblePlan === 'free'
+                ? { background: `linear-gradient(135deg, ${highlightColor}, var(--primary-color))`, color: 'var(--color-primary-foreground, #FFFFFF)' }
+                : { backgroundColor: darkMode ? 'var(--sidebar-bg, #334155)' : 'var(--secondary-color, #E2E8F0)', color: '#FFFFFF' }}
+            >
+              {mobileVisiblePlan === 'free' ? (
+                <>
+                  <span>{mobileToggleLabel}</span>
+                  <Crown size={18} aria-hidden="true" className="text-amber-300" />
+                  <ArrowRight size={18} aria-hidden="true" className="absolute right-5" />
+                </>
+              ) : (
+                <>
+                  <ArrowLeft size={18} aria-hidden="true" className="absolute left-5" />
+                  <span>{mobileToggleLabel}</span>
+                </>
+              )}
+            </button>
+          )}
         </div>
 
         {/* Pricing Grid */}
@@ -374,7 +446,9 @@ export const PricingModule: React.FC<{
           className={`grid gap-8 ${pricingGridClass} items-stretch`}
           style={{ gap: `${gap}px` }}
         >
+          <AnimatePresence mode="wait" initial={false}>
           {plans.map((plan: any, i: number) => {
+            if (isMobile && hasMobilePlanSwitch && i !== mobileVisiblePlanIndex) return null;
             const planFeatures = typeof plan.features === 'string' 
               ? plan.features.split(/\n|,|;/).filter((f: string) => f.trim() !== '')
               : Array.isArray(plan.features) ? plan.features : [];
@@ -386,11 +460,17 @@ export const PricingModule: React.FC<{
             const visualType = resolvePricingPlanVisualType(plan.visual_type);
             const imageSrc = resolvePricingImageSrc(plan.image);
             const imageSize = Math.max(40, Math.min(160, parseNumSafe(plan.image_size, 72)));
+            const ctaIsInternal = plan.cta_link_type === 'internal';
+            const ctaUrl = plan.cta_url || plan.url || plan.link || '#';
+            const ctaHref = ctaIsInternal ? resolveSectionHref(ctaUrl) : ctaUrl;
 
             return (
               <motion.div
-                key={i}
+                key={`${i}-${isMobile && hasMobilePlanSwitch ? mobileVisiblePlan : 'desktop'}`}
                 variants={itemVariants}
+                initial={isMobile && hasMobilePlanSwitch ? { opacity: 0, x: mobileVisiblePlan === 'pro' ? 18 : -18 } : undefined}
+                animate={isMobile && hasMobilePlanSwitch ? { opacity: 1, x: 0 } : undefined}
+                exit={isMobile && hasMobilePlanSwitch ? { opacity: 0, x: mobileVisiblePlan === 'pro' ? -18 : 18 } : undefined}
                 whileHover={hoverEffect === 'lift' ? { y: -15 } : hoverEffect === 'glow' ? { boxShadow: `0 0 40px ${highlightColor}30` } : {}}
                 onClick={(e) => {
                   if (isPreviewMode) return;
@@ -446,11 +526,7 @@ export const PricingModule: React.FC<{
                       settingId="name"
                       value={plan.name}
                       isPreviewMode={isPreviewMode}
-                      onSave={(val) => {
-                        const newPlans = [...plans];
-                        newPlans[i] = { ...newPlans[i], name: val };
-                        updateSectionSettings(moduleId, { [plansSettingKey]: newPlans });
-                      }}
+                      onSave={(val) => updateRenderedPlan(plan, 'name', val)}
                       tagName="span"
                     />
                   </h3>
@@ -463,11 +539,7 @@ export const PricingModule: React.FC<{
                       settingId="description"
                       value={plan.description}
                       isPreviewMode={isPreviewMode}
-                      onSave={(val) => {
-                        const newPlans = [...plans];
-                        newPlans[i] = { ...newPlans[i], description: val };
-                        updateSectionSettings(moduleId, { [plansSettingKey]: newPlans });
-                      }}
+                      onSave={(val) => updateRenderedPlan(plan, 'description', val)}
                       tagName="span"
                     />
                   </p>
@@ -537,9 +609,9 @@ export const PricingModule: React.FC<{
 
                 {plan.cta && (
                     <a 
-                      href={plan.cta_url || plan.url || plan.link || '#'}
-                      target={(plan.cta_target || plan.target) === '_blank' ? '_blank' : '_self'}
-                      rel={(plan.cta_target || plan.target) === '_blank' ? 'noopener noreferrer' : undefined}
+                      href={ctaHref}
+                      target={!ctaIsInternal && (plan.cta_target || plan.target) === '_blank' ? '_blank' : '_self'}
+                      rel={!ctaIsInternal && (plan.cta_target || plan.target) === '_blank' ? 'noopener noreferrer' : undefined}
                       className="w-full py-4 rounded-2xl font-black text-sm transition-all active:scale-95 overflow-hidden relative group/btn text-center block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
                       style={{ 
                         backgroundColor: plan.highlight ? highlightColor : (darkMode ? '#334155' : '#F1F5F9'),
@@ -557,6 +629,7 @@ export const PricingModule: React.FC<{
               </motion.div>
             );
           })}
+          </AnimatePresence>
         </motion.div>
 
         {/* Trust Section */}

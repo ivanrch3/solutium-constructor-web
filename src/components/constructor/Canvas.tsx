@@ -1332,6 +1332,7 @@ export const Canvas: React.FC<CanvasProps> = ({
                         moduleId={section.id}
                         settingsValues={finalSettings}
                         isPreviewMode={isCleanPreviewMode}
+                        constructorViewport={viewport}
                       />
                     )}
                     {section.type === 'plan_comparison' && (

@@ -3424,7 +3424,7 @@ export const PRICING_MODULE: WebModule = {
     contenido: [],
     estructura: [
       { id: 'gap', label: 'Espaciado entre Tarjetas', type: 'range', defaultValue: 32, min: 16, max: 60, unit: 'px' },
-      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 40, min: 40, max: 200, unit: 'px' }
+      { id: 'padding_y', label: 'Padding Vertical', type: 'range', defaultValue: 40, min: 0, max: 200, unit: 'px' }
     ],
     estilo: [
       { id: 'dark_mode', label: 'Modo Oscuro', type: 'boolean', defaultValue: false },

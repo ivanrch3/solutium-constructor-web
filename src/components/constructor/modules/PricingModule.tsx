@@ -20,6 +20,7 @@ import {
 import { resolvePricingColumnCount, resolvePricingGridClass } from '../../../utils/pricingLayout';
 import { normalizePricingPlansForRender, resolvePricingIsMobile, resolvePricingMobilePlanIndex, resolvePricingSwipePlan, shouldUsePricingMobileSwitch } from '../../../utils/pricingMobile';
 import { resolveSectionHref } from '../../../utils/menuNavigation';
+import { getPricingPaddingPersistenceKey, getPricingSectionPaddingStyle } from '../../../utils/pricingSectionLayout';
 
 const toBoolean = (value: unknown) => {
   return value === true || value === 'true' || value === 1 || value === '1';
@@ -84,6 +85,7 @@ export const PricingModule: React.FC<{
 
   // Global Settings
   const gap = parseNumSafe(getVal(null, 'gap', 32), 32);
+  const sectionPadding = getPricingSectionPaddingStyle(settingsValues[getPricingPaddingPersistenceKey(moduleId)]);
   const darkMode = toBoolean(getVal(null, 'dark_mode', false));
   const rawBgColor = getVal(null, 'bg_color', '#F8FAFC');
   const bgColor = resolveThemeColor(rawBgColor, '#F8FAFC', '#0F172A', darkMode);
@@ -323,13 +325,14 @@ export const PricingModule: React.FC<{
   return (
     <SectionAnimation animation={sectionAnimation} speed={globalThemeSectionAnimationSpeed}>
     <section 
-      className="w-full relative overflow-hidden py-12 @md:py-20 @lg:py-24"
+      className={`w-full relative overflow-hidden ${sectionPadding.className}`}
       onClick={(e) => {
         if (isPreviewMode) return;
         e.stopPropagation();
         selectSection(moduleId);
       }}
-      style={{ 
+      style={{
+        ...sectionPadding.style,
         backgroundColor: bgColor,
         backgroundImage: (sectionGradient && typeof bgGradient === 'string' && !bgGradient.includes('NaN')) ? bgGradient : 'none'
       }}

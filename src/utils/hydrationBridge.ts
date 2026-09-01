@@ -117,6 +117,7 @@ const MODULE_ADAPTERS: Record<string, ModuleBridgeAdapter> = {
       'columns': 'global_columns',
       'gap': 'global_gap',
       'layout': 'global_layout',
+      'padding_y': 'global_padding_y',
       'plans': 'el_pricing_plans_plans'
     }
   },

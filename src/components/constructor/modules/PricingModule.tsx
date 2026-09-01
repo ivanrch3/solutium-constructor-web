@@ -18,7 +18,7 @@ import {
   resolvePricingPlanVisualType
 } from '../../../utils/pricingPlanVisual';
 import { resolvePricingColumnCount, resolvePricingGridClass } from '../../../utils/pricingLayout';
-import { getPricingMobileToggleLabel, normalizePricingPlansForRender, resolvePricingIsMobile, resolvePricingMobilePlanIndex, shouldUsePricingMobileSwitch } from '../../../utils/pricingMobile';
+import { normalizePricingPlansForRender, resolvePricingIsMobile, resolvePricingMobilePlanIndex, resolvePricingSwipePlan, shouldUsePricingMobileSwitch } from '../../../utils/pricingMobile';
 import { resolveSectionHref } from '../../../utils/menuNavigation';
 
 const toBoolean = (value: unknown) => {
@@ -222,7 +222,42 @@ export const PricingModule: React.FC<{
   const mobileSwitchCondition = isMobile && shouldUsePricingMobileSwitch(plans.length);
   const hasMobilePlanSwitch = mobileSwitchCondition;
   const mobileVisiblePlanIndex = resolvePricingMobilePlanIndex(mobileVisiblePlan);
-  const mobileToggleLabel = getPricingMobileToggleLabel(mobileVisiblePlan, plans);
+  const toggleMobilePlan = () => setMobileVisiblePlan((current) => current === 'free' ? 'pro' : 'free');
+  const handleMobilePlanDragEnd = (_event: unknown, info: { offset: { x: number }; velocity: { x: number } }) => {
+    if (!hasMobilePlanSwitch) return;
+    setMobileVisiblePlan((current) => resolvePricingSwipePlan({
+      currentPlan: current,
+      offsetX: info.offset.x,
+      velocityX: info.velocity.x
+    }));
+  };
+
+  const renderMobilePlanToggle = (position: 'top' | 'bottom') => (
+    <button
+      key={`pricing-mobile-toggle-${position}`}
+      type="button"
+      aria-label={mobileVisiblePlan === 'free' ? 'Pásate a Pro' : 'Ver plan gratuito'}
+      aria-pressed={mobileVisiblePlan === 'pro'}
+      onClick={toggleMobilePlan}
+      className={`relative inline-flex w-full max-w-sm items-center justify-center gap-2 rounded-2xl px-12 py-4 text-xl transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${position === 'top' ? 'mb-8' : 'mt-8'}`}
+      style={mobileVisiblePlan === 'free'
+        ? { background: `linear-gradient(135deg, ${highlightColor}, var(--primary-color))`, color: '#FFFFFF', fontWeight: 600 }
+        : { backgroundColor: '#F1F5F9', color: '#0F172A', fontWeight: 400 }}
+    >
+      {mobileVisiblePlan === 'free' ? (
+        <>
+          <span>Pásate a Pro</span>
+          <Crown size={24} aria-hidden="true" className="text-amber-300" />
+          <ArrowRight size={24} aria-hidden="true" className="absolute right-5" />
+        </>
+      ) : (
+        <>
+          <ArrowLeft size={24} aria-hidden="true" className="absolute left-5" />
+          <span>Ver plan gratuito</span>
+        </>
+      )}
+    </button>
+  );
 
   React.useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -410,34 +445,10 @@ export const PricingModule: React.FC<{
             </div>
           )}
 
-          {isMobile && hasMobilePlanSwitch && (
-            <button
-              type="button"
-              aria-label={mobileVisiblePlan === 'free' ? `Mostrar ${mobileToggleLabel}` : `Volver a ${mobileToggleLabel}`}
-              aria-pressed={mobileVisiblePlan === 'pro'}
-              onClick={() => setMobileVisiblePlan((current) => current === 'free' ? 'pro' : 'free')}
-              className="relative mt-4 inline-flex w-full max-w-sm items-center justify-center gap-2 rounded-2xl px-12 py-3.5 text-sm font-black transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
-              style={mobileVisiblePlan === 'free'
-                ? { background: `linear-gradient(135deg, ${highlightColor}, var(--primary-color))`, color: 'var(--color-primary-foreground, #FFFFFF)' }
-                : { backgroundColor: darkMode ? 'var(--sidebar-bg, #334155)' : 'var(--secondary-color, #E2E8F0)', color: '#FFFFFF' }}
-            >
-              {mobileVisiblePlan === 'free' ? (
-                <>
-                  <span>{mobileToggleLabel}</span>
-                  <Crown size={18} aria-hidden="true" className="text-amber-300" />
-                  <ArrowRight size={18} aria-hidden="true" className="absolute right-5" />
-                </>
-              ) : (
-                <>
-                  <ArrowLeft size={18} aria-hidden="true" className="absolute left-5" />
-                  <span>{mobileToggleLabel}</span>
-                </>
-              )}
-            </button>
-          )}
         </div>
 
         {/* Pricing Grid */}
+        {isMobile && hasMobilePlanSwitch && renderMobilePlanToggle('top')}
         <motion.div 
           variants={containerVariants}
           initial={entranceAnim ? "hidden" : false}
@@ -471,6 +482,15 @@ export const PricingModule: React.FC<{
                 initial={isMobile && hasMobilePlanSwitch ? { opacity: 0, x: mobileVisiblePlan === 'pro' ? 18 : -18 } : undefined}
                 animate={isMobile && hasMobilePlanSwitch ? { opacity: 1, x: 0 } : undefined}
                 exit={isMobile && hasMobilePlanSwitch ? { opacity: 0, x: mobileVisiblePlan === 'pro' ? -18 : 18 } : undefined}
+                transition={isMobile && hasMobilePlanSwitch ? {
+                  x: { type: 'spring', stiffness: 360, damping: 30 },
+                  opacity: { duration: 0.18 }
+                } : undefined}
+                drag={isMobile && hasMobilePlanSwitch ? 'x' : false}
+                dragDirectionLock
+                dragConstraints={{ left: 0, right: 0 }}
+                dragElastic={0.18}
+                onDragEnd={handleMobilePlanDragEnd}
                 whileHover={hoverEffect === 'lift' ? { y: -15 } : hoverEffect === 'glow' ? { boxShadow: `0 0 40px ${highlightColor}30` } : {}}
                 onClick={(e) => {
                   if (isPreviewMode) return;
@@ -480,6 +500,7 @@ export const PricingModule: React.FC<{
                 }}
                 className={`relative flex flex-col h-full transition-all duration-500 group p-6 @md:p-10 ${plan.highlight ? 'z-10' : 'z-1'} cursor-pointer`}
                 style={{
+                  touchAction: isMobile && hasMobilePlanSwitch ? 'pan-y' : undefined,
                   backgroundColor: glassMode ? (darkMode ? 'rgba(30,41,59,0.7)' : 'rgba(255,255,255,0.7)') : cardBg,
                   backdropFilter: glassMode ? 'blur(12px)' : 'none',
                   borderRadius: `${cardRadius}px`,
@@ -631,6 +652,7 @@ export const PricingModule: React.FC<{
           })}
           </AnimatePresence>
         </motion.div>
+        {isMobile && hasMobilePlanSwitch && renderMobilePlanToggle('bottom')}
 
         {/* Trust Section */}
         {showTrust && (

@@ -1,5 +1,8 @@
 export type PricingMobilePlan = 'free' | 'pro';
 
+export const PRICING_MOBILE_SWIPE_THRESHOLD = 72;
+export const PRICING_MOBILE_SWIPE_VELOCITY_THRESHOLD = 500;
+
 export type PricingConstructorViewport = 'desktop' | 'tablet' | 'mobile' | undefined;
 
 export const resolvePricingIsMobile = ({
@@ -30,6 +33,24 @@ export const normalizePricingPlansForRender = (value: unknown, fallback: unknown
 };
 
 export const shouldUsePricingMobileSwitch = (planCount: number) => planCount === 2;
+
+export const resolvePricingSwipePlan = ({
+  currentPlan,
+  offsetX,
+  velocityX,
+  threshold = PRICING_MOBILE_SWIPE_THRESHOLD,
+  velocityThreshold = PRICING_MOBILE_SWIPE_VELOCITY_THRESHOLD
+}: {
+  currentPlan: PricingMobilePlan;
+  offsetX: number;
+  velocityX: number;
+  threshold?: number;
+  velocityThreshold?: number;
+}): PricingMobilePlan => {
+  if (currentPlan === 'free' && (offsetX <= -threshold || velocityX <= -velocityThreshold)) return 'pro';
+  if (currentPlan === 'pro' && (offsetX >= threshold || velocityX >= velocityThreshold)) return 'free';
+  return currentPlan;
+};
 
 export const resolvePricingMobilePlanIndex = (visiblePlan: PricingMobilePlan) => visiblePlan === 'pro' ? 1 : 0;
 

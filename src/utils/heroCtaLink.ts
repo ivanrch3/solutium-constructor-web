@@ -34,7 +34,10 @@ const normalizeExternalUrl = (value: string) => {
       return null;
     }
   }
-  if (/^(mailto|tel):/i.test(clean) || /^\.?\.?\//.test(clean)) return clean;
+  if (/^(mailto|tel):/i.test(clean) || /^wa\.me\//i.test(clean)) {
+    return /^wa\.me\//i.test(clean) ? `https://${clean}` : clean;
+  }
+  if (/^\.?\.?\//.test(clean)) return clean;
 
   return null;
 };

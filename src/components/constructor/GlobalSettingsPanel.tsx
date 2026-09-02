@@ -62,6 +62,10 @@ const normalizeBooleanPreference = (value: any, fallback: boolean) => {
 const getThemeSettingStorageKey = (settingId: string) => {
   if (settingId === 'metaPixelEnabled') return 'global_theme_meta_pixel_enabled';
   if (settingId === 'metaPixelId') return 'global_theme_meta_pixel_id';
+  if (settingId === 'metaPixelTrackLead') return 'global_theme_meta_pixel_track_lead';
+  if (settingId === 'metaPixelTrackContact') return 'global_theme_meta_pixel_track_contact';
+  if (settingId === 'metaPixelTrackCompleteRegistration') return 'global_theme_meta_pixel_track_complete_registration';
+  if (settingId === 'metaPixelTrackViewContent') return 'global_theme_meta_pixel_track_view_content';
   return `global_theme_${settingId}`;
 };
 
@@ -482,6 +486,40 @@ export const GlobalSettingsPanel: React.FC<GlobalSettingsPanelProps> = ({
               </p>
             )}
           </div>
+        </div>
+
+        <div className="rounded-3xl border border-slate-200 bg-white p-6 space-y-5 shadow-sm">
+          <div>
+            <h4 className="text-base font-black text-slate-900">Eventos del Pixel</h4>
+            <p className="mt-1 text-sm text-slate-500">PageView siempre se registra cuando el Pixel está activo. Elige qué acciones adicionales quieres medir.</p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {([
+              ['metaPixelTrackLead', 'Lead', 'Registrar acciones de interés o captación.'],
+              ['metaPixelTrackContact', 'Contact', 'Registrar clics en WhatsApp, teléfono o correo.'],
+              ['metaPixelTrackCompleteRegistration', 'CompleteRegistration', 'Registrar finalización de registros o formularios configurados.'],
+              ['metaPixelTrackViewContent', 'ViewContent', 'Registrar visualizaciones de contenido relevante.']
+            ] as const).map(([id, label, description]) => (
+              <div key={id} className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                <div className="flex-1"><p className="text-sm font-bold text-slate-900">{label}</p><p className="mt-1 text-xs text-slate-500">{description}</p></div>
+                <SettingControl
+                  setting={{ id, type: 'boolean', label: '', defaultValue: false }}
+                  value={getVal(id, (theme as any)?.[id] ?? false)}
+                  onChange={(value) => handleThemeChange(id, Boolean(value))}
+                  projectId={projectId}
+                />
+              </div>
+            ))}
+          </div>
+          {!metaPixel.active && <p className="text-xs font-semibold text-amber-700">Activa un Pixel válido para habilitar estos eventos.</p>}
+        </div>
+
+        <div className="rounded-3xl border border-blue-100 bg-blue-50 p-6 space-y-3 text-sm text-blue-900">
+          <h4 className="font-black">¿Cómo funciona esta medición?</h4>
+          <p>El Pixel se instala solo en el sitio publicado. PageView es automático; los eventos adicionales se disparan desde acciones compatibles.</p>
+          <p>WhatsApp, teléfono y correo pueden medirse como Contact. Los registros pueden medirse como Lead o CompleteRegistration.</p>
+          <p>No se registra tráfico dentro del Constructor, Canvas, Preview interno ni desarrollo local.</p>
+          <p>Esta configuración aplica a sitios creados desde el Constructor Web. Solutium, App Solutium y Solutium Go utilizan Pixels administrados a nivel de plataforma.</p>
         </div>
       </div>
     );

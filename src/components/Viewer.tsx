@@ -95,6 +95,7 @@ export const Viewer: React.FC<ViewerProps> = ({
   const [measuredSectionHeights, setMeasuredSectionHeights] = useState<Record<string, number>>({});
   const viewerRootRef = React.useRef<HTMLDivElement>(null);
   const queryParams = new URLSearchParams(window.location.search);
+  const isEmbeddedPublished = queryParams.get('embedded_published') === 'true';
   const effectiveProjectId = site.projectId || (site as any).project_id || (site as any).satellite_id;
   const isPublicRenderMode =
     queryParams.get('mode') === 'render' ||
@@ -256,7 +257,7 @@ export const Viewer: React.FC<ViewerProps> = ({
     const metaPixel = getMetaPixelStatus(theme.metaPixelEnabled, theme.metaPixelId);
     const debugMode = isMetaPixelDebugMode(window.location.search);
     const publishHostEligible = shouldInjectMetaPixel(window.location.hostname);
-    const shouldRunPixel = isPublishedViewer && metaPixel.active && publishHostEligible;
+    const shouldRunPixel = isPublishedViewer && !isEmbeddedPublished && metaPixel.active && publishHostEligible;
     const body = document.body;
 
     if (debugMode && body) {
@@ -267,6 +268,8 @@ export const Viewer: React.FC<ViewerProps> = ({
         ? 'ready'
         : !isPublishedViewer
           ? 'not-published'
+          : isEmbeddedPublished
+            ? 'environment-blocked'
           : !metaPixel.hasPixelId
             ? 'missing-id'
             : !metaPixel.validPixelId
@@ -347,7 +350,7 @@ export const Viewer: React.FC<ViewerProps> = ({
         delete body.dataset.solutiumMetaPixelReason;
       }
     };
-  }, [isPublishedViewer, site.content?.theme, site.siteId]);
+  }, [isPublishedViewer, isEmbeddedPublished, site.content?.theme, site.siteId]);
 
   useEffect(() => {
     // [SATELLITE_PRODUCTS_PAYLOAD_RECEIVE_DEBUG] (FASE 3)

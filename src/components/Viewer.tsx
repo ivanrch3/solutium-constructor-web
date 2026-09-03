@@ -346,13 +346,18 @@ export const Viewer: React.FC<ViewerProps> = ({
     const ctas = collectMetaPixelCtas(site.content);
     const overrides = ((theme as any).metaPixelCtaEvents || {}) as Record<string, string>;
     const normalize = (value: string) => value.trim().toLowerCase().replace(/\s+/g, ' ');
+    const equivalentHref = (left: string, right: string) => {
+      if (!left || !right) return true;
+      if (left === right) return true;
+      try { return new URL(left, window.location.href).href === new URL(right, window.location.href).href; } catch { return normalize(left) === normalize(right); }
+    };
     ctas.forEach((cta) => {
       const sectionRoot = Array.from(document.querySelectorAll<HTMLElement>('[data-module-id]')).find((node) => node.dataset.moduleId === cta.sectionId);
       if (!sectionRoot) return;
       const expectedText = normalize(cta.text);
       const expectedHref = cta.href.trim();
       const candidates = Array.from(sectionRoot.querySelectorAll<HTMLAnchorElement>('a[href]'));
-        const anchor = candidates.find((item) => normalize(item.textContent || '') === expectedText && (!expectedHref || item.getAttribute('href') === expectedHref));
+        const anchor = candidates.find((item) => normalize(item.textContent || '').includes(expectedText) && equivalentHref(item.getAttribute('href') || '', expectedHref));
       if (!anchor) return;
       const state = resolveMetaPixelCtaEvent(cta, overrides);
       anchor.dataset.metaPixelEvent = state.applied;

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   collectMetaPixelCtas,
+  META_PIXEL_CTA_EVENT_OPTIONS,
   resolveMetaPixelCtaEvent,
   suggestMetaPixelEventForCta
 } from '../src/utils/metaPixelCta';
@@ -46,4 +47,16 @@ test('extractor is deterministic and does not duplicate stable CTA ids', () => {
 test('legacy sites without mapping remain automatic', () => {
   const cta = { id: 'footer-789.whatsapp', text: 'Escríbenos', href: 'https://wa.me/50655555555', sectionId: 'footer-789', moduleType: 'footer', elementId: 'whatsapp' };
   assert.equal(resolveMetaPixelCtaEvent(cta, undefined).applied, 'Contact');
+});
+
+test('selector excludes lifecycle and page-view events', () => {
+  assert.deepEqual(META_PIXEL_CTA_EVENT_OPTIONS.map((option) => option.value), ['None', 'Lead', 'Contact']);
+});
+
+test('page metadata and repeater IDs produce friendly stable records', () => {
+  const [cta] = collectMetaPixelCtas({ pages: [{ id: 'home', name: 'Inicio', sections: [{ id: 'hero-1', type: 'hero', content: { actions: [{ id: 'primaryCta', text: 'Abrir cuenta', href: '/registro' }] } }] }] });
+  assert.equal(cta.id, 'home.hero-1.content.actions.primaryCta');
+  assert.equal(cta.pageId, 'home');
+  assert.equal(cta.pageName, 'Inicio');
+  assert.equal(cta.location, 'Inicio · Sección 1');
 });

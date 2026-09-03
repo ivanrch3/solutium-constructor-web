@@ -222,6 +222,7 @@ export interface RenderingContract {
     metaPixelTrackContact?: boolean;
     metaPixelTrackCompleteRegistration?: boolean;
     metaPixelTrackViewContent?: boolean;
+    metaPixelCtaEvents?: Record<string, 'Lead' | 'Contact' | 'None'>;
   };
   regionalSettings?: {
     currency: string;

@@ -73,6 +73,7 @@ export interface Theme {
   metaPixelTrackContact?: boolean;
   metaPixelTrackCompleteRegistration?: boolean;
   metaPixelTrackViewContent?: boolean;
+  metaPixelCtaEvents?: Record<string, 'Lead' | 'Contact' | 'None'>;
 }
 
 export interface SiteContent {

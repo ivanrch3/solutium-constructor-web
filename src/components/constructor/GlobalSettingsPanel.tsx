@@ -384,12 +384,16 @@ export const GlobalSettingsPanel: React.FC<GlobalSettingsPanelProps> = ({
     );
     const metaPixelStateLabel = !metaPixel.hasPixelId
       ? 'No configurado'
-      : metaPixel.active
-        ? 'Activo'
-        : 'Configurado pero desactivado';
+      : !metaPixel.validPixelId
+        ? 'Error'
+        : metaPixel.active
+          ? 'Activo'
+          : 'Inactivo';
     const metaPixelStateClass = !metaPixel.hasPixelId
       ? 'bg-slate-100 text-slate-600'
-      : metaPixel.active
+      : !metaPixel.validPixelId
+        ? 'bg-rose-100 text-rose-700'
+        : metaPixel.active
         ? 'bg-emerald-100 text-emerald-700'
         : 'bg-amber-100 text-amber-700';
     const metaPixelSaveDisabled = !onSaveConfiguration || isSaving || saveStatus === 'loading' || !hasUnsavedChanges;
@@ -512,6 +516,49 @@ export const GlobalSettingsPanel: React.FC<GlobalSettingsPanelProps> = ({
             ))}
           </div>
           {!metaPixel.active && <p className="text-xs font-semibold text-amber-700">Activa un Pixel válido para habilitar estos eventos.</p>}
+        </div>
+
+        <div className="rounded-3xl border border-slate-200 bg-white p-6 space-y-4 shadow-sm">
+          <div>
+            <h4 className="text-base font-black text-slate-900">PageView</h4>
+            <p className="mt-1 text-sm text-slate-500">Visita a una página.</p>
+          </div>
+          <span className="inline-flex w-fit rounded-full bg-emerald-100 px-3 py-1 text-xs font-black text-emerald-700">Automático</span>
+          <p className="text-xs text-slate-500">Se envía al cargar el sitio publicado y al navegar entre páginas.</p>
+        </div>
+
+        <div className="rounded-3xl border border-indigo-100 bg-indigo-50 p-6 space-y-4 text-sm text-indigo-950">
+          <h4 className="font-black">Configura Meta en 5 pasos</h4>
+          <ol className="list-decimal space-y-2 pl-5">
+            <li>Crea o selecciona tu Pixel en Meta Events Manager.</li>
+            <li>Copia el ID y pégalo en Solutium.</li>
+            <li>Ve a: Meta → Administrador de eventos → Configuración → Permisos de tráfico. Autoriza el dominio publicado. Si utilizas Lista de autorizados, el dominio debe estar incluido o Meta rechazará sus eventos.</li>
+            <li>Ve a: Meta → Administrador de eventos → Probar eventos. Abre tu sitio y verifica PageView, Lead, Contact, CompleteRegistration y ViewContent.</li>
+            <li>En Ads Manager selecciona los eventos pertinentes como objetivos o conversiones.</li>
+          </ol>
+          <div className="rounded-2xl border border-indigo-200 bg-white/70 p-4 space-y-2">
+            <p className="font-bold">La herramienta visual “Configurar eventos” de Meta es opcional.</p>
+            <p>Los eventos habilitados en Solutium se envían directamente desde el sitio mediante el código de Meta.</p>
+            <p>Si Meta indica que la herramienta visual no es compatible con tu sitio, puedes validar los eventos desde “Probar eventos”.</p>
+          </div>
+        </div>
+
+        <div className="rounded-3xl border border-slate-200 bg-white p-6 space-y-4 shadow-sm">
+          <h4 className="text-base font-black text-slate-900">Diagnóstico</h4>
+          <div className="grid gap-2 text-sm text-slate-600 sm:grid-cols-2">
+            <p>Pixel activado: <strong>{metaPixel.active ? 'Sí' : 'No'}</strong></p>
+            <p>ID configurado: <strong>{metaPixel.normalizedPixelId || 'No configurado'}</strong></p>
+            <p>Dominio publicado: <strong>{project?.domain || project?.customDomain || project?.publishedDomain || 'Se mostrará al publicar'}</strong></p>
+            <p>PageView automático: <strong>Sí</strong></p>
+          </div>
+          <p className="text-xs text-slate-500">Para verificar el Pixel instala Meta Pixel Helper. Para comprobar eventos usa Administrador de eventos → Probar eventos. Esta pantalla no confirma por sí sola que Meta haya recibido eventos.</p>
+        </div>
+
+        <div className="rounded-3xl border border-slate-200 bg-slate-50 p-6 space-y-3">
+          <h4 className="text-base font-black text-slate-900">Resultados de Meta</h4>
+          <p className="text-sm text-slate-600">El Pixel envía eventos a Meta, pero las estadísticas de campañas viven en tu cuenta publicitaria.</p>
+          <p className="text-xs text-slate-500">Métricas futuras: gasto, impresiones, alcance, clics, conversiones y costo por resultado.</p>
+          <button type="button" disabled className="rounded-2xl bg-slate-200 px-4 py-3 text-sm font-black text-slate-500">Conectar cuenta de Meta · Próximamente</button>
         </div>
 
         <div className="rounded-3xl border border-blue-100 bg-blue-50 p-6 space-y-3 text-sm text-blue-900">

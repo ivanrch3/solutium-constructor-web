@@ -22,6 +22,13 @@ import { useEditorStore } from '../../store/editorStore';
 import { parseNumSafe } from './utils';
 import { getMetaPixelStatus, isValidMetaPixelId, normalizeMetaPixelId } from '../../utils/metaPixel';
 import * as registryModules from './registry';
+import {
+  collectMetaPixelCtas,
+  formatMetaPixelCtaDestination,
+  META_PIXEL_CTA_EVENT_OPTIONS,
+  resolveMetaPixelCtaEvent,
+  type MetaPixelCtaEvent
+} from '../../utils/metaPixelCta';
 
 interface GlobalSettingsPanelProps {
   view?: string;
@@ -66,6 +73,7 @@ const getThemeSettingStorageKey = (settingId: string) => {
   if (settingId === 'metaPixelTrackContact') return 'global_theme_meta_pixel_track_contact';
   if (settingId === 'metaPixelTrackCompleteRegistration') return 'global_theme_meta_pixel_track_complete_registration';
   if (settingId === 'metaPixelTrackViewContent') return 'global_theme_meta_pixel_track_view_content';
+  if (settingId === 'metaPixelCtaEvents') return 'global_theme_meta_pixel_cta_events';
   return `global_theme_${settingId}`;
 };
 
@@ -404,6 +412,17 @@ export const GlobalSettingsPanel: React.FC<GlobalSettingsPanelProps> = ({
         : metaPixelSaveFeedback?.type === 'success'
           ? 'Configuración guardada'
           : 'Sin cambios pendientes';
+    const ctas = collectMetaPixelCtas(siteContent);
+    const overrides = (getVal('metaPixelCtaEvents', (theme as any)?.metaPixelCtaEvents ?? {}) || {}) as Record<string, string>;
+    const ctaStates = ctas.map((cta) => ({ cta, state: resolveMetaPixelCtaEvent(cta, overrides) }));
+    const updateCtaOverride = (id: string, value: string) => {
+      const next = { ...overrides };
+      if (value === 'Automatic') delete next[id];
+      else next[id] = value as MetaPixelCtaEvent;
+      handleThemeChange('metaPixelCtaEvents', next);
+    };
+    const leadCount = ctaStates.filter(({ state }) => state.applied === 'Lead').length;
+    const contactCount = ctaStates.filter(({ state }) => state.applied === 'Contact').length;
 
     return (
       <div className="space-y-8">
@@ -490,6 +509,28 @@ export const GlobalSettingsPanel: React.FC<GlobalSettingsPanelProps> = ({
               </p>
             )}
           </div>
+        </div>
+
+        <div className="rounded-3xl border border-slate-200 bg-white p-6 space-y-5 shadow-sm">
+          <div>
+            <h4 className="text-base font-black text-slate-900">Llamados a la acción</h4>
+            <p className="mt-1 text-sm text-slate-500">Solutium detecta los llamados a la acción de tu sitio y asigna automáticamente el evento más apropiado. Puedes cambiar cualquier asignación si lo necesitas.</p>
+          </div>
+          <div className="grid grid-cols-3 gap-2 text-center text-xs font-bold text-slate-600">
+            <span className="rounded-xl bg-slate-50 p-2">{ctas.length} CTAs detectados</span>
+            <span className="rounded-xl bg-emerald-50 p-2 text-emerald-700">{leadCount} Leads</span>
+            <span className="rounded-xl bg-blue-50 p-2 text-blue-700">{contactCount} Contactos · {ctas.length - leadCount - contactCount} sin seguimiento</span>
+          </div>
+          <div className="hidden overflow-x-auto rounded-2xl border border-slate-100 md:block">
+            <table className="w-full min-w-[760px] text-left text-sm">
+              <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500"><tr><th className="p-3">Llamado a la acción</th><th className="p-3">Destino / Acción</th><th className="p-3">Ubicación</th><th className="p-3">Evento sugerido</th><th className="p-3">Evento aplicado</th><th className="p-3">Configuración</th></tr></thead>
+              <tbody>{ctaStates.map(({ cta, state }) => <tr key={cta.id} className="border-t border-slate-100 align-top"><td className="p-3 font-semibold text-slate-900">{cta.text || 'CTA sin texto'}</td><td className="p-3 text-slate-600">{formatMetaPixelCtaDestination(cta.href)}</td><td className="p-3 text-slate-600">{cta.location}</td><td className="p-3">{state.suggested}</td><td className="p-3 font-bold">{state.applied}</td><td className="p-3"><select aria-label={`Evento para ${cta.text || cta.id}`} value={state.manual ? state.applied : 'Automatic'} onChange={(event) => updateCtaOverride(cta.id, event.target.value)} className="rounded-xl border border-slate-200 bg-white px-2 py-2 text-xs"><option value="Automatic">Automático</option>{META_PIXEL_CTA_EVENT_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select>{state.manual && <button type="button" onClick={() => updateCtaOverride(cta.id, 'Automatic')} className="mt-2 block text-xs font-bold text-primary">Restaurar automático</button>}</td></tr>)}</tbody>
+            </table>
+            {!ctas.length && <p className="p-4 text-sm text-slate-500">No detectamos llamados a la acción configurados todavía.</p>}
+          </div>
+          <div className="space-y-3 md:hidden">{ctaStates.map(({ cta, state }) => <article key={cta.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-4"><div className="flex items-start justify-between gap-3"><div><p className="font-bold text-slate-900">{cta.text || 'CTA sin texto'}</p><p className="mt-1 text-xs text-slate-500">{formatMetaPixelCtaDestination(cta.href)} · {cta.location}</p></div><span className="rounded-full bg-white px-2 py-1 text-xs font-bold">{state.applied}</span></div><p className="mt-2 text-xs text-slate-500">Sugerido: {state.suggested} · {state.manual ? 'Manual' : 'Automático'}</p><select aria-label={`Evento para ${cta.text || cta.id}`} value={state.manual ? state.applied : 'Automatic'} onChange={(event) => updateCtaOverride(cta.id, event.target.value)} className="mt-3 w-full rounded-xl border border-slate-200 bg-white px-2 py-2 text-xs"><option value="Automatic">Automático</option>{META_PIXEL_CTA_EVENT_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select>{state.manual && <button type="button" onClick={() => updateCtaOverride(cta.id, 'Automatic')} className="mt-2 text-xs font-bold text-primary">Restaurar automático</button>}</article>)}{!ctas.length && <p className="text-sm text-slate-500">No detectamos llamados a la acción configurados todavía.</p>}</div>
+          <div className="grid gap-2 text-xs text-slate-500 sm:grid-cols-3"><p><strong>Lead:</strong> Una persona inicia una acción para convertirse en cliente.</p><p><strong>Contact:</strong> Una persona inicia una conversación o contacto.</p><p><strong>Ninguno:</strong> El clic no representa una conversión.</p></div>
+          <p className="text-xs text-slate-500">CompleteRegistration se registra únicamente cuando el proceso de registro termina correctamente; PageView y ViewContent no se seleccionan en esta tabla.</p>
         </div>
 
         <div className="rounded-3xl border border-slate-200 bg-white p-6 space-y-5 shadow-sm">

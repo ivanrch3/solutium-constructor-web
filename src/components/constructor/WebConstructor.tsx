@@ -390,7 +390,8 @@ const normalizeConstructorSettingsValues = (
     global_theme_metaPixelTrackLead: 'global_theme_meta_pixel_track_lead',
     global_theme_metaPixelTrackContact: 'global_theme_meta_pixel_track_contact',
     global_theme_metaPixelTrackCompleteRegistration: 'global_theme_meta_pixel_track_complete_registration',
-    global_theme_metaPixelTrackViewContent: 'global_theme_meta_pixel_track_view_content'
+    global_theme_metaPixelTrackViewContent: 'global_theme_meta_pixel_track_view_content',
+    global_theme_metaPixelCtaEvents: 'global_theme_meta_pixel_cta_events'
   };
 
   Object.entries(metaPixelKeyMap).forEach(([legacyKey, canonicalKey]) => {
@@ -450,6 +451,11 @@ const seedMetaPixelThemeSettings = (
       changed = true;
     }
   });
+
+  if (nextSettings.global_theme_meta_pixel_cta_events === undefined && theme.metaPixelCtaEvents !== undefined) {
+    nextSettings.global_theme_meta_pixel_cta_events = theme.metaPixelCtaEvents;
+    changed = true;
+  }
 
   return changed ? nextSettings : settingsValues;
 };
@@ -1140,6 +1146,7 @@ export const WebConstructor: React.FC<WebConstructorProps> = ({
           'global_theme_meta_pixel_track_contact': false,
           'global_theme_meta_pixel_track_complete_registration': false,
           'global_theme_meta_pixel_track_view_content': false,
+          'global_theme_meta_pixel_cta_events': {},
           ...localTemporarySavePreferences
         },
       recentlyAddedModuleId: null,
@@ -5787,6 +5794,7 @@ const formatTimestampName = () => {
         metaPixelTrackContact: Boolean(currentState.settingsValues['global_theme_meta_pixel_track_contact'] ?? activeTheme?.metaPixelTrackContact ?? false),
         metaPixelTrackCompleteRegistration: Boolean(currentState.settingsValues['global_theme_meta_pixel_track_complete_registration'] ?? activeTheme?.metaPixelTrackCompleteRegistration ?? false),
         metaPixelTrackViewContent: Boolean(currentState.settingsValues['global_theme_meta_pixel_track_view_content'] ?? activeTheme?.metaPixelTrackViewContent ?? false),
+        metaPixelCtaEvents: (currentState.settingsValues['global_theme_meta_pixel_cta_events'] ?? activeTheme?.metaPixelCtaEvents ?? {}) as Record<string, 'Lead' | 'Contact' | 'None'>,
       },
       regionalSettings: resolveProjectCurrencySettings(project),
       sections

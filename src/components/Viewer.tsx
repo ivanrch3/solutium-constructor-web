@@ -60,6 +60,7 @@ import {
   META_PIXEL_SCRIPT_SRC,
   shouldInjectMetaPixel
 } from '../utils/metaPixel';
+import { collectMetaPixelCtas, resolveMetaPixelCtaEvent } from '../utils/metaPixelCta';
 import {
   isManualProductsSelectionMode,
   resolveProductsForSelection
@@ -342,7 +343,34 @@ export const Viewer: React.FC<ViewerProps> = ({
       win.__solutiumMetaPixelTrackedPath = trackKey;
     }
 
+    const ctas = collectMetaPixelCtas(site.content);
+    const overrides = ((theme as any).metaPixelCtaEvents || {}) as Record<string, string>;
+    const normalize = (value: string) => value.trim().toLowerCase().replace(/\s+/g, ' ');
+    ctas.forEach((cta) => {
+      const sectionRoot = Array.from(document.querySelectorAll<HTMLElement>('[data-module-id]')).find((node) => node.dataset.moduleId === cta.sectionId);
+      if (!sectionRoot) return;
+      const expectedText = normalize(cta.text);
+      const expectedHref = cta.href.trim();
+      const candidates = Array.from(sectionRoot.querySelectorAll<HTMLAnchorElement>('a[href]'));
+        const anchor = candidates.find((item) => normalize(item.textContent || '') === expectedText && (!expectedHref || item.getAttribute('href') === expectedHref));
+      if (!anchor) return;
+      const state = resolveMetaPixelCtaEvent(cta, overrides);
+      anchor.dataset.metaPixelEvent = state.applied;
+      anchor.dataset.metaPixelSource = 'constructor_cta';
+      anchor.dataset.metaPixelLabel = cta.text;
+      anchor.dataset.metaPixelCtaId = cta.id;
+    });
+
+    const handleCtaClick = (event: MouseEvent) => {
+      const target = event.target instanceof Element ? event.target.closest<HTMLElement>('[data-meta-pixel-event]') : null;
+      const eventName = target?.dataset.metaPixelEvent;
+      if (!target || (eventName !== 'Lead' && eventName !== 'Contact')) return;
+      win.fbq?.('track', eventName, { source: target.dataset.metaPixelSource || 'constructor_cta', label: target.dataset.metaPixelLabel || '' });
+    };
+    document.addEventListener('click', handleCtaClick, true);
+
     return () => {
+      document.removeEventListener('click', handleCtaClick, true);
       if (debugMode && body) {
         delete body.dataset.solutiumMetaPixel;
         delete body.dataset.solutiumMetaPixelId;

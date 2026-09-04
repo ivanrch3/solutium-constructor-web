@@ -274,7 +274,7 @@ const hasBentoClickAction = (item: any) => {
   return false;
 };
 
-const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave, breakpoint = 'desktop', onImageLoad }: any) => {
+const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave, breakpoint = 'desktop', onImageLoad, measurementMode = false }: any) => {
   const {
     type,
     title,
@@ -370,13 +370,14 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave, bre
     'center': 'items-center text-center',
     'right': 'items-end text-right'
   }[resolvedContentPosition as string] || 'items-center text-center';
+  const contentFillClass = measurementMode ? '' : 'h-full';
 
   switch (type) {
     case 'composite':
       return <BentoCompositeContent item={item} darkMode={darkMode} breakpoint={breakpoint} isPreviewMode={isPreviewMode} onImageLoad={onImageLoad} />;
     case 'hero':
       return (
-        <div className={`flex flex-col z-10 w-full h-full ${verticalContentClass} gap-6 ${alignClass}`}>
+        <div className={`flex flex-col z-10 w-full ${contentFillClass} ${verticalContentClass} gap-6 ${alignClass}`}>
           {eyebrow && (
             <span className="text-[12px] font-bold tracking-[0.3em] uppercase opacity-70 mb-1 block">
               {eyebrow}
@@ -436,7 +437,7 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave, bre
     case 'metric':
     case 'stat':
       return (
-        <div className={`flex flex-col gap-1 z-10 w-full h-full ${verticalContentClass} items-center text-center p-2`}>
+        <div className={`flex flex-col gap-1 z-10 w-full ${contentFillClass} ${verticalContentClass} items-center text-center p-2`}>
           {item.icon && (
             <div className="p-2 bg-primary/10 rounded-xl text-primary mb-1">
                <IconComponent size={24} />
@@ -499,7 +500,7 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave, bre
 
     case 'button':
       return (
-        <div className={`flex z-10 w-full h-full items-center ${verticalContentClass}`}>
+        <div className={`flex z-10 w-full ${contentFillClass} items-center ${verticalContentClass}`}>
           <a
             href={btn_url || '#'}
             target={btn_target === '_blank' ? '_blank' : undefined}
@@ -522,7 +523,7 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave, bre
 
     case 'badge':
       return (
-        <div className={`flex z-10 w-full h-full items-center ${verticalContentClass}`}>
+        <div className={`flex z-10 w-full ${contentFillClass} items-center ${verticalContentClass}`}>
           <span className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-5 py-2 text-xs font-black uppercase tracking-[0.2em] text-primary">
             <LucideIcons.Tag size={14} />
             <InlineEditableText
@@ -543,7 +544,7 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave, bre
       const visualFrameSize = isIconImage ? numericIconImageSize : iconFrameSize;
       return (
         <div
-          className={`flex flex-col z-10 w-full h-full items-center ${verticalContentClass}`}
+          className={`flex flex-col z-10 w-full ${contentFillClass} items-center ${verticalContentClass}`}
           style={{
             boxSizing: 'border-box',
             gap: `${iconSpacing.internalGap}px`,
@@ -570,7 +571,7 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave, bre
               <img
                 src={iconImageSrc}
                 alt=""
-                className="h-full w-full object-contain"
+                className={measurementMode ? 'h-auto w-auto max-w-full object-contain' : 'h-full w-full object-contain'}
                 referrerPolicy="no-referrer"
               />
             ) : (
@@ -637,7 +638,7 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave, bre
         : String(item.list_items || 'Primer punto\nSegundo punto\nTercer punto').split('\n').filter(Boolean);
 
       return (
-        <div className={`flex flex-col z-10 w-full h-full ${verticalContentClass} gap-4`}>
+        <div className={`flex flex-col z-10 w-full ${contentFillClass} ${verticalContentClass} gap-4`}>
           <h3 className="text-lg leading-tight" style={{ color: finalTitleColor, fontWeight: finalTitleWeight }}>
             <InlineEditableText
               moduleId={moduleId}
@@ -688,7 +689,7 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave, bre
 
     case 'marquee':
       return (
-        <div className="relative z-10 flex h-full w-full items-center overflow-hidden">
+        <div className={`relative z-10 flex w-full items-center overflow-hidden ${contentFillClass}`}>
           <motion.div
             className="flex min-w-full whitespace-nowrap text-lg font-black uppercase tracking-[0.25em]"
             style={{ color: finalTitleColor }}
@@ -703,7 +704,7 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave, bre
 
     case 'step':
       return (
-        <div className={`flex flex-col gap-4 z-10 w-full h-full ${verticalContentClass} text-left`}>
+        <div className={`flex flex-col gap-4 z-10 w-full ${contentFillClass} ${verticalContentClass} text-left`}>
           <div className="flex items-center justify-between">
             <div 
               className="w-12 h-12 rounded-2xl flex items-center justify-center text-white text-xl shadow-lg"
@@ -741,7 +742,7 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave, bre
     case 'trust_signal':
     case 'testimonial':
       return (
-        <div className={`flex flex-col gap-3 z-10 w-full h-full ${verticalContentClass}`}>
+        <div className={`flex flex-col gap-3 z-10 w-full ${contentFillClass} ${verticalContentClass}`}>
           <div className="flex gap-0.5">
             {[...Array(item.rating || 5)].map((_, i) => (
               <LucideIcons.Star key={i} size={12} className="fill-yellow-400 text-yellow-400" />
@@ -769,7 +770,7 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave, bre
 
     case 'feature':
       return (
-        <div className={`flex flex-col gap-4 z-10 w-full h-full ${verticalContentClass}`}>
+        <div className={`flex flex-col gap-4 z-10 w-full ${contentFillClass} ${verticalContentClass}`}>
           <div className="flex items-center gap-4">
              {item.icon && (
                <div className="w-14 h-14 bg-primary/5 rounded-2xl flex items-center justify-center text-primary shadow-sm">
@@ -811,7 +812,7 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave, bre
 
     case 'app_card':
       return (
-        <div className="flex flex-col gap-4 z-10 w-full h-full justify-between">
+        <div className={`flex flex-col gap-4 z-10 w-full ${contentFillClass} justify-between`}>
           <div className="flex items-start justify-between">
             <div className="w-12 h-12 bg-white rounded-2xl shadow-sm border border-gray-100 flex items-center justify-center p-2">
                <IconComponent size={24} className="text-gray-900" />
@@ -836,7 +837,7 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave, bre
 
     case 'compact':
       return (
-        <div className={`flex flex-col gap-4 z-10 w-full h-full ${verticalContentClass}`}>
+        <div className={`flex flex-col gap-4 z-10 w-full ${contentFillClass} ${verticalContentClass}`}>
           <div className="flex items-center gap-4">
              <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary shrink-0">
                <IconComponent size={20} />
@@ -876,7 +877,7 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave, bre
     case 'icon_text':
     case 'standard':
       return (
-        <div className={`flex flex-col z-10 w-full h-full ${verticalContentClass} ${isHero ? 'gap-6' : 'gap-4'}`}>
+        <div className={`flex flex-col z-10 w-full ${contentFillClass} ${verticalContentClass} ${isHero ? 'gap-6' : 'gap-4'}`}>
           <div className={`${isHero ? 'w-16 h-16' : 'w-12 h-12'} bg-primary/10 rounded-2xl flex items-center justify-center text-primary shrink-0`}>
             <IconComponent size={isHero ? 40 : 32} />
           </div>
@@ -938,7 +939,7 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave, bre
 
     case 'cta':
       return (
-        <div className={`flex flex-col gap-6 z-10 w-full h-full ${verticalContentClass} p-4`}>
+        <div className={`flex flex-col gap-6 z-10 w-full ${contentFillClass} ${verticalContentClass} p-4`}>
           <div className="space-y-2">
             {item.headline ? (
               <>
@@ -1035,17 +1036,17 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave, bre
       const hasVisualCaption = Boolean(title || description);
 
       return (
-        <div className="relative z-10 w-full h-full overflow-hidden">
+        <div className={`relative z-10 w-full overflow-hidden ${contentFillClass}`}>
           {visualImage ? (
             <img
               src={visualImage}
-              className="absolute inset-0 w-full h-full"
+              className={measurementMode ? 'block h-auto max-h-96 w-auto max-w-full object-contain' : 'absolute inset-0 w-full h-full'}
               style={{ objectFit: image_fit }}
               referrerPolicy="no-referrer"
               alt={title || 'Imagen principal'}
             />
           ) : shouldRenderBentoImagePlaceholder(visualImage, isPreviewMode) ? (
-            <div className="absolute inset-0 flex items-center justify-center bg-slate-100 text-slate-300">
+            <div className={measurementMode ? 'relative flex min-h-48 items-center justify-center bg-slate-100 text-slate-300' : 'absolute inset-0 flex items-center justify-center bg-slate-100 text-slate-300'}>
               <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-slate-300 px-6 py-5 text-slate-400">
                 <LucideIcons.Image size={42} strokeWidth={1.5} />
                 <span className="text-[10px] font-semibold uppercase tracking-wider">Imagen</span>
@@ -1058,7 +1059,7 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave, bre
           {hasVisualCaption && (
             <>
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-              <div className="absolute inset-x-0 bottom-0 flex flex-col justify-end p-6">
+              <div className={measurementMode ? 'relative flex flex-col justify-end p-6' : 'absolute inset-x-0 bottom-0 flex flex-col justify-end p-6'}>
                 {title && (
                   <h3
                     className="leading-tight mb-2 text-white"
@@ -1097,7 +1098,7 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave, bre
 
     case 'video':
       return (
-        <div className="flex flex-col gap-3 z-10 w-full h-full justify-center items-center text-center">
+        <div className={`flex flex-col gap-3 z-10 w-full ${contentFillClass} justify-center items-center text-center`}>
           <div className="w-14 h-14 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center">
             <LucideIcons.PlayCircle size={28} />
           </div>
@@ -1124,7 +1125,7 @@ const BentoCellContent = ({ item, darkMode, moduleId, isPreviewMode, onSave, bre
     default: // 'text'
       return (
         <div
-          className={`flex flex-col gap-3 z-10 w-full h-full ${verticalContentClass} ${alignClass}`}
+          className={`flex flex-col gap-3 z-10 w-full ${contentFillClass} ${verticalContentClass} ${alignClass}`}
         >
           {eyebrow && (
             <span 
@@ -1658,7 +1659,9 @@ export const BentoModule: React.FC<{
           const element = target as HTMLElement;
           const rect = element.getBoundingClientRect();
           const rectHeight = Number.isFinite(rect.height) ? Math.max(0, rect.height) : 0;
-          const naturalHeight = Math.max(rectHeight, element.scrollHeight || 0);
+          const scrollHeight = element.scrollHeight || 0;
+          const offsetHeight = element.offsetHeight || 0;
+          const naturalHeight = scrollHeight || offsetHeight;
           const height = Number.isFinite(naturalHeight) ? naturalHeight : 0;
           const previousHeight = current[`${id}:${measurementKey}`]?.height ?? null;
           const updated = updateBentoIntrinsicSize(next, id, measurementKey, height);
@@ -1669,6 +1672,8 @@ export const BentoModule: React.FC<{
             const bentoRoot = element.closest<HTMLElement>('[data-bento-rgl-item]');
             const card = element.closest<HTMLElement>('[data-bento-card]');
             const positioningArea = element.closest<HTMLElement>('[data-bento-positioning-area]');
+            const measuredStyle = window.getComputedStyle(element);
+            const cardStyle = card ? window.getComputedStyle(card) : null;
             const rows = item
               ? resolveBentoEffectiveRows(item, measurementKey, 1, effectiveRowHeight, gap, undefined, height, getIntrinsicPadding(item))
               : null;
@@ -1678,7 +1683,13 @@ export const BentoModule: React.FC<{
               timestamp: new Date().toISOString(),
               itemId: id,
               breakpoint: measurementKey,
+              heightMode: item ? resolveBentoHeightMode(item) : null,
+              measurementSource: scrollHeight > 0 ? 'scrollHeight' : 'offsetHeight',
               intrinsicContentHeightPx: height,
+              rectHeightPx: rectHeight,
+              scrollHeightPx: scrollHeight,
+              offsetHeightPx: offsetHeight,
+              measuredComputedHeight: measuredStyle.height,
               requiredHeightPx: item ? height + getIntrinsicPadding(item) : height,
               previousIntrinsicHeightPx: previousHeight,
               nextIntrinsicHeightPx: height,
@@ -1690,6 +1701,10 @@ export const BentoModule: React.FC<{
               renderedRglHeightPx: rglItem?.getBoundingClientRect().height ?? null,
               cardHeightPx: card?.getBoundingClientRect().height ?? null,
               positioningAreaHeightPx: positioningArea?.getBoundingClientRect().height ?? null,
+              selected: selectedIndex === rawItems.findIndex((candidate: any) => getBentoItemId(candidate) === id),
+              transformOnMeasuredNode: measuredStyle.transform,
+              cardTransform: cardStyle?.transform ?? null,
+              cardTransition: cardStyle ? `${cardStyle.transitionProperty} ${cardStyle.transitionDuration}` : null,
               reason: intrinsicMeasurementReasonRef.current
             });
           }
@@ -1717,8 +1732,7 @@ export const BentoModule: React.FC<{
       .find((candidate) => candidate.closest<HTMLElement>('[data-bento-rgl-item]')?.dataset.bentoRglItem === itemId);
     if (!target) return;
     intrinsicMeasurementReasonRef.current = 'image load';
-    const rect = target.getBoundingClientRect();
-    const height = Math.max(Number.isFinite(rect.height) ? Math.max(0, rect.height) : 0, target.scrollHeight || 0);
+    const height = target.scrollHeight || target.offsetHeight || 0;
     setIntrinsicSizes((current) => updateBentoIntrinsicSize(current, itemId, canonicalBreakpoint, height));
   };
 
@@ -2498,8 +2512,8 @@ export const BentoModule: React.FC<{
                         executeBentoClickAction(item);
                       }
                     }}
-                    className={`w-full h-full group flex flex-col ${!isPreviewMode || isCardClickable ? 'cursor-pointer' : ''} relative ${isDragging ? 'transition-none' : 'transition-all duration-300'} ${resolvedShadowClass} ${hoverClass} ${card_style === 'glass' ? 'backdrop-blur-xl' : ''} ${
-                      isSelected ? `outline outline-2 outline-primary outline-offset-2 ${isDragging ? '' : 'scale-[1.01]'} z-50 shadow-2xl` : 'z-10'
+                    className={`w-full h-full group flex flex-col ${!isPreviewMode || isCardClickable ? 'cursor-pointer' : ''} relative ${isDragging ? 'transition-none' : 'transition-shadow transition-colors'} ${resolvedShadowClass} ${hoverClass} ${card_style === 'glass' ? 'backdrop-blur-xl' : ''} ${
+                      isSelected ? 'outline outline-2 outline-primary outline-offset-2 z-50 shadow-2xl' : 'z-10'
                     }`}
                     data-bento-card="true"
                     style={{
@@ -2561,6 +2575,7 @@ export const BentoModule: React.FC<{
                         moduleId={moduleId}
                         breakpoint={BENTO_BREAKPOINT_TO_LAYOUT[effectiveBreakpoint] || 'desktop'}
                         isPreviewMode={isPreviewMode}
+                        measurementMode={isAutoHeight}
                         onImageLoad={() => requestIntrinsicRemeasure(getBentoItemId(item), resolveBentoLayoutBreakpoint(effectiveBreakpoint))}
                         onSave={(field: string, val: string) => {
                           const newItems = [...rawItems];

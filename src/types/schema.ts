@@ -218,6 +218,11 @@ export interface RenderingContract {
     fontFamily: string;
     metaPixelEnabled?: boolean;
     metaPixelId?: string;
+    metaPixelTrackLead?: boolean;
+    metaPixelTrackContact?: boolean;
+    metaPixelTrackCompleteRegistration?: boolean;
+    metaPixelTrackViewContent?: boolean;
+    metaPixelCtaEvents?: Record<string, 'Lead' | 'Contact' | 'None'>;
   };
   regionalSettings?: {
     currency: string;

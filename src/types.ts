@@ -69,6 +69,11 @@ export interface Theme {
   invertedAlternatingMode?: boolean;
   metaPixelEnabled?: boolean;
   metaPixelId?: string;
+  metaPixelTrackLead?: boolean;
+  metaPixelTrackContact?: boolean;
+  metaPixelTrackCompleteRegistration?: boolean;
+  metaPixelTrackViewContent?: boolean;
+  metaPixelCtaEvents?: Record<string, 'Lead' | 'Contact' | 'None'>;
 }
 
 export interface SiteContent {

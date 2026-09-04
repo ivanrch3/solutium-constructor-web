@@ -120,7 +120,9 @@ test('pricing columns derive from plan count instead of the legacy global settin
   assert.equal(resolvePricingColumnCount(10), 4);
   assert.equal(resolvePricingColumnCount(3 - 1), 2);
   assert.equal(resolvePricingColumnCount(2 + 1), 3);
-  assert.equal(resolvePricingGridClass(resolvePricingColumnCount(5)), 'grid-cols-1 @md:grid-cols-2 @5xl:grid-cols-4');
+  assert.equal(resolvePricingGridClass(resolvePricingColumnCount(2)), 'grid-cols-1 @lg:grid-cols-2');
+  assert.equal(resolvePricingGridClass(resolvePricingColumnCount(3)), 'grid-cols-1 @lg:grid-cols-2 @5xl:grid-cols-3');
+  assert.equal(resolvePricingGridClass(resolvePricingColumnCount(5)), 'grid-cols-1 @lg:grid-cols-2 @5xl:grid-cols-4');
 });
 
 test('pricing registry no longer offers a manually configurable column count', () => {

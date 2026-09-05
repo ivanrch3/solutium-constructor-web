@@ -32,6 +32,9 @@ import {
   ,resolveBentoLayoutBreakpoint
   ,rectanglesOverlap
   ,reconcileBentoRuntimeAutoLayout
+  ,resolveBentoResponsiveMinWidth
+  ,shouldScaleLegacyBentoDesktopLayout
+  ,scaleLegacyBentoDesktopLayout
 } from '../src/utils/bentoCore.ts';
 
 test('runtime reconciliation moves stacked items down without changing side-by-side items', () => {
@@ -271,6 +274,23 @@ test('width preset defaults and legacy auto normalization are deterministic', ()
   assert.equal(resolveBentoWidthPreset({ width_mode: 'auto', layouts: { desktop: { w: 10 } } }, 'desktop', 24), 'medium');
   assert.equal(resolveBentoWidthPreset({ width_mode: 'auto', layouts: { desktop: { w: 7 } } }, 'desktop', 24), 'custom');
   assert.equal(resolveBentoEffectiveWidth({ width_mode: 'auto', layouts: { desktop: { w: 7 } } }, 'desktop', 24), 7);
+});
+
+test('desktop legacy geometry scales while modern manual geometry is preserved', () => {
+  assert.equal(shouldScaleLegacyBentoDesktopLayout({}, { x: 2, w: 4, columns: 12 }, 24), true);
+  assert.deepEqual(scaleLegacyBentoDesktopLayout({}, { x: 2, y: 1, w: 4, h: 2, columns: 12 }, 24), { x: 4, y: 1, w: 8, h: 2 });
+  const modern = { width_mode: 'manual', width_preset: 'custom', layout_sources: { desktop: 'explicit' } };
+  assert.equal(shouldScaleLegacyBentoDesktopLayout(modern, { x: 2, w: 4, columns: 24 }, 24), false);
+  assert.deepEqual(scaleLegacyBentoDesktopLayout(modern, { x: 2, y: 1, w: 4, h: 2, columns: 24 }, 24), { x: 2, y: 1, w: 4, h: 2 });
+  const derivedLegacy = { width_mode: 'auto', layout_sources: { desktop: 'derived' } };
+  assert.equal(shouldScaleLegacyBentoDesktopLayout(derivedLegacy, { x: 1, w: 3, columns: 24 }, 24), true);
+});
+
+test('tablet derived and legacy widths are at least half-width while mobile stays one-column', () => {
+  const legacy = { col_span: 2, tablet_span: 2, mobile_span: 1 };
+  assert.equal(resolveBentoResponsiveMinWidth(legacy, 'tablet', 6), 3);
+  assert.equal(resolveBentoResponsiveMinWidth(legacy, 'mobile', 4), 4);
+  assert.equal(resolveBentoResponsiveMinWidth({ width_preset: 'full' }, 'tablet', 6), 6);
 });
 
 test('intrinsic height conversion and resize axes follow the width preset contract', () => {

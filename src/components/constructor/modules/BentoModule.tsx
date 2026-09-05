@@ -39,7 +39,9 @@ import {
   normalizeBentoHeightState,
   resolveBentoManualRows,
   reconcileBentoRuntimeAutoLayout,
-  rectanglesOverlap
+  rectanglesOverlap,
+  resolveBentoResponsiveMinWidth,
+  scaleLegacyBentoDesktopLayout
 } from '../../../utils/bentoCore';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
@@ -1299,19 +1301,8 @@ export const BentoModule: React.FC<{
     };
   };
 
-  const shouldScaleLegacyDesktopLayout = (item: any, layout: any, cols: number) => {
-    const declaredColumns = Number(layout?.columns || item?.layout_columns?.desktop || item?.layoutColumns?.desktop || 0);
-    return declaredColumns > 0 ? declaredColumns < cols : cols === BENTO_DESKTOP_COLUMNS;
-  };
-
   const scaleLegacyDesktopLayout = (item: any, layout: any, cols: number) => {
-    const shouldScale = shouldScaleLegacyDesktopLayout(item, layout, cols);
-    const source = normalizeLayoutEntry(layout);
-    return clampLayoutEntry({
-      ...source,
-      x: shouldScale ? source.x * 2 : source.x,
-      w: shouldScale ? source.w * 2 : source.w
-    }, cols);
+    return clampLayoutEntry(scaleLegacyBentoDesktopLayout(item, layout, cols), cols);
   };
 
   const normalizeLayoutEntryWithId = (layout: any) => ({
@@ -1436,7 +1427,7 @@ export const BentoModule: React.FC<{
         const baseLayout = clampLayoutEntry({
           x: savedLayout?.x ?? item.x ?? 0,
           y: savedLayout?.y ?? item.y ?? 0,
-          w: resolveEffectiveWidth(item, breakpoint as 'tablet' | 'mobile', cols),
+          w: resolveBentoResponsiveMinWidth(item, breakpoint as 'tablet' | 'mobile', cols),
           h: savedLayout?.h ?? fallbackH
         }, cols);
         return {
@@ -1487,7 +1478,7 @@ export const BentoModule: React.FC<{
             ? (item.mobile_rows || item.row_span || item.desktop_rows || 2)
             : (item.desktop_rows || item.row_span || 2);
           const h = resolveEffectiveRows(item, breakpoint as 'tablet' | 'mobile', savedH);
-          const w = resolveEffectiveWidth(item, breakpoint as 'tablet' | 'mobile', cols);
+          const w = resolveBentoResponsiveMinWidth(item, breakpoint as 'tablet' | 'mobile', cols);
           return { item, index, layout: { x: 0, y: 0, w, h } };
         })
       );
@@ -1509,12 +1500,17 @@ export const BentoModule: React.FC<{
         const savedLayout = item.layouts[breakpoint];
         const scaledLayoutBase = breakpoint === 'desktop'
           ? scaleLegacyDesktopLayout(item, savedLayout, cols)
-          : clampLayoutEntry(savedLayout, cols);
+          : clampLayoutEntry({
+            ...savedLayout,
+            w: resolveBentoResponsiveMinWidth(item, 'tablet', cols)
+          }, cols);
         const hasMeasuredSize = Boolean(getIntrinsicSize(item, breakpoint));
         const scaledLayout = {
           ...scaledLayoutBase,
-          w: item.width_preset !== undefined || hasMeasuredSize || item.layout_sources?.[breakpoint] !== 'derived'
-            ? resolveEffectiveWidth(item, breakpoint as 'desktop' | 'tablet' | 'mobile', cols)
+          w: breakpoint === 'tablet'
+            ? resolveBentoResponsiveMinWidth(item, 'tablet', cols)
+            : item.width_preset !== undefined || hasMeasuredSize || item.layout_sources?.[breakpoint] !== 'derived'
+              ? resolveEffectiveWidth(item, breakpoint as 'desktop' | 'mobile', cols)
             : scaledLayoutBase.w
         };
         const responsiveMinRows = resolveEffectiveRows(item, breakpoint as 'desktop' | 'tablet' | 'mobile', scaledLayout.h, scaledLayout.w);
@@ -1534,7 +1530,9 @@ export const BentoModule: React.FC<{
       }
 
       // 2. Try legacy / specific span fields
-      const w = resolveEffectiveWidth(item, breakpoint as 'desktop' | 'tablet' | 'mobile', cols);
+      const w = breakpoint === 'tablet'
+        ? resolveBentoResponsiveMinWidth(item, 'tablet', cols)
+        : resolveEffectiveWidth(item, breakpoint as 'desktop' | 'mobile', cols);
       
       const h = resolveBentoManualRows(item, breakpoint as 'desktop' | 'tablet' | 'mobile');
 
@@ -2030,14 +2028,18 @@ export const BentoModule: React.FC<{
         : clampLayoutEntry(item.layouts[breakpoint], colsForBreakpoint);
       return {
         ...layout,
-        w: item.width_preset !== undefined || item.layout_sources?.[breakpoint] !== 'derived'
-          ? resolveEffectiveWidth(item, breakpoint, colsForBreakpoint)
-          : layout.w,
+        w: breakpoint === 'tablet'
+          ? resolveBentoResponsiveMinWidth(item, 'tablet', colsForBreakpoint)
+          : item.width_preset !== undefined || item.layout_sources?.[breakpoint] !== 'derived'
+            ? resolveEffectiveWidth(item, breakpoint, colsForBreakpoint)
+            : layout.w,
         h: resolveEffectiveRows(item, breakpoint, layout.h, layout.w)
       };
     }
 
-    const w = resolveEffectiveWidth(item, breakpoint, colsForBreakpoint);
+    const w = breakpoint === 'tablet'
+      ? resolveBentoResponsiveMinWidth(item, 'tablet', colsForBreakpoint)
+      : resolveEffectiveWidth(item, breakpoint, colsForBreakpoint);
     const h = resolveBentoManualRows(item, breakpoint);
 
     const layout = breakpoint === 'desktop'

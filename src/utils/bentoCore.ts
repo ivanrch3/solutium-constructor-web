@@ -93,6 +93,11 @@ export const resolveBentoRowHeight = (value: unknown, hasExplicitValue = true) =
 export type BentoSizeMode = 'auto' | 'manual';
 export type BentoWidthPreset = 'narrow' | 'medium' | 'wide' | 'full' | 'custom';
 
+export const BENTO_DESKTOP_COLUMNS = 24;
+export const BENTO_TABLET_COLUMNS = 6;
+export const BENTO_MOBILE_COLUMNS = 4;
+export const BENTO_TABLET_MIN_ITEM_COLUMNS = 3;
+
 const BENTO_WIDTH_PRESET_BASE_COLUMNS: Record<Exclude<BentoWidthPreset, 'custom'>, { desktop: number; tablet: number; mobile: number }> = {
   narrow: { desktop: 3, tablet: 3, mobile: 4 },
   medium: { desktop: 5, tablet: 4, mobile: 4 },
@@ -204,6 +209,62 @@ export const resolveBentoEffectiveWidth = (
   const value = breakpoint === 'desktop' ? item.desktop_span || item.col_span
     : breakpoint === 'tablet' ? item.tablet_span || item.col_span : item.mobile_span || item.col_span;
   return Math.max(1, Math.min(safeColumns, toNumber(value, safeColumns)));
+};
+
+/** Tablet keeps the six-column grid but never creates a three-across row. */
+export const resolveBentoResponsiveMinWidth = (
+  item: Record<string, any> = {},
+  breakpoint: BentoBreakpoint,
+  columns: number
+) => {
+  const safeColumns = Math.max(1, Math.floor(toNumber(columns, breakpoint === 'tablet' ? BENTO_TABLET_COLUMNS : BENTO_MOBILE_COLUMNS)));
+  const width = resolveBentoEffectiveWidth(item, breakpoint, safeColumns);
+  return breakpoint === 'tablet'
+    ? Math.min(safeColumns, Math.max(BENTO_TABLET_MIN_ITEM_COLUMNS, width))
+    : breakpoint === 'mobile'
+      ? safeColumns
+      : Math.min(safeColumns, Math.max(1, width));
+};
+
+/** Scale legacy twelve-column desktop geometry without touching modern explicit layouts. */
+export const shouldScaleLegacyBentoDesktopLayout = (
+  item: Record<string, any> = {},
+  layout: Record<string, any> = {},
+  columns = BENTO_DESKTOP_COLUMNS
+) => {
+  const declaredColumns = Number(layout.columns || item.layout_columns?.desktop || item.layoutColumns?.desktop || 0);
+  const explicitModernLayout = declaredColumns === columns
+    && (item.layout_sources?.desktop === 'explicit' || item.width_preset !== undefined || item.width_mode === 'manual');
+  if (explicitModernLayout) return false;
+  const derivedLegacyAuto = item.width_mode === 'auto'
+    && item.width_preset === undefined
+    && item.layout_sources?.desktop === 'derived'
+    && Number(layout.w) > 0
+    && Number(layout.w) <= 6;
+  if (derivedLegacyAuto) return true;
+  if (declaredColumns > 0) return declaredColumns < columns;
+  return columns === BENTO_DESKTOP_COLUMNS || derivedLegacyAuto;
+};
+
+export const scaleLegacyBentoDesktopLayout = (
+  item: Record<string, any> = {},
+  layout: Record<string, any> = {},
+  columns = BENTO_DESKTOP_COLUMNS
+) => {
+  const source = {
+    x: Number(layout.x) || 0,
+    y: Number(layout.y) || 0,
+    w: Number(layout.w) || 1,
+    h: Number(layout.h) || 1
+  };
+  const shouldScale = shouldScaleLegacyBentoDesktopLayout(item, layout, columns);
+  const w = Math.min(columns, Math.max(1, shouldScale ? source.w * 2 : source.w));
+  return {
+    x: Math.min(Math.max(shouldScale ? source.x * 2 : source.x, 0), Math.max(columns - w, 0)),
+    y: Math.max(source.y, 0),
+    w,
+    h: Math.max(source.h, 1)
+  };
 };
 
 export const resolveBentoEffectiveRows = (
